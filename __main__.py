@@ -9,7 +9,7 @@ parser = ArgumentParser(prog='mcr',
 
 subparsers = parser.add_subparsers(title='Sub-commands', dest='command')
 
-pathlist = Path('.').glob('./recipies/*.py')
+pathlist = Path(__file__).parent.glob('./recipies/*.py')
 functions = {}
 functionparsers = {}
 
