@@ -237,13 +237,15 @@ def get_parser():
     parser.add_argument('-U', '--plusu', help='Do +U calculation',
                         action='store_true')
     parser.add_argument('--states', help='list of nm, fm, afm', nargs='+',
-                        default=None)
+                        default=['nm', 'fm', 'afm'])
+    parser.set_defaults(func=main)
     return parser
 
 
 def main(args=None):
-    parser = get_parser()
-    args = parser.parse_args()
+    if args is None:
+        parser = get_parser()
+        args = parser.parse_args()
     prototype = args.prototype
     U = args.plusu
     states = args.states

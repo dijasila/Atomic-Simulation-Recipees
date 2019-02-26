@@ -9,14 +9,26 @@ parser = ArgumentParser(prog='mcr',
 
 subparsers = parser.add_subparsers(title='Sub-commands', dest='command')
 
-pathlist = Path('.').glob('*.py')
+pathlist = Path('.').glob('./recipies/*.py')
+functions = {}
+functionparsers = {}
+
 for path in pathlist:
-    name = str(path)[:-3]
-    module = importlib.import_module('.' + name, package='mcs')
+    name = path.with_suffix('').name
+    module = importlib.import_module('.recipies.' + name, package='mcr')
     try:
         sp = module.get_parser()
+        main = module.main
     except AttributeError:
         continue
-    subparsers.add_parser(name, parents=[sp], add_help=False,
-                          help=sp.description)
-parser.parse_args()
+    sp = subparsers.add_parser(name, parents=[sp], add_help=False,
+                               help=sp.description)
+    functions[name] = main
+    functionparsers[name] = sp
+    
+args = parser.parse_args()
+if args.command:
+    f = functions[args.command]
+    sp = functionparsers[name]
+    knownargs = sp.parse_known_args()[0]
+    f(knownargs)
