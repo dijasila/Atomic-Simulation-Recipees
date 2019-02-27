@@ -1,11 +1,11 @@
 import importlib
 from pathlib import Path
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ase.cli.main import Formatter
 
 parser = ArgumentParser(prog='mcr',
                         description='Material characterization recipies',
-                        formatter_class=Formatter)
+                        formatter_class=ArgumentDefaultsHelpFormatter)
 
 subparsers = parser.add_subparsers(title='Sub-commands', dest='command')
 
@@ -23,6 +23,7 @@ for path in pathlist:
         continue
     sp = subparsers.add_parser(name, parents=[sp], add_help=False,
                                help=sp.description)
+    sp.formatter_class = ArgumentDefaultsHelpFormatter
     functions[name] = main
     functionparsers[name] = sp
     
