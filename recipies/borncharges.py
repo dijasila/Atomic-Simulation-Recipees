@@ -120,6 +120,33 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
                 remove(f)
 
 
+def collect_data(kvp, data, atoms, verbose=False):
+    import os.path as op
+    delta = 0.01
+
+    P_davv = []
+
+    fname = 'data-borncharges/borncharges-{}.json'.format(delta)
+    if not op.isfile(fname):
+        return
+
+    with open(fname) as fd:
+        dct = jsonio.decode(json.load(fd))
+
+    if 'P_asvv' not in dct:
+        from c2db.borncharges import borncharges
+        borncharges(delta)
+        with open(fname) as fd:
+            dct = jsonio.decode(json.load(fd))
+
+    P_davv.append(dct['P_asvv'][:, 0])
+    P_davv.append(dct['P_asvv'][:, 1])
+    data['Z_avv'] = -dct['Z_avv']
+
+    P_davv = np.array(P_davv)
+    data['borndata'] = [[-0.01, 0.01], P_davv]
+
+
 def get_parser():
     import argparse
     parser = argparse.ArgumentParser(description='Calculate Born charges')
