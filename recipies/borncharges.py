@@ -120,6 +120,66 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
                 remove(f)
 
 
+def polvsatom(row, *filenames):
+    if 'borndata' not in row.data:
+        return
+
+    from matplotlib import pyplot as plt
+    borndata = row.data['borndata']
+    deltas = borndata[0]
+    P_davv = borndata[1]
+
+    for a, P_dvv in enumerate(P_davv.transpose(1, 0, 2, 3)):
+        fname = 'polvsatom{}.png'.format(a)
+        for fname2 in filenames:
+            if fname in fname2:
+                break
+        else:
+            continue
+
+        Pm_vv = np.mean(P_dvv, axis=0)
+        P_dvv -= Pm_vv
+        plt.plot(deltas, P_dvv[:, 0, 0], '-o', label='xx')
+        plt.plot(deltas, P_dvv[:, 1, 1], '-o', label='yy')
+        plt.plot(deltas, P_dvv[:, 2, 2], '-o', label='zz')
+        plt.xlabel('Displacement (Å)')
+        plt.ylabel('Pol')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(fname2)
+        plt.close()
+
+
+def webpanel(row):
+    from mcr.custom import fig
+    polfilenames = []
+    if 'Z_avv' in row.data:
+        def matrixtable(M, digits=2):
+            table = M.tolist()
+            shape = M.shape
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    value = table[i][j]
+                    table[i][j] = '{:.{}f}'.format(value, digits)
+            return table
+
+        panel = [[], []]
+        for a, Z_vv in enumerate(row.data.Z_avv):
+            Zdata = matrixtable(Z_vv)
+
+            Ztable = dict(
+                header=[str(a), row.symbols[a], ''],
+                type='table',
+                rows=Zdata)
+
+            panel[0].append(Ztable)
+            polname = 'polvsatom{}.png'.format(a)
+            panel[1].append(fig(polname))
+            polfilenames.append(polname)
+    panel = [('Born charges', panel)]
+    return panel, polvsatom, polfilenames
+
+
 def collect_data(kvp, data, atoms, verbose=False):
     import os.path as op
     delta = 0.01

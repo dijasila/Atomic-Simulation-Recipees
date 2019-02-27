@@ -312,6 +312,7 @@ def layout(row: AtomsRow,
           [hulltable1, hulltable2, hulltable3]]),
         ('Elastic constants and phonons',
          [[fig('phonons.png')], [phonontable]])]
+    things = []
 
     if row.magstate != 'NM':
         magtable = table('Property',
@@ -368,31 +369,18 @@ def layout(row: AtomsRow,
         page += [('Band gaps and -edges (all methods)',
                   [[gaptable, ], [edgetable, ]])]
 
-    polfilenames = []
-    if 'Z_avv' in row.data:
-        def matrixtable(M, digits=2):
-            table = M.tolist()
-            shape = M.shape
-            for i in range(shape[0]):
-                for j in range(shape[1]):
-                    value = table[i][j]
-                    table[i][j] = '{:.{}f}'.format(value, digits)
-            return table
+    from importlib import import_module
+    pathlist = Path(__file__).parent.glob('*.py')
+    for path in pathlist:
+        name = path.with_suffix('').name
+        module = import_module('.recipies.' + name, package='mcr')
 
-        panel = [[], []]
-        for a, Z_vv in enumerate(row.data.Z_avv):
-            Zdata = matrixtable(Z_vv)
-
-            Ztable = dict(
-                header=[str(a), row.symbols[a], ''],
-                type='table',
-                rows=Zdata)
-
-            panel[0].append(Ztable)
-            polname = 'polvsatom{}.png'.format(a)
-            panel[1].append(fig(polname))
-            polfilenames.append(polname)
-        page += [('Born charges', panel)]
+        try:
+            panel, func, figures = module.webpanel(row)
+            page += panel
+            things.append((func, figures))
+        except AttributeError:
+            continue
 
     if 'e_vvv' in row.data:
         def matrixtable(M, digits=2):
@@ -429,21 +417,20 @@ def layout(row: AtomsRow,
     page += [miscellaneous_section(row, key_descriptions, exclude)]
 
     # List of functions and the figures they create:
-    things = [(bs_gw, ['gw-bs.png']),
-              (bs_hse, ['hse-bs.png']),
-              (bzcut_pbe, ['pbe-bzcut-cb-bs.png', 'pbe-bzcut-vb-bs.png']),
-              (bs_pbe, ['pbe-bs.png']),
-              (bs_pbe_html, ['pbe-bs.html']),
-              (pdos_pbe, ['pbe-pdos.png']),
-              (bz_soc, ['bz.png']),
-              (absorption, ['abs-in.png', 'abs-out.png']),
-              (polarizability, ['rpa-pol-x.png', 'rpa-pol-y.png',
-                                'rpa-pol-z.png']),
-              (convex_hull, ['convex-hull.png']),
-              (phonons, ['phonons.png']),
-              (polvsstrain, ['polvsstrain.png', 'polvsstrain0.png',
-                             'displacementvsstrain.png']),
-              (polvsatom, polfilenames)]
+    things.extend([(bs_gw, ['gw-bs.png']),
+                   (bs_hse, ['hse-bs.png']),
+                   (bzcut_pbe, ['pbe-bzcut-cb-bs.png', 'pbe-bzcut-vb-bs.png']),
+                   (bs_pbe, ['pbe-bs.png']),
+                   (bs_pbe_html, ['pbe-bs.html']),
+                   (pdos_pbe, ['pbe-pdos.png']),
+                   (bz_soc, ['bz.png']),
+                   (absorption, ['abs-in.png', 'abs-out.png']),
+                   (polarizability, ['rpa-pol-x.png', 'rpa-pol-y.png',
+                                     'rpa-pol-z.png']),
+                   (convex_hull, ['convex-hull.png']),
+                   (phonons, ['phonons.png']),
+                   (polvsstrain, ['polvsstrain.png', 'polvsstrain0.png',
+                                  'displacementvsstrain.png'])])
 
     missing = set()  # missing figures
     for func, filenames in things:
@@ -1481,36 +1468,6 @@ def basic(row, key_descriptions):
              '</a>'.format(doi=doi)])
 
     return table
-
-
-def polvsatom(row, *filenames):
-
-    if 'borndata' not in row.data:
-        return
-
-    borndata = row.data['borndata']
-    deltas = borndata[0]
-    P_davv = borndata[1]
-
-    for a, P_dvv in enumerate(P_davv.transpose(1, 0, 2, 3)):
-        fname = 'polvsatom{}.png'.format(a)
-        for fname2 in filenames:
-            if fname in fname2:
-                break
-        else:
-            continue
-
-        Pm_vv = np.mean(P_dvv, axis=0)
-        P_dvv -= Pm_vv
-        plt.plot(deltas, P_dvv[:, 0, 0], '-o', label='xx')
-        plt.plot(deltas, P_dvv[:, 1, 1], '-o', label='yy')
-        plt.plot(deltas, P_dvv[:, 2, 2], '-o', label='zz')
-        plt.xlabel('\delta (Å)')
-        plt.ylabel('pol')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(fname2)
-        plt.close()
 
 
 def polvsstrain(row, f1, f0, f2):
