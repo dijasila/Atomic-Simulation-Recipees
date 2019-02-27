@@ -20,7 +20,13 @@ def bader():
         pass
     cmd = 'bader -p all_atom -p atom_index ../density.cube'
     subprocess.run(cmd.split(), cwd=folder)
-    
+
+
+def print_results():
+    with open('data-bader/ACF.dat') as f:
+        dat = f.read()
+    print(dat)
+
 
 def get_parser():
     import argparse
