@@ -1,7 +1,6 @@
 import importlib
 from pathlib import Path
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from ase.cli.main import Formatter
 
 parser = ArgumentParser(prog='mcr',
                         description='Material characterization recipies',
