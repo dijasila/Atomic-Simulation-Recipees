@@ -30,13 +30,17 @@ def get_wavefunctions(atoms, name, params, density=6.0):
     return atoms.calc
 
 
-def borncharges(delta=0.01, density=6.0, folder=None):
+def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
+
     if folder is None:
         folder = 'data-borncharges'
-    try:
-        makedirs(folder)
-    except FileExistsError:
-        pass
+    if world.rank == 0:
+        try:
+            makedirs(folder)
+        except FileExistsError:
+            pass
+    world.barrier()
+    
     chdir(folder)
     calc = GPAW('../gs.gpw', txt=None)
     params = calc.parameters
@@ -62,21 +66,21 @@ def borncharges(delta=0.01, density=6.0, folder=None):
                     print(sym_a[a], a, v, s)
                 # Update atomic positions
                 atoms.positions = pos_av
-                atoms.positions[a, v] = pos_av[a, v] + sign * delta
-                prefix = 'born-{}-{}{}{}'.format(delta, a,
+                atoms.positions[a, v] = pos_av[a, v] + sign * displacement
+                prefix = 'born-{}-{}{}{}'.format(displacement, a,
                                                  'xyz'[v],
                                                  ' +-'[sign])
                 name = prefix + '.gpw'
                 berryname = prefix + '-berryphases.json'
                 if not exists(name) and not exists(berryname):
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=density)
+                                             density=kpointdensity)
 
                 try:
                     phase_c = get_polarization_phase(name)
                 except ValueError:
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=density)
+                                             density=kpointdensity)
                     phase_c = get_polarization_phase(name)
 
                 phase_scv[s, :, v] = phase_c
@@ -96,14 +100,14 @@ def borncharges(delta=0.01, density=6.0, folder=None):
 
         P_svv = (-np.dot(cell_cv.T, phase_scv).transpose(1, 0, 2) /
                  (2 * np.pi * vol))
-        Z_vv = dP_vv * vol / (2 * delta / Bohr)
+        Z_vv = dP_vv * vol / (2 * displacement / Bohr)
         P_asvv.append(P_svv)
         Z_avv.append(Z_vv)
 
     data = {'Z_avv': Z_avv, 'sym_a': sym_a,
             'P_asvv': P_asvv}
 
-    filename = 'borncharges-{}.json'.format(delta)
+    filename = 'borncharges-{}.json'.format(displacement)
 
     with paropen(filename, 'w') as fd:
         json.dump(jsonio.encode(data), fd)
@@ -136,7 +140,9 @@ def main(args=None):
     if args is None:
         parser = get_parser()
         args = parser.parse_args()
-    borncharges(args)
+    kwargs = vars(args)
+    kwargs.pop('func', None)
+    borncharges(**kwargs)
 
 
 if __name__ == '__main__':
