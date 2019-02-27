@@ -13,7 +13,6 @@ from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 from c2db import readinfo, magnetic_atoms
 from c2db.bfgs import BFGS
 from c2db.references import formation_energy
-from c2db.prepare import convert_to_canonical_structure
 
 Uvalues = {}
 
