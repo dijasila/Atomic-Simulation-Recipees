@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 import numpy as np
-from ase.io import read, Trajectory
+from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
@@ -229,6 +229,11 @@ def relax_all(prototype=None, U=False, states=None):
             states.append(state)
             if world.rank == 0 and not Path(state).is_dir():
                 Path(state).mkdir()
+
+            name = state + '/start.traj'
+            if world.rank == 0 and not Path(name).is_file():
+                # Write start.traj file to folder
+                write(name, slab)
 
 
 def get_parser():
