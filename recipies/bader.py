@@ -23,7 +23,12 @@ def bader():
 
 
 def print_results():
-    with open('data-bader/ACF.dat') as f:
+    import os.path as op
+    fname = 'data-bader/ACF.dat'
+    if not op.isfile(fname):
+        return
+    
+    with open(fname) as f:
         dat = f.read()
     print(dat)
 
