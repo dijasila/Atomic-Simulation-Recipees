@@ -6,7 +6,7 @@ def get_parser():
                         help='Phonon momentum')
     parser.add_argument('-m', '--mode', default=0, type=int,
                         help='Mode index')
-    parser.add_argument('-a', '--amplitude', defaul=0.1, type=float,
+    parser.add_argument('-a', '--amplitude', default=0.1, type=float,
                         help='Maximum distance an atom will be displaced')
     parser.add_argument('--fix-cell', action='store_true',
                         help='Do not relax cell')
