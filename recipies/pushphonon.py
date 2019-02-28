@@ -2,7 +2,8 @@ def get_parser():
     import argparse
     desc = 'Push structure along some phonon mode and relax structure'
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('-q', '--momentum', default=0, nargs=3, type=float,
+    parser.add_argument('-q', '--momentum', default=[0, 0, 0],
+                        nargs=3, type=float,
                         help='Phonon momentum')
     parser.add_argument('-m', '--mode', default=0, type=int,
                         help='Mode index')
@@ -21,10 +22,9 @@ def main(args=None):
     if args is None:
         parser = get_parser()
         args = parser.parse_args()
-    args = parser.parse_args(args)
-    mode = args.mode
-    q_c = args.momentum
-    amplitude = args.amplitude
+    mode = args['mode']
+    q_c = args['momentum']
+    amplitude = args['amplitude']
     
     # Get modes
     calc = GPAW('gs.gpw', txt=None)
@@ -33,7 +33,8 @@ def main(args=None):
 
     # Repeat atoms
     from fractions import Fraction
-    repeat_c = [Fraction(1 / qc).denominator for qc in q_qc[0]]
+    repeat_c = [Fraction(1 / qc).denominator if qc > 1e-3 else 1
+                for qc in q_qc[0]]
     newatoms = atoms * repeat_c
 
     # Here ``Na`` refers to a composite unit cell/atom dimension
@@ -57,10 +58,11 @@ def main(args=None):
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
     from mcr.recipies.relax import relax
-    tag = 'push-q=({},{},{})mode={}'.format(*np.round(q_c, 3), mode=mode)
+    tag = 'push-q=({},{},{})mode={}'.format(q_c[0], q_c[1], q_c[2],
+                                            mode)
     smask = [1, 1, 1, 1, 1, 1]
 
-    if args.fix_cell:
+    if args['fix_cell']:
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
     relax(newatoms, tag, smask=smask)
