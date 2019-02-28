@@ -31,4 +31,4 @@ if args.command:
     f = functions[args.command]
     sp = functionparsers[name]
     knownargs = sp.parse_known_args()[0]
-    f(knownargs)
+    f(vars(knownargs))
