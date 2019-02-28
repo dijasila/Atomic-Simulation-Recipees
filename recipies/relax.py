@@ -57,7 +57,8 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
     return slab, done
 
 
-def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf):
+def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
+          smask=[1, 1, 1, 1, 1, 1]):
     name = 'relax-' + tag
 
     kwargs = dict(txt=name + '.txt',
@@ -88,7 +89,7 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf):
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', slab))
     try:
-        opt.run(fmax=0.01, smax=0.002, smask=[1, 1, 1, 1, 1, 1], emin=emin)
+        opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
     except KohnShamConvergenceError:
         try:
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
@@ -98,14 +99,14 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf):
             opt = BFGS(slab,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', slab))
-            opt.run(fmax=0.01, smax=0.002, smask=[1, 1, 1, 1, 1, 1], emin=emin)
+            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
             kwargs.update(occupations=FermiDirac(width=0.2))
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', slab))
-            opt.run(fmax=0.01, smax=0.002, smask=[1, 1, 1, 1, 1, 1], emin=emin)
+            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
 
 def relax_all(prototype=None, U=False, states=None):
