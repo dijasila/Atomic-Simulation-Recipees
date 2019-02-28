@@ -207,6 +207,23 @@ def collect_data(kvp, data, atoms, verbose=False):
     data['borndata'] = [[-0.01, 0.01], P_davv]
 
 
+def print_results():
+    np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+    import os.path as op
+    fname = 'data-borncharges/borncharges-0.01.json'
+    if not op.isfile(fname):
+        return
+
+    with open(fname) as fd:
+        dct = jsonio.decode(json.load(fd))
+    title = """
+    BORNCHARGES
+    ===========
+    """
+    print(title)
+    print(-dct['Z_avv'])
+    
+
 def get_parser():
     import argparse
     parser = argparse.ArgumentParser(description='Calculate Born charges')
@@ -214,9 +231,11 @@ def get_parser():
 
     # Set variables
     help = 'Atomic displacement when moving atoms in Å'
-    parser.add_argument('-d', '--displacement', help=help, default=0.01)
+    parser.add_argument('-d', '--displacement', help=help, default=0.01,
+                        type=float)
     help = 'Set kpoint density for calculation of berryphases'
-    parser.add_argument('-k', '--kpointdensity', help=help, default=6.0)
+    parser.add_argument('-k', '--kpointdensity', help=help, default=6.0,
+                        type=float)
     help = 'Folder where data is put'
     parser.add_argument('-f', '--folder', help=help,
                         default='data-borncharges')
