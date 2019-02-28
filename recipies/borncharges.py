@@ -227,7 +227,6 @@ def print_results():
 def get_parser():
     import argparse
     parser = argparse.ArgumentParser(description='Calculate Born charges')
-    parser.set_defaults(func=main)
 
     # Set variables
     help = 'Atomic displacement when moving atoms in Å'
@@ -245,10 +244,8 @@ def get_parser():
 def main(args=None):
     if args is None:
         parser = get_parser()
-        args = parser.parse_args()
-    kwargs = vars(args)
-    kwargs.pop('func', None)
-    borncharges(**kwargs)
+        args = vars(parser.parse_args())
+    borncharges(**args)
 
 
 if __name__ == '__main__':
