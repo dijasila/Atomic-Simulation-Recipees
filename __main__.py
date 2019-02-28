@@ -6,7 +6,7 @@ parser = ArgumentParser(prog='mcr',
                         description='Material characterization recipies',
                         formatter_class=ArgumentDefaultsHelpFormatter)
 
-subparsers = parser.add_subparsers(title='Sub-commands', dest='command')
+subparsers = parser.add_subparsers(title='Recipies', dest='command')
 
 pathlist = Path(__file__).parent.glob('./recipies/*.py')
 functions = {}
