@@ -16,7 +16,6 @@ def summary(**kwargs):
 def get_parser():
     import argparse
     parser = argparse.ArgumentParser(description='Print summary of results')
-    parser.set_defaults(func=main)
 
     return parser
 

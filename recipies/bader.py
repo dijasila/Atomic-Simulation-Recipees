@@ -37,7 +37,6 @@ def get_parser():
     import argparse
     description = 'Make Bader analysis of charge density'
     parser = argparse.ArgumentParser(description=description)
-    parser.set_defaults(func=main)
     return parser
 
 
