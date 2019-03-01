@@ -25,10 +25,10 @@ for path in pathlist:
     sp.formatter_class = ArgumentDefaultsHelpFormatter
     functions[name] = main
     functionparsers[name] = sp
-    
+
 args = parser.parse_args()
 if args.command:
     f = functions[args.command]
-    sp = functionparsers[name]
+    sp = functionparsers[args.command]
     knownargs = sp.parse_known_args()[0]
     f(vars(knownargs))
