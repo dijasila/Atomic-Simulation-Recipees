@@ -12,6 +12,9 @@ def write_gpw_file():
         occupations=FermiDirac(width=0.05))
 
     name = 'start.traj'
+
+    # XXX This should be changed since parameters are not
+    # stored in start.traj
     try:
         u = ulmopen(name)
         params.update(u[-1].calculator.get('parameters', {}))
