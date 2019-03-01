@@ -33,7 +33,7 @@ def main(args=None):
 
     # Repeat atoms
     from fractions import Fraction
-    repeat_c = [Fraction(1 / qc).denominator if qc > 1e-3 else 1
+    repeat_c = [Fraction(qc).denominator if qc > 1e-3 else 1
                 for qc in q_qc[0]]
     newatoms = atoms * repeat_c
 
