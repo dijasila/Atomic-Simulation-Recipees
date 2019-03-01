@@ -39,6 +39,7 @@ def main(args=None):
 
     # Here ``Na`` refers to a composite unit cell/atom dimension
     pos_Nav = newatoms.get_positions()
+
     # Total number of unit cells
     N = np.prod(repeat_c)
 
@@ -67,6 +68,15 @@ def main(args=None):
         tag += '-fix-cell'
     relax(newatoms, tag, smask=smask)
 
-    
+    # Write start.traj file to folder
+    name = tag + '/start.traj'
+    from gpaw.mpi import world
+    from pathlib import Path
+    from ase.io import write
+    if world.rank == 0 and not Path(name).is_file():
+        Path(tag).mkdir()
+        write(name, newatoms)
+
+
 if __name__ == '__main__':
     main()
