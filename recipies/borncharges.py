@@ -50,8 +50,6 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
     sym_a = atoms.get_chemical_symbols()
 
     pos_av = atoms.get_positions().copy()
-    avg_v = np.sum(pos_av, axis=0) / len(pos_av)
-    pos_av -= avg_v
     atoms.set_positions(pos_av)
     Z_avv = []
     P_asvv = []
