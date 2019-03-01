@@ -4,10 +4,10 @@ import numpy as np
 from gpaw import GPAW
 import gpaw.mpi as mpi
 from ase.io import read
-from ase.dft.kpoints import special_paths
 from ase.geometry import crystal_structure_from_cell
-from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs
 
+from ase.dft.kpoints import special_paths
+from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs
 creates = ['bs.gpw', 'eigs_spinorbit.npz']
 dependencies = ['gs.py']
 
@@ -77,7 +77,7 @@ def get_parser():
 
 def main(args=None):
     parser = get_parser()
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
     bandstructure(**args)
 
 
