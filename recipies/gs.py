@@ -12,9 +12,12 @@ def write_gpw_file():
         occupations=FermiDirac(width=0.05))
 
     name = 'start.traj'
-    u = ulmopen(name)
-    params.update(u[-1].calculator.get('parameters', {}))
-    u.close()
+    try:
+        u = ulmopen(name)
+        params.update(u[-1].calculator.get('parameters', {}))
+        u.close()
+    except KeyError:
+        pass
     slab = read(name)
     slab.calc = GPAW(txt='gs.txt', **params)
     slab.get_forces()
@@ -25,14 +28,13 @@ def write_gpw_file():
 def get_parser():
     import argparse
     desc = 'Calculate ground state density and save to gs.gpw'
-    parser = argparse.ArgumnentParser(description=desc)
-
+    parser = argparse.ArgumentParser(description=desc)
     return parser
 
 
 def main(args=None):
     parser = get_parser()
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
     write_gpw_file(**args)
 
 
