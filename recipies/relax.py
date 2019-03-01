@@ -7,7 +7,6 @@ from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
-from ase.build import niggli_reduce
 from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
 from c2db import readinfo, magnetic_atoms
@@ -109,17 +108,14 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
 
-def relax_all(prototype=None, U=False, states=None):
+def relax_all(plusu=False, states=None):
     """Relax atomic positions and unit cell.
 
     Different magnetic states will be tried: non-magnetic, ferro-magnetic, ...
 
     A gs.gpw file will be written for the most stable configuration.
     """
-
-    info = readinfo()
-    if states is None:
-        states = info.get('states')
+    U = plusu
     nm = 'nm+u' if U else 'nm'
     fm = 'fm+u' if U else 'fm'
     afm = 'afm+u' if U else 'afm'
@@ -151,7 +147,6 @@ def relax_all(prototype=None, U=False, states=None):
                     fnames = list(Path('.').glob('start.*'))
                     assert len(fnames) == 1, fnames
                     slab1 = read(str(fnames[0]))
-                    niggli_reduce(slab1)
             slab1.set_initial_magnetic_moments(None)
             try:
                 relax(slab1, nm)
@@ -189,7 +184,6 @@ def relax_all(prototype=None, U=False, states=None):
                 fnames = list(Path('.').glob('start.*'))
                 assert len(fnames) == 1, fnames
                 slab3 = read(str(fnames[0]))
-                niggli_reduce(slab3)
             else:
                 slab3 = slab2.copy()
             magnetic = magnetic_atoms(slab3)
@@ -238,12 +232,10 @@ def relax_all(prototype=None, U=False, states=None):
 
 def get_parser():
     parser = argparse.ArgumentParser(description='Relax atomic structure')
-    parser.add_argument('-p', '--prototype', help='One of MoS2, CdI2, ...')
     parser.add_argument('-U', '--plusu', help='Do +U calculation',
                         action='store_true')
     parser.add_argument('--states', help='list of nm, fm, afm', nargs='+',
                         default=['nm', 'fm', 'afm'])
-    parser.set_defaults(func=main)
     return parser
 
 
@@ -251,18 +243,7 @@ def main(args=None):
     if args is None:
         parser = get_parser()
         args = parser.parse_args()
-    prototype = args.prototype
-    U = args.plusu
-    states = args.states
-    
-    if prototype is None:
-        prototype = readinfo().get('prototype')
-
-    if prototype and not Path('info.json').is_file():
-        with open('info.json', 'w') as fd:
-            fd.write(json.dumps({'prototype': prototype}))
-
-    relax_all(prototype=prototype, U=U, states=states)
+    relax_all(**args)
 
 
 if __name__ == '__main__':
