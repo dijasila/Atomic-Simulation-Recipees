@@ -2,6 +2,8 @@ from ase.io import read
 from ase.io.ulm import open as ulmopen
 from gpaw import GPAW, PW, FermiDirac
 
+creates = ['gs.gpw']
+
 
 def write_gpw_file():
     params = dict(
@@ -36,8 +38,9 @@ def get_parser():
 
 
 def main(args=None):
-    parser = get_parser()
-    args = vars(parser.parse_args())
+    if args is None:
+        parser = get_parser()
+        args = vars(parser.parse_args())
     write_gpw_file(**args)
 
 
