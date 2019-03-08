@@ -1,3 +1,6 @@
+dependencies = ['phonon.py']
+
+
 def get_parser():
     import argparse
     desc = 'Push structure along some phonon mode and relax structure'
@@ -11,8 +14,14 @@ def get_parser():
                         help='Maximum distance an atom will be displaced')
     parser.add_argument('--fix-cell', action='store_true',
                         help='Do not relax cell')
+    parser.add_argument('--showmode', action='store_true',
+                        help='Save mode to tmp.traj for viewing')
+
     return parser
-    
+
+
+parser = get_parser()
+
 
 def main(args=None):
     from gpaw import GPAW
@@ -21,7 +30,7 @@ def main(args=None):
 
     if args is None:
         parser = get_parser()
-        args = parser.parse_args()
+        args = vars(parser.parse_args())
     mode = args['mode']
     q_c = args['momentum']
     amplitude = args['amplitude']
@@ -59,13 +68,26 @@ def main(args=None):
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
     from mcr.recipies.relax import relax
-    tag = 'push-q=({},{},{})mode={}'.format(q_c[0], q_c[1], q_c[2],
-                                            mode)
+    tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2],
+                                           mode)
     smask = [1, 1, 1, 1, 1, 1]
 
     if args['fix_cell']:
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
+
+    if args['showmode']:
+        from ase.io.trajectory import Trajectory
+        traj = Trajectory('tmp.traj', mode='w')
+        showatoms = newatoms.copy()
+        n = 20
+        phase_x = np.linspace(-1, 1, n) * np.pi
+        for i, phase in enumerate(phase_x):
+            amp = np.sin(phase) * amplitude
+            showatoms.set_positions(pos_Nav + mode_Nav.real * amp)
+            traj.write(showatoms)
+
+        return
     relax(newatoms, tag, smask=smask)
 
     # Write start.traj file to folder
@@ -75,7 +97,7 @@ def main(args=None):
     from ase.io import write
     if world.rank == 0 and not Path(name).is_file():
         Path(tag).mkdir()
-        write(name, newatoms)
+    write(name, newatoms)
 
 
 if __name__ == '__main__':
