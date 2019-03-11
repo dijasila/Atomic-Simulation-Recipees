@@ -1,3 +1,6 @@
+import argparse
+
+
 def summary(**kwargs):
     from pathlib import Path
     from importlib import import_module
@@ -13,15 +16,14 @@ def summary(**kwargs):
             continue
 
 
-def get_parser():
-    import argparse
-    parser = argparse.ArgumentParser(description='Print summary of results')
-
-    return parser
+short_description = 'Print summary of results'
+parser = argparse.ArgumentParser(description=short_description)
 
 
-def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = parser.parse_args()
+def main(args):
     summary(**vars(args))
+
+
+if __name__ == '__main__':
+    args = vars(parser.parser_args())
+    main(args)
