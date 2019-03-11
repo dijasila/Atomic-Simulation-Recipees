@@ -1,5 +1,4 @@
-# Creates: borncharges-0.01.json, borncharges-0.005.json
-
+import argparse
 import json
 from os.path import exists, splitext, isfile
 from os import remove, chdir, makedirs
@@ -15,13 +14,19 @@ from ase.units import Bohr
 from ase.io import jsonio
 
 
-def get_wavefunctions(atoms, name, params, density=6.0):
+def get_wavefunctions(atoms, name, params, density=6.0,
+                      no_symmetries=False):
     params['kpts'] = {'density': density,
                       'gamma': True,
                       'even': True}
-    params['symmetry'] = {'point_group': True,
-                          'do_not_symmetrize_the_density': False,
-                          'time_reversal': True}
+    if no_symmetries:
+        params['symmetry'] = {'point_group': False,
+                              'do_not_symmetrize_the_density': False,
+                              'time_reversal': False}
+    else:
+        params['symmetry'] = {'point_group': True,
+                              'do_not_symmetrize_the_density': False,
+                              'time_reversal': True}
     params['convergence']['eigenstates'] = 1e-11
     tmp = splitext(name)[0]
     atoms.calc = GPAW(txt=tmp + '.txt', **params)
@@ -30,10 +35,12 @@ def get_wavefunctions(atoms, name, params, density=6.0):
     return atoms.calc
 
 
-def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
+def borncharges(displacement=0.01, kpointdensity=6.0, folder=None,
+                no_symmetries=False):
 
     if folder is None:
         folder = 'data-borncharges'
+
     if world.rank == 0:
         try:
             makedirs(folder)
@@ -72,13 +79,15 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None):
                 berryname = prefix + '-berryphases.json'
                 if not exists(name) and not exists(berryname):
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=kpointdensity)
+                                             density=kpointdensity,
+                                             no_symmetries=no_symmetries)
 
                 try:
                     phase_c = get_polarization_phase(name)
                 except ValueError:
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=kpointdensity)
+                                             density=kpointdensity,
+                                             no_symmetries=no_symmetries)
                     phase_c = get_polarization_phase(name)
 
                 phase_scv[s, :, v] = phase_c
@@ -205,14 +214,13 @@ def collect_data(kvp, data, atoms, verbose=False):
     data['borndata'] = [[-0.01, 0.01], P_davv]
 
 
-def print_results():
+def print_results(filename='data-borncharges/borncharges-0.01.json'):
     np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
     import os.path as op
-    fname = 'data-borncharges/borncharges-0.01.json'
-    if not op.isfile(fname):
+    if not op.isfile(filename):
         return
 
-    with open(fname) as fd:
+    with open(filename) as fd:
         dct = jsonio.decode(json.load(fd))
     title = """
     BORNCHARGES
@@ -220,31 +228,26 @@ def print_results():
     """
     print(title)
     print(-dct['Z_avv'])
-    
-
-def get_parser():
-    import argparse
-    parser = argparse.ArgumentParser(description='Calculate Born charges')
-
-    # Set variables
-    help = 'Atomic displacement when moving atoms in Å'
-    parser.add_argument('-d', '--displacement', help=help, default=0.01,
-                        type=float)
-    help = 'Set kpoint density for calculation of berryphases'
-    parser.add_argument('-k', '--kpointdensity', help=help, default=6.0,
-                        type=float)
-    help = 'Folder where data is put'
-    parser.add_argument('-f', '--folder', help=help,
-                        default='data-borncharges')
-    return parser
 
 
-def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = vars(parser.parse_args())
+def main(args):
     borncharges(**args)
 
 
+short_description = 'Calculate Born charges'
+dependencies = ['gs.py']
+parser = argparse.ArgumentParser(description=short_description)
+help = 'Atomic displacement when moving atoms in Å'
+parser.add_argument('-d', '--displacement', help=help, default=0.01,
+                    type=float)
+help = 'Set kpoint density for calculation of berryphases'
+parser.add_argument('-k', '--kpointdensity', help=help, default=6.0,
+                    type=float)
+help = 'Folder where data is put'
+parser.add_argument('-f', '--folder', help=help,
+                    default='data-borncharges')
+
+
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parse_args())
+    main(args)
