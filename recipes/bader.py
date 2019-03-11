@@ -1,3 +1,6 @@
+import argparse
+
+
 def bader():
     from ase.io import write
     from ase.units import Bohr
@@ -33,21 +36,14 @@ def print_results():
     print(dat)
 
 
-def get_parser():
-    import argparse
-    description = 'Make Bader analysis of charge density'
-    parser = argparse.ArgumentParser(description=description)
-    return parser
-
-
 def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = parser.parse_args()
+    bader(**args)
 
-    bader()
 
+short_description = 'Make Bader analysis of charge density'
+parser = argparse.ArgumentParser(description=short_description)
+dependencies = ['gs.py']
 
 if __name__ == '__main__':
-    main()
-
+    args = vars(parser.parse_args())
+    main(args)
