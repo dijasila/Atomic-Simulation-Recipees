@@ -1,0 +1,4 @@
+{"title": "Recipes for Materials Research",
+ "alias": "rmr",
+ "group_descriptions": {"Structure": "Recipes that produce a new atomic structure",
+                        "Property": "Recipes that calculate a property based on an atomic structure"}}
