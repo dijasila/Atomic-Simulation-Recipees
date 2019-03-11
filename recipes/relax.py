@@ -13,6 +13,7 @@ from c2db import readinfo, magnetic_atoms
 from c2db.bfgs import BFGS
 from c2db.references import formation_energy
 
+
 Uvalues = {}
 
 # From [acs comb sci 2.011, 13, 383-390, Setyawan et al.]
@@ -50,7 +51,6 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
     e = slab.get_potential_energy()
     f = slab.get_forces()
     s = slab.get_stress()
-
     done = e < emin or (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return slab, done
@@ -58,8 +58,19 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
           smask=[1, 1, 1, 1, 1, 1]):
-    name = 'relax-' + tag
 
+    name = f'relax-{tag}'
+    trajname = f'{name}.traj'
+
+    # Are we done?
+    slab_relaxed, done = relax_done(trajname)
+
+    if slab_relaxed is not None:
+        slab = slab_relaxed
+    
+    if done:
+        return slab
+    
     kwargs = dict(txt=name + '.txt',
                   mode=PW(800),
                   xc='PBE',
@@ -72,7 +83,7 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
     if tag.endswith('+u'):
         # Try to get U values from previous image
         try:
-            u = ulmopen('{}.traj'.format(name))
+            u = ulmopen(f'{name}.traj')
             setups = u[-1].calculator.get('parameters', {})['setups']
             u.close()
         except (FileNotFoundError, KeyError, InvalidULMFileError):
@@ -130,6 +141,17 @@ def relax_all(plusu=False, states=None):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
+    start = read('start.traj')
+    nd = np.sum(start.get_pbc())
+    if nd == 3:
+        smask = [1, 1, 1, 1, 1, 1]
+    elif nd == 2:
+        smask = [1, 1, 0, 0, 0, 0]
+    else:
+        # nd == 1
+        msg = 'Relax recipe not implemented for 1D structures'
+        raise NotImplementedError(msg)
+        
     hform1 = np.inf
     hform2 = np.inf
     hform3 = np.inf
@@ -149,12 +171,12 @@ def relax_all(plusu=False, states=None):
                     slab1 = read(str(fnames[0]))
             slab1.set_initial_magnetic_moments(None)
             try:
-                relax(slab1, nm)
+                relax(slab1, nm, smask=smask)
             except RuntimeError:
                 # The atoms might be too close together
                 # so enlarge unit cell
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
-                relax(slab1, nm)
+                relax(slab1, nm, smask=smask)
 
         hform1 = formation_energy(slab1) / len(slab1)
         slab1.calc = None
@@ -166,7 +188,7 @@ def relax_all(plusu=False, states=None):
             slab2.set_initial_magnetic_moments([1] * len(slab2))
 
         if not done2:
-            relax(slab2, fm)
+            relax(slab2, fm, smask=smask)
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
@@ -199,7 +221,7 @@ def relax_all(plusu=False, states=None):
                 slab3 = None
 
         if not done3:
-            relax(slab3, afm)
+            relax(slab3, afm, smask=smask)
 
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()
@@ -224,28 +246,27 @@ def relax_all(plusu=False, states=None):
             if world.rank == 0 and not Path(state).is_dir():
                 Path(state).mkdir()
 
-            name = state + '/start.traj'
+            name = state + '/start.json'
             if world.rank == 0 and not Path(name).is_file():
                 # Write start.traj file to folder
                 write(name, slab)
 
 
-def get_parser():
-    parser = argparse.ArgumentParser(description='Relax atomic structure')
-    parser.add_argument('-U', '--plusu', help='Do +U calculation',
-                        action='store_true')
-    parser.add_argument('--states', help='list of nm, fm, afm', nargs='+',
-                        default=['nm', 'fm', 'afm'])
-    return parser
-
-
 def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = parser.parse_args()
     relax_all(**args)
 
 
+group = 'Structure'
+short_description = ('Relax structure in all magnetic configurations '
+                     'and find most stable structure')
+parser = argparse.ArgumentParser(description='Relax atomic structure')
+parser.add_argument('-U', '--plusu', help='Do +U calculation',
+                    action='store_true')
+parser.add_argument('--states', help='list of nm, fm, afm', nargs='+',
+                    default=['nm', 'fm', 'afm'])
+
+
 if __name__ == '__main__':
-    main()
+    args = parser.parse_args()
+    main(args)
 
