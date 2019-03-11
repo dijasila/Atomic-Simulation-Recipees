@@ -1,36 +1,11 @@
-dependencies = ['phonon.py']
+import argparse
 
 
-def get_parser():
-    import argparse
-    desc = 'Push structure along some phonon mode and relax structure'
-    parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('-q', '--momentum', default=[0, 0, 0],
-                        nargs=3, type=float,
-                        help='Phonon momentum')
-    parser.add_argument('-m', '--mode', default=0, type=int,
-                        help='Mode index')
-    parser.add_argument('-a', '--amplitude', default=0.1, type=float,
-                        help='Maximum distance an atom will be displaced')
-    parser.add_argument('--fix-cell', action='store_true',
-                        help='Do not relax cell')
-    parser.add_argument('--showmode', action='store_true',
-                        help='Save mode to tmp.traj for viewing')
-
-    return parser
-
-
-parser = get_parser()
-
-
-def main(args=None):
+def main(args):
     from gpaw import GPAW
     from c3db.phonons import analyse2
     import numpy as np
 
-    if args is None:
-        parser = get_parser()
-        args = vars(parser.parse_args())
     mode = args['mode']
     q_c = args['momentum']
     amplitude = args['amplitude']
@@ -100,5 +75,23 @@ def main(args=None):
     write(name, newatoms)
 
 
+short_description = 'Push structure along some phonon mode and relax structure'
+dependencies = ['phonon.py']
+
+parser = argparse.ArgumentParser(description=short_description)
+parser.add_argument('-q', '--momentum', default=[0, 0, 0],
+                    nargs=3, type=float,
+                    help='Phonon momentum')
+parser.add_argument('-m', '--mode', default=0, type=int,
+                    help='Mode index')
+parser.add_argument('-a', '--amplitude', default=0.1, type=float,
+                    help='Maximum distance an atom will be displaced')
+parser.add_argument('--fix-cell', action='store_true',
+                    help='Do not relax cell')
+parser.add_argument('--showmode', action='store_true',
+                    help='Save mode to tmp.traj for viewing')
+
+
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parse_args())
+    main(args)
