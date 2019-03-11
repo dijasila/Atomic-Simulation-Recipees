@@ -1,3 +1,6 @@
+import argparse
+
+
 def prepare(filename, destination, vacuum=7.5):
     from ase.io import read, write
     from ase.build import niggli_reduce
@@ -12,26 +15,21 @@ def prepare(filename, destination, vacuum=7.5):
     niggli_reduce(atoms)
     atoms.pbc = pbc
     write(destination, atoms)
-    
-    
-def get_parser():
-    import argparse
-    description = 'Prepare structure for recipies'
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--filename', default='origin.traj',
-                        help='Path to original structure')
-    parser.add_argument('--destination', default='start.traj')
-    parser.add_argument('--vacuum', default=7.5, type=float,
-                        help='Vacuum to add to nonperiodic directions')
-    return parser
 
 
-def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = parser.parse_args()
+short_description = 'Prepare structure for recipes'
+parser = argparse.ArgumentParser(description=short_description)
+parser.add_argument('--filename', default='origin.traj',
+                    help='Path to original structure')
+parser.add_argument('--destination', default='start.traj')
+parser.add_argument('--vacuum', default=7.5, type=float,
+                    help='Vacuum to add to nonperiodic directions')
+
+
+def main(args):
     prepare(**args)
 
-        
+
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parser_args())
+    main(args)
