@@ -1,3 +1,5 @@
+import argparse
+
 import pickle
 from pathlib import Path
 from itertools import product
@@ -169,20 +171,16 @@ def analyse(atoms, name='phonon', points=100):
     return np.array(eigs), np.array(freqs), q_qc
 
 
-def get_parser():
-    import argparse
-    desc = 'Calculate phonons'
-    parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('-N', help='Super-cell size', type=int, default=2)
-    return parser
-
-
-def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = parser.parse_args()
+def main(args):
     phonons(N=args.N)
 
 
+short_description = 'Calculate phonons'
+dependencies = ['gs.py']
+parser = argparse.ArgumentParser(description=short_description)
+parser.add_argument('-N', help='Super-cell size', type=int, default=2)
+
+
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parse_args())
+    main(args)
