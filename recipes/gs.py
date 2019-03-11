@@ -1,48 +1,63 @@
-from ase.io import read
-from ase.io.ulm import open as ulmopen
-from gpaw import GPAW, PW, FermiDirac
+# Example of recipe. Only necessary keys are "parser"
+# which also includes the description
 
-creates = ['gs.gpw']
-
-
-def write_gpw_file():
-    params = dict(
-        mode=PW(800),
-        xc='PBE',
-        basis='dzp',
-        kpts={'density': 6.0, 'gamma': True},
-        occupations=FermiDirac(width=0.05))
-
-    name = 'start.traj'
-
-    # XXX This should be changed since parameters are not
-    # stored in start.traj
-    try:
-        u = ulmopen(name)
-        params.update(u[-1].calculator.get('parameters', {}))
-        u.close()
-    except KeyError:
-        pass
-    slab = read(name)
-    slab.calc = GPAW(txt='gs.txt', **params)
-    slab.get_forces()
-    slab.get_stress()
-    slab.calc.write('gs.gpw')
-
-    
-def get_parser():
-    import argparse
-    desc = 'Calculate ground state density and save to gs.gpw'
-    parser = argparse.ArgumentParser(description=desc)
-    return parser
+import argparse
 
 
 def main(args=None):
-    if args is None:
-        parser = get_parser()
-        args = vars(parser.parse_args())
-    write_gpw_file(**args)
+    from ase.io import read
+    from gpaw import GPAW, PW, FermiDirac
+    from pathlib import Path
+    name = args['atoms']
+    gpwfilename = args['gpw']
+    ecut = args['ecut']
+    xc = args['xc']
+    kptdens = args['kptdensity']
+    params = dict(
+        mode=PW(ecut),
+        xc=xc,
+        basis='dzp',
+        kpts={'density': kptdens, 'gamma': True},
+        occupations=FermiDirac(width=0.05),
+        txt='gs.txt')
+
+    # Load parameters from params.json
+    import json
+    otherparams = json.load(open('params.json', 'r'))
+    filename = Path(__file__).name
+    params.update(otherparams[filename])
+
+    slab = read(name)
+    slab.calc = GPAW(**params)
+    slab.get_forces()
+    slab.get_stress()
+    slab.calc.write(gpwfilename)
+
+
+# The metadata is put it the bottom
+group = 'Property'
+short_description = 'Calculate ground state density and save to gs.gpw'
+description = ''
+dependencies = []  # What other recipes does this recipe depend on
+creates = ['gs.gpw']  # What files are created
+resources = '8:1h'  # How many resources are used
+diskspace = 0  # How much diskspace is used
+restart = 0  # Does it make sense to restart the script?
+
+# Make parser
+parser = argparse.ArgumentParser(description=description)
+parser.add_argument('-a', '--atoms', type=str, default='start.traj',
+                    help='Atomic structure')
+parser.add_argument('-g', '--gpw', type=str, default='gs.gpw',
+                    help='Name of ground state file')
+parser.add_argument('-e', '--ecut', type=float, default=800,
+                    help='Plane-wave cutoff')
+parser.add_argument('-k', '--kptdensity', type=float, default=6.0,
+                    help='K-point density')
+parser.add_argument('--xc', type=str, default='PBE',
+                    help='XC-functional')
 
 
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parse_args())
+    main(args)

@@ -267,6 +267,6 @@ parser.add_argument('--states', help='list of nm, fm, afm', nargs='+',
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
     main(args)
 
