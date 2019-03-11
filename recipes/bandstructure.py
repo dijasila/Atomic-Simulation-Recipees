@@ -1,3 +1,5 @@
+import argparse
+
 import os
 import os.path as op
 
@@ -143,18 +145,14 @@ def collect_data(kvp, data, atoms, verbose):
     data['bs_pbe'] = pbe
 
 
-def get_parser():
-    import argparse
-    desc = 'Calculate electronic band structure'
-    parser = argparse.ArgumentParser(description=desc)
-    return parser
-
-
-def main(args=None):
-    parser = get_parser()
-    args = vars(parser.parse_args(args))
+def main(args):
     bandstructure(**args)
 
 
+short_description = 'Calculate electronic band structure'
+parser = argparse.ArgumentParser(description=short_description)
+
+
 if __name__ == '__main__':
-    main()
+    args = vars(parser.parse_args())
+    main(args)
