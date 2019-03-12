@@ -36,7 +36,7 @@ this folder to your `PYTHONPATH`. To see the command line interface (CLI)
 help of the relax recipe we simply do
 
 ```console
-[mogje@dirac MoS2-MoS2]$ python3 -m rmr.relax -h
+$ python3 -m rmr.relax -h
 usage: relax.py [-h] [-U] [--states STATES [STATES ...]]
 
 Relax atomic structure
@@ -52,7 +52,7 @@ Locally run a recipe in a materials folder
 -------------------------------------
 Simply do
 ```console
-[mogje@dirac MoS2-MoS2]$ python3 -m rmr.relax
+$ python3 -m rmr.relax
 ```
 
 Submit a recipe to a computer-cluster
@@ -62,7 +62,7 @@ with its usage. If you are not, then take a look at its excellent
 documentation. To submit a job that relaxes a structure simply do
 
 ```console
-[mogje@dirac MoS2-MoS2]$ mq submit rmr.relax@24:10h
+$ mq submit rmr.relax@24:10h
 ```
 
 Change default settings in scripts
