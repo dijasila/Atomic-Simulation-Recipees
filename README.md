@@ -42,4 +42,11 @@ changed to overwrite default settings in scripts. For example:
 }
 ```
 
-To see the 
+See the command line interface for a recipe
+-------------------------------------------
+We assume that you have cloned the project into `~/rmr/` and have added
+this folder to your `PYTHONPATH`. To see the command line interface (CLI)
+of the relax recipe we simply do
+```bash
+python -m rmr.relax
+```
