@@ -47,6 +47,16 @@ See the command line interface for a recipe
 We assume that you have cloned the project into `~/rmr/` and have added
 this folder to your `PYTHONPATH`. To see the command line interface (CLI)
 of the relax recipe we simply do
-```bash
-python -m rmr.relax
+
+```console
+[mogje@dirac MoS2-MoS2]$ python3 -m rmr.relax -h
+usage: relax.py [-h] [-U] [--states STATES [STATES ...]]
+
+Relax atomic structure
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -U, --plusu           Do +U calculation
+  --states STATES [STATES ...]
+                        list of nm, fm, afm
 ```
