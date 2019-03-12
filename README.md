@@ -29,24 +29,11 @@ To start a calculation
 - In this folder you can evaluate all property-recipes and
   structure-recipes. Be aware structure-recipes produce new folders.
 
-Change default settings in scripts
--------------------------------------
-All material folders can contain a `params.json`-file. This file can
-changed to overwrite default settings in scripts. For example:
-
-```javascript
-{
-    "gs.py": {"gpw": "otherfile.gpw"},
-    "relax.py": {"states": "nm",
-                 "ecut": 800}
-}
-```
-
-See the command line interface for a recipe
+See help for a recipe
 -------------------------------------------
 We assume that you have cloned the project into `~/rmr/` and have added
 this folder to your `PYTHONPATH`. To see the command line interface (CLI)
-of the relax recipe we simply do
+help of the relax recipe we simply do
 
 ```console
 [mogje@dirac MoS2-MoS2]$ python3 -m rmr.relax -h
@@ -60,3 +47,37 @@ optional arguments:
   --states STATES [STATES ...]
                         list of nm, fm, afm
 ```
+
+Locally run a recipe in a materials folder
+-------------------------------------
+Simply do
+```console
+[mogje@dirac MoS2-MoS2]$ python3 -m rmr.relax
+```
+
+Submit a recipe to a computer-cluster
+-------------------------------------
+We assumed that you have installed the `myqueue`-package and are familiar
+with its usage. If you are not, then take a look at its excellent
+documentation. To submit a job that relaxes a structure simply do
+
+```console
+[mogje@dirac MoS2-MoS2]$ mq submit rmr.relax@24:10h
+```
+
+Change default settings in scripts
+----------------------------------
+All material folders can contain a `params.json`-file. This file can
+changed to overwrite default settings in scripts. For example:
+
+```javascript
+{
+    "rmr.gs": {"gpw": "otherfile.gpw",
+               "ecut": 800},
+    "rmr.relax": {"states": ["nm", ]}
+}
+```
+
+In this way all default parameters exposed through the CLI of a recipe
+can be corrected.
+
