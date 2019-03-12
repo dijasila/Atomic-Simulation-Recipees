@@ -1,7 +1,7 @@
 # Example of recipe. Only necessary keys are "parser"
 # which also includes the description
 
-import argparse
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pathlib import Path
 import json
 
@@ -52,7 +52,8 @@ if Path('params.json').is_file():
     params.update(otherparams)
 
 # Make parser
-parser = argparse.ArgumentParser(description=description)
+parser = ArgumentParser(description=description,
+                        formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('-a', '--atoms', type=str, default=params['atoms'],
                     help='Atomic structure')
 parser.add_argument('-g', '--gpw', type=str, default='gs.gpw',

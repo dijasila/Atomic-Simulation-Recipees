@@ -36,16 +36,18 @@ this folder to your `PYTHONPATH`. To see the command line interface (CLI)
 help of the relax recipe we simply do
 
 ```console
-$ python3 -m rmr.relax -h
-usage: relax.py [-h] [-U] [--states STATES [STATES ...]]
-
-Relax atomic structure
+$ python3 -m rmr.gs -h
+usage: gs.py [-h] [-a ATOMS] [-g GPW] [-e ECUT] [-k KPTDENSITY] [--xc XC]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -U, --plusu           Do +U calculation
-  --states STATES [STATES ...]
-                        list of nm, fm, afm
+  -a ATOMS, --atoms ATOMS
+                        Atomic structure (default: start.traj)
+  -g GPW, --gpw GPW     Name of ground state file (default: gs.gpw)
+  -e ECUT, --ecut ECUT  Plane-wave cutoff (default: 800)
+  -k KPTDENSITY, --kptdensity KPTDENSITY
+                        K-point density (default: 6.0)
+  --xc XC               XC-functional (default: PBE)
 ```
 
 Locally run a recipe in a materials folder
