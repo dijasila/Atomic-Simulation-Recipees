@@ -2,12 +2,13 @@
 # which also includes the description
 
 import argparse
+from pathlib import Path
+import json
 
 
-def main(args=None):
+def main(args):
     from ase.io import read
     from gpaw import GPAW, PW, FermiDirac
-    from pathlib import Path
     name = args['atoms']
     gpwfilename = args['gpw']
     ecut = args['ecut']
@@ -20,12 +21,6 @@ def main(args=None):
         kpts={'density': kptdens, 'gamma': True},
         occupations=FermiDirac(width=0.05),
         txt='gs.txt')
-
-    # Load parameters from params.json
-    import json
-    otherparams = json.load(open('params.json', 'r'))
-    filename = Path(__file__).name
-    params.update(otherparams[filename])
 
     slab = read(name)
     slab.calc = GPAW(**params)
@@ -42,11 +37,23 @@ dependencies = []  # What other recipes does this recipe depend on
 creates = ['gs.gpw']  # What files are created
 resources = '8:1h'  # How many resources are used
 diskspace = 0  # How much diskspace is used
-restart = 0  # Does it make sense to restart the script?
+restart = 1  # Does it make sense to restart the script?
+
+# Default parameters
+params = {'atoms': 'start.traj',
+          'gpw': 'gs.gpw',
+          'ecut': 800,
+          'kptdensity': 6.0,
+          'xc': 'PBE'}
+
+# Load parameters from params.json
+if Path('params.json').is_file():
+    otherparams = json.load(open('params.json', 'r'))['rmr.gs']
+    params.update(otherparams)
 
 # Make parser
 parser = argparse.ArgumentParser(description=description)
-parser.add_argument('-a', '--atoms', type=str, default='start.traj',
+parser.add_argument('-a', '--atoms', type=str, default=params['atoms'],
                     help='Atomic structure')
 parser.add_argument('-g', '--gpw', type=str, default='gs.gpw',
                     help='Name of ground state file')
