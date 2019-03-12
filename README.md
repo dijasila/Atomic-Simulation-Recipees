@@ -11,10 +11,10 @@ To use the recipes you need GPAW and ASE. The recipes are divided into two group
 - Property recipes: Recipes that calculate a property for a given materials.
   These scripts should only assume the existence of files in the same folder.
   For example: The ground state recipe gs.py should only require an existence
-  of a starting atomic structure, in our case this is called start.traj
+  of a starting atomic structure, in our case this is called `start.traj`
 
 - Structure recipes: These are recipes that produce a new atomic structure.
-  When these scripts are run they produce a new folder containing a start.traj
+  When these scripts are run they produce a new folder containing a `start.traj
   such that all property-recipes can be evaluated for the new structure in
   the new folder. For example: The relax recipe which relaxes the atomic
   structure produces new folders "nm/" "fm/" and "afm/" if these structures
