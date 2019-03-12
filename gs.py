@@ -56,13 +56,14 @@ parser = ArgumentParser(description=description,
                         formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('-a', '--atoms', type=str, default=params['atoms'],
                     help='Atomic structure')
-parser.add_argument('-g', '--gpw', type=str, default='gs.gpw',
+parser.add_argument('-g', '--gpw', type=str, default=params['gpw'],
                     help='Name of ground state file')
-parser.add_argument('-e', '--ecut', type=float, default=800,
+parser.add_argument('-e', '--ecut', type=float, default=params['ecut'],
                     help='Plane-wave cutoff')
-parser.add_argument('-k', '--kptdensity', type=float, default=6.0,
+parser.add_argument('-k', '--kptdensity', type=float,
+                    default=params['kptdensity'],
                     help='K-point density')
-parser.add_argument('--xc', type=str, default='PBE',
+parser.add_argument('--xc', type=str, default=params['xc'],
                     help='XC-functional')
 
 
