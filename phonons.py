@@ -176,7 +176,7 @@ def main(args):
 
 
 short_description = 'Calculate phonons'
-dependencies = ['gs.py']
+dependencies = ['rmr.gs']
 parser = argparse.ArgumentParser(description=short_description)
 parser.add_argument('-N', help='Super-cell size', type=int, default=2)
 
