@@ -2,8 +2,7 @@
 # which also includes the description
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from pathlib import Path
-import json
+from rmr.utils import get_parameters
 
 
 def main(args):
@@ -47,9 +46,7 @@ params = {'atoms': 'start.traj',
           'xc': 'PBE'}
 
 # Load parameters from params.json
-if Path('params.json').is_file():
-    otherparams = json.load(open('params.json', 'r'))['rmr.gs']
-    params.update(otherparams)
+params.update(get_parameters()['rmr.gs'])
 
 # Make parser
 parser = ArgumentParser(description=description,
