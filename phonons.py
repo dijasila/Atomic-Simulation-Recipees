@@ -59,24 +59,20 @@ def phonons(N=2):
     return p
 
 
-def analyse(atoms, name='phonon', points=300, modes=False):
-    state = Path().cwd().parts[-1]
+def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None):
     params = {}
-    name = '../relax-{}.traj'.format(state)
-    u = ulm.open(name)
-    params.update(u[-1].calculator.parameters)
-    u.close()
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
 
-    slab = read(name)
+    slab = read('start.traj')
     calc = GPAW(txt='phonons.txt', **params)
     p = Phonons(slab, calc, supercell=(2, 2, 2))
     p.read(symmetrize=0, acoustic=False)
     cell = atoms.get_cell()
     cs = crystal_structure_from_cell(cell)
     kptpath = special_paths[cs]
-    q_qc = bandpath(kptpath, cell, points)[0]
+    if q_qc is None:
+        q_qc = bandpath(kptpath, cell, points)[0]
 
     out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
     if modes:

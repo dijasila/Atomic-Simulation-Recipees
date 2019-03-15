@@ -59,7 +59,7 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 
 def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
-          smask=[1, 1, 1, 1, 1, 1]):
+          smask=None):
 
     name = f'relax-{tag}'
     trajname = f'{name}.traj'
@@ -72,7 +72,18 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
     
     if done:
         return slab
-    
+
+    if smask is None:
+        nd = get_dimensionality()
+        if nd == 3:
+            smask = [1, 1, 1, 1, 1, 1]
+        elif nd == 2:
+            smask = [1, 1, 0, 0, 0, 0]
+        else:
+            # nd == 1
+            msg = 'Relax recipe not implemented for 1D structures'
+            raise NotImplementedError(msg)
+
     kwargs = dict(txt=name + '.txt',
                   mode=PW(800),
                   xc='PBE',
@@ -143,16 +154,7 @@ def relax_all(plusu=False, states=None):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
-    nd = get_dimensionality()
-    if nd == 3:
-        smask = [1, 1, 1, 1, 1, 1]
-    elif nd == 2:
-        smask = [1, 1, 0, 0, 0, 0]
-    else:
-        # nd == 1
-        msg = 'Relax recipe not implemented for 1D structures'
-        raise NotImplementedError(msg)
-        
+      
     hform1 = np.inf
     hform2 = np.inf
     hform3 = np.inf

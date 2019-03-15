@@ -2,8 +2,7 @@ import argparse
 
 
 def main(args):
-    from gpaw import GPAW
-    from c3db.phonons import analyse2
+    from rmr.phonons import analyse
     import numpy as np
 
     mode = args['mode']
@@ -11,9 +10,9 @@ def main(args):
     amplitude = args['amplitude']
     
     # Get modes
-    calc = GPAW('gs.gpw', txt=None)
-    atoms = calc.atoms
-    omega_kl, u_klav, q_qc = analyse2(atoms, modes=True, q_qc=[q_c])
+    from ase.io import read
+    atoms = read('start.traj')
+    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c])
 
     # Repeat atoms
     from fractions import Fraction
@@ -42,11 +41,10 @@ def main(args):
                 phase_Na[:, np.newaxis] * amplitude)
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
-    from mcr.recipies.relax import relax
+    from rmr.relax import relax
     tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2],
                                            mode)
-    smask = [1, 1, 1, 1, 1, 1]
-
+    smask = None
     if args['fix_cell']:
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
