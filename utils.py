@@ -22,3 +22,12 @@ def is_magnetic():
         return True
     else:
         return False
+
+
+def get_dimensionality():
+    from ase.io import read
+    import numpy as np
+    start = read('start.traj')
+    nd = int(np.sum(start.get_pbc()))
+    return nd
+    

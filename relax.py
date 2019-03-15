@@ -9,6 +9,8 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
+from rmr.utils import get_dimensionality
+
 from c2db import readinfo, magnetic_atoms
 from c2db.bfgs import BFGS
 from c2db.references import formation_energy
@@ -141,8 +143,7 @@ def relax_all(plusu=False, states=None):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
-    start = read('start.traj')
-    nd = np.sum(start.get_pbc())
+    nd = get_dimensionality()
     if nd == 3:
         smask = [1, 1, 1, 1, 1, 1]
     elif nd == 2:

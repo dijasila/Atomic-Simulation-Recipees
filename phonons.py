@@ -33,7 +33,7 @@ def phonons(N=2):
     else:
         params['convergence'] = {'forces': 1e-6}
 
-    slab = read(name)
+    atoms = read(name)
     fd = open('phonons-{}.txt'.format(N), 'a')
     calc = GPAW(txt=fd, **params)
 
@@ -42,9 +42,18 @@ def phonons(N=2):
     if is_magnetic():
         gsold = GPAW('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
-        slab.set_initial_magnetic_moments(magmoms_m)
+        atoms.set_initial_magnetic_moments(magmoms_m)
         
-    p = Phonons(slab, calc, supercell=(N, N, N))
+    from rmr.utils import get_dimensionality
+    nd = get_dimensionality()
+    if nd == 3:
+        supercell = (N, N, N)
+    elif nd == 2:
+        supercell = (N, N, 1)
+    elif nd == 1:
+        supercell = (N, 1, 1)
+
+    p = Phonons(atoms, calc, supercell=supercell)
     p.run()
 
     return p
