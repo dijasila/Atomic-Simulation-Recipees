@@ -247,8 +247,8 @@ def relax_all(plusu=False, states=None):
             if world.rank == 0 and not Path(state).is_dir():
                 Path(state).mkdir()
 
-            name = state + '/start.json'
-            if world.rank == 0 and not Path(name).is_file():
+            name = state + '/start.traj'
+            if not Path(name).is_file():
                 # Write start.traj file to folder
                 write(name, slab)
 
