@@ -1,13 +1,10 @@
 import argparse
 
-import pickle
 from pathlib import Path
-from itertools import product
 
 import numpy as np
 
 import ase.io.ulm as ulm
-import ase.units as units
 from ase.parallel import world
 from ase.geometry import crystal_structure_from_cell
 from ase.dft.kpoints import special_paths, bandpath
@@ -36,11 +33,7 @@ def phonons(N=2):
     else:
         params['convergence'] = {'forces': 1e-6}
 
-    oldcalc = GPAW('gs.gpw', txt=None)
-    N_c = oldcalc.wfs.gd.N_c * N
-    params['gpts'] = N_c
     slab = read(name)
-
     fd = open('phonons-{}.txt'.format(N), 'a')
     calc = GPAW(txt=fd, **params)
 
