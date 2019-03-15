@@ -1,16 +1,3 @@
-def get_info():
-    from pathlib import Path
-    import json
-
-    # Load parameters from params.json
-    if Path('info.json').is_file():
-        info = json.load(open('info.json', 'r'))
-    else:
-        info = {}
-
-    return info
-
-
 def get_parameters():
     from pathlib import Path
     import json
@@ -22,8 +9,13 @@ def get_parameters():
     return params
 
 
-def get_state():
-    info = get_info()
-    state = info.get('state', None)
-
-    return state
+def is_magnetic():
+    import numpy as np
+    from ase.io import read
+    atoms = read('start.traj')
+    magmom_a = atoms.get_initial_magnetic_moments()
+    maxmom = np.max(np.abs(magmom_a))
+    if maxmom > 1e-3:
+        return True
+    else:
+        return False
