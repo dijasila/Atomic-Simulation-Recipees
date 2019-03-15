@@ -27,10 +27,7 @@ def phonons(N=2):
     world.barrier()
 
     params = {}
-    name = '../relax-{}.traj'.format(state)
-    u = ulm.open(name)
-    params.update(u[-1].calculator.parameters)
-    u.close()
+    name = 'start.traj'.format(state)
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,
@@ -42,7 +39,7 @@ def phonons(N=2):
         params['convergence'] = {'forces': 1e-6}
 
     oldcalc = GPAW('gs.gpw', txt=None)
-    N_c = oldcalc.wfs.gd.N_c * N
+    N_c = (oldcalc.wfs.gd.N_c // 4) * 4 * N
     params['gpts'] = N_c
     slab = read(name)
 
@@ -172,7 +169,7 @@ def analyse(atoms, name='phonon', points=100):
 
 
 def main(args):
-    phonons(N=args.N)
+    phonons(**args)
 
 
 short_description = 'Calculate phonons'
