@@ -1,5 +1,4 @@
 import argparse
-import json
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
@@ -9,11 +8,9 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
-from rmr.utils import get_dimensionality
-
-from c2db import readinfo, magnetic_atoms
-from c2db.bfgs import BFGS
-from c2db.references import formation_energy
+from rmr.utils import get_dimensionality, magnetic_atoms
+from rmr.bfgs import BFGS
+from rmr.references import formation_energy
 
 
 Uvalues = {}
