@@ -76,7 +76,7 @@ def main(args):
 
 
 short_description = 'Push structure along some phonon mode and relax structure'
-dependencies = ['phonons.py']
+dependencies = ['rmr.phonons']
 group = 'Structure'
 
 parser = argparse.ArgumentParser(description=short_description)
