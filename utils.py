@@ -1,10 +1,13 @@
-def get_parameters():
+def get_parameters(key=None):
     from pathlib import Path
     import json
     if Path('params.json').is_file():
         params = json.load(open('params.json', 'r'))
     else:
         params = {}
+
+    if key and key in params:
+        params = params[key]
 
     return params
 

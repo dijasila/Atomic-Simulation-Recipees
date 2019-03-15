@@ -46,7 +46,7 @@ params = {'atoms': 'start.traj',
           'xc': 'PBE'}
 
 # Load parameters from params.json
-params.update(get_parameters()['rmr.gs'])
+params.update(get_parameters('rmr.gs'))
 
 # Make parser
 parser = ArgumentParser(description=description,
