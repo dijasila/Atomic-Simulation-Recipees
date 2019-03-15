@@ -151,7 +151,6 @@ def relax_all(plusu=False, states=None):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
-      
     hform1 = np.inf
     hform2 = np.inf
     hform3 = np.inf
@@ -171,12 +170,12 @@ def relax_all(plusu=False, states=None):
                     slab1 = read(str(fnames[0]))
             slab1.set_initial_magnetic_moments(None)
             try:
-                relax(slab1, nm, smask=smask)
+                relax(slab1, nm)
             except RuntimeError:
                 # The atoms might be too close together
                 # so enlarge unit cell
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
-                relax(slab1, nm, smask=smask)
+                relax(slab1, nm)
 
         hform1 = formation_energy(slab1) / len(slab1)
         slab1.calc = None
@@ -188,7 +187,7 @@ def relax_all(plusu=False, states=None):
             slab2.set_initial_magnetic_moments([1] * len(slab2))
 
         if not done2:
-            relax(slab2, fm, smask=smask)
+            relax(slab2, fm)
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
@@ -221,7 +220,7 @@ def relax_all(plusu=False, states=None):
                 slab3 = None
 
         if not done3:
-            relax(slab3, afm, smask=smask)
+            relax(slab3, afm)
 
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()
