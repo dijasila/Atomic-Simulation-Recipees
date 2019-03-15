@@ -59,14 +59,22 @@ def phonons(N=2):
     return p
 
 
-def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None):
+def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
     params = {}
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
 
     slab = read('start.traj')
     calc = GPAW(txt='phonons.txt', **params)
-    p = Phonons(slab, calc, supercell=(2, 2, 2))
+    from rmr.utils import get_dimensionality
+    nd = get_dimensionality()
+    if nd == 3:
+        supercell = (N, N, N)
+    elif nd == 2:
+        supercell = (N, N, 1)
+    elif nd == 1:
+        supercell = (N, 1, 1)
+    p = Phonons(slab, calc, supercell=supercell)
     p.read(symmetrize=0, acoustic=False)
     cell = atoms.get_cell()
     cs = crystal_structure_from_cell(cell)

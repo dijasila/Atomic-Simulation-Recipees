@@ -12,7 +12,7 @@ def main(args):
     # Get modes
     from ase.io import read
     atoms = read('start.traj')
-    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c])
+    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=2)
 
     # Repeat atoms
     from fractions import Fraction
@@ -89,7 +89,6 @@ parser.add_argument('--fix-cell', action='store_true',
                     help='Do not relax cell')
 parser.add_argument('--showmode', action='store_true',
                     help='Save mode to tmp.traj for viewing')
-
 
 if __name__ == '__main__':
     args = vars(parser.parse_args())
