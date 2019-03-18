@@ -25,8 +25,8 @@ $ python -m asr.relax
 ```
 in the same folder.
 
-Grouping of recipes
--------------------
+Types of recipes
+----------------
 These recipes follow the template of the `myrecipes` python package for python
 recipes. It is also recommended to use these recipes together with the `myqueue`
 job managing package.
