@@ -1,11 +1,26 @@
-# Atomic Simulation Recipes: Recipes for Atomic Scale Materials Research
+# Atomic Simulation Recipes:
+**Recipes for Atomic Scale Materials Research**
 
-Collection of recipes for materials research. These recipes follow
-the template of the `myrecipes` python package for python recipes.
-It is also recommended to use these recipes together with the
-`myqueue` job managing package.
+Collection of a wide range of python recipes (scripts) for common (and not so
+common) tasks perfomed in atomic scale materials research that (are supposed to)
+just work! These tasks include relaxation of structures, calculating ground
+states, calculating band structures, calculating dielectric functions and so on.
 
-To use the recipes you need GPAW and ASE. The recipes are divided into two groups:
+## How to use
+To use the recipes you need ASE and GPA. First, clone the code into `~/asr`.
+Now, if you want to relax an atomic structure then save your structure to
+`start.traj` and simply do
+```console
+$ python -m asr.relax
+```
+in the same folder.
+
+## Grouping of recipes
+These recipes follow the template of the `myrecipes` python package for python
+recipes. It is also recommended to use these recipes together with the `myqueue`
+job managing package.
+
+The recipes are divided into two groups:
 
 - Property recipes: Recipes that calculate a property for a given materials.
   These scripts should only assume the existence of files in the same folder.
