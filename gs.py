@@ -1,6 +1,3 @@
-# Example of recipe. Only necessary keys are "parser"
-# which also includes the description
-
 from asr.utils import get_parser, get_parameters, set_defaults
 
 

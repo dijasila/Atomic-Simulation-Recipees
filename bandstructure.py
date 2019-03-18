@@ -13,7 +13,7 @@ from ase.dft.kpoints import special_paths
 from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs, spin_axis
 
 creates = ['bs.gpw', 'eigs_spinorbit.npz']
-dependencies = ['gs.py']
+dependencies = ['asr.gs']
 
 
 def gs_done():
