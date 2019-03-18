@@ -8,9 +8,9 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
-from rmr.utils import get_dimensionality, magnetic_atoms
-from rmr.bfgs import BFGS
-from rmr.references import formation_energy
+from asr.utils import get_dimensionality, magnetic_atoms
+from asr.bfgs import BFGS
+from asr.references import formation_energy
 
 
 Uvalues = {}

@@ -2,7 +2,7 @@ import argparse
 
 
 def main(args):
-    from rmr.phonons import analyse
+    from asr.phonons import analyse
     import numpy as np
 
     mode = args['mode']
@@ -41,7 +41,7 @@ def main(args):
                 phase_Na[:, np.newaxis] * amplitude)
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
-    from rmr.relax import relax
+    from asr.relax import relax
     tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2],
                                            mode)
     smask = None
@@ -74,7 +74,7 @@ def main(args):
 
 
 short_description = 'Push structure along some phonon mode and relax structure'
-dependencies = ['rmr.phonons']
+dependencies = ['asr.phonons']
 group = 'Structure'
 
 parser = argparse.ArgumentParser(description=short_description)

@@ -71,7 +71,7 @@ sparser.add_argument('filenames', help='DOS files',
                      metavar='dosfile',
                      nargs='*')
 
-dependencies = ['rmr.gs']
+dependencies = ['asr.gs']
 
 
 if __name__ == '__main__':

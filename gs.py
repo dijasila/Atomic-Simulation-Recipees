@@ -2,7 +2,7 @@
 # which also includes the description
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from rmr.utils import get_parameters
+from asr.utils import get_parameters
 
 
 def main(args):
@@ -46,7 +46,7 @@ params = {'atoms': 'start.traj',
           'xc': 'PBE'}
 
 # Load parameters from params.json
-params.update(get_parameters('rmr.gs'))
+params.update(get_parameters('asr.gs'))
 
 # Make parser
 parser = ArgumentParser(description=description,

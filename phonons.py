@@ -38,13 +38,13 @@ def phonons(N=2):
     calc = GPAW(txt=fd, **params)
 
     # Set initial magnetic moments
-    from rmr.utils import is_magnetic
+    from asr.utils import is_magnetic
     if is_magnetic():
         gsold = GPAW('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
         
-    from rmr.utils import get_dimensionality
+    from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
         supercell = (N, N, N)
@@ -66,7 +66,7 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
 
     slab = read('start.traj')
     calc = GPAW(txt='phonons.txt', **params)
-    from rmr.utils import get_dimensionality
+    from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
         supercell = (N, N, N)
@@ -96,7 +96,7 @@ def main(args):
 
 
 short_description = 'Calculate phonons'
-dependencies = ['rmr.gs']
+dependencies = ['asr.gs']
 parser = argparse.ArgumentParser(description=short_description)
 parser.add_argument('-N', help='Super-cell size', type=int, default=2)
 
