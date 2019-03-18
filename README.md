@@ -1,21 +1,32 @@
-# Atomic Simulation Recipes:
-**Recipes for Atomic Scale Materials Research**
+Atomic Simulation Recipes
+=========================
+Recipes for Atomic Scale Materials Research.
 
 Collection of a wide range of python recipes (scripts) for common (and not so
 common) tasks perfomed in atomic scale materials research that (are supposed to)
 just work! These tasks include relaxation of structures, calculating ground
 states, calculating band structures, calculating dielectric functions and so on.
 
-## How to use
-To use the recipes you need ASE and GPA. First, clone the code into `~/asr`.
-Now, if you want to relax an atomic structure then save your structure to
-`start.traj` and simply do
+Requirements
+------------
+
+* ASE (Atomic Simulation Environment)
+* GPAW
+
+Additionally, but not a requirement, it can be nice to have
+* myqueue
+
+How to use
+----------
+First, clone the code into `~/asr`. Now, if you want to relax an atomic
+structure then save your structure to `start.traj` and simply do
 ```console
 $ python -m asr.relax
 ```
 in the same folder.
 
-## Grouping of recipes
+Grouping of recipes
+-------------------
 These recipes follow the template of the `myrecipes` python package for python
 recipes. It is also recommended to use these recipes together with the `myqueue`
 job managing package.
@@ -35,14 +46,16 @@ The recipes are divided into two groups:
   are close to the lowest energy structure. Each of these folders contain
   a new `start.traj` from which the property recipes can be evaluated.
 
-## To start a calculation 
+To start a calculation
+----------------------
 - Make a new folder. Name doesn't matter. We call such a folder a
   "material folder".
 - Make a start.traj file containing the starting atomic structure.
 - In this folder you can evaluate all property-recipes and
   structure-recipes. Be aware structure-recipes produce new folders.
 
-## See help for a recipe
+See help for a recipe
+---------------------
 We assume that you have cloned the project into `~/asr/` and have added
 this folder to your `PYTHONPATH`. To see the command line interface (CLI)
 help of the relax recipe we simply do
@@ -62,14 +75,16 @@ optional arguments:
   --xc XC               XC-functional (default: PBE)
 ```
 
-## Locally run a recipe in a materials folder
+Locally run a recipe in a materials folder
+------------------------------------------
 
 Simply do
 ```console
 $ python3 -m asr.relax
 ```
 
-## Submit a recipe to a computer-cluster
+Submit a recipe to a computer-cluster
+-------------------------------------
 We assumed that you have installed the `myqueue`-package and are familiar
 with its usage. If you are not, then take a look at its excellent
 documentation. To submit a job that relaxes a structure simply do
@@ -78,7 +93,8 @@ documentation. To submit a job that relaxes a structure simply do
 $ mq submit asr.relax@24:10h
 ```
 
-## Change default settings in scripts
+Change default settings in scripts
+----------------------------------
 All material folders can contain a `params.json`-file. This file can
 changed to overwrite default settings in scripts. For example:
 
