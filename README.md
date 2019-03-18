@@ -1,5 +1,4 @@
-Recipes for Materials Research
-==============================
+# Atomic Simulation Recipes: Recipes for Atomic Scale Materials Research
 
 Collection of recipes for materials research. These recipes follow
 the template of the `myrecipes` python package for python recipes.
@@ -21,22 +20,20 @@ To use the recipes you need GPAW and ASE. The recipes are divided into two group
   are close to the lowest energy structure. Each of these folders contain
   a new `start.traj` from which the property recipes can be evaluated.
 
-To start a calculation 
-----------------------
+## To start a calculation 
 - Make a new folder. Name doesn't matter. We call such a folder a
   "material folder".
 - Make a start.traj file containing the starting atomic structure.
 - In this folder you can evaluate all property-recipes and
   structure-recipes. Be aware structure-recipes produce new folders.
 
-See help for a recipe
--------------------------------------------
-We assume that you have cloned the project into `~/rmr/` and have added
+## See help for a recipe
+We assume that you have cloned the project into `~/asr/` and have added
 this folder to your `PYTHONPATH`. To see the command line interface (CLI)
 help of the relax recipe we simply do
 
 ```console
-$ python3 -m rmr.gs -h
+$ python3 -m asr.gs -h
 usage: gs.py [-h] [-a ATOMS] [-g GPW] [-e ECUT] [-k KPTDENSITY] [--xc XC]
 
 optional arguments:
@@ -50,33 +47,31 @@ optional arguments:
   --xc XC               XC-functional (default: PBE)
 ```
 
-Locally run a recipe in a materials folder
--------------------------------------
+## Locally run a recipe in a materials folder
+
 Simply do
 ```console
-$ python3 -m rmr.relax
+$ python3 -m asr.relax
 ```
 
-Submit a recipe to a computer-cluster
--------------------------------------
+## Submit a recipe to a computer-cluster
 We assumed that you have installed the `myqueue`-package and are familiar
 with its usage. If you are not, then take a look at its excellent
 documentation. To submit a job that relaxes a structure simply do
 
 ```console
-$ mq submit rmr.relax@24:10h
+$ mq submit asr.relax@24:10h
 ```
 
-Change default settings in scripts
-----------------------------------
+## Change default settings in scripts
 All material folders can contain a `params.json`-file. This file can
 changed to overwrite default settings in scripts. For example:
 
 ```javascript
 {
-    "rmr.gs": {"gpw": "otherfile.gpw",
+    "asr.gs": {"gpw": "otherfile.gpw",
                "ecut": 800},
-    "rmr.relax": {"states": ["nm", ]}
+    "asr.relax": {"states": ["nm", ]}
 }
 ```
 
