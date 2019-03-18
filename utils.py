@@ -1,3 +1,21 @@
+def get_parser(description):
+    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser(description=description,
+                            formatter_class=ArgumentDefaultsHelpFormatter)
+    return parser
+
+
+def set_defaults(parser, params):
+    for args in [parser._get_positional_actions(),
+                 parser._get_optional_actions()]:
+        for arg in args:
+            for string in arg.option_strings:
+                for key in params:
+                    if key in string:
+                        arg.default = params[key]
+                        break
+
+
 def get_parameters(key=None):
     from pathlib import Path
     import json

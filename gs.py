@@ -1,8 +1,7 @@
 # Example of recipe. Only necessary keys are "parser"
 # which also includes the description
 
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from asr.utils import get_parameters
+from asr.utils import get_parser, get_parameters, set_defaults
 
 
 def main(args):
@@ -49,20 +48,13 @@ params = {'atoms': 'start.traj',
 params.update(get_parameters('asr.gs'))
 
 # Make parser
-parser = ArgumentParser(description=description,
-                        formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument('-a', '--atoms', type=str, default=params['atoms'],
-                    help='Atomic structure')
-parser.add_argument('-g', '--gpw', type=str, default=params['gpw'],
-                    help='Name of ground state file')
-parser.add_argument('-e', '--ecut', type=float, default=params['ecut'],
-                    help='Plane-wave cutoff')
-parser.add_argument('-k', '--kptdensity', type=float,
-                    default=params['kptdensity'],
-                    help='K-point density')
-parser.add_argument('--xc', type=str, default=params['xc'],
-                    help='XC-functional')
-
+parser = get_parser(description)
+parser.add_argument('-a', '--atoms', type=str, help='Atomic structure')
+parser.add_argument('-g', '--gpw', type=str, help='Name of ground state file')
+parser.add_argument('-e', '--ecut', type=float, help='Plane-wave cutoff')
+parser.add_argument('-k', '--kptdensity', type=float, help='K-point density')
+parser.add_argument('--xc', type=str, help='XC-functional')
+set_defaults(parser, params)
 
 if __name__ == '__main__':
     args = vars(parser.parse_args())
