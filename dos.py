@@ -1,7 +1,12 @@
-import argparse
+from asr.utils import click, update_defaults
 
 
-def calculate(name='dos.gpw'):
+@click.command()
+@update_defaults('asr.dos')
+@click.option('--name', default='dos.gpw', type=str)
+@click.option('--filename', default='dos.json', type=str)
+def main(name, filename):
+    """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
@@ -30,18 +35,23 @@ def calculate(name='dos.gpw'):
         data['dosspin1_e'] = dosspin1_e.tolist()
 
     import json
-    filename = 'dos.json'
     
     from ase.parallel import paropen
     with paropen(filename, 'w') as fd:
         json.dump(data, fd)
 
 
+@click.command()
+@click.argument('files', type=str, nargs=-1)
 def plot(files):
+    """Plot DOS.
+
+    Defaults to dos.json"""
     import json
     import matplotlib.pyplot as plt
     import numpy as np
-    
+    if not files:
+        files = ['dos.json']
     for file in files:
         dct = json.load(open(file, 'r'))
         plt.plot(dct['energies_e'],
@@ -51,29 +61,9 @@ def plot(files):
     plt.show()
 
 
-def main(args=None):
-    if args['command'] == 'plot':
-        plot(args['filenames'])
-    else:
-        calculate(args['name'])
-
-
-short_description = 'Calculate density of states'
-parser = argparse.ArgumentParser(description=short_description)
-help = 'Name of calculator to calculate DOS from'
-parser.add_argument('-n', '--name', type=str,
-                    default='dos.gpw',
-                    help=help)
-subparsers = parser.add_subparsers(dest='command')
-sparser = subparsers.add_parser('plot', help='plot')
-sparser.add_argument('filenames', help='DOS files',
-                     default=['dos.json'],
-                     metavar='dosfile',
-                     nargs='*')
-
+group = 'Property'
 dependencies = ['asr.gs']
-
+creates = ['dos.json']
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()

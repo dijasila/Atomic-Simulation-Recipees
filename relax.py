@@ -7,10 +7,11 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
-from asr.utils import (get_parser, get_parameters, set_defaults,
-                       get_dimensionality, magnetic_atoms)
+from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
 from asr.references import formation_energy
+
+from asr.utils import click
 
 
 Uvalues = {}
@@ -129,8 +130,17 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
 
-def relax_all(plusu=False, states=None, only_stable_states=False):
+@click.command()
+@click.argument('states', nargs=-1)
+@click.option('-U', '--plusu', help='Do +U calculation',
+              is_flag=True)
+@click.option('--save-all-states',
+              help='Save all states and not only the most stable state(s)',
+              is_flag=True)
+def main(plusu, states, save_all_states):
     """Relax atomic positions and unit cell.
+
+    STATES: list of nm, fm, afm
 
     Different magnetic states will be tried: non-magnetic, ferro-magnetic, ...
 
@@ -140,7 +150,7 @@ def relax_all(plusu=False, states=None, only_stable_states=False):
     nm = 'nm+u' if U else 'nm'
     fm = 'fm+u' if U else 'fm'
     afm = 'afm+u' if U else 'afm'
-    if states is None:
+    if not states:
         states = [nm, fm, afm]
 
     output = []
@@ -239,7 +249,7 @@ def relax_all(plusu=False, states=None, only_stable_states=False):
     for state, h, slab in [(nm, hform1, slab1),
                            (fm, hform2, slab2),
                            (afm, hform3, slab3)]:
-        if h < np.inf or not only_stable_states:
+        if h < np.inf or save_all_states:
             if world.rank == 0 and not Path(state).is_dir():
                 Path(state).mkdir()
 
@@ -249,28 +259,10 @@ def relax_all(plusu=False, states=None, only_stable_states=False):
                 write(name, slab)
 
 
-def main(args):
-    relax_all(**args)
-
-
 group = 'Structure'
 short_description = 'Relax start structure in specified magnetic states'
-parser = get_parser('Relax atomic structure')
-parser.add_argument('--states', help='list of nm, fm, afm', nargs='+')
-parser.add_argument('-U', '--plusu', help='Do +U calculation',
-                    action='store_true')
-parser.add_argument('--only-save-stable',
-                    help='Only save the most stable state(s)',
-                    action='store_true')
-
-
-# Default parameters
-params = {'states': ['nm', 'fm', 'afm']}
-params.update(get_parameters('asr.relax'))
-set_defaults(parser, params)
 
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()
 

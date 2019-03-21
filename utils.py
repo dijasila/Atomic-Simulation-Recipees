@@ -1,19 +1,6 @@
-def get_parser(description):
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser(description=description,
-                            formatter_class=ArgumentDefaultsHelpFormatter)
-    return parser
-
-
-def set_defaults(parser, params):
-    for args in [parser._get_positional_actions(),
-                 parser._get_optional_actions()]:
-        for arg in args:
-            for string in arg.option_strings:
-                for key in params:
-                    if key in string:
-                        arg.default = params[key]
-                        break
+import click
+from functools import partial
+click.option = partial(click.option, show_default=True)
 
 
 def get_parameters(key=None):
@@ -60,3 +47,18 @@ def magnetic_atoms(atoms):
     return np.array([symbol in mag_elements
                      for symbol in atoms.get_chemical_symbols()],
                     dtype=bool)
+
+
+def update_defaults(key):
+    params = get_parameters(key)
+
+    def update_defaults_dec(func):
+        fparams = func.__click_params__
+        for param in fparams:
+            for externaldefault in params:
+                if externaldefault == param.name:
+                    param.default = params[param.name]
+                break
+
+        return func
+    return update_defaults_dec
