@@ -140,11 +140,9 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
 def main(plusu, states, save_all_states):
     """Relax atomic positions and unit cell.
 
-    STATES: list of nm, fm, afm
-
-    Different magnetic states will be tried: non-magnetic, ferro-magnetic, ...
-
-    A gs.gpw file will be written for the most stable configuration.
+    STATES: list of nm (non-magnetic), fm(ferro-magnetic), afm
+    (anti-ferro-magnetic; only work with two magnetic
+    atoms in unit cell)
     """
     U = plusu
     nm = 'nm+u' if U else 'nm'
