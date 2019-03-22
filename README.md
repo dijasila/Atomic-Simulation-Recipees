@@ -12,6 +12,7 @@ Requirements
 
 * ASE (Atomic Simulation Environment)
 * GPAW
+* click
 
 Additionally, but not a requirement, it can be nice to have
 * myqueue
