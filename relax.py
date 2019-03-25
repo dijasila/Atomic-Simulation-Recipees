@@ -251,7 +251,7 @@ def main(plusu, states, save_all_states):
             if world.rank == 0 and not Path(state).is_dir():
                 Path(state).mkdir()
 
-            name = state + '/start.traj'
+            name = state + '/start.json'
             if not Path(name).is_file():
                 # Write start.traj file to folder
                 write(name, slab)
