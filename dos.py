@@ -1,4 +1,7 @@
-from asr.utils import click, update_defaults
+from asr.utils import update_defaults
+from functools import partial
+import click
+click.option = partial(click.option, show_default=True)
 
 
 @click.command()
@@ -10,7 +13,7 @@ def main(name, filename):
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
-        calc = GPAW('gs.gpw', txt='dos.txt',
+        calc = GPAW(name, txt='dos.txt',
                     kpts={'density': 12.0},
                     nbands='300%',
                     convergence={'bands': -10})
