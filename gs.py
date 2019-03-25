@@ -4,7 +4,7 @@ from asr.utils import click, update_defaults
 @click.command()
 @update_defaults('asr.gs')
 @click.option('-a', '--atomfile', type=str, help='Atomic structure',
-              default='start.traj')
+              default='start.json')
 @click.option('--gpwfilename', type=str, help='filename.gpw',
               default='gs.gpw')
 @click.option('--ecut', type=float, help='Plane-wave cutoff',
@@ -15,8 +15,14 @@ from asr.utils import click, update_defaults
               default='PBE')
 def main(atomfile, gpwfilename, ecut, xc, kptdensity):
     """Calculate ground state density"""
+    from pathlib import Path
     from ase.io import read
     from gpaw import GPAW, PW, FermiDirac
+    path = Path(atomfile)
+    if not path.is_file():
+        files = list(path.parent.glob(atomfile))
+        assert len(files) == 1
+        atomfile = str(files[0])
     params = dict(
         mode=PW(ecut),
         xc=xc,
