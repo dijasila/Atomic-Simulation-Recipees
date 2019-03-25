@@ -1,0 +1,13 @@
+{"1": {
+ "calculator": "unknown",
+ "calculator_parameters": {},
+ "cell": [[0.0, 2.014, 2.014], [2.014, 0.0, 2.014], [2.014, 2.014, 0.0]],
+ "ctime": 19.229511783119683,
+ "mtime": 19.229511783119683,
+ "numbers": [3, 9],
+ "pbc": [true, true, true],
+ "positions": [[0.0, 0.0, 0.0], [2.014, 0.0, 0.0]],
+ "unique_id": "b27cab99a5182cecd2b20a1c214e8695",
+ "user": "mogje"},
+"ids": [1],
+"nextid": 2}
