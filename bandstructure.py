@@ -1,37 +1,32 @@
-import argparse
-
-import os
-import os.path as op
-
-import numpy as np
-from gpaw import GPAW
-import gpaw.mpi as mpi
-from ase.io import read
-from ase.geometry import crystal_structure_from_cell
-
-from ase.dft.kpoints import special_paths
-from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs, spin_axis
-
-creates = ['bs.gpw', 'eigs_spinorbit.npz']
-dependencies = ['asr.gs']
+from asr.utils import update_defaults
+from functools import partial
+import click
+option = partial(click.option, show_default=True)
 
 
-def gs_done():
-    return os.path.isfile('gs.gpw')
+@click.command()
+@update_defaults('asr.bandstructure')
+@option('--kptpath', default=None, type=str)
+@option('--npoints', default=400)
+@option('--emptybands', default=20)
+def main(kptpath=None, npoints=400, emptybands=20):
+    """Calculate electronic band structure"""
+    import os
 
+    import numpy as np
+    from gpaw import GPAW
+    import gpaw.mpi as mpi
+    from ase.io import read
+    from ase.geometry import crystal_structure_from_cell
 
-def bs_done():
-    return os.path.isfile('bs.gpw')
-
-
-def bandstructure(kptpath=None, npoints=400, emptybands=20):
-    """Calculate the bandstructure based on a relaxed structure in gs.gpw."""
-
+    from ase.dft.kpoints import special_paths
+    from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs
+    
     if os.path.isfile('eigs_spinorbit.npz'):
         return
-    if not gs_done():
-        return
-    if not bs_done():
+    assert os.path.isfile('gs.gpw')
+
+    if not os.path.isfile('bs.gpw'):
         if kptpath is None:
             atoms = read('gs.gpw')
             cell = atoms.cell
@@ -73,6 +68,9 @@ def bandstructure(kptpath=None, npoints=400, emptybands=20):
 
 
 def is_symmetry_protected(kpt, op_scc):
+    """Calculate electronic band structure"""
+    import numpy as np
+
     mirror_count = 0
     for symm in op_scc:
         # Inversion symmetry forces spin degeneracy and 180 degree rotation
@@ -95,6 +93,11 @@ def is_symmetry_protected(kpt, op_scc):
 
 def collect_data(kvp, data, atoms, verbose):
     """Band structure PBE and GW +- SOC."""
+    import os.path as op
+    import numpy as np
+    from gpaw import GPAW
+    from c2db.utils import eigenvalues, spin_axis
+
     if not op.isfile('eigs_spinorbit.npz'):
         return
     print('Collecting PBE bands-structure data')
@@ -145,14 +148,10 @@ def collect_data(kvp, data, atoms, verbose):
     data['bs_pbe'] = pbe
 
 
-def main(args):
-    bandstructure(**args)
-
-
-short_description = 'Calculate electronic band structure'
-parser = argparse.ArgumentParser(description=short_description)
+group = 'Property'
+creates = ['bs.gpw', 'eigs_spinorbit.npz']
+dependencies = ['asr.gs']
 
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()
