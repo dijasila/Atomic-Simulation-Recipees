@@ -3,9 +3,9 @@ from asr.utils import click, update_defaults
 
 @click.command()
 @update_defaults('asr.gs')
-@click.option('-a', '--atoms', type=str, help='Atomic structure',
+@click.option('-a', '--atomfile', type=str, help='Atomic structure',
               default='start.traj')
-@click.option('--gpw', type=str, help='filename.gpw',
+@click.option('--gpwfilename', type=str, help='filename.gpw',
               default='gs.gpw')
 @click.option('--ecut', type=float, help='Plane-wave cutoff',
               default=800)
