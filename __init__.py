@@ -3,14 +3,14 @@ from pathlib import Path
 
 files = Path(__file__).parent.glob('*.py')
 
+exclude = ['__init__.py', '__main__.py']
+
 recipes = []
 for file in files:
-    is_recipe = False
-    with open(str(file), 'r') as fd:
-        for line in fd:
-            if line.startswith('def main('):
-                is_recipe = True
-                break
+    is_recipe = True
+    if str(file.name) in exclude:
+        is_recipe = False
+
     if is_recipe:
         name = file.with_suffix('').name
         module = importlib.import_module(f'asr.{name}')
