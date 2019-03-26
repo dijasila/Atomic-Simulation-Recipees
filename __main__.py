@@ -1,4 +1,3 @@
-# Find external recipes
 def summary(content, indent=0, title=None, pad=2):
     colwidth_c = []
     for row in content:
