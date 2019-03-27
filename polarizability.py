@@ -15,10 +15,15 @@ def main(gs, density):
     from pathlib import Path
     import numpy as np
 
+    from asr.utils import get_start_atoms
+    atoms = get_start_atoms()
+
+    assert np.sum(atoms.pbc) == 3, print('Script only works for 3D right now')
+    
     if not Path('es.gpw').is_file():
         calc_old = GPAW(gs, txt=None)
         nval = calc_old.wfs.nvalence
-        kpts = {'density': density, 'gamma': True, 'even': True}
+        kpts = {'density': density, 'gamma': False, 'even': True}
 
         calc = GPAW(
             gs,
