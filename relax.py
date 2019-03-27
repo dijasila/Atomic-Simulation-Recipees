@@ -74,7 +74,7 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
     if smask is None:
         nd = get_dimensionality()
         if nd == 3:
-            smask = [1, 1, 1, 1, 1, 1]
+            smask = [1, 1, 1, 0, 0, 0]
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 0]
         else:
@@ -186,12 +186,12 @@ def main(plusu, states, save_all_states):
                 relax(slab1, nm)
 
         hform1 = formation_energy(slab1) / len(slab1)
-        slab1.calc = None
 
     # Ferro-magnetic:
     if fm in states:
         if slab2 is None:
             slab2 = slab1.copy()
+            slab2.calc = None
             slab2.set_initial_magnetic_moments([1] * len(slab2))
 
         if not done2:
@@ -203,7 +203,6 @@ def main(plusu, states, save_all_states):
             # Create subfolder early so that fm-tasks can begin:
             if world.rank == 0 and not Path(fm).is_dir():
                 Path(fm).mkdir()
-        slab2.calc = None
 
     # Antiferro-magnetic:
     if afm in states:
@@ -215,6 +214,7 @@ def main(plusu, states, save_all_states):
                 slab3 = read(str(fnames[0]))
             else:
                 slab3 = slab2.copy()
+                slab3.calc = None
             magnetic = magnetic_atoms(slab3)
             nmag = sum(magnetic)
             if nmag == 2:
@@ -258,7 +258,7 @@ def main(plusu, states, save_all_states):
 
 
 group = 'Structure'
-short_description = 'Relax start structure in specified magnetic states'
+resources = '8:xeon8:10h'
 
 
 if __name__ == '__main__':
