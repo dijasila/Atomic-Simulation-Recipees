@@ -4,60 +4,100 @@ option = partial(click.option, show_default=True)
 
 
 @click.command()
-@option('--gs', default='gs.gpw', help='Ground state to base response on')
+@option(
+    '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')
-def main(gs, density):
+@option('--ecut', default=50.0, help='Plane wave cutoff')
+def main(gs, density, ecut):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
+    from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
 
     from asr.utils import get_start_atoms
     atoms = get_start_atoms()
+    pbc = atoms.pbc
 
-    assert np.sum(atoms.pbc) == 3, print('Script only works for 3D right now')
-    
+    dfkwargs = {
+        'eta': 0.05,
+        'domega0': 0.005,
+        'ecut': ecut,
+        'name': 'chi',
+        'intraband': False
+    }
+
+    ND = np.sum(pbc)
+    if ND == 3:
+        kpts = {'density': density, 'gamma': False, 'even': True}
+    elif ND == 2:
+
+        def get_kpts_size(atoms, density):
+            """trying to get a reasonable monkhorst size which hits high
+            symmetry points
+            """
+            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+            size, offset = k2so(atoms=atoms, density=density)
+            size[2] = 1
+            for i in range(2):
+                if size[i] % 6 != 0:
+                    size[i] = 6 * (size[i] // 6 + 1)
+            kpts = {'size': size, 'gamma': True}
+            return kpts
+
+        kpts = get_kpts_size(atoms=atoms, density=density)
+        volume = atoms.get_volume()
+        if volume < 120:
+            nblocks = world.size // 4
+        else:
+            nblocks = world.size // 2
+        dfkwargs.update({
+            'nblocks': nblocks,
+            'pbc': pbc,
+            'integrationmode': 'tetrahedron integration',
+            'truncation': '2D'
+        })
+
+    else:
+        raise NotImplementedError(
+            'Polarizability not implemented for 1D and 2D structures')
+
     if not Path('es.gpw').is_file():
         calc_old = GPAW(gs, txt=None)
         nval = calc_old.wfs.nvalence
-        kpts = {'density': density, 'gamma': False, 'even': True}
 
         calc = GPAW(
             gs,
+            txt='es.txt',
             fixdensity=True,
-            kpts=kpts,
-            nbands=5 * nval,
-            convergence={'bands': 4 * nval})
+            nbands=6 * nval,
+            convergence={'bands': 5 * nval},
+            occupations=FermiDirac(width=1e-4),
+            kpts=kpts)
         calc.get_potential_energy()
         calc.write('es.gpw', mode='all')
 
-    nblocks = world.size // 4
-
-    df = DielectricFunction(
-        'es.gpw',
-        eta=1e-1,
-        domega0=0.02,
-        ecut=50,
-        nblocks=nblocks,
-        name='chi0')
-
-    df1x, df2x = df.get_dielectric_function(direction='x')
-    df1y, df2y = df.get_dielectric_function(direction='y')
-    df1z, df2z = df.get_dielectric_function(direction='z')
+    df = DielectricFunction('es.gpw', **dfkwargs)
+    alpha0x, alphax = df.get_polarizability(
+        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None)
+    alpha0y, alphay = df.get_polarizability(
+        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None)
+    alpha0z, alphaz = df.get_polarizability(
+        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None)
 
     plasmafreq_vv = df.chi0.plasmafreq_vv
 
     frequencies = df.get_frequencies()
     data = {
-        'df1x': np.array(df1x),
-        'df2x': np.array(df2x),
-        'df1y': np.array(df1y),
-        'df2y': np.array(df2y),
-        'df1z': np.array(df1z),
-        'df2z': np.array(df2z),
+        'alpha0x_w': np.array(alpha0x),
+        'alphax_w': np.array(alphax),
+        'alpha0y_w': np.array(alpha0y),
+        'alphay_w': np.array(alphay),
+        'alpha0z_w': np.array(alpha0z),
+        'alphaz_w': np.array(alphaz),
         'plasmafreq_vv': plasmafreq_vv,
         'frequencies': frequencies
     }
