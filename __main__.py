@@ -1,3 +1,22 @@
+def get_recipes():
+    import importlib
+    from pathlib import Path
+
+    files = Path(__file__).parent.glob('*.py')
+    exclude = ['__init__.py', '__main__.py', 'utils.py']
+    recipes = []
+    for file in files:
+        is_recipe = True
+        if str(file.name) in exclude:
+            is_recipe = False
+
+        if is_recipe:
+            name = file.with_suffix('').name
+            module = importlib.import_module(f'asr.{name}')
+            recipes.append(module)
+    return recipes
+
+
 def summary(content, indent=0, title=None, pad=2):
     colwidth_c = []
     for row in content:
@@ -16,7 +35,7 @@ def summary(content, indent=0, title=None, pad=2):
     for row in content:
         out = ' ' * indent
         if isinstance(row, str):
-            output += f'\n  {row}\n'
+            output += f'\n{row}\n'
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
@@ -28,23 +47,30 @@ def summary(content, indent=0, title=None, pad=2):
 
 def check_recipes():
     print('Checking recipes...')
-    from asr import recipes
+    recipes = get_recipes()
 
     attributes = ['main',
+                  'creates',
                   'collect_data',
                   'webpanel',
                   'resources']
 
+    groups = ['Structure', 'Property',
+              'Postprocessing', 'Utility']
     panel = []
     panel.append(['name', *attributes])
-    for recipe in recipes:
-        status = [recipe.__name__]
-        for attr in attributes:
-            if hasattr(recipe, attr):
-                status.append('.')
-            else:
-                status.append('N')
-        panel.append(status)
+    for group in groups:
+        panel.append(f'{group} recipes')
+        for recipe in recipes:
+            if not recipe.group == group:
+                continue
+            status = [recipe.__name__]
+            for attr in attributes:
+                if hasattr(recipe, attr):
+                    status.append('.')
+                else:
+                    status.append('N')
+            panel.append(status)
 
     pretty_output = summary(panel)
     print(pretty_output)
