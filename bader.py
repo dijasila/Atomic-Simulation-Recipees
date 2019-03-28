@@ -1,7 +1,11 @@
-import argparse
+from functools import partial
+import click
+option = partial(click.option, show_default=True)
 
 
-def bader():
+@click.command()
+def main():
+    """Calculate bader charges"""
     from ase.io import write
     from ase.units import Bohr
     from gpaw import GPAW
@@ -25,7 +29,9 @@ def bader():
     subprocess.run(cmd.split(), cwd=folder)
 
 
-def print_results():
+@click.command()
+def print():
+    """Print Bader charges"""
     import os.path as op
     fname = 'data-bader/ACF.dat'
     if not op.isfile(fname):
@@ -36,14 +42,10 @@ def print_results():
     print(dat)
 
 
-def main(args=None):
-    bader(**args)
+dependencies = ['asr.gs']
+group = 'Property'
+resources = '1:10m'
 
-
-short_description = 'Make Bader analysis of charge density'
-parser = argparse.ArgumentParser(description=short_description)
-dependencies = ['gs.py']
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()
