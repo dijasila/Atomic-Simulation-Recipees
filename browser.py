@@ -14,7 +14,7 @@ def main(database, custom):
     if custom == 'asr.custom':
         custom = Path(__file__).parent / 'custom.py'
 
-    cmd = f'ase db {database} -w -M {custom}'
+    cmd = f'python3.6 -m ase db {database} -w -M {custom}'
     print(cmd)
     subprocess.run(cmd.split())
 
