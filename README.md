@@ -13,6 +13,7 @@ Requirements
 * ASE (Atomic Simulation Environment)
 * GPAW
 * click
+* spglib
 
 Additionally, but not a requirement, it can be nice to have
 * myqueue
@@ -45,7 +46,7 @@ in a browser with the `asr.browser` recipe. This is done below
 ```console
 $ cd ~/silicon/nm
 $ python3 -m asr.quickinfo
-$ python3 -m asr.collect
+$ python3 -m asr.collect .
 $ python3 -m asr.browser
 ```
 
