@@ -36,9 +36,22 @@ $ ase build -x diamond Si start.json
 $ python3 -m asr.relax
 ```
 
+This generates a new folder `~/silicon/nm/` containing a new `start.json`
+file that contains the final relaxed structure. Going into this directory we
+get some quick information about this structure by running the `asr.quickinfo`
+recipe, collect the data to a database using `asr.collect` recipe and view it
+in a browser with the `asr.browser` recipe. This is done below
+
+```console
+$ cd ~/silicon/nm
+$ python3 -m asr.quickinfo
+$ python3 -m asr.collect
+$ python3 -m asr.browser
+```
+
 Skeleton of recipes
 -------------------
-A recipe contains some specific functionality
+A recipe contains some specific functionality implemented in seperate functions:
 
 ```python
 import click
@@ -59,6 +72,11 @@ if __name__ == '__main__':
     main()
 
 ```
+
+In all recipes the `main()` function implements the main functionality of
+the recipe. The `collect_data()` tells another recipe (`asr.collect`) how
+pick up data and put it into a database.
+
 
 Developing
 ----------
