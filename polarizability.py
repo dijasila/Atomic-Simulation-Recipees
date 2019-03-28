@@ -20,7 +20,7 @@ def main(gs, density, ecut):
 
     from asr.utils import get_start_atoms
     atoms = get_start_atoms()
-    pbc = atoms.pbc
+    pbc = atoms.pbc.tolist()
 
     dfkwargs = {
         'eta': 0.05,
@@ -108,15 +108,30 @@ def main(gs, density, ecut):
         np.savez_compressed(filename, **data)
 
 
-def collect_data(kvp, data, atoms, verbose):
+def collect_data(kvp, data, atoms, key_descriptions, verbose):
     import numpy as np
     from pathlib import Path
     if not Path('polarizability.npz').is_file():
         return
     dct = dict(np.load('polarizability.npz'))
+
+    # Update key-value-pairs
     kvp['alphax'] = dct['alphax_w'][0].real
     kvp['alphay'] = dct['alphay_w'][0].real
     kvp['alphaz'] = dct['alphaz_w'][0].real
+
+    # Update key_descriptions
+    kd = {
+        'alphax': ('Static polarizability (x-direction)',
+                   'Static polarizability (x-direction)', 'Ang'),
+        'alphay': ('Static polarizability (y-direction)',
+                   'Static polarizability (y-direction)', 'Ang'),
+        'alphaz': ('Static polarizability (z-direction)',
+                   'Static polarizability (z-direction)', 'Ang')
+    }
+    key_descriptions.update(kd)
+
+    # Save data
     data['absorptionspectrum'] = dct
 
 
@@ -225,7 +240,8 @@ def polarizability(row, fx, fy, fz):
 
 def webpanel(row):
     from asr.custom import fig, table
-    opt = table('Property', [
+
+    opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
     ])
 
@@ -234,13 +250,13 @@ def webpanel(row):
                fig('rpa-pol-z.png')], [fig('rpa-pol-y.png'), opt]])
 
     things = (polarizability,
-              ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png']),
+              ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])
 
     return panel, things
 
 
 group = 'Property'
-creates = ['polarizability.npz']
+creates = ['polarizability.npz', 'chi+0+0+0.pckl']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
