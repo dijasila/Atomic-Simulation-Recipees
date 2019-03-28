@@ -69,7 +69,7 @@ can be corrected.
 
 Skeleton of recipes
 -------------------
-A recipe contains some specific functionality implemented in seperate functions:
+A recipe contains some specific functionality implemented in separate functions:
 
 ```python
 from asr.utils import update_defaults
