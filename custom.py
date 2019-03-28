@@ -84,7 +84,6 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
         module = import_module('asr.' + name)
 
         try:
-            print('module', name)
             panel, newthings = module.webpanel(row, key_descriptions)
             if panel:
                 page.append(panel)
