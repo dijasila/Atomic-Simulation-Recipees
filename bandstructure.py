@@ -101,7 +101,7 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def collect_data(kvp, data, atoms, verbose):
+def collect_data(kvp, data, key_descriptions, atoms, verbose):
     """Band structure PBE and GW +- SOC."""
     import os.path as op
     if not op.isfile('eigs_spinorbit.npz'):
@@ -478,7 +478,7 @@ def bs_pbe(row,
     plt.close()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(row):
     from asr.custom import fig, table
     from typing import Tuple, List
     
