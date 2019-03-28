@@ -87,10 +87,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     pathlist = Path(asr.__file__).parent.glob('*.py')
     for path in pathlist:
         name = path.with_suffix('').name
-        if name not in ['quickinfo', 'polarizability']:
-            continue
 
-        print(name)
         module = import_module('asr.' + name)
 
         try:
@@ -99,11 +96,9 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
                 page.append(panel)
             if newthings:
                 things.append(newthings)
-        except AttributeError as x:
-            print(x)
+        except AttributeError:
             continue
 
-    print(page)
     page += [miscellaneous_section(row, key_descriptions, exclude)]
 
     # List of functions and the figures they create:
