@@ -8,13 +8,14 @@ click.option = partial(click.option, show_default=True)
 @update_defaults('asr.dos')
 @click.option('--name', default='dos.gpw', type=str)
 @click.option('--filename', default='dos.json', type=str)
-def main(name, filename):
+@click.option('--density', default=12.0, help='K point density')
+def main(name, filename, density):
     """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
         calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': 12.0},
+                    kpts={'density': density},
                     nbands='300%',
                     convergence={'bands': -10})
         calc.get_potential_energy()
