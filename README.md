@@ -36,12 +36,39 @@ $ ase build -x diamond Si start.json
 $ python3 -m asr.relax
 ```
 
+Skeleton of recipes
+-------------------
+A recipe contains some specific functionality
+
+```python
+import click
+
+@click.command()
+@click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
+def main(arg1):
+    pass
+
+def collect_data(kvp, data, atoms, key_descriptions):
+    pass
+
+def webpanel(row, key_descriptions):
+    pass
+
+
+if __name__ == '__main__':
+    main()
+
+```
+
+Developing
+----------
+To see the current status of all recipes write
+```console
+$ python3 -m asr
+```
+
 Types of recipes
 ----------------
-These recipes follow the template of the `myrecipes` python package for python
-recipes. It is also recommended to use these recipes together with the `myqueue`
-job managing package.
-
 The recipes are divided into two groups:
 
 - Property recipes: Recipes that calculate a property for a given materials.
@@ -96,8 +123,9 @@ $ python3 -m asr.relax
 
 Submit a recipe to a computer-cluster
 -------------------------------------
-We assumed that you have installed the `myqueue`-package and are familiar
-with its usage. If you are not, then take a look at its excellent
+It is also recommended to use these recipes together with the `myqueue`
+job managing package. We assume that you have installed the `myqueue`-package
+and are familiar with its usage. If you are not, then take a look at its excellent
 documentation. To submit a job that relaxes a structure simply do
 
 ```console
