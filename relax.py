@@ -11,7 +11,10 @@ from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
 from asr.references import formation_energy
 
-from asr.utils import click
+from asr.utils import update_defaults
+import click
+from functools import partial
+option = partial(click.option, show_default=True)
 
 
 Uvalues = {}
@@ -56,7 +59,7 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
     return slab, done
 
 
-def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
+def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None):
 
     name = f'relax-{tag}'
@@ -83,7 +86,7 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
             raise NotImplementedError(msg)
 
     kwargs = dict(txt=name + '.txt',
-                  mode=PW(800),
+                  mode=PW(ecut),
                   xc='PBE',
                   basis='dzp',
                   kpts={'density': kptdens, 'gamma': True},
@@ -131,16 +134,21 @@ def relax(slab, tag, kptdens=6.0, width=0.05, emin=-np.inf,
 
 
 @click.command()
+@update_defaults('asr.relax')
 @click.argument('states', nargs=-1)
-@click.option('-U', '--plusu', help='Do +U calculation',
-              is_flag=True)
-@click.option('--save-all-states',
-              help='Save all states and not only the most stable state(s)',
-              is_flag=True)
-def main(plusu, states, save_all_states):
+@option('--ecut', default=800,
+        help='Energy cutoff in electronic structure calculation')
+@option('--kptdens', default=6.0,
+        help='Kpoint density')
+@option('-U', '--plusu', help='Do +U calculation',
+        is_flag=True)
+@option('--save-all-states',
+        help='Save all states and not only the most stable state(s)',
+        is_flag=True)
+def main(plusu, states, ecut, kptdens, save_all_states):
     """Relax atomic positions and unit cell.
 
-    STATES: list of nm (non-magnetic), fm(ferro-magnetic), afm
+    STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
     (anti-ferro-magnetic; only work with two magnetic
     atoms in unit cell)
     """
@@ -178,12 +186,12 @@ def main(plusu, states, save_all_states):
                     slab1 = read(str(fnames[0]))
             slab1.set_initial_magnetic_moments(None)
             try:
-                relax(slab1, nm)
+                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
             except RuntimeError:
                 # The atoms might be too close together
                 # so enlarge unit cell
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
-                relax(slab1, nm)
+                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
 
         hform1 = formation_energy(slab1) / len(slab1)
 
@@ -195,7 +203,7 @@ def main(plusu, states, save_all_states):
             slab2.set_initial_magnetic_moments([1] * len(slab2))
 
         if not done2:
-            relax(slab2, fm)
+            relax(slab2, fm, ecut=ecut, kptdens=kptdens)
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
@@ -228,7 +236,7 @@ def main(plusu, states, save_all_states):
                 slab3 = None
 
         if not done3:
-            relax(slab3, afm)
+            relax(slab3, afm, ecut=ecut, kptdens=kptdens)
 
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()

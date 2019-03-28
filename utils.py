@@ -32,7 +32,7 @@ def is_magnetic():
 def get_dimensionality():
     from ase.io import read
     import numpy as np
-    start = read('start.traj')
+    start = read('start.json')
     nd = int(np.sum(start.get_pbc()))
     return nd
 
@@ -49,8 +49,8 @@ def magnetic_atoms(atoms):
                     dtype=bool)
 
 
-def update_defaults(key):
-    params = get_parameters(key)
+def update_defaults(key, params={}):
+    params.update(get_parameters(key))
 
     def update_defaults_dec(func):
         fparams = func.__click_params__
@@ -58,7 +58,32 @@ def update_defaults(key):
             for externaldefault in params:
                 if externaldefault == param.name:
                     param.default = params[param.name]
-                break
+                    break
 
         return func
     return update_defaults_dec
+
+
+def get_start_file():
+    "Get starting atomic structure"
+    from pathlib import Path
+    fnames = list(Path('.').glob('start.*'))
+    assert len(fnames) == 1, fnames
+    return str(fnames[0])
+
+
+def get_start_atoms():
+    from ase.io import read
+    fname = get_start_file()
+    atoms = read(str(fname))
+    return atoms
+
+
+def get_start_parameters(atomfile=None):
+    import json
+    if atomfile is None:
+        atomfile = get_start_file()
+    asejsondb = json.load(open(atomfile, 'r'))
+    params = asejsondb.get('1').get('calculator_parameters', {})
+
+    return params
