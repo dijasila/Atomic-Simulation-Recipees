@@ -2,16 +2,16 @@ from asr.utils import click, update_defaults, get_start_parameters
 
 # Get some parameters from start.json
 params = get_start_parameters()
-start_params = {}
+defaults = {}
 if 'ecut' in params.get('mode', {}):
-    start_params['ecut'] = params['mode']['ecut']
+    defaults['ecut'] = params['mode']['ecut']
 
 if 'density' in params.get('kpts', {}):
-    start_params['kptdensity'] = params['kpts']['density']
+    defaults['kptdensity'] = params['kpts']['density']
 
 
 @click.command()
-@update_defaults('asr.gs', start_params)
+@update_defaults('asr.gs', defaults)
 @click.option('-a', '--atomfile', type=str,
               help='Atomic structure',
               default='start.json')
