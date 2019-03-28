@@ -1,5 +1,3 @@
-import argparse
-
 from pathlib import Path
 
 import numpy as np
@@ -132,12 +130,7 @@ def webpanel(row, key_descriptions):
     
 
 group = 'Property'
-short_description = 'Calculate phonons'
 dependencies = ['asr.gs']
-parser = argparse.ArgumentParser(description=short_description)
-parser.add_argument('-N', help='Super-cell size', type=int, default=2)
-
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()

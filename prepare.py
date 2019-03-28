@@ -1,7 +1,12 @@
-import argparse
+import click
 
 
-def prepare(filename, destination, vacuum=7.5):
+@click.command()
+@click.argument('filename')
+@click.argument('destination')
+@click.argument('vacuum', default=7.5)
+def main(filename, destination, vacuum=7.5):
+    """Prepare structure for recipes"""
     from ase.io import read, write
     from ase.build import niggli_reduce
     import numpy as np
@@ -17,20 +22,5 @@ def prepare(filename, destination, vacuum=7.5):
     write(destination, atoms)
 
 
-group = 'Structure'
-short_description = 'Prepare structure for recipes'
-parser = argparse.ArgumentParser(description=short_description)
-parser.add_argument('--filename', default='origin.traj',
-                    help='Path to original structure')
-parser.add_argument('--destination', default='start.traj')
-parser.add_argument('--vacuum', default=7.5, type=float,
-                    help='Vacuum to add to nonperiodic directions')
-
-
-def main(args):
-    prepare(**args)
-
-
 if __name__ == '__main__':
-    args = vars(parser.parser_args())
-    main(args)
+    main()

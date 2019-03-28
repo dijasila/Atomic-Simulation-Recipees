@@ -1,14 +1,31 @@
-import argparse
+import click
+from functools import partial
+option = partial(click.option, show_default=True)
 
 
-def main(args):
+@click.command()
+@option(
+    '-q',
+    '--momentum',
+    default=[0, 0, 0],
+    nargs=3,
+    type=float,
+    help='Phonon momentum')
+@option('-m', '--mode', default=0, type=int, help='Mode index')
+@option(
+    '-a',
+    '--amplitude',
+    default=0.1,
+    type=float,
+    help='Maximum distance an atom will be displaced')
+@option('--fix-cell', is_flag=True, help='Do not relax cell')
+@option('--showmode', is_flag=True, help='Save mode to tmp.traj for viewing')
+def main(momentum, mode, amplitude, fix_cell, show_mode):
+    """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
     import numpy as np
+    q_c = momentum
 
-    mode = args['mode']
-    q_c = args['momentum']
-    amplitude = args['amplitude']
-    
     # Get modes
     from ase.io import read
     atoms = read('start.traj')
@@ -16,8 +33,7 @@ def main(args):
 
     # Repeat atoms
     from fractions import Fraction
-    repeat_c = [Fraction(qc).denominator if qc > 1e-3 else 1
-                for qc in q_qc[0]]
+    repeat_c = [Fraction(qc).denominator if qc > 1e-3 else 1 for qc in q_qc[0]]
     newatoms = atoms * repeat_c
 
     # Here ``Na`` refers to a composite unit cell/atom dimension
@@ -37,19 +53,17 @@ def main(args):
     mode_av = u_klav[0, mode]
     n_a = np.linalg.norm(mode_av, axis=1)
     mode_av /= np.max(n_a)
-    mode_Nav = (np.vstack(N * [mode_av]) *
-                phase_Na[:, np.newaxis] * amplitude)
+    mode_Nav = (np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] * amplitude)
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
     from asr.relax import relax
-    tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2],
-                                           mode)
+    tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2], mode)
     smask = None
-    if args['fix_cell']:
+    if fix_cell:
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
 
-    if args['showmode']:
+    if showmode:
         from ase.io.trajectory import Trajectory
         traj = Trajectory('tmp.traj', mode='w')
         showatoms = newatoms.copy()
@@ -73,23 +87,8 @@ def main(args):
     write(name, newatoms)
 
 
-short_description = 'Push structure along some phonon mode and relax structure'
 dependencies = ['asr.phonons']
 group = 'Structure'
 
-parser = argparse.ArgumentParser(description=short_description)
-parser.add_argument('-q', '--momentum', default=[0, 0, 0],
-                    nargs=3, type=float,
-                    help='Phonon momentum')
-parser.add_argument('-m', '--mode', default=0, type=int,
-                    help='Mode index')
-parser.add_argument('-a', '--amplitude', default=0.1, type=float,
-                    help='Maximum distance an atom will be displaced')
-parser.add_argument('--fix-cell', action='store_true',
-                    help='Do not relax cell')
-parser.add_argument('--showmode', action='store_true',
-                    help='Save mode to tmp.traj for viewing')
-
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()
