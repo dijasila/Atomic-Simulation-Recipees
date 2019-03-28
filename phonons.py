@@ -4,16 +4,19 @@ from pathlib import Path
 
 import numpy as np
 
-import ase.io.ulm as ulm
 from ase.parallel import world
 from ase.geometry import crystal_structure_from_cell
 from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons
 from gpaw import GPAW
+import click
 
 
+@click.command()
+@click.option('-N', default=2, help='Supercell size')
 def phonons(N=2):
+    """Calculate Phonons"""
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -91,10 +94,44 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
         return np.array(omega_kl), np.array(omega_kl), q_qc
 
 
-def main(args):
-    phonons(**args)
+def plot_phonons(row, fname):
+    freqs = row.data.get('phonon_frequencies_3d')
+    if freqs is None:
+        return
+
+    gamma = freqs[0]
+    fig = plt.figure(figsize=(6.4, 3.9))
+    ax = fig.gca()
+
+    x0 = -0.0005  # eV
+    for x, color in [(gamma[gamma < x0], 'r'),
+                     (gamma[gamma >= x0], 'b')]:
+        if len(x) > 0:
+            markerline, _, _ = ax.stem(x * 1000, np.ones_like(x), bottom=-1,
+                                       markerfmt=color + 'o',
+                                       linefmt=color + '-')
+            plt.setp(markerline, alpha=0.4)
+    ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
+    ax.axis(ymin=0.0, ymax=1.3)
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
 
 
+def webpanel(row, key_descriptions):
+    from asr.custom import table, fig
+    phonontable = table(row, 'Property',
+                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
+                         'minhessianeig'], key_descriptions)
+    
+    panel = ('Elastic constants and phonons',
+             [[fig('phonons.png')], [phonontable]])
+    things = [(plot_phonons, ['phonons.png'])]
+    
+    return panel, things
+    
+
+group = 'Property'
 short_description = 'Calculate phonons'
 dependencies = ['asr.gs']
 parser = argparse.ArgumentParser(description=short_description)

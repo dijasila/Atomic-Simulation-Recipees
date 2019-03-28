@@ -478,10 +478,10 @@ def bs_pbe(row,
     plt.close()
 
 
-def webpanel(row):
+def webpanel(row, key_descriptions):
     from asr.custom import fig, table
     from typing import Tuple, List
-    
+
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
         def rm(s: str) -> str:
@@ -500,33 +500,37 @@ def webpanel(row):
     if row.get('gap', 0) > 0.0:
         if row.get('evacdiff', 0) > 0.02:
             pbe = table(
+                row,
                 'Property', [
                     'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
                     'D_cbm', 'dipz', 'evacdiff'
                 ],
-                key_descriptions=key_descriptions_noxc)
+                kd=key_descriptions_noxc)
         else:
             pbe = table(
+                row,
                 'Property', [
                     'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
                     'D_cbm'
                 ],
-                key_descriptions=key_descriptions_noxc)
+                kd=key_descriptions_noxc)
     else:
         if row.get('evacdiff', 0) > 0.02:
             pbe = table(
+                row,
                 'Property', [
                     'work_function', 'dosef_soc', 'gap', 'dir_gap', 'vbm',
                     'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
                 ],
-                key_descriptions=key_descriptions_noxc)
+                kd=key_descriptions_noxc)
         else:
             pbe = table(
+                row,
                 'Property', [
                     'work_function', 'dosef_soc', 'gap', 'dir_gap', 'vbm',
                     'cbm', 'D_vbm', 'D_cbm'
                 ],
-                key_descriptions=key_descriptions_noxc)
+                kd=key_descriptions_noxc)
 
     panel = ('Electronic band structure (PBE)',
              [[fig('pbe-bs.png', link='pbe-bs.html'),

@@ -52,17 +52,17 @@ def bs_gw(row, path):
     bs_xc(row, path, xc='gw', label='G$_0$W$_0$')
 
 
-def webpanel():
-    from asr.custom import fig, table
-    gw = table(
-        'Property', ['gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'],
-        key_descriptions=key_descriptions_noxc)
+# def webpanel(row, key_descriptions):
+#     from asr.custom import fig, table
+#     gw = table(
+#         'Property', ['gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'],
+#         key_descriptions=key_descriptions_noxc)
 
-    panel = ('Electronic band structure (GW)', [[fig('gw-bs.png')], [gw]])
+#     panel = ('Electronic band structure (GW)', [[fig('gw-bs.png')], [gw]])
 
-    things = [(bs_gw, ['gw-bs.png']), (bs_hse, ['hse-bs.png'])]
+#     things = [(bs_gw, ['gw-bs.png']), (bs_hse, ['hse-bs.png'])]
 
-    return panel, things
+#     return panel, things
 
 
 group = 'Property'

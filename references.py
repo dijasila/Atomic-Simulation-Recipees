@@ -52,5 +52,7 @@ def main():
     print('}')
 
 
+group = 'Property'
+
 if __name__ == '__main__':
     main()

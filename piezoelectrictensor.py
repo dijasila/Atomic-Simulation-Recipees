@@ -1,4 +1,4 @@
-def webpanel():
+def webpanel(row, key_descriptions):
     for i in range(1, 4):
         for j in range(1, 7):
             key = 'e0_{}{}'.format(i, j)
@@ -40,12 +40,13 @@ def webpanel():
             type='table',
             rows=matrixtable(e0_ij))
 
-        panel = [[etable, e0table],
-                 [fig('polvsstrain.png'),
-                  fig('polvsstrain0.png'),
-                  fig('displacementvsstrain.png')]]
+        columns = [[etable, e0table], []]
+        
+        panel = [('Piezoelectric tensor', columns)]
+    else:
+        panel = ()
+    things = ()
+    return panel, things
 
-        page += [('Piezoelectric tensor', panel)]
 
-            
 group = 'Property'

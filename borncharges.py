@@ -1,21 +1,14 @@
-import argparse
-import json
-from os.path import exists, splitext, isfile
-from os import remove, chdir, makedirs
-from glob import glob
-
-import numpy as np
-from gpaw import GPAW
-from gpaw.mpi import world
-from c2db.berryphase import get_polarization_phase
-
-from ase.parallel import paropen
-from ase.units import Bohr
-from ase.io import jsonio
+from asr.utils import update_defaults
+from functools import partial
+import click
+option = partial(click.option, show_default=True)
 
 
 def get_wavefunctions(atoms, name, params, density=6.0,
                       no_symmetries=False):
+    from gpaw import GPAW
+    from pathlib import Path
+    
     params['kpts'] = {'density': density,
                       'gamma': True,
                       'even': True}
@@ -28,15 +21,33 @@ def get_wavefunctions(atoms, name, params, density=6.0,
                               'do_not_symmetrize_the_density': False,
                               'time_reversal': True}
     params['convergence']['eigenstates'] = 1e-11
-    tmp = splitext(name)[0]
+    tmp = Path(name).with_suffix('').name
     atoms.calc = GPAW(txt=tmp + '.txt', **params)
     atoms.get_potential_energy()
     atoms.calc.write(name, 'all')
     return atoms.calc
 
 
-def borncharges(displacement=0.01, kpointdensity=6.0, folder=None,
-                no_symmetries=False):
+@click.command()
+@update_defaults('asr.borncharges')
+@option('--displacement', default=0.01, help='Atomic displacement (Å)')
+@option('--kpointdensity', default=6.0)
+@option('--folder', default='data-borncharges')
+def main(displacement, kpointdensity, folder):
+    """Calculate Born charges"""
+    import json
+    from os.path import exists, isfile
+    from os import remove, chdir, makedirs
+    from glob import glob
+
+    import numpy as np
+    from gpaw import GPAW
+    from gpaw.mpi import world
+    from c2db.berryphase import get_polarization_phase
+
+    from ase.parallel import paropen
+    from ase.units import Bohr
+    from ase.io import jsonio
 
     if folder is None:
         folder = 'data-borncharges'
@@ -79,15 +90,12 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None,
                 berryname = prefix + '-berryphases.json'
                 if not exists(name) and not exists(berryname):
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=kpointdensity,
-                                             no_symmetries=no_symmetries)
-
+                                             density=kpointdensity)
                 try:
                     phase_c = get_polarization_phase(name)
                 except ValueError:
                     calc = get_wavefunctions(atoms, name, params,
-                                             density=kpointdensity,
-                                             no_symmetries=no_symmetries)
+                                             density=kpointdensity)
                     phase_c = get_polarization_phase(name)
 
                 phase_scv[s, :, v] = phase_c
@@ -128,6 +136,7 @@ def borncharges(displacement=0.01, kpointdensity=6.0, folder=None,
 
 
 def polvsatom(row, *filenames):
+    import numpy as np
     if 'borndata' not in row.data:
         return
 
@@ -157,8 +166,8 @@ def polvsatom(row, *filenames):
         plt.close()
 
 
-def webpanel(row):
-    from mcr.custom import fig
+def webpanel(row, key_descriptions):
+    from asr.custom import fig
     polfilenames = []
     if 'Z_avv' in row.data:
         def matrixtable(M, digits=2):
@@ -170,7 +179,7 @@ def webpanel(row):
                     table[i][j] = '{:.{}f}'.format(value, digits)
             return table
 
-        panel = [[], []]
+        columns = [[], []]
         for a, Z_vv in enumerate(row.data.Z_avv):
             Zdata = matrixtable(Z_vv)
 
@@ -179,20 +188,25 @@ def webpanel(row):
                 type='table',
                 rows=Zdata)
 
-            panel[0].append(Ztable)
+            columns[0].append(Ztable)
             polname = 'polvsatom{}.png'.format(a)
-            panel[1].append(fig(polname))
+            columns[1].append(fig(polname))
             polfilenames.append(polname)
-    panel = [('Born charges', panel)]
-    return panel, polvsatom, polfilenames
+        panel = [('Born charges', columns)]
+    else:
+        panel = []
+    things = ()
+    return panel, things
 
 
-def collect_data(kvp, data, atoms, verbose=False):
+def collect_data(kvp, data, key_descriptions, atoms, verbose=False):
+    import json
     import os.path as op
+    import numpy as np
+    from ase.io import jsonio
+
     delta = 0.01
-
     P_davv = []
-
     fname = 'data-borncharges/borncharges-{}.json'.format(delta)
     if not op.isfile(fname):
         return
@@ -215,6 +229,9 @@ def collect_data(kvp, data, atoms, verbose=False):
 
 
 def print_results(filename='data-borncharges/borncharges-0.01.json'):
+    import numpy as np
+    import json
+    from ase.io import jsonio
     np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
     import os.path as op
     if not op.isfile(filename):
@@ -230,24 +247,10 @@ def print_results(filename='data-borncharges/borncharges-0.01.json'):
     print(-dct['Z_avv'])
 
 
-def main(args):
-    borncharges(**args)
-
-
-short_description = 'Calculate Born charges'
-dependencies = ['gs.py']
-parser = argparse.ArgumentParser(description=short_description)
-help = 'Atomic displacement when moving atoms in Å'
-parser.add_argument('-d', '--displacement', help=help, default=0.01,
-                    type=float)
-help = 'Set kpoint density for calculation of berryphases'
-parser.add_argument('-k', '--kpointdensity', help=help, default=6.0,
-                    type=float)
-help = 'Folder where data is put'
-parser.add_argument('-f', '--folder', help=help,
-                    default='data-borncharges')
+group = 'Property'
+dependencies = ['asr.gs']
+resources = '24:10h'
 
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()

@@ -18,6 +18,8 @@ from _gpaw import tetrahedron_weight
 from c2db import magnetic_atoms
 from c2db.utils import get_spin_direction
 
+import click
+
 
 def _lti(energies, dos, kpts, M, E, W=None):
     """Faster implementation."""
@@ -34,8 +36,7 @@ def _lti(energies, dos, kpts, M, E, W=None):
             if m == n:
                 continue
             for k in range(4):
-                tetrahedron_weight(e, simplices, k, s,
-                                   dos[m:n], energies[m:n],
+                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
                                    volumes)
     else:
         for e, w in zip(E.T, W.T):
@@ -46,8 +47,7 @@ def _lti(energies, dos, kpts, M, E, W=None):
             if m == n:
                 continue
             for k in range(4):
-                tetrahedron_weight(e, simplices, k, s,
-                                   dos[m:n], energies[m:n],
+                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
                                    volumes * w[k])
 
 
@@ -117,7 +117,8 @@ def dft_for_pdos(kptdens=36.0):
     return calc
 
 
-def run_pdos(calc='pdos.gpw'):
+@click.command()
+def main(calc='pdos.gpw'):
     if not op.isfile('pdos.gpw'):
         dft_for_pdos()
     dosefnosoc = dosef_nosoc()
@@ -179,20 +180,22 @@ def pdos(gpwname, spinorbit=True) -> None:
 
                 energies.shape = (kd.nibzkpts, -1)
                 energies = energies[kd.bz2ibz_k]
-                energies.shape = tuple(kd.N_c) + (-1,)
+                energies.shape = tuple(kd.N_c) + (-1, )
                 weights.shape = (kd.nibzkpts, -1)
                 weights /= kd.weight_k[:, np.newaxis]
                 w = weights[kd.bz2ibz_k]
-                w.shape = tuple(kd.N_c) + (-1,)
+                w.shape = tuple(kd.N_c) + (-1, )
                 p = ltidos(calc.atoms.cell, energies * Ha, e, w)
                 key = ','.join([str(spin), str(spec), str(l)])
                 pdos_sal[key] += p
         e_s[spin] = e
 
-    data = {'energies': e,
-            'pdos_sal': pdos_sal,
-            'symbols': calc.atoms.get_chemical_symbols(),
-            'efermi': efermi}
+    data = {
+        'energies': e,
+        'pdos_sal': pdos_sal,
+        'symbols': calc.atoms.get_chemical_symbols(),
+        'efermi': efermi
+    }
     with paropen(fname, 'w') as fd:
         json.dump(jsonio.encode(data), fd)
 
@@ -232,7 +235,7 @@ def dosef_soc():
         bzkpts = calc.get_bz_k_points()
         size, offset = get_monkhorst_pack_size_and_offset(bzkpts)
         bz2ibz = calc.get_bz_to_ibz_map()
-        shape = (dos.nspins,) + tuple(size) + (-1,)
+        shape = (dos.nspins, ) + tuple(size) + (-1, )
         dos.e_skn = dos.e_skn[:, bz2ibz].reshape(shape)
         dos = dos.get_dos() / 2
         mpi.broadcast(dos)
@@ -271,14 +274,100 @@ def plot_pdos():
     plt.show()
 
 
-def main(args):
-    run_pdos('pdos.gpw')
+def pdos_pbe(row,
+             filename='pbe-pdos.png',
+             figsize=(6.4, 4.8),
+             fontsize=10,
+             lw=2,
+             loc='best'):
+    if 'pdos_pbe' not in row.data:
+        return
+
+    def smooth(y, npts=3):
+        return np.convolve(y, np.ones(npts) / npts, mode='same')
+
+    dct = row.data.pdos_pbe
+    e = dct['energies']
+    pdos_sal2 = dct['pdos_sal']
+    z_a = set(row.numbers)
+    symbols = Atoms(formula_metal(z_a)).get_chemical_symbols()
+
+    def cmp(k):
+        s, a, L = k.split(',')
+        si = symbols.index(k.split(',')[1])
+        li = ['s', 'p', 'd', 'f'].index(L)
+        return ('{}{}{}'.format(s, si, li))
+
+    pdos_sal = OrderedDict()
+    for k in sorted(pdos_sal2.keys(), key=cmp):
+        pdos_sal[k] = pdos_sal2[k]
+    colors = {}
+    i = 0
+    for k in sorted(pdos_sal.keys(), key=cmp):
+        if int(k[0]) == 0:
+            colors[k[2:]] = 'C{}'.format(i % 10)
+            i += 1
+    spinpol = False
+    for k in pdos_sal.keys():
+        if int(k[0]) == 1:
+            spinpol = True
+            break
+    ef = dct['efermi']
+    mpl.rcParams['font.size'] = fontsize
+    ax = plt.figure(figsize=figsize).add_subplot(111)
+    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
+    emin = row.get('vbm', ef) - 3
+    emax = row.get('cbm', ef) + 3
+    i1, i2 = abs(e - emin).argmin(), abs(e - emax).argmin()
+    pdosint_s = defaultdict(float)
+    for key in sorted(pdos_sal.keys(), key=cmp):
+        pdos = pdos_sal[key]
+        spin, spec, lstr = key.split(',')
+        spin = int(spin)
+        sign = 1 if spin == 0 else -1
+        pdosint_s[spin] += np.trapz(y=pdos[i1:i2], x=e[i1:i2])
+        if spin == 0:
+            label = '{} ({})'.format(spec, lstr)
+        else:
+            label = None
+        ax.plot(
+            smooth(pdos) * sign, e, label=label, color=colors[key[2:]], lw=lw)
+
+    ax.legend(loc=loc)
+    ax.axhline(ef, color='k', ls=':')
+    ax.set_ylim(emin, emax)
+    if spinpol:
+        xmax = max(pdosint_s.values())
+        ax.set_xlim(-xmax * 0.5, xmax * 0.5)
+    else:
+        ax.set_xlim(0, pdosint_s[0] * 0.5)
+
+    xlim = ax.get_xlim()
+    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef),
+        ha='left',
+        va='bottom',
+        fontsize=fontsize * 1.3)
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=3, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
+    ax.set_xlabel('projected dos [states / eV]')
+    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
 
 
-short_description = 'Calculate projected density of states'
-parser = argparse.ArgumentParser(description=short_description)
+def webpanel(row, key_descriptions):
+    panel = []
+    things = [(pdos_pbe, ['pbe-pdos.png'])]
 
+    return panel, things
+
+
+group = 'Property'
 
 if __name__ == '__main__':
-    args = vars(parser.parse_args())
-    main(args)
+    main()

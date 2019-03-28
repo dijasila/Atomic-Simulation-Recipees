@@ -1,4 +1,4 @@
-def webpanel(row):
+def webpanel(row, key_descriptions):
     from typing import List
     from asr.custom import val2str
     xcends = ['', '_gllbsc', '_hse', '_gw']

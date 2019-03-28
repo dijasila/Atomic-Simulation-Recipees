@@ -35,29 +35,30 @@ def emtables(row):
     return tables
 
 
-def webpanel():
-    from asr.custom import fig
-    add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
-             'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
+# def webpanel(row, key_descriptions):
 
-    def nosoc_update(string):
-        if string.endswith(')'):
-            return string[:-1] + ', no SOC)'
-        else:
-            return string + ' (no SOC)'
+#     from asr.custom import fig
+#     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
+#                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
 
-    for key in add_nosoc:
-        s, l, units = key_descriptions[key]
-        if l:
-            key_descriptions[key + "_nosoc"] = (s, nosoc_update(l), units)
-        else:
-            key_descriptions[key + "_nosoc"] = (nosoc_update(s), l, units)
+#     def nosoc_update(string):
+#         if string.endswith(')'):
+#             return string[:-1] + ', no SOC)'
+#         else:
+#             return string + ' (no SOC)'
 
-    panel = ('Effective masses (PBE)',
-             [[fig('pbe-bzcut-cb-bs.png'), fig('pbe-bzcut-vb-bs.png')],
-              emtables(row)])
+#     for key in add_nosoc:
+#         s, l, units = key_descriptions[key]
+#         if l:
+#             key_descriptions[key + "_nosoc"] = (s, nosoc_update(l), units)
+#         else:
+#             key_descriptions[key + "_nosoc"] = (nosoc_update(s), l, units)
 
-    return panel
+#     panel = ('Effective masses (PBE)',
+#              [[fig('pbe-bzcut-cb-bs.png'), fig('pbe-bzcut-vb-bs.png')],
+#               emtables(row)])
+
+#     return panel
 
             
 group = 'Property'

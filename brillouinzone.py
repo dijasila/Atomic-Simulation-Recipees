@@ -119,7 +119,7 @@ def bz_soc(row, fname):
             lwvbm=1.5)
 
 
-def webpanel():
+def webpanel(row, key_descriptions):
     things = [(bzcut_pbe, ['pbe-bzcut-cb-bs.png', 'pbe-bzcut-vb-bs.png']),
               (bz_soc, ['bz.png'])]
 

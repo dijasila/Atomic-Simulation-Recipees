@@ -1,5 +1,5 @@
 
-def webpanel(row):
+def webpanel(row, key_descriptions):
     from asr.custom import table
     if row.magstate != 'NM':
         magtable = table('Property',
@@ -9,7 +9,8 @@ def webpanel(row):
     else:
         panel = []
 
-    return panel
+    things = ()
+    return panel, things
 
 
 group = 'Property'

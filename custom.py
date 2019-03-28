@@ -63,13 +63,8 @@ def fig(filename: str, link: str = None) -> 'Dict[str, Any]':
     return dct
 
 
-mykd = {}
-exclude = set()  # Stuff not in miscellaneous section
-
-
-def table(row, title, keys, digits=2):
-    exclude.update(keys)
-    return create_table(row, [title, 'Value'], keys, mykd, digits)
+def table(row, title, keys, kd={}, digits=2):
+    return create_table(row, [title, 'Value'], keys, kd, digits)
 
 
 def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
@@ -78,9 +73,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     import asr
     page = []
     things = []
-
-    # Update local copy of key_descriptions
-    mykd.update(key_descriptions)
+    exclude = set()
 
     # Locate all webpanels
     from importlib import import_module
@@ -91,11 +84,12 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
         module = import_module('asr.' + name)
 
         try:
-            panel, newthings = module.webpanel(row)
+            print('module', name)
+            panel, newthings = module.webpanel(row, key_descriptions)
             if panel:
                 page.append(panel)
             if newthings:
-                things.append(newthings)
+                things.extend(newthings)
         except AttributeError:
             continue
 

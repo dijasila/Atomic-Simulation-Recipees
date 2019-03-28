@@ -80,21 +80,22 @@ def absorption(row, fnamein, fnameout):
             plt.close()
 
 
-def webpanel(row):
-    from asr.custom import fig, table
-    # only show bse if binding energy is there
-    if row.get('bse_binding', 0) > 0:
-        bse_binding = table('Property',
-                            ['bse_binding', 'excitonmass1', 'excitonmass2'])
-    else:
-        bse_binding = table('Property', [])
+# def webpanel(row, key_descriptions):
+#     from asr.custom import fig, table
+#     # only show bse if binding energy is there
+#     if row.get('bse_binding', 0) > 0:
+#         bse_binding = table('Property',
+#                             ['bse_binding', 'excitonmass1', 'excitonmass2'],
+#                             key_descriptions)
+#     else:
+#         bse_binding = table('Property', [])
 
-    panel = ('Optical absorption (BSE)', [[fig('abs-in.png'), bse_binding],
-                                          [fig('abs-out.png')]])
+#     panel = ('Optical absorption (BSE)', [[fig('abs-in.png'), bse_binding],
+#                                           [fig('abs-out.png')]])
 
-    things = [(absorption, ['abs-in.png', 'abs-out.png'])]
+#     things = [(absorption, ['abs-in.png', 'abs-out.png'])]
 
-    return panel, things
+#     return panel, things
 
 
 group = 'Property'

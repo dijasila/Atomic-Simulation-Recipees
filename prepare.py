@@ -17,6 +17,7 @@ def prepare(filename, destination, vacuum=7.5):
     write(destination, atoms)
 
 
+group = 'Structure'
 short_description = 'Prepare structure for recipes'
 parser = argparse.ArgumentParser(description=short_description)
 parser.add_argument('--filename', default='origin.traj',

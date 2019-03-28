@@ -116,7 +116,7 @@ def collect_data(kvp,
     kvp['uid'] = info['uid']
     kvp['stoichiometry'] = info['stoichiometry']
     kvp['spacegroup'] = info['spacegroup']
-    
+
     # Update key-descriptions
     key_descriptions.update({
         'magstate': ('Magnetic state', 'Magnetic state', ''),
@@ -125,10 +125,11 @@ def collect_data(kvp,
         'has_invsymm': ('Inversion symmetry', '', ''),
         'uid': ('Identifier', '', ''),
         'stoichiometry': ('Stoichiometry', '', ''),
+        'spacegroup': ('Space group', 'Space group', ''),
     })
 
 
-def webpanel(row):
+def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
     from asr.custom import table
 
@@ -136,7 +137,7 @@ def webpanel(row):
     basictable = table(row, 'Property', [
         'prototype', 'class', 'spacegroup', 'gap', 'magstate', 'ICSD_id',
         'COD_id'
-    ], 2)
+    ], key_descriptions, 2)
     rows = basictable['rows']
     codid = row.get('COD_id')
     if codid:

@@ -238,19 +238,19 @@ def polarizability(row, fx, fy, fz):
         plt.close()
 
 
-def webpanel(row):
+def webpanel(row, key_descriptions):
     from asr.custom import fig, table
 
     opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
-    ])
+    ], key_descriptions)
 
     panel = ('Polarizability (RPA)',
              [[fig('rpa-pol-x.png'),
                fig('rpa-pol-z.png')], [fig('rpa-pol-y.png'), opt]])
 
-    things = (polarizability,
-              ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])
+    things = [(polarizability,
+               ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])]
 
     return panel, things
 
