@@ -14,13 +14,14 @@ def main(filename, destination, vacuum=7.5):
     pbc = atoms.get_pbc()
     if not np.all(pbc):
         axis = np.argwhere(~pbc)[0]
-        atoms.center(vacuum=vacuum,
-                     axis=axis)
+        atoms.center(vacuum=vacuum, axis=axis)
     atoms.pbc = (1, 1, 1)
     niggli_reduce(atoms)
     atoms.pbc = pbc
     write(destination, atoms)
 
+
+group = 'Structure'
 
 if __name__ == '__main__':
     main()

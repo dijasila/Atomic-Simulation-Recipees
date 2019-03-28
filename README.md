@@ -3,7 +3,7 @@ Atomic Simulation Recipes
 Recipes for Atomic Scale Materials Research.
 
 Collection of python recipes that just work(!) for common (and not so common)
-tasks perfomed in atomic scale materials research that. These tasks include
+tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
 
@@ -17,14 +17,24 @@ Requirements
 Additionally, but not a requirement, it can be nice to have
 * myqueue
 
+Installation
+------------
+
+```console
+$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git pythonmodules/asr
+$ echo  'export PYTHONPATH=~/pythonmodules:$PYTHONPATH' >> ~/.bashrc 
+```
+
 How to use
 ----------
-First, clone the code into `~/asr`. Now, if you want to relax an atomic
-structure then save your structure to `start.traj` and simply do
+Lets calculate the properties of Silicon. To do this, we start by creating
+a new folder and put a 'start.json' file into the directory containing
+the atomic structure of Silicon. Then we relax the structure.
 ```console
-$ python -m asr.relax
+$ mkdir ~/silicon && cd ~/silicon
+$ ase build -x diamond Si start.json
+$ python3 -m asr.relax
 ```
-in the same folder.
 
 Types of recipes
 ----------------
