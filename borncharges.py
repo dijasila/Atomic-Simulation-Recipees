@@ -8,7 +8,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
                       no_symmetries=False):
     from gpaw import GPAW
     from pathlib import Path
-    
+
     params['kpts'] = {'density': density,
                       'gamma': True,
                       'even': True}
@@ -58,7 +58,7 @@ def main(displacement, kpointdensity, folder):
         except FileExistsError:
             pass
     world.barrier()
-    
+
     chdir(folder)
     calc = GPAW('../gs.gpw', txt=None)
     params = calc.parameters
@@ -71,7 +71,7 @@ def main(displacement, kpointdensity, folder):
     atoms.set_positions(pos_av)
     Z_avv = []
     P_asvv = []
-    
+
     if world.rank == 0:
         print('Atomnum Atom Direction Displacement')
     for a in range(len(atoms)):
@@ -199,7 +199,7 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-def collect_data(kvp, data, key_descriptions, atoms, verbose=False):
+def collect_data(kvp, data, key_descriptions, atoms):
     import json
     import os.path as op
     import numpy as np

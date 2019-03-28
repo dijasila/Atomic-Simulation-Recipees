@@ -108,7 +108,7 @@ def main(gs, density, ecut):
         np.savez_compressed(filename, **data)
 
 
-def collect_data(kvp, data, atoms, key_descriptions, verbose):
+def collect_data(kvp, data, key_descriptions, atoms):
     import numpy as np
     from pathlib import Path
     if not Path('polarizability.npz').is_file():

@@ -96,7 +96,6 @@ def collect_data(kvp,
                  data,
                  key_descriptions,
                  atoms=None,
-                 verbose=False,
                  skip_forces=False):
     """Collect quick info to database"""
     import numpy as np

@@ -43,8 +43,7 @@ def collect(db, verbose=False, skip_forces=False, references=None):
                 kvp=kvp,
                 data=data,
                 key_descriptions=key_descriptions,
-                atoms=atoms,
-                verbose=verbose)
+                atoms=atoms)
         except KeyboardInterrupt:
             raise
         except Exception as x:

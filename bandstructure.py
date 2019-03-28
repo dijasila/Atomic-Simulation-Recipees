@@ -101,7 +101,7 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def collect_data(kvp, data, key_descriptions, atoms, verbose):
+def collect_data(kvp, data, key_descriptions, atoms):
     """Band structure PBE and GW +- SOC."""
     import os.path as op
     if not op.isfile('eigs_spinorbit.npz'):
