@@ -81,11 +81,18 @@ import click
 def main(arg1):
     pass
 
-def collect_data(kvp, data, atoms, key_descriptions):
-    pass
+
+def collect_data():
+    kvp = {}
+    data = {}
+    key_descriptions = {}
+    return kvp, data, key_descriptions
+
 
 def webpanel(row, key_descriptions):
-    pass
+    panel = ()
+    things = ()
+    return panel, things
 
 
 if __name__ == '__main__':
