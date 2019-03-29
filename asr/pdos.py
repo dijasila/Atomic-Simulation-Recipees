@@ -362,6 +362,11 @@ def main(calc='pdos.gpw'):
     pdos(calc, spinorbit=True)
 
 
+def collect_data():
+    """Collect data to ASE database"""
+    raise NotImplementedError('What data does pdos produce?')
+
+
 def webpanel(row, key_descriptions):
     panel = []
     things = [(pdos_pbe, ['pbe-pdos.png'])]
@@ -370,6 +375,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+resources = '8:1h'  # How many resources are used
 
 if __name__ == '__main__':
     main()
