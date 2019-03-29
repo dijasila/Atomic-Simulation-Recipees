@@ -29,7 +29,7 @@ def nonsc(kdens=12, emptybands=20, outname='densk'):
     return calc
 
 
-def refinegs(sc=True, *args, **kwargs):
+def refinegs(sc=False, *args, **kwargs):
     """Refine the ground state calculation
     
     Parameters:
@@ -43,7 +43,7 @@ def refinegs(sc=True, *args, **kwargs):
         GPAW calculator object
     """
     if sc:
-        return nonsc(args, kwargs)
+        return nonsc(*args, **kwargs)
     else:
         raise NotImplementedError('Someone should implement refinement '
                                   + 'with self-consistency')
