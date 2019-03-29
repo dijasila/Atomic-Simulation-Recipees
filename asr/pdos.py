@@ -6,13 +6,15 @@ import argparse
 from collections import defaultdict
 import json
 import os.path as op
+from pathlib import Path
 
 import numpy as np
-import ase.dft.dos
+from ase.dft.dos import DOS
 from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
 from ase.units import Ha
+from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 import gpaw.mpi as mpi
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
@@ -112,13 +114,6 @@ def get_l_a(zs):
     return l_a
 
 
-def dft_for_pdos(kptdens=36.0):
-    from asr.utils.refinegs import refinegs
-    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
-    calc.write('pdos.gpw')  # Is this necessary? XXX
-    return calc
-
-
 def pdos(gpwname, spinorbit=True) -> None:
     """
     Writes the projected dos to a file pdos.json or pdos_soc.json
@@ -186,50 +181,6 @@ def pdos(gpwname, spinorbit=True) -> None:
     }
     with paropen(fname, 'w') as fd:
         json.dump(jsonio.encode(data), fd)
-
-
-def dosef_nosoc():
-    """
-    Get dos at ef
-    """
-    name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
-    calc = GPAW(name, txt=None)
-
-    from ase.dft.dos import DOS
-    dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-    return dos.get_dos()[1]
-
-
-def dosef_soc():
-    """
-    Get dos at ef
-    """
-    from ase.dft.kpoints import get_monkhorst_pack_size_and_offset
-    from ase.dft.dos import DOS
-    from c2db.utils import gpw2eigs
-    name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
-    world = mpi.world
-    if world.rank == 0:
-        calc = GPAW(name, communicator=mpi.serial_comm, txt=None)
-
-        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-
-        # hack DOS
-        e_skm, ef = gpw2eigs(name, optimal_spin_direction=True)
-        if e_skm.ndim == 2:
-            e_skm = e_skm[np.newaxis]
-        dos.nspins = 1
-        dos.e_skn = e_skm - ef
-        bzkpts = calc.get_bz_k_points()
-        size, offset = get_monkhorst_pack_size_and_offset(bzkpts)
-        bz2ibz = calc.get_bz_to_ibz_map()
-        shape = (dos.nspins, ) + tuple(size) + (-1, )
-        dos.e_skn = dos.e_skn[:, bz2ibz].reshape(shape)
-        dos = dos.get_dos() / 2
-        mpi.broadcast(dos)
-    else:
-        dos = mpi.broadcast(None)
-    return dos[1]
 
 
 def plot_pdos():
@@ -348,16 +299,60 @@ def pdos_pbe(row,
     plt.close()
 
 
+def get_dos_at_ef(calc, soc=False):
+    """Get dos at the Fermi energy"""
+    if soc:
+        # Should go to asr.utils XXX
+        from c2db.utils import gpw2eigs
+        name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
+        world = mpi.world
+        if world.rank == 0:
+            # calc = GPAW(name, communicator=mpi.serial_comm, txt=None)
+            dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
+
+            # hack dos
+            e_skm, ef = gpw2eigs(name, optimal_spin_direction=True)  # calc?
+            if e_skm.ndim == 2:
+                e_skm = e_skm[np.newaxis]
+            dos.nspins = 1
+            dos.e_skn = e_skm - ef
+            bzkpts = calc.get_bz_k_points()
+            size, offset = k2so(bzkpts)
+            bz2ibz = calc.get_bz_to_ibz_map()
+            shape = (dos.nspins, ) + tuple(size) + (-1, )
+            dos.e_skn = dos.e_skn[:, bz2ibz].reshape(shape)
+            dos = dos.get_dos() / 2
+            mpi.broadcast(dos)
+        else:
+            dos = mpi.broadcast(None)
+    else:
+        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
+        dos = dos.get_dos()
+    return dos[1]
+
+
+def write_dos_at_ef(dos_at_ef, soc=False):
+    with paropen('dos-at-ef_soc%s' % str(soc), 'w') as fd:  # insert << >> XXX
+        print('{}'.format(dos_at_ef), file=fd)
+
+
+def refine_gs_for_pdos(kptdens=36.0):  # inputs as click options? XXX
+    from asr.utils.refinegs import refinegs
+    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
+    # calc.write('pdos.gpw')  # Is this necessary? XXX
+    return calc
+
+
 @click.command()
-def main(calc='pdos.gpw'):
-    if not op.isfile('pdos.gpw'):
-        dft_for_pdos()
-    dosefnosoc = dosef_nosoc()
-    with paropen('dosef_nosoc.txt', 'w') as fd:
-        print('{}'.format(dosefnosoc), file=fd)
-    dosefsoc = dosef_soc()
-    with paropen('dosef_soc.txt', 'w') as fd:
-        print('{}'.format(dosefsoc), file=fd)
+def main():
+    # Refine ground state with more k-points
+    calc = refine_gs_for_pdos()
+
+    # Calculate and write the dos at the Fermi energy
+    write_dos_at_ef(get_dos_at_ef(calc, soc=False), soc=False)
+    write_dos_at_ef(get_dos_at_ef(calc, soc=True), soc=True)
+
+    # Calculate and write the pdos
     pdos(calc, spinorbit=False)
     pdos(calc, spinorbit=True)
 
