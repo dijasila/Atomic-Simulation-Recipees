@@ -60,7 +60,48 @@ def main(gpwfilename):
             #Path('gap{}.json'.format('_soc' if soc else '')).write_text(json.dumps(data))
     
 
+def collect_data(atoms):
+    import numpy as np
 
+    data = {}
+    kvp = {}
+    
+    data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
+    descs = [('Bandgap', 'Bandgap', 'eV'), 
+             ('Valence Band Maximum', 'Maximum of valence band', 'eV'), 
+             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'), 
+             ('Direct Bandgap', 'Direct bandgap', 'eV'), 
+             ('Valence Band Maximum - Direct', 'Valence Band Maximum - Direct', 'eV'), 
+             ('Conduction Band Minimum - Direct', 'Conduction Band Minimum - Direct', 'eV'),
+             ('Fermi Level', "Fermi's level", 'eV')]
+
+    for soc in [True, False]:
+        fname = 'gap{}.npz'.format('_soc' if soc else '')
+        
+        sdata = np.load(fname)
+        
+        keyname = 'soc' if soc else 'nosoc'
+        data[keyname] = sdata
+        
+        namemod = lambda n : n + '_soc' if soc else n
+        includes = [namemod(n) for n in data_to_include]
+
+        for k, inc in enumerate(includes):
+            kvp[inc] = sdata[data_to_include[k]]
+            key_descriptions[inc] = descs[k]
+        
+
+    return kvp, key_descriptions, data
+
+
+def webpanel(row, key_descriptions):
+    from asr.custom import fig, table
+
+    t = table(row, 'Postprocessing', ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'], key_descriptions)
+
+    panel = ('Gap information', [t])
+
+    return panel, None
 
 
 
