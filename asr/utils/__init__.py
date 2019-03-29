@@ -1,7 +1,5 @@
 import click
 
-from asr.utils.refinegs import refinegs
-
 from functools import partial
 click.option = partial(click.option, show_default=True)
 
@@ -23,7 +21,7 @@ def get_parameters(key=None):
 def is_magnetic():
     import numpy as np
     from ase.io import read
-    atoms = read('start.traj')
+    atoms = get_start_atoms()
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
     if maxmom > 1e-3:
@@ -35,7 +33,7 @@ def is_magnetic():
 def get_dimensionality():
     from ase.io import read
     import numpy as np
-    start = read('start.json')
+    start = get_start_atoms()
     nd = int(np.sum(start.get_pbc()))
     return nd
 
