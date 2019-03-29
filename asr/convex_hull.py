@@ -1,8 +1,60 @@
-from ase.db.row import AtomsRow
-from typing import Dict, Tuple, Any
+import json
+from collections import Counter
+from pathlib import Path
+from typing import List, Dict, Tuple, Any
+
+import click
+
+from ase.db import connect
+from ase.io import read
+from ase.phasediagram import PhaseDiagram
 
 
-def convex_hull(row, fname):
+@click.command()
+@click.option('-r', '--references', type=str,
+              help='Reference database.',
+              default='references.db')
+def main(references: str):
+    db = connect(references)
+    atoms = read('gs.gpw')
+    count = Counter(atoms.get_chemical_symbols())
+    refs: List[Tuple[str, float]] = []
+    for symbol in count:
+        for row in db.select(symbol):
+            refs.append((row.formula, row.energy / row.natoms))
+    convex_hull(atoms, refs)
+
+
+def convex_hull(atoms, references):
+    formula = atoms.get_chemical_formula()
+    energy = atoms.get_potential_energy()
+
+    try:
+        pd = PhaseDiagram(references, filter=formula)
+    except ValueError:
+        return
+
+    N = len(atoms)
+    e0, _, _ = pd.decompose(formula)
+    ehull = (energy - e0) / N
+
+    refs2 = []
+    for i, (count, e, name, natoms) in enumerate(pd.references):
+        refs2.append((name, pd.points[i, -1] * natoms))
+
+    Path('convex_hull.json').write_text(
+        json.dumps({'ehull': ehull,
+                    'references': refs2}))
+
+
+def collect_data(atoms):
+    data = json.loads(Path('prototype.json'))
+    return ({'ehull', data.pop('ehull')},
+            [('ehull', '?', '', 'eV/atom')],
+            data)
+
+
+def plot(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
 
     data = row.data.get('chdata')
@@ -123,8 +175,17 @@ def webpanel(row, key_descriptions):
               [hulltable1, hulltable2, hulltable3]])
 
     things = [(convex_hull, ['convex-hull.png'])]
-    
+
     return panel, things
 
 
 group = 'Property'
+dependencies = ['asr.gs']
+
+
+if __name__ == '__main__':
+    main()
+    if references and len(refs) == 0:
+        for row in connect(references).select(u=u):
+            refs.append((row.formula, row.de * row.natoms))
+        assert len(refs) > 0, 'Bad file: ' + references
