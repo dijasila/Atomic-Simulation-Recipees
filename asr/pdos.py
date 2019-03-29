@@ -113,8 +113,9 @@ def get_l_a(zs):
 
 
 def dft_for_pdos(kptdens=36.0):
-    from asr.utils import refinegs
-    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, outname='pdos')
+    from asr.utils.refinegs import refinegs
+    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
+    calc.write('pdos.gpw')  # Is this necessary? XXX
     return calc
 
 
