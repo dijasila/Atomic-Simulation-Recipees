@@ -113,8 +113,8 @@ def get_l_a(zs):
 
 
 def dft_for_pdos(kptdens=36.0):
-    from c2db.densk import nonsc
-    calc = nonsc(kdens=kptdens, emptybands=20, outname='pdos')
+    from asr.utils import refinegs
+    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, outname='pdos')
     return calc
 
 
