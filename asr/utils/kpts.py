@@ -7,8 +7,8 @@ def get_kpts_size(atoms, density):
     """
     size, offset = k2so(atoms=atoms, density=density)
     # size[2] = 1  # what do we do in general? XXX
-    for i in range(3):
-        if size[i] % 6 != 0:  # works for hexagonal cells XXX
+    for i in range(len(size)):
+        if size[i] % 6 != 0 and size[i] != 1:  # works for hexagonal cells XXX
             size[i] = 6 * (size[i] // 6 + 1)
     kpts = {'size': size, 'gamma': True}
     return kpts
