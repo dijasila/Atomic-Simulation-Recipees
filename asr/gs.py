@@ -24,7 +24,7 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
     """Calculate ground state density"""
     from pathlib import Path
     from ase.io import read
-    from gpaw import GPAW, PW, FermiDirac
+    from asr.utils.gpaw import GPAW
     path = Path(atomfile)
     if not path.is_file():
         from asr.utils import get_start_atoms
@@ -33,14 +33,14 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
         atoms = read(atomfile)
 
     params = dict(
-        mode=PW(ecut),
+        mode={'name': 'pw', 'ecut': ecut},
         xc=xc,
         basis='dzp',
         kpts={
             'density': kptdensity,
             'gamma': True
         },
-        occupations=FermiDirac(width=0.05),
+        occupations={'name': 'fermi-dirac', 'width': 0.05},
         txt='gs.txt')
 
     atoms.calc = GPAW(**params)

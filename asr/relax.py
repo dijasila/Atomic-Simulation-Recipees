@@ -5,15 +5,16 @@ from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
-from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
 from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
 from asr.references import formation_energy
-
+from asr.utils.gpaw import GPAW, KohnShamConvergenceError
 from asr.utils import update_defaults
+
 import click
 from functools import partial
+
 option = partial(click.option, show_default=True)
 
 
@@ -61,7 +62,6 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None):
-
     name = f'relax-{tag}'
     trajname = f'{name}.traj'
 
@@ -70,7 +70,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     if slab_relaxed is not None:
         slab = slab_relaxed
-    
+
     if done:
         return slab
 
@@ -86,13 +86,13 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             raise NotImplementedError(msg)
 
     kwargs = dict(txt=name + '.txt',
-                  mode=PW(ecut),
+                  mode={'name': 'pw', 'ecut': ecut},
                   xc='PBE',
                   basis='dzp',
                   kpts={'density': kptdens, 'gamma': True},
                   # This is the new default symmetry settings
                   symmetry={'do_not_symmetrize_the_density': True},
-                  occupations=FermiDirac(width=width))
+                  occupations={'name': 'fermi-dirac', 'width': width})
 
     if tag.endswith('+u'):
         # Try to get U values from previous image
