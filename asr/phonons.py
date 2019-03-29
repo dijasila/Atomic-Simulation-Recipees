@@ -13,7 +13,7 @@ import click
 
 @click.command()
 @click.option('-N', default=2, help='Supercell size')
-def phonons(N=2):
+def main(N=2):
     """Calculate Phonons"""
     # Remove empty files:
     if world.rank == 0:
