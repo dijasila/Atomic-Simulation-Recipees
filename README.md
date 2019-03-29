@@ -22,8 +22,8 @@ Installation
 ------------
 
 ```console
-$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git pythonpackages/asr
-$ echo  'export PYTHONPATH=~/pythonpackages:$PYTHONPATH' >> ~/.bashrc 
+$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
+$ echo  'export PYTHONPATH=~/asr:$PYTHONPATH' >> ~/.bashrc
 ```
 
 How to use
