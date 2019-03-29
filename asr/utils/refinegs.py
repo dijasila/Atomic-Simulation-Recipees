@@ -1,5 +1,5 @@
 from gpaw import GPAW
-from amr.utils import get_kpts_size
+from amr.utils.kpts import get_kpts_size
 
 
 def nonsc(kdens=12, emptybands=20, txt=None):

@@ -1,14 +1,7 @@
 import click
 
-from asr.utils.refinegs import refinegs
-from asr.kpts import get_kpts_size
-
 from functools import partial
 click.option = partial(click.option, show_default=True)
-
-# Methods for central import
-refinegs = refinegs
-get_kpts_size = get_kpts_size
 
 
 def get_parameters(key=None):
