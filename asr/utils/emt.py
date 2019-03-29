@@ -10,3 +10,6 @@ class GPAW(EMT):
 
     def __init__(self, **kwargs):
         EMT.__init__(self)
+
+    def write(self, filename):
+        ...
