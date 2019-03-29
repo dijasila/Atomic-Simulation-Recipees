@@ -43,7 +43,7 @@ def refinegs(sc=False, *args, **kwargs):
         GPAW calculator object
     """
     if sc:
-        return nonsc(*args, **kwargs)
-    else:
         raise NotImplementedError('Someone should implement refinement '
                                   + 'with self-consistency')
+    else:
+        return nonsc(*args, **kwargs)
