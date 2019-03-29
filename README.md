@@ -22,8 +22,8 @@ Installation
 ------------
 
 ```console
-$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git pythonmodules/asr
-$ echo  'export PYTHONPATH=~/pythonmodules:$PYTHONPATH' >> ~/.bashrc 
+$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git pythonpackages/asr
+$ echo  'export PYTHONPATH=~/pythonpackages:$PYTHONPATH' >> ~/.bashrc 
 ```
 
 How to use
@@ -66,73 +66,6 @@ changed to overwrite default settings in scripts. For example:
 In this way all default parameters exposed through the CLI of a recipe
 can be corrected.
 
-
-Skeleton of recipes
--------------------
-A recipe contains some specific functionality implemented in seperate functions:
-
-```python
-from asr.utils import update_defaults
-import click
-
-@click.command()
-@update_defaults('asr.scriptname')  # Name in params.json
-@click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
-def main(arg1):
-    pass
-
-
-def collect_data():
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    return kvp, data, key_descriptions
-
-
-def webpanel(row, key_descriptions):
-    panel = ()
-    things = ()
-    return panel, things
-
-
-if __name__ == '__main__':
-    main()
-
-```
-
-In all recipes the `main()` function implements the main functionality of
-the recipe. The `collect_data()` tells another recipe (`asr.collect`) how
-pick up data and put it into a database.
-
-
-Developing
-----------
-To see the current status of all recipes write
-```console
-$ python3 -m asr
-```
-
-Types of recipes
-----------------
-The recipes are divided into two groups:
-
-- Property recipes: Recipes that calculate a property for a given materials.
-  These scripts should only assume the existence of files in the same folder.
-  For example: The ground state recipe gs.py should only require an existence
-  of a starting atomic structure, in our case this is called `start.json`
-
-- Structure recipes: These are recipes that produce a new atomic structure.
-  When these scripts are run they produce a new folder containing a `start.json`
-  such that all property-recipes can be evaluated for the new structure in
-  the new folder. For example: The relax recipe which relaxes the atomic
-  structure produces new folders "nm/" "fm/" and "afm/" if these structures
-  are close to the lowest energy structure. Each of these folders contain
-  a new `start.json` from which the property recipes can be evaluated.
-
-- Post-processing recipes: Recipes that do no actual calculations and only
-  serves to collect and present data.
-
-
 See help for a recipe
 ---------------------
 We assume that you have cloned the project into `~/asr/` and have added
@@ -164,3 +97,76 @@ documentation. To submit a job that relaxes a structure simply do
 ```console
 $ mq submit asr.relax@24:10h
 ```
+
+Developing
+==========
+To see the current status of all recipes write
+```console
+$ python3 -m asr
+```
+
+Skeleton of recipes
+-------------------
+A recipe contains some specific functionality implemented in separate functions:
+
+```python
+from asr.utils import update_defaults
+import click
+
+@click.command()
+@update_defaults('asr.scriptname')  # Name in params.json
+@click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
+def main(arg1):
+    """Main functionality"""
+    pass
+
+def collect_data():
+    """Collect data to ASE database"""
+    kvp = {}
+    data = {}
+    key_descriptions = {}
+    return kvp, data, key_descriptions
+
+
+def webpanel(row, key_descriptions):
+    """Construct web panel for ASE database"""
+    panel = ()
+    things = ()
+    return panel, things
+
+group = 'Structure'
+dependencies = ['asr.otherscript']
+resources = '8:10h'
+creates = ['gs.gpw']  # What files are created
+diskspace = 0  # How much diskspace is used
+restart = 1  # Does it make sense to restart the script?
+
+if __name__ == '__main__':
+    main()
+
+```
+
+In all recipes the `main()` function implements the main functionality of
+the recipe. The `collect_data()` tells another recipe (`asr.collect`) how
+pick up data and put it into a database.
+
+
+Types of recipes
+----------------
+The recipes are divided into two groups:
+
+- Property recipes: Recipes that calculate a property for a given materials.
+  These scripts should only assume the existence of files in the same folder.
+  For example: The ground state recipe gs.py should only require an existence
+  of a starting atomic structure, in our case this is called `start.json`
+
+- Structure recipes: These are recipes that produce a new atomic structure.
+  When these scripts are run they produce a new folder containing a `start.json`
+  such that all property-recipes can be evaluated for the new structure in
+  the new folder. For example: The relax recipe which relaxes the atomic
+  structure produces new folders "nm/" "fm/" and "afm/" if these structures
+  are close to the lowest energy structure. Each of these folders contain
+  a new `start.json` from which the property recipes can be evaluated.
+
+- Post-processing recipes: Recipes that do no actual calculations and only
+  serves to collect and present data.
