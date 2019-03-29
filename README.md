@@ -131,6 +131,9 @@ def webpanel(row, key_descriptions):
 group = 'Structure'
 dependencies = ['asr.otherscript']
 resources = '8:10h'
+creates = ['gs.gpw']  # What files are created
+diskspace = 0  # How much diskspace is used
+restart = 1  # Does it make sense to restart the script?
 
 if __name__ == '__main__':
     main()
