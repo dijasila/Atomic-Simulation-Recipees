@@ -1,3 +1,6 @@
+from asr.utils import update_defaults
+import click
+
 import argparse
 
 from collections import defaultdict
@@ -17,8 +20,6 @@ from _gpaw import tetrahedron_weight
 
 from c2db import magnetic_atoms
 from c2db.utils import get_spin_direction
-
-import click
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
@@ -115,20 +116,6 @@ def dft_for_pdos(kptdens=36.0):
     from c2db.densk import nonsc
     calc = nonsc(kdens=kptdens, emptybands=20, outname='pdos')
     return calc
-
-
-@click.command()
-def main(calc='pdos.gpw'):
-    if not op.isfile('pdos.gpw'):
-        dft_for_pdos()
-    dosefnosoc = dosef_nosoc()
-    with paropen('dosef_nosoc.txt', 'w') as fd:
-        print('{}'.format(dosefnosoc), file=fd)
-    dosefsoc = dosef_soc()
-    with paropen('dosef_soc.txt', 'w') as fd:
-        print('{}'.format(dosefsoc), file=fd)
-    pdos(calc, spinorbit=False)
-    pdos(calc, spinorbit=True)
 
 
 def pdos(gpwname, spinorbit=True) -> None:
@@ -358,6 +345,20 @@ def pdos_pbe(row,
     ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
+
+
+@click.command()
+def main(calc='pdos.gpw'):
+    if not op.isfile('pdos.gpw'):
+        dft_for_pdos()
+    dosefnosoc = dosef_nosoc()
+    with paropen('dosef_nosoc.txt', 'w') as fd:
+        print('{}'.format(dosefnosoc), file=fd)
+    dosefsoc = dosef_soc()
+    with paropen('dosef_soc.txt', 'w') as fd:
+        print('{}'.format(dosefsoc), file=fd)
+    pdos(calc, spinorbit=False)
+    pdos(calc, spinorbit=True)
 
 
 def webpanel(row, key_descriptions):
