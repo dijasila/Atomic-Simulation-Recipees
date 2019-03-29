@@ -128,6 +128,7 @@ def webpanel(row, key_descriptions):
     """Construct web panel for ASE database"""
     pass
 
+group = 'Structure'
 dependencies = ['asr.otherscript']
 resources = '8:10h'
 
