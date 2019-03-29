@@ -104,14 +104,13 @@ def webpanel(row, key_descriptions):
     return panel, None
 
 
-
-
 def get_1bz_k(ibzkpts, calc, k_index):
     from gpaw.kpt_descriptor import to1bz
     k_c = ibzkpts[k_index] if k_index is not None else None
     if k_c is not None:
         k_c = to1bz(k_c[None], calc.wfs.gd.cell_cv)[0]
     return k_c
+
 
 def get_gap_info(soc, direct, calc, gpw):
     from ase.dft.bandgap import bandgap
@@ -136,14 +135,6 @@ def get_gap_info(soc, direct, calc, gpw):
             e1, e2 = None, None
         x = (e1, e2, g), skn1, skn2
     return x
-    
-    
-
-
-
-
-
-
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_direction=False):
@@ -192,7 +183,6 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_directio
         return dct['eps_nosoc_skn'], dct['efermi_nosoc']
         
 
-
 def fermi_level(calc, eps_skn=None, nelectrons=None):
     import numpy as np
     from gpaw.occupations import occupation_numbers
@@ -233,5 +223,5 @@ group = 'Postprocessing'
 dependencies = ['asr.anisotropy']
 
 
-if __name__=='__main__':
+if __name__== '__main__':
     main()
