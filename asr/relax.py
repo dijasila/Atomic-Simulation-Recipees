@@ -117,7 +117,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     except KohnShamConvergenceError:
         try:
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                          occupations=FermiDirac(width=0.02),
+                          occupations={'name': 'fermi-dirac', 'width': 0.02},
                           maxiter=999)
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
@@ -125,7 +125,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
-            kwargs.update(occupations=FermiDirac(width=0.2))
+            kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
                        logfile=name + '.log',
@@ -271,4 +271,3 @@ resources = '8:xeon8:10h'
 
 if __name__ == '__main__':
     main()
-
