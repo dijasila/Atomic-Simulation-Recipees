@@ -38,7 +38,7 @@ def main(gpwfilename):
             _, efermi = gpw2eigs(gpwfilename, soc=True, optimal_spin_direction=True)
         else:
             efermi = calc.get_fermi_level()
-    
+
             data = {'gap': evbm_ecbm_gap[2],
                     'vbm': evbm_ecbm_gap[0],
                     'cbm': evbm_ecbm_gap[1],
@@ -58,38 +58,38 @@ def main(gpwfilename):
             with paropen('gap{}.npz'.format('_soc' if soc else ''), 'wb') as f:
                 np.savez(f, **data)
             #Path('gap{}.json'.format('_soc' if soc else '')).write_text(json.dumps(data))
-    
+
 
 def collect_data(atoms):
     import numpy as np
 
     data = {}
     kvp = {}
-    
+
     data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
-    descs = [('Bandgap', 'Bandgap', 'eV'), 
-             ('Valence Band Maximum', 'Maximum of valence band', 'eV'), 
-             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'), 
-             ('Direct Bandgap', 'Direct bandgap', 'eV'), 
-             ('Valence Band Maximum - Direct', 'Valence Band Maximum - Direct', 'eV'), 
+    descs = [('Bandgap', 'Bandgap', 'eV'),
+             ('Valence Band Maximum', 'Maximum of valence band', 'eV'),
+             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'),
+             ('Direct Bandgap', 'Direct bandgap', 'eV'),
+             ('Valence Band Maximum - Direct', 'Valence Band Maximum - Direct', 'eV'),
              ('Conduction Band Minimum - Direct', 'Conduction Band Minimum - Direct', 'eV'),
              ('Fermi Level', "Fermi's level", 'eV')]
 
     for soc in [True, False]:
         fname = 'gap{}.npz'.format('_soc' if soc else '')
-        
+
         sdata = np.load(fname)
-        
+
         keyname = 'soc' if soc else 'nosoc'
         data[keyname] = sdata
-        
+
         namemod = lambda n : n + '_soc' if soc else n
         includes = [namemod(n) for n in data_to_include]
 
         for k, inc in enumerate(includes):
             kvp[inc] = sdata[data_to_include[k]]
             key_descriptions[inc] = descs[k]
-        
+
 
     return kvp, key_descriptions, data
 
@@ -181,7 +181,7 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_directio
         return out
     else:
         return dct['eps_nosoc_skn'], dct['efermi_nosoc']
-        
+
 
 def fermi_level(calc, eps_skn=None, nelectrons=None):
     import numpy as np

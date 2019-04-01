@@ -4,6 +4,7 @@ from typing import Dict, Tuple, Any
 
 def convex_hull(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
+    import matplotlib.pyplot as plt
 
     data = row.data.get('chdata')
     if data is None or row.data.get('references') is None:
@@ -123,7 +124,7 @@ def webpanel(row, key_descriptions):
               [hulltable1, hulltable2, hulltable3]])
 
     things = [(convex_hull, ['convex-hull.png'])]
-    
+
     return panel, things
 
 
