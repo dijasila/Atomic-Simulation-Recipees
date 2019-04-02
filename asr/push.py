@@ -19,7 +19,7 @@ option = partial(click.option, show_default=True)
     type=float,
     help='Maximum distance an atom will be displaced')
 @option('--fix-cell', is_flag=True, help='Do not relax cell')
-@option('--showmode', is_flag=True, help='Save mode to tmp.traj for viewing')
+@option('--show-mode', is_flag=True, help='Save mode to tmp.traj for viewing')
 def main(momentum, mode, amplitude, fix_cell, show_mode):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
@@ -63,7 +63,7 @@ def main(momentum, mode, amplitude, fix_cell, show_mode):
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
 
-    if showmode:
+    if show_mode:
         from ase.io.trajectory import Trajectory
         traj = Trajectory('tmp.traj', mode='w')
         showatoms = newatoms.copy()
