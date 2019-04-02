@@ -118,9 +118,14 @@ import click
 @click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
 def main(arg1):
     """Main functionality"""
-    pass
+    from pathlib import Path
+    results = {}
+    Path('results.json').write_text(json.dumps(results))
 
-def collect_data():
+return results
+
+
+def collect_data(atoms):
     """Collect data to ASE database"""
     kvp = {}
     data = {}
