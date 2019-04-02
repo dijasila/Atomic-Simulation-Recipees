@@ -1,4 +1,4 @@
-###TODO min kpt dens?
+# ##TODO min kpt dens?
 from asr.utils import click, update_defaults, get_start_parameters
 params = get_start_parameters()
 defaults = {}
@@ -11,21 +11,21 @@ def main(gpwfilename):
     import numpy as np
     from gpaw import GPAW
     from functools import partial
-    import json
     from pathlib import Path
     from ase.parallel import paropen
-    #inputs: gpw groundstate file, soc?, direct gap?
+    # inputs: gpw groundstate file, soc?, direct gap?
     if not Path(gpwfilename).is_file():
         raise ValueError('Groundstate file not present')
     calc = GPAW(gpwfilename, txt=None)
     ibzkpts = calc.get_ibz_k_points()
 
     for soc in [True, False]:
-        evbm_ecbm_gap, skn_vbm, skn_cbm = get_gap_info(soc=soc, direct=False, calc=calc, gpw=gpwfilename)
-        evbm_ecbm_direct_gap, direct_skn_vbm, direct_skn_cbm = get_gap_info(soc=soc, direct=True, calc=calc, gpw=gpwfilename)
+        evbm_ecbm_gap, skn_vbm, skn_cbm = get_gap_info(
+            soc=soc, direct=False, calc=calc, gpw=gpwfilename)
+        evbm_ecbm_direct_gap, direct_skn_vbm, direct_skn_cbm = get_gap_info(
+            soc=soc, direct=True, calc=calc, gpw=gpwfilename)
         k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
         direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
-
 
         get_kc = partial(get_1bz_k, ibzkpts, calc)
 
@@ -35,7 +35,8 @@ def main(gpwfilename):
         direct_k_cbm_c = get_kc(direct_k_cbm)
 
         if soc:
-            _, efermi = gpw2eigs(gpwfilename, soc=True, optimal_spin_direction=True)
+            _, efermi = gpw2eigs(gpwfilename, soc=True,
+                                 optimal_spin_direction=True)
         else:
             efermi = calc.get_fermi_level()
 
@@ -57,7 +58,8 @@ def main(gpwfilename):
 
             with paropen('gap{}.npz'.format('_soc' if soc else ''), 'wb') as f:
                 np.savez(f, **data)
-            #Path('gap{}.json'.format('_soc' if soc else '')).write_text(json.dumps(data))
+            # Path('gap{}.json'.format('_soc' if soc else '')).write_text(
+            #    json.dumps(data))
 
 
 def collect_data(atoms):
@@ -66,13 +68,16 @@ def collect_data(atoms):
     data = {}
     kvp = {}
 
-    data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
+    data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir',
+                       'efermi']
     descs = [('Bandgap', 'Bandgap', 'eV'),
              ('Valence Band Maximum', 'Maximum of valence band', 'eV'),
              ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'),
              ('Direct Bandgap', 'Direct bandgap', 'eV'),
-             ('Valence Band Maximum - Direct', 'Valence Band Maximum - Direct', 'eV'),
-             ('Conduction Band Minimum - Direct', 'Conduction Band Minimum - Direct', 'eV'),
+             ('Valence Band Maximum - Direct',
+              'Valence Band Maximum - Direct', 'eV'),
+             ('Conduction Band Minimum - Direct',
+              'Conduction Band Minimum - Direct', 'eV'),
              ('Fermi Level', "Fermi's level", 'eV')]
 
     for soc in [True, False]:
@@ -83,13 +88,14 @@ def collect_data(atoms):
         keyname = 'soc' if soc else 'nosoc'
         data[keyname] = sdata
 
-        namemod = lambda n : n + '_soc' if soc else n
+        def namemod(n):
+            return n + '_soc' if soc else n
+
         includes = [namemod(n) for n in data_to_include]
 
         for k, inc in enumerate(includes):
             kvp[inc] = sdata[data_to_include[k]]
             key_descriptions[inc] = descs[k]
-
 
     return kvp, key_descriptions, data
 
