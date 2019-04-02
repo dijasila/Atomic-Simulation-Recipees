@@ -1,8 +1,10 @@
-import argparse
-
 from collections import defaultdict
 import json
 import os.path as op
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 
 import numpy as np
 import ase.dft.dos
@@ -10,6 +12,8 @@ from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
 from ase.units import Ha
+from ase.utils import formula_metal
+
 import gpaw.mpi as mpi
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
@@ -298,7 +302,7 @@ def pdos_pbe(row,
         li = ['s', 'p', 'd', 'f'].index(L)
         return ('{}{}{}'.format(s, si, li))
 
-    pdos_sal = OrderedDict()
+    pdos_sal = {}
     for k in sorted(pdos_sal2.keys(), key=cmp):
         pdos_sal[k] = pdos_sal2[k]
     colors = {}

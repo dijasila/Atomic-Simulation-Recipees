@@ -2,7 +2,7 @@ def main():
     """Print summary of results"""
     from pathlib import Path
     from importlib import import_module
-    
+
     pathlist = Path(__file__).parent.glob('*.py')
     for path in pathlist:
         name = path.with_suffix('').name

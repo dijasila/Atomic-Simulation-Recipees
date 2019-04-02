@@ -44,7 +44,7 @@ def phonons(N=2):
         gsold = GPAW('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
-        
+
     from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
@@ -93,6 +93,8 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
 
 
 def plot_phonons(row, fname):
+    import matplotlib.pyplot as plt
+
     freqs = row.data.get('phonon_frequencies_3d')
     if freqs is None:
         return
@@ -121,16 +123,16 @@ def webpanel(row, key_descriptions):
     phonontable = table(row, 'Property',
                         ['c_11', 'c_22', 'c_12', 'bulk_modulus',
                          'minhessianeig'], key_descriptions)
-    
+
     panel = ('Elastic constants and phonons',
              [[fig('phonons.png')], [phonontable]])
     things = [(plot_phonons, ['phonons.png'])]
-    
+
     return panel, things
-    
+
 
 group = 'Property'
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
-    main()
+    phonons()

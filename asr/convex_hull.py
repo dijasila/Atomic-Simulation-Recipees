@@ -56,6 +56,7 @@ def collect_data(atoms):
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
+    import matplotlib.pyplot as plt
 
     data = row.data.get('chdata')
     if data is None or row.data.get('references') is None:

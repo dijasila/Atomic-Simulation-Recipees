@@ -1,5 +1,10 @@
-import click
 from functools import partial
+
+import click
+
+from asr.utils.prototype import get_symmetry_id
+
+
 option = partial(click.option, show_default=True)
 
 
@@ -83,6 +88,8 @@ def main():
         number = int(number[1:-1])
         info['spacegroup'] = sg
 
+    info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
+
     # Set temporary uid.
     # Will be changed later once we know the prototype.
     formula = atoms.get_chemical_formula()
@@ -92,22 +99,20 @@ def main():
     json.dump(info, open('quickinfo.json', 'w'), cls=jsonio.MyEncoder)
 
 
-def collect_data(kvp,
-                 data,
-                 key_descriptions,
-                 atoms=None,
-                 skip_forces=False):
+def collect_data(atoms, skip_forces=False):
     """Collect quick info to database"""
     import numpy as np
     import json
 
     info = json.load(open('quickinfo.json', 'r'))
 
-    data['info'] = info
+    data = {'info': info}
+    kvp = {}
+
     magstate = info['magstate']
     assert magstate in {'nm', 'fm', 'afm'}, magstate
 
-    # Update key-value-pairs
+    # Key-value-pairs:
     kvp['magstate'] = magstate.upper()
     kvp['is_magnetic'] = magstate != 'nm'
     kvp['cell_area'] = np.linalg.det(atoms.cell[:2, :2])
@@ -115,9 +120,9 @@ def collect_data(kvp,
     kvp['uid'] = info['uid']
     kvp['stoichiometry'] = info['stoichiometry']
     kvp['spacegroup'] = info['spacegroup']
+    kvp['prototype'] = info['prototype']
 
-    # Update key-descriptions
-    key_descriptions.update({
+    key_descriptions = {
         'magstate': ('Magnetic state', 'Magnetic state', ''),
         'is_magnetic': ('Magnetic', 'Material is magnetic', ''),
         'cell_area': ('Area of unit-cell', '', 'Ang^2'),
@@ -125,7 +130,9 @@ def collect_data(kvp,
         'uid': ('Identifier', '', ''),
         'stoichiometry': ('Stoichiometry', '', ''),
         'spacegroup': ('Space group', 'Space group', ''),
-    })
+        'prototype': ('Prototype', '', '')}
+
+    return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):
