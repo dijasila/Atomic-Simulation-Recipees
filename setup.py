@@ -17,7 +17,8 @@ setup(
     url='https://gitlab.com/mortengjerding/asr',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['Click', 'spglib', 'ase', 'pytest', 'gpaw'],
+    install_requires=['Click', 'pytest', 'numpy', 'matplotlib',
+                      'spglib', 'ase', 'gpaw'],
     classifiers=[
         'Development Status :: 0 - Beta', 'Environment :: Console',
         'Intended Audience :: Developers', 'License :: OSI Approved :: '
