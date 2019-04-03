@@ -1,20 +1,4 @@
-def get_recipes():
-    import importlib
-    from pathlib import Path
-
-    files = Path(__file__).parent.glob('*.py')
-    exclude = ['__init__.py', '__main__.py', 'utils.py']
-    recipes = []
-    for file in files:
-        is_recipe = True
-        if str(file.name) in exclude:
-            is_recipe = False
-
-        if is_recipe:
-            name = file.with_suffix('').name
-            module = importlib.import_module(f'asr.{name}')
-            recipes.append(module)
-    return recipes
+from asr.utils import get_recipes
 
 
 def summary(content, indent=0, title=None, pad=2):
