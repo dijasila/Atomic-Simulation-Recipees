@@ -14,19 +14,15 @@ from ase.parallel import paropen
 from ase.units import Ha
 from ase.utils import formula_metal
 
-import gpaw.mpi as mpi
-from gpaw import GPAW
-from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
-from _gpaw import tetrahedron_weight
-
-from c2db import magnetic_atoms
-from c2db.utils import get_spin_direction
+from asr.utils import magnetic_atoms
+from asr.gaps import get_spin_direction
 
 import click
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
     """Faster implementation."""
+    from _gpaw import tetrahedron_weight
     zero = energies[0]
     de = energies[1] - zero
     simplices = np.array([[0, 1, 2, 3]], np.int32)
@@ -148,6 +144,10 @@ def pdos(gpwname, spinorbit=True) -> None:
     fname = 'pdos_soc.json' if spinorbit else 'pdos.json'
     if op.isfile(fname):
         return
+    import gpaw.mpi as mpi
+    from gpaw import GPAW
+    from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
+
     world = mpi.world
     calc = GPAW(gpwname, txt=None)
     if spinorbit and world.rank == 0:
@@ -208,6 +208,7 @@ def dosef_nosoc():
     """
     Get dos at ef
     """
+    from gpaw import GPAW
     name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
     calc = GPAW(name, txt=None)
 
@@ -223,6 +224,7 @@ def dosef_soc():
     from ase.dft.kpoints import get_monkhorst_pack_size_and_offset
     from ase.dft.dos import DOS
     from c2db.utils import gpw2eigs
+    from gpaw import mpi, GPAW
     name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
     world = mpi.world
     if world.rank == 0:
@@ -251,6 +253,7 @@ def dosef_soc():
 def plot_pdos():
     """only for testing
     """
+    from gpaw import GPAW
     efermi = GPAW('gs.gpw', txt=None).get_fermi_level()
     import matplotlib.pyplot as plt
     with paropen('pdos.json', 'r') as fd:

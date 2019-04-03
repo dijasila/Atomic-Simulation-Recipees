@@ -7,7 +7,7 @@ from ase.geometry import crystal_structure_from_cell
 from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons
-from gpaw import GPAW
+
 import click
 
 
@@ -15,6 +15,7 @@ import click
 @click.option('-N', default=2, help='Supercell size')
 def phonons(N=2):
     """Calculate Phonons"""
+    from gpaw import GPAW
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -66,6 +67,7 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
                           'do_not_symmetrize_the_density': True}
 
     slab = read('start.traj')
+    from gpaw import GPAW
     calc = GPAW(txt='phonons.txt', **params)
     from asr.utils import get_dimensionality
     nd = get_dimensionality()

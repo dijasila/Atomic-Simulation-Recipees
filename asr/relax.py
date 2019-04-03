@@ -9,7 +9,6 @@ from ase.parallel import world, broadcast
 from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
 from asr.references import formation_energy
-from asr.utils.gpaw import GPAW, KohnShamConvergenceError
 from asr.utils import update_defaults
 
 import click
@@ -108,6 +107,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
+    from asr.utils.gpaw import GPAW, KohnShamConvergenceError
     slab.calc = GPAW(**kwargs)
     opt = BFGS(slab,
                logfile=name + '.log',
