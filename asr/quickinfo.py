@@ -40,10 +40,9 @@ def main():
 
     try:
         magstate = get_magstate(atoms)
-        info['magstate'] = magstate
     except RuntimeError:
-        magstate = 'unknown'
-        pass
+        magstate = 'nm'
+    info['magstate'] = magstate
 
     # Are forces/stresses known?
     try:

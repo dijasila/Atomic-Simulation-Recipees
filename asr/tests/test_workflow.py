@@ -17,7 +17,8 @@ write(folder / 'start.json', atoms)
 params = {'asr.relax': {'ecut': 100, 'kptdens': 2.0},
           'asr.gs': {'ecut': 100, 'kptdensity': 2.0},
           'asr.dos': {'density': 6.0},
-          'asr.borncharges': {'kpointdensity': 1.0}}
+          'asr.borncharges': {'kpointdensity': 1.0},
+          'asr.bandstructure': {'npoints': 50}}
 Path(folder / 'params.json').write_text(json.dumps(params))
 
 

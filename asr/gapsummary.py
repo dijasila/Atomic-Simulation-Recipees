@@ -1,4 +1,4 @@
-def webpanel(row, key_descriptions):
+def webpanel2(row, key_descriptions):
     from typing import List
     from asr.custom import val2str
     exclude = {}

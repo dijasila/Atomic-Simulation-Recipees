@@ -77,6 +77,94 @@ def main(kptpath=None, npoints=400, emptybands=20):
                 path=path)
 
 
+def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
+             optimal_spin_direction=False):
+    """give the eigenvalues w or w/o spinorbit coupling and the corresponding
+    fermi energy
+    Parameters:
+        gpw: str
+            gpw filename
+        soc: None, bool
+            use spinorbit coupling if None it returns both w and w/o
+        optimal_spin_direction: bool
+            If True, use get_spin_direction to calculate the spin direction
+            for the SOC
+        bands: slice, list of ints or None
+            None gives parameters.convergence.bands if possible else all bands
+        Returns: dict or e_skn, efermi
+        containg eigenvalues and fermi levels w and w/o spinorbit coupling
+    """
+    import numpy as np
+    from gpaw import GPAW, mpi
+    from gpaw.spinorbit import get_spinorbit_eigenvalues
+    from ase.parallel import broadcast
+    ranks = [0]
+    comm = mpi.world.new_communicator(ranks)
+    dct = None
+    if mpi.world.rank in ranks:
+        theta = 0
+        phi = 0
+        if optimal_spin_direction:
+            theta, phi = get_spin_direction()
+        calc = GPAW(gpw, txt=None, communicator=comm)
+        if bands is None:
+            n2 = calc.todict().get('convergence', {}).get('bands')
+            bands = slice(0, n2)
+        if isinstance(bands, slice):
+            bands = range(calc.get_number_of_bands())[bands]
+        eps_nosoc_skn = eigenvalues(calc)[..., bands]
+        efermi_nosoc = calc.get_fermi_level()
+        eps_mk, s_kvm = get_spinorbit_eigenvalues(calc, bands=bands,
+                                                  theta=theta,
+                                                  phi=phi,
+                                                  return_spin=True)
+        eps_km = eps_mk.T
+        efermi = fermi_level(calc, eps_km[np.newaxis],
+                             nelectrons=2 *
+                             calc.get_number_of_electrons())
+        dct = {'eps_nosoc_skn': eps_nosoc_skn,
+               'eps_km': eps_km,
+               'efermi_nosoc': efermi_nosoc,
+               'efermi': efermi,
+               's_kvm': s_kvm}
+
+    dct = broadcast(dct, root=0, comm=mpi.world)
+    if soc is None:
+        return dct
+    elif soc:
+        out = (dct['eps_km'], dct['efermi'], dct['s_kvm'])
+        if not return_spin:
+            out = out[:2]
+        return out
+    else:
+        return dct['eps_nosoc_skn'], dct['efermi_nosoc']
+
+
+def fermi_level(calc, eps_skn=None, nelectrons=None):
+    """
+    Parameters:
+        calc: GPAW
+            GPAW calculator
+        eps_skn: ndarray, shape=(ns, nk, nb), optional
+            eigenvalues (taken from calc if None)
+        nelectrons: float, optional
+            number of electrons (taken from calc if None)
+    Returns:
+        out: float
+            fermi level
+    """
+    from ase.units import Ha
+    from gpaw.occupations import occupation_numbers
+    if nelectrons is None:
+        nelectrons = calc.get_number_of_electrons()
+    if eps_skn is None:
+        eps_skn = eigenvalues(calc)
+    eps_skn.sort(axis=-1)
+    occ = calc.occupations.todict()
+    weight_k = calc.get_k_point_weights()
+    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
+
+
 def is_symmetry_protected(kpt, op_scc):
     """Calculate electronic band structure"""
     import numpy as np
@@ -101,6 +189,62 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
+def eigenvalues(calc):
+    """
+    Parameters:
+        calc: Calculator
+            GPAW calculator
+    Returns:
+        e_skn: (ns, nk, nb)-shape array
+    """
+    import numpy as np
+    rs = range(calc.get_number_of_spins())
+    rk = range(len(calc.get_ibz_k_points()))
+    e = calc.get_eigenvalues
+    return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
+
+
+def get_spin_direction(fname='anisotropy_xy.npz'):
+    '''
+    Uses the magnetic anisotropy to calculate the preferred spin orientation
+    for magnetic (FM/AFM) systems.
+
+    Parameters:
+        fname:
+            The filename of a datafile containing the xz and yz
+            anisotropy energies.
+    Returns:
+        theta:
+            Polar angle in radians
+        phi:
+            Azimuthal angle in radians
+    '''
+
+    import numpy as np
+    import os.path as op
+    theta = 0
+    phi = 0
+    if op.isfile(fname):
+        data = np.load(fname)
+        DE = max(data['dE_zx'], data['dE_zy'])
+        if DE > 0:
+            theta = np.pi / 2
+            if data['dE_zy'] > data['dE_zx']:
+                phi = np.pi / 2
+    return theta, phi
+
+
+def spin_axis(fname='anisotropy_xy.npz') -> int:
+    import numpy as np
+    theta, phi = get_spin_direction(fname=fname)
+    if theta == 0:
+        return 2
+    elif np.allclose(phi, np.pi / 2):
+        return 1
+    else:
+        return 0
+
+
 def collect_data(atoms):
     """Band structure PBE and GW +- SOC."""
     import os.path as op
@@ -113,7 +257,6 @@ def collect_data(atoms):
 
     import numpy as np
     from gpaw import GPAW
-    from c2db.utils import eigenvalues, spin_axis
     print('Collecting PBE bands-structure data')
     evac = kvp.get('evac')
     with open('eigs_spinorbit.npz', 'rb') as fd:
@@ -141,12 +284,15 @@ def collect_data(atoms):
     efermi = np.load('gap_soc.npz')['efermi']
     efermi_nosoc = np.load('gap.npz')['efermi']
 
+    ref_soc = evac or efermi
+    ref_nosoc = evac or efermi_nosoc
+
     pbe = {
         'path': path,
-        'eps_skn': eps_skn - evac,
-        'efermi_nosoc': efermi_nosoc - evac,
-        'efermi': efermi - evac,
-        'eps_so_mk': soc['e_mk'] - evac,
+        'eps_skn': eps_skn - ref_soc,
+        'efermi_nosoc': efermi_nosoc - ref_nosoc,
+        'efermi': efermi - evac if evac else efermi,
+        'eps_so_mk': soc['e_mk'] - ref_soc,
         'sz_mk': sz_mk
     }
     try:
@@ -154,7 +300,10 @@ def collect_data(atoms):
     except KeyError:
         from gpaw.symmetry import atoms2symmetry
         op_scc = atoms2symmetry(atoms).op_scc
-    magstate = kvp['magstate']
+    import json
+    from pathlib import Path
+    magstate = json.loads(Path('quickinfo.json').read_text())['magstate']
+
     for idx, kpt in enumerate(path):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
                 or magstate == 'AFM'):

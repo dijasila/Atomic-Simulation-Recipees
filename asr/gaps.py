@@ -5,7 +5,7 @@ defaults = {}
 
 
 @click.command()
-@update_defaults('asr.gs', defaults)
+@update_defaults('asr.gap', defaults)
 @click.option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
     import numpy as np
@@ -40,26 +40,26 @@ def main(gpwfilename):
         else:
             efermi = calc.get_fermi_level()
 
-            data = {'gap': evbm_ecbm_gap[2],
-                    'vbm': evbm_ecbm_gap[0],
-                    'cbm': evbm_ecbm_gap[1],
-                    'gap_dir': evbm_ecbm_direct_gap[2],
-                    'vbm_dir': evbm_ecbm_direct_gap[0],
-                    'cbm_dir': evbm_ecbm_direct_gap[1],
-                    'k1_c': k_vbm_c,
-                    'k2_c': k_cbm_c,
-                    'k1_dir_c': direct_k_vbm_c,
-                    'k2_dir_c': direct_k_cbm_c,
-                    'skn1': skn_vbm,
-                    'skn2': skn_cbm,
-                    'skn1_dir': direct_skn_vbm,
-                    'skn2_dir': direct_skn_cbm,
-                    'efermi': efermi}
+        data = {'gap': evbm_ecbm_gap[2],
+                'vbm': evbm_ecbm_gap[0],
+                'cbm': evbm_ecbm_gap[1],
+                'gap_dir': evbm_ecbm_direct_gap[2],
+                'vbm_dir': evbm_ecbm_direct_gap[0],
+                'cbm_dir': evbm_ecbm_direct_gap[1],
+                'k1_c': k_vbm_c,
+                'k2_c': k_cbm_c,
+                'k1_dir_c': direct_k_vbm_c,
+                'k2_dir_c': direct_k_cbm_c,
+                'skn1': skn_vbm,
+                'skn2': skn_cbm,
+                'skn1_dir': direct_skn_vbm,
+                'skn2_dir': direct_skn_cbm,
+                'efermi': efermi}
 
-            with paropen('gap{}.npz'.format('_soc' if soc else ''), 'wb') as f:
-                np.savez(f, **data)
-            # Path('gap{}.json'.format('_soc' if soc else '')).write_text(
-            #    json.dumps(data))
+        with paropen('gap{}.npz'.format('_soc' if soc else ''), 'wb') as f:
+            np.savez(f, **data)
+        # Path('gap{}.json'.format('_soc' if soc else '')).write_text(
+        #    json.dumps(data))
 
 
 def collect_data(atoms):
@@ -88,7 +88,7 @@ def collect_data(atoms):
         if not Path(fname).is_file():
             continue
 
-        sdata = np.load(fname)
+        sdata = dict(np.load(fname))
 
         keyname = 'soc' if soc else 'nosoc'
         data[keyname] = sdata
@@ -99,7 +99,7 @@ def collect_data(atoms):
         includes = [namemod(n) for n in data_to_include]
 
         for k, inc in enumerate(includes):
-            kvp[inc] = sdata[data_to_include[k]]
+            kvp[inc] = float(sdata[data_to_include[k]])
             key_descriptions[inc] = descs[k]
 
     return kvp, key_descriptions, data
@@ -112,7 +112,7 @@ def webpanel(row, key_descriptions):
               'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
               key_descriptions)
 
-    panel = ('Gap information', [t])
+    panel = ('Gap information', [[t]])
 
     return panel, None
 
