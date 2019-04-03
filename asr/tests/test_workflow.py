@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from click.testing import CliRunner
 from asr.collect import chdir
@@ -7,19 +8,16 @@ import json
 
 runner = CliRunner()
 
-folder = Path(__file__).parent / 'Si'
-
+# Set up folder, start.json and params.json
+folder = (Path(__file__).parent / 'Si').resolve()
 if not folder.is_dir():
     folder.mkdir()
-
 atoms = bulk('Si', crystalstructure='diamond')
 write(folder / 'start.json', atoms)
-
 params = {'asr.relax': {'ecut': 100, 'kptdens': 2.0},
           'asr.gs': {'ecut': 100, 'kptdensity': 2.0},
           'asr.dos': {'density': 6.0},
           'asr.borncharges': {'kpointdensity': 1.0}}
-
 Path(folder / 'params.json').write_text(json.dumps(params))
 
 
@@ -95,4 +93,5 @@ def test_collect_nm():
     assert result.exit_code == 0
 
 
-shutil.rmtree(folder, ignore_errors=False, onerror=None)
+def test_delete():
+    shutil.rmtree(folder, ignore_errors=False, onerror=None)
