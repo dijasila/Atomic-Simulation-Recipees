@@ -101,11 +101,15 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def collect_data(kvp, data, key_descriptions, atoms):
+def collect_data(atoms):
     """Band structure PBE and GW +- SOC."""
     import os.path as op
+    kvp = {}
+    key_descriptions = {}
+    data = {}
+
     if not op.isfile('eigs_spinorbit.npz'):
-        return
+        return kvp, key_descriptions, data
 
     import numpy as np
     from gpaw import GPAW
@@ -157,6 +161,7 @@ def collect_data(kvp, data, key_descriptions, atoms):
             pbe['sz_mk'][:, idx] = 0.0
 
     data['bs_pbe'] = pbe
+    return kvp, key_descriptions, data
 
 
 def bs_pbe_html(row,
@@ -170,6 +175,7 @@ def bs_pbe_html(row,
 
     import plotly
     import plotly.graph_objs as go
+    import numpy as np
 
     traces = []
     d = row.data.bs_pbe
@@ -330,8 +336,8 @@ def bs_pbe_html(row,
 
 
 def add_bs_pbe(row, ax, **kwargs):
-    """plot pbe with soc on ax
-   """
+    """plot pbe with soc on ax"""
+    from ase.dft.kpoints import labels_from_kpts
     c = '0.8'  # light grey for pbe with soc plot
     ls = '-'
     lw = kwargs.get('lw', 1.0)

@@ -4,3 +4,4 @@ tests:
     - pip install flake8
     - pip install -e .
     - flake8 asr
+    - python3 -m pytest asr/tests/test_cli.py --tb=short

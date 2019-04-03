@@ -64,9 +64,11 @@ def main(gpwfilename):
 
 def collect_data(atoms):
     import numpy as np
+    from pathlib import Path
 
     data = {}
     kvp = {}
+    key_descriptions = {}
 
     data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir',
                        'efermi']
@@ -82,6 +84,9 @@ def collect_data(atoms):
 
     for soc in [True, False]:
         fname = 'gap{}.npz'.format('_soc' if soc else '')
+
+        if not Path(fname).is_file():
+            continue
 
         sdata = np.load(fname)
 
@@ -101,9 +106,11 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.custom import table
 
-    t = table(row, 'Postprocessing', ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'], key_descriptions)
+    t = table(row, 'Postprocessing', [
+              'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
+              key_descriptions)
 
     panel = ('Gap information', [t])
 
@@ -120,12 +127,12 @@ def get_1bz_k(ibzkpts, calc, k_index):
 
 def get_gap_info(soc, direct, calc, gpw):
     from ase.dft.bandgap import bandgap
-    ##e1 is VBM, e2 is CBM
+    # e1 is VBM, e2 is CBM
     if soc:
         e_km, efermi = gpw2eigs(gpw, soc=True, optimal_spin_direction=True)
-        #km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
+        # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
-                            kpts=calc.get_ibz_k_points(), output=None)
+                                kpts=calc.get_ibz_k_points(), output=None)
         if km1[0] is not None:
             e1 = e_km[km1]
             e2 = e_km[km2]
@@ -143,7 +150,8 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
-def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_direction=False):
+def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
+             optimal_spin_direction=False):
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
@@ -171,7 +179,7 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_directio
                                                   return_spin=True)
         eps_km = eps_mk.T
         efermi = fermi_level(calc, eps_km[np.newaxis],
-                             nelectrons=2*calc.get_number_of_electrons())
+                             nelectrons=2 * calc.get_number_of_electrons())
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
                'eps_km': eps_km,
                'efermi_nosoc': efermi_nosoc,
@@ -190,7 +198,6 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False, optimal_spin_directio
 
 
 def fermi_level(calc, eps_skn=None, nelectrons=None):
-    import numpy as np
     from gpaw.occupations import occupation_numbers
     from ase.units import Ha
     if nelectrons is None:
@@ -200,7 +207,7 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
     eps_skn.sort(axis=-1)
     occ = calc.occupations.todict()
     weight_k = calc.get_k_point_weights()
-    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1]*Ha
+    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
 
 
 def eigenvalues(calc):
@@ -213,15 +220,16 @@ def eigenvalues(calc):
 
 def get_spin_direction(fname="anisotropy_xy.npz"):
     import os
+    import numpy as np
     theta = 0
     phi = 0
     if os.path.isfile(fname):
         data = np.load(fname)
         DE = max(data["dE_zx"], data["dE_zy"])
         if DE > 0:
-            theta = np.pi/2
+            theta = np.pi / 2
             if data["dE_zy"] > data["dE_zx"]:
-                phi = np.pi/2
+                phi = np.pi / 2
     return theta, phi
 
 
@@ -229,5 +237,5 @@ group = 'Postprocessing'
 dependencies = ['asr.anisotropy']
 
 
-if __name__== '__main__':
+if __name__ == '__main__':
     main()
