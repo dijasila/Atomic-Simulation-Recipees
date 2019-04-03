@@ -99,7 +99,6 @@ def main():
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.
-    formula = atoms.get_chemical_formula()
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
 
@@ -122,9 +121,9 @@ def collect_data(atoms):
     kvp = {}
     key_descriptions = {}
 
-    info = json.loads(p)
+    info = json.loads(p.read_text())
 
-    exclude = ['symmetries']
+    exclude = ['symmetries', 'formula']
     for key in info:
         if key in exclude:
             continue

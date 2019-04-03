@@ -91,7 +91,6 @@ def main(folders, references, verbose, skipforces):
             except Exception as x:
                 error = '{}: {}'.format(x.__class__.__name__, x)
                 tb = traceback.format_exc()
-                print(error)
                 errors.append((folder, error, tb))
             else:
                 errors.extend(errors2)

@@ -212,7 +212,7 @@ def collect_data(atoms):
     P_davv = []
     fname = 'data-borncharges/borncharges-{}.json'.format(delta)
     if not op.isfile(fname):
-        return
+        return {}, {}, {}
 
     with open(fname) as fd:
         dct = jsonio.decode(json.load(fd))
