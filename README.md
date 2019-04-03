@@ -121,12 +121,12 @@ def main(arg1):
     from pathlib import Path
     results = {}
     Path('results.json').write_text(json.dumps(results))
-
-return results
+    return results
 
 
 def collect_data(atoms):
     """Collect data to ASE database"""
+    results = json.loads(Path('results.json'))
     kvp = {}
     data = {}
     key_descriptions = {}

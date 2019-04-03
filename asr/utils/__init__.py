@@ -4,6 +4,25 @@ from functools import partial
 click.option = partial(click.option, show_default=True)
 
 
+def get_recipes():
+    import importlib
+    from pathlib import Path
+
+    files = list(Path(__file__).parent.parent.glob('*.py'))
+    exclude = ['__init__.py', '__main__.py', 'utils.py']
+    recipes = []
+    for file in files:
+        is_recipe = True
+        if str(file.name) in exclude:
+            is_recipe = False
+
+        if is_recipe:
+            name = file.with_suffix('').name
+            module = importlib.import_module(f'asr.{name}')
+            recipes.append(module)
+    return recipes
+
+
 def get_parameters(key=None):
     from pathlib import Path
     import json
