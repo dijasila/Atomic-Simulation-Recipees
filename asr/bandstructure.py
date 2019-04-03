@@ -175,6 +175,7 @@ def bs_pbe_html(row,
 
     import plotly
     import plotly.graph_objs as go
+    import numpy as np
 
     traces = []
     d = row.data.bs_pbe
@@ -335,8 +336,8 @@ def bs_pbe_html(row,
 
 
 def add_bs_pbe(row, ax, **kwargs):
-    """plot pbe with soc on ax
-   """
+    """plot pbe with soc on ax"""
+    from ase.dft.kpoints import labels_from_kpts
     c = '0.8'  # light grey for pbe with soc plot
     ls = '-'
     lw = kwargs.get('lw', 1.0)

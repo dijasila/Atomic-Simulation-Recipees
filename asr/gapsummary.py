@@ -1,6 +1,7 @@
 def webpanel(row, key_descriptions):
     from typing import List
     from asr.custom import val2str
+    exclude = {}
     xcends = ['', '_gllbsc', '_hse', '_gw']
     xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
     if any(row.get(gap, 0) > 0 for gap in ['gap{}'.format(e) for e in xcends]):

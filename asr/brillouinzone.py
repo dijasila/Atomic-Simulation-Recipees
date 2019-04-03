@@ -1,6 +1,10 @@
 def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
+    from ase.units import Bohr, Ha
     from c2db.em import evalmodel
     from ase.dft.kpoints import kpoint_convert
+    from matplotlib import pyplot as plt
+    import numpy as np
+    labels_from_kpts = None  # XXX: Fix pep8
     sortcolors = True
     erange = 0.05  # energy window
     cb = row.get('data', {}).get('effectivemass', {}).get('cb', {})

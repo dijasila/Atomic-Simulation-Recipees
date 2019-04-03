@@ -135,6 +135,7 @@ def convex_hull_tables(row: AtomsRow,
                        ) -> 'Tuple[Dict[str, Any], Dict[str, Any]]':
     if row.data.get('references') is None:
         return None, None
+    from ase.symbols import string2symbols
 
     rows = []
     for e, formula, prot, magstate, id, uid in sorted(row.data.references,
@@ -164,10 +165,11 @@ def webpanel(row, key_descriptions):
     from asr.custom import fig
     from asr.custom import table
 
-    # if 'c2db-' in prefix:  # make sure links to other rows just works!
-    #     projectname = 'c2db'
-    # else:
-    #     projectname = 'default'
+    prefix = key_descriptions.get('prefix', '')
+    if 'c2db-' in prefix:  # make sure links to other rows just works!
+        projectname = 'c2db'
+    else:
+        projectname = 'default'
 
     hulltable1 = table('Property',
                        ['hform', 'ehull', 'minhessianeig'],
@@ -189,7 +191,3 @@ dependencies = ['asr.gs']
 
 if __name__ == '__main__':
     main()
-    if references and len(refs) == 0:
-        for row in connect(references).select(u=u):
-            refs.append((row.formula, row.de * row.natoms))
-        assert len(refs) > 0, 'Bad file: ' + references
