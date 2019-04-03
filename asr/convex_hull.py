@@ -8,6 +8,7 @@ import click
 from ase.db import connect
 from ase.io import read
 from ase.phasediagram import PhaseDiagram
+from ase.db.row import AtomsRow
 
 
 @click.command()
@@ -48,6 +49,8 @@ def convex_hull(atoms, references):
 
 
 def collect_data(atoms):
+    if not Path('prototype.json').is_file():
+        return {}, {}, {}
     data = json.loads(Path('prototype.json'))
     return ({'ehull', data.pop('ehull')},
             [('ehull', '?', '', 'eV/atom')],
@@ -151,7 +154,7 @@ def convex_hull_tables(row: AtomsRow,
 
     return ({'type': 'table',
              'header': ['Monolayer formation energies', ''],
-            'rows': rows},
+             'rows': rows},
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
              'rows': bulkrows})

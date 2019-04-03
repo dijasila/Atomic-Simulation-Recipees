@@ -1,5 +1,6 @@
 # Creates: references.py
 
+import click
 """References from OQMD.
 
 See:
@@ -38,10 +39,10 @@ def fenergy(energy, count):
     return energy - e0
 
 
-def main():
-    import sys
+@click.command()
+@click.argument('path', type=str)
+def main(path):
     from ase.db import connect
-    path = sys.argv[1]
     db = connect(path)
     print('references = {', end='')
     for i, row in enumerate(db.select(ns=1, u=False)):

@@ -64,9 +64,11 @@ def main(gpwfilename):
 
 def collect_data(atoms):
     import numpy as np
+    from pathlib import Path
 
     data = {}
     kvp = {}
+    key_descriptions = {}
 
     data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir',
                        'efermi']
@@ -82,6 +84,9 @@ def collect_data(atoms):
 
     for soc in [True, False]:
         fname = 'gap{}.npz'.format('_soc' if soc else '')
+
+        if not Path(fname).is_file():
+            continue
 
         sdata = np.load(fname)
 
@@ -103,7 +108,9 @@ def collect_data(atoms):
 def webpanel(row, key_descriptions):
     from asr.custom import fig, table
 
-    t = table(row, 'Postprocessing', ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'], key_descriptions)
+    t = table(row, 'Postprocessing', [
+              'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
+              key_descriptions)
 
     panel = ('Gap information', [t])
 
@@ -123,9 +130,9 @@ def get_gap_info(soc, direct, calc, gpw):
     ##e1 is VBM, e2 is CBM
     if soc:
         e_km, efermi = gpw2eigs(gpw, soc=True, optimal_spin_direction=True)
-        #km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
+        # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
-                            kpts=calc.get_ibz_k_points(), output=None)
+                                kpts=calc.get_ibz_k_points(), output=None)
         if km1[0] is not None:
             e1 = e_km[km1]
             e2 = e_km[km2]
@@ -229,5 +236,5 @@ group = 'Postprocessing'
 dependencies = ['asr.anisotropy']
 
 
-if __name__== '__main__':
+if __name__ == '__main__':
     main()

@@ -39,11 +39,10 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     for name, step in zip(names, steps):
         try:
             print(f'Collecting {name}')
-            step(
-                kvp=kvp,
-                data=data,
-                key_descriptions=key_descriptions,
-                atoms=atoms)
+            tmpkvp, tmpkd, tmpdata = step(atoms=atoms)
+            kvp.update(tmpkvp)
+            data.update(tmpdata)
+            key_descriptions.update(tmpkd)
         except KeyboardInterrupt:
             raise
         except Exception as x:
@@ -78,7 +77,7 @@ def main(folders, references, verbose, skipforces):
         if not os.path.isdir(folder):
             continue
         with chdir(folder):
-            print(folder, end=': ')
+            print(folder, end=':\n')
             try:
                 if references:
                     references = Path(references).resolve()

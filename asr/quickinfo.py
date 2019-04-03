@@ -40,18 +40,21 @@ def main():
 
     try:
         magstate = get_magstate(atoms)
+        info['magstate'] = magstate
     except RuntimeError:
-        magstate = 'nm'
+        magstate = 'unknown'
         pass
 
-    info['magstate'] = magstate
     # Are forces/stresses known?
-    f = atoms.get_forces()
-    s = atoms.get_stress()[:2]
-    fmax = ((f**2).sum(1).max())**0.5
-    smax = abs(s).max()
-    info['fmax'] = fmax
-    info['smax'] = smax
+    try:
+        f = atoms.get_forces()
+        s = atoms.get_stress()[:2]
+        fmax = ((f**2).sum(1).max())**0.5
+        smax = abs(s).max()
+        info['fmax'] = fmax
+        info['smax'] = smax
+    except RuntimeError:
+        pass
 
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
@@ -88,7 +91,11 @@ def main():
         number = int(number[1:-1])
         info['spacegroup'] = sg
 
-    info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
+    # Find prototype
+    try:
+        info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
+    except ModuleNotFoundError:
+        pass
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.
@@ -98,29 +105,37 @@ def main():
 
     json.dump(info, open('quickinfo.json', 'w'), cls=jsonio.MyEncoder)
 
+    return info
 
-def collect_data(atoms, skip_forces=False):
+
+def collect_data(atoms):
     """Collect quick info to database"""
+    from pathlib import Path
+    p = Path('quickinfo.json')
+    if not p.is_file():
+        return {}, {}, {}
+
     import numpy as np
     import json
 
-    info = json.load(open('quickinfo.json', 'r'))
-
-    data = {'info': info}
+    data = {}
     kvp = {}
+    key_descriptions = {}
 
-    magstate = info['magstate']
-    assert magstate in {'nm', 'fm', 'afm'}, magstate
+    info = json.loads(p)
+
+    exclude = ['symmetries']
+    for key in info:
+        if key in exclude:
+            continue
+        kvp[key] = info[key]
 
     # Key-value-pairs:
-    kvp['magstate'] = magstate.upper()
-    kvp['is_magnetic'] = magstate != 'nm'
+    data['info'] = info
+    if 'magstate' in kvp:
+        kvp['magstate'] = kvp['magstate'].upper()
+        kvp['is_magnetic'] = kvp['magstate'] != 'NM'
     kvp['cell_area'] = np.linalg.det(atoms.cell[:2, :2])
-    kvp['has_invsymm'] = info['has_inversion_symmetry']
-    kvp['uid'] = info['uid']
-    kvp['stoichiometry'] = info['stoichiometry']
-    kvp['spacegroup'] = info['spacegroup']
-    kvp['prototype'] = info['prototype']
 
     key_descriptions = {
         'magstate': ('Magnetic state', 'Magnetic state', ''),

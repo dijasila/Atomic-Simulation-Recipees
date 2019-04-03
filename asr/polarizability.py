@@ -108,11 +108,15 @@ def main(gs, density, ecut):
         np.savez_compressed(filename, **data)
 
 
-def collect_data(kvp, data, key_descriptions, atoms):
-    import numpy as np
+def collect_data(atoms):
     from pathlib import Path
     if not Path('polarizability.npz').is_file():
-        return
+        return {}, {}, {}
+
+    import numpy as np
+    kvp = {}
+    data = {}
+    key_descriptions = {}
     dct = dict(np.load('polarizability.npz'))
 
     # Update key-value-pairs
@@ -133,6 +137,7 @@ def collect_data(kvp, data, key_descriptions, atoms):
 
     # Save data
     data['absorptionspectrum'] = dct
+    return kvp, key_descriptions, data
 
 
 def polarizability(row, fx, fy, fz):

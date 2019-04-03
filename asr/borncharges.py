@@ -199,12 +199,15 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-def collect_data(kvp, data, key_descriptions, atoms):
+def collect_data(atoms):
     import json
     import os.path as op
     import numpy as np
     from ase.io import jsonio
 
+    kvp = {}
+    data = {}
+    key_descriptions = {}
     delta = 0.01
     P_davv = []
     fname = 'data-borncharges/borncharges-{}.json'.format(delta)
@@ -226,6 +229,8 @@ def collect_data(kvp, data, key_descriptions, atoms):
 
     P_davv = np.array(P_davv)
     data['borndata'] = [[-0.01, 0.01], P_davv]
+
+    return kvp, key_descriptions, data
 
 
 def print_results(filename='data-borncharges/borncharges-0.01.json'):

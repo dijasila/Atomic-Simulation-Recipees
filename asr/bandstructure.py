@@ -101,11 +101,15 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def collect_data(kvp, data, key_descriptions, atoms):
+def collect_data(atoms):
     """Band structure PBE and GW +- SOC."""
     import os.path as op
+    kvp = {}
+    key_descriptions = {}
+    data = {}
+
     if not op.isfile('eigs_spinorbit.npz'):
-        return
+        return kvp, key_descriptions, data
 
     import numpy as np
     from gpaw import GPAW
@@ -157,6 +161,7 @@ def collect_data(kvp, data, key_descriptions, atoms):
             pbe['sz_mk'][:, idx] = 0.0
 
     data['bs_pbe'] = pbe
+    return kvp, key_descriptions, data
 
 
 def bs_pbe_html(row,
