@@ -8,7 +8,8 @@ def get_parameters(key=None):
     from pathlib import Path
     import json
     if Path('params.json').is_file():
-        params = json.load(open('params.json', 'r'))
+        with open('params.json', 'r') as fd:
+            params = json.load(fd)
     else:
         params = {}
 
@@ -20,7 +21,6 @@ def get_parameters(key=None):
 
 def is_magnetic():
     import numpy as np
-    from ase.io import read
     atoms = get_start_atoms()
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
@@ -31,7 +31,6 @@ def is_magnetic():
 
 
 def get_dimensionality():
-    from ase.io import read
     import numpy as np
     start = get_start_atoms()
     nd = int(np.sum(start.get_pbc()))
@@ -83,8 +82,12 @@ def get_start_atoms():
 def get_start_parameters(atomfile=None):
     import json
     if atomfile is None:
-        atomfile = get_start_file()
-    asejsondb = json.load(open(atomfile, 'r'))
+        try:
+            atomfile = get_start_file()
+        except AssertionError:
+            return {}
+    with open(atomfile, 'r') as fd:
+        asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})
 
     return params
