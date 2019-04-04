@@ -6,4 +6,4 @@ tests:
     - pip install git+https://gitlab.com/ase/ase.git
     - flake8 asr
     - python3 -m pytest asr/tests/test_cli.py --tb=short
-    - python3 -m asr.tests.test_cuau
+    - python3 -m asr.tests.emt
