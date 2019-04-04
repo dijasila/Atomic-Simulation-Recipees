@@ -11,6 +11,9 @@ class GPAW(EMT):
         EMT.__init__(self)
 
     def write(self, filename):
+        from ase.io.trajectory import write_atoms
         with ulm.open(filename, 'w') as w:
-            w.write(hello='world')
-
+            write_atoms(w.child('atoms'), self.atoms)
+            w.child('results').write(**self.results)
+            w.child('wave_functions').write(foo='bar')
+            w.child('occupations').write(fermilevel=42)
