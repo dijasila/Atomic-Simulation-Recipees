@@ -9,7 +9,7 @@ def main():
 
 
 folder = Path(__file__).parent.resolve()
-files = [str(path) for path in folder.glob('*.py')]
+files = [str(path) for path in folder.glob('[a-zA-Z]*.py')]
 recipes = []
 for file in files:
     if 'workflow' in file:

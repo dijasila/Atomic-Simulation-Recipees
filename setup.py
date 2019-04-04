@@ -19,6 +19,10 @@ setup(
     include_package_data=True,
     install_requires=['Click', 'pytest', 'matplotlib',
                       'spglib', 'ase'],
+    entry_points='''
+        [console_scripts]
+        asr=asr.utils.cli:cli
+    ''',
     classifiers=[
         'Development Status :: 0 - Beta', 'Environment :: Console',
         'Intended Audience :: Developers', 'License :: OSI Approved :: '
