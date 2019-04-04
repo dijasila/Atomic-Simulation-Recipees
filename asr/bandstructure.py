@@ -284,16 +284,14 @@ def collect_data(atoms):
     efermi = np.load('gap_soc.npz')['efermi']
     efermi_nosoc = np.load('gap.npz')['efermi']
 
-    ref_soc = evac or efermi
-    ref_nosoc = evac or efermi_nosoc
-
     pbe = {
         'path': path,
-        'eps_skn': eps_skn - ref_soc,
-        'efermi_nosoc': efermi_nosoc - ref_nosoc,
-        'efermi': efermi - evac if evac else efermi,
-        'eps_so_mk': soc['e_mk'] - ref_soc,
-        'sz_mk': sz_mk
+        'eps_skn': eps_skn,
+        'efermi_nosoc': efermi_nosoc,
+        'efermi': efermi,
+        'eps_so_mk': soc['e_mk'],
+        'sz_mk': sz_mk,
+        'evac': evac or np.nan
     }
     try:
         op_scc = data['op_scc']
