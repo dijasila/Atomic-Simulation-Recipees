@@ -8,9 +8,12 @@ click.option = partial(click.option, show_default=True)
 
 
 @contextmanager
-def chdir(folder, create=False):
+def chdir(folder, create=False, empty=False):
     dir = os.getcwd()
-    if create:
+    if empty and folder.is_dir():
+        import shutil
+        shutil.rmtree(str(folder))
+    if create and not folder.is_dir():
         os.mkdir(folder)
     os.chdir(str(folder))
     yield

@@ -23,7 +23,7 @@ def test_cuag():
 
     for atoms in structures:
         dir = Path(atoms.get_chemical_formula())
-        with chdir(dir, create=True):
+        with chdir(dir, create=True, empty=True):
             atoms.write('start.json')
 
             with pytest.raises(SystemExit):
