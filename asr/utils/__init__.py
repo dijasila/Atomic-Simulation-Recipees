@@ -1,7 +1,20 @@
+import os
+from contextlib import contextmanager
+from functools import partial
+
 import click
 
-from functools import partial
 click.option = partial(click.option, show_default=True)
+
+
+@contextmanager
+def chdir(folder, create=False):
+    dir = os.getcwd()
+    if create:
+        os.mkdir(folder)
+    os.chdir(str(folder))
+    yield
+    os.chdir(dir)
 
 
 def get_recipes():

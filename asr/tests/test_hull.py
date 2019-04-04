@@ -1,11 +1,14 @@
 import os
 from pathlib import Path
+
+import pytest
 from ase.build import bulk
-from asr.relax import main as relax
+
+from asr.collect import main as collect
+from asr.convex_hull import main as chull
 from asr.gs import main as gs
-from asr.phonons import main as phonons
-from asr.collect import collect
-from ase.convex_hull import main as chull
+from asr.phonons import phonons
+from asr.relax import main as relax
 from asr.utils import chdir
 
 
@@ -14,29 +17,36 @@ def test_cuag():
         bulk('Cu'),
         bulk('Au'),
         bulk('CuAu', crystalstructure='rocksalt', a=4.0),
-        bulk('CuAu', crystalstructure='zincblende', a=4.0)]
+        bulk('CuAuAu', crystalstructure='fluorite', a=4.0)]
 
     os.environ['ASR_TEST_MODE'] = '1'
 
     for atoms in structures:
         dir = Path(atoms.get_chemical_formula())
         with chdir(dir, create=True):
-            atoms.write('structure.json')
+            atoms.write('start.json')
 
-            relax(False, ['nm'], 200.0, 2.0, True)
+            with pytest.raises(SystemExit):
+                relax(args=[])
 
             with chdir('nm'):
-                gs()
-                phonons()
+                with pytest.raises(SystemExit):
+                    gs()
+                with pytest.raises(SystemExit):
+                    phonons()
 
-    refs = ['Cu/nm/', 'Au/nm']
-    alloys = ['Cu/nm/', 'Au/nm']
-    collect(refs, 'refs.db')
-    collect(alloys, 'alloys.db')
+    with pytest.raises(SystemExit):
+        collect([str(dir) for dir in Path().glob('?u/nm/')])
+    refs = Path('refs.db')
+    db = Path('database.db')
+    db.rename(refs)
 
-    for dir in alloys:
+    with pytest.raises(SystemExit):
+        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+
+    for dir in Path().glob('Au*Cu/nm/'):
         with chdir(dir):
-            chull()
+            ...  # chull()
 
 
 if __name__ == '__main__':
