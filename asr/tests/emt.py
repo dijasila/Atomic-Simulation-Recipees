@@ -46,7 +46,7 @@ def test_cuag():
 
     for dir in Path().glob('Au*Cu/nm/'):
         with chdir(dir):
-            ...  # chull()
+            chull(['-r', '../../refs.db'])
 
 
 if __name__ == '__main__':
