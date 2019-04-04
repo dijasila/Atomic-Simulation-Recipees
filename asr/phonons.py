@@ -12,10 +12,11 @@ import click
 
 
 @click.command()
-@click.option('-N', default=2, help='Supercell size')
-def phonons(N=2):
+@click.option('-n', default=2, help='Supercell size')
+def phonons(n=2):
     """Calculate Phonons"""
-    from gpaw import GPAW
+    N = n
+    from asr.utils.gpaw import GPAW
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -24,7 +25,7 @@ def phonons(N=2):
     world.barrier()
 
     params = {}
-    name = 'start.traj'
+    name = 'start.json'
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,

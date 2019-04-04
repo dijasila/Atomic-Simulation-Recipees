@@ -1,14 +1,5 @@
 import click
-import os
-from contextlib import contextmanager
-
-
-@contextmanager
-def chdir(folder):
-    dir = os.getcwd()
-    os.chdir(str(folder))
-    yield
-    os.chdir(dir)
+from asr.utils import chdir
 
 
 def collect(db, verbose=False, skip_forces=False, references=None):
