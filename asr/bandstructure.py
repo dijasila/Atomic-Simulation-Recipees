@@ -424,7 +424,7 @@ def bs_pbe_html(row,
     )
 
     bandyaxis = go.layout.YAxis(
-        title="<i>E - E</i><sub>vac</sub> [eV]",
+        title="<i>E</i> [eV]",
         range=[emin, emax],
         showgrid=True,
         showline=True,
@@ -586,7 +586,7 @@ def bs_pbe(row,
         show=False,
         emin=emin,
         emax=emax,
-        ylabel=r'$E-E_\mathrm{vac}$ [eV]',
+        ylabel=r'$E$ [eV]',
         **nosoc_style)
     # pbe with soc
     e_mk = d['eps_so_mk']
