@@ -83,14 +83,12 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
 
         module = import_module('asr.' + name)
 
-        try:
+        if hasattr(module, 'webpanel'):
             panel, newthings = module.webpanel(row, key_descriptions)
             if panel:
                 page.append(panel)
             if newthings:
                 things.extend(newthings)
-        except AttributeError:
-            continue
 
     page += [miscellaneous_section(row, key_descriptions, exclude)]
 
