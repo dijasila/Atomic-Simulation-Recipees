@@ -117,75 +117,6 @@ def get_l_a(zs):
     return l_a
 
 
-def pdos(calc, gpw, spinorbit=True) -> None:
-    """
-    Writes the projected dos to a file pdos.json or pdos_soc.json
-
-    Parameters:
-    calc: GPAW calculator object or str
-        calculator with a method get_orbital_ldos
-    spinorbit: bool
-        spin orbit coupling
-    """
-    fname = 'pdos_soc.json' if spinorbit else 'pdos.json'
-    if op.isfile(fname):
-        return
-    world = mpi.world
-    calc = GPAW(gpw, txt=None)
-    if spinorbit and world.rank == 0:
-        calc0 = GPAW(gpw, communicator=mpi.serial_comm)
-
-    zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
-    efermi = calc.get_fermi_level()
-    l_a = get_l_a(zs)
-    kd = calc.wfs.kd
-
-    if spinorbit:
-        ldos = raw_spinorbit_orbital_LDOS
-    else:
-        ldos = raw_orbital_LDOS
-
-    e = np.linspace(-10 + efermi, 10 + efermi, 2000)
-    ns = calc.get_number_of_spins()
-    pdos_sal = defaultdict(float)
-    e_s = {}
-    for spin in range(ns):
-        for a in l_a:
-            spec = chem_symbols[a]
-            for l in l_a[a]:
-                if spinorbit:
-                    if world.rank == 0:
-                        theta, phi = get_spin_direction()
-                        energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                        mpi.broadcast((energies, weights))
-                    else:
-                        energies, weights = mpi.broadcast(None)
-                else:
-                    energies, weights = ldos(calc, a, spin, l)
-
-                energies.shape = (kd.nibzkpts, -1)
-                energies = energies[kd.bz2ibz_k]
-                energies.shape = tuple(kd.N_c) + (-1, )
-                weights.shape = (kd.nibzkpts, -1)
-                weights /= kd.weight_k[:, np.newaxis]
-                w = weights[kd.bz2ibz_k]
-                w.shape = tuple(kd.N_c) + (-1, )
-                p = ltidos(calc.atoms.cell, energies * Ha, e, w)
-                key = ','.join([str(spin), str(spec), str(l)])
-                pdos_sal[key] += p
-        e_s[spin] = e
-
-    data = {
-        'energies': e,
-        'pdos_sal': pdos_sal,
-        'symbols': calc.atoms.get_chemical_symbols(),
-        'efermi': efermi
-    }
-    with paropen(fname, 'w') as fd:
-        json.dump(jsonio.encode(data), fd)
-
-
 def plot_pdos():
     """only for testing
     """
@@ -341,6 +272,74 @@ class SOCDOS():
         return dos
 
 
+def calculate_pdos(calc, gpw, soc=True):
+    """
+    Writes the projected dos to a file pdos.json or pdos_soc.json
+
+    Parameters:
+    calc: GPAW calculator object or str
+        calculator with a method get_orbital_ldos
+    soc: bool
+        spin orbit coupling
+    """
+    world = mpi.world
+    calc = GPAW(gpw, txt=None)
+    if soc and world.rank == 0:
+        calc0 = GPAW(gpw, communicator=mpi.serial_comm)
+
+    zs = calc.atoms.get_atomic_numbers()
+    chem_symbols = calc.atoms.get_chemical_symbols()
+    efermi = calc.get_fermi_level()
+    l_a = get_l_a(zs)
+    kd = calc.wfs.kd
+
+    if soc:
+        ldos = raw_spinorbit_orbital_LDOS
+    else:
+        ldos = raw_orbital_LDOS
+
+    e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    ns = calc.get_number_of_spins()
+    pdos_sal = defaultdict(float)
+    e_s = {}
+    for spin in range(ns):
+        for a in l_a:
+            spec = chem_symbols[a]
+            for l in l_a[a]:
+                if soc:
+                    if world.rank == 0:
+                        theta, phi = get_spin_direction()
+                        energies, weights = ldos(calc0, a, spin, l, theta, phi)
+                        mpi.broadcast((energies, weights))
+                    else:
+                        energies, weights = mpi.broadcast(None)
+                else:
+                    energies, weights = ldos(calc, a, spin, l)
+
+                energies.shape = (kd.nibzkpts, -1)
+                energies = energies[kd.bz2ibz_k]
+                energies.shape = tuple(kd.N_c) + (-1, )
+                weights.shape = (kd.nibzkpts, -1)
+                weights /= kd.weight_k[:, np.newaxis]
+                w = weights[kd.bz2ibz_k]
+                w.shape = tuple(kd.N_c) + (-1, )
+                p = ltidos(calc.atoms.cell, energies * Ha, e, w)
+                key = ','.join([str(spin), str(spec), str(l)])
+                pdos_sal[key] += p
+        e_s[spin] = e
+
+    return e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
+    
+
+def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
+    data = {'energies': energies,
+            'pdos_sal': pdos_sal,
+            'symbols': symbols,
+            'efermi': efermi}
+    with paropen('pdos_soc«%s».json' % str(soc), 'w') as fd:
+        json.dump(jsonio.encode(data), fd)
+    
+
 def calculate_dos_at_ef(calc, gpw, soc=False):
     """Get dos at the Fermi energy"""
     if soc:
@@ -378,8 +377,8 @@ def main(kptdens, emptybands):
     write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
 
     # Calculate and write the pdos  # XXX unfinished
-    pdos(calc, gpw, spinorbit=False)
-    pdos(calc, gpw, spinorbit=True)
+    write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
+    write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
 
 
 def collect_data():
