@@ -4,6 +4,7 @@ from asr.utils.kpts import get_kpts_size
 
 def nonselfc(kdens=12, emptybands=20, txt=None):
     """Non self-consistent calculation based on the density in gs.gpw"""
+    parstr = '_kdens«%s»_emptybands«%s»' % (str(kdens), str(emptybands))
 
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
@@ -20,24 +21,46 @@ def nonselfc(kdens=12, emptybands=20, txt=None):
         calc.set(symmetry='off')  # due to soc
 
     calc.get_potential_energy()
-    return calc
+
+    return calc, parstr
 
 
-def refinegs(selfc=False, *args, **kwargs):
+def write_refinedgs(calc, outf, parstr):
+    if isinstance(outf, str):
+        assert outf[-4:] == '.gpw'
+    else:
+        outf = 'refinedgs' + parstr
+    calc.write(outf)
+    return outf
+
+
+def refinegs(selfc=False, outf=False, *args, **kwargs):
     """Refine the ground state calculation
 
     Parameters:
     -----------
     selfc : bool
         Perform new self-consistency cycle to refine also the density
+    outf : bool, str
+        Write the refined ground state as a GPAW calculator object.
+        If a string is specified, use that as file name, otherwise use the
+        ('refinedgs%s.gpw' % parstr) convention.
 
     Returns:
     --------
     calc : obj
         GPAW calculator object
+    outf : str
+        filename of written GPAW calculator object
     """
     if selfc:
         raise NotImplementedError('Someone should implement refinement '
                                   + 'with self-consistency')
     else:
-        return nonselfc(*args, **kwargs)
+        calc, parstr = nonselfc(*args, **kwargs)
+    parstr = '_selfc«%s»%s' % (selfc, parstr)
+
+    if outf:
+        outf = write_refinedgs(calc, outf, parstr)
+
+    return calc, outf
