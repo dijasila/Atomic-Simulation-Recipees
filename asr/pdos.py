@@ -117,7 +117,7 @@ def get_l_a(zs):
     return l_a
 
 
-def pdos(gpwname, spinorbit=True) -> None:
+def pdos(calc, gpw, spinorbit=True) -> None:
     """
     Writes the projected dos to a file pdos.json or pdos_soc.json
 
@@ -131,9 +131,9 @@ def pdos(gpwname, spinorbit=True) -> None:
     if op.isfile(fname):
         return
     world = mpi.world
-    calc = GPAW(gpwname, txt=None)
+    calc = GPAW(gpw, txt=None)
     if spinorbit and world.rank == 0:
-        calc0 = GPAW(gpwname, communicator=mpi.serial_comm)
+        calc0 = GPAW(gpw, communicator=mpi.serial_comm)
 
     zs = calc.atoms.get_atomic_numbers()
     chem_symbols = calc.atoms.get_chemical_symbols()
@@ -378,8 +378,8 @@ def main(kptdens, emptybands):
     write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
 
     # Calculate and write the pdos  # XXX unfinished
-    pdos(calc, spinorbit=False)
-    pdos(calc, spinorbit=True)
+    pdos(calc, gpw, spinorbit=False)
+    pdos(calc, gpw, spinorbit=True)
 
 
 def collect_data():
