@@ -353,10 +353,11 @@ def write_dos_at_ef(dos_at_ef, soc=False):
         print('{}'.format(dos_at_ef), file=fd)
 
 
-def refine_gs_for_pdos(kptdens=36.0):  # inputs as click options? XXX
+def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
     from asr.utils.refinegs import refinegs
     calc, gpw = refinegs(selfc=False, outf=True,
-                         kdens=kptdens, emptybands=20, txt='pdos.txt')
+                         kptdens=kptdens, emptybands=emptybands,
+                         txt='pdos.txt')
     return calc, gpw
 
 
