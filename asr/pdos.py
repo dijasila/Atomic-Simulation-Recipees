@@ -8,7 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ase.dft.dos import DOS
+import ase.dft.dos as asedos
+from ase.dft.dos import ltidos as old_ltidos
 from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
@@ -52,19 +53,19 @@ def _lti(energies, dos, kpts, M, E, W=None):
             for k in range(4):
                 tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
                                    volumes * w[k])
-
-
-old = ase.dft.dos.ltidos
-
-
+                
+                
 def ltidos(cell, eigs, energies, weights=None):
     x = 1 / abs(np.linalg.det(cell)) / np.prod(eigs.shape[:3]) / 6
-    return old(cell, eigs, energies, weights) * x
+    return old_ltidos(cell, eigs, energies, weights) * x
 
 
 # Monkey-patch ASE:
-ase.dft.dos._lti = _lti
-ase.dft.dos.ltidos = ltidos
+asedos._lti = _lti
+asedos.ltidos = ltidos
+DOS = asedos.DOS
+# ase.dft.dos._lti = _lti  # check that stuff works XXX
+# ase.dft.dos.ltidos = ltidos
 
 
 def count(zs):
