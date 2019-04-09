@@ -1,11 +1,12 @@
+from pathlib import Path
+
 from gpaw import GPAW
+
 from asr.utils.kpts import get_kpts_size
 
 
 def nonselfc(kptdens=12, emptybands=20, txt=None):
     """Non self-consistent calculation based on the density in gs.gpw"""
-    parstr = '_kptdens«%s»_emptybands«%s»' % (str(kptdens), str(emptybands))
-
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
 
@@ -22,7 +23,7 @@ def nonselfc(kptdens=12, emptybands=20, txt=None):
 
     calc.get_potential_energy()
 
-    return calc, parstr
+    return calc
 
 
 def write_refinedgs(calc, outf, parstr):
@@ -32,6 +33,19 @@ def write_refinedgs(calc, outf, parstr):
         outf = 'refinedgs' + parstr + '.gpw'
     calc.write(outf)
     return outf
+
+
+def get_gpw(selfc, outf, **kwargs):
+    """Get filename corresponding to the wanted refinement"""
+    if isinstance(outf, str):
+        assert outf[-4:] == '.gpw'
+        gpw = outf
+    else:
+        parstr = '_selfc«%s»' % str(selfc)
+        for kw in ['kptdens', 'emptybands']:
+            parstr += '_%s«%s»' % (kw, str(kwargs[kw]))
+        gpw = 'refinedgs' + parstr + '.gpw'
+    return gpw
 
 
 def refinegs(selfc=False, outf=False, *args, **kwargs):
@@ -50,17 +64,20 @@ def refinegs(selfc=False, outf=False, *args, **kwargs):
     --------
     calc : obj
         GPAW calculator object
-    outf : str
+    gpw : str
         filename of written GPAW calculator object
     """
-    if selfc:
-        raise NotImplementedError('Someone should implement refinement '
-                                  + 'with self-consistency')
+    gpw = get_gpw(selfc, outf, **kwargs)
+    if Path(gpw).is_file():
+        calc = GPAW(gpw, txt=None)
     else:
-        calc, parstr = nonselfc(*args, **kwargs)
-    parstr = '_selfc«%s»%s' % (selfc, parstr)
+        if selfc:
+            raise NotImplementedError('Someone should implement refinement '
+                                      + 'with self-consistency')
+        else:
+            calc = nonselfc(*args, **kwargs)
 
-    if outf:
-        outf = write_refinedgs(calc, outf, parstr)
+        if outf:
+            calc.write(gpw)
 
-    return calc, outf
+    return calc, gpw
