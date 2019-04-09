@@ -2,10 +2,8 @@ from gpaw import GPAW
 from asr.utils.kpts import get_kpts_size
 
 
-def nonsc(kdens=12, emptybands=20, txt=None):
-    """Non self-consistent calculation with dense k-point sampling
-       based on the density in gs.gpw
-    """
+def nonselfc(kdens=12, emptybands=20, txt=None):
+    """Non self-consistent calculation based on the density in gs.gpw"""
 
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
@@ -25,21 +23,21 @@ def nonsc(kdens=12, emptybands=20, txt=None):
     return calc
 
 
-def refinegs(sc=False, *args, **kwargs):
+def refinegs(selfc=False, *args, **kwargs):
     """Refine the ground state calculation
-    
+
     Parameters:
     -----------
-    sc : bool
-        Do not refine the density, but do a one-shot calculation instead
-    
+    selfc : bool
+        Perform new self-consistency cycle to refine also the density
+
     Returns:
     --------
     calc : obj
         GPAW calculator object
     """
-    if sc:
+    if selfc:
         raise NotImplementedError('Someone should implement refinement '
                                   + 'with self-consistency')
     else:
-        return nonsc(*args, **kwargs)
+        return nonselfc(*args, **kwargs)
