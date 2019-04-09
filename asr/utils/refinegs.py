@@ -29,7 +29,7 @@ def write_refinedgs(calc, outf, parstr):
     if isinstance(outf, str):
         assert outf[-4:] == '.gpw'
     else:
-        outf = 'refinedgs' + parstr
+        outf = 'refinedgs' + parstr + '.gpw'
     calc.write(outf)
     return outf
 
