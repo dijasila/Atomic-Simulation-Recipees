@@ -332,7 +332,7 @@ def get_dos_at_ef(calc, soc=False):
 
 
 def write_dos_at_ef(dos_at_ef, soc=False):
-    with paropen('dos-at-ef_soc%s' % str(soc), 'w') as fd:  # insert << >> XXX
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
         print('{}'.format(dos_at_ef), file=fd)
 
 
