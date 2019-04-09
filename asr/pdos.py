@@ -1,7 +1,5 @@
 from collections import defaultdict
 import json
-import os.path as op
-from pathlib import Path
 
 import numpy as np
 
@@ -25,96 +23,6 @@ from asr.utils import update_defaults
 import click
 from functools import partial
 option = partial(click.option, show_default=True)
-
-
-def _lti(energies, dos, kpts, M, E, W=None):
-    """Faster implementation."""
-    zero = energies[0]
-    de = energies[1] - zero
-    simplices = np.array([[0, 1, 2, 3]], np.int32)
-    s = np.array([0])
-    volumes = np.array([1.0])
-    if W is None:
-        for e in E.T:
-            e = e.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes)
-    else:
-        for e, w in zip(E.T, W.T):
-            e = e.copy()
-            w = w.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes * w[k])
-                
-                
-def ltidos(cell, eigs, energies, weights=None):
-    x = 1 / abs(np.linalg.det(cell)) / np.prod(eigs.shape[:3]) / 6
-    return old_ltidos(cell, eigs, energies, weights) * x
-
-
-# Monkey-patch ASE:
-asedos._lti = _lti
-asedos.ltidos = ltidos
-DOS = asedos.DOS
-# ase.dft.dos._lti = _lti  # check that stuff works XXX
-# ase.dft.dos.ltidos = ltidos
-
-
-def count(zs):
-    """Count the number of occurences in a list
-
-    Parameters:
-    zs: [z1, z2, ...]-list or ndarray
-        list of int's or str's
-
-    Returns:
-    out: {z1: n1, ...}
-        n1 is the number of occurences of z1
-
-    Examples:
-    >>> zs = [1, 8, 8]
-    >>> count(zs)
-    {8: 2, 1: 1}
-    >>> zs = ['H', 'O', 'O']
-    >>> count(zs)
-    {'O': 2, 'H': 1}
-    """
-    c = defaultdict(int)
-    for z in zs:
-        c[z] += 1
-    return c
-
-
-def get_l_a(zs):
-    """Defines which atoms and angular momentum to project onto.
-
-    Parameters:
-    zs: [z1, z2, ...]-list or array
-        list of atomic numbers (zi: int)
-
-    Returns:
-    out: {int: str, ...}-dict
-        keys are atomic indices and values are a string such as 'spd'
-        that determines which angular momentum to project onto or a
-        given atom
-    """
-    zs = np.asarray(zs)
-    l_a = {}
-    atoms = Atoms(numbers=zs)
-    mag_elements = magnetic_atoms(atoms)
-    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
-        l_a[a] = 'spd' if mag else 'sp'
-    return l_a
 
 
 def plot_pdos():
@@ -233,7 +141,74 @@ def pdos_pbe(row,
     plt.close()
 
 
-class SOCDOS():
+def get_l_a(zs):
+    """Defines which atoms and angular momentum to project onto.
+
+    Parameters:
+    -----------
+    zs : [z1, z2, ...]-list or array
+        list of atomic numbers (zi: int)
+
+    Returns:
+    --------
+    l_a : {int: str, ...}-dict
+        keys are atomic indices and values are a string such as 'spd'
+        that determines which angular momentum to project onto or a
+        given atom
+    """
+    zs = np.asarray(zs)
+    l_a = {}
+    atoms = Atoms(numbers=zs)
+    mag_elements = magnetic_atoms(atoms)
+    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
+        l_a[a] = 'spd' if mag else 'sp'
+    return l_a
+
+    
+def _lti(energies, dos, kpts, M, E, W=None):
+    """Faster implementation."""  # should this go into gpaw? XXX
+    zero = energies[0]
+    de = energies[1] - zero
+    simplices = np.array([[0, 1, 2, 3]], np.int32)
+    s = np.array([0])
+    volumes = np.array([1.0])
+    if W is None:
+        for e in E.T:
+            e = e.copy()
+            m = max(0, int((e.min() - zero) / de) + 1)
+            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
+            if m == n:
+                continue
+            for k in range(4):
+                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
+                                   volumes)
+    else:
+        for e, w in zip(E.T, W.T):
+            e = e.copy()
+            w = w.copy()
+            m = max(0, int((e.min() - zero) / de) + 1)
+            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
+            if m == n:
+                continue
+            for k in range(4):
+                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
+                                   volumes * w[k])
+
+
+def ltidos(cell, eigs, energies, weights=None):
+    x = 1 / abs(np.linalg.det(cell)) / np.prod(eigs.shape[:3]) / 6
+    return old_ltidos(cell, eigs, energies, weights) * x
+
+
+# Monkey-patch ASE:
+asedos._lti = _lti
+asedos.ltidos = ltidos
+DOS = asedos.DOS
+# ase.dft.dos._lti = _lti  # check that stuff works XXX
+# ase.dft.dos.ltidos = ltidos
+    
+
+class SOCDOS():  # should this go into gpaw? XXX
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
         """
@@ -253,7 +228,7 @@ class SOCDOS():
             self.dos = None
 
     def get_dos(self):
-        if mpi.world.rank == 0:
+        if mpi.world.rank == 0:  # why doesn't parallelization work? XXX
             # hack dos
             e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
             if e_skm.ndim == 2:
@@ -273,19 +248,23 @@ class SOCDOS():
 
 
 def calculate_pdos(calc, gpw, soc=True):
-    """
-    Writes the projected dos to a file pdos.json or pdos_soc.json
+    """Calculate the projected density of states
 
-    Parameters:
-    calc: GPAW calculator object or str
-        calculator with a method get_orbital_ldos
-    soc: bool
-        spin orbit coupling
+    Returns:
+    --------
+    energies : nd.array
+        energies 10 eV under and above Fermi energy
+    pdos_sal : defaultdict
+        pdos for spin, atom and orbital angular momentum
+    symbols : list
+        chemical symbols in Atoms object
+    efermi : float
+        Fermi energy
     """
     world = mpi.world
-    calc = GPAW(gpw, txt=None)
+
     if soc and world.rank == 0:
-        calc0 = GPAW(gpw, communicator=mpi.serial_comm)
+        calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
 
     zs = calc.atoms.get_atomic_numbers()
     chem_symbols = calc.atoms.get_chemical_symbols()
@@ -307,7 +286,7 @@ def calculate_pdos(calc, gpw, soc=True):
             spec = chem_symbols[a]
             for l in l_a[a]:
                 if soc:
-                    if world.rank == 0:
+                    if world.rank == 0:  # why doesn't parallelization work?XXX
                         theta, phi = get_spin_direction()
                         energies, weights = ldos(calc0, a, spin, l, theta, phi)
                         mpi.broadcast((energies, weights))
@@ -338,7 +317,7 @@ def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
             'efermi': efermi}
     with paropen('pdos_soc«%s».json' % str(soc), 'w') as fd:
         json.dump(jsonio.encode(data), fd)
-    
+
 
 def calculate_dos_at_ef(calc, gpw, soc=False):
     """Get dos at the Fermi energy"""
