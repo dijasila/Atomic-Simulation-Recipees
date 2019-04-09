@@ -336,7 +336,7 @@ def write_dos_at_ef(dos_at_ef, soc=False):
 
 def refine_gs_for_pdos(kptdens=36.0):  # inputs as click options? XXX
     from asr.utils.refinegs import refinegs
-    calc = refinegs(sc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
+    calc = refinegs(selfc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
     # calc.write('pdos.gpw')  # Is this necessary? XXX
     return calc
 
