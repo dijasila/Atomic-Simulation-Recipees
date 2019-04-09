@@ -1,6 +1,3 @@
-from asr.utils import update_defaults
-import click
-
 from collections import defaultdict
 import json
 import os.path as op
@@ -23,6 +20,11 @@ from _gpaw import tetrahedron_weight
 
 from asr.utils import magnetic_atoms
 from asr.utils.gpaw import gpw2eigs, get_spin_direction
+from asr.utils import update_defaults
+
+import click
+from functools import partial
+option = partial(click.option, show_default=True)
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
@@ -362,9 +364,14 @@ def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
 
 
 @click.command()
-def main():
+@update_defaults('asr.pdos')
+@option('--kptdens', default=36.0,
+        help='k-point density')
+@option('--emptybands', default=20,
+        help='number of empty bands to include')
+def main(kptdens, emptybands):
     # Refine ground state with more k-points
-    calc, gpw = refine_gs_for_pdos()
+    calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
 
     # Calculate and write the dos at the Fermi energy
     write_dos_at_ef(get_dos_at_ef(calc, gpw, soc=False), soc=False)
