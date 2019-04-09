@@ -341,7 +341,7 @@ class SOCDOS():
         return dos
 
 
-def get_dos_at_ef(calc, gpw, soc=False):
+def calculate_dos_at_ef(calc, gpw, soc=False):
     """Get dos at the Fermi energy"""
     if soc:
         dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
@@ -374,8 +374,8 @@ def main(kptdens, emptybands):
     calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
 
     # Calculate and write the dos at the Fermi energy
-    write_dos_at_ef(get_dos_at_ef(calc, gpw, soc=False), soc=False)
-    write_dos_at_ef(get_dos_at_ef(calc, gpw, soc=True), soc=True)
+    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=False), soc=False)
+    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
 
     # Calculate and write the pdos  # XXX unfinished
     pdos(calc, spinorbit=False)
