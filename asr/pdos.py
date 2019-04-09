@@ -299,34 +299,52 @@ def pdos_pbe(row,
     plt.close()
 
 
-def get_dos_at_ef(calc, soc=False):
-    """Get dos at the Fermi energy"""
-    if soc:
-        name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
-        world = mpi.world
-        if world.rank == 0:
-            # calc = GPAW(name, communicator=mpi.serial_comm, txt=None)
-            dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
+class SOCDOS():
+    """Hack to make DOS class work with spin orbit coupling"""
+    def __init__(self, gpw, **kwargs):
+        """
+        Parameters:
+        -----------
+        gpw : str
+            The SOCDOS takes a filename of the GPAW calculator object and loads
+            it, instead of the normal ASE compliant calculator object.
+        """
+        self.gpw = gpw
 
+        if mpi.world.rank == 0:
+            self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            self.dos = DOS(self.calc, **kwargs)
+        else:
+            self.calc = None
+            self.dos = None
+
+    def get_dos(self):
+        if mpi.world.rank == 0:
             # hack dos
-            e_skm, ef = gpw2eigs(name, optimal_spin_direction=True)  # calc?
+            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
-            dos.nspins = 1
-            dos.e_skn = e_skm - ef
-            bzkpts = calc.get_bz_k_points()
+            self.dos.nspins = 1
+            self.dos.e_skn = e_skm - ef
+            bzkpts = self.calc.get_bz_k_points()
             size, offset = k2so(bzkpts)
-            bz2ibz = calc.get_bz_to_ibz_map()
-            shape = (dos.nspins, ) + tuple(size) + (-1, )
-            dos.e_skn = dos.e_skn[:, bz2ibz].reshape(shape)
-            dos = dos.get_dos() / 2
+            bz2ibz = self.calc.get_bz_to_ibz_map()
+            shape = (self.dos.nspins, ) + tuple(size) + (-1, )
+            self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
+            dos = self.dos.get_dos() / 2
             mpi.broadcast(dos)
         else:
             dos = mpi.broadcast(None)
+        return dos
+
+
+def get_dos_at_ef(calc, gpw, soc=False):
+    """Get dos at the Fermi energy"""
+    if soc:
+        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
     else:
         dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-        dos = dos.get_dos()
-    return dos[1]
+    return dos.get_dos()[1]
 
 
 def write_dos_at_ef(dos_at_ef, soc=False):
@@ -336,21 +354,21 @@ def write_dos_at_ef(dos_at_ef, soc=False):
 
 def refine_gs_for_pdos(kptdens=36.0):  # inputs as click options? XXX
     from asr.utils.refinegs import refinegs
-    calc = refinegs(selfc=False, kdens=kptdens, emptybands=20, txt='pdos.txt')
-    # calc.write('pdos.gpw')  # Is this necessary? XXX
-    return calc
+    calc, gpw = refinegs(selfc=False, outf=True,
+                         kdens=kptdens, emptybands=20, txt='pdos.txt')
+    return calc, gpw
 
 
 @click.command()
 def main():
     # Refine ground state with more k-points
-    calc = refine_gs_for_pdos()
+    calc, gpw = refine_gs_for_pdos()
 
     # Calculate and write the dos at the Fermi energy
-    write_dos_at_ef(get_dos_at_ef(calc, soc=False), soc=False)
-    write_dos_at_ef(get_dos_at_ef(calc, soc=True), soc=True)
+    write_dos_at_ef(get_dos_at_ef(calc, gpw, soc=False), soc=False)
+    write_dos_at_ef(get_dos_at_ef(calc, gpw, soc=True), soc=True)
 
-    # Calculate and write the pdos
+    # Calculate and write the pdos  # XXX unfinished
     pdos(calc, spinorbit=False)
     pdos(calc, spinorbit=True)
 
