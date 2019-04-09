@@ -2,14 +2,14 @@ from gpaw import GPAW
 from asr.utils.kpts import get_kpts_size
 
 
-def nonselfc(kdens=12, emptybands=20, txt=None):
+def nonselfc(kptdens=12, emptybands=20, txt=None):
     """Non self-consistent calculation based on the density in gs.gpw"""
-    parstr = '_kdens«%s»_emptybands«%s»' % (str(kdens), str(emptybands))
+    parstr = '_kptdens«%s»_emptybands«%s»' % (str(kptdens), str(emptybands))
 
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
 
-    kpts = get_kpts_size(atoms=calc.atoms, density=kdens)
+    kpts = get_kpts_size(atoms=calc.atoms, density=kptdens)
     convbands = int(emptybands / 2)
     calc.set(nbands=-emptybands,
              txt=txt,
