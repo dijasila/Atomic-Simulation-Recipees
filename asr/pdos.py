@@ -1,27 +1,27 @@
 from asr.utils import update_defaults
 import click
 
-import argparse
-
 from collections import defaultdict
 import json
 import os.path as op
 from pathlib import Path
 
 import numpy as np
+
 from ase.dft.dos import DOS
 from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
 from ase.units import Ha
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
+
 import gpaw.mpi as mpi
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
 from _gpaw import tetrahedron_weight
 
-from c2db import magnetic_atoms
-from c2db.utils import get_spin_direction
+from asr.utils import magnetic_atoms
+from asr.utils.gpaw import gpw2eigs, get_spin_direction
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
@@ -302,8 +302,6 @@ def pdos_pbe(row,
 def get_dos_at_ef(calc, soc=False):
     """Get dos at the Fermi energy"""
     if soc:
-        # Should go to asr.utils XXX
-        from c2db.utils import gpw2eigs
         name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
         world = mpi.world
         if world.rank == 0:
