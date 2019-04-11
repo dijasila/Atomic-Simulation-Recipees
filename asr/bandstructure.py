@@ -1,7 +1,5 @@
-from asr.utils import update_defaults
-from functools import partial
+from asr.utils import option, update_defaults
 import click
-option = partial(click.option, show_default=True)
 
 
 @click.command()
@@ -12,33 +10,27 @@ option = partial(click.option, show_default=True)
 def main(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     import os
-
-    import numpy as np
+    from pathlib import Path
+    import json
+    from ase.io import jsonio
+    
     from gpaw import GPAW
     import gpaw.mpi as mpi
     from ase.io import read
-    from ase.geometry import crystal_structure_from_cell
-
-    from ase.dft.kpoints import special_paths
-    from c2db.utils import get_special_2d_path, eigenvalues, gpw2eigs
-
+    from ase.dft.band_structure import get_band_structure
+    
     if os.path.isfile('eigs_spinorbit.npz'):
         return
     assert os.path.isfile('gs.gpw')
 
+    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
+    
+    if kptpath is None:
+        atoms = read('gs.gpw')
+        lat, _ = atoms.cell.bravais()
+        kptpath = lat.bandpath(npoints=npoints)
+            
     if not os.path.isfile('bs.gpw'):
-        if kptpath is None:
-            atoms = read('gs.gpw')
-            cell = atoms.cell
-            ND = np.sum(atoms.pbc)
-            if ND == 3:
-                cs = crystal_structure_from_cell(cell, 1e-3)
-                kptpath = special_paths[cs]
-            elif ND == 2:
-                kptpath = get_special_2d_path(cell)
-            else:
-                raise NotImplementedError
-
         convbands = emptybands // 2
         parms = {
             'basis': 'dzp',
@@ -46,8 +38,7 @@ def main(kptpath=None, npoints=400, emptybands=20):
             'txt': 'bs.txt',
             'fixdensity': True,
             'kpts': {
-                'path': kptpath,
-                'npoints': npoints
+                'path': kptpath.scaled_kpts,
             },
             'convergence': {
                 'bands': -convbands
@@ -56,25 +47,27 @@ def main(kptpath=None, npoints=400, emptybands=20):
         }
 
         calc = GPAW('gs.gpw', **parms)
-
         calc.get_potential_energy()
         calc.write('bs.gpw')
 
     calc = GPAW('bs.gpw', txt=None)
-    path = calc.get_bz_k_points()
-
+    bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
+    
+    if mpi.world.rank == 0:
+        data = jsonio.encode(bs.todict())
+        Path('results-bs-nosoc.json').write_text(json.dumps(data))
+    
     # stuff below could be moved to the collect script.
-    e_nosoc_skn = eigenvalues(calc)
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+
     if mpi.world.rank == 0:
-        with open('eigs_spinorbit.npz', 'wb') as f:
-            np.savez(
-                f,
-                e_mk=e_km.T,
-                s_mvk=s_kvm.transpose(2, 1, 0),
-                e_nosoc_skn=e_nosoc_skn,
-                path=path)
+        data = bs.todict()
+        data['energies'] = e_km.T
+        data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
+
+        data = jsonio.encode(data)
+        Path('results-bs-soc.json').write_text(json.dumps(data))
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
@@ -562,17 +555,17 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.dft.band_structure import BandStructure
     d = row.data.bs_pbe
     e_skn = d['eps_skn']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-    kpts = d['path']
+    path = d['path']
     ef = d['efermi']
     emin = row.get('vbm', ef) - 3 - ef
     emax = row.get('cbm', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
-    bs = BandStructurePlot(BandStructure(row.cell, kpts, e_kn, ef))
+    bs = BandStructure(path, e_kn, ef)
     # pbe without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
@@ -698,4 +691,4 @@ creates = ['bs.gpw', 'eigs_spinorbit.npz']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)
