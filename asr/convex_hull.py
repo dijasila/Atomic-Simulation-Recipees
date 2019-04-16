@@ -13,45 +13,53 @@ from ase.db.row import AtomsRow
 
 @click.command()
 @click.option('-r', '--references', type=str,
-              help='Reference database.',
-              default='references.db')
-def main(references: str):
-    db = connect(references)
+              help='Reference database.')
+@click.option('-d', '--database', type=str,
+              help='Database of systems to be included in the figure.')
+def main(references: str, database: str):
     atoms = read('gs.gpw')
-    count = Counter(atoms.get_chemical_symbols())
-    refs: List[Tuple[str, float]] = []
-    for symbol in count:
-        for row in db.select(symbol):
-            refs.append((row.formula, row.energy / row.natoms))
-    convex_hull(atoms, refs)
-
-
-def convex_hull(atoms, references):
-    formula = atoms.get_chemical_formula()
     energy = atoms.get_potential_energy()
+    count = Counter(atoms.get_chemical_symbols())
 
+    refdb = connect(references)
+    refs = select_references(refdb, set(count))
+
+    results = {'atom_count': count,
+               'energy': energy,
+               'references': refs}
+
+    pdrefs = list(refs.values())
     try:
-        pd = PhaseDiagram(references, filter=formula)
+        pd = PhaseDiagram(pdrefs)
     except ValueError:
-        return
+        pass
+    else:
+        N = len(atoms)
+        e0, _, _ = pd.decompose(count)
+        results['ehull'] = (energy - e0) / N
 
-    N = len(atoms)
-    e0, _, _ = pd.decompose(formula)
-    ehull = (energy - e0) / N
+    if database:
+        db = connect(database)
+        links = select_references(db, set(count))
+        results['links'] = links
 
-    refs2 = []
-    for i, (count, e, name, natoms) in enumerate(pd.references):
-        refs2.append((name, pd.points[i, -1] * natoms))
+    Path('convex_hull.json').write_text(json.dumps(results))
 
-    Path('convex_hull.json').write_text(
-        json.dumps({'ehull': ehull,
-                    'references': refs2}))
+
+def select_references(db, symbols):
+    refs: Dict[int, Tuple[str, float]] = {}
+    for symbol in symbols:
+        for row in db.select(symbol):
+            for symb in row.count_atoms():
+                if symb not in symbols:
+                    break
+            else:
+                refs[row.uid] = (row.formula, row.energy / row.natoms)
+    return refs
 
 
 def collect_data(atoms):
-    if not Path('prototype.json').is_file():
-        return {}, {}, {}
-    data = json.loads(Path('prototype.json'))
+    data = json.loads(Path('convex_hull.json'))
     return ({'ehull', data.pop('ehull')},
             [('ehull', '?', '', 'eV/atom')],
             data)
