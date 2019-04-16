@@ -20,48 +20,60 @@ def main(references: str, database: str):
     atoms = read('gs.gpw')
     energy = atoms.get_potential_energy()
     count = Counter(atoms.get_chemical_symbols())
+    formula = atoms.get_chemical_formula()
 
     refdb = connect(references)
-    refs = select_references(refdb, set(count))
+    rows = select_references(refdb, set(count))
+    pdrefs = [(row.formula, row.energy / row.natoms) for row in rows]
 
     results = {'atom_count': count,
                'energy': energy,
-               'references': refs}
+               'references': pdrefs}
 
-    pdrefs = list(refs.values())
     try:
         pd = PhaseDiagram(pdrefs)
     except ValueError:
         pass
     else:
         N = len(atoms)
-        e0, _, _ = pd.decompose(count)
+        e0, _, _ = pd.decompose(formula)
         results['ehull'] = (energy - e0) / N
+
+    Calculate hform here for all rows ......
 
     if database:
         db = connect(database)
-        links = select_references(db, set(count))
-        results['links'] = links
+        rows = select_references(db, set(count))
+        results['links'] = [(row.formula,
+                             row.prototype,
+                             row.magstate,
+                             row.hform????,
+                             row.uid)
+                            for row in rows]
 
     Path('convex_hull.json').write_text(json.dumps(results))
 
 
 def select_references(db, symbols):
-    refs: Dict[int, Tuple[str, float]] = {}
+    refs: Dict[int, 'AtomsRow'] = {}
     for symbol in symbols:
         for row in db.select(symbol):
             for symb in row.count_atoms():
                 if symb not in symbols:
                     break
             else:
-                refs[row.uid] = (row.formula, row.energy / row.natoms)
-    return refs
+                uid = row.get('uid', row.id)
+                refs[uid] = row
+    return list(refs.values)
 
 
 def collect_data(atoms):
-    data = json.loads(Path('convex_hull.json'))
-    return ({'ehull', data.pop('ehull')},
-            [('ehull', '?', '', 'eV/atom')],
+    path = Path('convex_hull.json')
+    if not path.is_file():
+        return {}, {}, {}
+    data = json.loads(path.read_text())
+    return ({'ehull': data.pop('ehull')},
+            {'ehull': ('?', '', 'eV/atom')},
             data)
 
 
@@ -140,7 +152,7 @@ def plot(row, fname):
 
 def convex_hull_tables(row: AtomsRow,
                        project: str = 'c2db',
-                       ) -> 'Tuple[Dict[str, Any], Dict[str, Any]]':
+                       ) -> List[Dict[str, Any]]:
     if row.data.get('references') is None:
         return None, None
     from ase.symbols import string2symbols
@@ -161,12 +173,12 @@ def convex_hull_tables(row: AtomsRow,
             formula=formula)
         bulkrows.append([link, '{:.3f} eV/atom'.format(e)])
 
-    return ({'type': 'table',
+    return [{'type': 'table',
              'header': ['Monolayer formation energies', ''],
              'rows': rows},
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
-             'rows': bulkrows})
+             'rows': bulkrows}]
 
 
 def webpanel(row, key_descriptions):
@@ -179,7 +191,7 @@ def webpanel(row, key_descriptions):
     else:
         projectname = 'default'
 
-    hulltable1 = table('Property',
+    hulltable1 = table(row, 'Property',
                        ['hform', 'ehull', 'minhessianeig'],
                        key_descriptions)
     hulltable2, hulltable3 = convex_hull_tables(row, projectname)

@@ -8,6 +8,7 @@ from asr.collect import main as collect
 from asr.convex_hull import main as chull
 from asr.gs import main as gs
 from asr.phonons import phonons
+from asr.quickinfo import main as quickinfo
 from asr.relax import main as relax
 from asr.utils import chdir
 
@@ -35,18 +36,31 @@ def test_cuag():
                 with pytest.raises(SystemExit):
                     phonons()
 
+    for dir in Path().glob('*u/nm/'):
+        with chdir(dir):
+            with pytest.raises(SystemExit):
+                quickinfo(args=[])
+
+    db = Path('database.db')
+    if db.is_file():
+        db.unlink()
+
     with pytest.raises(SystemExit):
         collect([str(dir) for dir in Path().glob('?u/nm/')])
-    refs = Path('refs.db')
-    db = Path('database.db')
-    db.rename(refs)
+    db.rename('refs.db')
 
     with pytest.raises(SystemExit):
         collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+    db.rename('database1.db')
 
     for dir in Path().glob('Au*Cu/nm/'):
         with chdir(dir):
-            chull(['-r', '../../refs.db'])
+            with pytest.raises(SystemExit):
+                chull(['-r', '../../refs.db',
+                       '-d', '../../database1.db'])
+
+    with pytest.raises(SystemExit):
+        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
 
 
 if __name__ == '__main__':
