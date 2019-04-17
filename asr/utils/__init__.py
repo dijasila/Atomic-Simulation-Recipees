@@ -178,7 +178,6 @@ def has_inversion(atoms, use_spglib=True):
         warnings.warn('using gpaw symmetry for inversion instead: {}'
                       .format(x))
         use_spglib = False
-    from gpaw.symmetry import atoms2symmetry
 
     atoms2 = atoms.copy()
     atoms2.pbc[:] = True
@@ -188,4 +187,5 @@ def has_inversion(atoms, use_spglib=True):
         r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
         return np.any([np.all(r == R) for r in r_n])
     else:
+        from gpaw.symmetry import atoms2symmetry
         return atoms2symmetry(atoms2).has_inversion
