@@ -1,6 +1,8 @@
 tests:
   image:  python:3.6
   script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - pip install flake8 spglib
     - pip install -e .
     - pip install git+https://gitlab.com/ase/ase.git
