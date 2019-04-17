@@ -1,16 +1,17 @@
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
+@command()
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
-def main(gs, density, ecut):
+@option('--xc', default='RPA', help='XC interaction (RPA or ALDA)')
+def main(gs, density, ecut, xc):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
+    import json
+    from ase.io import jsonio
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -82,11 +83,14 @@ def main(gs, density, ecut):
 
     df = DielectricFunction('es.gpw', **dfkwargs)
     alpha0x, alphax = df.get_polarizability(
-        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
+        xc=xc)
     alpha0y, alphay = df.get_polarizability(
-        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
+        xc=xc)
     alpha0z, alphaz = df.get_polarizability(
-        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
+        xc=xc)
 
     plasmafreq_vv = df.chi0.plasmafreq_vv
 
@@ -102,22 +106,24 @@ def main(gs, density, ecut):
         'frequencies': frequencies
     }
 
-    filename = 'polarizability.npz'
+    filename = 'polarizability.json'
 
     if world.rank == 0:
-        np.savez_compressed(filename, **data)
+        Path(filename).write_text(json.dumps(data, cls=jsonio.MyEncoder))
 
 
 def collect_data(atoms):
     from pathlib import Path
-    if not Path('polarizability.npz').is_file():
+    import json
+    import jsonio
+    if not Path('polarizability.json').is_file():
         return {}, {}, {}
 
-    import numpy as np
     kvp = {}
     data = {}
     key_descriptions = {}
-    dct = dict(np.load('polarizability.npz'))
+    dct = json.loads(Path('polarizability.json').read_text(),
+                     cls=jsonio.MyEncoder)
 
     # Update key-value-pairs
     kvp['alphax'] = dct['alphax_w'][0].real
