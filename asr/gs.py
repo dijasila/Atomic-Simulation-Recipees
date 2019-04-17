@@ -1,4 +1,5 @@
-from asr.utils import click, update_defaults, get_start_parameters
+from asr.utils import option, update_defaults, get_start_parameters
+import click
 
 # Get some parameters from start.json
 params = get_start_parameters()
@@ -12,14 +13,14 @@ if 'density' in params.get('kpts', {}):
 
 @click.command()
 @update_defaults('asr.gs', defaults)
-@click.option('-a', '--atomfile', type=str,
-              help='Atomic structure',
-              default='start.json')
-@click.option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
-@click.option('--ecut', type=float, help='Plane-wave cutoff', default=800)
-@click.option(
+@option('-a', '--atomfile', type=str,
+        help='Atomic structure',
+        default='start.json')
+@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+@option('--ecut', type=float, help='Plane-wave cutoff', default=800)
+@option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
-@click.option('--xc', type=str, help='XC-functional', default='PBE')
+@option('--xc', type=str, help='XC-functional', default='PBE')
 def main(atomfile, gpwfilename, ecut, xc, kptdensity):
     """Calculate ground state density"""
     from pathlib import Path
@@ -59,4 +60,4 @@ diskspace = 0  # How much diskspace is used
 restart = 1  # Does it make sense to restart the script?
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)

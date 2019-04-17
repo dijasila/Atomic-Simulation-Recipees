@@ -1,13 +1,10 @@
 import os
 from contextlib import contextmanager
 from functools import partial
-
 import click
-
 import numpy as np
-
-
-click.option = partial(click.option, show_default=True)
+option = partial(click.option, show_default=True)
+click.option = option
 
 
 @contextmanager
