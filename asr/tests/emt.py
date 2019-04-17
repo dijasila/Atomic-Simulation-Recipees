@@ -17,8 +17,8 @@ def test_cuag():
     structures = [
         bulk('Cu'),
         bulk('Au'),
-        bulk('CuAu', crystalstructure='rocksalt', a=4.0),
-        bulk('CuAuAu', crystalstructure='fluorite', a=4.0)]
+        bulk('CuAu', crystalstructure='rocksalt', a=5.0),
+        bulk('CuAuAu', crystalstructure='fluorite', a=5.8)]
 
     os.environ['ASR_TEST_MODE'] = '1'
 
