@@ -133,7 +133,9 @@ def collect_data(atoms):
     if 'magstate' in kvp:
         kvp['magstate'] = kvp['magstate'].upper()
         kvp['is_magnetic'] = kvp['magstate'] != 'NM'
-    kvp['cell_area'] = np.linalg.det(atoms.cell[:2, :2])
+
+    if (atoms.pbc == [True, True, False]).all():
+        kvp['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
     key_descriptions = {
         'magstate': ('Magnetic state', 'Magnetic state', ''),
