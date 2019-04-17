@@ -55,7 +55,7 @@ def main(references: str, database: str):
         db = connect(database)
         rows = select_references(db, set(count))
         for row in rows:
-            hform = hof(row.energy, row.count_atoms(), ref_energies[symbol])
+            hform = hof(row.energy, row.count_atoms(), ref_energies)
             links.append((hform,
                           row.formula,
                           row.prototype,
