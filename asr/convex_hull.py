@@ -49,10 +49,10 @@ def main(references: str, database: str):
                             for symbol, n in count.items())
                         ) / len(atoms)
 
+    links = []
     if database:
         db = connect(database)
         rows = select_references(db, set(count))
-        links = []
         for row in rows:
             hform = (row.energy -
                      sum(n * ref_energies[symbol]
@@ -63,7 +63,15 @@ def main(references: str, database: str):
                           row.prototype,
                           row.magstate,
                           row.uid))
-        results['links'] = links
+    else:
+        qi = json.loads(Path('quickinfo.json').read_text())
+        links.append((results['hform'],
+                      formula,
+                      qi.get('prototype', ''),
+                      qi['magstate'],
+                      qi['uid']))
+
+    results['links'] = links
 
     Path('convex_hull.json').write_text(json.dumps(results))
 
@@ -111,6 +119,8 @@ def plot(row, fname):
     fig = plt.figure()
     ax = fig.gca()
 
+    links = data.get('links', [])
+
     if len(count) == 2:
         x, e, names, hull, simplices, xlabel, ylabel = pd.plot2d2()
         for i, j in simplices:
@@ -124,7 +134,7 @@ def plot(row, fname):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
         label = '2D'
         ymin = e.min()
-        for y, formula, prot, magstate, uid in data.links:
+        for y, formula, prot, magstate, uid in links:
             count = parse_formula(formula)[0]
             x = count[B] / sum(count.values())
             if uid == row.uid:
@@ -146,7 +156,7 @@ def plot(row, fname):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
         label = '2D'
-        for e, formula, prot, magstate, id, uid in data.links:
+        for e, formula, prot, magstate, id, uid in links:
             count = parse_formula(formula)[0]
             x = count.get(B, 0) / sum(count.values())
             y = count.get(C, 0) / sum(count.values())
@@ -172,8 +182,9 @@ def convex_hull_tables(row: AtomsRow,
     from ase.symbols import string2symbols
     data = row.data.convex_hull
 
+    links = data.get('links', [])
     rows = []
-    for e, formula, prot, magstate, uid in sorted(data.links,
+    for e, formula, prot, magstate, uid in sorted(links,
                                                   reverse=True):
         name = '{} ({}-{})'.format(formula, prot, magstate)
         if id != row.id:
