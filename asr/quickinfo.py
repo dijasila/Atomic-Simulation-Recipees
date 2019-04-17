@@ -14,7 +14,7 @@ def main():
     from random import randint
     from ase.io import read, jsonio
     from pathlib import Path
-    from c2db.utils import has_inversion, get_reduced_formula
+    from asr.utils import has_inversion, get_reduced_formula
     import json
 
     fnames = list(Path('.').glob('start.*'))
@@ -133,7 +133,9 @@ def collect_data(atoms):
     if 'magstate' in kvp:
         kvp['magstate'] = kvp['magstate'].upper()
         kvp['is_magnetic'] = kvp['magstate'] != 'NM'
-    kvp['cell_area'] = np.linalg.det(atoms.cell[:2, :2])
+
+    if (atoms.pbc == [True, True, False]).all():
+        kvp['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
     key_descriptions = {
         'magstate': ('Magnetic state', 'Magnetic state', ''),

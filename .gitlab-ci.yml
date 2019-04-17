@@ -1,9 +1,12 @@
 tests:
   image:  python:3.6
   script:
-    - pip install flake8
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - pip install flake8 spglib
     - pip install -e .
     - pip install git+https://gitlab.com/ase/ase.git
+    - pip install gpaw
     - flake8 asr
     - python3 -m pytest asr/tests/test_cli.py --tb=short
     - python3 -m asr.tests.emt
