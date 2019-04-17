@@ -24,18 +24,6 @@ def main(references: str, database: str):
 
     refdb = connect(references)
     rows = select_references(refdb, set(count))
-    pdrefs = [(row.formula, row.energy / row.natoms) for row in rows]
-
-    results = {'references': pdrefs}
-
-    try:
-        pd = PhaseDiagram(pdrefs)
-    except ValueError:
-        pass
-    else:
-        N = len(atoms)
-        e0, _, _ = pd.decompose(formula)
-        results['ehull'] = (energy - e0) / N
 
     ref_energies = {}
     for row in rows:
@@ -44,20 +32,30 @@ def main(references: str, database: str):
             assert symbol not in ref_energies
             ref_energies[symbol] = row.energy / row.natoms
 
-    results['hform'] = (energy -
-                        sum(n * ref_energies[symbol]
-                            for symbol, n in count.items())
-                        ) / len(atoms)
+    pdrefs = []
+    for row in rows:
+        pdrefs.append((row.formula,
+                       hof(row.energy, row.count_atoms(), ref_energies)))
+
+    hform = hof(energy, count, ref_energies)
+
+    results = {'hform': hform,
+               'references': pdrefs}
+
+    try:
+        pd = PhaseDiagram(pdrefs)
+    except ValueError:
+        pass
+    else:
+        e0, _, _ = pd.decompose(formula)
+        results['ehull'] = hform - e0 / len(atoms)
 
     links = []
     if database:
         db = connect(database)
         rows = select_references(db, set(count))
         for row in rows:
-            hform = (row.energy -
-                     sum(n * ref_energies[symbol]
-                         for symbol, n in row.count_atoms().items())
-                     ) / len(atoms)
+            hform = hof(row.energy, row.count_atoms(), ref_energies[symbol])
             links.append((hform,
                           row.formula,
                           row.prototype,
@@ -74,6 +72,13 @@ def main(references: str, database: str):
     results['links'] = links
 
     Path('convex_hull.json').write_text(json.dumps(results))
+
+
+def hof(energy, count, ref_energies):
+    """Heat of formation."""
+    energy -= sum(n * ref_energies[symbol]
+                  for symbol, n in count.items())
+    return energy / sum(count.values())
 
 
 def select_references(db, symbols):
