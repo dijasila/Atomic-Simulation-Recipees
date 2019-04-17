@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Any
 
 import click
 
@@ -13,67 +13,118 @@ from ase.db.row import AtomsRow
 
 @click.command()
 @click.option('-r', '--references', type=str,
-              help='Reference database.',
-              default='references.db')
-def main(references: str):
-    db = connect(references)
+              help='Reference database.')
+@click.option('-d', '--database', type=str,
+              help='Database of systems to be included in the figure.')
+def main(references: str, database: str):
     atoms = read('gs.gpw')
-    count = Counter(atoms.get_chemical_symbols())
-    refs: List[Tuple[str, float]] = []
-    for symbol in count:
-        for row in db.select(symbol):
-            refs.append((row.formula, row.energy / row.natoms))
-    convex_hull(atoms, refs)
-
-
-def convex_hull(atoms, references):
-    formula = atoms.get_chemical_formula()
     energy = atoms.get_potential_energy()
+    count = Counter(atoms.get_chemical_symbols())
+    formula = atoms.get_chemical_formula()
+
+    refdb = connect(references)
+    rows = select_references(refdb, set(count))
+
+    ref_energies = {}
+    for row in rows:
+        if len(row.count_atoms()) == 1:
+            symbol = row.symbols[0]
+            assert symbol not in ref_energies
+            ref_energies[symbol] = row.energy / row.natoms
+
+    pdrefs = []
+    for row in rows:
+        pdrefs.append((row.formula,
+                       hof(row.energy, row.count_atoms(), ref_energies)))
+
+    hform = hof(energy, count, ref_energies)
+
+    results = {'hform': hform,
+               'references': pdrefs}
 
     try:
-        pd = PhaseDiagram(references, filter=formula)
+        pd = PhaseDiagram(pdrefs)
     except ValueError:
-        return
+        pass
+    else:
+        e0, _, _ = pd.decompose(formula)
+        results['ehull'] = hform - e0 / len(atoms)
 
-    N = len(atoms)
-    e0, _, _ = pd.decompose(formula)
-    ehull = (energy - e0) / N
+    links = []
+    if database:
+        db = connect(database)
+        rows = select_references(db, set(count))
+        for row in rows:
+            hform = hof(row.energy, row.count_atoms(), ref_energies[symbol])
+            links.append((hform,
+                          row.formula,
+                          row.prototype,
+                          row.magstate,
+                          row.uid))
+    else:
+        qi = json.loads(Path('quickinfo.json').read_text())
+        links.append((results['hform'],
+                      formula,
+                      qi.get('prototype', ''),
+                      qi['magstate'],
+                      qi['uid']))
 
-    refs2 = []
-    for i, (count, e, name, natoms) in enumerate(pd.references):
-        refs2.append((name, pd.points[i, -1] * natoms))
+    results['links'] = links
 
-    Path('convex_hull.json').write_text(
-        json.dumps({'ehull': ehull,
-                    'references': refs2}))
+    Path('convex_hull.json').write_text(json.dumps(results))
+
+
+def hof(energy, count, ref_energies):
+    """Heat of formation."""
+    energy -= sum(n * ref_energies[symbol]
+                  for symbol, n in count.items())
+    return energy / sum(count.values())
+
+
+def select_references(db, symbols):
+    refs: Dict[int, 'AtomsRow'] = {}
+    for symbol in symbols:
+        for row in db.select(symbol):
+            for symb in row.count_atoms():
+                if symb not in symbols:
+                    break
+            else:
+                uid = row.get('uid', row.id)
+                refs[uid] = row
+    return list(refs.values())
 
 
 def collect_data(atoms):
-    if not Path('prototype.json').is_file():
+    path = Path('convex_hull.json')
+    if not path.is_file():
         return {}, {}, {}
-    data = json.loads(Path('prototype.json'))
-    return ({'ehull', data.pop('ehull')},
-            [('ehull', '?', '', 'eV/atom')],
-            data)
+    dct = json.loads(path.read_text())
+    kvp = {'hform': dct.pop('hform')}
+    if 'ehull' in dct:
+        kvp['ehull'] = dct.pop('ehull')
+    return (kvp,
+            {'ehull': ('Energy above convex hull', '', 'eV/atom'),
+             'hform': ('Heat of formation', '', 'eV/atom')},
+            {'convex_hull': dct})
 
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
     import matplotlib.pyplot as plt
 
-    data = row.data.get('chdata')
-    if data is None or row.data.get('references') is None:
-        return
+    data = row.data.convex_hull
 
     count = row.count_atoms()
     if not (2 <= len(count) <= 3):
         return
 
-    refs = data['refs']
+    refs = data['references']
     pd = PhaseDiagram(refs, verbose=False)
 
     fig = plt.figure()
     ax = fig.gca()
+
+    links = data.get('links', [])
 
     if len(count) == 2:
         x, e, names, hull, simplices, xlabel, ylabel = pd.plot2d2()
@@ -88,10 +139,10 @@ def plot(row, fname):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
         label = '2D'
         ymin = e.min()
-        for y, formula, prot, magstate, id, uid in row.data.references:
+        for y, formula, prot, magstate, uid in links:
             count = parse_formula(formula)[0]
             x = count[B] / sum(count.values())
-            if id == row.id:
+            if uid == row.uid:
                 ax.plot([x], [y], 'rv', label=label)
                 ax.plot([x], [y], 'ko', ms=15, fillstyle='none')
             else:
@@ -110,7 +161,7 @@ def plot(row, fname):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
         label = '2D'
-        for e, formula, prot, magstate, id, uid in row.data.references:
+        for e, formula, prot, magstate, id, uid in links:
             count = parse_formula(formula)[0]
             x = count.get(B, 0) / sum(count.values())
             y = count.get(C, 0) / sum(count.values())
@@ -132,20 +183,20 @@ def plot(row, fname):
 
 def convex_hull_tables(row: AtomsRow,
                        project: str = 'c2db',
-                       ) -> 'Tuple[Dict[str, Any], Dict[str, Any]]':
-    if row.data.get('references') is None:
-        return None, None
+                       ) -> List[Dict[str, Any]]:
     from ase.symbols import string2symbols
+    data = row.data.convex_hull
 
+    links = data.get('links', [])
     rows = []
-    for e, formula, prot, magstate, id, uid in sorted(row.data.references,
-                                                      reverse=True):
+    for e, formula, prot, magstate, uid in sorted(links,
+                                                  reverse=True):
         name = '{} ({}-{})'.format(formula, prot, magstate)
         if id != row.id:
             name = '<a href="/{}/row/{}">{}</a>'.format(project, uid, name)
         rows.append([name, '{:.3f} eV/atom'.format(e)])
 
-    refs = row.data.get('chdata')['refs']
+    refs = data.references
     bulkrows = []
     for formula, e in refs:
         e /= len(string2symbols(formula))
@@ -153,12 +204,12 @@ def convex_hull_tables(row: AtomsRow,
             formula=formula)
         bulkrows.append([link, '{:.3f} eV/atom'.format(e)])
 
-    return ({'type': 'table',
+    return [{'type': 'table',
              'header': ['Monolayer formation energies', ''],
              'rows': rows},
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
-             'rows': bulkrows})
+             'rows': bulkrows}]
 
 
 def webpanel(row, key_descriptions):
@@ -171,7 +222,8 @@ def webpanel(row, key_descriptions):
     else:
         projectname = 'default'
 
-    hulltable1 = table('Property',
+    hulltable1 = table(row,
+                       'Property',
                        ['hform', 'ehull', 'minhessianeig'],
                        key_descriptions)
     hulltable2, hulltable3 = convex_hull_tables(row, projectname)
@@ -180,7 +232,7 @@ def webpanel(row, key_descriptions):
              [[fig('convex-hull.png')],
               [hulltable1, hulltable2, hulltable3]])
 
-    things = [(convex_hull, ['convex-hull.png'])]
+    things = [(plot, ['convex-hull.png'])]
 
     return panel, things
 

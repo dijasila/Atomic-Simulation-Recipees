@@ -14,7 +14,7 @@ def main():
     from random import randint
     from ase.io import read, jsonio
     from pathlib import Path
-    from c2db.utils import has_inversion, get_reduced_formula
+    from asr.utils import has_inversion, get_reduced_formula
     import json
 
     fnames = list(Path('.').glob('start.*'))
