@@ -58,7 +58,7 @@ def main(references: str, database: str):
             hform = hof(row.energy, row.count_atoms(), ref_energies)
             links.append((hform,
                           row.formula,
-                          row.prototype,
+                          row.get('prototype', ''),
                           row.magstate,
                           row.uid))
     else:
