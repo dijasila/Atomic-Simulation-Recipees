@@ -27,8 +27,7 @@ def main(kptpath, npoints, emptybands):
 
     if kptpath is None:
         atoms = read('gs.gpw')
-        lat, _ = atoms.cell.bravais()
-        kptpath = lat.bandpath(npoints=npoints)
+        kptpath = atoms.cell.bandpath(npoints=npoints)
 
     if not os.path.isfile('bs.gpw'):
         convbands = emptybands // 2
@@ -37,7 +36,7 @@ def main(kptpath, npoints, emptybands):
             'nbands': -emptybands,
             'txt': 'bs.txt',
             'fixdensity': True,
-            'kpts': kptpath.scaled_kpts,
+            'kpts': kptpath,
             'convergence': {
                 'bands': -convbands
             },
@@ -259,7 +258,7 @@ def collect_data(atoms):
         Path('results-bs-nosoc.json').read_text()))
     eps_skn = nosoc['energies']
     path = soc['path']
-    npoints = len(path['scaled_kpts'])
+    npoints = len(path['kpts'])
     s_mvk = np.array(soc.get('spin_mvk'))
     if s_mvk.ndim == 3:
         sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
@@ -315,7 +314,7 @@ def bs_pbe_html(row,
     d = row.data.bs_pbe
     e_skn = d['eps_skn']
     path = d['path']
-    kpts = path.scaled_kpts
+    kpts = path.kpts
     ef = d['efermi']
     emin = row.get('vbm', ef) - 5
     emax = row.get('cbm', ef) + 5
@@ -338,7 +337,7 @@ def bs_pbe_html(row,
     d = row.data.bs_pbe
     e_mk = d['eps_so_mk']
     path = d['path']
-    kpts = path.scaled_kpts
+    kpts = path.kpts
     ef = d['efermi']
     sz_mk = d['sz_mk']
     emin = row.get('vbm', ef) - 5

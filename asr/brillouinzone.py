@@ -106,7 +106,7 @@ def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     cell = Cell(row.cell, pbc=row.pbc)
-    lat, _ = cell.bravais()
+    lat = cell.get_bravais_lattice()
     lat.plot_bz()
     plt.savefig(fname)
 
