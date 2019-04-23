@@ -216,6 +216,9 @@ def webpanel(row, key_descriptions):
     from asr.custom import fig
     from asr.custom import table
 
+    if 'convex_hull' not in row.data:
+        return (), ()
+
     prefix = key_descriptions.get('prefix', '')
     if 'c2db-' in prefix:  # make sure links to other rows just works!
         projectname = 'c2db'
