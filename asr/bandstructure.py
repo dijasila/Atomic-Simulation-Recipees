@@ -251,7 +251,6 @@ def collect_data(atoms):
         return kvp, key_descriptions, data
 
     import numpy as np
-    print('Collecting PBE bands-structure data')
     evac = kvp.get('evac')
     soc = json.loads(jsonio.decode(Path('results-bs-soc.json').read_text()))
     nosoc = json.loads(jsonio.decode(

@@ -6,35 +6,39 @@ import click
 def main():
     """Run all recipes"""
     from asr import quickinfo
-    print('Quickinfo...')
+    from ase.parallel import parprint, world
+    parprint('Quickinfo...')
     quickinfo.main(standalone_mode=False)
 
     from asr import gs
-    print('Ground state...')
+    parprint('Ground state...')
     gs.main(standalone_mode=False)
 
     from asr import convex_hull
-    print('Convex hull...')
-    convex_hull.main(standalone_mode=False, args=['--references', 'oqmd12.db'])
+    parprint('Convex hull...')
+    references = str(Path('~/oqmd12.db').expanduser())
+    print(references)
+    convex_hull.main(standalone_mode=False,
+                     args=['--references', references])
 
     from asr import gaps
-    print('Band gaps...')
+    parprint('Band gaps...')
     gaps.main(standalone_mode=False)
   
     from asr import bandstructure 
-    print('Band structure...')
+    parprint('Band structure...')
     bandstructure.main(standalone_mode=False)
 
     from asr import bader
-    print('Bader analysis...')
+    parprint('Bader analysis...')
     bader.main(standalone_mode=False)
 
     from asr import dos
-    print('Density of states...')
+    parprint('Density of states...')
     dos.main(standalone_mode=False)
 
     from asr import collect
-    print('Collect data...')
+    parprint('Collect data...')
     collect.main(standalone_mode=False, args=['.'])
 
 
@@ -59,4 +63,4 @@ dependencies = recipes
 resources = '1:1m'
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)

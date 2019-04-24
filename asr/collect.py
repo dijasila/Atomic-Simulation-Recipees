@@ -29,11 +29,12 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 
     for name, step in zip(names, steps):
         try:
-            print(f'Collecting {name}')
             tmpkvp, tmpkd, tmpdata = step(atoms=atoms)
-            kvp.update(tmpkvp)
-            data.update(tmpdata)
-            key_descriptions.update(tmpkd)
+            if tmpkvp or tmpkd or tmpdata:
+                print(f'Collecting {name}')
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
+                key_descriptions.update(tmpkd)
         except KeyboardInterrupt:
             raise
         except Exception as x:
