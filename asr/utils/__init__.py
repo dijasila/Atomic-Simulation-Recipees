@@ -4,6 +4,7 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
+command = click.command
 click.option = option
 
 
