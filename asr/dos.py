@@ -45,24 +45,58 @@ def main(name, filename, density):
         json.dump(data, fd)
 
 
-@click.command()
-@click.argument('files', type=str, nargs=-1)
-def plot(files):
+def collect_data(atoms):
+    """Band structure PBE and GW +- SOC."""
+    from ase.io.jsonio import read_json
+    from pathlib import Path
+        
+    if not Path('dos.json').is_file():
+        return {}, {}, {}
+
+    dos = read_json('dos.json')
+
+    return {}, {}, {'dos': dos}
+
+
+def plot(row=None, filename='dos.png', file=None, show=False):
     """Plot DOS.
 
     Defaults to dos.json"""
     import json
     import matplotlib.pyplot as plt
     import numpy as np
-    if not files:
-        files = ['dos.json']
-    for file in files:
-        dct = json.load(open(file, 'r'))
-        plt.plot(dct['energies_e'],
-                 np.array(dct['dosspin0_e']) / dct['volume'])
+
+    dos = None
+
+    # Get data from row
+    if row is not None:
+        dos = row.data['dos']
+    print(dos)
+    # Otherwise from from file
+    file = file or 'dos.json'
+    if not dos:
+        dos = json.load(open(file, 'r'))
+
+    plt.plot(dos['energies_e'],
+             np.array(dos['dosspin0_e']) / dos['volume'])
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
     plt.ylabel(r'DOS (states / (eV Å$^3$)')
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(filename)
+    if show:
+        plt.show()
+    return plt.gca()
+
+
+def webpanel(row, key_descriptions):
+    from asr.custom import fig
+
+    panel = ('Density of states (PBE)',
+             [[fig('dos.png')], []])
+
+    things = [(plot, ['dos.png'])]
+
+    return panel, things
 
 
 group = 'Property'

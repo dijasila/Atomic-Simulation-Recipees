@@ -74,22 +74,28 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     page = []
     things = []
     exclude = set()
+    sort = []
 
     # Locate all webpanels
     from importlib import import_module
     pathlist = Path(asr.__file__).parent.glob('*.py')
     for path in pathlist:
         name = path.with_suffix('').name
-
         module = import_module('asr.' + name)
 
         if hasattr(module, 'webpanel'):
             panel, newthings = module.webpanel(row, key_descriptions)
             if panel:
                 page.append(panel)
+                if hasattr(module, 'order'):
+                    sort.append(module.order)
+                else:
+                    sort.append(99)
+
             if newthings:
                 things.extend(newthings)
-
+    page = [x for _, x in sorted(zip(sort, page))]
+    
     page += [miscellaneous_section(row, key_descriptions, exclude)]
 
     # List of functions and the figures they create:

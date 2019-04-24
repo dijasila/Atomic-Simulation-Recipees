@@ -206,6 +206,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+order = 1
 
 if __name__ == '__main__':
     main()
