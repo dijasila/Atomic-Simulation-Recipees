@@ -21,6 +21,10 @@ def main(references: str, database: str):
     energy = atoms.get_potential_energy()
     count = Counter(atoms.get_chemical_symbols())
     formula = atoms.get_chemical_formula()
+    if references is None:
+        msg = ('You have to provide a reference database! Maybe you '
+               'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db')
+        raise AssertionError(msg)
 
     refdb = connect(references)
     rows = select_references(refdb, set(count))

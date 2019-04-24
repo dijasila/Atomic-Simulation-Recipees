@@ -93,7 +93,7 @@ def main():
     # Find prototype
     try:
         info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
-    except ModuleNotFoundError:
+    except (OSError, ModuleNotFoundError):
         pass
 
     # Set temporary uid.
