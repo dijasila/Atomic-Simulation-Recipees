@@ -49,8 +49,8 @@ def main(references: str, database: str):
     else:
         e0, indices, coefs = pd.decompose(formula)
         results['ehull'] = hform - e0 / len(atoms)
-        results['indices'] = indices
-        results['coefs'] = coefs
+        results['indices'] = indices.tolist()
+        results['coefs'] = coefs.tolist()
 
     links = []
     if database:
