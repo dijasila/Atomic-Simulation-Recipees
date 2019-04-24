@@ -34,8 +34,8 @@ def main(references: str, database: str):
 
     pdrefs = []
     for row in rows:
-        pdrefs.append((row.formula,
-                       hof(row.energy, row.count_atoms(), ref_energies)))
+        h = row.natoms * hof(row.energy, row.count_atoms(), ref_energies)
+        pdrefs.append((row.formula, h))
 
     hform = hof(energy, count, ref_energies)
 
