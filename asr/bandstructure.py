@@ -682,7 +682,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-creates = ['bs.gpw', 'eigs_spinorbit.npz']
+creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
