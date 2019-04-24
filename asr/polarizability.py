@@ -115,7 +115,7 @@ def main(gs, density, ecut, xc):
 def collect_data(atoms):
     from pathlib import Path
     import json
-    import jsonio
+    from ase.io import jsonio
     if not Path('polarizability.json').is_file():
         return {}, {}, {}
 
