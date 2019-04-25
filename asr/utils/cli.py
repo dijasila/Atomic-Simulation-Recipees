@@ -30,36 +30,6 @@ def format(content, indent=0, title=None, pad=2):
     return output
 
 
-def check_recipes():
-    recipes = get_recipes()
-
-    attributes = ['main',
-                  'creates',
-                  'collect_data',
-                  'webpanel',
-                  'resources']
-
-    groups = ['Structure', 'Property',
-              'Postprocessing', 'Utility']
-    panel = []
-    panel.append(['name', *attributes])
-    for group in groups:
-        panel.append(f'{group} recipes')
-        for recipe in recipes:
-            if not recipe.group == group:
-                continue
-            status = [recipe.__name__]
-            for attr in attributes:
-                if hasattr(recipe, attr):
-                    status.append('.')
-                else:
-                    status.append('N')
-            panel.append(status)
-
-    pretty_output = format(panel)
-    print(pretty_output)
-
-
 @click.group()
 def cli():
     ...
@@ -110,7 +80,39 @@ def status():
     print(format(panel))
     print(format(missing_files))
 
-    
+
+@cli.command()
+def list():
+    """show all recipes"""
+    recipes = get_recipes()
+
+    attributes = ['main',
+                  'creates',
+                  'collect_data',
+                  'webpanel',
+                  'resources']
+
+    groups = ['Structure', 'Property',
+              'Postprocessing', 'Utility']
+    panel = []
+    panel.append(['name', *attributes])
+    for group in groups:
+        panel.append(f'{group} recipes')
+        for recipe in recipes:
+            if not recipe.group == group:
+                continue
+            status = [recipe.__name__]
+            for attr in attributes:
+                if hasattr(recipe, attr):
+                    status.append('.')
+                else:
+                    status.append('N')
+            panel.append(status)
+
+    pretty_output = format(panel)
+    print(pretty_output)
+
+
 @cli.command()
 @click.argument('recipe')
 def plot(recipe):
