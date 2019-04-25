@@ -33,12 +33,33 @@ def get_recipes(sort=True):
         recipes.append(module)
 
     if sort:
-        def key(x):
-            if hasattr(x, 'dependencies'):
-                return len(x.dependencies)
-            return 0
+        sortedrecipes = []
 
-        recipes = sorted(recipes, key=key)
+        # Add the recipes with no dependencies (these must exist)
+        for recipe in recipes:
+            if not hasattr(recipe, 'dependencies'):
+                sortedrecipes.append(recipe)
+            else:
+                if len(recipe.dependencies) == 0:
+                    sortedrecipes.append(recipe)
+
+        for i in range(1000):
+            for recipe in recipes:
+                names = [recipe.__name__ for recipe in sortedrecipes]
+                if recipe.__name__ in names:
+                    continue
+                for dep in recipe.dependencies:
+                    if dep not in names:
+                        break
+                else:
+                    sortedrecipes.append(recipe)
+
+            if len(recipes) == len(sortedrecipes):
+                break
+        else:
+            msg = 'Something went wrong when parsing dependencies!'
+            raise AssertionError(msg)
+        recipes = sortedrecipes
 
     return recipes
 
