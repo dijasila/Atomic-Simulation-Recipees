@@ -162,7 +162,7 @@ def polarizability(row, fx, fy, fz):
     if 'absorptionspectrum' in row.data:
         data = row.data['absorptionspectrum']
         frequencies = data['frequencies']
-        i2 = abs(frequencies - 10.0).argmin()
+        i2 = abs(frequencies - 50.0).argmin()
         frequencies = frequencies[:i2]
         alphax_w = data['alphax_w'][:i2]
         alphay_w = data['alphay_w'][:i2]
@@ -199,7 +199,6 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fx)
-        plt.close()
 
         ax = plt.figure().add_subplot(111)
         try:
@@ -210,12 +209,13 @@ def polarizability(row, fx, fy, fz):
                 ax.plot(
                     frequencies,
                     np.real(alphayfull_w),
-                    '--',
+                    '-',
                     c='C1',
                     label='real')
                 ax.plot(
                     frequencies,
                     np.real(alphay_w),
+                    '--',
                     c='C1',
                     label='real interband')
             else:
@@ -231,7 +231,6 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fy)
-        plt.close()
 
         ax = plt.figure().add_subplot(111)
         ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
@@ -244,7 +243,6 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fz)
-        plt.close()
 
 
 def webpanel(row, key_descriptions):

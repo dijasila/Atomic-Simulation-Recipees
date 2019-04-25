@@ -110,8 +110,23 @@ def status():
     print(format(panel))
     print(format(missing_files))
 
-
+    
 @cli.command()
-def list():
-    """List all recipes"""
-    check_recipes()
+@click.argument('recipe')
+def plot(recipe):
+    """Plot figures interactively"""
+    import importlib
+    from ase.db import connect
+    from matplotlib import pyplot as plt
+    
+    module = importlib.import_module(recipe)
+    db = connect('database.db')
+
+    rows = list(db.select())
+    for row in rows:
+        _, things = module.webpanel(rows[-1], {})
+
+        for func, names in things:
+            func(row, *names)
+
+    plt.show()
