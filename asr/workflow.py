@@ -13,6 +13,9 @@ def main():
     recipes = get_recipes(sort=True)
 
     for recipe in recipes:
+        if 'asr.workflow' == recipe.__name__:
+            continue
+
         # Check if some files are missing
         if hasattr(recipe, 'creates'):
             exists = [Path(create).exists() for create in recipe.creates]
