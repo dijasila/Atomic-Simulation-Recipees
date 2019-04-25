@@ -8,7 +8,7 @@ from ase.parallel import world, broadcast
 
 from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
-from asr.references import formation_energy
+from asr.convex_hull import get_hof
 from asr.utils import update_defaults
 
 import click
@@ -195,7 +195,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
 
-        hform1 = formation_energy(slab1) / len(slab1)
+        hform1, _, _ = get_hof(slab1, None)
 
     # Ferro-magnetic:
     if fm in states:
@@ -209,7 +209,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
-            hform2 = formation_energy(slab2) / len(slab2)
+            hform2, _, _ = get_hof(slab2, None)
             # Create subfolder early so that fm-tasks can begin:
             if world.rank == 0 and not Path(fm).is_dir():
                 Path(fm).mkdir()
@@ -244,7 +244,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
             magmom = slab3.get_magnetic_moment()
             magmoms = slab3.get_magnetic_moments()
             if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-                hform3 = formation_energy(slab3) / len(slab3)
+                hform3, _, _ = get_hof(slab3, None)
             else:
                 hform3 = np.inf
             slab3.calc = None

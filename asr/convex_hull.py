@@ -19,40 +19,9 @@ from ase.db.row import AtomsRow
               help='Database of systems to be included in the figure.')
 def main(references: str, database: str):
     atoms = read('gs.gpw')
-    energy = atoms.get_potential_energy()
-    count = Counter(atoms.get_chemical_symbols())
     formula = atoms.get_chemical_formula()
-    if references is None:
-        references = os.environ.get('ASR_REFERENCES')
-        if references is None:
-            msg = ('You have to provide a reference database! Maybe you '
-                   'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db\n\n'
-                   'You can set the $ASR_REFERENCES environment variable '
-                   'to point to the location of the reference database '
-                   'file.')
-        raise ValueError(msg)
-
-    refpath = Path(references)
-    if not refpath.is_file():
-        raise FileNotFoundError(refpath)
-
-    refdb = connect(refpath)
-    rows = select_references(refdb, set(count))
-
-    ref_energies = {}
-    for row in rows:
-        if len(row.count_atoms()) == 1:
-            symbol = row.symbols[0]
-            assert symbol not in ref_energies
-            ref_energies[symbol] = row.energy / row.natoms
-
-    pdrefs = []
-    for row in rows:
-        h = row.natoms * hof(row.energy, row.count_atoms(), ref_energies)
-        pdrefs.append((row.formula, h))
-
-    hform = hof(energy, count, ref_energies)
-
+    count = Counter(atoms.get_chemical_symbols())
+    hform, pdrefs, ref_energies = get_hof(atoms, references)
     results = {'hform': hform,
                'references': pdrefs}
 
@@ -88,6 +57,43 @@ def main(references: str, database: str):
     results['links'] = links
 
     Path('convex_hull.json').write_text(json.dumps(results))
+
+
+def get_hof(atoms, references):
+    energy = atoms.get_potential_energy()
+    count = Counter(atoms.get_chemical_symbols())
+    if references is None:
+        references = os.environ.get('ASR_REFERENCES')
+        if references is None:
+            msg = ('You have to provide a reference database! Maybe you '
+                   'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db\n\n'
+                   'You can set the $ASR_REFERENCES environment variable '
+                   'to point to the location of the reference database '
+                   'file.')
+        raise ValueError(msg)
+
+    refpath = Path(references)
+    if not refpath.is_file():
+        raise FileNotFoundError(refpath)
+
+    refdb = connect(refpath)
+    rows = select_references(refdb, set(count))
+
+    ref_energies = {}
+    for row in rows:
+        if len(row.count_atoms()) == 1:
+            symbol = row.symbols[0]
+            assert symbol not in ref_energies
+            ref_energies[symbol] = row.energy / row.natoms
+
+    pdrefs = []
+    for row in rows:
+        h = row.natoms * hof(row.energy, row.count_atoms(), ref_energies)
+        pdrefs.append((row.formula, h))
+
+    hform = hof(energy, count, ref_energies)
+
+    return hform, pdrefs, ref_energies
 
 
 def hof(energy, count, ref_energies):
