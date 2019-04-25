@@ -1,3 +1,4 @@
+import os
 import json
 from collections import Counter
 from pathlib import Path
@@ -22,11 +23,20 @@ def main(references: str, database: str):
     count = Counter(atoms.get_chemical_symbols())
     formula = atoms.get_chemical_formula()
     if references is None:
-        msg = ('You have to provide a reference database! Maybe you '
-               'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db')
-        raise AssertionError(msg)
+        references = os.environ.get('ASR_REFERENCES')
+        if references is None:
+            msg = ('You have to provide a reference database! Maybe you '
+                   'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db\n\n'
+                   'You can set the $ASR_REFERENCES environment variable '
+                   'to point to the location of the reference database '
+                   'file.')
+        raise ValueError(msg)
 
-    refdb = connect(references)
+    refpath = Path(references)
+    if not refpath.is_file():
+        raise FileNotFoundError(refpath)
+
+    refdb = connect(refpath)
     rows = select_references(refdb, set(count))
 
     ref_energies = {}
@@ -89,8 +99,14 @@ def hof(energy, count, ref_energies):
 
 def select_references(db, symbols):
     refs: Dict[int, 'AtomsRow'] = {}
+
+    # Check if database has "u" key:
+    kwargs = {}
+    for row in db.select('u', limit=1):
+        kwargs['u'] = 0
+
     for symbol in symbols:
-        for row in db.select(symbol):
+        for row in db.select(symbol, **kwargs):
             for symb in row.count_atoms():
                 if symb not in symbols:
                     break
