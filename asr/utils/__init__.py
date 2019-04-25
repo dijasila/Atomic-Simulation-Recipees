@@ -21,7 +21,7 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_recipes():
+def get_recipes(sort=True):
     import importlib
     from pathlib import Path
 
@@ -31,6 +31,15 @@ def get_recipes():
         name = file.with_suffix('').name
         module = importlib.import_module(f'asr.{name}')
         recipes.append(module)
+
+    if sort:
+        def key(x):
+            if hasattr(x, 'dependencies'):
+                return len(x.dependencies)
+            return 0
+
+        recipes = sorted(recipes, key=key)
+
     return recipes
 
 

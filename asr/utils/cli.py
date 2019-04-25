@@ -2,7 +2,7 @@ import click
 from asr.utils import get_recipes
 
 
-def summary(content, indent=0, title=None, pad=2):
+def format(content, indent=0, title=None, pad=2):
     colwidth_c = []
     for row in content:
         if isinstance(row, str):
@@ -56,7 +56,7 @@ def check_recipes():
                     status.append('N')
             panel.append(status)
 
-    pretty_output = summary(panel)
+    pretty_output = format(panel)
     print(pretty_output)
 
 
@@ -79,6 +79,36 @@ def test():
                universal_newlines=True) as p:
         for line in p.stdout:
             print(line, end='')
+
+
+@cli.command()
+def status():
+    """Show status of current directory"""
+    from pathlib import Path
+    recipes = get_recipes()
+    panel = []
+    missing_files = []
+    for recipe in recipes:
+        status = [recipe.__name__]
+        done = True
+        if hasattr(recipe, 'creates'):
+            for create in recipe.creates:
+                if not Path(create).exists():
+                    done = False
+            if done:
+                status.append(f'Done -> {recipe.creates}')
+            else:
+                status.append(f'Todo')
+            if done:
+                panel.insert(0, status)
+            else:
+                panel.append(status)
+        else:
+            status.append('No files created')
+            missing_files.append(status)
+    
+    print(format(panel))
+    print(format(missing_files))
 
 
 @cli.command()
