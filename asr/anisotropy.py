@@ -14,3 +14,4 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+dependencies = ['asr.gs']
