@@ -114,7 +114,6 @@ def main(gs, density, ecut, xc):
 
 def collect_data(atoms):
     from pathlib import Path
-    import json
     from ase.io import jsonio
     if not Path('polarizability.json').is_file():
         return {}, {}, {}
@@ -122,9 +121,8 @@ def collect_data(atoms):
     kvp = {}
     data = {}
     key_descriptions = {}
-    dct = json.loads(Path('polarizability.json').read_text(),
-                     cls=jsonio.MyEncoder)
-
+    dct = jsonio.decode(Path('polarizability.json').read_text())
+    
     # Update key-value-pairs
     kvp['alphax'] = dct['alphax_w'][0].real
     kvp['alphay'] = dct['alphay_w'][0].real
@@ -267,7 +265,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-creates = ['polarizability.npz', 'chi+0+0+0.pckl']
+creates = ['polarizability.json']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':

@@ -70,8 +70,10 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
     # Get data from row
     if row is not None:
+        if 'dos' not in row.data:
+            return
         dos = row.data['dos']
-    print(dos)
+    
     # Otherwise from from file
     file = file or 'dos.json'
     if not dos:
