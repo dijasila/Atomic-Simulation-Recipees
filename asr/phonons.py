@@ -13,7 +13,7 @@ import click
 
 @click.command()
 @click.option('-n', default=2, help='Supercell size')
-def phonons(n=2):
+def main(n=2):
     """Calculate Phonons"""
     N = n
     from asr.utils.gpaw import GPAW
@@ -138,4 +138,4 @@ group = 'Property'
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
-    phonons()
+    main(standalone_mode=False)
