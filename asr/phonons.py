@@ -67,7 +67,7 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
 
-    slab = read('start.traj')
+    slab = read('start.json')
     from gpaw import GPAW
     calc = GPAW(txt='phonons.txt', **params)
     from asr.utils import get_dimensionality

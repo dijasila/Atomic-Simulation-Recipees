@@ -132,6 +132,8 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
+    return slab
+
 
 @click.command()
 @update_defaults('asr.relax')
@@ -270,4 +272,4 @@ resources = '8:xeon8:10h'
 
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)
