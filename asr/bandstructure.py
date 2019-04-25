@@ -615,7 +615,6 @@ def bs_pbe(row,
     if not show_legend:
         ax.legend_.remove()
     plt.savefig(filename, bbox_inches='tight')
-    plt.close()
 
 
 def webpanel(row, key_descriptions):

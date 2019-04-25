@@ -169,6 +169,7 @@ def polarizability(row, fx, fy, fz):
         alphaz_w = data['alphaz_w'][:i2]
 
         ax = plt.figure().add_subplot(111)
+        ax1 = ax
         try:
             wpx = row.plasmafrequency_x
             if wpx > 0.01:
@@ -201,6 +202,7 @@ def polarizability(row, fx, fy, fz):
         plt.savefig(fx)
 
         ax = plt.figure().add_subplot(111)
+        ax2 = ax
         try:
             wpy = row.plasmafrequency_y
             if wpy > 0.01:
@@ -233,6 +235,7 @@ def polarizability(row, fx, fy, fz):
         plt.savefig(fy)
 
         ax = plt.figure().add_subplot(111)
+        ax3 = ax
         ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
         ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
         ax.set_title('z-component')
@@ -243,6 +246,8 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fz)
+
+    return ax1, ax2, ax3
 
 
 def webpanel(row, key_descriptions):
