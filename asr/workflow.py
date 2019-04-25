@@ -6,7 +6,7 @@ import click
 def main():
     """Run all recipes"""
     from asr import quickinfo
-    from ase.parallel import parprint, world
+    from ase.parallel import parprint
     parprint('Quickinfo...')
     quickinfo.main(standalone_mode=False)
 
@@ -24,8 +24,8 @@ def main():
     from asr import gaps
     parprint('Band gaps...')
     gaps.main(standalone_mode=False)
-  
-    from asr import bandstructure 
+
+    from asr import bandstructure
     parprint('Band structure...')
     bandstructure.main(standalone_mode=False)
 
