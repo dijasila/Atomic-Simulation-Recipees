@@ -1,17 +1,13 @@
 from pathlib import Path
-import click
-from io import StringIO
-from contextlib import redirect_stdout
-from functools import partial
+from asr.utils import command
 
 
-@click.command()
+@command()
 def main():
     """Run all recipes"""
     from ase.parallel import parprint
     from asr.utils import get_recipes
     recipes = get_recipes(sort=True)
-
     for recipe in recipes:
         if 'asr.workflow' == recipe.__name__:
             continue
@@ -28,8 +24,11 @@ def main():
         parprint(f'{recipe.__name__}...')
         try:
             recipe.main(standalone_mode=False)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as x:
             print(x)
+        parprint()
 
 
 folder = Path(__file__).parent.resolve()

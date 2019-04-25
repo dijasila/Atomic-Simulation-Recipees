@@ -70,7 +70,7 @@ def get_hof(atoms, references):
                    'You can set the $ASR_REFERENCES environment variable '
                    'to point to the location of the reference database '
                    'file.')
-        raise ValueError(msg)
+            raise ValueError(msg)
 
     refpath = Path(references)
     if not refpath.is_file():

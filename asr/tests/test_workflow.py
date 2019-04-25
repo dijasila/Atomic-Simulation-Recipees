@@ -10,89 +10,32 @@ runner = CliRunner()
 
 # Set up folder, start.json and params.json
 folder = (Path(__file__).parent / 'Si').resolve()
-if not folder.is_dir():
-    folder.mkdir()
+if folder.is_dir():
+    shutil.rmtree(folder, ignore_errors=False, onerror=None)
+folder.mkdir()
+
 atoms = bulk('Si', crystalstructure='diamond')
 write(folder / 'start.json', atoms)
 params = {'asr.relax': {'ecut': 100, 'kptdens': 2.0},
           'asr.gs': {'ecut': 100, 'kptdensity': 2.0},
           'asr.dos': {'density': 6.0},
           'asr.borncharges': {'kpointdensity': 1.0},
-          'asr.bandstructure': {'npoints': 50}}
+          'asr.bandstructure': {'npoints': 50},
+          'asr.polarizability': {'density': 6.0,
+                                 'ecut': 10.0,
+                                 'bandfactor': 2},
+          'asr.pdos': {'kptdensity': 6.0}}
 Path(folder / 'params.json').write_text(json.dumps(params))
 
 
-def test_gs():
+def test_workflow():
     with chdir(folder):
-        from asr.gs import main
-        result = runner.invoke(main, [])
+        from asr.workflow import main
+        main()
+        # result = runner.invoke(main, [])
 
-    assert result.exit_code == 0
-
-
-def test_quickinfo():
-    with chdir(folder):
-        from asr.quickinfo import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
+    # assert result.exit_code == 0
 
 
-def test_relax():
-    with chdir(folder):
-        from asr.relax import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_gs_nm():
-    with chdir(folder / 'nm'):
-        from asr.gs import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_quickinfo_nm():
-    with chdir(folder / 'nm'):
-        from asr.quickinfo import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_borncharges():
-    with chdir(folder):
-        from asr.borncharges import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_dos():
-    with chdir(folder):
-        from asr.dos import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_collect():
-    with chdir(folder):
-        from asr.collect import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_collect_nm():
-    with chdir(folder / 'nm'):
-        from asr.collect import main
-        result = runner.invoke(main, [])
-
-    assert result.exit_code == 0
-
-
-def test_delete():
-    shutil.rmtree(folder, ignore_errors=False, onerror=None)
+if __name__ == '__main__':
+    test_workflow()

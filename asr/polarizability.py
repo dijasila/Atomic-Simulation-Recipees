@@ -7,7 +7,9 @@ from asr.utils import command, option
 @option('--density', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
 @option('--xc', default='RPA', help='XC interaction (RPA or ALDA)')
-def main(gs, density, ecut, xc):
+@option('--bandfactor', default=5, type=int,
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+def main(gs, density, ecut, xc, bandfactor):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     import json
@@ -74,8 +76,8 @@ def main(gs, density, ecut, xc):
             gs,
             txt='es.txt',
             fixdensity=True,
-            nbands=6 * nval,
-            convergence={'bands': 5 * nval},
+            nbands=(bandfactor + 1) * nval,
+            convergence={'bands': bandfactor * nval},
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
         calc.get_potential_energy()

@@ -17,7 +17,7 @@ from ase.utils import formula_metal
 from asr.utils import magnetic_atoms
 from asr.gaps import get_spin_direction
 
-import click
+from asr.utils import command, option
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
@@ -117,10 +117,14 @@ def dft_for_pdos(kptdens=36.0):
     return calc
 
 
-@click.command()
-def main(calc='pdos.gpw'):
+@command()
+@option('--calc', default='pdos.gpw',
+        help='gpw-file to base pdos on')
+@option('--kptdensity', default=36.0,
+        help='K-point density')
+def main(calc, kptdensity):
     if not op.isfile('pdos.gpw'):
-        dft_for_pdos()
+        dft_for_pdos(kptdensity)
     dosefnosoc = dosef_nosoc()
     with paropen('dosef_nosoc.txt', 'w') as fd:
         print('{}'.format(dosefnosoc), file=fd)
@@ -375,6 +379,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+dependencies = ['asr.gs']
 
 if __name__ == '__main__':
     main()
