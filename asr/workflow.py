@@ -1,45 +1,32 @@
 from pathlib import Path
 import click
+from io import StringIO
+from contextlib import redirect_stdout
+from functools import partial
 
 
 @click.command()
 def main():
     """Run all recipes"""
-    from asr import quickinfo
     from ase.parallel import parprint
-    parprint('Quickinfo...')
-    quickinfo.main(standalone_mode=False)
+    from asr.utils import get_recipes
+    recipes = get_recipes(sort=True)
 
-    from asr import gs
-    parprint('Ground state...')
-    gs.main(standalone_mode=False)
+    for recipe in recipes:
+        # Check if some files are missing
+        if hasattr(recipe, 'creates'):
+            exists = [Path(create).exists() for create in recipe.creates]
+            if all(exists):
+                continue
 
-    from asr import convex_hull
-    parprint('Convex hull...')
-    references = str(Path('~/oqmd12.db').expanduser())
-    print(references)
-    convex_hull.main(standalone_mode=False,
-                     args=['--references', references])
+        if recipe.group not in ['Structure', 'Property']:
+            continue
 
-    from asr import gaps
-    parprint('Band gaps...')
-    gaps.main(standalone_mode=False)
-
-    from asr import bandstructure
-    parprint('Band structure...')
-    bandstructure.main(standalone_mode=False)
-
-    from asr import bader
-    parprint('Bader analysis...')
-    bader.main(standalone_mode=False)
-
-    from asr import dos
-    parprint('Density of states...')
-    dos.main(standalone_mode=False)
-
-    from asr import collect
-    parprint('Collect data...')
-    collect.main(standalone_mode=False, args=['.'])
+        parprint(f'{recipe.__name__}...')
+        try:
+            recipe.main(standalone_mode=False)
+        except Exception as x:
+            print(x)
 
 
 folder = Path(__file__).parent.resolve()
