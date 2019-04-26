@@ -71,7 +71,7 @@ defaults = {}
 #@click.options('--something', type=str, help='HELP', default='smth')
 @click.command()
 @update_defaults('asr.emasses', defaults)
-@click.options('--gpwfilename', type=str, help='Filename of GS calculation', default='gs.gpw')
+@click.option('--gpwfilename', type=str, help='Filename of GS calculation', default='gs.gpw')
 def main(gpwfilename):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -80,7 +80,7 @@ def main(gpwfilename):
     socs = [True, False]
 
     for soc in socs:
-        eigenvalues, efermi = gpw2eigs(gpw=gpw, soc=soc,
+        eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        optimal_spin_direction=True)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
@@ -90,7 +90,7 @@ def main(gpwfilename):
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
             if not os.path.isfile(gpw2):
-                nonsc_circle(gpw=gpwfilename, soc=soc, bandtype=bt)
+                nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
             try:
                 masses = embands(gpw2,
                                  soc=soc,
@@ -128,6 +128,8 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """    
     from gpaw import GPAW
     import numpy as np
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.dft.bandgap import bandgap
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
     assert np.allclose(calc.atoms.pbc[ndim:], 0) #Check that 1D: Only x-axis, 2D: Only x- and y-axis
@@ -165,11 +167,11 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         calc.write(name + '.gpw')
 
 
-def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, 2d=True):
+def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=True):
     import numpy as np
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
-    if 2d:
+    if twod:
         #This factor is used to kill contribution from z-coordinates in 2D case
         zfactor = 0
     else:
@@ -279,6 +281,7 @@ def em(kpts_kv, eps_k, bandtype=None):
             - k-pot extremum in cartesian coordinates (units of 1 / Bohr)
 
     """
+    import numpy as np
     #Do a second order fit to get started
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     fxx = 2*c[0]
@@ -325,7 +328,7 @@ def fit(kpts_kv, eps_k, thirdorder=False):
     A_kp = model(kpts_kv)
     if not thirdorder:
         A_kp = A_kp[:, :9]
-    return la.lstsq(A_kp, eps_k, recond=-1)
+    return la.lstsq(A_kp, eps_k, rcond=-1)
 
 
 
@@ -347,7 +350,7 @@ def model(kpts_kv):
                      k_ky*k_kz,
                      k_kx,
                      k_ky,
-                     k_kz
+                     k_kz,
                      ones,
                      k_kx**3,
                      k_ky**3,
@@ -363,6 +366,7 @@ def model(kpts_kv):
 
 def _savemass(soc, bt, mass):
     from ase.parallel import world
+    import numpy as np
     fname = get_name(soc, bt) + '.npz'
     if world.rank == 0:
         mass2 = {}
@@ -388,7 +392,7 @@ def webpanel(row, key_descriptions):
 
             
 group = 'Property'
-
+dependencies = ['asr.gs']
 
 if __name__ == '__main__':
     main(standalone_mode=False)
