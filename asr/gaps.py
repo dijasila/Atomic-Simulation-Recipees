@@ -152,17 +152,6 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
-def fermi_level(calc, eps_skn=None, nelectrons=None):
-    from gpaw.occupations import occupation_numbers
-    from ase.units import Ha
-    if nelectrons is None:
-        nelectrons = calc.get_number_of_electrons()
-    if eps_skn is None:
-        eps_skn = eigenvalues(calc)
-    eps_skn.sort(axis=-1)
-    occ = calc.occupations.todict()
-    weight_k = calc.get_k_point_weights()
-    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
 
 
 def eigenvalues(calc):
