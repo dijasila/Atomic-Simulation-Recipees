@@ -22,8 +22,8 @@ Installation
 ------------
 
 ```console
-$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git pythonpackages/asr
-$ echo  'export PYTHONPATH=~/pythonpackages:$PYTHONPATH' >> ~/.bashrc 
+$ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
+$ echo  'export PYTHONPATH=~/asr:$PYTHONPATH' >> ~/.bashrc
 ```
 
 How to use
@@ -118,10 +118,15 @@ import click
 @click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
 def main(arg1):
     """Main functionality"""
-    pass
+    from pathlib import Path
+    results = {}
+    Path('results.json').write_text(json.dumps(results))
+    return results
 
-def collect_data():
+
+def collect_data(atoms):
     """Collect data to ASE database"""
+    results = json.loads(Path('results.json'))
     kvp = {}
     data = {}
     key_descriptions = {}

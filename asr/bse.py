@@ -1,4 +1,8 @@
 def absorption(row, fnamein, fnameout):
+    import numpy as np
+    from ase.units import Ha, Bohr, alpha
+    import matplotlib.pyplot as plt
+
     def xlim(delta_bse):
         return (0, 5 + delta_bse)
 

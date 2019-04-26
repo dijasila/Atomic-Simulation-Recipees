@@ -1,6 +1,10 @@
 def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
+    from ase.units import Bohr, Ha
     from c2db.em import evalmodel
     from ase.dft.kpoints import kpoint_convert
+    from matplotlib import pyplot as plt
+    import numpy as np
+    labels_from_kpts = None  # XXX: Fix pep8
     sortcolors = True
     erange = 0.05  # energy window
     cb = row.get('data', {}).get('effectivemass', {}).get('cb', {})
@@ -99,32 +103,22 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
 
 
 def bz_soc(row, fname):
-    from c2db.bz import plot_bz
-    if 'bs_pbe' in row.data and 'path' in row.data.bs_pbe:
-        angle = 0
-
-        plot_bz(
-            row,
-            soc=True,
-            figsize=(5, 5),
-            sfs=1,
-            fname=fname,
-            dpi=400,
-            scale=1.5,
-            scalecb=0.8,
-            bbox_to_anchor=(0.5, 0.95),
-            angle=angle,
-            scbm=20,
-            svbm=50,
-            lwvbm=1.5)
+    from ase.geometry.cell import Cell
+    from matplotlib import pyplot as plt
+    cell = Cell(row.cell, pbc=row.pbc)
+    lat = cell.get_bravais_lattice()
+    lat.plot_bz()
+    plt.savefig(fname)
 
 
 def webpanel(row, key_descriptions):
-    things = [(bzcut_pbe, ['pbe-bzcut-cb-bs.png', 'pbe-bzcut-vb-bs.png']),
-              (bz_soc, ['bz.png'])]
+    # XXX we still need to make the zoomed in bs plots
+    # things = [(bzcut_pbe, ['pbe-bzcut-cb-bs.png', 'pbe-bzcut-vb-bs.png']),
+    #           (bz_soc, ['bz.png'])]
+    things = [(bz_soc, ['bz.png'])]
 
     panel = ()
     return panel, things
 
 
-group = 'Property'
+group = 'Postprocessing'

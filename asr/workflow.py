@@ -1,15 +1,38 @@
 from pathlib import Path
-import click
+from asr.utils import command
 
 
-@click.command()
+@command()
 def main():
     """Run all recipes"""
-    pass
+    from ase.parallel import parprint
+    from asr.utils import get_recipes
+    recipes = get_recipes(sort=True)
+    for recipe in recipes:
+        if 'asr.workflow' == recipe.__name__:
+            continue
+
+        # Check if some files are missing
+        if hasattr(recipe, 'creates'):
+            exists = [Path(create).exists() for create in recipe.creates]
+            if all(exists):
+                continue
+
+        if recipe.group not in ['Structure', 'Property']:
+            continue
+
+        parprint(f'{recipe.__name__}...')
+        try:
+            recipe.main(standalone_mode=False)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as x:
+            print(x)
+        parprint()
 
 
 folder = Path(__file__).parent.resolve()
-files = [str(path) for path in folder.glob('*.py')]
+files = [str(path) for path in folder.glob('[a-zA-Z]*.py')]
 recipes = []
 for file in files:
     if 'workflow' in file:
@@ -29,4 +52,4 @@ dependencies = recipes
 resources = '1:1m'
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)

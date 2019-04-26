@@ -1,14 +1,5 @@
 import click
-import os
-from contextlib import contextmanager
-
-
-@contextmanager
-def chdir(folder):
-    dir = os.getcwd()
-    os.chdir(str(folder))
-    yield
-    os.chdir(dir)
+from asr.utils import chdir
 
 
 def collect(db, verbose=False, skip_forces=False, references=None):
@@ -38,12 +29,12 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 
     for name, step in zip(names, steps):
         try:
-            print(f'Collecting {name}')
-            step(
-                kvp=kvp,
-                data=data,
-                key_descriptions=key_descriptions,
-                atoms=atoms)
+            tmpkvp, tmpkd, tmpdata = step(atoms=atoms)
+            if tmpkvp or tmpkd or tmpdata:
+                print(f'Collecting {name}')
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
+                key_descriptions.update(tmpkd)
         except KeyboardInterrupt:
             raise
         except Exception as x:
@@ -78,7 +69,7 @@ def main(folders, references, verbose, skipforces):
         if not os.path.isdir(folder):
             continue
         with chdir(folder):
-            print(folder, end=': ')
+            print(folder, end=':\n')
             try:
                 if references:
                     references = Path(references).resolve()
@@ -92,7 +83,6 @@ def main(folders, references, verbose, skipforces):
             except Exception as x:
                 error = '{}: {}'.format(x.__class__.__name__, x)
                 tb = traceback.format_exc()
-                print(error)
                 errors.append((folder, error, tb))
             else:
                 errors.extend(errors2)
