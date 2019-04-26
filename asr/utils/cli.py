@@ -82,8 +82,8 @@ def status():
 
 
 @cli.command()
-def list():
-    """show all recipes"""
+def checkall():
+    """Check status of all recipes"""
     recipes = get_recipes()
 
     attributes = ['main',
