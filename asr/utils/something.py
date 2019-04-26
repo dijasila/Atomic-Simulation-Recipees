@@ -62,8 +62,11 @@ def create_plot(row, fname):
 
 
 group = 'Property'
-creates = ['something.json']
-dependencies = []
+creates = ['something.json']  # what files are created
+dependencies = []  # no dependencies
+resources = '1:10m'  # 1 core for 10 minutes
+diskspace = 0  # how much diskspace is used
+restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     main(standalone_mode=False)
