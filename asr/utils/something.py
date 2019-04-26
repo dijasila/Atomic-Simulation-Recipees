@@ -12,7 +12,7 @@ def main(number):
     """Calculate something."""
     something = calculate_something(number)
     results = {'number': number,
-               'somehting': something}
+               'something': something}
     Path('something.json').write_text(json.dumps(results))
 
 
