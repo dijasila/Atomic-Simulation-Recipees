@@ -38,10 +38,8 @@ def main(kptpath, npoints, emptybands):
             'fixdensity': True,
             'kpts': kptpath,
             'convergence': {
-                'bands': -convbands
-            },
-            'symmetry': 'off'
-        }
+                'bands': -convbands},
+            'symmetry': 'off'}
 
         calc = GPAW('gs.gpw', **parms)
         calc.get_potential_energy()
@@ -54,7 +52,7 @@ def main(kptpath, npoints, emptybands):
         data = bs.todict()
         data = jsonio.encode(data)
 
-        Path('results-bs-nosoc.json').write_text(json.dumps(data))
+        Path('results-bs-nosoc.json').write_text(data)
 
     # stuff below could be moved to the collect script.
     e_km, _, s_kvm = gpw2eigs(
