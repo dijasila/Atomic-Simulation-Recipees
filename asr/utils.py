@@ -20,7 +20,7 @@ def get_parameters(key=None):
 def is_magnetic():
     import numpy as np
     from ase.io import read
-    atoms = read('start.traj')
+    atoms = get_start_atoms()#read('start.traj')
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
     if maxmom > 1e-3:

@@ -13,8 +13,9 @@ import click
 
 @click.command()
 @click.option('-N', default=2, help='Supercell size')
-def main(N=2):
+def main(n=2):
     """Calculate Phonons"""
+    from asr.utils import get_start_atoms
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -23,19 +24,18 @@ def main(N=2):
     world.barrier()
 
     params = {}
-    name = 'start.traj'
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
     # Make sure to converge forces! Can be important
     if 'convergence' in params:
-        params['convergence']['forces'] = 1e-6
+        params['convergence']['forces'] = 1e-4
     else:
-        params['convergence'] = {'forces': 1e-6}
+        params['convergence'] = {'forces': 1e-4}
 
-    atoms = read(name)
-    fd = open('phonons-{}.txt'.format(N), 'a')
+    atoms = get_start_atoms() 
+    fd = open('phonons-{}.txt'.format(n), 'a')
     calc = GPAW(txt=fd, **params)
 
     # Set initial magnetic moments
@@ -48,11 +48,11 @@ def main(N=2):
     from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
-        supercell = (N, N, N)
+        supercell = (n, n, n)
     elif nd == 2:
-        supercell = (N, N, 1)
+        supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (N, 1, 1)
+        supercell = (n, 1, 1)
 
     p = Phonons(atoms, calc, supercell=supercell)
     p.run()
@@ -70,11 +70,11 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
     from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
-        supercell = (N, N, N)
+        supercell = (n, n, n)
     elif nd == 2:
-        supercell = (N, N, 1)
+        supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (N, 1, 1)
+        supercell = (n, 1, 1)
     p = Phonons(slab, calc, supercell=supercell)
     p.read(symmetrize=0, acoustic=False)
     cell = atoms.get_cell()
@@ -115,6 +115,17 @@ def plot_phonons(row, fname):
     plt.savefig(fname)
     plt.close()
 
+def collect(kvp, data, atoms, verbose):
+    try:
+        eigs2, freqs2 = analyse(atoms, D=2)
+        eigs3, freqs3 = analyse(atoms, D=3)
+    except (FileNotFoundError, EOFError):
+        return
+    kvp['minhessianeig'] = eigs3.min()
+    data['phonon_frequencies_2d'] = freqs2
+    data['phonon_frequencies_3d'] = freqs3
+    data['phonon_energies_2d'] = eigs2
+    data['phonon_energies_3d'] = eigs3
 
 def webpanel(row, key_descriptions):
     from asr.custom import table, fig
