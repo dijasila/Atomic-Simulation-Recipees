@@ -7,6 +7,8 @@ tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
 
+.. literalinclude:: asr/utils/something.py
+
 Requirements
 ------------
 
