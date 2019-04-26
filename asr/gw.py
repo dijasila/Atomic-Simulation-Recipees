@@ -2,6 +2,9 @@ def bs_xc(row, path, xc, **kwargs):
     """xc: 'gw' or 'hse'
     """
     from c2db.bsfitfig import bsfitfig
+    from asr.bandstructure import add_bs_pbe
+    import matplotlib.patheffects as path_effects
+    import matplotlib.pyplot as plt
     lw = kwargs.get('lw', 1)
     if row.data.get('bs_pbe', {}).get('path') is None:
         return

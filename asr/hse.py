@@ -269,7 +269,8 @@ if __name__ == '__main__':
 #     from asr.custom import fig, table
 #     hse = table('Property',
 #                 ['work_function_hse', 'dos_hse', 'gap_hse', 'dir_gap_hse',
-#                  'vbm_hse', 'cbm_hse'], key_descriptions=key_descriptions_noxc)
+#                  'vbm_hse', 'cbm_hse'],
+#                  key_descriptions=key_descriptions_noxc)
 
 #     panel = ('Electronic band structure (HSE)',
 #              [[fig('hse-bs.png')],

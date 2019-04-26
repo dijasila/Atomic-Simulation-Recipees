@@ -2,5 +2,14 @@
  {
      "ecut": 350,
      "kptdens": 2.0
+ },
+ "asr.gs":
+ {
+     "ecut": 350,
+     "kptdensity": 2.0
+ },
+  "asr.bandstructure":
+ {
+     "npoints": 50
  }
 }

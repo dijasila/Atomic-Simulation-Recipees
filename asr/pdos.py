@@ -1,8 +1,10 @@
-import argparse
-
 from collections import defaultdict
 import json
 import os.path as op
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 
 import numpy as np
 import ase.dft.dos
@@ -10,19 +12,17 @@ from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
 from ase.units import Ha
-import gpaw.mpi as mpi
-from gpaw import GPAW
-from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
-from _gpaw import tetrahedron_weight
+from ase.utils import formula_metal
 
-from c2db import magnetic_atoms
-from c2db.utils import get_spin_direction
+from asr.utils import magnetic_atoms
+from asr.gaps import get_spin_direction
 
-import click
+from asr.utils import command, option
 
 
 def _lti(energies, dos, kpts, M, E, W=None):
     """Faster implementation."""
+    from _gpaw import tetrahedron_weight
     zero = energies[0]
     de = energies[1] - zero
     simplices = np.array([[0, 1, 2, 3]], np.int32)
@@ -117,10 +117,14 @@ def dft_for_pdos(kptdens=36.0):
     return calc
 
 
-@click.command()
-def main(calc='pdos.gpw'):
+@command()
+@option('--calc', default='pdos.gpw',
+        help='gpw-file to base pdos on')
+@option('--kptdensity', default=36.0,
+        help='K-point density')
+def main(calc, kptdensity):
     if not op.isfile('pdos.gpw'):
-        dft_for_pdos()
+        dft_for_pdos(kptdensity)
     dosefnosoc = dosef_nosoc()
     with paropen('dosef_nosoc.txt', 'w') as fd:
         print('{}'.format(dosefnosoc), file=fd)
@@ -144,6 +148,10 @@ def pdos(gpwname, spinorbit=True) -> None:
     fname = 'pdos_soc.json' if spinorbit else 'pdos.json'
     if op.isfile(fname):
         return
+    import gpaw.mpi as mpi
+    from gpaw import GPAW
+    from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
+
     world = mpi.world
     calc = GPAW(gpwname, txt=None)
     if spinorbit and world.rank == 0:
@@ -204,6 +212,7 @@ def dosef_nosoc():
     """
     Get dos at ef
     """
+    from gpaw import GPAW
     name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
     calc = GPAW(name, txt=None)
 
@@ -219,6 +228,7 @@ def dosef_soc():
     from ase.dft.kpoints import get_monkhorst_pack_size_and_offset
     from ase.dft.dos import DOS
     from c2db.utils import gpw2eigs
+    from gpaw import mpi, GPAW
     name = 'pdos.gpw' if op.isfile('pdos.gpw') else 'densk.gpw'
     world = mpi.world
     if world.rank == 0:
@@ -247,6 +257,7 @@ def dosef_soc():
 def plot_pdos():
     """only for testing
     """
+    from gpaw import GPAW
     efermi = GPAW('gs.gpw', txt=None).get_fermi_level()
     import matplotlib.pyplot as plt
     with paropen('pdos.json', 'r') as fd:
@@ -298,7 +309,7 @@ def pdos_pbe(row,
         li = ['s', 'p', 'd', 'f'].index(L)
         return ('{}{}{}'.format(s, si, li))
 
-    pdos_sal = OrderedDict()
+    pdos_sal = {}
     for k in sorted(pdos_sal2.keys(), key=cmp):
         pdos_sal[k] = pdos_sal2[k]
     colors = {}
@@ -368,6 +379,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+dependencies = ['asr.gs']
 
 if __name__ == '__main__':
     main()

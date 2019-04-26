@@ -5,15 +5,15 @@ from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
-from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
 from asr.utils import get_dimensionality, magnetic_atoms
 from asr.bfgs import BFGS
-from asr.references import formation_energy
-
+from asr.convex_hull import get_hof
 from asr.utils import update_defaults
+
 import click
 from functools import partial
+
 option = partial(click.option, show_default=True)
 
 
@@ -61,7 +61,6 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None):
-
     name = f'relax-{tag}'
     trajname = f'{name}.traj'
 
@@ -70,7 +69,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     if slab_relaxed is not None:
         slab = slab_relaxed
-    
+
     if done:
         return slab
 
@@ -86,13 +85,13 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             raise NotImplementedError(msg)
 
     kwargs = dict(txt=name + '.txt',
-                  mode=PW(ecut),
+                  mode={'name': 'pw', 'ecut': ecut},
                   xc='PBE',
                   basis='dzp',
                   kpts={'density': kptdens, 'gamma': True},
                   # This is the new default symmetry settings
                   symmetry={'do_not_symmetrize_the_density': True},
-                  occupations=FermiDirac(width=width))
+                  occupations={'name': 'fermi-dirac', 'width': width})
 
     if tag.endswith('+u'):
         # Try to get U values from previous image
@@ -108,6 +107,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
+    from asr.utils.gpaw import GPAW, KohnShamConvergenceError
     slab.calc = GPAW(**kwargs)
     opt = BFGS(slab,
                logfile=name + '.log',
@@ -117,7 +117,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     except KohnShamConvergenceError:
         try:
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                          occupations=FermiDirac(width=0.02),
+                          occupations={'name': 'fermi-dirac', 'width': 0.02},
                           maxiter=999)
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
@@ -125,12 +125,14 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
-            kwargs.update(occupations=FermiDirac(width=0.2))
+            kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+
+    return slab
 
 
 @click.command()
@@ -193,7 +195,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
 
-        hform1 = formation_energy(slab1) / len(slab1)
+        hform1, _, _ = get_hof(slab1, None)
 
     # Ferro-magnetic:
     if fm in states:
@@ -207,7 +209,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
-            hform2 = formation_energy(slab2) / len(slab2)
+            hform2, _, _ = get_hof(slab2, None)
             # Create subfolder early so that fm-tasks can begin:
             if world.rank == 0 and not Path(fm).is_dir():
                 Path(fm).mkdir()
@@ -242,7 +244,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
             magmom = slab3.get_magnetic_moment()
             magmoms = slab3.get_magnetic_moments()
             if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-                hform3 = formation_energy(slab3) / len(slab3)
+                hform3, _, _ = get_hof(slab3, None)
             else:
                 hform3 = np.inf
             slab3.calc = None
@@ -270,5 +272,4 @@ resources = '8:xeon8:10h'
 
 
 if __name__ == '__main__':
-    main()
-
+    main(standalone_mode=False)
