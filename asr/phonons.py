@@ -61,7 +61,7 @@ def main(n=2):
     return p
 
 
-def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
+def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
     params = {}
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
@@ -119,10 +119,13 @@ def plot_phonons(row, fname):
     plt.savefig(fname)
     plt.close()
 
-def collect(kvp, data, atoms, verbose):
+def collect_data(atoms, n=2):
+    kvp = {}
+    data = {}
+    key_descriptions = {}
     try:
-        eigs2, freqs2 = analyse(atoms, D=2)
-        eigs3, freqs3 = analyse(atoms, D=3)
+        eigs2, freqs2, _ = analyse(atoms, n)
+        eigs3, freqs3, _ = analyse(atoms, n)
     except (FileNotFoundError, EOFError):
         return
     kvp['minhessianeig'] = eigs3.min()
@@ -130,6 +133,8 @@ def collect(kvp, data, atoms, verbose):
     data['phonon_frequencies_3d'] = freqs3
     data['phonon_energies_2d'] = eigs2
     data['phonon_energies_3d'] = eigs3
+
+    return kvp, key_descriptions, data
 
 def webpanel(row, key_descriptions):
     from asr.custom import table, fig
