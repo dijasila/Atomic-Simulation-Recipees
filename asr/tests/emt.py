@@ -7,7 +7,7 @@ from ase.build import bulk
 from asr.collect import main as collect
 from asr.convex_hull import main as chull
 from asr.gs import main as gs
-from asr.phonons import phonons
+from asr.phonons import main as phonons
 from asr.quickinfo import main as quickinfo
 from asr.relax import main as relax
 from asr.utils import chdir

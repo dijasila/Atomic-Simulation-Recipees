@@ -7,12 +7,12 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 
 from asr.utils import get_dimensionality, magnetic_atoms
-from asr.bfgs import BFGS
-from asr.convex_hull import get_hof
+from asr.utils.bfgs import BFGS
 from asr.utils import update_defaults
 
 import click
 from functools import partial
+import json
 
 option = partial(click.option, show_default=True)
 
@@ -147,7 +147,9 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--save-all-states',
         help='Save all states and not only the most stable state(s)',
         is_flag=True)
-def main(plusu, states, ecut, kptdens, save_all_states):
+@option('--references',
+        help='References database when calculating HOF')
+def main(plusu, states, ecut, kptdens, save_all_states, references):
     """Relax atomic positions and unit cell.
 
     STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
@@ -169,9 +171,9 @@ def main(plusu, states, ecut, kptdens, save_all_states):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
-    hform1 = np.inf
-    hform2 = np.inf
-    hform3 = np.inf
+    toten_nm = np.nan
+    toten_fm = np.nan
+    toten_afm = np.nan
 
     # Non-magnetic:
     if nm in states:
@@ -195,7 +197,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
 
-        hform1, _, _ = get_hof(slab1, None)
+        toten_nm = slab1.get_potential_energy()
 
     # Ferro-magnetic:
     if fm in states:
@@ -209,10 +211,10 @@ def main(plusu, states, ecut, kptdens, save_all_states):
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
-            hform2, _, _ = get_hof(slab2, None)
             # Create subfolder early so that fm-tasks can begin:
             if world.rank == 0 and not Path(fm).is_dir():
                 Path(fm).mkdir()
+        toten_fm = slab2.get_potential_energy()
 
     # Antiferro-magnetic:
     if afm in states:
@@ -243,33 +245,31 @@ def main(plusu, states, ecut, kptdens, save_all_states):
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()
             magmoms = slab3.get_magnetic_moments()
-            if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-                hform3, _, _ = get_hof(slab3, None)
-            else:
-                hform3 = np.inf
-            slab3.calc = None
+            toten_afm = slab3.get_potential_energy()
 
-    hform = min(hform1, hform2, hform3)
+    for state, slab in [(nm, slab1),
+                        (fm, slab2),
+                        (afm, slab3)]:
+        if slab is None:
+            continue
+        if world.rank == 0 and not Path(state).is_dir():
+            Path(state).mkdir()
 
-    if hform1 > hform + 0.01:  # assume precison of 10 meV per atom
-        hform1 = np.inf
+        name = state + '/start.json'
+        if not Path(name).is_file():
+            # Write start.traj file to folder
+            write(name, slab)
 
-    for state, h, slab in [(nm, hform1, slab1),
-                           (fm, hform2, slab2),
-                           (afm, hform3, slab3)]:
-        if h < np.inf or save_all_states:
-            if world.rank == 0 and not Path(state).is_dir():
-                Path(state).mkdir()
-
-            name = state + '/start.json'
-            if not Path(name).is_file():
-                # Write start.traj file to folder
-                write(name, slab)
+    # Save to results-relax.json
+    data = {'toten_nm': toten_nm,
+            'toten_fm': toten_fm,
+            'toten_afm': toten_afm}
+    Path('results-relax.json').write_text(json.dumps(data))
 
 
 group = 'Structure'
 resources = '8:xeon8:10h'
-
+creates = ['results-relax.json']
 
 if __name__ == '__main__':
     main(standalone_mode=False)
