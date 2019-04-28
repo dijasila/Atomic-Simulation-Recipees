@@ -8,7 +8,6 @@ from ase.parallel import world, broadcast
 
 from asr.utils import get_dimensionality, magnetic_atoms
 from asr.utils.bfgs import BFGS
-from asr.convex_hull import get_hof
 from asr.utils import update_defaults
 
 import click
