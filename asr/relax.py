@@ -7,12 +7,13 @@ from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 
 from asr.utils import get_dimensionality, magnetic_atoms
-from asr.bfgs import BFGS
+from asr.utils.bfgs import BFGS
 from asr.convex_hull import get_hof
 from asr.utils import update_defaults
 
 import click
 from functools import partial
+import json
 
 option = partial(click.option, show_default=True)
 
@@ -266,10 +267,14 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 # Write start.traj file to folder
                 write(name, slab)
 
+    # Save to results-relax.json
+    data = {'nm-HOF': hform1, 'fm-HOF': hform2, 'afm-HOF': hform3}
+    Path('results-relax.json').write_text(json.dumps(data))
+
 
 group = 'Structure'
 resources = '8:xeon8:10h'
-
+creates = ['results-relax.json']
 
 if __name__ == '__main__':
     main(standalone_mode=False)
