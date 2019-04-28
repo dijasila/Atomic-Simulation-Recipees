@@ -251,6 +251,8 @@ def main(plusu, states, ecut, kptdens, save_all_states, references):
     for state, slab in [(nm, slab1),
                         (fm, slab2),
                         (afm, slab3)]:
+        if slab is None:
+            continue
         if world.rank == 0 and not Path(state).is_dir():
             Path(state).mkdir()
 
