@@ -49,10 +49,7 @@ def main(kptpath, npoints, emptybands):
     bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
 
     if mpi.world.rank == 0:
-        data = bs.todict()
-        data = jsonio.encode(data)
-
-        Path('results-bs-nosoc.json').write_text(data)
+        Path('results-bs-nosoc.json').write_text(jsonio.encode(bs))
 
     # stuff below could be moved to the collect script.
     e_km, _, s_kvm = gpw2eigs(
@@ -64,7 +61,7 @@ def main(kptpath, npoints, emptybands):
         data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
 
         data = jsonio.encode(data)
-        Path('results-bs-soc.json').write_text(json.dumps(data))
+        Path('results-bs-soc.json').write_text(data)
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
@@ -250,12 +247,11 @@ def collect_data(atoms):
 
     import numpy as np
     evac = kvp.get('evac')
-    soc = json.loads(jsonio.decode(Path('results-bs-soc.json').read_text()))
-    nosoc = json.loads(jsonio.decode(
-        Path('results-bs-nosoc.json').read_text()))
-    eps_skn = nosoc['energies']
+    soc = jsonio.decode(Path('results-bs-soc.json').read_text())
+    nosoc = jsonio.decode(Path('results-bs-nosoc.json').read_text())
+    eps_skn = nosoc.energies
     path = soc['path']
-    npoints = len(path['kpts'])
+    npoints = len(path.kpts)
     s_mvk = np.array(soc.get('spin_mvk'))
     if s_mvk.ndim == 3:
         sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
@@ -281,11 +277,11 @@ def collect_data(atoms):
     except KeyError:
         from gpaw.symmetry import atoms2symmetry
         op_scc = atoms2symmetry(atoms).op_scc
-    import json
+
     from pathlib import Path
     magstate = json.loads(Path('quickinfo.json').read_text())['magstate']
 
-    for idx, kpt in enumerate(path):
+    for idx, kpt in enumerate(path.kpts):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
                 or magstate == 'AFM'):
             pbe['sz_mk'][:, idx] = 0.0
