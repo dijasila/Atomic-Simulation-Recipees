@@ -4,8 +4,19 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
-command = click.command
 click.option = option
+
+
+def command(name, overwrite={}, *args, **kwargs):
+    params = get_parameters(name)
+    params.update(overwrite)
+
+    ud = update_defaults
+    
+    def decorator(func):
+        return click.command(*args, **kwargs)(ud(name, params)(func))
+        
+    return decorator
 
 
 @contextmanager

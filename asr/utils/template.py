@@ -1,13 +1,13 @@
 """Template recipe."""
 import json
 from pathlib import Path
-from asr.utils import command, option
+from asr.utils import command, option  # :: ignore:option
 
 
-@command('asr.something')
-@option('--number', default=5)
-def main(number):
-    """Calculate something."""
+@command('asr.something')  # :: something->*
+@option('--number', default=5)  # :: "'--number', default=5"->* repeat:-1
+def main(number):  # :: number->*
+    """Calculate something."""  # :: "Calculate something."->*
     something = calculate_something(number)
     results = {'number': number,
                'something': something}
@@ -18,10 +18,10 @@ def calculate_something(number):
     return number + 2
 
 
-def collect_data(atoms):
-    path = Path('something.json')
-    if not path.is_file():
-        return {}, {}, {}
+def collect_data(atoms):  # ::
+    path = Path('something.json')  # :: something.json->*
+    if not path.is_file():  # ::
+        return {}, {}, {}  # ::
     # Read data:
     dct = json.loads(path.read_text())
     # Define key-value pairs, key descriptions and data:
@@ -33,7 +33,7 @@ def collect_data(atoms):
     return kvp, kd, data
 
 
-def webpanel(row, key_descriptions):
+def webpanel(row, key_descriptions):  # ::
     from asr.custom import fig, table
 
     if 'something' not in row.data:
@@ -46,10 +46,10 @@ def webpanel(row, key_descriptions):
     panel = ('Title',
              [[fig('something.png'), table1]])
     things = [(create_plot, ['something.png'])]
-    return panel, things
+    return panel, things  # ::
 
 
-def create_plot(row, fname):
+def create_plot(row, fname):  # ::
     import matplotlib.pyplot as plt
 
     data = row.data.something
@@ -59,12 +59,13 @@ def create_plot(row, fname):
     plt.savefig(fname)
 
 
-group = 'Property'
+group = 'Property'  # :: Property->
+# :: 'something.json'->* optional:true
 creates = ['something.json']  # what files are created
-dependencies = []  # no dependencies
-resources = '1:10m'  # 1 core for 10 minutes
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
+dependencies = ['asr.otherrecipe']  # no dependencies :: 'asr.otherrecipe'->*
+resources = '1:10m'  # 1 core for 10 minutes :: '1:10m'->*
+diskspace = 0  # how much diskspace is used :: optional:true
+restart = 0  # how many times to restart :: optional:true
 
-if __name__ == '__main__':
-    main(standalone_mode=False)
+if __name__ == '__main__':  # ::
+    main(standalone_mode=False)  # ::

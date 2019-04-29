@@ -1,9 +1,7 @@
-from asr.utils import option, update_defaults
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.bandstructure')
+@command('asr.bandstructure')
 @option('--kptpath', default=None, type=str)
 @option('--npoints', default=400)
 @option('--emptybands', default=20)
@@ -11,7 +9,6 @@ def main(kptpath, npoints, emptybands):
     """Calculate electronic band structure"""
     import os
     from pathlib import Path
-    import json
     from ase.io import jsonio
 
     from gpaw import GPAW

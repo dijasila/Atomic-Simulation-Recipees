@@ -20,7 +20,7 @@ def format(content, indent=0, title=None, pad=2):
     for row in content:
         out = ' ' * indent
         if isinstance(row, str):
-            output += f'\n{row}\n'
+            output += f'\n{row}'
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
@@ -79,6 +79,32 @@ def status():
     
     print(format(panel))
     print(format(missing_files))
+
+
+@cli.command()
+@click.argument('name')
+def check(name):
+    """Get a detailed description of a recipe"""
+    from asr.utils.recipe import Recipe
+    recipe = Recipe.frompath(name)
+    print(recipe)
+    import inspect
+    lines = inspect.getsource(recipe.main.callback)
+    print(lines)
+    import difflib
+    # template = Recipe.frompath('asr.utils.template')
+    # tmplines = inspect.getsource(template.main.callback)
+
+    # s = difflib.SequenceMatcher(isjunk=lambda x: x in ['*', 'pass'],
+    #                             a=lines,
+    #                             b=tmplines)
+    # for block in s.get_matching_blocks():
+    #     i, j, n = block
+    #     print('a')
+    #     print(lines[i:i + n])
+    #     print('b')
+    #     print(tmplines[j:j + n])
+    #     # print("a[%d] and b[%d] match for %d elements" % block)
 
 
 @cli.command()
