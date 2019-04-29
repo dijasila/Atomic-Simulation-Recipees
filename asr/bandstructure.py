@@ -11,7 +11,6 @@ def main(kptpath, npoints, emptybands):
     """Calculate electronic band structure"""
     import os
     from pathlib import Path
-    import json
     from ase.io import jsonio
 
     from gpaw import GPAW
