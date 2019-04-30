@@ -23,7 +23,7 @@ def main():
 
         parprint(f'{recipe.__name__}...')
         try:
-            recipe.main(standalone_mode=False)
+            recipe.main()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as x:
@@ -52,4 +52,4 @@ dependencies = recipes
 resources = '1:1m'
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

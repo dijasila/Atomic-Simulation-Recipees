@@ -267,4 +267,4 @@ resources = '8:xeon8:10h'
 creates = ['results-relax.json']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

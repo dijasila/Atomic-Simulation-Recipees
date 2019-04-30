@@ -89,4 +89,4 @@ dependencies = ['asr.phonons']
 group = 'Structure'
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

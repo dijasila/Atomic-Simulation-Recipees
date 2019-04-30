@@ -58,4 +58,4 @@ diskspace = 0  # How much diskspace is used
 restart = 1  # Does it make sense to restart the script?
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

@@ -68,4 +68,4 @@ diskspace = 0  # how much diskspace is used :: optional:true
 restart = 0  # how many times to restart :: optional:true
 
 if __name__ == '__main__':  # ::
-    main(standalone_mode=False)  # ::
+    main()

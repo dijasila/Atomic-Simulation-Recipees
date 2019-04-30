@@ -675,4 +675,4 @@ creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

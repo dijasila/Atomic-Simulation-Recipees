@@ -14,14 +14,16 @@ def command(name, overwrite={}, *args, **kwargs):
     ud = update_defaults
 
     def decorator(func):
+        cc = click.command(*args, **kwargs)
         if hasattr(func, '__click_params__'):
-            func = click.command(*args, **kwargs)(ud(name, params)(func))
+            func = cc(ud(name, params)(func))
         else:
-            func = click.command(*args, **kwargs)(func)
+            func = cc(func)
 
+        func = partial(func, standalone_mode=False)
         func._asr_command = True
         return func
-
+    
     return decorator
 
 
