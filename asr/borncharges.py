@@ -1,7 +1,4 @@
-from asr.utils import update_defaults
-from functools import partial
-import click
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
 def get_wavefunctions(atoms, name, params, density=6.0,
@@ -28,8 +25,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     return atoms.calc
 
 
-@click.command()
-@update_defaults('asr.borncharges')
+@command('asr.borncharges')
 @option('--displacement', default=0.01, help='Atomic displacement (Å)')
 @option('--kpointdensity', default=6.0)
 @option('--folder', default='data-borncharges')

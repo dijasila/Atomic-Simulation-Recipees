@@ -1,5 +1,4 @@
-from asr.utils import option, update_defaults, get_start_parameters
-import click
+from asr.utils import command, option, get_start_parameters
 
 # Get some parameters from start.json
 params = get_start_parameters()
@@ -11,8 +10,7 @@ if 'density' in params.get('kpts', {}):
     defaults['kptdensity'] = params['kpts']['density']
 
 
-@click.command()
-@update_defaults('asr.gs', defaults)
+@command('asr.gs', defaults)
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='start.json')

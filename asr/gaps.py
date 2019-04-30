@@ -1,12 +1,9 @@
 # ##TODO min kpt dens?
-from asr.utils import click, update_defaults, get_start_parameters
-params = get_start_parameters()
-defaults = {}
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.gap', defaults)
-@click.option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+@command('asr.gap')
+@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
     import numpy as np
     from gpaw import GPAW

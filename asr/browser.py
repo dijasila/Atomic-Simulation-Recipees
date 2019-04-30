@@ -1,9 +1,7 @@
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
+@command('asr.browser')
 @option('--database', default='database.db')
 @option('--custom', default='asr.custom')
 def main(database, custom):

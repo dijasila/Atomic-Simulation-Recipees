@@ -8,11 +8,11 @@ from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons
 
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@click.option('-n', default=2, help='Supercell size')
+@command('asr.phonons')
+@option('-n', default=2, help='Supercell size')
 def main(n=2):
     """Calculate Phonons"""
     N = n

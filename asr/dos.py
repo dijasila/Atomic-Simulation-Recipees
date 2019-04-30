@@ -1,14 +1,10 @@
-from asr.utils import update_defaults
-from functools import partial
-import click
-click.option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.dos')
-@click.option('--name', default='dos.gpw', type=str)
-@click.option('--filename', default='dos.json', type=str)
-@click.option('--density', default=12.0, help='K point density')
+@command('asr.dos')
+@option('--name', default='dos.gpw', type=str)
+@option('--filename', default='dos.json', type=str)
+@option('--density', default=12.0, help='K point density')
 def main(name, filename, density):
     """Calculate DOS"""
     from pathlib import Path

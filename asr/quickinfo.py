@@ -1,14 +1,8 @@
-from functools import partial
-
-import click
-
+from asr.utils import command
 from asr.utils.prototype import get_symmetry_id
 
 
-option = partial(click.option, show_default=True)
-
-
-@click.command()
+@command('asr.quickinfo')
 def main():
     """Get quick information about structure based on start.traj"""
     from random import randint

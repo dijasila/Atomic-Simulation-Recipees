@@ -4,6 +4,7 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
+argument = click.argument
 
 
 def command(name, overwrite={}, *args, **kwargs):

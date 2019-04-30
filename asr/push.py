@@ -1,9 +1,7 @@
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
+@command('asr.push')
 @option(
     '-q',
     '--momentum',

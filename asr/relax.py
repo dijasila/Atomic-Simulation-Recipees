@@ -6,15 +6,11 @@ from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 
-from asr.utils import get_dimensionality, magnetic_atoms
+from asr.utils import (command, option, argument,
+                       get_dimensionality, magnetic_atoms)
 from asr.utils.bfgs import BFGS
-from asr.utils import update_defaults
 
-import click
-from functools import partial
 import json
-
-option = partial(click.option, show_default=True)
 
 
 Uvalues = {}
@@ -135,9 +131,8 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     return slab
 
 
-@click.command()
-@update_defaults('asr.relax')
-@click.argument('states', nargs=-1)
+@command('asr.relax')
+@argument('states', nargs=-1)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdens', default=6.0,
