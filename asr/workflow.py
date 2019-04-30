@@ -2,7 +2,7 @@ from pathlib import Path
 from asr.utils import command
 
 
-@command()
+@command('asr.workflow')
 def main():
     """Run all recipes"""
     from ase.parallel import parprint

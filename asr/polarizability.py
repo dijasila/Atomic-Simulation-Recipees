@@ -1,7 +1,7 @@
 from asr.utils import command, option
 
 
-@command()
+@command('asr.polarizability')
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')

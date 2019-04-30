@@ -4,7 +4,6 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
-click.option = option
 
 
 def command(name, overwrite={}, *args, **kwargs):
@@ -12,10 +11,16 @@ def command(name, overwrite={}, *args, **kwargs):
     params.update(overwrite)
 
     ud = update_defaults
-    
+
     def decorator(func):
-        return click.command(*args, **kwargs)(ud(name, params)(func))
-        
+        if hasattr(func, '__click_params__'):
+            func = click.command(*args, **kwargs)(ud(name, params)(func))
+        else:
+            func = click.command(*args, **kwargs)(func)
+
+        func._asr_command = True
+        return func
+
     return decorator
 
 
