@@ -36,6 +36,22 @@ def cli():
 
 
 @cli.command()
+@click.option('--database', default='database.db')
+@click.option('--custom', default='asr.custom')
+def browser(database, custom):
+    """Open results in web browser"""
+    import subprocess
+    from pathlib import Path
+
+    if custom == 'asr.custom':
+        custom = Path(__file__).parent / 'custom.py'
+
+    cmd = f'python3.6 -m ase db {database} -w -M {custom}'
+    print(cmd)
+    subprocess.run(cmd.split())
+
+
+@cli.command()
 def test():
     """Run test of recipes"""
     from pathlib import Path
