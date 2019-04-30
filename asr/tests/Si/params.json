@@ -23,5 +23,9 @@
     },
     "asr.pdos": {
         "kptdensity": 6.0
+    },
+    "asr.phonons": {
+        "n": 1
     }
+
 }
