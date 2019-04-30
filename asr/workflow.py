@@ -18,9 +18,6 @@ def main():
             if all(exists):
                 continue
 
-        if recipe.group not in ['Structure', 'Property']:
-            continue
-
         parprint(f'{recipe.__name__}...')
         try:
             recipe.main()
