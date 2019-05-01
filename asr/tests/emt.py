@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import pytest
 from ase.build import bulk
 
 from asr.collect import main as collect
