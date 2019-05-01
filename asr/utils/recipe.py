@@ -24,7 +24,7 @@ class Recipe:
         module = importlib.import_module(f'{name}')
         return cls(module)
 
-    def __repr__(self):
+    def __str__(self):
         from asr.utils.cli import format
         from inspect import signature
         msg = [['Detailed recipe info'],
@@ -36,7 +36,6 @@ class Recipe:
             msg += ['MAIN']
             msg += ['=' * 4]
             ctx = self.main.make_context('', [])
-            
             msg += [self.main.get_help(ctx) + '\n' * 2]
         else:
             msg += ['ERROR: main function not implemented']
