@@ -231,7 +231,7 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
 
 
 group = 'Postprocessing'
-dependencies = ['asr.anisotropy']
+dependencies = ['asr.gs']
 
 
 if __name__ == '__main__':
