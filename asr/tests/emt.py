@@ -27,40 +27,32 @@ def test_cuag():
         with chdir(dir, create=True, empty=True):
             atoms.write('start.json')
 
-            with pytest.raises(SystemExit):
-                relax(args=[])
+            relax(args=[])
 
             with chdir('nm'):
-                with pytest.raises(SystemExit):
-                    gs()
-                with pytest.raises(SystemExit):
-                    phonons()
+                gs()
+                phonons()
 
     for dir in Path().glob('*u/nm/'):
         with chdir(dir):
-            with pytest.raises(SystemExit):
-                quickinfo(args=[])
+            quickinfo(args=[])
 
     db = Path('database.db')
     if db.is_file():
         db.unlink()
 
-    with pytest.raises(SystemExit):
-        collect([str(dir) for dir in Path().glob('?u/nm/')])
+    collect([str(dir) for dir in Path().glob('?u/nm/')])
     db.rename('refs.db')
 
-    with pytest.raises(SystemExit):
-        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+    collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
     db.rename('database1.db')
 
     for dir in Path().glob('Au*Cu/nm/'):
         with chdir(dir):
-            with pytest.raises(SystemExit):
-                chull(['-r', '../../refs.db',
-                       '-d', '../../database1.db'])
+            chull(['-r', '../../refs.db',
+                   '-d', '../../database1.db'])
 
-    with pytest.raises(SystemExit):
-        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+    collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
 
 
 if __name__ == '__main__':
