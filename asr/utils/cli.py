@@ -104,23 +104,6 @@ def check(name):
     from asr.utils.recipe import Recipe
     recipe = Recipe.frompath(name)
     print(recipe)
-    import inspect
-    lines = inspect.getsource(recipe.main.callback)
-    print(lines)
-    import difflib
-    # template = Recipe.frompath('asr.utils.template')
-    # tmplines = inspect.getsource(template.main.callback)
-
-    # s = difflib.SequenceMatcher(isjunk=lambda x: x in ['*', 'pass'],
-    #                             a=lines,
-    #                             b=tmplines)
-    # for block in s.get_matching_blocks():
-    #     i, j, n = block
-    #     print('a')
-    #     print(lines[i:i + n])
-    #     print('b')
-    #     print(tmplines[j:j + n])
-    #     # print("a[%d] and b[%d] match for %d elements" % block)
 
 
 @cli.command()
