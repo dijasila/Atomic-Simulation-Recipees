@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
 
 import numpy as np
-import ase.dft.dos
+from ase.dft.dos import linear_tetrahedron_integration as lti
 from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
@@ -18,50 +18,6 @@ from asr.utils import magnetic_atoms
 from asr.gaps import get_spin_direction
 
 from asr.utils import command, option
-
-
-def _lti(energies, dos, kpts, M, E, W=None):
-    """Faster implementation."""
-    from _gpaw import tetrahedron_weight
-    zero = energies[0]
-    de = energies[1] - zero
-    simplices = np.array([[0, 1, 2, 3]], np.int32)
-    s = np.array([0])
-    volumes = np.array([1.0])
-    if W is None:
-        for e in E.T:
-            e = e.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes)
-    else:
-        for e, w in zip(E.T, W.T):
-            e = e.copy()
-            w = w.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes * w[k])
-
-
-old = ase.dft.dos.ltidos
-
-
-def ltidos(cell, eigs, energies, weights=None):
-    x = 1 / abs(np.linalg.det(cell)) / np.prod(eigs.shape[:3]) / 6
-    return old(cell, eigs, energies, weights) * x
-
-
-# Monkey-patch ASE:
-ase.dft.dos._lti = _lti
-ase.dft.dos.ltidos = ltidos
 
 
 def count(zs):
@@ -193,7 +149,7 @@ def pdos(gpwname, spinorbit=True) -> None:
                 weights /= kd.weight_k[:, np.newaxis]
                 w = weights[kd.bz2ibz_k]
                 w.shape = tuple(kd.N_c) + (-1, )
-                p = ltidos(calc.atoms.cell, energies * Ha, e, w)
+                p = lti(calc.atoms.cell, energies * Ha, e, w)
                 key = ','.join([str(spin), str(spec), str(l)])
                 pdos_sal[key] += p
         e_s[spin] = e
