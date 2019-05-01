@@ -7,6 +7,13 @@ option = partial(click.option, show_default=True)
 argument = click.argument
 
 
+class ASRCommand(click.Command):
+    _asr_command = True
+
+    def __call__(self, *args, **kwargs):
+        return self.main(standalone_mode=False, *args, **kwargs)
+
+
 def command(name, overwrite={}, *args, **kwargs):
     params = get_parameters(name)
     params.update(overwrite)
@@ -14,14 +21,12 @@ def command(name, overwrite={}, *args, **kwargs):
     ud = update_defaults
 
     def decorator(func):
-        cc = click.command(*args, **kwargs)
+        cc = click.command(cls=ASRCommand, *args, **kwargs)
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
             func = cc(func)
 
-        func = partial(func, standalone_mode=False)
-        func._asr_command = True
         return func
     
     return decorator
