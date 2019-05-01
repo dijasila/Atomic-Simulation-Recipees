@@ -269,6 +269,7 @@ def webpanel(row, key_descriptions):
 
 group = 'Property'
 dependencies = ['asr.gs']
+sort = 2
 
 
 if __name__ == '__main__':
