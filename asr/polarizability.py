@@ -1,4 +1,5 @@
 from asr.utils import command, option
+from click import Choice
 
 
 @command('asr.polarizability')
@@ -6,7 +7,8 @@ from asr.utils import command, option
     '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--xc', default='RPA', help='XC interaction (RPA or ALDA)')
+@option('--xc', default='RPA', help='XC interaction',
+        type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(gs, density, ecut, xc, bandfactor):
