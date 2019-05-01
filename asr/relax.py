@@ -142,9 +142,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--save-all-states',
         help='Save all states and not only the most stable state(s)',
         is_flag=True)
-@option('--references',
-        help='References database when calculating HOF')
-def main(plusu, states, ecut, kptdens, save_all_states, references):
+def main(plusu, states, ecut, kptdens, save_all_states):
     """Relax atomic positions and unit cell.
 
     STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
@@ -180,9 +178,7 @@ def main(plusu, states, ecut, kptdens, save_all_states, references):
                     except UnknownFileTypeError:
                         pass
                 if slab1 is None:
-                    fnames = list(Path('.').glob('start.*'))
-                    assert len(fnames) == 1, fnames
-                    slab1 = read(str(fnames[0]))
+                    slab1 = read('start.json')
             slab1.set_initial_magnetic_moments(None)
             try:
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
