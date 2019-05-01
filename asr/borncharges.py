@@ -190,7 +190,7 @@ def webpanel(row, key_descriptions):
             polname = 'polvsatom{}.png'.format(a)
             columns[1].append(fig(polname))
             polfilenames.append(polname)
-        panel = [('Born charges', columns)]
+        panel = ('Born charges', columns)
     else:
         panel = []
     things = ()
