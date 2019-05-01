@@ -103,7 +103,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table
+    from asr.utils.custom import table
 
     t = table(row, 'Postprocessing', [
               'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],

@@ -34,7 +34,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
 
     if 'something' not in row.data:
         return None, []

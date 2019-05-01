@@ -165,7 +165,7 @@ def polvsatom(row, *filenames):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
+    from asr.utils.custom import fig
     polfilenames = []
     if 'Z_avv' in row.data:
         def matrixtable(M, digits=2):

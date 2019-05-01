@@ -125,7 +125,7 @@ def plot_phonons(row, fname):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table, fig
+    from asr.utils.custom import table, fig
     phonontable = table(row, 'Property',
                         ['c_11', 'c_22', 'c_12', 'bulk_modulus',
                          'minhessianeig'], key_descriptions)

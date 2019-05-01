@@ -609,7 +609,7 @@ def bs_pbe(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',

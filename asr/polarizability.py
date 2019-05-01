@@ -255,7 +255,7 @@ def polarizability(row, fx, fy, fz):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
 
     opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
