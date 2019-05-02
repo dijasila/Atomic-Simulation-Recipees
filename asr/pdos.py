@@ -4,17 +4,11 @@ import click
 from collections import defaultdict
 import json
 
+import numpy as np
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
-
-import numpy as np
-'''
-import ase.dft.dos as asedos
-from ase.dft.dos import ltidos as old_ltidos
-from _gpaw import tetrahedron_weight
-'''
-from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase import Atoms
 from ase.io import jsonio
@@ -22,13 +16,15 @@ from ase.parallel import paropen
 from ase.units import Ha
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
+from ase.dft.dos import linear_tetrahedron_integration as lti
+from ase.utils.formula import formula_metal
 
 import gpaw.mpi as mpi
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
 
 
-from asr.utils import magnetic_atoms, formula_metal
+from asr.utils import magnetic_atoms
 from asr.utils.gpw import gpw2eigs, get_spin_direction
 
 
@@ -171,51 +167,6 @@ def get_l_a(zs):
     for a, (z, mag) in enumerate(zip(zs, mag_elements)):
         l_a[a] = 'spd' if mag else 'sp'
     return l_a
-
-
-'''
-def _lti(energies, dos, kpts, M, E, W=None):
-    """Faster implementation."""  # should this go into gpaw? XXX
-    zero = energies[0]
-    de = energies[1] - zero
-    simplices = np.array([[0, 1, 2, 3]], np.int32)
-    s = np.array([0])
-    volumes = np.array([1.0])
-    if W is None:
-        for e in E.T:
-            e = e.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes)
-    else:
-        for e, w in zip(E.T, W.T):
-            e = e.copy()
-            w = w.copy()
-            m = max(0, int((e.min() - zero) / de) + 1)
-            n = min(len(energies) - 1, int((e.max() - zero) / de) + 1)
-            if m == n:
-                continue
-            for k in range(4):
-                tetrahedron_weight(e, simplices, k, s, dos[m:n], energies[m:n],
-                                   volumes * w[k])
-
-
-def ltidos(cell, eigs, energies, weights=None):
-    x = 1 / abs(np.linalg.det(cell)) / np.prod(eigs.shape[:3]) / 6
-    return old_ltidos(cell, eigs, energies, weights) * x
-
-
-# Monkey-patch ASE:
-asedos._lti = _lti
-asedos.ltidos = ltidos
-DOS = asedos.DOS
-# ase.dft.dos._lti = _lti  # check that stuff works XXX
-# ase.dft.dos.ltidos = ltidos
-'''
 
 
 class SOCDOS():  # should this go into gpaw? XXX
