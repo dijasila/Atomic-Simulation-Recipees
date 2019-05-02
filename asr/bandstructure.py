@@ -540,7 +540,7 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
     d = row.data.bs_pbe
     e_skn = d['eps_skn']
     nspins = e_skn.shape[0]
@@ -559,7 +559,8 @@ def bs_pbe(row,
         lw=1.0,
         zorder=0)
     ax = plt.figure(figsize=figsize).add_subplot(111)
-    bsp = bs.plot(
+    bsp = BandStructurePlot(bs)
+    bsp.plot(
         ax=ax,
         show=False,
         emin=emin,

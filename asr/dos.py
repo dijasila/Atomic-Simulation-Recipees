@@ -74,7 +74,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     file = file or 'dos.json'
     if not dos:
         dos = json.load(open(file, 'r'))
-
+    plt.figure()
     plt.plot(dos['energies_e'],
              np.array(dos['dosspin0_e']) / dos['volume'])
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')

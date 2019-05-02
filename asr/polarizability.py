@@ -251,7 +251,7 @@ def polarizability(row, fx, fy, fz):
         plt.tight_layout()
         plt.savefig(fz)
 
-    return ax1, ax2, ax3
+        return ax1, ax2, ax3
 
 
 def webpanel(row, key_descriptions):
