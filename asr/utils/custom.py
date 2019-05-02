@@ -70,14 +70,13 @@ def table(row, title, keys, kd={}, digits=2):
 def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
            prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
-    import asr
+    from asr.utils import get_recipes
     page = []
     things = []
     exclude = set()
     sort = []
 
     # Locate all webpanels
-    from asr.utils import get_recipes
     recipes = get_recipes()
     for recipe in recipes:
 
