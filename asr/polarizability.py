@@ -1,16 +1,19 @@
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
+@command()
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
-def main(gs, density, ecut):
+@option('--xc', default='RPA', help='XC interaction (RPA or ALDA)')
+@option('--bandfactor', default=5, type=int,
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+def main(gs, density, ecut, xc, bandfactor):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
+    import json
+    from ase.io import jsonio
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -73,8 +76,8 @@ def main(gs, density, ecut):
             gs,
             txt='es.txt',
             fixdensity=True,
-            nbands=6 * nval,
-            convergence={'bands': 5 * nval},
+            nbands=(bandfactor + 1) * nval,
+            convergence={'bands': bandfactor * nval},
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
         calc.get_potential_energy()
@@ -82,11 +85,14 @@ def main(gs, density, ecut):
 
     df = DielectricFunction('es.gpw', **dfkwargs)
     alpha0x, alphax = df.get_polarizability(
-        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
+        xc=xc)
     alpha0y, alphay = df.get_polarizability(
-        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
+        xc=xc)
     alpha0z, alphaz = df.get_polarizability(
-        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None)
+        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
+        xc=xc)
 
     plasmafreq_vv = df.chi0.plasmafreq_vv
 
@@ -102,19 +108,23 @@ def main(gs, density, ecut):
         'frequencies': frequencies
     }
 
-    filename = 'polarizability.npz'
+    filename = 'polarizability.json'
 
     if world.rank == 0:
-        np.savez_compressed(filename, **data)
+        Path(filename).write_text(json.dumps(data, cls=jsonio.MyEncoder))
 
 
-def collect_data(kvp, data, key_descriptions, atoms):
-    import numpy as np
+def collect_data(atoms):
     from pathlib import Path
-    if not Path('polarizability.npz').is_file():
-        return
-    dct = dict(np.load('polarizability.npz'))
+    from ase.io import jsonio
+    if not Path('polarizability.json').is_file():
+        return {}, {}, {}
 
+    kvp = {}
+    data = {}
+    key_descriptions = {}
+    dct = jsonio.decode(Path('polarizability.json').read_text())
+    
     # Update key-value-pairs
     kvp['alphax'] = dct['alphax_w'][0].real
     kvp['alphay'] = dct['alphay_w'][0].real
@@ -133,6 +143,7 @@ def collect_data(kvp, data, key_descriptions, atoms):
 
     # Save data
     data['absorptionspectrum'] = dct
+    return kvp, key_descriptions, data
 
 
 def polarizability(row, fx, fy, fz):
@@ -153,13 +164,14 @@ def polarizability(row, fx, fy, fz):
     if 'absorptionspectrum' in row.data:
         data = row.data['absorptionspectrum']
         frequencies = data['frequencies']
-        i2 = abs(frequencies - 10.0).argmin()
+        i2 = abs(frequencies - 50.0).argmin()
         frequencies = frequencies[:i2]
         alphax_w = data['alphax_w'][:i2]
         alphay_w = data['alphay_w'][:i2]
         alphaz_w = data['alphaz_w'][:i2]
 
         ax = plt.figure().add_subplot(111)
+        ax1 = ax
         try:
             wpx = row.plasmafrequency_x
             if wpx > 0.01:
@@ -190,9 +202,9 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fx)
-        plt.close()
 
         ax = plt.figure().add_subplot(111)
+        ax2 = ax
         try:
             wpy = row.plasmafrequency_y
             if wpy > 0.01:
@@ -201,12 +213,13 @@ def polarizability(row, fx, fy, fz):
                 ax.plot(
                     frequencies,
                     np.real(alphayfull_w),
-                    '--',
+                    '-',
                     c='C1',
                     label='real')
                 ax.plot(
                     frequencies,
                     np.real(alphay_w),
+                    '--',
                     c='C1',
                     label='real interband')
             else:
@@ -222,9 +235,9 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fy)
-        plt.close()
 
         ax = plt.figure().add_subplot(111)
+        ax3 = ax
         ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
         ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
         ax.set_title('z-component')
@@ -235,7 +248,8 @@ def polarizability(row, fx, fy, fz):
         ax.set_xlim(xlim())
         plt.tight_layout()
         plt.savefig(fz)
-        plt.close()
+
+    return ax1, ax2, ax3
 
 
 def webpanel(row, key_descriptions):
@@ -256,7 +270,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-creates = ['polarizability.npz', 'chi+0+0+0.pckl']
+creates = ['polarizability.json']
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':

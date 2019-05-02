@@ -6,6 +6,7 @@ option = partial(click.option, show_default=True)
 @click.command()
 def main():
     """Calculate bader charges"""
+    from pathlib import Path
     from ase.io import write
     from ase.units import Bohr
     from gpaw import GPAW
@@ -26,7 +27,13 @@ def main():
     except FileExistsError:
         pass
     cmd = 'bader -p all_atom -p atom_index ../density.cube'
-    subprocess.run(cmd.split(), cwd=folder)
+    out = (Path(folder) / 'bader.out').open('w')
+    err = (Path(folder) / 'bader.err').open('w')
+    subprocess.run(cmd.split(), cwd=folder,
+                   stdout=out,
+                   stderr=err)
+    out.close()
+    err.close()
 
 
 @click.command()

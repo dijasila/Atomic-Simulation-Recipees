@@ -1,33 +1,41 @@
+from asr.utils import option, update_defaults
+import click
+
 from collections import defaultdict
 import json
 
-import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 
+import numpy as np
+'''
 import ase.dft.dos as asedos
 from ase.dft.dos import ltidos as old_ltidos
+from _gpaw import tetrahedron_weight
+'''
+from ase.dft.dos import linear_tetrahedron_integration as lti
+
 from ase import Atoms
 from ase.io import jsonio
 from ase.parallel import paropen
 from ase.units import Ha
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
+from ase.dft.dos import DOS
 
 import gpaw.mpi as mpi
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
-from _gpaw import tetrahedron_weight
 
-from asr.utils import magnetic_atoms
-from asr.utils.gpaw import gpw2eigs, get_spin_direction
-from asr.utils import update_defaults
 
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import magnetic_atoms, formula_metal
+from asr.utils.gpw import gpw2eigs, get_spin_direction
 
 
 def plot_pdos():
     """only for testing
     """
+    from gpaw import GPAW
     efermi = GPAW('gs.gpw', txt=None).get_fermi_level()
     import matplotlib.pyplot as plt
     with paropen('pdos.json', 'r') as fd:
@@ -79,7 +87,7 @@ def pdos_pbe(row,
         li = ['s', 'p', 'd', 'f'].index(L)
         return ('{}{}{}'.format(s, si, li))
 
-    pdos_sal = OrderedDict()
+    pdos_sal = {}
     for k in sorted(pdos_sal2.keys(), key=cmp):
         pdos_sal[k] = pdos_sal2[k]
     colors = {}
@@ -164,7 +172,8 @@ def get_l_a(zs):
         l_a[a] = 'spd' if mag else 'sp'
     return l_a
 
-    
+
+'''
 def _lti(energies, dos, kpts, M, E, W=None):
     """Faster implementation."""  # should this go into gpaw? XXX
     zero = energies[0]
@@ -206,7 +215,8 @@ asedos.ltidos = ltidos
 DOS = asedos.DOS
 # ase.dft.dos._lti = _lti  # check that stuff works XXX
 # ase.dft.dos.ltidos = ltidos
-    
+'''
+
 
 class SOCDOS():  # should this go into gpaw? XXX
     """Hack to make DOS class work with spin orbit coupling"""
@@ -302,7 +312,7 @@ def calculate_pdos(calc, gpw, soc=True):
                 weights /= kd.weight_k[:, np.newaxis]
                 w = weights[kd.bz2ibz_k]
                 w.shape = tuple(kd.N_c) + (-1, )
-                p = ltidos(calc.atoms.cell, energies * Ha, e, w)
+                p = lti(calc.atoms.cell, energies * Ha, e, w)
                 key = ','.join([str(spin), str(spec), str(l)])
                 pdos_sal[key] += p
         e_s[spin] = e
@@ -374,6 +384,7 @@ def webpanel(row, key_descriptions):
 
 group = 'Property'
 resources = '8:1h'  # How many resources are used
+dependencies = ['asr.gs']
 
 if __name__ == '__main__':
     main()

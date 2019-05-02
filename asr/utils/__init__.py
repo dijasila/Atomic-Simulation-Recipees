@@ -1,14 +1,75 @@
-import click
-
+import os
+from contextlib import contextmanager
 from functools import partial
-click.option = partial(click.option, show_default=True)
+import click
+import numpy as np
+option = partial(click.option, show_default=True)
+command = click.command
+click.option = option
+
+
+@contextmanager
+def chdir(folder, create=False, empty=False):
+    dir = os.getcwd()
+    if empty and folder.is_dir():
+        import shutil
+        shutil.rmtree(str(folder))
+    if create and not folder.is_dir():
+        os.mkdir(folder)
+    os.chdir(str(folder))
+    yield
+    os.chdir(dir)
+
+
+def get_recipes(sort=True):
+    import importlib
+    from pathlib import Path
+
+    files = Path(__file__).parent.parent.glob('[a-zA-Z]*.py')
+    recipes = []
+    for file in files:
+        name = file.with_suffix('').name
+        module = importlib.import_module(f'asr.{name}')
+        recipes.append(module)
+
+    if sort:
+        sortedrecipes = []
+
+        # Add the recipes with no dependencies (these must exist)
+        for recipe in recipes:
+            if not hasattr(recipe, 'dependencies'):
+                sortedrecipes.append(recipe)
+            else:
+                if len(recipe.dependencies) == 0:
+                    sortedrecipes.append(recipe)
+
+        for i in range(1000):
+            for recipe in recipes:
+                names = [recipe.__name__ for recipe in sortedrecipes]
+                if recipe.__name__ in names:
+                    continue
+                for dep in recipe.dependencies:
+                    if dep not in names:
+                        break
+                else:
+                    sortedrecipes.append(recipe)
+
+            if len(recipes) == len(sortedrecipes):
+                break
+        else:
+            msg = 'Something went wrong when parsing dependencies!'
+            raise AssertionError(msg)
+        recipes = sortedrecipes
+
+    return recipes
 
 
 def get_parameters(key=None):
     from pathlib import Path
     import json
     if Path('params.json').is_file():
-        params = json.load(open('params.json', 'r'))
+        with open('params.json', 'r') as fd:
+            params = json.load(fd)
     else:
         params = {}
 
@@ -20,7 +81,6 @@ def get_parameters(key=None):
 
 def is_magnetic():
     import numpy as np
-    from ase.io import read
     atoms = get_start_atoms()
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
@@ -31,7 +91,6 @@ def is_magnetic():
 
 
 def get_dimensionality():
-    from ase.io import read
     import numpy as np
     start = get_start_atoms()
     nd = int(np.sum(start.get_pbc()))
@@ -83,8 +142,78 @@ def get_start_atoms():
 def get_start_parameters(atomfile=None):
     import json
     if atomfile is None:
-        atomfile = get_start_file()
-    asejsondb = json.load(open(atomfile, 'r'))
+        try:
+            atomfile = get_start_file()
+        except AssertionError:
+            return {}
+    with open(atomfile, 'r') as fd:
+        asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})
 
     return params
+
+
+def get_reduced_formula(formula, stoichiometry=False):
+    """
+    Returns the reduced formula corresponding to a chemical formula,
+    in the same order as the original formula
+    E.g. Cu2S4 -> CuS2
+
+    Parameters:
+        formula (str)
+        stoichiometry (bool): if True, return the stoichiometry ignoring the
+          elements appearing in the formula, so for example "AB2" rather than
+          "MoS2"
+    Returns:
+        A string containing the reduced formula
+    """
+    from functools import reduce
+    from fractions import gcd
+    import string
+    import re
+    split = re.findall('[A-Z][^A-Z]*', formula)
+    matches = [re.match('([^0-9]*)([0-9]+)', x)
+               for x in split]
+    numbers = [int(x.group(2)) if x else 1 for x in matches]
+    symbols = [matches[i].group(1) if matches[i] else split[i]
+               for i in range(len(matches))]
+    divisor = reduce(gcd, numbers)
+    result = ''
+    numbers = [x // divisor for x in numbers]
+    numbers = [str(x) if x != 1 else '' for x in numbers]
+    if stoichiometry:
+        numbers = sorted(numbers)
+        symbols = string.ascii_uppercase
+    for symbol, number in zip(symbols, numbers):
+        result += symbol + number
+    return result
+
+
+def has_inversion(atoms, use_spglib=True):
+    """
+    Parameters:
+        atoms: Atoms object
+            atoms
+        use_spglib: bool
+            use spglib
+    Returns:
+        out: bool
+    """
+    try:
+        import spglib
+    except ImportError as x:
+        import warnings
+        warnings.warn('using gpaw symmetry for inversion instead: {}'
+                      .format(x))
+        use_spglib = False
+
+    atoms2 = atoms.copy()
+    atoms2.pbc[:] = True
+    atoms2.center(axis=2)
+    if use_spglib:
+        R = -np.identity(3, dtype=int)
+        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
+        return np.any([np.all(r == R) for r in r_n])
+    else:
+        from gpaw.symmetry import atoms2symmetry
+        return atoms2symmetry(atoms2).has_inversion

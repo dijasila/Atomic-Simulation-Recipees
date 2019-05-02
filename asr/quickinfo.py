@@ -1,5 +1,10 @@
-import click
 from functools import partial
+
+import click
+
+from asr.utils.prototype import get_symmetry_id
+
+
 option = partial(click.option, show_default=True)
 
 
@@ -9,7 +14,7 @@ def main():
     from random import randint
     from ase.io import read, jsonio
     from pathlib import Path
-    from c2db.utils import has_inversion, get_reduced_formula
+    from asr.utils import has_inversion, get_reduced_formula
     import json
 
     fnames = list(Path('.').glob('start.*'))
@@ -37,16 +42,18 @@ def main():
         magstate = get_magstate(atoms)
     except RuntimeError:
         magstate = 'nm'
-        pass
-
     info['magstate'] = magstate
+
     # Are forces/stresses known?
-    f = atoms.get_forces()
-    s = atoms.get_stress()[:2]
-    fmax = ((f**2).sum(1).max())**0.5
-    smax = abs(s).max()
-    info['fmax'] = fmax
-    info['smax'] = smax
+    try:
+        f = atoms.get_forces()
+        s = atoms.get_stress()[:2]
+        fmax = ((f**2).sum(1).max())**0.5
+        smax = abs(s).max()
+        info['fmax'] = fmax
+        info['smax'] = smax
+    except RuntimeError:
+        pass
 
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
@@ -83,41 +90,54 @@ def main():
         number = int(number[1:-1])
         info['spacegroup'] = sg
 
+    # Find prototype
+    try:
+        info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
+    except (OSError, ModuleNotFoundError):
+        pass
+
     # Set temporary uid.
     # Will be changed later once we know the prototype.
-    formula = atoms.get_chemical_formula()
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
 
     json.dump(info, open('quickinfo.json', 'w'), cls=jsonio.MyEncoder)
 
+    return info
 
-def collect_data(kvp,
-                 data,
-                 key_descriptions,
-                 atoms=None,
-                 skip_forces=False):
+
+def collect_data(atoms):
     """Collect quick info to database"""
+    from pathlib import Path
+    p = Path('quickinfo.json')
+    if not p.is_file():
+        return {}, {}, {}
+
     import numpy as np
     import json
 
-    info = json.load(open('quickinfo.json', 'r'))
+    data = {}
+    kvp = {}
+    key_descriptions = {}
 
+    info = json.loads(p.read_text())
+
+    exclude = ['symmetries', 'formula']
+    for key in info:
+        if key in exclude:
+            continue
+        kvp[key] = info[key]
+
+    # Key-value-pairs:
     data['info'] = info
-    magstate = info['magstate']
-    assert magstate in {'nm', 'fm', 'afm'}, magstate
+    if 'magstate' in kvp:
+        kvp['magstate'] = kvp['magstate'].upper()
+        kvp['is_magnetic'] = kvp['magstate'] != 'NM'
 
-    # Update key-value-pairs
-    kvp['magstate'] = magstate.upper()
-    kvp['is_magnetic'] = magstate != 'nm'
-    kvp['cell_area'] = np.linalg.det(atoms.cell[:2, :2])
-    kvp['has_invsymm'] = info['has_inversion_symmetry']
-    kvp['uid'] = info['uid']
-    kvp['stoichiometry'] = info['stoichiometry']
-    kvp['spacegroup'] = info['spacegroup']
+    if (atoms.pbc == [True, True, False]).all():
+        kvp['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
-    # Update key-descriptions
-    key_descriptions.update({
+    key_descriptions = {
         'magstate': ('Magnetic state', 'Magnetic state', ''),
         'is_magnetic': ('Magnetic', 'Material is magnetic', ''),
         'cell_area': ('Area of unit-cell', '', 'Ang^2'),
@@ -125,7 +145,9 @@ def collect_data(kvp,
         'uid': ('Identifier', '', ''),
         'stoichiometry': ('Stoichiometry', '', ''),
         'spacegroup': ('Space group', 'Space group', ''),
-    })
+        'prototype': ('Prototype', '', '')}
+
+    return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):
@@ -184,6 +206,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
+order = 1
 
 if __name__ == '__main__':
     main()

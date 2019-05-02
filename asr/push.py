@@ -19,7 +19,7 @@ option = partial(click.option, show_default=True)
     type=float,
     help='Maximum distance an atom will be displaced')
 @option('--fix-cell', is_flag=True, help='Do not relax cell')
-@option('--showmode', is_flag=True, help='Save mode to tmp.traj for viewing')
+@option('--show-mode', is_flag=True, help='Save mode to tmp.traj for viewing')
 def main(momentum, mode, amplitude, fix_cell, show_mode):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
@@ -28,7 +28,7 @@ def main(momentum, mode, amplitude, fix_cell, show_mode):
 
     # Get modes
     from ase.io import read
-    atoms = read('start.traj')
+    atoms = read('start.json')
     omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=2)
 
     # Repeat atoms
@@ -63,7 +63,7 @@ def main(momentum, mode, amplitude, fix_cell, show_mode):
         smask = [0, 0, 0, 0, 0, 0]
         tag += '-fix-cell'
 
-    if showmode:
+    if show_mode:
         from ase.io.trajectory import Trajectory
         traj = Trajectory('tmp.traj', mode='w')
         showatoms = newatoms.copy()
@@ -75,20 +75,20 @@ def main(momentum, mode, amplitude, fix_cell, show_mode):
             traj.write(showatoms)
 
         return
-    relax(newatoms, tag, smask=smask)
+    relaxed = relax(newatoms, tag, smask=smask)
 
-    # Write start.traj file to folder
-    name = tag + '/start.traj'
+    # Write start.start file to folder
+    name = tag + '/start.json'
     from gpaw.mpi import world
     from pathlib import Path
     from ase.io import write
-    if world.rank == 0 and not Path(name).is_file():
+    if world.rank == 0 and not Path(tag).is_dir():
         Path(tag).mkdir()
-    write(name, newatoms)
+    write(name, relaxed)
 
 
 dependencies = ['asr.phonons']
 group = 'Structure'
 
 if __name__ == '__main__':
-    main()
+    main(standalone_mode=False)

@@ -108,43 +108,7 @@ $ python3 -m asr
 Skeleton of recipes
 -------------------
 A recipe contains some specific functionality implemented in separate functions:
-
-```python
-from asr.utils import update_defaults
-import click
-
-@click.command()
-@update_defaults('asr.scriptname')  # Name in params.json
-@click.option('-a1', '--arg1', default=1.0, help='Help for arg1')
-def main(arg1):
-    """Main functionality"""
-    pass
-
-def collect_data():
-    """Collect data to ASE database"""
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    return kvp, data, key_descriptions
-
-
-def webpanel(row, key_descriptions):
-    """Construct web panel for ASE database"""
-    panel = ()
-    things = ()
-    return panel, things
-
-group = 'Structure'
-dependencies = ['asr.otherscript']
-resources = '8:10h'
-creates = ['gs.gpw']  # What files are created
-diskspace = 0  # How much diskspace is used
-restart = 1  # Does it make sense to restart the script?
-
-if __name__ == '__main__':
-    main()
-
-```
+[template_recipe.py](asr/utils/something.py)
 
 In all recipes the `main()` function implements the main functionality of
 the recipe. The `collect_data()` tells another recipe (`asr.collect`) how

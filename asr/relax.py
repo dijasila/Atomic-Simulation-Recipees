@@ -5,15 +5,15 @@ from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
-from gpaw import GPAW, PW, FermiDirac, KohnShamConvergenceError
 
 from asr.utils import get_dimensionality, magnetic_atoms
-from asr.bfgs import BFGS
-from asr.references import formation_energy
-
+from asr.utils.bfgs import BFGS
 from asr.utils import update_defaults
+
 import click
 from functools import partial
+import json
+
 option = partial(click.option, show_default=True)
 
 
@@ -61,7 +61,6 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None):
-
     name = f'relax-{tag}'
     trajname = f'{name}.traj'
 
@@ -70,7 +69,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     if slab_relaxed is not None:
         slab = slab_relaxed
-    
+
     if done:
         return slab
 
@@ -86,13 +85,13 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             raise NotImplementedError(msg)
 
     kwargs = dict(txt=name + '.txt',
-                  mode=PW(ecut),
+                  mode={'name': 'pw', 'ecut': ecut},
                   xc='PBE',
                   basis='dzp',
                   kpts={'density': kptdens, 'gamma': True},
                   # This is the new default symmetry settings
                   symmetry={'do_not_symmetrize_the_density': True},
-                  occupations=FermiDirac(width=width))
+                  occupations={'name': 'fermi-dirac', 'width': width})
 
     if tag.endswith('+u'):
         # Try to get U values from previous image
@@ -108,6 +107,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
+    from asr.utils.gpaw import GPAW, KohnShamConvergenceError
     slab.calc = GPAW(**kwargs)
     opt = BFGS(slab,
                logfile=name + '.log',
@@ -117,7 +117,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     except KohnShamConvergenceError:
         try:
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                          occupations=FermiDirac(width=0.02),
+                          occupations={'name': 'fermi-dirac', 'width': 0.02},
                           maxiter=999)
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
@@ -125,12 +125,14 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
-            kwargs.update(occupations=FermiDirac(width=0.2))
+            kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
             slab.calc = GPAW(**kwargs)
             opt = BFGS(slab,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', slab))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+
+    return slab
 
 
 @click.command()
@@ -145,7 +147,9 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--save-all-states',
         help='Save all states and not only the most stable state(s)',
         is_flag=True)
-def main(plusu, states, ecut, kptdens, save_all_states):
+@option('--references',
+        help='References database when calculating HOF')
+def main(plusu, states, ecut, kptdens, save_all_states, references):
     """Relax atomic positions and unit cell.
 
     STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
@@ -167,9 +171,9 @@ def main(plusu, states, ecut, kptdens, save_all_states):
     slab2, done2 = output[1]
     slab3, done3 = output[2]
 
-    hform1 = np.inf
-    hform2 = np.inf
-    hform3 = np.inf
+    toten_nm = np.nan
+    toten_fm = np.nan
+    toten_afm = np.nan
 
     # Non-magnetic:
     if nm in states:
@@ -193,7 +197,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
 
-        hform1 = formation_energy(slab1) / len(slab1)
+        toten_nm = slab1.get_potential_energy()
 
     # Ferro-magnetic:
     if fm in states:
@@ -207,10 +211,10 @@ def main(plusu, states, ecut, kptdens, save_all_states):
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
-            hform2 = formation_energy(slab2) / len(slab2)
             # Create subfolder early so that fm-tasks can begin:
             if world.rank == 0 and not Path(fm).is_dir():
                 Path(fm).mkdir()
+        toten_fm = slab2.get_potential_energy()
 
     # Antiferro-magnetic:
     if afm in states:
@@ -241,34 +245,31 @@ def main(plusu, states, ecut, kptdens, save_all_states):
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()
             magmoms = slab3.get_magnetic_moments()
-            if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-                hform3 = formation_energy(slab3) / len(slab3)
-            else:
-                hform3 = np.inf
-            slab3.calc = None
+            toten_afm = slab3.get_potential_energy()
 
-    hform = min(hform1, hform2, hform3)
+    for state, slab in [(nm, slab1),
+                        (fm, slab2),
+                        (afm, slab3)]:
+        if slab is None:
+            continue
+        if world.rank == 0 and not Path(state).is_dir():
+            Path(state).mkdir()
 
-    if hform1 > hform + 0.01:  # assume precison of 10 meV per atom
-        hform1 = np.inf
+        name = state + '/start.json'
+        if not Path(name).is_file():
+            # Write start.traj file to folder
+            write(name, slab)
 
-    for state, h, slab in [(nm, hform1, slab1),
-                           (fm, hform2, slab2),
-                           (afm, hform3, slab3)]:
-        if h < np.inf or save_all_states:
-            if world.rank == 0 and not Path(state).is_dir():
-                Path(state).mkdir()
-
-            name = state + '/start.json'
-            if not Path(name).is_file():
-                # Write start.traj file to folder
-                write(name, slab)
+    # Save to results-relax.json
+    data = {'toten_nm': toten_nm,
+            'toten_fm': toten_fm,
+            'toten_afm': toten_afm}
+    Path('results-relax.json').write_text(json.dumps(data))
 
 
 group = 'Structure'
 resources = '8:xeon8:10h'
-
+creates = ['results-relax.json']
 
 if __name__ == '__main__':
-    main()
-
+    main(standalone_mode=False)

@@ -1,0 +1,11 @@
+*.gpw
+*.pyc
+*.py~
+asr/tests/**/*.txt
+asr/tests/**/*.traj
+asr/tests/**/results-*.json
+asr/tests/**/*.log
+asr/tests/**/*.db
+*.egg-info
+**/.vscode/
+*.npz
