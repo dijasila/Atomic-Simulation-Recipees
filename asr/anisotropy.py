@@ -1,6 +1,6 @@
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table
+    from asr.utils.custom import table
     if row.magstate != 'NM':
         magtable = table('Property',
                          ['magstate', 'magmom',

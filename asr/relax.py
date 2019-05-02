@@ -6,15 +6,11 @@ from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world, broadcast
 
-from asr.utils import get_dimensionality, magnetic_atoms
+from asr.utils import (command, option, argument,
+                       get_dimensionality, magnetic_atoms)
 from asr.utils.bfgs import BFGS
-from asr.utils import update_defaults
 
-import click
-from functools import partial
 import json
-
-option = partial(click.option, show_default=True)
 
 
 Uvalues = {}
@@ -135,9 +131,8 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     return slab
 
 
-@click.command()
-@update_defaults('asr.relax')
-@click.argument('states', nargs=-1)
+@command('asr.relax')
+@argument('states', nargs=-1)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdens', default=6.0,
@@ -147,9 +142,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--save-all-states',
         help='Save all states and not only the most stable state(s)',
         is_flag=True)
-@option('--references',
-        help='References database when calculating HOF')
-def main(plusu, states, ecut, kptdens, save_all_states, references):
+def main(plusu, states, ecut, kptdens, save_all_states):
     """Relax atomic positions and unit cell.
 
     STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
@@ -185,9 +178,7 @@ def main(plusu, states, ecut, kptdens, save_all_states, references):
                     except UnknownFileTypeError:
                         pass
                 if slab1 is None:
-                    fnames = list(Path('.').glob('start.*'))
-                    assert len(fnames) == 1, fnames
-                    slab1 = read(str(fnames[0]))
+                    slab1 = read('start.json')
             slab1.set_initial_magnetic_moments(None)
             try:
                 relax(slab1, nm, ecut=ecut, kptdens=kptdens)
@@ -272,4 +263,4 @@ resources = '8:xeon8:10h'
 creates = ['results-relax.json']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

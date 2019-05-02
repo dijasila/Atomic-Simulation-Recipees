@@ -85,7 +85,7 @@ def absorption(row, fnamein, fnameout):
 
 
 # def webpanel(row, key_descriptions):
-#     from asr.custom import fig, table
+#     from asr.utils.custom import fig, table
 #     # only show bse if binding energy is there
 #     if row.get('bse_binding', 0) > 0:
 #         bse_binding = table('Property',

@@ -1,9 +1,7 @@
-from asr.utils import option, update_defaults
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.bandstructure')
+@command('asr.bandstructure')
 @option('--kptpath', default=None, type=str)
 @option('--npoints', default=400)
 @option('--emptybands', default=20)
@@ -542,7 +540,7 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
     d = row.data.bs_pbe
     e_skn = d['eps_skn']
     nspins = e_skn.shape[0]
@@ -561,7 +559,8 @@ def bs_pbe(row,
         lw=1.0,
         zorder=0)
     ax = plt.figure(figsize=figsize).add_subplot(111)
-    bsp = bs.plot(
+    bsp = BandStructurePlot(bs)
+    bsp.plot(
         ax=ax,
         show=False,
         emin=emin,
@@ -611,7 +610,7 @@ def bs_pbe(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -675,6 +674,7 @@ def webpanel(row, key_descriptions):
 group = 'Property'
 creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
 dependencies = ['asr.gs']
+sort = 3
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

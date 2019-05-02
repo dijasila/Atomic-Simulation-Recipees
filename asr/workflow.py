@@ -2,7 +2,7 @@ from pathlib import Path
 from asr.utils import command
 
 
-@command()
+@command('asr.workflow')
 def main():
     """Run all recipes"""
     from ase.parallel import parprint
@@ -18,12 +18,9 @@ def main():
             if all(exists):
                 continue
 
-        if recipe.group not in ['Structure', 'Property']:
-            continue
-
         parprint(f'{recipe.__name__}...')
         try:
-            recipe.main(standalone_mode=False)
+            recipe.main()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as x:
@@ -52,4 +49,4 @@ dependencies = recipes
 resources = '1:1m'
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

@@ -1,14 +1,8 @@
-from functools import partial
-
-import click
-
+from asr.utils import command
 from asr.utils.prototype import get_symmetry_id
 
 
-option = partial(click.option, show_default=True)
-
-
-@click.command()
+@command('asr.quickinfo')
 def main():
     """Get quick information about structure based on start.traj"""
     from random import randint
@@ -152,7 +146,7 @@ def collect_data(atoms):
 
 def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
-    from asr.custom import table
+    from asr.utils.custom import table
 
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     basictable = table(row, 'Property', [
@@ -206,7 +200,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-order = 1
+sort = 1
 
 if __name__ == '__main__':
     main()

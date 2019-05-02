@@ -4,8 +4,32 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
-command = click.command
-click.option = option
+argument = click.argument
+
+
+class ASRCommand(click.Command):
+    _asr_command = True
+
+    def __call__(self, *args, **kwargs):
+        return self.main(standalone_mode=False, *args, **kwargs)
+
+
+def command(name, overwrite={}, *args, **kwargs):
+    params = get_parameters(name)
+    params.update(overwrite)
+
+    ud = update_defaults
+
+    def decorator(func):
+        cc = click.command(cls=ASRCommand, *args, **kwargs)
+        if hasattr(func, '__click_params__'):
+            func = cc(ud(name, params)(func))
+        else:
+            func = cc(func)
+
+        return func
+    
+    return decorator
 
 
 @contextmanager

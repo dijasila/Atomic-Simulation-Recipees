@@ -73,7 +73,7 @@ def dft_for_pdos(kptdens=36.0):
     return calc
 
 
-@command()
+@command('asr.pdos')
 @option('--calc', default='pdos.gpw',
         help='gpw-file to base pdos on')
 @option('--kptdensity', default=36.0,

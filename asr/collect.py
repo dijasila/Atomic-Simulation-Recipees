@@ -1,5 +1,4 @@
-import click
-from asr.utils import chdir
+from asr.utils import command, option, argument, chdir
 
 
 def collect(db, verbose=False, skip_forces=False, references=None):
@@ -49,11 +48,11 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     return errors
 
 
-@click.command()
-@click.argument('folders', nargs=-1)
-@click.option('--references', default=None, type=str, help='Reference phases')
-@click.option('--verbose', default=False)
-@click.option('--skipforces', default=False)
+@command('asr.collect')
+@argument('folders', nargs=-1)
+@option('--references', default=None, type=str, help='Reference phases')
+@option('--verbose', default=False)
+@option('--skipforces', default=False)
 def main(folders, references, verbose, skipforces):
     """Collect data in ase database"""
     import os

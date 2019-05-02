@@ -20,7 +20,7 @@ def format(content, indent=0, title=None, pad=2):
     for row in content:
         out = ' ' * indent
         if isinstance(row, str):
-            output += f'\n{row}\n'
+            output += f'\n{row}'
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
@@ -33,6 +33,22 @@ def format(content, indent=0, title=None, pad=2):
 @click.group()
 def cli():
     ...
+
+
+@cli.command()
+@click.option('--database', default='database.db')
+@click.option('--custom', default='asr.utils.custom')
+def browser(database, custom):
+    """Open results in web browser"""
+    import subprocess
+    from pathlib import Path
+
+    if custom == 'asr.utils.custom':
+        custom = Path(__file__).parent / 'custom.py'
+
+    cmd = f'python3.6 -m ase db {database} -w -M {custom}'
+    print(cmd)
+    subprocess.run(cmd.split())
 
 
 @cli.command()
@@ -79,6 +95,15 @@ def status():
     
     print(format(panel))
     print(format(missing_files))
+
+
+@cli.command()
+@click.argument('name')
+def check(name):
+    """Get a detailed description of a recipe"""
+    from asr.utils.recipe import Recipe
+    recipe = Recipe.frompath(name)
+    print(recipe)
 
 
 @cli.command()

@@ -17,8 +17,7 @@ class TestRecipes():
 
         try:
             func = recipe.main
-            with pytest.raises(SystemExit):
-                func(args=['--help'])
+            func(args=['--help'])
         except Exception:
             print(f'Problem in function {recipe.__name__}.main '
                   'when called with --help')

@@ -1,12 +1,9 @@
 # ##TODO min kpt dens?
-from asr.utils import click, update_defaults, get_start_parameters
-params = get_start_parameters()
-defaults = {}
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.gap', defaults)
-@click.option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+@command('asr.gap')
+@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
     import numpy as np
     from gpaw import GPAW
@@ -106,7 +103,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table
+    from asr.utils.custom import table
 
     t = table(row, 'Postprocessing', [
               'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
@@ -234,7 +231,7 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
 
 
 group = 'Postprocessing'
-dependencies = ['asr.anisotropy']
+dependencies = ['asr.gs']
 
 
 if __name__ == '__main__':
