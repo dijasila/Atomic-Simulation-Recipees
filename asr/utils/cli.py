@@ -3,6 +3,8 @@ from asr.utils import get_recipes
 
 
 def format(content, indent=0, title=None, pad=2):
+    """Format a list into nice columns for printing"""
+
     colwidth_c = []
     for row in content:
         if isinstance(row, str):
@@ -39,7 +41,7 @@ def cli():
 @click.option('--database', default='database.db')
 @click.option('--custom', default='asr.utils.custom')
 def browser(database, custom):
-    """Open results in web browser"""
+    """Open database in web browser"""
     import subprocess
     from pathlib import Path
 
@@ -53,7 +55,7 @@ def browser(database, custom):
 
 @cli.command()
 def test():
-    """Run test of recipes"""
+    """Run all tests"""
     from pathlib import Path
     from subprocess import Popen, PIPE
     import asr
@@ -69,7 +71,7 @@ def test():
 
 @cli.command()
 def status():
-    """Show status of current directory"""
+    """Show the calculation status of all recipes in the current directory"""
     from pathlib import Path
     recipes = get_recipes()
     panel = []
@@ -90,7 +92,7 @@ def status():
             else:
                 panel.append(status)
         else:
-            status.append('No files created')
+            status.append('I do not know which files this recipe creates!')
             missing_files.append(status)
     
     print(format(panel))
@@ -99,16 +101,11 @@ def status():
 
 @cli.command()
 @click.argument('name')
-def check(name):
+def detail(name):
     """Get a detailed description of a recipe"""
     from asr.utils.recipe import Recipe
     recipe = Recipe.frompath(name)
     print(recipe)
-
-
-@cli.command()
-def printdependencies():
-    pass
 
 
 @cli.command()
@@ -146,7 +143,7 @@ def checkall():
 @cli.command()
 @click.argument('recipe')
 def plot(recipe):
-    """Plot figures interactively"""
+    """Plot figures interactively that would otherwise to webpage"""
     import importlib
     from ase.db import connect
     from matplotlib import pyplot as plt
