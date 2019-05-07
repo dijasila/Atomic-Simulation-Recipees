@@ -100,10 +100,46 @@ $ mq submit asr.relax@24:10h
 
 Developing
 ==========
-To see the current status of all recipes write
-```console
-$ python3 -m asr
+In the following you will find the necessary information needed to implement new
+recipes in the asr framework. The first section gives an ultra short description
+of how to implement new recipes, and the following section goes into more
+details.
+
+Guide to making new recipes for geniuses
+----------------------------------------
+
+- Start by copying the template [template_recipe.py](asr/utils/something.py) 
+  into your asr/asr/ directory. The filename of this file is important since
+  this is the name that is used when executing the script. We assume that you
+  script is called `something.py`.
+- Implement your main functionality into the `main` function. This is the 
+  function that is called when executing the script directly. Please save your
+  results into a .json file if possible. In the template we save the results to
+  `something.json`.
+- Implement the `collect_data` function which ASR uses to collect the data (in
+  this case it collects the data in `something.json`). It is important that this
+  function returns a dict of key-value pairs `kvp` alongside their
+  `key-descriptions` and any data you want to save in the collected database.
+- Now implement the `web_panel` function which tells ASR how to present the data
+  on the website. This function returns a `panel` and a `things` list. The panel
+  is simply a tuple of the title that goes into the panel title and a list of
+  columns and their contents. This should be clear from studying the example.
+- Finally, implement the additional metadata keys `group` (see below for 
+  possible groups), `creates` which tells ASR what files are created and
+  `dependencies` which should be a list of ASR recipes (e. g. ['asr.gs']).
+
+
+Testing
+-------
+When you make a new recipe it will be automatically added to a test that runs a
+full workflow for Silicon, Iron, 2D h-BN, 2D-VS2. However, if you want more
+extended testing of your recipe you will have to implement them manually. The
+tests can be found in `asr/asr/tests/` where you will find folders containing
+the specific materials. To run all tests execute
 ```
+python3 -m asr test
+```
+
 
 Skeleton of recipes
 -------------------
