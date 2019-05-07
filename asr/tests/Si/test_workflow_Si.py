@@ -10,7 +10,7 @@ recipes = get_recipes(sort=True)
 @pytest.fixture(scope='class')
 def cleanfolder():
     import shutil
-    for p in Path('.').glob('*'):
+    for p in Path(__file__).parent.glob('*'):
         if (p.name.startswith('test_') or
             p.name in ['start.json', 'params.json']):
             continue
@@ -29,7 +29,6 @@ for recipe in recipes:
     if recipe.__name__ == 'asr.workflow':
         continue
 
-    
     if not hasattr(recipe, 'main'):
         continue
     

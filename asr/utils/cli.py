@@ -107,11 +107,6 @@ def check(name):
 
 
 @cli.command()
-def printdependencies():
-    pass
-
-
-@cli.command()
 def checkall():
     """Check status of all recipes"""
     recipes = get_recipes()
