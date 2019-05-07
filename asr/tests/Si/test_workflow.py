@@ -29,6 +29,10 @@ for recipe in recipes:
     if recipe.__name__ == 'asr.workflow':
         continue
 
+    
+    if not hasattr(recipe, 'main'):
+        continue
+    
     name = recipe.__name__
 
     def func(cls, cleanfolder, name=name):
