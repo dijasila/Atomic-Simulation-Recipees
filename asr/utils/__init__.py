@@ -45,7 +45,12 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_recipes(sort=True):
+# We need to reduce this list to zero
+excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
+               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+
+
+def get_recipes(sort=True, exclude=True):
     import importlib
     from pathlib import Path
 
@@ -53,6 +58,9 @@ def get_recipes(sort=True):
     recipes = []
     for file in files:
         name = file.with_suffix('').name
+        modulename = f'asr.{name}'
+        if modulename in excludelist:
+            continue
         module = importlib.import_module(f'asr.{name}')
         recipes.append(module)
 
