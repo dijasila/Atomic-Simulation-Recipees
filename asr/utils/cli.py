@@ -59,9 +59,9 @@ def test():
     import asr
     folder = str(Path(asr.__file__).parent)
 
-    with Popen(['python3', '-m', 'pytest',
-                '--tb=short',  # shorter traceback format
-                folder], stdout=PIPE, bufsize=1,
+    cmd = f'python3 -m pytest --tb=short {folder}'
+    print(cmd)
+    with Popen(cmd.split(), stdout=PIPE, bufsize=1,
                universal_newlines=True) as p:
         for line in p.stdout:
             print(line, end='')
