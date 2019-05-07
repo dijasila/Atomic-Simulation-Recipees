@@ -1,13 +1,11 @@
-# COPIED FROM C2DB
-
-# Creates: hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz
-# temporary: hse.gpw
-
-
 """
 HSE band structure
+Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, hse_bandstructure.npz, hse_bandstructure3.npz
+*** should hse.gpw be removed afterwards?
+
 """
 import time
+import json
 
 from gpaw import GPAW
 from gpaw.xc.exx import EXX
@@ -24,18 +22,17 @@ from c2db.utils import (eigenvalues, get_special_2d_path, get_spin_direction,
                         spin_axis)
 from ase.io import read
 from ase.dft.kpoints import get_cellinfo
-# from c2db.bsinterpol import interpolate_bandlines
 from c2db.bsinterpol import interpolate_bandstructure as ip_bs
 
 
-def runhse():
+def main():
     hse()
     mpi.world.barrier()
     hse_spinorbit()
-    # mpi.world.barrier()
-    # Move these to separate step:
-    # bs_interpolate()
-    # mpi.world.barrier()
+    mpi.world.barrier()
+    # Move these to separate step as in c2db?
+    bs_interpolate()
+    mpi.world.barrier()
 
 
 def get_kpts_size(atoms, density):
@@ -48,7 +45,6 @@ def get_kpts_size(atoms, density):
     for i in range(2):
         if size[i] % 6 != 0:
             size[i] = 6 * (size[i] // 6 + 1)
-
     kpts = {'size': size, 'gamma': True}
     return kpts
 
@@ -249,9 +245,7 @@ def interpolate_bandstructure():
 
 
 if __name__ == '__main__':
-    # from c2db import cleanup
-    if 1:  # with cleanup('hse.gpw'):
-        runhse()
+    main() #(standalone_mode=False)
 
 
 
@@ -279,3 +273,6 @@ if __name__ == '__main__':
 #     return panel
 
 group = 'Property'
+resources = '24:10h'
+creates = ['hse.gpw', 'hse_nowfs.gpw', 'hse_eigenvalues.npz', 'hse_eigenvalues_soc.npz']
+dependencies = ['asr.gs']
