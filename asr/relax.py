@@ -11,6 +11,7 @@ from asr.utils import (command, option, argument,
 from asr.utils.bfgs import BFGS
 
 import json
+import click
 
 
 Uvalues = {}
@@ -56,7 +57,7 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 
 def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None):
+          smask=None, xc='PBE'):
     name = f'relax-{tag}'
     trajname = f'{name}.traj'
 
@@ -82,7 +83,7 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     kwargs = dict(txt=name + '.txt',
                   mode={'name': 'pw', 'ecut': ecut},
-                  xc='PBE',
+                  xc=xc,
                   basis='dzp',
                   kpts={'density': kptdens, 'gamma': True},
                   # This is the new default symmetry settings
@@ -142,7 +143,9 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--save-all-states',
         help='Save all states and not only the most stable state(s)',
         is_flag=True)
-def main(plusu, states, ecut, kptdens, save_all_states):
+@option('--xc', default='PBE', help='XC-functional')
+@click.pass_context
+def main(ctx, plusu, states, ecut, kptdens, save_all_states, xc):
     """Relax atomic positions and unit cell.
 
     STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
@@ -181,12 +184,12 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                     slab1 = read('start.json')
             slab1.set_initial_magnetic_moments(None)
             try:
-                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
+                relax(slab1, nm, ecut=ecut, kptdens=kptdens, xc=xc)
             except RuntimeError:
                 # The atoms might be too close together
                 # so enlarge unit cell
                 slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
-                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
+                relax(slab1, nm, ecut=ecut, kptdens=kptdens, xc=xc)
 
         toten_nm = slab1.get_potential_energy()
 
@@ -198,7 +201,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
             slab2.set_initial_magnetic_moments([1] * len(slab2))
 
         if not done2:
-            relax(slab2, fm, ecut=ecut, kptdens=kptdens)
+            relax(slab2, fm, ecut=ecut, kptdens=kptdens, xc=xc)
 
         magmom = slab2.get_magnetic_moment()
         if abs(magmom) > 0.1:
@@ -231,7 +234,7 @@ def main(plusu, states, ecut, kptdens, save_all_states):
                 slab3 = None
 
         if not done3:
-            relax(slab3, afm, ecut=ecut, kptdens=kptdens)
+            relax(slab3, afm, ecut=ecut, kptdens=kptdens, xc=xc)
 
         if slab3 is not None:
             magmom = slab3.get_magnetic_moment()
@@ -252,7 +255,8 @@ def main(plusu, states, ecut, kptdens, save_all_states):
             write(name, slab)
 
     # Save to results-relax.json
-    data = {'toten_nm': toten_nm,
+    data = {'params': ctx.params,
+            'toten_nm': toten_nm,
             'toten_fm': toten_fm,
             'toten_afm': toten_afm}
     Path('results-relax.json').write_text(json.dumps(data))
