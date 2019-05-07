@@ -7,10 +7,12 @@ recipe = Recipe.frompath('asr.relax')
 def cleanfolder():
     import shutil
     for p in Path('.').glob('*'):
-        if p.name in ['start.json', 'params.json']:
+        if (p.name.startswith('test_') or
+            p.name in ['start.json', 'params.json']):
             continue
         if p.is_dir():
-            shutil.rmtree()
+            shutil.rmtree(p.name)
+            continue
         p.unlink()
 
 
@@ -19,9 +21,3 @@ def test_no_params():
     cleanfolder()
     func = recipe.main
     func(args=[])
-
-
-# def test_gs():
-#     cleanfolder()
-#     func = recipe.main
-#     func(args=[])
