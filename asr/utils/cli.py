@@ -46,7 +46,7 @@ def browser(database, custom):
     if custom == 'asr.utils.custom':
         custom = Path(__file__).parent / 'custom.py'
 
-    cmd = f'python3.6 -m ase db {database} -w -M {custom}'
+    cmd = f'python3 -m ase db {database} -w -M {custom}'
     print(cmd)
     subprocess.run(cmd.split())
 
