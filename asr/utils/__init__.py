@@ -20,8 +20,12 @@ def command(name, overwrite={}, *args, **kwargs):
 
     ud = update_defaults
 
+    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
     def decorator(func):
-        cc = click.command(cls=ASRCommand, *args, **kwargs)
+        cc = click.command(cls=ASRCommand,
+                           context_settings=CONTEXT_SETTINGS,
+                           *args, **kwargs)
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
