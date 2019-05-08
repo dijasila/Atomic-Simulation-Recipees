@@ -96,6 +96,27 @@ def get_recipes(sort=True, exclude=True):
     return recipes
 
 
+def get_dep_tree(name):
+    recipes = get_recipes(sort=True)
+
+    names = [recipe.__name__ for recipe in recipes]
+    indices = [names.index(name)]
+    for j in range(100):
+        if not indices[j:]:
+            break
+        for ind in indices[j:]:
+            deps = recipes[ind].dependencies
+            for dep in deps:
+                index = names.index(dep)
+                if index not in indices:
+                    indices.append(index)
+    else:
+        raise RuntimeError('Dependencies are weird!')
+    print(indices)
+    indices = sorted(indices)
+    return [recipes[ind] for ind in indices]
+
+
 def get_parameters(key=None):
     from pathlib import Path
     import json
