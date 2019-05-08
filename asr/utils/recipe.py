@@ -21,8 +21,10 @@ class Recipe:
 
     # Alternative contructors
     @classmethod
-    def frompath(cls, name):
+    def frompath(cls, name, reload=False):
         module = importlib.import_module(f'{name}')
+        if reload:
+            module = importlib.reload(module)
         return cls(module)
 
     def run(self):

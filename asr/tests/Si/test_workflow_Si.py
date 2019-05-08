@@ -1,30 +1,31 @@
+# Test a full workflow
+
 from asr.utils.recipe import Recipe
-from asr.utils import get_recipes
+from asr.utils import get_recipes, chdir
 from pathlib import Path
 import pytest
 
 
-recipes = get_recipes(sort=True)
-
-
+# We create temporary directory and move the start.json
+# and params.json into that directory
 @pytest.fixture(scope='class')
-def cleanfolder():
-    import shutil
-    for p in Path(__file__).parent.glob('*'):
-        if (p.name.startswith('test_') or
-            p.name in ['start.json', 'params.json']):
-            continue
-        if p.is_dir():
-            shutil.rmtree(p.name)
-            continue
-        p.unlink()
-    yield
+def directory(tmpdir_factory):
+    path = tmpdir_factory.mktemp('Si')
+    srcstart = Path(__file__).parent / 'start.json'
+    srcparams = Path(__file__).parent / 'params.json'
+    dststart = Path(path) / 'start.json'
+    dstparams = Path(path) / 'params.json'
+    dststart.write_bytes(srcstart.read_bytes())
+    dstparams.write_bytes(srcparams.read_bytes())
+    return path
 
 
 class TestWorkflow():
     ...
 
 
+# Dynamically add tests of all recipes
+recipes = get_recipes(sort=True)
 for recipe in recipes:
     if recipe.__name__ == 'asr.workflow':
         continue
@@ -34,8 +35,10 @@ for recipe in recipes:
     
     name = recipe.__name__
 
-    def func(cls, cleanfolder, name=name):
-        recipe = Recipe.frompath(name)
-        recipe.main(args=[])
+    def func(cls, directory, name=name):
+        with chdir(directory):
+            # Make sure to reload the module
+            recipe = Recipe.frompath(name, reload=True)
+            recipe.main(args=[])
 
     setattr(TestWorkflow, f'test_{name}', func)
