@@ -105,6 +105,8 @@ def get_dep_tree(name):
         if not indices[j:]:
             break
         for ind in indices[j:]:
+            if not hasattr(recipes[ind], 'dependencies'):
+                continue
             deps = recipes[ind].dependencies
             for dep in deps:
                 index = names.index(dep)
