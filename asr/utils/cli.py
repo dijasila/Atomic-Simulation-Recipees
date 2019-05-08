@@ -55,16 +55,13 @@ def browser(database, custom):
 def test():
     """Run test of recipes"""
     from pathlib import Path
-    from subprocess import Popen, PIPE
+    import subprocess
     import asr
     folder = str(Path(asr.__file__).parent)
 
     cmd = f'python3 -m pytest --tb=short {folder}'
     print(cmd)
-    with Popen(cmd.split(), stdout=PIPE, bufsize=1,
-               universal_newlines=True) as p:
-        for line in p.stdout:
-            print(line, end='')
+    subprocess.run(cmd.split())
 
 
 @cli.command()
