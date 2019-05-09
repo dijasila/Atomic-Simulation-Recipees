@@ -52,7 +52,9 @@ def browser(database, custom):
 
 
 @cli.command()
-def test():
+@click.option('--collect', default=False, is_flag=True,
+              help='Only collect tests')
+def test(collect):
     """Run test of recipes"""
     from pathlib import Path
     import subprocess
@@ -60,6 +62,8 @@ def test():
     folder = str(Path(asr.__file__).parent)
 
     cmd = f'python3 -m pytest --tb=short {folder}'
+    if collect:
+        cmd += ' --collect-only'
     print(cmd)
     subprocess.run(cmd.split())
 
