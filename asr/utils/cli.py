@@ -52,23 +52,6 @@ def browser(database, custom):
 
 
 @cli.command()
-@click.option('--collect', default=False, is_flag=True,
-              help='Only collect tests')
-def test(collect):
-    """Run test of recipes"""
-    from pathlib import Path
-    import subprocess
-    import asr
-    folder = str(Path(asr.__file__).parent)
-
-    cmd = f'python3 -m pytest --tb=short {folder}'
-    if collect:
-        cmd += ' --collect-only'
-    print(cmd)
-    subprocess.run(cmd.split())
-
-
-@cli.command()
 def status():
     """Show status of current directory"""
     from pathlib import Path
@@ -99,44 +82,20 @@ def status():
 
 
 @cli.command()
-@click.argument('name')
-def check(name):
-    """Get a detailed description of a recipe"""
-    from asr.utils.recipe import Recipe
-    recipe = Recipe.frompath(name)
-    print(recipe)
+@click.option('--collect', default=False, is_flag=True,
+              help='Only collect tests')
+def test(collect):
+    """Run test of recipes"""
+    from pathlib import Path
+    import subprocess
+    import asr
+    folder = str(Path(asr.__file__).parent)
 
-
-@cli.command()
-def checkall():
-    """Check status of all recipes"""
-    recipes = get_recipes()
-
-    attributes = ['main',
-                  'creates',
-                  'collect_data',
-                  'webpanel',
-                  'resources']
-
-    groups = ['Structure', 'Property',
-              'Postprocessing', 'Utility']
-    panel = []
-    panel.append(['name', *attributes])
-    for group in groups:
-        panel.append(f'{group} recipes')
-        for recipe in recipes:
-            if not recipe.group == group:
-                continue
-            status = [recipe.__name__]
-            for attr in attributes:
-                if hasattr(recipe, attr):
-                    status.append('.')
-                else:
-                    status.append('N')
-            panel.append(status)
-
-    pretty_output = format(panel)
-    print(pretty_output)
+    cmd = f'python3 -m pytest --tb=short {folder}'
+    if collect:
+        cmd += ' --collect-only'
+    print(cmd)
+    subprocess.run(cmd.split())
 
 
 @cli.command()
