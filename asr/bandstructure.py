@@ -257,8 +257,8 @@ def collect_data(atoms):
 
     assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
 
-    efermi = np.load('gap_soc.npz')['efermi']
-    efermi_nosoc = np.load('gap.npz')['efermi']
+    efermi = json.loads(Path('gap_soc.json').read_text())['efermi']
+    efermi_nosoc = json.loads(Path('gap.json').read_text())['efermi']
 
     pbe = {
         'path': path,
