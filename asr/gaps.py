@@ -54,7 +54,8 @@ def main(gpwfilename):
                 'efermi': efermi}
 
         with paropen('gap{}.json'.format('_soc' if soc else ''), 'w') as f:
-            json.dump(data, f, indent=4)
+            from ase.io.jsonio import MyEncoder
+            f.write(MyEncoder(indent=4).encode(data))
 
 
 def collect_data(atoms):
