@@ -39,8 +39,8 @@ def test_cuag(directory):
                 relax(args=[])
 
                 with chdir('nm'):
-                    gs()
-                    phonons()
+                    gs(args=[])
+                    phonons(args=[])
 
         for dir in Path().glob('*u/nm/'):
             with chdir(dir):
