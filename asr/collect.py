@@ -63,6 +63,9 @@ def main(folders, references, verbose, skipforces):
     dbname = os.path.join(os.getcwd(), 'database.db')
     db = connect(dbname)
 
+    if not folders:
+        folders = ['.']
+    
     errors = []
     for i, folder in enumerate(folders):
         if not os.path.isdir(folder):

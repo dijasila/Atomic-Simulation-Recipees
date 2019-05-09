@@ -46,25 +46,26 @@ def browser(database, custom):
     if custom == 'asr.utils.custom':
         custom = Path(__file__).parent / 'custom.py'
 
-    cmd = f'python3.6 -m ase db {database} -w -M {custom}'
+    cmd = f'python3 -m ase db {database} -w -M {custom}'
     print(cmd)
     subprocess.run(cmd.split())
 
 
 @cli.command()
-def test():
+@click.option('--collect', default=False, is_flag=True,
+              help='Only collect tests')
+def test(collect):
     """Run test of recipes"""
     from pathlib import Path
-    from subprocess import Popen, PIPE
+    import subprocess
     import asr
     folder = str(Path(asr.__file__).parent)
 
-    with Popen(['python3', '-m', 'pytest',
-                '--tb=short',  # shorter traceback format
-                folder], stdout=PIPE, bufsize=1,
-               universal_newlines=True) as p:
-        for line in p.stdout:
-            print(line, end='')
+    cmd = f'python3 -m pytest --tb=short {folder}'
+    if collect:
+        cmd += ' --collect-only'
+    print(cmd)
+    subprocess.run(cmd.split())
 
 
 @cli.command()
@@ -104,11 +105,6 @@ def check(name):
     from asr.utils.recipe import Recipe
     recipe = Recipe.frompath(name)
     print(recipe)
-
-
-@cli.command()
-def printdependencies():
-    pass
 
 
 @cli.command()

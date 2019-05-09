@@ -49,7 +49,12 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_recipes(sort=True):
+# We need to reduce this list to zero
+excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
+               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+
+
+def get_recipes(sort=True, exclude=True):
     import importlib
     from pathlib import Path
 
@@ -57,6 +62,9 @@ def get_recipes(sort=True):
     recipes = []
     for file in files:
         name = file.with_suffix('').name
+        modulename = f'asr.{name}'
+        if modulename in excludelist:
+            continue
         module = importlib.import_module(f'asr.{name}')
         recipes.append(module)
 
@@ -90,6 +98,29 @@ def get_recipes(sort=True):
         recipes = sortedrecipes
 
     return recipes
+
+
+def get_dep_tree(name):
+    recipes = get_recipes(sort=True)
+
+    names = [recipe.__name__ for recipe in recipes]
+    indices = [names.index(name)]
+    for j in range(100):
+        if not indices[j:]:
+            break
+        for ind in indices[j:]:
+            if not hasattr(recipes[ind], 'dependencies'):
+                continue
+            deps = recipes[ind].dependencies
+            for dep in deps:
+                index = names.index(dep)
+                if index not in indices:
+                    indices.append(index)
+    else:
+        raise RuntimeError('Dependencies are weird!')
+    print(indices)
+    indices = sorted(indices)
+    return [recipes[ind] for ind in indices]
 
 
 def get_parameters(key=None):
