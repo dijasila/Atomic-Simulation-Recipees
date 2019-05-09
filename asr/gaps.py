@@ -94,8 +94,10 @@ def collect_data(atoms):
         includes = [namemod(n) for n in data_to_include]
 
         for k, inc in enumerate(includes):
-            kvp[inc] = float(sdata[data_to_include[k]] or 'nan')
-            key_descriptions[inc] = descs[k]
+            val = sdata[data_to_include[k]]
+            if val is not None:
+                kvp[inc] = val
+                key_descriptions[inc] = descs[k]
 
     return kvp, key_descriptions, data
 
