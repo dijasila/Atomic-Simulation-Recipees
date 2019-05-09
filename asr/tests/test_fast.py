@@ -9,7 +9,7 @@ recipes = get_recipes()
 
 
 @pytest.mark.parametrize('recipe', recipes)
-def test_help(self, recipe):
+def test_help(recipe):
     """Call all main functions with --help"""
     if not hasattr(recipe, 'main'):
         return
@@ -24,7 +24,7 @@ def test_help(self, recipe):
 
 
 @pytest.mark.parametrize('recipe', recipes)
-def test_asr_command(self, recipe):
+def test_asr_command(recipe):
     """Make sure that the correct _asr_command is being used"""
     if hasattr(recipe, 'main'):
         try:
@@ -37,7 +37,7 @@ def test_asr_command(self, recipe):
 
 
 @pytest.mark.parametrize('recipe', recipes)
-def test_collect(self, recipe):
+def test_collect(recipe):
     """Call all collect_data functions with empty list
     (should work)"""
 
