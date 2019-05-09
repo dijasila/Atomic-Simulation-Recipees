@@ -1,11 +1,33 @@
 """
 HSE band structure
+
 Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, hse_bandstructure.npz, hse_bandstructure3.npz
-*** should hse.gpw be removed afterwards?
+"""
 
 """
-import time
+to do:
+
+- restyle according to asr/asr/utils/something.py [template recipe]
+- eliminate calls to C2DB
+- dependencies? asr.gs, asr.anisotropy?
+- should hse.gpw be removed afterwards?
+  [currently both hse.gpw and hse_nowfs.gpw are kept, which is probably redundant]
+- interpolation: here or in separate script (as C2DB)?
+- functions _interpolate and interpolate_bandstructure are NOT used!!
+- instead, interpolate_bandstructure is imported from c2db.bsinterpol as ip_bs
+- substitute .npz with .json?
+- set diskspace, restart
+- from c2db.utils import eigenvalues -> eigenvaules function in asr.bandstructure?
+- for interpolation:
+  UserWarning: Please do not use (kpts, x, X) = bandpath(...). 
+  Use path = bandpath(...) and then use the methods of the path object (see the BandPath class)
+  otherwise you get ValueError: `x` must be strictly increasing sequence.
+"""
 import json
+from pathlib import Path
+from asr.utils import command, option
+
+import time
 
 from gpaw import GPAW
 from gpaw.xc.exx import EXX
@@ -274,5 +296,13 @@ if __name__ == '__main__':
 
 group = 'Property'
 resources = '24:10h'
-creates = ['hse.gpw', 'hse_nowfs.gpw', 'hse_eigenvalues.npz', 'hse_eigenvalues_soc.npz']
+creates = ['hse.gpw',
+           'hse_nowfs.gpw',
+           'hse_eigenvalues.npz',
+           'hse_eigenvalues_soc.npz',
+           'hse_bandstructure.npz',
+           'hse_bandstructure3.npz']
 dependencies = ['asr.gs']
+diskspace = 0  # how much diskspace is used
+restart = 0  # how many times to restart
+
