@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 # Test name
-recipename = 'convex_hull'
+recipename = '###'
 
 # We create temporary directory and move the start.json
 # and params.json into that directory
