@@ -1,7 +1,4 @@
-from asr.utils import update_defaults
-from functools import partial
-import click
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
 def get_wavefunctions(atoms, name, params, density=6.0,
@@ -28,8 +25,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     return atoms.calc
 
 
-@click.command()
-@update_defaults('asr.borncharges')
+@command('asr.borncharges')
 @option('--displacement', default=0.01, help='Atomic displacement (Å)')
 @option('--kpointdensity', default=6.0)
 @option('--folder', default='data-borncharges')
@@ -169,7 +165,7 @@ def polvsatom(row, *filenames):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
+    from asr.utils.custom import fig
     polfilenames = []
     if 'Z_avv' in row.data:
         def matrixtable(M, digits=2):
@@ -194,7 +190,7 @@ def webpanel(row, key_descriptions):
             polname = 'polvsatom{}.png'.format(a)
             columns[1].append(fig(polname))
             polfilenames.append(polname)
-        panel = [('Born charges', columns)]
+        panel = ('Born charges', columns)
     else:
         panel = []
     things = ()

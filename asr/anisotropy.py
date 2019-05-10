@@ -1,6 +1,5 @@
-
 def webpanel(row, key_descriptions):
-    from asr.custom import table
+    from asr.utils.custom import table
     if row.magstate != 'NM':
         magtable = table('Property',
                          ['magstate', 'magmom',
@@ -13,5 +12,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
+group = 'Postprocessing'
 dependencies = ['asr.gs']

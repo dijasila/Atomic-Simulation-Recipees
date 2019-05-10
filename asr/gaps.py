@@ -1,14 +1,11 @@
 # ##TODO min kpt dens?
-from asr.utils import click, update_defaults, get_start_parameters
-params = get_start_parameters()
-defaults = {}
+import json
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.gap', defaults)
-@click.option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+@command('asr.gap')
+@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
-    import numpy as np
     from gpaw import GPAW
     from functools import partial
     from pathlib import Path
@@ -56,14 +53,12 @@ def main(gpwfilename):
                 'skn2_dir': direct_skn_cbm,
                 'efermi': efermi}
 
-        with paropen('gap{}.npz'.format('_soc' if soc else ''), 'wb') as f:
-            np.savez(f, **data)
-        # Path('gap{}.json'.format('_soc' if soc else '')).write_text(
-        #    json.dumps(data))
+        with paropen('gap{}.json'.format('_soc' if soc else ''), 'w') as f:
+            from ase.io.jsonio import MyEncoder
+            f.write(MyEncoder(indent=4).encode(data))
 
 
 def collect_data(atoms):
-    import numpy as np
     from pathlib import Path
 
     data = {}
@@ -83,12 +78,12 @@ def collect_data(atoms):
              ('Fermi Level', "Fermi's level", 'eV')]
 
     for soc in [True, False]:
-        fname = 'gap{}.npz'.format('_soc' if soc else '')
+        path = Path('gap{}.json'.format('_soc' if soc else ''))
 
-        if not Path(fname).is_file():
+        if not path.is_file():
             continue
 
-        sdata = dict(np.load(fname))
+        sdata = json.loads(path.read_text())
 
         keyname = 'soc' if soc else 'nosoc'
         data[keyname] = sdata
@@ -99,14 +94,16 @@ def collect_data(atoms):
         includes = [namemod(n) for n in data_to_include]
 
         for k, inc in enumerate(includes):
-            kvp[inc] = float(sdata[data_to_include[k]])
-            key_descriptions[inc] = descs[k]
+            val = sdata[data_to_include[k]]
+            if val is not None:
+                kvp[inc] = val
+                key_descriptions[inc] = descs[k]
 
     return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table
+    from asr.utils.custom import table
 
     t = table(row, 'Postprocessing', [
               'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
@@ -234,7 +231,7 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
 
 
 group = 'Postprocessing'
-dependencies = ['asr.anisotropy']
+dependencies = ['asr.gs']
 
 
 if __name__ == '__main__':

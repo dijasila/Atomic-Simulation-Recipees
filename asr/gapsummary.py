@@ -1,6 +1,6 @@
 def webpanel2(row, key_descriptions):
     from typing import List
-    from asr.custom import val2str
+    from asr.utils.custom import val2str
     exclude = {}
     xcends = ['', '_gllbsc', '_hse', '_gw']
     xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
