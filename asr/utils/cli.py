@@ -99,8 +99,6 @@ def test(ctx):
     generatetests()
     args = ctx.args
 
-    if not args:
-        args = ['asr.tests']
     cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
     print(cmd)
     subprocess.run(cmd.split())
