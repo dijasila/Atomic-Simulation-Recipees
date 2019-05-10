@@ -47,5 +47,13 @@ def collect(cls, directory, name=name):
         recipe.main(args=[])
 
 
+def browser(cls, directory, name=name):
+    with chdir(directory):
+        # Make sure to reload the module
+        from asr.utils.cli import browser
+        browser(standalone_mode=False, args=['--only-figures'])
+
+
 # Finally collect
 setattr(TestWorkflow, f'test_collect', collect)
+setattr(TestWorkflow, f'test_browser', browser)

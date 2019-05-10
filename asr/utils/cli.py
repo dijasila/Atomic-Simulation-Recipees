@@ -38,7 +38,9 @@ def cli():
 @cli.command()
 @click.option('--database', default='database.db')
 @click.option('--custom', default='asr.utils.custom')
-def browser(database, custom):
+@click.option('--only-figures', is_flag=True, default=False,
+              help='Dont show browser, just save figures')
+def browser(database, custom, only_figures):
     """Open results in web browser"""
     import subprocess
     from pathlib import Path
@@ -47,8 +49,14 @@ def browser(database, custom):
         custom = Path(__file__).parent / 'custom.py'
 
     cmd = f'python3 -m ase db {database} -w -M {custom}'
+    if only_figures:
+        cmd += ' -l'
     print(cmd)
-    subprocess.run(cmd.split())
+    try:
+        subprocess.check_output(cmd.split())
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        exit(1)
 
 
 @cli.command()

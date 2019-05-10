@@ -268,7 +268,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']
 sort = 2
 
 
