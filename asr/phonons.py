@@ -39,7 +39,7 @@ def main(n, ecut, kptdens):
     else:
         params['convergence'] = {'forces': 1e-4}
 
-    atoms = get_start_atoms() 
+    atoms = get_start_atoms()
     fd = open('phonons-{}.txt'.format(n), 'a')
     calc = GPAW(txt=fd, **params)
 
@@ -123,6 +123,7 @@ def plot_phonons(row, fname):
     plt.savefig(fname)
     plt.close()
 
+
 def collect_data(atoms, n=2):
     kvp = {}
     data = {}
@@ -139,6 +140,7 @@ def collect_data(atoms, n=2):
     data['phonon_energies_3d'] = eigs3
 
     return kvp, key_descriptions, data
+
 
 def webpanel(row, key_descriptions):
     from asr.utils.custom import table, fig
