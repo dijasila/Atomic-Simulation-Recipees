@@ -81,19 +81,19 @@ def status():
     print(format(missing_files))
 
 
-@cli.command()
-@click.option('--collect', default=False, is_flag=True,
-              help='Only collect tests')
-def test(collect):
+@cli.command(context_settings={'ignore_unknown_options': True,
+                               'allow_extra_args': True})
+@click.pass_context
+def test(ctx):
     """Run test of recipes"""
-    from pathlib import Path
     import subprocess
-    import asr
-    folder = str(Path(asr.__file__).parent)
+    from asr.tests.generatetests import generatetests
+    generatetests()
+    args = ctx.args
 
-    cmd = f'python3 -m pytest --tb=short {folder}'
-    if collect:
-        cmd += ' --collect-only'
+    if not args:
+        args = ['asr.tests']
+    cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
     print(cmd)
     subprocess.run(cmd.split())
 
