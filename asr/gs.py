@@ -51,11 +51,11 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
 # The metadata is put it the bottom
 group = 'Property'
 description = ''
-dependencies = ['asr.quickinfo']  # What other recipes does this recipe depend on
-creates = ['gs.gpw']  # What files are created
-resources = '8:10h'  # How many resources are used
-diskspace = 0  # How much diskspace is used
-restart = 1  # Does it make sense to restart the script?
+dependencies = ['asr.quickinfo']
+creates = ['gs.gpw']
+resources = '8:10h'
+diskspace = 0
+restart = 1
 
 if __name__ == '__main__':
     main()
