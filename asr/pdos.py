@@ -169,7 +169,7 @@ def get_l_a(zs):
     return l_a
 
 
-class SOCDOS():  # should this go into gpaw? XXX
+class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
         """
@@ -189,7 +189,7 @@ class SOCDOS():  # should this go into gpaw? XXX
             self.dos = None
 
     def get_dos(self):
-        if mpi.world.rank == 0:  # why doesn't parallelization work? XXX
+        if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
             # hack dos
             e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
             if e_skm.ndim == 2:
@@ -247,7 +247,7 @@ def calculate_pdos(calc, gpw, soc=True):
             spec = chem_symbols[a]
             for l in l_a[a]:
                 if soc:
-                    if world.rank == 0:  # why doesn't parallelization work?XXX
+                    if world.rank == 0:  # GPAW soc is done in serial
                         theta, phi = get_spin_direction()
                         energies, weights = ldos(calc0, a, spin, l, theta, phi)
                         mpi.broadcast((energies, weights))
@@ -280,6 +280,31 @@ def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
         json.dump(jsonio.encode(data), fd)
 
 
+def read_pdos(soc=False):
+    with paropen('pdos_soc«%s».json' % str(soc), 'r') as fd:
+        data = jsonio.decode(json.load(fd))
+    energies = data['energies']
+    pdos_sal = data['pdos_sal']
+    symbols = data['symbols']
+    efermi = data['efermi']
+    return energies, pdos_sal, symbols, efermi
+
+
+def analyse_pdos(energies, pdos_sal, symbols, efermi):
+    """
+    Subtract the vacuum energy.
+    """
+    # get evac XXX
+    evac = 0.
+
+    e = energies - evac
+    ef = efermi - evac
+
+    # maybe use "old_to_new" pdos_sal? XXX
+
+    return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
+
+
 def calculate_dos_at_ef(calc, gpw, soc=False):
     """Get dos at the Fermi energy"""
     if soc:
@@ -293,6 +318,11 @@ def write_dos_at_ef(dos_at_ef, soc=False):
     with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
         print('{}'.format(dos_at_ef), file=fd)
 
+
+def read_dos_at_ef(soc=False):
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
+        return float(fd.read())
+        
 
 def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
     from asr.utils.refinegs import refinegs
@@ -316,14 +346,22 @@ def main(kptdens, emptybands):
     write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=False), soc=False)
     write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
 
-    # Calculate and write the pdos  # XXX unfinished
+    # Calculate and write the pdos
     write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
     write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
 
 
-def collect_data():
-    """Collect data to ASE database"""
-    raise NotImplementedError('What data does pdos produce?')
+def collect_data(atoms):
+    kvp = {}
+    data = {}
+    key_descriptions = {}  # what does key_descriptions refer to? XXX
+
+    kvp['dos_at_ef_nosoc'] = read_dos_at_ef(soc=False)
+    kvp['dos_at_ef_soc'] = read_dos_at_ef(soc=True)
+    data['pdos_nosoc'] = analyse_pdos(*read_pdos(soc=False))
+    data['pdos_soc'] = analyse_pdos(*read_pdos(soc=True))
+    
+    return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):
