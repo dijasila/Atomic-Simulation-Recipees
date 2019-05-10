@@ -145,30 +145,6 @@ def pdos_pbe(row,
     plt.close()
 
 
-def get_l_a(zs):
-    """Defines which atoms and angular momentum to project onto.
-
-    Parameters:
-    -----------
-    zs : [z1, z2, ...]-list or array
-        list of atomic numbers (zi: int)
-
-    Returns:
-    --------
-    l_a : {int: str, ...}-dict
-        keys are atomic indices and values are a string such as 'spd'
-        that determines which angular momentum to project onto or a
-        given atom
-    """
-    zs = np.asarray(zs)
-    l_a = {}
-    atoms = Atoms(numbers=zs)
-    mag_elements = magnetic_atoms(atoms)
-    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
-        l_a[a] = 'spd' if mag else 'sp'
-    return l_a
-
-
 class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
@@ -206,6 +182,57 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
         else:
             dos = mpi.broadcast(None)
         return dos
+
+
+def get_l_a(zs):
+    """Defines which atoms and angular momentum to project onto.
+
+    Parameters:
+    -----------
+    zs : [z1, z2, ...]-list or array
+        list of atomic numbers (zi: int)
+
+    Returns:
+    --------
+    l_a : {int: str, ...}-dict
+        keys are atomic indices and values are a string such as 'spd'
+        that determines which angular momentum to project onto or a
+        given atom
+    """
+    zs = np.asarray(zs)
+    l_a = {}
+    atoms = Atoms(numbers=zs)
+    mag_elements = magnetic_atoms(atoms)
+    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
+        l_a[a] = 'spd' if mag else 'sp'
+    return l_a
+
+
+def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
+    from asr.utils.refinegs import refinegs
+    calc, gpw = refinegs(selfc=False, outf=True,
+                         kptdens=kptdens, emptybands=emptybands,
+                         txt='pdos.txt')
+    return calc, gpw
+
+
+def calculate_dos_at_ef(calc, gpw, soc=False):
+    """Get dos at the Fermi energy"""
+    if soc:
+        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
+    else:
+        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
+    return dos.get_dos()[1]
+
+
+def write_dos_at_ef(dos_at_ef, soc=False):
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
+        print('{}'.format(dos_at_ef), file=fd)
+
+
+def read_dos_at_ef(soc=False):
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
+        return float(fd.read())
 
 
 def calculate_pdos(calc, gpw, soc=True):
@@ -303,33 +330,6 @@ def analyse_pdos(energies, pdos_sal, symbols, efermi):
     # maybe use "old_to_new" pdos_sal? XXX
 
     return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
-
-
-def calculate_dos_at_ef(calc, gpw, soc=False):
-    """Get dos at the Fermi energy"""
-    if soc:
-        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
-    else:
-        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-    return dos.get_dos()[1]
-
-
-def write_dos_at_ef(dos_at_ef, soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
-        print('{}'.format(dos_at_ef), file=fd)
-
-
-def read_dos_at_ef(soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
-        return float(fd.read())
-        
-
-def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
-    from asr.utils.refinegs import refinegs
-    calc, gpw = refinegs(selfc=False, outf=True,
-                         kptdens=kptdens, emptybands=emptybands,
-                         txt='pdos.txt')
-    return calc, gpw
 
 
 @click.command()
