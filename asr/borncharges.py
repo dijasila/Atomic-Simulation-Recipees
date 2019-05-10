@@ -251,7 +251,7 @@ def print_results(filename='data-borncharges/borncharges-0.01.json'):
 
 
 group = 'Property'
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']
 resources = '24:10h'
 
 

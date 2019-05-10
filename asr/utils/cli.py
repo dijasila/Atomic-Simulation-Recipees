@@ -95,13 +95,14 @@ def status():
 def test(ctx):
     """Run test of recipes"""
     import subprocess
-    from asr.tests.generatetests import generatetests
+    from asr.tests.generatetests import generatetests, cleantests
     generatetests()
     args = ctx.args
 
     cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
     print(cmd)
     subprocess.run(cmd.split())
+    cleantests()
 
 
 @cli.command()

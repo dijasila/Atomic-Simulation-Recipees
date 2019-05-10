@@ -49,7 +49,7 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-# We need to reduce this list to zero
+# We need to reduce this list to only contain collect
 excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
                'asr.bse', 'asr.emasses', 'asr.gapsummary']
 

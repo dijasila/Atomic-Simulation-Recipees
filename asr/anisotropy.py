@@ -13,4 +13,4 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Postprocessing'
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']

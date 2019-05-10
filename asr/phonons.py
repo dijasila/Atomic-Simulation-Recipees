@@ -35,9 +35,9 @@ def main(n, ecut, kptdens):
                           'do_not_symmetrize_the_density': True}
     # Make sure to converge forces! Can be important
     if 'convergence' in params:
-        params['convergence']['forces'] = 1e-6
+        params['convergence']['forces'] = 1e-4
     else:
-        params['convergence'] = {'forces': 1e-6}
+        params['convergence'] = {'forces': 1e-4}
 
     atoms = read(name)
     fd = open('phonons-{}.txt'.format(N), 'a')
@@ -138,7 +138,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'Property'
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

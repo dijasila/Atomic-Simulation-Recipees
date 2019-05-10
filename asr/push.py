@@ -86,7 +86,7 @@ def main(momentum, mode, amplitude, fix_cell, show_mode, n):
     write(name, relaxed)
 
 
-dependencies = ['asr.phonons']
+dependencies = ['asr.quickinfo', 'asr.phonons']
 group = 'Structure'
 
 if __name__ == '__main__':

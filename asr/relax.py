@@ -265,6 +265,7 @@ def main(ctx, plusu, states, ecut, kptdens, save_all_states, xc):
 group = 'Structure'
 resources = '8:xeon8:10h'
 creates = ['results-relax.json']
+dependencies = ['asr.quickinfo']
 
 if __name__ == '__main__':
     main()

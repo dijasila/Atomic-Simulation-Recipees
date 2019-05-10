@@ -51,7 +51,7 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
 # The metadata is put it the bottom
 group = 'Property'
 description = ''
-dependencies = []  # What other recipes does this recipe depend on
+dependencies = ['asr.quickinfo']  # What other recipes does this recipe depend on
 creates = ['gs.gpw']  # What files are created
 resources = '8:10h'  # How many resources are used
 diskspace = 0  # How much diskspace is used
