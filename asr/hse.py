@@ -213,58 +213,191 @@ def bs_interpolate(npoints=400, show=False):
         with open('hse_bandstructure3.npz', 'wb') as fd:
             np.savez(fd, **dct)
 
+# remove this functions
+# def _interpolate(calc, kpts_kc, e_skn=None):
+#     """
+#     Parameters:
+#         calc: Calculator
+#             GPAW calcualtor
+#         kpts_kc: (nk, 3)-shape array
+#             kpoints to interpolate onto
+#         e_skn: (ns, nk, nb)-shape array
+#             array values on the kpoint grid in calc
+#     Returns:
+#         eps_skn: (ns ,nk, nb)-shape array
+#             the array values in e_skn interpolated onto kpts_kc
+#     """
+#     if e_skn is None:
+#         e_skn = eigenvalues(calc)
+#     atoms = calc.get_atoms()
+#     icell = atoms.get_reciprocal_cell()
+#     bz2ibz = calc.get_bz_to_ibz_map()
+#     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
+#     eps = monkhorst_pack_interpolate(kpts_kc, e_skn.transpose(1, 0, 2),
+#                                      icell, bz2ibz, size, offset)
+#     return eps.transpose(1, 0, 2)
 
-def _interpolate(calc, kpts_kc, e_skn=None):
-    """
-    Parameters:
-        calc: Calculator
-            GPAW calcualtor
-        kpts_kc: (nk, 3)-shape array
-            kpoints to interpolate onto
-        e_skn: (ns, nk, nb)-shape array
-            array values on the kpoint grid in calc
+# remove this function? 
+# def interpolate_bandstructure():
+#     """Interpolate eigenvalues onto the kpts in bs.gpw (bandstruct calc) using the
+#        eigenvalues in hse_eigenvalues.npz (which comes from hse@hse_nowfs.gpw).
+#        Spin orbit coupling is calculated using the interpolated eigenvalues and
+#        the projetor overlaps in bs.gpw.
+#     """
+#     ranks = [0]
+#     comm = mpi.world.new_communicator(ranks)
+#     if mpi.world.rank in ranks:
+#         calc1 = GPAW('bs.gpw', txt=None, communicator=comm)
+#         calc2 = GPAW('hse_nowfs.gpw', txt=None, communicator=comm)
+#         e_hse_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
+#         e_hse_skn.sort(axis=2)  # this will prob give problems with s_mk
+#         path = calc1.get_ibz_k_points()
+#         eps_hse_skn = _interpolate(calc=calc2,
+#                                    kpts_kc=path,
+#                                    e_skn=e_hse_skn)
+#         eps_skn = eps_hse_skn
+#         theta, phi = get_spin_direction()
+#         e_mk, s_kvm = get_soc_eigs(calc1, gw_kn=eps_skn, return_spin=True,
+#                                    bands=range(eps_skn.shape[2]),
+#                                    theta=theta, phi=phi)
+#         s_mk = s_kvm.transpose(1, 2, 0)[spin_axis()]
+#         dct = dict(e_mk=e_mk, s_mk=s_mk, eps_skn=eps_hse_skn, path=path)
+#         with open('hse_bandstructure.npz', 'wb') as fd:
+#             np.savez(fd, **dct)
+
+# move to utils?
+def interpolate_bandstructure(calc, e_skn=None, npoints=400):
+    """simple wrapper for interpolate_bandlines2
     Returns:
-        eps_skn: (ns ,nk, nb)-shape array
-            the array values in e_skn interpolated onto kpts_kc
+        out: kpts, e_skn, xreal, epsreal_skn
+    """
+    path = get_special_2d_path(cell=calc.atoms.cell)
+    r = interpolate_bandlines2(calc=calc, path=path, e_skn=e_skn,
+                               npoints=npoints)
+    return r['kpts'], r['e_skn'], r['xreal'], r['epsreal_skn']
+
+# move to utils?
+def interpolate_bandlines2(calc, path, e_skn=None, npoints=400):
+    """Interpolate bandstructure
+    Parameters:
+        calc: ASE calculator
+        path: str
+            something like GMKG
+        e_skn: (ns, nk, nb) shape ndarray, optional
+            if not given it uses eigenvalues from calc
+        npoints: int
+            numper of point on the path
+    Returns:
+        out: dict
+            with keys e_skn, kpts, x, X
+            e_skn: (ns, npoints, nb) shape ndarray
+                interpolated eigenvalues,
+            kpts:  (npoints, 3) shape ndarray
+                kpts on path (in basis of reciprocal vectors)
+            x: (npoints, ) shape ndarray
+                x axis
+            X: (nkspecial, ) shape ndarrary
+                position of special points (G, M, K, G) on x axis
+
     """
     if e_skn is None:
         e_skn = eigenvalues(calc)
-    atoms = calc.get_atoms()
-    icell = atoms.get_reciprocal_cell()
+    kpts = calc.get_bz_k_points()
     bz2ibz = calc.get_bz_to_ibz_map()
-    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
-    eps = monkhorst_pack_interpolate(kpts_kc, e_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset)
-    return eps.transpose(1, 0, 2)
+    cell = calc.atoms.cell
+    indices, x = segment_indices_and_x(cell=cell, path_str=path, kpts=kpts)
+    # kpoints and positions to interpolate onto
+    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints)
+    # remove double points
+    for n in range(len(indices) - 1):
+        if indices[n][-1] == indices[n + 1][0]:
+            del indices[n][-1]
+            x[n] = x[n][:-1]
+    # flatten lists [[0, 1], [2, 3, 4]] -> [0, 1, 2, 3, 4]
+    indices = [a for b in indices for a in b]
+    kptsreal_kc = kpts[indices]
+    x = [a for b in x for a in b]
+    # loop over spin and bands and interpolate
+    ns, nk, nb = e_skn.shape
+    e2_skn = np.zeros((ns, len(x2), nb), float)
+    epsreal_skn = np.zeros((ns, len(x), nb), float)
+    for s in range(ns):
+        for n in range(nb):
+            e_k = e_skn[s, :, n]
+            y = [e_k[bz2ibz[i]] for i in indices]
+            epsreal_skn[s, :, n] = y
+            bc_type = ['not-a-knot', 'not-a-knot']
+            for i in [0, -1]:
+                if path[i] == 'G':
+                    bc_type[i] = [1, 0.0]
+            sp = CubicSpline(x=x, y=y, bc_type=bc_type)
+            # sp = InterpolatedUnivariateSpline(x, y)
+            e2_skn[s, :, n] = sp(x2)
+    results = {'kpts': kpts2,    # kpts_kc on bandpath
+               'e_skn': e2_skn,  # eigenvalues on bandpath
+               'x': x2,          # distance along bandpath
+               'X': X2,          # positons of vertices on bandpath
+               'xreal': x,       # distance along path (at MonkhorstPack kpts)
+               'epsreal_skn': epsreal_skn,  # path eigenvalues at MP kpts
+               'kptsreal_kc': kptsreal_kc   # path k-points at MP kpts
+               }
+    return results
 
-
-def interpolate_bandstructure():
-    """Interpolate eigenvalues onto the kpts in bs.gpw (bandstruct calc) using the
-       eigenvalues in hse_eigenvalues.npz (which comes from hse@hse_nowfs.gpw).
-       Spin orbit coupling is calculated using the interpolated eigenvalues and
-       the projetor overlaps in bs.gpw.
+# move to utils? [also in asr.bandstructure]
+def eigenvalues(calc):
     """
-    ranks = [0]
-    comm = mpi.world.new_communicator(ranks)
-    if mpi.world.rank in ranks:
-        calc1 = GPAW('bs.gpw', txt=None, communicator=comm)
-        calc2 = GPAW('hse_nowfs.gpw', txt=None, communicator=comm)
-        e_hse_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
-        e_hse_skn.sort(axis=2)  # this will prob give problems with s_mk
-        path = calc1.get_ibz_k_points()
-        eps_hse_skn = _interpolate(calc=calc2,
-                                   kpts_kc=path,
-                                   e_skn=e_hse_skn)
-        eps_skn = eps_hse_skn
-        theta, phi = get_spin_direction()
-        e_mk, s_kvm = get_soc_eigs(calc1, gw_kn=eps_skn, return_spin=True,
-                                   bands=range(eps_skn.shape[2]),
-                                   theta=theta, phi=phi)
-        s_mk = s_kvm.transpose(1, 2, 0)[spin_axis()]
-        dct = dict(e_mk=e_mk, s_mk=s_mk, eps_skn=eps_hse_skn, path=path)
-        with open('hse_bandstructure.npz', 'wb') as fd:
-            np.savez(fd, **dct)
+    Parameters:
+        calc: Calculator
+            GPAW calculator
+    Returns:
+        e_skn: (ns, nk, nb)-shape array
+    """
+    import numpy as np
+    rs = range(calc.get_number_of_spins())
+    rk = range(len(calc.get_ibz_k_points()))
+    e = calc.get_eigenvalues
+    return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
+# move to utils? [also in asr.bandstructure]
+def get_spin_direction(fname='anisotropy_xy.npz'):
+    '''
+    Uses the magnetic anisotropy to calculate the preferred spin orientation
+    for magnetic (FM/AFM) systems.
+
+    Parameters:
+        fname:
+            The filename of a datafile containing the xz and yz
+            anisotropy energies.
+    Returns:
+        theta:
+            Polar angle in radians
+        phi:
+            Azimuthal angle in radians
+    '''
+
+    import numpy as np
+    import os.path as op
+    theta = 0
+    phi = 0
+    if op.isfile(fname):
+        data = np.load(fname)
+        DE = max(data['dE_zx'], data['dE_zy'])
+        if DE > 0:
+            theta = np.pi / 2
+            if data['dE_zy'] > data['dE_zx']:
+                phi = np.pi / 2
+    return theta, phi
+
+# move to utils? [also in asr.bandstructure]
+def spin_axis(fname='anisotropy_xy.npz') -> int:
+    import numpy as np
+    theta, phi = get_spin_direction(fname=fname)
+    if theta == 0:
+        return 2
+    elif np.allclose(phi, np.pi / 2):
+        return 1
+    else:
+        return 0
 
 if __name__ == '__main__':
     main() #(standalone_mode=False)
