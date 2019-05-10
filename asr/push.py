@@ -1,9 +1,7 @@
-import click
-from functools import partial
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
+@command('asr.push')
 @option(
     '-q',
     '--momentum',
@@ -20,7 +18,8 @@ option = partial(click.option, show_default=True)
     help='Maximum distance an atom will be displaced')
 @option('--fix-cell', is_flag=True, help='Do not relax cell')
 @option('--show-mode', is_flag=True, help='Save mode to tmp.traj for viewing')
-def main(momentum, mode, amplitude, fix_cell, show_mode):
+@option('-n', default=2, help='Supercell size')
+def main(momentum, mode, amplitude, fix_cell, show_mode, n):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
     import numpy as np
@@ -29,7 +28,7 @@ def main(momentum, mode, amplitude, fix_cell, show_mode):
     # Get modes
     from ase.io import read
     atoms = read('start.json')
-    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=2)
+    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=n)
 
     # Repeat atoms
     from fractions import Fraction
@@ -91,4 +90,4 @@ dependencies = ['asr.phonons']
 group = 'Structure'
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()
