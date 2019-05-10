@@ -145,15 +145,27 @@ See the section below for more information.
 
 Testing
 -------
-When you make a new recipe it will be automatically added to a test that runs a
-full workflow for Silicon, Iron, 2D h-BN, 2D-VS2. However, if you want more
-extended testing of your recipe you will have to implement them manually. The
-tests can be found in `asr/asr/tests/` where you will find folders containing
-the specific materials. To run all tests execute
+Tests can be run using
 ```
 python3 -m asr test
 ```
-ASR uses the pytest module for its tests.
+When you make a new recipe ASR will automatically generate a test thats tests
+its dependencies and itself to make sure that all dependencies have been
+included. These automatically generated tests are generated from
+[template_recipe.py](asr/tests/template.py).
+
+ASR uses the `pytest` module for its tests. To see what tests will run use
+```
+python3 -m asr test --collect-only
+```
+To execute a single test use 
+```
+python3 -m asr test --collect-only -k my_test.py
+```
+If you want more extended testing of your recipe you will have to implement them
+manually. Your test should be placed in the `asr/asr/tests/`-folder where other
+tests are located as well. where you will find folders containing
+the specific materials.
 
 
 Special recipe metadata keywords
