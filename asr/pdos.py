@@ -332,6 +332,25 @@ def analyse_pdos(energies, pdos_sal, symbols, efermi):
     return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
 
 
+def get_results():
+    """All distributable results calculated by pdos.py"""
+    return {'dos_at_ef_nosoc': read_dos_at_ef(soc=False),
+            'dos_at_ef_soc': read_dos_at_ef(soc=True),
+            'pdos_data_nosoc': analyse_pdos(*read_pdos(soc=False)),
+            'pdos_data_soc': analyse_pdos(*read_pdos(soc=True))}
+
+
+def write_results(results):
+    with paropen('results_pdos.json', 'w') as fd:
+        json.dump(jsonio.encode(results), fd)
+
+
+def read_results():
+    with paropen('results_pdos.json', 'r') as fd:
+        results = jsonio.decode(json.load(fd))
+    return results
+
+
 @click.command()
 @update_defaults('asr.pdos')
 @option('--kptdens', default=36.0,
@@ -350,16 +369,20 @@ def main(kptdens, emptybands):
     write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
     write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
 
+    write_results(get_results())
+
 
 def collect_data(atoms):
     kvp = {}
     data = {}
     key_descriptions = {}  # what does key_descriptions refer to? XXX
 
-    kvp['dos_at_ef_nosoc'] = read_dos_at_ef(soc=False)
-    kvp['dos_at_ef_soc'] = read_dos_at_ef(soc=True)
-    data['pdos_nosoc'] = analyse_pdos(*read_pdos(soc=False))
-    data['pdos_soc'] = analyse_pdos(*read_pdos(soc=True))
+    results = read_results()
+
+    kvp['dos_at_ef_nosoc'] = results['dos_at_ef_nosoc']
+    kvp['dos_at_ef_soc'] = results['dos_at_ef_soc']
+    data['pdos_nosoc'] = results['pdos_data_nosoc']
+    data['pdos_soc'] = results['pdos_data_soc']
     
     return kvp, key_descriptions, data
 
