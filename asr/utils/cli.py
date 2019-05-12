@@ -36,6 +36,19 @@ def cli():
 
 
 @cli.command()
+@click.argument('name', type=str)
+def run(name):
+    """Run NAME recipe"""
+    from asr.utils import get_dep_tree
+    recipes = get_dep_tree(f'asr.{name}')
+
+    for recipe in recipes:
+        if recipe.done():
+            continue
+        recipe.run()
+
+
+@cli.command()
 @click.option('--database', default='database.db')
 @click.option('--custom', default='asr.utils.custom')
 @click.option('--only-figures', is_flag=True, default=False,
