@@ -1,5 +1,5 @@
 import importlib
-
+from pathlib import Path
 
 class Recipe:
 
@@ -11,8 +11,7 @@ class Recipe:
                         'restart']
 
     def __init__(self, module):
-        self.__name__ = module.__name__
-        print(f'Initializing recipe {self.__name__}')
+        self.name = self.__name__ = module.__name__
         self.implemented_attributes = []
         for attr in Recipe.known_attributes:
             if hasattr(module, attr):
@@ -27,13 +26,18 @@ class Recipe:
             module = importlib.reload(module)
         return cls(module)
 
+    def done(self):
+        if not self.creates:
+            return False
+
+        for file in self.creates:
+            if not Path(file).exists():
+                return False
+        return True
+
     def run(self):
         return self.main(args=[])
 
 
 for attr in Recipe.known_attributes:
-
-    def func():
-        raise NotImplementedError
-    
-    setattr(Recipe, attr, func)
+    setattr(Recipe, attr, None)
