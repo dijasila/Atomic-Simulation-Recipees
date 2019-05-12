@@ -61,4 +61,4 @@ def emtables(row):
 #     return panel
 
             
-group = 'Property'
+group = 'property'

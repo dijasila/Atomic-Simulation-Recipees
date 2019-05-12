@@ -786,7 +786,7 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
+group = 'property'
 creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
 dependencies = ['asr.quickinfo', 'asr.gaps', 'asr.gs']
 sort = 3

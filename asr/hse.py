@@ -16,4 +16,4 @@ def bs_hse(row, path):
 
 #     return panel
 
-group = 'Property'
+group = 'property'

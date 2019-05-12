@@ -59,7 +59,7 @@ def create_plot(row, fname):
     plt.savefig(fname)
 
 
-group = 'Property'
+group = 'property'
 creates = ['something.json']  # what files are created
 dependencies = []  # no dependencies
 resources = '1:10m'  # 1 core for 10 minutes

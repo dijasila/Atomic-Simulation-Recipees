@@ -230,7 +230,7 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
     return theta, phi
 
 
-group = 'Postprocessing'
+group = 'postprocessing'
 dependencies = ['asr.quickinfo', 'asr.gs']
 
 

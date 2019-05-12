@@ -271,7 +271,7 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
+group = 'property'
 creates = ['polarizability.json']
 dependencies = ['asr.quickinfo', 'asr.gs']
 

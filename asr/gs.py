@@ -49,7 +49,7 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
 
 
 # The metadata is put it the bottom
-group = 'Property'
+group = 'property'
 description = ''
 dependencies = ['asr.quickinfo']
 creates = ['gs.gpw']

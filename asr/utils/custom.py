@@ -79,19 +79,19 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     # Locate all webpanels
     recipes = get_recipes()
     for recipe in recipes:
+        if not recipe.webpanel:
+            continue
+        panel, newthings = recipe.webpanel(row, key_descriptions)
+        if panel:
+            assert len(panel) == 2, print(recipe.__name__)
+            page.append(panel)
+            if hasattr(recipe, 'sort'):
+                sort.append(recipe.sort)
+            else:
+                sort.append(99)
 
-        if hasattr(recipe, 'webpanel'):
-            panel, newthings = recipe.webpanel(row, key_descriptions)
-            if panel:
-                assert len(panel) == 2, print(recipe.__name__)
-                page.append(panel)
-                if hasattr(recipe, 'sort'):
-                    sort.append(recipe.sort)
-                else:
-                    sort.append(99)
-
-            if newthings:
-                things.extend(newthings)
+        if newthings:
+            things.extend(newthings)
 
     page = [x for _, x in sorted(zip(sort, page), key=lambda x: x[0])]
     page += [miscellaneous_section(row, key_descriptions, exclude)]
@@ -132,6 +132,3 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
             final_page.append((title, columns))
 
     return final_page
-
-
-group = 'Utility'

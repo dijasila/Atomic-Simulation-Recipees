@@ -48,7 +48,7 @@ def print():
 
 
 dependencies = ['asr.quickinfo', 'asr.gs']
-group = 'Property'
+group = 'property'
 resources = '1:10m'
 
 

@@ -68,4 +68,4 @@ def bs_gw(row, path):
 #     return panel, things
 
 
-group = 'Property'
+group = 'property'

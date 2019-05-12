@@ -76,6 +76,3 @@ class BFGS:
                  {1: '*', 0: ''}[self.force_consistent],
                  fmax, smax, m, abs(ms).max()))
             self.logfile.flush()
-
-
-group = 'Utility'
