@@ -27,7 +27,7 @@ class ASRCommand(click.Command):
 
         if not skipdeps:
             recipes = get_dep_tree(self._asr_name)
-            for recipe in recipes:
+            for recipe in recipes[:-1]:  # Don't include itself
                 if not recipe.done():
                     recipe.main(skipdeps=True, args=[])
         return self.main(standalone_mode=False, *args, **kwargs)
