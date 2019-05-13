@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
+import sys
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -10,22 +11,43 @@ argument = click.argument
 class ASRCommand(click.Command):
     _asr_command = True
 
-    def __call__(self, *args, **kwargs):
+    def __init__(self, asr_name=None, *args, **kwargs):
+        assert asr_name, 'You have to give a name to your ASR command!'
+        self._asr_name = asr_name
+        click.Command.__init__(self, *args, **kwargs)
+
+    def __call__(self, skipdeps=False, *args, **kwargs):
+        # We should skip deps if we want to print the help
+        if '-h' in sys.argv or '--help' in sys.argv:
+            skipdeps = True
+
+        if 'args' in kwargs:
+            if '-h' in kwargs['args'] or '--help' in kwargs['args']:
+                skipdeps = True
+
+        if not skipdeps:
+            recipes = get_dep_tree(self._asr_name)
+            for recipe in recipes:
+                if not recipe.done():
+                    recipe.main(skipdeps=True, args=[])
         return self.main(standalone_mode=False, *args, **kwargs)
 
 
-def command(name, overwrite={}, *args, **kwargs):
+def command(name, overwrite_params={}, *args, **kwargs):
     params = get_parameters(name)
-    params.update(overwrite)
+    params.update(overwrite_params)
 
     ud = update_defaults
 
     CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
     def decorator(func):
+
         cc = click.command(cls=ASRCommand,
                            context_settings=CONTEXT_SETTINGS,
+                           asr_name=name,
                            *args, **kwargs)
+
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
