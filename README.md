@@ -35,8 +35,16 @@ $ cd functional
 $ mkdir PBED3
 $ wget http://chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
 $ make
-$ echo  'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
+$ echo 'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
 $ source ~/.bashrc
+```
+
+Download executable for Bader analysis and put in path (only for Linux):
+```console
+$ cd ~ && mkdir baderext && cd baderext
+$ wget http://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz
+$ tar -zxf bader_lnx_64.tar.gz
+$ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
 ```
 
 How to use
