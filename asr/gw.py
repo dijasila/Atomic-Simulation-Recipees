@@ -56,7 +56,7 @@ def bs_gw(row, path):
 
 
 # def webpanel(row, key_descriptions):
-#     from asr.custom import fig, table
+#     from asr.utils.custom import fig, table
 #     gw = table(
 #         'Property', ['gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'],
 #         key_descriptions=key_descriptions_noxc)

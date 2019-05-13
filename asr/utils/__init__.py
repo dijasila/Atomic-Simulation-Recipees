@@ -4,8 +4,36 @@ from functools import partial
 import click
 import numpy as np
 option = partial(click.option, show_default=True)
-command = click.command
-click.option = option
+argument = click.argument
+
+
+class ASRCommand(click.Command):
+    _asr_command = True
+
+    def __call__(self, *args, **kwargs):
+        return self.main(standalone_mode=False, *args, **kwargs)
+
+
+def command(name, overwrite={}, *args, **kwargs):
+    params = get_parameters(name)
+    params.update(overwrite)
+
+    ud = update_defaults
+
+    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+    def decorator(func):
+        cc = click.command(cls=ASRCommand,
+                           context_settings=CONTEXT_SETTINGS,
+                           *args, **kwargs)
+        if hasattr(func, '__click_params__'):
+            func = cc(ud(name, params)(func))
+        else:
+            func = cc(func)
+
+        return func
+    
+    return decorator
 
 
 @contextmanager
@@ -21,7 +49,12 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_recipes(sort=True):
+# We need to reduce this list to only contain collect
+excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
+               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+
+
+def get_recipes(sort=True, exclude=True):
     import importlib
     from pathlib import Path
 
@@ -29,6 +62,9 @@ def get_recipes(sort=True):
     recipes = []
     for file in files:
         name = file.with_suffix('').name
+        modulename = f'asr.{name}'
+        if modulename in excludelist:
+            continue
         module = importlib.import_module(f'asr.{name}')
         recipes.append(module)
 
@@ -62,6 +98,29 @@ def get_recipes(sort=True):
         recipes = sortedrecipes
 
     return recipes
+
+
+def get_dep_tree(name):
+    recipes = get_recipes(sort=True)
+
+    names = [recipe.__name__ for recipe in recipes]
+    indices = [names.index(name)]
+    for j in range(100):
+        if not indices[j:]:
+            break
+        for ind in indices[j:]:
+            if not hasattr(recipes[ind], 'dependencies'):
+                continue
+            deps = recipes[ind].dependencies
+            for dep in deps:
+                index = names.index(dep)
+                if index not in indices:
+                    indices.append(index)
+    else:
+        raise RuntimeError('Dependencies are weird!')
+    print(indices)
+    indices = sorted(indices)
+    return [recipes[ind] for ind in indices]
 
 
 def get_parameters(key=None):

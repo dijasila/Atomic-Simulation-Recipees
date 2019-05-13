@@ -20,7 +20,7 @@ def format(content, indent=0, title=None, pad=2):
     for row in content:
         out = ' ' * indent
         if isinstance(row, str):
-            output += f'\n{row}\n'
+            output += f'\n{row}'
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
@@ -36,19 +36,27 @@ def cli():
 
 
 @cli.command()
-def test():
-    """Run test of recipes"""
+@click.option('--database', default='database.db')
+@click.option('--custom', default='asr.utils.custom')
+@click.option('--only-figures', is_flag=True, default=False,
+              help='Dont show browser, just save figures')
+def browser(database, custom, only_figures):
+    """Open results in web browser"""
+    import subprocess
     from pathlib import Path
-    from subprocess import Popen, PIPE
-    import asr
-    folder = str(Path(asr.__file__).parent)
 
-    with Popen(['python3', '-m', 'pytest',
-                '--tb=short',  # shorter traceback format
-                folder], stdout=PIPE, bufsize=1,
-               universal_newlines=True) as p:
-        for line in p.stdout:
-            print(line, end='')
+    if custom == 'asr.utils.custom':
+        custom = Path(__file__).parent / 'custom.py'
+
+    cmd = f'python3 -m ase db {database} -w -M {custom}'
+    if only_figures:
+        cmd += ' -l'
+    print(cmd)
+    try:
+        subprocess.check_output(cmd.split())
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        exit(1)
 
 
 @cli.command()
@@ -81,41 +89,20 @@ def status():
     print(format(missing_files))
 
 
-@cli.command()
-def printdependencies():
-    pass
+@cli.command(context_settings={'ignore_unknown_options': True,
+                               'allow_extra_args': True})
+@click.pass_context
+def test(ctx):
+    """Run test of recipes"""
+    import subprocess
+    from asr.tests.generatetests import generatetests, cleantests
+    generatetests()
+    args = ctx.args
 
-
-@cli.command()
-def checkall():
-    """Check status of all recipes"""
-    recipes = get_recipes()
-
-    attributes = ['main',
-                  'creates',
-                  'collect_data',
-                  'webpanel',
-                  'resources']
-
-    groups = ['Structure', 'Property',
-              'Postprocessing', 'Utility']
-    panel = []
-    panel.append(['name', *attributes])
-    for group in groups:
-        panel.append(f'{group} recipes')
-        for recipe in recipes:
-            if not recipe.group == group:
-                continue
-            status = [recipe.__name__]
-            for attr in attributes:
-                if hasattr(recipe, attr):
-                    status.append('.')
-                else:
-                    status.append('N')
-            panel.append(status)
-
-    pretty_output = format(panel)
-    print(pretty_output)
+    cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
+    print(cmd)
+    subprocess.run(cmd.split())
+    cleantests()
 
 
 @cli.command()

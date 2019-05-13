@@ -4,7 +4,7 @@ def bs_hse(row, path):
 
 
 # def webpanel(row, key_descriptions):
-#     from asr.custom import fig, table
+#     from asr.utils.custom import fig, table
 #     hse = table('Property',
 #                 ['work_function_hse', 'dos_hse', 'gap_hse', 'dir_gap_hse',
 #                  'vbm_hse', 'cbm_hse'],

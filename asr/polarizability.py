@@ -1,12 +1,14 @@
 from asr.utils import command, option
+from click import Choice
 
 
-@command()
+@command('asr.polarizability')
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
 @option('--density', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--xc', default='RPA', help='XC interaction (RPA or ALDA)')
+@option('--xc', default='RPA', help='XC interaction',
+        type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(gs, density, ecut, xc, bandfactor):
@@ -249,11 +251,11 @@ def polarizability(row, fx, fy, fz):
         plt.tight_layout()
         plt.savefig(fz)
 
-    return ax1, ax2, ax3
+        return ax1, ax2, ax3
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
 
     opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
@@ -271,7 +273,7 @@ def webpanel(row, key_descriptions):
 
 group = 'Property'
 creates = ['polarizability.json']
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()
