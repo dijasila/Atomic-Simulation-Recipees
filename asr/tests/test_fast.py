@@ -11,7 +11,8 @@ recipes = get_recipes()
 @pytest.mark.parametrize('recipe', recipes)
 def test_help(recipe):
     """Call all main functions with --help"""
-    if not hasattr(recipe, 'main'):
+
+    if not recipe.main:
         return
 
     try:
@@ -24,16 +25,28 @@ def test_help(recipe):
 
 
 @pytest.mark.parametrize('recipe', recipes)
+def test_group(recipe):
+    """Make sure that the group property is implemented"""
+    if not recipe.group:
+        return
+
+    assert recipe.group in ['structure', 'property', 'postprocessing'], \
+        (f'Group {recipe.__name__} not known!')
+
+
+@pytest.mark.parametrize('recipe', recipes)
 def test_asr_command(recipe):
     """Make sure that the correct _asr_command is being used"""
-    if hasattr(recipe, 'main'):
-        try:
-            assert hasattr(recipe.main, '_asr_command')
-        except AssertionError:
-            msg = ('Dont use @click.command! Please use '
-                   'the "from asr.utils import command" '
-                   'in stead')
-            raise AssertionError(msg)
+    if not recipe.main:
+        return
+    
+    try:
+        assert hasattr(recipe.main, '_asr_command')
+    except AssertionError:
+        msg = ('Dont use @click.command! Please use '
+               'the "from asr.utils import command" '
+               'in stead')
+        raise AssertionError(msg)
 
 
 @pytest.mark.parametrize('recipe', recipes)
@@ -41,7 +54,7 @@ def test_collect(recipe):
     """Call all collect_data functions with empty list
     (should work)"""
 
-    if not hasattr(recipe, 'collect_data'):
+    if not recipe.collect_data:
         return
 
     try:

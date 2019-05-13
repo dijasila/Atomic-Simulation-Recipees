@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
+import sys
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -10,22 +11,43 @@ argument = click.argument
 class ASRCommand(click.Command):
     _asr_command = True
 
-    def __call__(self, *args, **kwargs):
+    def __init__(self, asr_name=None, *args, **kwargs):
+        assert asr_name, 'You have to give a name to your ASR command!'
+        self._asr_name = asr_name
+        click.Command.__init__(self, *args, **kwargs)
+
+    def __call__(self, skipdeps=False, *args, **kwargs):
+        # We should skip deps if we want to print the help
+        if '-h' in sys.argv or '--help' in sys.argv:
+            skipdeps = True
+
+        if 'args' in kwargs:
+            if '-h' in kwargs['args'] or '--help' in kwargs['args']:
+                skipdeps = True
+
+        if not skipdeps:
+            recipes = get_dep_tree(self._asr_name)
+            for recipe in recipes[:-1]:  # Don't include itself
+                if not recipe.done():
+                    recipe.main(skipdeps=True, args=[])
         return self.main(standalone_mode=False, *args, **kwargs)
 
 
-def command(name, overwrite={}, *args, **kwargs):
+def command(name, overwrite_params={}, *args, **kwargs):
     params = get_parameters(name)
-    params.update(overwrite)
+    params.update(overwrite_params)
 
     ud = update_defaults
 
     CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
     def decorator(func):
+
         cc = click.command(cls=ASRCommand,
                            context_settings=CONTEXT_SETTINGS,
+                           asr_name=name,
                            *args, **kwargs)
+
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
@@ -55,8 +77,8 @@ excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
 
 
 def get_recipes(sort=True, exclude=True):
-    import importlib
     from pathlib import Path
+    from asr.utils.recipe import Recipe
 
     files = Path(__file__).parent.parent.glob('[a-zA-Z]*.py')
     recipes = []
@@ -65,24 +87,21 @@ def get_recipes(sort=True, exclude=True):
         modulename = f'asr.{name}'
         if modulename in excludelist:
             continue
-        module = importlib.import_module(f'asr.{name}')
-        recipes.append(module)
+        recipe = Recipe.frompath(f'asr.{name}')
+        recipes.append(recipe)
 
     if sort:
         sortedrecipes = []
 
         # Add the recipes with no dependencies (these must exist)
         for recipe in recipes:
-            if not hasattr(recipe, 'dependencies'):
+            if not recipe.dependencies:
                 sortedrecipes.append(recipe)
-            else:
-                if len(recipe.dependencies) == 0:
-                    sortedrecipes.append(recipe)
 
         for i in range(1000):
             for recipe in recipes:
-                names = [recipe.__name__ for recipe in sortedrecipes]
-                if recipe.__name__ in names:
+                names = [recipe.name for recipe in sortedrecipes]
+                if recipe.name in names:
                     continue
                 for dep in recipe.dependencies:
                     if dep not in names:
@@ -112,13 +131,14 @@ def get_dep_tree(name):
             if not hasattr(recipes[ind], 'dependencies'):
                 continue
             deps = recipes[ind].dependencies
+            if not deps:
+                continue
             for dep in deps:
                 index = names.index(dep)
                 if index not in indices:
                     indices.append(index)
     else:
         raise RuntimeError('Dependencies are weird!')
-    print(indices)
     indices = sorted(indices)
     return [recipes[ind] for ind in indices]
 

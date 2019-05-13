@@ -31,6 +31,10 @@ recipes = get_dep_tree(f'asr.{recipename}')
 for recipe in recipes:
     name = recipe.__name__
 
+    if recipe.group:
+        if recipe.group == 'postprocessing':
+            continue
+
     def func(cls, directory, name=name):
         with chdir(directory):
             # Make sure to reload the module

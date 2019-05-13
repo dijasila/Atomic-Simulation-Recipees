@@ -102,4 +102,4 @@ def absorption(row, fnamein, fnameout):
 #     return panel, things
 
 
-group = 'Property'
+group = 'property'

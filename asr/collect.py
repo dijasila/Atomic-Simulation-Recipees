@@ -95,7 +95,7 @@ def main(folders, references, verbose, skipforces):
             print('{}\n{}: {}\n{}'.format('=' * 77, *error))
 
 
-group = 'Postprocessing'
+group = 'postprocessing'
 
 if __name__ == '__main__':
     main()

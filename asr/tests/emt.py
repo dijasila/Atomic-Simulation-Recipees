@@ -50,15 +50,15 @@ def test_cuag(directory):
         if db.is_file():
             db.unlink()
 
-        collect([str(dir) for dir in Path().glob('?u/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('?u/nm/')])
         db.rename('refs.db')
 
-        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('Au*Cu/nm/')])
         db.rename('database1.db')
 
         for dir in Path().glob('Au*Cu/nm/'):
             with chdir(dir):
-                chull(['-r', '../../refs.db',
-                       '-d', '../../database1.db'])
+                chull(args=['-r', '../../refs.db',
+                            '-d', '../../database1.db'])
 
-        collect([str(dir) for dir in Path().glob('Au*Cu/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('Au*Cu/nm/')])

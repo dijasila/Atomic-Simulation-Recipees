@@ -262,7 +262,7 @@ def main(ctx, plusu, states, ecut, kptdens, save_all_states, xc):
     Path('results-relax.json').write_text(json.dumps(data))
 
 
-group = 'Structure'
+group = 'structure'
 resources = '8:xeon8:10h'
 creates = ['results-relax.json']
 dependencies = ['asr.quickinfo']
