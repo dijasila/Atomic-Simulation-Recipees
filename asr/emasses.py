@@ -1,68 +1,3 @@
-def emtables(row):
-    if row.data.get('effectivemass') is None:
-        return [None, None]
-    unit = 'm<sub>e</sub>'
-    tables = []
-    for bt in ['cb', 'vb']:
-        dct = row.data.effectivemass.get(bt)
-        if dct is None:
-            tables.append(None)
-            continue
-        if bt == 'cb':
-            title = 'Electron effective mass'
-        else:
-            title = 'Hole effective mass'
-        keys = [k for k in dct.keys() if 'spin' in k and 'band' in k]
-        rows = []
-        for i, k in enumerate(keys):
-            emdata = dct[k]
-            m_u = emdata['mass_u']
-            if bt == 'vb':
-                m_u = -m_u
-            if i == 0:
-                desc = '{}'.format(bt.upper())
-            else:
-                sgn = ' + ' if bt == 'cb' else ' - '
-                desc = '{}{}{}'.format(bt.upper(), sgn, i)
-            for u, m in enumerate(sorted(m_u, reverse=True)):
-                if 0.001 < m < 100:  # masses should be reasonable
-                    desc1 = ', direction {}'.format(u + 1)
-                    rows.append([desc + desc1,
-                                 '{:.2f} {}'.format(m, unit)])
-        tables.append({'type': 'table',
-                       'header': [title, ''],
-                       'rows': rows})
-    return tables
-
-
-# def webpanel(row, key_descriptions):
-
-#     from asr.utils.custom import fig
-#     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
-#                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
-
-#     def nosoc_update(string):
-#         if string.endswith(')'):
-#             return string[:-1] + ', no SOC)'
-#         else:
-#             return string + ' (no SOC)'
-
-#     for key in add_nosoc:
-#         s, l, units = key_descriptions[key]
-#         if l:
-#             key_descriptions[key + "_nosoc"] = (s, nosoc_update(l), units)
-#         else:
-#             key_descriptions[key + "_nosoc"] = (nosoc_update(s), l, units)
-
-#     panel = ('Effective masses (PBE)',
-#              [[fig('pbe-bzcut-cb-bs.png'), fig('pbe-bzcut-vb-bs.png')],
-#               emtables(row)])
-
-#     return panel
-
-
-
-
 from asr.utils import click, update_defaults, get_start_parameters
 params = get_start_parameters()
 defaults = {}
@@ -282,7 +217,6 @@ def em(kpts_kv, eps_k, bandtype=None):
 
     """
     import numpy as np
-    #Do a second order fit to get started
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     fxx = 2*c[0]
     fyy = 2*c[1]
@@ -382,13 +316,91 @@ def _savemass(soc, bt, mass):
     world.barrier()
 
 
+def _readmass(soc, bt):
+    import numpy as np
+    fname = get_name(soc=soc, bt=bt) + '.npz'
+    with open(fname, 'rb') as f:
+        dct = dict(np.load(f))['data'].tolist()
+    return dct
+
 
 
 def collect_data(atoms):
-    raise NotImplementedError
+    all_data = {}
+    kvp = {}
+    key_descriptions = {}
+    for soc in [True, False]:
+        keyname = 'soc' if soc else 'nosoc'
+        data = {}
+        for bt in ['cb', 'vb']:
+            temp = _readmass(soc, bt)
+            for key, val in temp.items():
+                if key == 'indices':
+                    continue
+                else:
+                    data[bt] = val
+        all_data[keyname] = data
+
+    descs = [('Conduction Band emasses', 'Effective masses for conduction band', '-'),
+             ('Valence Band emasses', 'Effective masses for conduction band', '-'),
+             ('Conduction Band emasses with SOC', 'Effective masses with spin-orbit coupling for conduction band', '-'),
+             ('Valence Band emasses with SOC', 'Effective masses with spin-orbit coupling for valence band', '-')
+             ]
+
+    
+    for socname, socdata in all_data.items():
+        soc = socname == 'soc'
+        def namemod(n):
+            return n + '_soc' if soc else n
+        for bt, btdata in socdata.items():
+            key = bt + '_emass'
+            key = namemod(key)
+            kvp[key] = btdata
+
+            if soc:
+                key_descriptions[key] = descs[0] if bt == 'cb' else descs[1]
+            else:
+                key_descriptions[key] = descs[2] if bt == 'cb' else descs[3]
+                
+    return kvp, key_descriptions, all_data
+
 
 def webpanel(row, key_descriptions):
-    raise NotImplementedError
+    from asr.utils.custom import table
+
+    t = table(row, 'Postprocessing', [
+            'cb_emass', 'vb_emass'],
+              key_descriptions)
+    
+    panel = ('Effective masses', [[t]])
+    return panel, None
+
+
+# def webpanel(row, key_descriptions):
+
+#     from asr.utils.custom import fig
+#     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
+#                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
+
+#     def nosoc_update(string):
+#         if string.endswith(')'):
+#             return string[:-1] + ', no SOC)'
+#         else:
+#             return string + ' (no SOC)'
+
+#     for key in add_nosoc:
+#         s, l, units = key_descriptions[key]
+#         if l:
+#             key_descriptions[key + "_nosoc"] = (s, nosoc_update(l), units)
+#         else:
+#             key_descriptions[key + "_nosoc"] = (nosoc_update(s), l, units)
+
+#     panel = ('Effective masses (PBE)',
+#              [[fig('pbe-bzcut-cb-bs.png'), fig('pbe-bzcut-vb-bs.png')],
+#               emtables(row)])
+
+#     return panel
+
 
             
 group = 'Property'
