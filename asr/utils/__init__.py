@@ -296,3 +296,9 @@ def has_inversion(atoms, use_spglib=True):
     else:
         from gpaw.symmetry import atoms2symmetry
         return atoms2symmetry(atoms2).has_inversion
+
+
+def write_json(filename, data):
+    from pathlib import Path
+    from ase.io.jsonio import MyEncoder
+    Path(filename).write_text(MyEncoder(indent=4).encode(data))
