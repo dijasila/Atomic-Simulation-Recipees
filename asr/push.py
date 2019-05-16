@@ -2,20 +2,11 @@ from asr.utils import command, option
 
 
 @command('asr.push')
-@option(
-    '-q',
-    '--momentum',
-    default=[0, 0, 0],
-    nargs=3,
-    type=float,
-    help='Phonon momentum')
+@option('-q', '--momentum', default=[0, 0, 0], nargs=3, type=float,
+        help='Phonon momentum')
 @option('-m', '--mode', default=0, type=int, help='Mode index')
-@option(
-    '-a',
-    '--amplitude',
-    default=0.1,
-    type=float,
-    help='Maximum distance an atom will be displaced')
+@option('-a', '--amplitude', default=0.1, type=float,
+        help='Maximum distance an atom will be displaced')
 @option('--fix-cell', is_flag=True, help='Do not relax cell')
 @option('--show-mode', is_flag=True, help='Save mode to tmp.traj for viewing')
 @option('-n', default=2, help='Supercell size')
