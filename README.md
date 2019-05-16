@@ -35,6 +35,7 @@ $ mkdir functional
 $ cd functional
 $ mkdir PBED3
 $ wget http://chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+$ tar -zxf dftd3.tgz
 $ make
 $ echo 'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
 $ source ~/.bashrc
