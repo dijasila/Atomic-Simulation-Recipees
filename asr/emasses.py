@@ -3,10 +3,9 @@ params = get_start_parameters()
 defaults = {}
 
 
-#@click.options('--something', type=str, help='HELP', default='smth')
 @click.command()
 @update_defaults('asr.emasses', defaults)
-@click.option('--gpwfilename', type=str, help='Filename of GS calculation', default='gs.gpw')
+@click.option('--gpwfilename', type=str, help='GS Filename', default='gs.gpw')
 def main(gpwfilename):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -33,12 +32,11 @@ def main(gpwfilename):
                                  efermi=efermi)
             except ValueError:
                 tb = traceback.format_exc()
-                print(gpw2 + ':\n' + '=' *len(gpw2) + '\n', tb)
+                print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
             else:
                 _savemass(soc=soc, bt=bt, mass=masses)
             
         
-
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
@@ -60,14 +58,15 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
                 which bandtype do we do calculations for, if None is done for
                 for both cb and vb
 
-    """    
+    """
     from gpaw import GPAW
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
-    assert np.allclose(calc.atoms.pbc[ndim:], 0) #Check that 1D: Only x-axis, 2D: Only x- and y-axis
+    # Check that 1D: Only x-axis, 2D: Only x- and y-axis
+    assert np.allclose(calc.atoms.pbc[ndim:], 0)
     if ndim == 1:
         raise NotImplementedError("Recipe not implemented for 1D")
 
@@ -107,17 +106,17 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=True):
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     if twod:
-        #This factor is used to kill contribution from z-coordinates in 2D case
+        # This factor is used to kill contribution from z-coordinates in 2D
         zfactor = 0
     else:
         zfactor = 1
 
     a = np.linspace(-1, 1, npoints)
     X, Y, Z = np.meshgrid(a, a, a)
-    indices = X**2 + Y**2 + zfactor*Z**2 <= 1
+    indices = X**2 + Y**2 + zfactor * Z**2 <= 1
     x, y, z = X[indices], Y[indices], Z[indices]
-    kpts_kv = np.vstack([x, y, z*zfactor]).T
-    kr = np.sqrt(2*m*erange/Hartree)
+    kpts_kv = np.vstack([x, y, z * zfactor]).T
+    kr = np.sqrt(2 * m * erange / Hartree)
     kpts_kv *= kr
     kpts_kv /= Bohr
     kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
@@ -160,13 +159,13 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     masses = {'indices': indices}
     for b in indices:
         e_k = e_skn[b[0], :, b[1]]
-        masses[b] = em(kpts_kv=ibz_kv*Bohr,
-                       eps_k=e_k/Hartree, bandtype=bandtype)
+        masses[b] = em(kpts_kv=ibz_kv * Bohr,
+                       eps_k=e_k / Hartree, bandtype=bandtype)
     return masses
 
 
 def get_vb_cb_indices(e_skn, efermi, delta):
-     """
+    """
     find CB and VB within a distance of delta of the CB and VB extrema
     Parameters:
         e_skn: (ns, nk, nb)-shape ndarray
@@ -179,27 +178,28 @@ def get_vb_cb_indices(e_skn, efermi, delta):
         vb_indices, cb_indices: [(spin, band), ..], [(spin, band), ...]
             spin and band indices (aka as SBandex) for VB and CB, respectively
     """
-     import numpy as np
-     from ase.dft.bandgap import bandgap
-     if e_skn.ndim == 2:
-         e_skn = e_skn[np.newaxis]
-     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi, output=None)
+    import numpy as np
+    from ase.dft.bandgap import bandgap
+    if e_skn.ndim == 2:
+        e_skn = e_skn[np.newaxis]
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn,
+                                              efermi=efermi, output=None)
      
-     if not gap > 0:
-         raise ValueError('Band gap is zero')
+    if not gap > 0:
+        raise ValueError('Band gap is zero')
      
-     cbm = e_skn[s2, k2, n2]
-     vbm = e_skn[s1, k1, n1]
+    cbm = e_skn[s2, k2, n2]
+    vbm = e_skn[s1, k1, n1]
 
-     cb_sn = e_skn[:, k2, n2:]
-     vb_sn = e_skn[:, k1, :n1+1]
-     cbs, cbn = np.where(cb_sn <= cbm + delta)
-     cbn += n2
-     cb_indices = list(zip(cbs, cbn))
+    cb_sn = e_skn[:, k2, n2:]
+    vb_sn = e_skn[:, k1, :n1 + 1]
+    cbs, cbn = np.where(cb_sn <= cbm + delta)
+    cbn += n2
+    cb_indices = list(zip(cbs, cbn))
      
-     vbs, vbn = np.where(vb_sn >= vbm - delta)
-     vb_indices = list(reversed(list(zip(vbs, vbn))))
-     return vb_indices, cb_indices
+    vbs, vbn = np.where(vb_sn >= vbm - delta)
+    vb_indices = list(reversed(list(zip(vbs, vbn))))
+    return vb_indices, cb_indices
 
 
 def em(kpts_kv, eps_k, bandtype=None):
@@ -218,9 +218,9 @@ def em(kpts_kv, eps_k, bandtype=None):
     """
     import numpy as np
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
-    fxx = 2*c[0]
-    fyy = 2*c[1]
-    fzz = 2*c[2]
+    fxx = 2 * c[0]
+    fyy = 2 * c[1]
+    fzz = 2 * c[2]
     fxy = c[3]
     fxz = c[4]
     fyz = c[5]
@@ -228,9 +228,11 @@ def em(kpts_kv, eps_k, bandtype=None):
     fy = c[7]
     fz = c[8]
     
-    ##This commented out code is needed for further refinement of the effective mass calculation
-    #def get_bt(fxx, fyy, fzz, fxy, fxz, fyz):
-    #    hessian = np.array([[fxx, fxy, fxz], [fxy, fyy, fyz], [fxz, fyz, fzz]])
+    # This commented out code is needed for further
+    # refinement of the effective mass calculation
+    # def get_bt(fxx, fyy, fzz, fxy, fxz, fyz):
+    #    hessian = np.array([[fxx, fxy, fxz],
+    # [fxy, fyy, fyz], [fxz, fyz, fzz]])
     #    detH = np.linalg.det(hessian)
     #    if detH < 0:
     #        bandtype = 'saddlepoint'
@@ -239,16 +241,18 @@ def em(kpts_kv, eps_k, bandtype=None):
     #    elif fxx > 0 and fyy > 0 and fzz > 0:
     #        bandtype = 'cb'
     #    else:
-    #        raise ValueError("Bandtype could not be found. Hessian had determinant: {}".format(detH))
+    #        raise ValueError("Bandtype could not be found.
+    # Hessian had determinant: {}"
+    # .format(detH))
     #    return bandtype
-    #if bandtype is None:
+    # if bandtype is None:
     #    bandtype = get_bt(fxx, fyy, fzz, fxy, fxz, fyz)
     hessian = np.array([[fxx, fxy, fxz], [fxy, fyy, fyz], [fxz, fyz, fzz]])
     masses, vecs = np.linalg.eigh(hessian)
     
-    #Calculate extremum point
+    # Calculate extremum point
     A = np.array([fx, fy, fz])
-    kmax = -0.5*A.dot(np.linalg.inv(hessian))
+    kmax = -0.5 * A.dot(np.linalg.inv(hessian))
 
     out = dict(mass_u=masses, eigenvectors_vu=vecs,
                ke_v=kmax,
@@ -265,7 +269,6 @@ def fit(kpts_kv, eps_k, thirdorder=False):
     return la.lstsq(A_kp, eps_k, rcond=-1)
 
 
-
 def model(kpts_kv):
     """ simple third order model
         Parameters:
@@ -279,9 +282,9 @@ def model(kpts_kv):
     A_dp = np.array([k_kx**2,
                      k_ky**2,
                      k_kz**2,
-                     k_kx*k_ky,
-                     k_kx*k_kz,
-                     k_ky*k_kz,
+                     k_kx * k_ky,
+                     k_kx * k_kz,
+                     k_ky * k_kz,
                      k_kx,
                      k_ky,
                      k_kz,
@@ -289,12 +292,12 @@ def model(kpts_kv):
                      k_kx**3,
                      k_ky**3,
                      k_kz**3,
-                     k_kx**2*k_ky,
-                     k_kx**2*k_kz,
-                     k_ky**2*k_kx,
-                     k_ky**2*k_kz,
-                     k_kz**2*k_kx,
-                     k_kz**2*k_ky]).T
+                     k_kx**2 * k_ky,
+                     k_kx**2 * k_kz,
+                     k_ky**2 * k_kx,
+                     k_ky**2 * k_kz,
+                     k_kz**2 * k_kx,
+                     k_kz**2 * k_ky]).T
     return A_dp
 
 
@@ -324,7 +327,6 @@ def _readmass(soc, bt):
     return dct
 
 
-
 def collect_data(atoms):
     all_data = {}
     kvp = {}
@@ -341,15 +343,21 @@ def collect_data(atoms):
                     data[bt] = val
         all_data[keyname] = data
 
-    descs = [('Conduction Band emasses', 'Effective masses for conduction band', '-'),
-             ('Valence Band emasses', 'Effective masses for conduction band', '-'),
-             ('Conduction Band emasses with SOC', 'Effective masses with spin-orbit coupling for conduction band', '-'),
-             ('Valence Band emasses with SOC', 'Effective masses with spin-orbit coupling for valence band', '-')
+    descs = [('Conduction Band emasses',
+              'Effective masses for conduction band', '-'),
+             ('Valence Band emasses',
+              'Effective masses for conduction band', '-'),
+             ('Conduction Band emasses with SOC',
+              'Effective masses with spin-orbit coupling for conduction band',
+              '-'),
+             ('Valence Band emasses with SOC',
+              'Effective masses with spin-orbit coupling for valence band',
+              '-')
              ]
 
-    
     for socname, socdata in all_data.items():
         soc = socname == 'soc'
+
         def namemod(n):
             return n + '_soc' if soc else n
         for bt, btdata in socdata.items():
@@ -368,8 +376,8 @@ def collect_data(atoms):
 def webpanel(row, key_descriptions):
     from asr.utils.custom import table
 
-    t = table(row, 'Postprocessing', [
-            'cb_emass', 'vb_emass'],
+    t = table(row, 'Postprocessing',
+              ['cb_emass', 'vb_emass'],
               key_descriptions)
     
     panel = ('Effective masses', [[t]])
@@ -402,7 +410,6 @@ def webpanel(row, key_descriptions):
 #     return panel
 
 
-            
 group = 'Property'
 dependencies = ['asr.gs']
 
