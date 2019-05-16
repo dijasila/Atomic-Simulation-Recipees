@@ -326,9 +326,13 @@ def _readmass(soc, bt):
 
 
 def collect_data(atoms):
+    from pathlib import Path
     all_data = {}
     kvp = {}
     key_descriptions = {}
+    if not list(Path('.').glob('em_circle_*.npz')):
+        return {}, {}, {}
+
     for soc in [True, False]:
         keyname = 'soc' if soc else 'nosoc'
         data = {}
