@@ -149,15 +149,12 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
-
-
 def eigenvalues(calc):
     import numpy as np
     rs = range(calc.get_number_of_spins())
     rk = range(len(calc.get_ibz_k_points()))
     e = calc.get_eigenvalues
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
-
 
 
 group = 'postprocessing'

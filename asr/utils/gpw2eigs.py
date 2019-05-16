@@ -21,7 +21,6 @@ def eigenvalues(calc):
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
-
 def fermi_level(calc, eps_skn=None, nelectrons=None):
     from gpaw.occupations import occupation_numbers
     from ase.units import Ha
@@ -33,8 +32,6 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
     occ = calc.occupations.todict()
     weight_k = calc.get_k_point_weights()
     return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
-
-
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
