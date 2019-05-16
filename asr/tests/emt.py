@@ -13,8 +13,6 @@ from asr.utils import chdir
 import pytest
 
 
-# We create temporary directory and move the start.json
-# and params.json into that directory
 @pytest.fixture(scope='class')
 def directory(tmpdir_factory):
     path = tmpdir_factory.mktemp('emt')
@@ -34,15 +32,14 @@ def test_cuag(directory):
         for atoms in structures:
             dir = Path(atoms.get_chemical_formula())
             with chdir(dir, create=True, empty=True):
-                atoms.write('start.json')
+                atoms.write('unrelaxed.json')
 
                 relax(args=[])
 
-                with chdir('nm'):
-                    gs(args=[])
-                    phonons(args=[])
+                gs(args=[])
+                phonons(args=[])
 
-        for dir in Path().glob('*u/nm/'):
+        for dir in Path().glob('*u/'):
             with chdir(dir):
                 quickinfo(args=[])
 
@@ -50,15 +47,15 @@ def test_cuag(directory):
         if db.is_file():
             db.unlink()
 
-        collect(args=[str(dir) for dir in Path().glob('?u/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('?u/')])
         db.rename('refs.db')
 
-        collect(args=[str(dir) for dir in Path().glob('Au*Cu/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
         db.rename('database1.db')
 
-        for dir in Path().glob('Au*Cu/nm/'):
+        for dir in Path().glob('Au*Cu/'):
             with chdir(dir):
-                chull(args=['-r', '../../refs.db',
-                            '-d', '../../database1.db'])
+                chull(args=['-r', '../refs.db',
+                            '-d', '../database1.db'])
 
-        collect(args=[str(dir) for dir in Path().glob('Au*Cu/nm/')])
+        collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
