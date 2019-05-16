@@ -55,7 +55,11 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 
 def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None, xc='PBE', plusu=False):
+          smask=None, xc='PBE', plusu=False, dftd3=True):
+
+    if dftd3:
+        from ase.calculators.dftd3 import DFTD3
+
     trajname = f'{name}.traj'
 
     # Are we done?
@@ -102,7 +106,11 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
         world.barrier()
 
     from asr.utils.gpaw import GPAW, KohnShamConvergenceError
-    atoms.calc = GPAW(**kwargs)
+    dft = GPAW(**kwargs)
+    if dftd3:
+        calc = DFTD3(dft=dft)
+    atoms.calc = calc
+
     opt = BFGS(atoms,
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', atoms))
@@ -113,14 +121,21 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
                           occupations={'name': 'fermi-dirac', 'width': 0.02},
                           maxiter=999)
-            atoms.calc = GPAW(**kwargs)
+            dft = GPAW(**kwargs)
+            if dftd3:
+                calc = DFTD3(dft=dft)
+            atoms.calc = calc
+
             opt = BFGS(atoms,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', atoms))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
             kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
-            atoms.calc = GPAW(**kwargs)
+            dft = GPAW(**kwargs)
+            if dftd3:
+                calc = DFTD3(dft=dft)
+            atoms.calc = calc
             opt = BFGS(atoms,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', atoms))
@@ -137,6 +152,7 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('-U', '--plusu', help='Do +U calculation',
         is_flag=True)
 @option('--xc', default='PBE', help='XC-functional')
+@option('--d3/--nod3', default=True, help='Relax with vdW D3')
 @click.pass_context
 def main(ctx, plusu, ecut, kptdens, xc):
     """Relax atomic positions and unit cell."""
