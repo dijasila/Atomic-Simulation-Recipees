@@ -160,7 +160,7 @@ def eigenvalues(calc):
 
 
 
-group = 'Postprocessing'
+group = 'postprocessing'
 dependencies = ['asr.quickinfo', 'asr.gs']
 
 

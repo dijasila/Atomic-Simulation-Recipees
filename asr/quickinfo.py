@@ -199,7 +199,7 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
+group = 'property'
 sort = 1
 
 if __name__ == '__main__':

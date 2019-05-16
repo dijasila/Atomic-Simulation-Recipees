@@ -15,6 +15,7 @@ Requirements
 * click
 * spglib
 * pytest
+* plotly
 
 Additionally, but not a requirement, it can be nice to have
 * myqueue
@@ -24,8 +25,28 @@ Installation
 
 ```console
 $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
-$ echo  'export PYTHONPATH=~/asr:$PYTHONPATH' >> ~/.bashrc
 $ python3 -m pip install -e ~/asr
+```
+
+To install the van der Waals functional DFTD3 do
+```console
+$ cd
+$ mkdir functional
+$ cd functional
+$ mkdir PBED3
+$ wget http://chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+$ tar -zxf dftd3.tgz
+$ make
+$ echo 'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
+$ source ~/.bashrc
+```
+
+Download executable for Bader analysis and put in path (only for Linux):
+```console
+$ cd ~ && mkdir baderext && cd baderext
+$ wget http://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz
+$ tar -zxf bader_lnx_64.tar.gz
+$ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
 ```
 
 How to use

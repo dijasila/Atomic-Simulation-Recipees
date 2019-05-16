@@ -409,9 +409,8 @@ def webpanel(row, key_descriptions):
 
 #     return panel
 
-
-group = 'Property'
+group = 'property'
 dependencies = ['asr.gs']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()
