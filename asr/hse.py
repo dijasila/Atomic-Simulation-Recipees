@@ -40,11 +40,11 @@ import gpaw.mpi as mpi
 from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                              monkhorst_pack_interpolate,
                              bandpath, parse_path_string)
-from c2db.utils import (eigenvalues, get_special_2d_path, get_spin_direction,
-                        spin_axis)
+#from c2db.utils import (eigenvalues, get_special_2d_path, get_spin_direction,
+#                        spin_axis)
 from ase.io import read
 from ase.dft.kpoints import get_cellinfo
-from c2db.bsinterpol import interpolate_bandstructure as ip_bs
+#from c2db.bsinterpol import interpolate_bandstructure as ip_bs
 
 
 def main():
@@ -435,7 +435,7 @@ creates = ['hse.gpw',
            'hse_eigenvalues_soc.npz',
            'hse_bandstructure.npz',
            'hse_bandstructure3.npz']
-dependencies = ['asr.gs']
+dependencies = ['asr.quickinfo', 'asr.gs']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
 
