@@ -17,7 +17,7 @@ from asr.utils import command, option
 @option('--kptdens', default=6.0, help='Kpoint density')
 def main(n, ecut, kptdens):
     """Calculate Phonons"""
-    N = n
+    from asr.utils import get_start_atoms
     from asr.utils.gpaw import GPAW
     # Remove empty files:
     if world.rank == 0:
@@ -28,7 +28,6 @@ def main(n, ecut, kptdens):
 
     params = {'mode': {'name': 'pw', 'ecut': ecut},
               'kpts': {'density': kptdens, 'gamma': True}}
-    name = 'start.json'
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,
@@ -39,8 +38,8 @@ def main(n, ecut, kptdens):
     else:
         params['convergence'] = {'forces': 1e-4}
 
-    atoms = read(name)
-    fd = open('phonons-{}.txt'.format(N), 'a')
+    atoms = get_start_atoms()
+    fd = open('phonons-{}.txt'.format(n), 'a')
     calc = GPAW(txt=fd, **params)
 
     # Set initial magnetic moments
@@ -53,11 +52,11 @@ def main(n, ecut, kptdens):
     from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
-        supercell = (N, N, N)
+        supercell = (n, n, n)
     elif nd == 2:
-        supercell = (N, N, 1)
+        supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (N, 1, 1)
+        supercell = (n, 1, 1)
 
     p = Phonons(atoms, calc, supercell=supercell)
     p.run()
@@ -65,7 +64,7 @@ def main(n, ecut, kptdens):
     return p
 
 
-def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
+def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
     params = {}
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
@@ -76,11 +75,11 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, N=2):
     from asr.utils import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
-        supercell = (N, N, N)
+        supercell = (n, n, n)
     elif nd == 2:
-        supercell = (N, N, 1)
+        supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (N, 1, 1)
+        supercell = (n, 1, 1)
     p = Phonons(slab, calc, supercell=supercell)
     p.read(symmetrize=0, acoustic=False)
     cell = atoms.get_cell()
@@ -122,6 +121,24 @@ def plot_phonons(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
+
+
+def collect_data(atoms, n=2):
+    kvp = {}
+    data = {}
+    key_descriptions = {}
+    try:
+        eigs2, freqs2, _ = analyse(atoms, n)
+        eigs3, freqs3, _ = analyse(atoms, n)
+    except (FileNotFoundError, EOFError):
+        return
+    kvp['minhessianeig'] = eigs3.min()
+    data['phonon_frequencies_2d'] = freqs2
+    data['phonon_frequencies_3d'] = freqs3
+    data['phonon_energies_2d'] = eigs2
+    data['phonon_energies_3d'] = eigs3
+
+    return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):
