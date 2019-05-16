@@ -7,10 +7,8 @@ from asr.utils import command, option
 @option('-m', '--mode', default=0, type=int, help='Mode index')
 @option('-a', '--amplitude', default=0.1, type=float,
         help='Maximum distance an atom will be displaced')
-@option('--fix-cell', is_flag=True, help='Do not relax cell')
-@option('--show-mode', is_flag=True, help='Save mode to tmp.traj for viewing')
 @option('-n', default=2, help='Supercell size')
-def main(momentum, mode, amplitude, fix_cell, show_mode, n):
+def main(momentum, mode, amplitude, n):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
     import numpy as np
@@ -46,35 +44,14 @@ def main(momentum, mode, amplitude, fix_cell, show_mode, n):
     mode_Nav = (np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] * amplitude)
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
-    from asr.relax import relax
-    tag = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2], mode)
-    smask = None
-    if fix_cell:
-        smask = [0, 0, 0, 0, 0, 0]
-        tag += '-fix-cell'
-
-    if show_mode:
-        from ase.io.trajectory import Trajectory
-        traj = Trajectory('tmp.traj', mode='w')
-        showatoms = newatoms.copy()
-        n = 20
-        phase_x = np.linspace(-1, 1, n) * np.pi
-        for i, phase in enumerate(phase_x):
-            amp = np.sin(phase) * amplitude
-            showatoms.set_positions(pos_Nav + mode_Nav.real * amp)
-            traj.write(showatoms)
-
-        return
-    relaxed = relax(newatoms, tag, smask=smask)
-
-    # Write start.start file to folder
-    name = tag + '/start.json'
+    # Write unrelaxed.json file to folder
+    folder = 'push-q-{}-{}-{}-mode-{}'.format(q_c[0], q_c[1], q_c[2], mode)
     from gpaw.mpi import world
     from pathlib import Path
     from ase.io import write
-    if world.rank == 0 and not Path(tag).is_dir():
-        Path(tag).mkdir()
-    write(name, relaxed)
+    if world.rank == 0 and not Path(folder).is_dir():
+        Path(folder).mkdir()
+    write(f'{folder}/unrelaxed.json', newatoms)
 
 
 dependencies = ['asr.quickinfo', 'asr.phonons']
