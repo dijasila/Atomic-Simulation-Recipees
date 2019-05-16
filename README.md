@@ -15,6 +15,7 @@ Requirements
 * click
 * spglib
 * pytest
+* plotly
 
 Additionally, but not a requirement, it can be nice to have
 * myqueue
