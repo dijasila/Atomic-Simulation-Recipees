@@ -14,7 +14,8 @@
         "kpointdensity": 1.0
     },
     "asr.bandstructure": {
-        "npoints": 50
+        "npoints": 50,
+        "emptybands": 5
     },
     "asr.polarizability": {
         "density": 6.0,
@@ -23,5 +24,14 @@
     },
     "asr.pdos": {
         "kptdensity": 6.0
+    },
+    "asr.phonons": {
+        "n": 1,
+        "kptdens": 1.0,
+        "ecut": 100.0
+    },
+    "asr.push": {
+        "n": 1
     }
+
 }

@@ -37,7 +37,7 @@ def emtables(row):
 
 # def webpanel(row, key_descriptions):
 
-#     from asr.custom import fig
+#     from asr.utils.custom import fig
 #     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
 #                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
 
@@ -61,4 +61,4 @@ def emtables(row):
 #     return panel
 
             
-group = 'Property'
+group = 'property'

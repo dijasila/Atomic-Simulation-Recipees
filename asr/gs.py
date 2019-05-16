@@ -1,5 +1,4 @@
-from asr.utils import option, update_defaults, get_start_parameters
-import click
+from asr.utils import command, option, get_start_parameters
 
 # Get some parameters from start.json
 params = get_start_parameters()
@@ -11,8 +10,7 @@ if 'density' in params.get('kpts', {}):
     defaults['kptdensity'] = params['kpts']['density']
 
 
-@click.command()
-@update_defaults('asr.gs', defaults)
+@command('asr.gs', defaults)
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='start.json')
@@ -51,13 +49,13 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
 
 
 # The metadata is put it the bottom
-group = 'Property'
+group = 'property'
 description = ''
-dependencies = []  # What other recipes does this recipe depend on
-creates = ['gs.gpw']  # What files are created
-resources = '8:10h'  # How many resources are used
-diskspace = 0  # How much diskspace is used
-restart = 1  # Does it make sense to restart the script?
+dependencies = ['asr.quickinfo']
+creates = ['gs.gpw']
+resources = '8:10h'
+diskspace = 0
+restart = 1
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

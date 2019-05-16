@@ -3,9 +3,59 @@ from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
+import sys
 option = partial(click.option, show_default=True)
-command = click.command
-click.option = option
+argument = click.argument
+
+
+class ASRCommand(click.Command):
+    _asr_command = True
+
+    def __init__(self, asr_name=None, *args, **kwargs):
+        assert asr_name, 'You have to give a name to your ASR command!'
+        self._asr_name = asr_name
+        click.Command.__init__(self, *args, **kwargs)
+
+    def __call__(self, skipdeps=False, *args, **kwargs):
+        # We should skip deps if we want to print the help
+        if '-h' in sys.argv or '--help' in sys.argv:
+            skipdeps = True
+
+        if 'args' in kwargs:
+            if '-h' in kwargs['args'] or '--help' in kwargs['args']:
+                skipdeps = True
+
+        if not skipdeps:
+            recipes = get_dep_tree(self._asr_name)
+            for recipe in recipes[:-1]:  # Don't include itself
+                if not recipe.done():
+                    recipe.main(skipdeps=True, args=[])
+        return self.main(standalone_mode=False, *args, **kwargs)
+
+
+def command(name, overwrite_params={}, *args, **kwargs):
+    params = get_parameters(name)
+    params.update(overwrite_params)
+
+    ud = update_defaults
+
+    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+    def decorator(func):
+
+        cc = click.command(cls=ASRCommand,
+                           context_settings=CONTEXT_SETTINGS,
+                           asr_name=name,
+                           *args, **kwargs)
+
+        if hasattr(func, '__click_params__'):
+            func = cc(ud(name, params)(func))
+        else:
+            func = cc(func)
+
+        return func
+    
+    return decorator
 
 
 @contextmanager
@@ -21,32 +71,37 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_recipes(sort=True):
-    import importlib
+# We need to reduce this list to only contain collect
+excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
+               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+
+
+def get_recipes(sort=True, exclude=True):
     from pathlib import Path
+    from asr.utils.recipe import Recipe
 
     files = Path(__file__).parent.parent.glob('[a-zA-Z]*.py')
     recipes = []
     for file in files:
         name = file.with_suffix('').name
-        module = importlib.import_module(f'asr.{name}')
-        recipes.append(module)
+        modulename = f'asr.{name}'
+        if modulename in excludelist:
+            continue
+        recipe = Recipe.frompath(f'asr.{name}')
+        recipes.append(recipe)
 
     if sort:
         sortedrecipes = []
 
         # Add the recipes with no dependencies (these must exist)
         for recipe in recipes:
-            if not hasattr(recipe, 'dependencies'):
+            if not recipe.dependencies:
                 sortedrecipes.append(recipe)
-            else:
-                if len(recipe.dependencies) == 0:
-                    sortedrecipes.append(recipe)
 
         for i in range(1000):
             for recipe in recipes:
-                names = [recipe.__name__ for recipe in sortedrecipes]
-                if recipe.__name__ in names:
+                names = [recipe.name for recipe in sortedrecipes]
+                if recipe.name in names:
                     continue
                 for dep in recipe.dependencies:
                     if dep not in names:
@@ -62,6 +117,30 @@ def get_recipes(sort=True):
         recipes = sortedrecipes
 
     return recipes
+
+
+def get_dep_tree(name):
+    recipes = get_recipes(sort=True)
+
+    names = [recipe.__name__ for recipe in recipes]
+    indices = [names.index(name)]
+    for j in range(100):
+        if not indices[j:]:
+            break
+        for ind in indices[j:]:
+            if not hasattr(recipes[ind], 'dependencies'):
+                continue
+            deps = recipes[ind].dependencies
+            if not deps:
+                continue
+            for dep in deps:
+                index = names.index(dep)
+                if index not in indices:
+                    indices.append(index)
+    else:
+        raise RuntimeError('Dependencies are weird!')
+    indices = sorted(indices)
+    return [recipes[ind] for ind in indices]
 
 
 def get_parameters(key=None):
@@ -217,3 +296,9 @@ def has_inversion(atoms, use_spglib=True):
     else:
         from gpaw.symmetry import atoms2symmetry
         return atoms2symmetry(atoms2).has_inversion
+
+
+def write_json(filename, data):
+    from pathlib import Path
+    from ase.io.jsonio import MyEncoder
+    Path(filename).write_text(MyEncoder(indent=4).encode(data))

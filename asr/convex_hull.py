@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-import click
+from asr.utils import command, option
 
 from ase.db import connect
 from ase.io import read
@@ -12,11 +12,11 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
-@click.command()
-@click.option('-r', '--references', type=str,
-              help='Reference database.')
-@click.option('-d', '--database', type=str,
-              help='Database of systems to be included in the figure.')
+@command('asr.convex_hull')
+@option('-r', '--references', type=str,
+        help='Reference database.')
+@option('-d', '--database', type=str,
+        help='Database of systems to be included in the figure.')
 def main(references: str, database: str):
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
@@ -241,8 +241,7 @@ def convex_hull_tables(row: AtomsRow,
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
-    from asr.custom import table
+    from asr.utils.custom import fig, table
 
     if 'convex_hull' not in row.data:
         return (), ()
@@ -268,8 +267,9 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
-dependencies = ['asr.gs']
+group = 'property'
+dependencies = ['asr.quickinfo', 'asr.gs']
+sort = 2
 
 
 if __name__ == '__main__':

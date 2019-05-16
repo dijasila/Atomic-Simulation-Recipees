@@ -8,12 +8,14 @@ from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons
 
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@click.option('-n', default=2, help='Supercell size')
-def main(n=2):
+@command('asr.phonons')
+@option('-n', default=2, help='Supercell size')
+@option('--ecut', default=800, help='Energy cutoff')
+@option('--kptdens', default=6.0, help='Kpoint density')
+def main(n, ecut, kptdens):
     """Calculate Phonons"""
     from asr.utils import get_start_atoms
     from asr.utils.gpaw import GPAW
@@ -24,7 +26,8 @@ def main(n=2):
                 f.unlink()
     world.barrier()
 
-    params = {}
+    params = {'mode': {'name': 'pw', 'ecut': ecut},
+              'kpts': {'density': kptdens, 'gamma': True}}
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,
@@ -139,7 +142,7 @@ def collect_data(atoms, n=2):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import table, fig
+    from asr.utils.custom import table, fig
     phonontable = table(row, 'Property',
                         ['c_11', 'c_22', 'c_12', 'bulk_modulus',
                          'minhessianeig'], key_descriptions)
@@ -151,8 +154,8 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
-dependencies = ['asr.gs']
+group = 'property'
+dependencies = ['asr.quickinfo', 'asr.gs']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()
