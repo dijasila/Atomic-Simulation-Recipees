@@ -1,11 +1,9 @@
-from asr.utils import click, update_defaults, get_start_parameters
-params = get_start_parameters()
-defaults = {}
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.emasses', defaults)
-@click.option('--gpwfilename', type=str, help='GS Filename', default='gs.gpw')
+@command('asr.emasses')
+@option('--gpwfilename', type=str,
+        help='GS Filename', default='gs.gpw')
 def main(gpwfilename):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
