@@ -154,7 +154,7 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('--xc', default='PBE', help='XC-functional')
 @option('--d3/--nod3', default=True, help='Relax with vdW D3')
 @click.pass_context
-def main(ctx, plusu, ecut, kptdens, xc):
+def main(ctx, plusu, ecut, kptdens, xc, d3):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a start.json file '
            'if you relax the structure because this is '
@@ -173,13 +173,13 @@ def main(ctx, plusu, ecut, kptdens, xc):
                 atoms = read('unrelaxed.json')
         # Relax the structure
         relax(atoms, name='relax', ecut=ecut,
-              kptdens=kptdens, xc=xc, plusu=plusu)
+              kptdens=kptdens, xc=xc, plusu=plusu, dftd3=d3)
 
     toten = atoms.get_potential_energy()
 
     # Save to results-relax.json
     data = {'params': ctx.params,
-            'toten': np.array([toten, 0.0])}
+            'toten': toten}
     from asr.utils import write_json
     write_json('results-relax.json', data)
 
