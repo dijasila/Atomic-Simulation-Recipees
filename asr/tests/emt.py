@@ -34,7 +34,7 @@ def test_cuag(directory):
             with chdir(dir, create=True, empty=True):
                 atoms.write('unrelaxed.json')
 
-                relax(args=[])
+                relax(args=['--nod3'])
 
                 gs(args=[])
                 phonons(args=[])

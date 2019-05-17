@@ -55,7 +55,11 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 
 def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None, xc='PBE', plusu=False):
+          smask=None, xc='PBE', plusu=False, dftd3=True):
+
+    if dftd3:
+        from ase.calculators.dftd3 import DFTD3
+
     trajname = f'{name}.traj'
 
     # Are we done?
@@ -102,7 +106,13 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
         world.barrier()
 
     from asr.utils.gpaw import GPAW, KohnShamConvergenceError
-    atoms.calc = GPAW(**kwargs)
+    dft = GPAW(**kwargs)
+    if dftd3:
+        calc = DFTD3(dft=dft)
+    else:
+        calc = dft
+    atoms.calc = calc
+
     opt = BFGS(atoms,
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', atoms))
@@ -113,14 +123,25 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             kwargs.update(kpts={'density': 9.0, 'gamma': True},
                           occupations={'name': 'fermi-dirac', 'width': 0.02},
                           maxiter=999)
-            atoms.calc = GPAW(**kwargs)
+            dft = GPAW(**kwargs)
+            if dftd3:
+                calc = DFTD3(dft=dft)
+            else:
+                calc = dft
+            atoms.calc = calc
+
             opt = BFGS(atoms,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', atoms))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
         except KohnShamConvergenceError:
             kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
-            atoms.calc = GPAW(**kwargs)
+            dft = GPAW(**kwargs)
+            if dftd3:
+                calc = DFTD3(dft=dft)
+            else:
+                calc = dft
+            atoms.calc = calc
             opt = BFGS(atoms,
                        logfile=name + '.log',
                        trajectory=Trajectory(name + '.traj', 'a', atoms))
@@ -137,8 +158,9 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @option('-U', '--plusu', help='Do +U calculation',
         is_flag=True)
 @option('--xc', default='PBE', help='XC-functional')
+@option('--d3/--nod3', default=True, help='Relax with vdW D3')
 @click.pass_context
-def main(ctx, plusu, ecut, kptdens, xc):
+def main(ctx, plusu, ecut, kptdens, xc, d3):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a start.json file '
            'if you relax the structure because this is '
@@ -157,13 +179,13 @@ def main(ctx, plusu, ecut, kptdens, xc):
                 atoms = read('unrelaxed.json')
         # Relax the structure
         relax(atoms, name='relax', ecut=ecut,
-              kptdens=kptdens, xc=xc, plusu=plusu)
+              kptdens=kptdens, xc=xc, plusu=plusu, dftd3=d3)
 
     toten = atoms.get_potential_energy()
 
     # Save to results-relax.json
     data = {'params': ctx.params,
-            'toten': np.array([toten, 0.0])}
+            'toten': toten}
     from asr.utils import write_json
     write_json('results-relax.json', data)
 
