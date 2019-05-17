@@ -109,6 +109,8 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
     dft = GPAW(**kwargs)
     if dftd3:
         calc = DFTD3(dft=dft)
+    else:
+        calc = dft
     atoms.calc = calc
 
     opt = BFGS(atoms,
@@ -124,6 +126,8 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             dft = GPAW(**kwargs)
             if dftd3:
                 calc = DFTD3(dft=dft)
+            else:
+                calc = dft
             atoms.calc = calc
 
             opt = BFGS(atoms,
@@ -135,6 +139,8 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             dft = GPAW(**kwargs)
             if dftd3:
                 calc = DFTD3(dft=dft)
+            else:
+                calc = dft
             atoms.calc = calc
             opt = BFGS(atoms,
                        logfile=name + '.log',
