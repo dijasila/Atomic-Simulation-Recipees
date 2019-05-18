@@ -3,7 +3,7 @@ import json
 from asr.utils import command, option
 
 
-@command('asr.gap')
+@command('asr.gaps')
 @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
     from gpaw import GPAW
