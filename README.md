@@ -17,6 +17,10 @@ Requirements
 * pytest
 * plotly
 
+Packages you need to compile yourself:
+* bader (see instructions below)
+* DFTD3 functional (see instructions below)
+
 Additionally, but not a requirement, it can be nice to have
 * myqueue
 
