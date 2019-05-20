@@ -11,18 +11,25 @@ import click
 def main(states, name, copy_params):
     """Set up magnetic moments of atomic structure
 
-    STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
-    (anti-ferro-magnetic; only work with two magnetic
-    atoms in unit cell)
+    \b
+    STATES is a list of:
+        nm (non-magnetic),
+        fm (ferro-magnetic),
+        afm (anti-ferro-magnetic; only works with two
+             magnetic atoms in unit cell)
     """
     from pathlib import Path
     from ase.io import read, write
     from ase.parallel import world
     from asr.utils import magnetic_atoms
     import numpy as np
-
+    known_states = ['nm', 'fm', 'afm']
     if not states:
-        states = ['nm', 'fm', 'afm']
+        states = known_states
+    else:
+        for state in states:
+            msg = f'{state} is not a known state!'
+            assert state in known_states, msg
 
     # Non-magnetic:
     if 'nm' in states:
