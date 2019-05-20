@@ -28,6 +28,7 @@ def test_dftd3(directory):
         edft = dft.get_potential_energy(atoms)
         efull = atoms.get_potential_energy()
         msg = 'DFT energies not reproducing hardcoded value'
-        assert np.allclose(edft, -13.243490101491526), msg
-        msg = 'DFT+D3 energies not reproducing hardcoded value'
-        assert np.allclose(efull, -13.243495815882591), msg
+        assert np.allclose(edft, -13.2538334148663, 5), msg
+        msg = 'D3 energies not reproducing hardcoded value'
+        ed3 = efull - edft
+        assert np.allclose(ed3, -5.7143910652257546e-06, 8), msg
