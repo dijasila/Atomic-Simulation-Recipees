@@ -73,7 +73,7 @@ def chdir(folder, create=False, empty=False):
 
 # We need to reduce this list to only contain collect
 excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
-               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+               'asr.bse', 'asr.gapsummary']
 
 
 def get_recipes(sort=True, exclude=True, group=None):
