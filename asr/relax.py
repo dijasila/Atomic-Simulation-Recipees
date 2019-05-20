@@ -164,7 +164,8 @@ def main(ctx, plusu, ecut, kptdens, xc, d3):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a start.json file '
            'if you relax the structure because this is '
-           'what the relax recipe produces')
+           'what the relax recipe produces. You should '
+           'call your file unrelaxed.json!')
     assert not Path('start.json').is_file(), msg
     atoms, done = relax_done('relax.traj')
 
