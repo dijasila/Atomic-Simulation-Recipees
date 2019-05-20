@@ -76,7 +76,7 @@ excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
                'asr.bse', 'asr.gapsummary']
 
 
-def get_recipes(sort=True, exclude=True):
+def get_recipes(sort=True, exclude=True, group=None):
     from pathlib import Path
     from asr.utils.recipe import Recipe
 
@@ -88,6 +88,8 @@ def get_recipes(sort=True, exclude=True):
         if modulename in excludelist:
             continue
         recipe = Recipe.frompath(f'asr.{name}')
+        if group and not recipe.group == group:
+            continue
         recipes.append(recipe)
 
     if sort:

@@ -2,7 +2,7 @@ def generatetests():
     from pathlib import Path
     from asr.utils import get_recipes
 
-    recipes = get_recipes()
+    recipes = get_recipes(group='property')
 
     for recipe in recipes:
         name = recipe.__name__.split('.')[1]

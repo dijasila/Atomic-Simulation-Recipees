@@ -3,7 +3,7 @@ import json
 from asr.utils import command, option
 
 
-@command('asr.gap')
+@command('asr.gaps')
 @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpwfilename):
     from gpaw import GPAW
@@ -157,7 +157,22 @@ def eigenvalues(calc):
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
-group = 'postprocessing'
+def get_spin_direction(fname="anisotropy_xy.npz"):
+    import os
+    import numpy as np
+    theta = 0
+    phi = 0
+    if os.path.isfile(fname):
+        data = np.load(fname)
+        DE = max(data["dE_zx"], data["dE_zy"])
+        if DE > 0:
+            theta = np.pi / 2
+            if data["dE_zy"] > data["dE_zx"]:
+                phi = np.pi / 2
+    return theta, phi
+
+
+group = 'property'
 dependencies = ['asr.quickinfo', 'asr.gs']
 
 
