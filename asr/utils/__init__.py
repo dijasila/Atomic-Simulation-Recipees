@@ -162,7 +162,8 @@ def get_parameters(key=None):
 
 def is_magnetic():
     import numpy as np
-    atoms = get_start_atoms()
+    from ase.io import read
+    atoms = read('structure.json')
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
     if maxmom > 1e-3:
@@ -173,8 +174,9 @@ def is_magnetic():
 
 def get_dimensionality():
     import numpy as np
-    start = get_start_atoms()
-    nd = int(np.sum(start.get_pbc()))
+    from ase.io import read
+    atoms = read('structure.json')
+    nd = int(np.sum(atoms.get_pbc()))
     return nd
 
 
@@ -205,28 +207,10 @@ def update_defaults(key, params={}):
     return update_defaults_dec
 
 
-def get_start_file():
-    "Get starting atomic structure"
-    from pathlib import Path
-    fnames = list(Path('.').glob('start.*'))
-    assert len(fnames) == 1, fnames
-    return str(fnames[0])
-
-
-def get_start_atoms():
-    from ase.io import read
-    fname = get_start_file()
-    atoms = read(str(fname))
-    return atoms
-
-
 def get_start_parameters(atomfile=None):
     import json
     if atomfile is None:
-        try:
-            atomfile = get_start_file()
-        except AssertionError:
-            return {}
+        return {}
     with open(atomfile, 'r') as fd:
         asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})

@@ -5,14 +5,14 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     import traceback
     from pathlib import Path
     from importlib import import_module
-    from asr.utils import get_start_atoms
+    from ase.io import read
 
     kvp = {}
     data = {}
     key_descriptions = {}
     errors = []
 
-    atoms = get_start_atoms()
+    atoms = read('structure.json')
     folder = str(Path().cwd())
     steps = []
     names = []
