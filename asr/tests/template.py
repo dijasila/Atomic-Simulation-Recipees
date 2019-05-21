@@ -8,7 +8,7 @@ import pytest
 # Test name
 recipename = '###'
 
-# We create temporary directory and move the start.json
+# We create temporary directory and move the structure.json
 # and params.json into that directory
 @pytest.fixture(scope='class')
 def directory(tmpdir_factory):

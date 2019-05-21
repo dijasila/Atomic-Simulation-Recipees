@@ -17,7 +17,6 @@ from asr.utils import command, option
 @option('--kptdens', default=6.0, help='Kpoint density')
 def main(n, ecut, kptdens):
     """Calculate Phonons"""
-    from asr.utils import get_start_atoms
     from asr.utils.gpaw import GPAW
     # Remove empty files:
     if world.rank == 0:
@@ -38,7 +37,7 @@ def main(n, ecut, kptdens):
     else:
         params['convergence'] = {'forces': 1e-4}
 
-    atoms = get_start_atoms()
+    atoms = read('structure.json')
     fd = open('phonons-{}.txt'.format(n), 'a')
     calc = GPAW(txt=fd, **params)
 
@@ -69,7 +68,7 @@ def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
 
-    slab = read('start.json')
+    slab = read('structure.json')
     from gpaw import GPAW
     calc = GPAW(txt='phonons.txt', **params)
     from asr.utils import get_dimensionality

@@ -162,11 +162,11 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @click.pass_context
 def main(ctx, plusu, ecut, kptdens, xc, d3):
     """Relax atomic positions and unit cell."""
-    msg = ('You cannot have a start.json file '
+    msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
            'what the relax recipe produces. You should '
            'call your file unrelaxed.json!')
-    assert not Path('start.json').is_file(), msg
+    assert not Path('structure.json').is_file(), msg
     atoms, done = relax_done('relax.traj')
 
     if not done:
@@ -191,7 +191,7 @@ def main(ctx, plusu, ecut, kptdens, xc, d3):
     write_json('results-relax.json', data)
 
     # Save atomic structure
-    write('start.json', atoms)
+    write('structure.json', atoms)
 
 
 group = 'structure'

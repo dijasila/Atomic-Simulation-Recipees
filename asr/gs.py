@@ -1,6 +1,6 @@
 from asr.utils import command, option, get_start_parameters
 
-# Get some parameters from start.json
+# Get some parameters from structure.json
 params = get_start_parameters()
 defaults = {}
 if 'ecut' in params.get('mode', {}):
@@ -13,7 +13,7 @@ if 'density' in params.get('kpts', {}):
 @command('asr.gs', defaults)
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
-        default='start.json')
+        default='structure.json')
 @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
@@ -21,15 +21,9 @@ if 'density' in params.get('kpts', {}):
 @option('--xc', type=str, help='XC-functional', default='PBE')
 def main(atomfile, gpwfilename, ecut, xc, kptdensity):
     """Calculate ground state density"""
-    from pathlib import Path
     from ase.io import read
     from asr.utils.gpaw import GPAW
-    path = Path(atomfile)
-    if not path.is_file():
-        from asr.utils import get_start_atoms
-        atoms = get_start_atoms()
-    else:
-        atoms = read(atomfile)
+    atoms = read(atomfile)
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},

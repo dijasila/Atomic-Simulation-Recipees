@@ -15,7 +15,7 @@ def main(gs, density, ecut, xc, bandfactor):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     import json
-    from ase.io import jsonio
+    from ase.io import jsonio, read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -23,8 +23,7 @@ def main(gs, density, ecut, xc, bandfactor):
     from pathlib import Path
     import numpy as np
 
-    from asr.utils import get_start_atoms
-    atoms = get_start_atoms()
+    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
 
     dfkwargs = {

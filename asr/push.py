@@ -16,7 +16,7 @@ def main(momentum, mode, amplitude, n):
 
     # Get modes
     from ase.io import read
-    atoms = read('start.json')
+    atoms = read('structure.json')
     omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=n)
 
     # Repeat atoms

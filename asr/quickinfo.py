@@ -4,16 +4,14 @@ from asr.utils.prototype import get_symmetry_id
 
 @command('asr.quickinfo')
 def main():
-    """Get quick information about structure based on start.traj"""
+    """Get quick information about structure based on structure.json"""
     from random import randint
     from ase.io import read, jsonio
     from pathlib import Path
     from asr.utils import has_inversion, get_reduced_formula
     import json
 
-    fnames = list(Path('.').glob('start.*'))
-    assert len(fnames) == 1, fnames
-    atoms = read(str(fnames[0]))
+    atoms = read('structure.json')
     info = {}
 
     folder = Path().cwd()
