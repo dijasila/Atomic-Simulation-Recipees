@@ -54,7 +54,7 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
     return slab, done
 
 
-def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
+def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True):
 
     if dftd3:
@@ -86,7 +86,7 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
                   mode={'name': 'pw', 'ecut': ecut},
                   xc=xc,
                   basis='dzp',
-                  kpts={'density': kptdens, 'gamma': True},
+                  kpts={'density': kptdensity, 'gamma': True},
                   # This is the new default symmetry settings
                   symmetry={'do_not_symmetrize_the_density': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
@@ -153,14 +153,14 @@ def relax(atoms, name, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
 @command('asr.relax')
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
-@option('--kptdens', default=6.0,
+@option('--kptdensity', default=6.0,
         help='Kpoint density')
 @option('-U', '--plusu', help='Do +U calculation',
         is_flag=True)
 @option('--xc', default='PBE', help='XC-functional')
 @option('--d3/--nod3', default=True, help='Relax with vdW D3')
 @click.pass_context
-def main(ctx, plusu, ecut, kptdens, xc, d3):
+def main(ctx, plusu, ecut, kptdensity, xc, d3):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
@@ -180,7 +180,7 @@ def main(ctx, plusu, ecut, kptdens, xc, d3):
                 atoms = read('unrelaxed.json')
         # Relax the structure
         relax(atoms, name='relax', ecut=ecut,
-              kptdens=kptdens, xc=xc, plusu=plusu, dftd3=d3)
+              kptdensity=kptdensity, xc=xc, plusu=plusu, dftd3=d3)
 
     toten = atoms.get_potential_energy()
 
