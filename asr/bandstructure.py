@@ -276,7 +276,7 @@ def collect_data(atoms):
         op_scc = atoms2symmetry(atoms).op_scc
 
     from pathlib import Path
-    magstate = json.loads(Path('quickinfo.json').read_text())['magstate']
+    magstate = json.loads(Path('structureinfo.json').read_text())['magstate']
 
     for idx, kpt in enumerate(path.kpts):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
@@ -788,7 +788,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
-dependencies = ['asr.quickinfo', 'asr.gaps', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
 sort = 3
 
 if __name__ == '__main__':

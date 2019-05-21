@@ -98,7 +98,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 creates = ['dos.json']
 
 if __name__ == '__main__':
