@@ -12,7 +12,7 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     key_descriptions = {}
     errors = []
 
-    atoms = read('start.json')
+    atoms = read('structure.json')
     folder = str(Path().cwd())
     steps = []
     names = []
