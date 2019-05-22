@@ -15,7 +15,7 @@ def main(states, name, copy_params):
     STATES is a list of:
         nm (non-magnetic),
         fm (ferro-magnetic),
-        afm (anti-ferro-magnetic; only works with two
+        afm (anti-ferro-magnetic; only produced with two
              magnetic atoms in unit cell)
     """
     from pathlib import Path
