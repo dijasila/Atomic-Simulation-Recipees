@@ -27,9 +27,9 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
 @command('asr.borncharges')
 @option('--displacement', default=0.01, help='Atomic displacement (Å)')
-@option('--kpointdensity', default=6.0)
+@option('--kptdensity', default=6.0)
 @option('--folder', default='data-borncharges')
-def main(displacement, kpointdensity, folder):
+def main(displacement, kptdensity, folder):
     """Calculate Born charges"""
     import json
     from os.path import exists, isfile
@@ -88,12 +88,12 @@ def main(displacement, kpointdensity, folder):
                     berryname = prefix + '-berryphases.json'
                     if not exists(name) and not exists(berryname):
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                     try:
                         phase_c = get_polarization_phase(name)
                     except ValueError:
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                         phase_c = get_polarization_phase(name)
 
                     phase_scv[s, :, v] = phase_c

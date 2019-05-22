@@ -14,8 +14,8 @@ from asr.utils import command, option
 @command('asr.phonons')
 @option('-n', default=2, help='Supercell size')
 @option('--ecut', default=800, help='Energy cutoff')
-@option('--kptdens', default=6.0, help='Kpoint density')
-def main(n, ecut, kptdens):
+@option('--kptdensity', default=6.0, help='Kpoint density')
+def main(n, ecut, kptdensity):
     """Calculate Phonons"""
     from asr.utils.gpaw import GPAW
     # Remove empty files:
@@ -26,7 +26,7 @@ def main(n, ecut, kptdens):
     world.barrier()
 
     params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdens, 'gamma': True}}
+              'kpts': {'density': kptdensity, 'gamma': True}}
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,

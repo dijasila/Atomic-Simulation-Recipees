@@ -5,13 +5,13 @@ from click import Choice
 @command('asr.polarizability')
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
-@option('--density', default=20.0, help='K-point density')
+@option('--kptdensity', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
 @option('--xc', default='RPA', help='XC interaction',
         type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, density, ecut, xc, bandfactor):
+def main(gs, kptdensity, ecut, xc, bandfactor):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     import json
@@ -36,15 +36,15 @@ def main(gs, density, ecut, xc, bandfactor):
 
     ND = np.sum(pbc)
     if ND == 3:
-        kpts = {'density': density, 'gamma': False, 'even': True}
+        kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
 
-        def get_kpts_size(atoms, density):
+        def get_kpts_size(atoms, kptdensity):
             """trying to get a reasonable monkhorst size which hits high
             symmetry points
             """
             from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=density)
+            size, offset = k2so(atoms=atoms, density=kptdensity)
             size[2] = 1
             for i in range(2):
                 if size[i] % 6 != 0:
@@ -52,7 +52,7 @@ def main(gs, density, ecut, xc, bandfactor):
             kpts = {'size': size, 'gamma': True}
             return kpts
 
-        kpts = get_kpts_size(atoms=atoms, density=density)
+        kpts = get_kpts_size(atoms=atoms, density=kptdensity)
         volume = atoms.get_volume()
         if volume < 120:
             nblocks = world.size // 4
