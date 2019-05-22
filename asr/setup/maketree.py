@@ -4,58 +4,93 @@ import click
 
 @click.command()
 @argument('database', nargs=1)
-@option('-s', '--selection', help='Selection')
-def main(database, selection):
+@option('--run/--dry-run', default=False)
+@option('-s', '--selection', help='ASE-DB selection')
+@option('-t', '--tree-structure',
+        default=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-{spg}-{wyck}-{uid}'
+                 '/{mag}'))
+@option('--kvp', is_flag=True, help='Unpack key-value-pairs')
+@option('--data', is_flag=True, help='Unpack data')
+@option('--atomsname', default='unrelaxed.json',
+        help='Filename to unpack atomic structure to')
+def main(database, run, selection, tree_structure,
+         kvp, data, atomsname):
     """Set up folders with atomic structures based on ase-database"""
+    from os import makedirs
+    from pathlib import Path
     from ase.db import connect
+    from ase.io import write
     import spglib
-    import numpy as np
-    
+    from asr.utils import chdir, write_json
+
     # from ase import Atoms
-
-    # a = 1.2
-    # atoms = Atoms('SMoS', cell=[a, a, 10, 90, 90, 120], pbc=1,
-    #               scaled_positions=[[1 / 3, 2 / 3, 0.1],
-    #                                 [0, 0, 0],
-    #                                 [-1 / 3, -2 / 3, -0.1]])
-    # cell = (atoms.cell.array,
-    #         atoms.get_scaled_positions(),
-    #         atoms.numbers)
-    # cell = spglib.standardize_cell(cell)
-    # st = atoms.symbols.formula.stoichiometry()[0]
-    # dataset = spglib.get_symmetry_dataset(cell)
-    # print(dataset)
-    # exit()
-
     if not selection:
         selection = ''
     db = connect(database)
-    rows = db.select(selection)
+    rows = list(db.select(selection))
 
+    folders = []
+    err = []
+    nc = 0
     for row in rows:
         atoms = row.toatoms()
         formula = atoms.symbols.formula
-        print(formula)
-        for i in [0, 1, 2]:
-            spos_ac = atoms.get_scaled_positions()
-            spos_ac -= spos_ac[i]
-            # spos_ac = np.mod(spos_ac, 1)
-            # spos_ac -= spos_ac[0] + [0, 0, 0.5]
-            cell = (atoms.cell.array,
-                    spos_ac,
-                    atoms.numbers)
-            print(np.round(cell[1], 2))
-            cell = spglib.standardize_cell(cell,
-                                           symprec=1e-3)
-            print(np.round(cell[1], 2))
-            st = atoms.symbols.formula.stoichiometry()[0]
-            dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3)
-            sg = dataset['number']
-            wyck = dataset['wyckoffs']
-            w = '-'.join(wyck)
-            folder = f"{st}/{sg}-{w}/{formula}-{sg}-{w}/"
-            print(folder)
-        
+        st = atoms.symbols.formula.stoichiometry()[0]
+        cell = (atoms.cell.array,
+                atoms.get_scaled_positions(),
+                atoms.numbers)
+        stoi = atoms.symbols.formula.stoichiometry()
+        st = stoi[0]
+        dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3)
+        sg = dataset['number']
+        w = '-'.join(sorted(set(dataset['wyckoffs'])))
+        if 'magstate' in row:
+            magstate = row.magstate.lower()
+        else:
+            magstate = None
+
+        # Add a unique identifier
+        if 'uid' in tree_structure:
+            for uid in range(0, 10):
+                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                               formula=formula,
+                                               mag=magstate,
+                                               uid=uid)
+                if folder not in folders:
+                    break
+            else:
+                msg = ('Too many materials with same stoichiometry, '
+                       'same space group and same formula')
+                raise RuntimeError(msg)
+            if uid > 0:
+                nc += 1
+                err += [f'Collision: {folder}']
+        else:
+            folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                           formula=formula,
+                                           mag=magstate)
+        assert folder not in folders, f'{folder} already exists!'
+        folders.append(folder)
+
+    print(f'Number of collisions: {nc}')
+    for er in err:
+        print(er)
+
+    if not run:
+        print(f'Would make {len(folders)} folders')
+        return
+    
+    for folder, row in zip(folders, rows):
+        makedirs(folder)
+        folder = Path(folder)
+        with chdir(folder):
+            write(atomsname, row.toatoms())
+            if kvp:
+                write_json('key-value-pairs.json', row.key_value_pairs)
+            if kvp:
+                for key in row.data:
+                    write_json(f'{key}.json', row.data[key])
+
 
 if __name__ == '__main__':
     main()
