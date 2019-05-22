@@ -26,13 +26,14 @@ Additionally, but not a requirement, it can be nice to have
 
 Installation
 ------------
-
+To install ASR first clone the code and pip-install the code
 ```console
 $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
 $ python3 -m pip install -e ~/asr
 ```
 
-To install the van der Waals functional DFTD3 do
+We do relaxations with the D3 van-der-Waals contribution. To install the van 
+der Waals functional DFTD3 do
 ```console
 $ cd
 $ mkdir functional
@@ -45,13 +46,37 @@ $ echo 'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
 $ source ~/.bashrc
 ```
 
-Download executable for Bader analysis and put in path (only for Linux):
+To make Bader analysis we use another program. Download the executable for Bader 
+analysis and put in path (this is for Linux, find the appropriate executable):
 ```console
 $ cd ~ && mkdir baderext && cd baderext
 $ wget http://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz
 $ tar -zxf bader_lnx_64.tar.gz
 $ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
 ```
+
+Additionally, you might also want
+* myqueue
+if you want to run jobs on a computer-cluster.
+
+Requirements
+------------
+When you have done this installation you with have the following pythhon
+packages
+* ASE (Atomic Simulation Environment)
+* GPAW
+* click
+* spglib
+* pytest
+* plotly
+
+Packages you need to compile yourself:
+* bader (see instructions above)
+* DFTD3 functional (see instructions aobove)
+
+Additionally, but not a requirement, it can be nice to have
+* myqueue
+
 
 How to use
 ----------
@@ -132,6 +157,56 @@ documentation. To submit a job that relaxes a structure simply do
 ```console
 $ mq submit asr.relax@24:10h
 ```
+
+Make a screening study
+----------------------
+A screening study what we call the a study on many materials simultaneously. ASR
+has a set of tools to make such studies easy to handle. Suppose we have an ASE
+database that contain many atomic structures. In this case we take OQMD12 database
+that contain all unary and binary compounds on the convex hull.
+
+The first thing we do is to get the database:
+```console
+$ mkdir ~/oqmd12 && cd ~/oqmd12
+$ wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+```
+We then use the `unpackdatabase` function of ASR to unpack the database into a
+directory tree
+```console
+$ python3 -m asr.setup.unpackdatabase oqmd12.db --run
+```
+which has produced a new folder `~oqmd12/tree/`. To see the contents of the tree
+it is recommended to use the linux command `tree`
+```console
+$ tree tree/
+```
+You will see that the unpacking of the database has produced many `unrelaxed.json`
+files that contain the unrelaxed atomic structures. Because we dont know the
+magnetic structure of the materials we also want to sample different magnetic structures.
+This can be done with the `magnetize` function of asr
+```console
+$ python3 -m asr run asr.setup.magnetize */*/*/*/*
+```
+We use the `run` function because that gives us the option to deal with many folders
+at once. You are now ready to run a
+workflow on the entire tree. A simple workflow would be to relax all structures:
+```console
+$ cat workflow.py
+from myqueue.task import task
+
+
+def create_tasks():
+    tasks = [task('asr.relax@8:1d'),
+             task('asr.gs@8:1h', deps='asr.relax')]
+    return tasks
+```
+(copy this and save it to `workflow.py`). We now ask `myqueue` what jobs 
+it wants to run.
+```console
+$ mq workflow -z workflow.py
+```
+To submit the jobs simply remove the `-z`, and run the command again.
+
 
 Developing
 ==========
