@@ -36,16 +36,23 @@ def cli():
 
 
 @cli.command()
-@click.argument('name', type=str)
-def run(name):
+@click.argument('command', type=str)
+@click.argument('folders', type=str, nargs=-1)
+@click.option('-z', '--dry-run', is_flag=True,
+              help="Don't do anything")
+def run(command, folders, dry_run):
     """Run NAME recipe"""
-    from asr.utils import get_dep_tree
-    recipes = get_dep_tree(f'asr.{name}')
+    from pathlib import Path
+    from asr.utils import chdir
+    from importlib import import_module, reload
 
-    for recipe in recipes:
-        if recipe.done():
-            continue
-        recipe.run()
+    module = import_module(command)
+    for folder in folders:
+        print(f'Running {command} in {folder}')
+        if not dry_run:
+            with chdir(Path(folder)):
+                module = reload(module)
+                module.main(standalone_mode=False, args=[])
 
 
 @cli.command()
