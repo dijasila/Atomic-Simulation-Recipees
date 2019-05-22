@@ -54,7 +54,7 @@ def main(momentum, mode, amplitude, n):
     write(f'{folder}/unrelaxed.json', newatoms)
 
 
-dependencies = ['asr.quickinfo', 'asr.phonons']
+dependencies = ['asr.structureinfo', 'asr.phonons']
 group = 'structure'
 
 if __name__ == '__main__':

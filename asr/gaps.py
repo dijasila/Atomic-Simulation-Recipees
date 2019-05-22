@@ -173,7 +173,7 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 
 if __name__ == '__main__':

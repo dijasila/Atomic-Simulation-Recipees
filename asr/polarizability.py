@@ -272,7 +272,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 creates = ['polarizability.json']
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

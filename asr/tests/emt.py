@@ -7,7 +7,7 @@ from asr.collect import main as collect
 from asr.convex_hull import main as chull
 from asr.gs import main as gs
 from asr.phonons import main as phonons
-from asr.quickinfo import main as quickinfo
+from asr.structureinfo import main as structureinfo
 from asr.relax import main as relax
 from asr.utils import chdir
 import pytest
@@ -41,7 +41,7 @@ def test_cuag(directory):
 
         for dir in Path().glob('*u/'):
             with chdir(dir):
-                quickinfo(args=[])
+                structureinfo(args=[])
 
         db = Path('database.db')
         if db.is_file():

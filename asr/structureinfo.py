@@ -2,7 +2,7 @@ from asr.utils import command
 from asr.utils.prototype import get_symmetry_id
 
 
-@command('asr.quickinfo')
+@command('asr.structureinfo')
 def main():
     """Get quick information about structure based on structure.json"""
     from random import randint
@@ -93,7 +93,7 @@ def main():
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
 
-    json.dump(info, open('quickinfo.json', 'w'), cls=jsonio.MyEncoder)
+    json.dump(info, open('structureinfo.json', 'w'), cls=jsonio.MyEncoder)
 
     return info
 
@@ -101,7 +101,7 @@ def main():
 def collect_data(atoms):
     """Collect quick info to database"""
     from pathlib import Path
-    p = Path('quickinfo.json')
+    p = Path('structureinfo.json')
     if not p.is_file():
         return {}, {}, {}
 

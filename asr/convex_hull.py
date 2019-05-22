@@ -47,7 +47,7 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('quickinfo.json').read_text())
+        qi = json.loads(Path('structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
                       qi.get('prototype', ''),
@@ -268,7 +268,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 sort = 2
 
 
