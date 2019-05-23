@@ -11,7 +11,7 @@ def main(name, filename, kptdensity):
     from gpaw import GPAW
     if not Path(name).is_file():
         calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'kptdensity': kptdensity},
+                    kpts={'density': kptdensity},
                     nbands='300%',
                     convergence={'bands': -10})
         calc.get_potential_energy()

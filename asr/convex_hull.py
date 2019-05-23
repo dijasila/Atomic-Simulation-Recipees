@@ -47,7 +47,7 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('structureinfo.json').read_text())
+        qi = json.loads(Path('results-structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
                       qi.get('prototype', ''),

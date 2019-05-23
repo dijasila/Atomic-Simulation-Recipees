@@ -412,7 +412,7 @@ def webpanel(row, key_descriptions):
 #     return panel
 
 group = 'property'
-dependencies = ['asr.gs']
+dependencies = ['asr.gs', 'asr.structureinfo']
 
 if __name__ == '__main__':
     main()

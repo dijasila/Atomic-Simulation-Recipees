@@ -43,7 +43,8 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 @option('--references', default=None, type=str, help='Reference phases')
 @option('--verbose', default=False)
 @option('--skipforces', default=False)
-def main(folders, references, verbose, skipforces):
+@option('--raiseexc', is_flag=True, default=False)
+def main(folders, references, verbose, skipforces, raiseexc):
     """Collect data in ase database"""
     import os
     import traceback
@@ -76,6 +77,8 @@ def main(folders, references, verbose, skipforces):
                 error = '{}: {}'.format(x.__class__.__name__, x)
                 tb = traceback.format_exc()
                 errors.append((folder, error, tb))
+                if raiseexc:
+                    raise x
             else:
                 errors.extend(errors2)
 
