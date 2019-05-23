@@ -5,6 +5,7 @@ import click
 import numpy as np
 import sys
 from importlib import import_module
+from ase.io import jsonio
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -318,5 +319,5 @@ def write_json(filename, data):
 
 def read_json(filename):
     from pathlib import Path
-    from ase.io import jsonio
-    return jsonio.decode(Path(filename).read_text())
+    dct = jsonio.decode(Path(filename).read_text())
+    return dct
