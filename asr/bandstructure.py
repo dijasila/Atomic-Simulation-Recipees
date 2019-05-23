@@ -8,17 +8,11 @@ from asr.utils import command, option
 def main(kptpath, npoints, emptybands):
     """Calculate electronic band structure"""
     import os
-    from pathlib import Path
-    from ase.io import jsonio
-
     from gpaw import GPAW
-    import gpaw.mpi as mpi
     from ase.io import read
     from ase.dft.band_structure import get_band_structure
 
-    if os.path.isfile('eigs_spinorbit.npz'):
-        return
-    assert os.path.isfile('gs.gpw')
+    assert os.path.isfile('gs.gpw'), 'No ground state file!'
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
