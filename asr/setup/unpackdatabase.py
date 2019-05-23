@@ -7,8 +7,8 @@ import click
 @option('--run/--dry-run', default=False)
 @option('-s', '--selection', help='ASE-DB selection')
 @option('-t', '--tree-structure',
-        default=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-{spg}-{wyck}-{uid}'
-                 '/{mag}'))
+        default=('tree/{stoi}/{spg}/{formula:metal}-{stoi}'
+                 '-{spg}-{wyck}-{uid}'))
 @option('--kvp', is_flag=True, help='Unpack key-value-pairs')
 @option('--data', is_flag=True, help='Unpack data')
 @option('--atomsname', default='unrelaxed.json',
