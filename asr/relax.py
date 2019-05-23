@@ -64,12 +64,6 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     # Are we done?
     atoms_relaxed, done = relax_done(trajname)
 
-    if atoms_relaxed is not None:
-        atoms = atoms_relaxed
-
-    if done:
-        return atoms
-
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
@@ -118,35 +112,22 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     try:
         opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
     except KohnShamConvergenceError:
-        try:
-            kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                          occupations={'name': 'fermi-dirac', 'width': 0.02},
-                          maxiter=999)
-            dft = GPAW(**kwargs)
-            if dftd3:
-                calc = DFTD3(dft=dft)
-            else:
-                calc = dft
-            atoms.calc = calc
+        kwargs.update(kpts={'density': 9.0, 'gamma': True},
+                      occupations={'name': 'fermi-dirac', 'width': 0.02},
+                      maxiter=999)
+        dft = GPAW(**kwargs)
+        if dftd3:
+            calc = DFTD3(dft=dft)
+        else:
+            calc = dft
+        atoms.calc = calc
 
-            opt = BFGS(atoms,
-                       logfile=name + '.log',
-                       trajectory=Trajectory(name + '.traj', 'a', atoms))
-            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
-        except KohnShamConvergenceError:
-            kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
-            dft = GPAW(**kwargs)
-            if dftd3:
-                calc = DFTD3(dft=dft)
-            else:
-                calc = dft
-            atoms.calc = calc
-            opt = BFGS(atoms,
-                       logfile=name + '.log',
-                       trajectory=Trajectory(name + '.traj', 'a', atoms))
-            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+        opt = BFGS(atoms,
+                   logfile=name + '.log',
+                   trajectory=Trajectory(name + '.traj', 'a', atoms))
+        opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
-    return atoms, calc, dft
+    return atoms, calc, dft, kwargs
 
 
 @command('asr.relax')
@@ -158,7 +139,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         is_flag=True)
 @option('--xc', default='PBE', help='XC-functional')
 @option('--d3/--nod3', default=True, help='Relax with vdW D3')
-def main(plusu, ecut, kptdensity, xc, d3):
+@option('--width', default=0.05,
+        help='Fermi-Dirac smearing temperature')
+def main(plusu, ecut, kptdensity, xc, d3, width):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
@@ -167,20 +150,19 @@ def main(plusu, ecut, kptdensity, xc, d3):
     assert not Path('structure.json').is_file(), msg
     atoms, done = relax_done('relax.traj')
 
-    if not done:
+    if atoms is None:
+        if Path('relax.traj').exists():
+            try:
+                atoms = read('relax.traj')
+            except UnknownFileTypeError:
+                pass
         if atoms is None:
-            if Path('relax.traj').exists():
-                try:
-                    atoms = read('relax.traj')
-                except UnknownFileTypeError:
-                    pass
-            if atoms is None:
-                atoms = read('unrelaxed.json')
+            atoms = read('unrelaxed.json')
 
-        # Relax the structure
-        atoms, calc, dft = relax(atoms, name='relax', ecut=ecut,
-                                 kptdensity=kptdensity, xc=xc,
-                                 plusu=plusu, dftd3=d3)
+    # Relax the structure
+    atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
+                                     kptdensity=kptdensity, xc=xc,
+                                     plusu=plusu, dftd3=d3, width=width)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
@@ -188,6 +170,10 @@ def main(plusu, ecut, kptdensity, xc, d3):
     # Save atomic structure
     write('structure.json', atoms)
 
+    from asr.utils import write_json
+    kwargs.pop('txt')
+    write_json('gs_params.json', kwargs)
+    
     # Save to results-relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,
