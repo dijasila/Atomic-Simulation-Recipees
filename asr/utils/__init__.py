@@ -3,7 +3,6 @@ from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
-import sys
 from importlib import import_module
 from ase.io import jsonio
 option = partial(click.option, show_default=True)
@@ -18,24 +17,20 @@ class ASRCommand(click.Command):
         self._asr_name = asr_name
         click.Command.__init__(self, *args, **kwargs)
 
-    def __call__(self, skipdeps=False, *args, **kwargs):
-        # We should skip deps if we want to print the help
-        if '-h' in sys.argv or '--help' in sys.argv:
-            skipdeps = True
-
-        if 'args' in kwargs:
-            if '-h' in kwargs['args'] or '--help' in kwargs['args']:
-                skipdeps = True
-
-        recipes = get_dep_tree(self._asr_name)
-        if not skipdeps:
-            for recipe in recipes[:-1]:  # Don't include itself
-                if not recipe.done():
-                    recipe.main(skipdeps=True, args=[])
-        results = self.main(standalone_mode=False, *args, **kwargs)
-        return results
+    def main(self, *args, **kwargs):
+        return click.Command.main(self, standalone_mode=False,
+                                  *args, **kwargs)
 
     def invoke(self, ctx):
+        recipes = get_dep_tree(self._asr_name)
+        skip_deps = ctx.params.pop('skip_deps')
+        if skip_deps:
+            args = ['--skip-deps']
+        else:
+            args = []
+        for recipe in recipes[:-1]:  # Don't include itself
+            if not recipe.done():
+                recipe.main(args=args)
         results = click.Command.invoke(self, ctx)
         if not results:
             results = {}
@@ -73,6 +68,9 @@ def command(name, overwrite_params={}, *args, **kwargs):
                            asr_name=name,
                            *args, **kwargs)
 
+        func = option('--skip-deps/--run-deps', is_flag=True, default=False,
+                      help='Run dependencies as well')(func)
+        
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
@@ -232,11 +230,9 @@ def update_defaults(key, params={}):
     return update_defaults_dec
 
 
-def get_start_parameters(atomfile=None):
+def get_start_parameters():
     import json
-    if atomfile is None:
-        return {}
-    with open(atomfile, 'r') as fd:
+    with open('structure.json', 'r') as fd:
         asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})
 
