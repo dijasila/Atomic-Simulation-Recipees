@@ -47,18 +47,3 @@ def test_asr_command(recipe):
                'the "from asr.utils import command" '
                'in stead')
         raise AssertionError(msg)
-
-
-@pytest.mark.parametrize('recipe', recipes)
-def test_collect(recipe):
-    """Call all collect_data functions with empty list
-    (should work)"""
-
-    if not recipe.collect_data:
-        return
-
-    try:
-        recipe.collect_data([])
-    except Exception:
-        print(f'Problem in function {recipe.__name__}.collect_data')
-        raise

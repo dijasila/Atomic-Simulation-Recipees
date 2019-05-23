@@ -8,17 +8,11 @@ from asr.utils import command, option
 def main(kptpath, npoints, emptybands):
     """Calculate electronic band structure"""
     import os
-    from pathlib import Path
-    from ase.io import jsonio
-
     from gpaw import GPAW
-    import gpaw.mpi as mpi
     from ase.io import read
     from ase.dft.band_structure import get_band_structure
 
-    if os.path.isfile('eigs_spinorbit.npz'):
-        return
-    assert os.path.isfile('gs.gpw')
+    assert os.path.isfile('gs.gpw'), 'No ground state file!'
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
@@ -45,20 +39,20 @@ def main(kptpath, npoints, emptybands):
     calc = GPAW('bs.gpw', txt=None)
     bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
 
-    if mpi.world.rank == 0:
-        Path('results-bs-nosoc.json').write_text(jsonio.encode(bs))
+    import copy
+    results = {}
+    results['bs_nosoc'] = copy.deepcopy(bs.todict())
 
     # stuff below could be moved to the collect script.
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
 
-    if mpi.world.rank == 0:
-        data = bs.todict()
-        data['energies'] = e_km.T
-        data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
+    data = bs.todict()
+    data['energies'] = e_km.T
+    data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
 
-        data = jsonio.encode(data)
-        Path('results-bs-soc.json').write_text(data)
+    results['bs_soc'] = data
+    return results
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
@@ -234,19 +228,20 @@ def collect_data(atoms):
     import os.path as op
     from pathlib import Path
     import json
-    from ase.io import jsonio
+    from asr.utils import read_json
     kvp = {}
     key_descriptions = {}
     data = {}
 
-    if not op.isfile('results-bs-soc.json'):
+    if not op.isfile('results-bandstructure.json'):
         return kvp, key_descriptions, data
 
     import numpy as np
     evac = kvp.get('evac')
-    soc = jsonio.decode(Path('results-bs-soc.json').read_text())
-    nosoc = jsonio.decode(Path('results-bs-nosoc.json').read_text())
-    eps_skn = nosoc.energies
+    bsdata = read_json('results-bandstructure.json')
+    soc = bsdata['bs_soc']
+    nosoc = bsdata['bs_nosoc']
+    eps_skn = nosoc['energies']
     path = soc['path']
     npoints = len(path.kpts)
     s_mvk = np.array(soc.get('spin_mvk'))
@@ -276,7 +271,7 @@ def collect_data(atoms):
         op_scc = atoms2symmetry(atoms).op_scc
 
     from pathlib import Path
-    magstate = json.loads(Path('structureinfo.json').read_text())['magstate']
+    magstate = read_json('results-structureinfo.json')['magstate']
 
     for idx, kpt in enumerate(path.kpts):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
@@ -534,7 +529,8 @@ def bs_pbe(row,
            fontsize=10,
            show_legend=True,
            s=0.5):
-    if 'bs_pbe' not in row.data or 'eps_so_mk' not in row.data.bs_pbe:
+
+    if 'results-bandstructure' not in row.data:
         return
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -787,7 +783,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
+creates = ['bs.gpw']
 dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
 sort = 3
 

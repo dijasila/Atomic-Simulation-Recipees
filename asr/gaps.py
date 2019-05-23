@@ -58,6 +58,8 @@ def main(gpwfilename):
             from ase.io.jsonio import MyEncoder
             f.write(MyEncoder(indent=4).encode(data))
 
+    return data
+
 
 def collect_data(atoms):
     from pathlib import Path

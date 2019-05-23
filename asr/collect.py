@@ -4,8 +4,8 @@ from asr.utils import command, option, argument, chdir
 def collect(db, verbose=False, skip_forces=False, references=None):
     import traceback
     from pathlib import Path
-    from importlib import import_module
     from ase.io import read
+    from asr.utils import get_recipes
 
     kvp = {}
     data = {}
@@ -14,30 +14,20 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 
     atoms = read('structure.json')
     folder = str(Path().cwd())
-    steps = []
-    names = []
-    pathlist = Path(__file__).parent.glob('*.py')
-    for path in pathlist:
-        name = path.with_suffix('').name
-        module = import_module('asr.' + name, package='')
-        try:
-            steps.append(module.collect_data)
-            names.append(module.__name__)
-        except AttributeError:
-            continue
+    recipes = get_recipes(sort=True)
 
-    for name, step in zip(names, steps):
+    for recipe in recipes:
         try:
-            tmpkvp, tmpkd, tmpdata = step(atoms=atoms)
+            tmpkvp, tmpkd, tmpdata = recipe.collect(atoms=atoms)
             if tmpkvp or tmpkd or tmpdata:
-                print(f'Collecting {name}')
+                print(f'Collecting {recipe.name}')
                 kvp.update(tmpkvp)
                 data.update(tmpdata)
                 key_descriptions.update(tmpkd)
         except KeyboardInterrupt:
             raise
         except Exception as x:
-            error = '{}: {}'.format(name, x)
+            error = '{}: {}'.format(recipe.name, x)
             tb = traceback.format_exc()
             errors.append((folder, error, tb))
     if db is not None:
