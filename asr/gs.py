@@ -37,9 +37,15 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
         txt='gs.txt')
 
     atoms.calc = GPAW(**params)
-    atoms.get_forces()
-    atoms.get_stress()
+    forces = atoms.get_forces()
+    stresses = atoms.get_stress()
     atoms.calc.write(gpwfilename)
+    etot = atoms.get_potential_energy()
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot}
+    return results
 
 
 # The metadata is put it the bottom

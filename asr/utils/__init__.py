@@ -4,6 +4,7 @@ from functools import partial
 import click
 import numpy as np
 import sys
+from importlib import import_module
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -25,12 +26,35 @@ class ASRCommand(click.Command):
             if '-h' in kwargs['args'] or '--help' in kwargs['args']:
                 skipdeps = True
 
+        recipes = get_dep_tree(self._asr_name)
         if not skipdeps:
-            recipes = get_dep_tree(self._asr_name)
             for recipe in recipes[:-1]:  # Don't include itself
                 if not recipe.done():
                     recipe.main(skipdeps=True, args=[])
-        return self.main(standalone_mode=False, *args, **kwargs)
+        results = self.main(standalone_mode=False, *args, **kwargs)
+        if recipes[-1].group in ['structure', 'property']:
+            name = self._asr_name[4:]
+            write_json(f'results-{name}.json', results)
+        return results
+
+    def invoke(self, ctx):
+        results = click.Command.invoke(self, ctx)
+        if not results:
+            results = {}
+        results['__params__'] = ctx.params
+        from ase.utils import search_current_git_hash
+        modnames = ['asr', 'ase', 'gpaw']
+        versions = {}
+        for modname in modnames:
+            mod = import_module(modname)
+            githash = search_current_git_hash(mod)
+            version = mod.__version__
+            if githash:
+                versions[f'{modname}'] = f'{version}-{githash}'
+            else:
+                versions[f'{modname}'] = f'{version}'
+        results['__versions__'] = versions
+        return results
 
 
 def command(name, overwrite_params={}, *args, **kwargs):
@@ -287,4 +311,12 @@ def has_inversion(atoms, use_spglib=True):
 def write_json(filename, data):
     from pathlib import Path
     from ase.io.jsonio import MyEncoder
-    Path(filename).write_text(MyEncoder(indent=4).encode(data))
+    from ase.parallel import world
+    if world.rank == 0:
+        Path(filename).write_text(MyEncoder(indent=4).encode(data))
+
+
+def read_json(filename):
+    from pathlib import Path
+    from ase.io import jsonio
+    return jsonio.decode(Path(filename).read_text())

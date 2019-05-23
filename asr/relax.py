@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
@@ -8,8 +9,6 @@ from ase.parallel import world, broadcast
 
 from asr.utils import command, option
 from asr.utils.bfgs import BFGS
-
-import click
 
 
 Uvalues = {}
@@ -147,7 +146,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                        trajectory=Trajectory(name + '.traj', 'a', atoms))
             opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
 
-    return atoms
+    return atoms, calc, dft
 
 
 @command('asr.relax')
@@ -159,13 +158,12 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         is_flag=True)
 @option('--xc', default='PBE', help='XC-functional')
 @option('--d3/--nod3', default=True, help='Relax with vdW D3')
-@click.pass_context
-def main(ctx, plusu, ecut, kptdensity, xc, d3):
+def main(plusu, ecut, kptdensity, xc, d3):
     """Relax atomic positions and unit cell."""
     msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
            'what the relax recipe produces. You should '
-           'call your file unrelaxed.json!')
+           'call your original/start file "unrelaxed.json!"')
     assert not Path('structure.json').is_file(), msg
     atoms, done = relax_done('relax.traj')
 
@@ -178,20 +176,24 @@ def main(ctx, plusu, ecut, kptdensity, xc, d3):
                     pass
             if atoms is None:
                 atoms = read('unrelaxed.json')
+
         # Relax the structure
-        relax(atoms, name='relax', ecut=ecut,
-              kptdensity=kptdensity, xc=xc, plusu=plusu, dftd3=d3)
+        atoms, calc, dft = relax(atoms, name='relax', ecut=ecut,
+                                 kptdensity=kptdensity, xc=xc,
+                                 plusu=plusu, dftd3=d3)
 
-    toten = atoms.get_potential_energy()
-
-    # Save to results-relax.json
-    data = {'params': ctx.params,
-            'toten': toten}
-    from asr.utils import write_json
-    write_json('results-relax.json', data)
+    edft = dft.get_potential_energy(atoms)
+    etot = atoms.get_potential_energy()
 
     # Save atomic structure
     write('structure.json', atoms)
+
+    # Save to results-relax.json
+    structure = json.loads(Path('structure.json').read_text())
+    results = {'etot': etot,
+               'edft': edft,
+               'relaxedstructure': structure}
+    return results
 
 
 group = 'structure'

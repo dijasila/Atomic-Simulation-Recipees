@@ -130,7 +130,7 @@ def collect_data(atoms, n=2):
         eigs2, freqs2, _ = analyse(atoms, n)
         eigs3, freqs3, _ = analyse(atoms, n)
     except (FileNotFoundError, EOFError):
-        return
+        return {}, {}, {}
     kvp['minhessianeig'] = eigs3.min()
     data['phonon_frequencies_2d'] = freqs2
     data['phonon_frequencies_3d'] = freqs3
