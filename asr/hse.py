@@ -45,6 +45,7 @@ from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
 from ase.io import read
 from ase.dft.kpoints import get_cellinfo
 #from c2db.bsinterpol import interpolate_bandstructure as ip_bs
+from contextlib import contextmanager
 
 
 def main():
@@ -399,8 +400,21 @@ def spin_axis(fname='anisotropy_xy.npz') -> int:
     else:
         return 0
 
+# move to utils?
+@contextmanager
+def cleanup(*files):
+    try:
+        yield
+    finally:
+        world.barrier()
+        if world.rank == 0:
+            for f in files:
+                if os.path.isfile(f):
+                    os.remove(f)
+
 if __name__ == '__main__':
-    main() #(standalone_mode=False)
+    with cleanup('hse.gpw'):
+        main()
 
 
 
