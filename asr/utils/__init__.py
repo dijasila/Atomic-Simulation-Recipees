@@ -32,9 +32,6 @@ class ASRCommand(click.Command):
                 if not recipe.done():
                     recipe.main(skipdeps=True, args=[])
         results = self.main(standalone_mode=False, *args, **kwargs)
-        if recipes[-1].group in ['structure', 'property']:
-            name = self._asr_name[4:]
-            write_json(f'results-{name}.json', results)
         return results
 
     def invoke(self, ctx):
@@ -54,6 +51,9 @@ class ASRCommand(click.Command):
             else:
                 versions[f'{modname}'] = f'{version}'
         results['__versions__'] = versions
+
+        name = self._asr_name[4:]
+        write_json(f'results-{name}.json', results)
         return results
 
 
