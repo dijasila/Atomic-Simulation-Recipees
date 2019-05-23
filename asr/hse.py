@@ -171,11 +171,10 @@ def bs_interpolate(npoints=400, show=False):
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
-    str_path = get_special_2d_path(atoms.cell)
-    path = bandpath(str_path, atoms.cell, npoints)[0]
+    path = atoms.cell.bandpath(npoints=npoints) # is it the correct usage
     icell = atoms.get_reciprocal_cell()
-    eps = monkhorst_pack_interpolate(path, e_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset)
+    eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
+                                     icell, bz2ibz, size, offset) # path.kpts...correct?
     eps_skn = eps.transpose(1, 0, 2)
     dct = dict(eps_skn=eps_skn, path=path, kptpath=str_path)
     if e_mk is not None:
