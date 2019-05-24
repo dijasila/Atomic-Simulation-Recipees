@@ -43,7 +43,7 @@ class Phonons(ASEPhonons):
 @option('--kptdensity', default=6.0, help='Kpoint density')
 def main(n, ecut, kptdensity):
     """Calculate Phonons"""
-    from asr.utils.gpaw import GPAW
+    from asr.calculators.gpaw import GPAW
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):

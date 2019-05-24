@@ -27,7 +27,7 @@ if Path('gs_params.json').exists():
 def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     """Calculate ground state density"""
     from ase.io import read
-    from asr.utils.gpaw import GPAW
+    from asr.calculators.gpaw import GPAW
     atoms = read(atomfile)
 
     params = dict(
