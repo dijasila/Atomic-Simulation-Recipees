@@ -162,7 +162,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     from asr.utils import write_json
     kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
-    
+
     # Save to results-relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,

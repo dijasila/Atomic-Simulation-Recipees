@@ -6,7 +6,6 @@ defaults = {}
 if Path('gs_params.json').exists():
     from asr.utils import read_json
     dct = read_json('gs_params.json')
-    print(dct)
     if 'ecut' in dct.get('mode', {}):
         defaults['ecut'] = dct['mode']['ecut']
 
