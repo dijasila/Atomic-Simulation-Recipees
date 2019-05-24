@@ -2,27 +2,10 @@ Atomic Simulation Recipes
 =========================
 Recipes for Atomic Scale Materials Research.
 
-Collection of python recipes that just work(!) for common (and not so common)
+Collection of python recipes for common (and not so common)
 tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
-
-Requirements
-------------
-
-* ASE (Atomic Simulation Environment)
-* GPAW
-* click
-* spglib
-* pytest
-* plotly
-
-Packages you need to compile yourself:
-* bader (see instructions below)
-* DFTD3 functional (see instructions below)
-
-Additionally, but not a requirement, it can be nice to have
-* myqueue
 
 Installation
 ------------
@@ -31,6 +14,8 @@ To install ASR first clone the code and pip-install the code
 $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
 $ python3 -m pip install -e ~/asr
 ```
+
+XXX You need a brand new ase version for this code to work!
 
 We do relaxations with the D3 van-der-Waals contribution. To install the van 
 der Waals functional DFTD3 do
@@ -57,6 +42,7 @@ $ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
 
 Additionally, you might also want
 * myqueue
+
 if you want to run jobs on a computer-cluster.
 
 Requirements
@@ -105,11 +91,11 @@ $ python3 -m asr browser
 ```
 
 Notice the space in the last command between `asr` and `browser`.
-`browser` is a subcommand of `asr` and not(!) a recipe. To see the available
+`browser` is a subcommand of `asr` and not a recipe. To see the available
 subcommands of ASR simply do
-`
-python3 -m asr
-`
+```console
+$ python3 -m asr
+```
 
 Change default settings in scripts
 ----------------------------------
@@ -160,7 +146,7 @@ $ mq submit asr.relax@24:10h
 
 Make a screening study
 ----------------------
-A screening study what we call the a study on many materials simultaneously. ASR
+A screening study what we call the a simultaneous automatic study of many materials. ASR
 has a set of tools to make such studies easy to handle. Suppose we have an ASE
 database that contain many atomic structures. In this case we take OQMD12 database
 that contain all unary and binary compounds on the convex hull.
@@ -207,6 +193,17 @@ $ mq workflow -z workflow.py
 ```
 To submit the jobs simply remove the `-z`, and run the command again.
 
+For more complex workflows the `mq workflow` function would have to be run 
+periodically to check for new jobs. In this case it is smart to set up a crontab
+to do the work for you. To do this write
+```console
+$ crontab -e
+```
+choose your editor and put the line 
+`*/5 * * * * . ~/.bashrc; cd ~/oqmd12; mq kick; mq workflow -z workflow.py tree/*/*/*/*/`
+into the file. This will restart any timeout jobs and run the workflow command 
+to see if any new tasks should be spawned with a 5 minute interval. 
+
 
 Developing
 ==========
@@ -252,7 +249,7 @@ python3 -m asr test
 When you make a new recipe ASR will automatically generate a test thats tests
 its dependencies and itself to make sure that all dependencies have been
 included. These automatically generated tests are generated from
-[template_recipe.py](asr/tests/template.py).
+[test_template.py](asr/tests/template.py).
 
 ASR uses the `pytest` module for its tests. To see what tests will run use
 ```
