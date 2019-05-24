@@ -190,7 +190,7 @@ def create_tasks():
 (copy this and save it to `workflow.py`). We now ask `myqueue` what jobs 
 it wants to run.
 ```console
-$ mq workflow -z workflow.py
+$ mq workflow -z workflow.py tree/*/*/*/*/
 ```
 To submit the jobs simply remove the `-z`, and run the command again.
 
