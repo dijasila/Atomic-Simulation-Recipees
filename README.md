@@ -172,7 +172,7 @@ files that contain the unrelaxed atomic structures. Because we dont know the
 magnetic structure of the materials we also want to sample different magnetic structures.
 This can be done with the `magnetize` function of asr
 ```console
-$ python3 -m asr run asr.setup.magnetize */*/*/*/*
+$ python3 -m asr run asr.setup.magnetize */*/*/*/
 ```
 We use the `run` function because that gives us the option to deal with many folders
 at once. You are now ready to run a
