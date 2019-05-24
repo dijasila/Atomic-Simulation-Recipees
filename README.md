@@ -146,7 +146,7 @@ $ mq submit asr.relax@24:10h
 
 Make a screening study
 ----------------------
-A screening study what we call the a simultaneous automatic study of many materials. ASR
+A screening study what we call a simultaneous automatic study of many materials. ASR
 has a set of tools to make such studies easy to handle. Suppose we have an ASE
 database that contain many atomic structures. In this case we take OQMD12 database
 that contain all unary and binary compounds on the convex hull.
@@ -159,9 +159,10 @@ $ wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
 We then use the `unpackdatabase` function of ASR to unpack the database into a
 directory tree
 ```console
-$ python3 -m asr.setup.unpackdatabase oqmd12.db --run
+$ python3 -m asr.setup.unpackdatabase oqmd12.db -s u=False --run
 ```
-which has produced a new folder `~oqmd12/tree/`. To see the contents of the tree
+(we have made the selection `u=False` since we are not interested in the DFT+U values).
+This function produces a new folder `~oqmd12/tree/` where you can find the tree. To see the contents of the tree
 it is recommended to use the linux command `tree`
 ```console
 $ tree tree/
@@ -257,7 +258,7 @@ python3 -m asr test --collect-only
 ```
 To execute a single test use 
 ```
-python3 -m asr test --collect-only -k my_test.py
+python3 -m asr test -k my_test.py
 ```
 If you want more extended testing of your recipe you will have to implement them
 manually. Your test should be placed in the `asr/asr/tests/`-folder where other
@@ -297,18 +298,21 @@ Types of recipes
 ----------------
 The recipes are divided into the following groups:
 
-- Property recipes: Recipes that calculate a property for a given materials.
+- Property recipes: Recipes that calculate a property for a given atomic structure.
+  The scripts should use the file in the current folder called `structure.json`.
   These scripts should only assume the existence of files in the same folder.
-  For example: The ground state recipe gs.py should only require an existence
-  of a starting atomic structure, in our case this is called `structure.json`
+  Example recipes: `asr.gs`, `asr.bandstructure`, `asr.structureinfo`.
 
-- Structure recipes: These are recipes that produce a new atomic structure.
-  When these scripts are run they produce a new folder containing a `structure.json`
-  such that all property-recipes can be evaluated for the new structure in
-  the new folder. For example: The relax recipe which relaxes the atomic
-  structure produces new folders "nm/" "fm/" and "afm/" if these structures
-  are close to the lowest energy structure. Each of these folders contain
-  a new `structure.json` from which the property recipes can be evaluated.
+- Structure recipes: These are recipes that can produce a new atomic structure in
+  this folder.
+  Example: `asr.relax` takes the atomic structure in `unrelaxed.json`
+  in the current folder and produces a relaxed structure in `structure.json` 
+  that the property recipes can use.
 
-- Post-processing recipes: Recipes that do no actual calculations and only
-  serves to collect and present data.
+- Setup recipes: These recipes are located in the asr.setup folder and the 
+  purpose of these recipes is to set up new atomic structures in new folders.
+  Example: `asr.setup.magnetize`, `asr.push`, `asr.setup.unpackdatabase` all
+  takes some sort of input and produces folders with new atomic structures that 
+  can be relaxed.
+
+
