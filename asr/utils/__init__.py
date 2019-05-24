@@ -56,8 +56,8 @@ class ASRCommand(click.Command):
                     return self.invoke_wrapped(ctx, catch_exceptions=False)
                 else:
                     parprint(f'Caught known exception: {type(e)}. '
-                             f'Already caught one exception, '
-                             'and I can at most catch one')
+                             'Already caught one exception, '
+                             'and I can at most catch one.')
             raise
         if not results:
             results = {}
