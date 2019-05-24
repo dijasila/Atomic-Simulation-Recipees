@@ -168,18 +168,14 @@ def get_dep_tree(name):
     return [recipes[ind] for ind in indices]
 
 
-def get_parameters(key=None):
+def get_parameters(key):
     from pathlib import Path
-    import json
     if Path('params.json').is_file():
-        with open('params.json', 'r') as fd:
-            params = json.load(fd)
+        params = read_json('params.json')
     else:
         params = {}
 
-    if key and key in params:
-        params = params[key]
-
+    params = params.get(key, {})
     return params
 
 
@@ -220,12 +216,14 @@ def update_defaults(key, params={}):
 
     def update_defaults_dec(func):
         fparams = func.__click_params__
-        for param in fparams:
-            for externaldefault in params:
+        for externaldefault in params:
+            for param in fparams:
                 if externaldefault == param.name:
                     param.default = params[param.name]
                     break
-
+            else:
+                msg = f'{key}: {externaldefault} is unknown'
+                raise AssertionError(msg)
         return func
     return update_defaults_dec
 
