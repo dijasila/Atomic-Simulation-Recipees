@@ -1,13 +1,16 @@
-from asr.utils import command, option, get_start_parameters
+from asr.utils import command, option
+from pathlib import Path
 
 # Get some parameters from structure.json
-params = get_start_parameters()
 defaults = {}
-if 'ecut' in params.get('mode', {}):
-    defaults['ecut'] = params['mode']['ecut']
+if Path('gs_params.json').exists():
+    from asr.utils import read_json
+    dct = read_json('gs_params.json')
+    if 'ecut' in dct.get('mode', {}):
+        defaults['ecut'] = dct['mode']['ecut']
 
-if 'density' in params.get('kpts', {}):
-    defaults['kptdensity'] = params['kpts']['density']
+    if 'density' in dct.get('kpts', {}):
+        defaults['kptdensity'] = dct['kpts']['density']
 
 
 @command('asr.gs', defaults)
@@ -19,10 +22,12 @@ if 'density' in params.get('kpts', {}):
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
-def main(atomfile, gpwfilename, ecut, xc, kptdensity):
+@option('--width', default=0.05,
+        help='Fermi-Dirac smearing temperature')
+def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     """Calculate ground state density"""
     from ase.io import read
-    from asr.utils.gpaw import GPAW
+    from asr.calculators.gpaw import GPAW
     atoms = read(atomfile)
 
     params = dict(
@@ -33,7 +38,8 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
             'density': kptdensity,
             'gamma': True
         },
-        occupations={'name': 'fermi-dirac', 'width': 0.05},
+        symmetry={'do_not_symmetrize_the_density': True},
+        occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
 
     atoms.calc = GPAW(**params)

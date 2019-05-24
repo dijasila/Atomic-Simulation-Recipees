@@ -3,9 +3,9 @@ from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
-import sys
 from importlib import import_module
 from ase.io import jsonio
+from ase.parallel import parprint
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -13,30 +13,52 @@ argument = click.argument
 class ASRCommand(click.Command):
     _asr_command = True
 
-    def __init__(self, asr_name=None, *args, **kwargs):
+    def __init__(self, asr_name=None, known_exceptions=None,
+                 *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
+        self.known_exceptions = known_exceptions or {}
         click.Command.__init__(self, *args, **kwargs)
 
-    def __call__(self, skipdeps=False, *args, **kwargs):
-        # We should skip deps if we want to print the help
-        if '-h' in sys.argv or '--help' in sys.argv:
-            skipdeps = True
-
-        if 'args' in kwargs:
-            if '-h' in kwargs['args'] or '--help' in kwargs['args']:
-                skipdeps = True
-
-        recipes = get_dep_tree(self._asr_name)
-        if not skipdeps:
-            for recipe in recipes[:-1]:  # Don't include itself
-                if not recipe.done():
-                    recipe.main(skipdeps=True, args=[])
-        results = self.main(standalone_mode=False, *args, **kwargs)
-        return results
+    def main(self, *args, **kwargs):
+        return click.Command.main(self, standalone_mode=False,
+                                  *args, **kwargs)
 
     def invoke(self, ctx):
-        results = click.Command.invoke(self, ctx)
+        # Pop the skip deps argument
+        skip_deps = ctx.params.pop('skip_deps')
+        self.invoke_wrapped(ctx, skip_deps)
+
+    def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
+        if skip_deps:
+            args = ['--skip-deps']
+        else:
+            args = []
+
+        # Run all dependencies
+        recipes = get_dep_tree(self._asr_name)
+        for recipe in recipes[:-1]:  # Don't include itself
+            if not recipe.done():
+                recipe.main(args=args)
+
+        try:
+            results = click.Command.invoke(self, ctx)
+        except Exception as e:
+            if type(e) in self.known_exceptions:
+                parameters = self.known_exceptions[type(e)]
+                # Update context
+                if catch_exceptions:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'Trying again.')
+                    for key in parameters:
+                        ctx.params[key] *= parameters[key]
+                    # We only allow the capture of one exception
+                    return self.invoke_wrapped(ctx, catch_exceptions=False)
+                else:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'Already caught one exception, '
+                             'and I can at most catch one.')
+            raise
         if not results:
             results = {}
         results['__params__'] = ctx.params
@@ -73,6 +95,9 @@ def command(name, overwrite_params={}, *args, **kwargs):
                            asr_name=name,
                            *args, **kwargs)
 
+        func = option('--skip-deps/--run-deps', is_flag=True, default=False,
+                      help="Don't skip dependencies?")(func)
+        
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
@@ -170,18 +195,14 @@ def get_dep_tree(name):
     return [recipes[ind] for ind in indices]
 
 
-def get_parameters(key=None):
+def get_parameters(key):
     from pathlib import Path
-    import json
     if Path('params.json').is_file():
-        with open('params.json', 'r') as fd:
-            params = json.load(fd)
+        params = read_json('params.json')
     else:
         params = {}
 
-    if key and key in params:
-        params = params[key]
-
+    params = params.get(key, {})
     return params
 
 
@@ -222,21 +243,21 @@ def update_defaults(key, params={}):
 
     def update_defaults_dec(func):
         fparams = func.__click_params__
-        for param in fparams:
-            for externaldefault in params:
+        for externaldefault in params:
+            for param in fparams:
                 if externaldefault == param.name:
                     param.default = params[param.name]
                     break
-
+            else:
+                msg = f'{key}: {externaldefault} is unknown'
+                raise AssertionError(msg)
         return func
     return update_defaults_dec
 
 
-def get_start_parameters(atomfile=None):
+def get_start_parameters():
     import json
-    if atomfile is None:
-        return {}
-    with open(atomfile, 'r') as fd:
+    with open('structure.json', 'r') as fd:
         asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})
 

@@ -1,15 +1,5 @@
 import os
 from pathlib import Path
-
-from ase.build import bulk
-
-from asr.collect import main as collect
-from asr.convex_hull import main as chull
-from asr.gs import main as gs
-from asr.phonons import main as phonons
-from asr.structureinfo import main as structureinfo
-from asr.relax import main as relax
-from asr.utils import chdir
 import pytest
 
 
@@ -20,14 +10,22 @@ def directory(tmpdir_factory):
 
 
 def test_cuag(directory):
+    os.environ['ASR_TEST_MODE'] = '1'
+    from ase.build import bulk
+    from asr.collect import main as collect
+    from asr.convex_hull import main as chull
+    from asr.gs import main as gs
+    from asr.phonons import main as phonons
+    from asr.structureinfo import main as structureinfo
+    from asr.relax import main as relax
+    from asr.utils import chdir
+
     with chdir(directory):
         structures = [
             bulk('Cu'),
             bulk('Au'),
             bulk('CuAu', crystalstructure='rocksalt', a=5.0),
             bulk('CuAuAu', crystalstructure='fluorite', a=5.8)]
-
-        os.environ['ASR_TEST_MODE'] = '1'
 
         for atoms in structures:
             dir = Path(atoms.get_chemical_formula())
