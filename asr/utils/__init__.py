@@ -5,6 +5,7 @@ import click
 import numpy as np
 from importlib import import_module
 from ase.io import jsonio
+from ase.parallel import parprint
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -12,9 +13,11 @@ argument = click.argument
 class ASRCommand(click.Command):
     _asr_command = True
 
-    def __init__(self, asr_name=None, *args, **kwargs):
+    def __init__(self, asr_name=None, known_exceptions=None,
+                 *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
+        self.known_exceptions = known_exceptions or {}
         click.Command.__init__(self, *args, **kwargs)
 
     def main(self, *args, **kwargs):
@@ -22,16 +25,40 @@ class ASRCommand(click.Command):
                                   *args, **kwargs)
 
     def invoke(self, ctx):
-        recipes = get_dep_tree(self._asr_name)
+        # Pop the skip deps argument
         skip_deps = ctx.params.pop('skip_deps')
+        self.invoke_wrapped(ctx, skip_deps)
+
+    def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
         if skip_deps:
             args = ['--skip-deps']
         else:
             args = []
+
+        # Run all dependencies
+        recipes = get_dep_tree(self._asr_name)
         for recipe in recipes[:-1]:  # Don't include itself
             if not recipe.done():
                 recipe.main(args=args)
-        results = click.Command.invoke(self, ctx)
+
+        try:
+            results = click.Command.invoke(self, ctx)
+        except Exception as e:
+            if type(e) in self.known_exceptions:
+                parameters = self.known_exceptions[type(e)]
+                # Update context
+                if catch_exceptions:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'Trying again.')
+                    for key in parameters:
+                        ctx.params[key] *= parameters[key]
+                    # We only allow the capture of one exception
+                    return self.invoke_wrapped(ctx, catch_exceptions=False)
+                else:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             f'Already caught one exception, '
+                             'and I can at most catch one')
+            raise
         if not results:
             results = {}
         results['__params__'] = ctx.params

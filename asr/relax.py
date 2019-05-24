@@ -9,7 +9,7 @@ from ase.parallel import world, broadcast
 
 from asr.utils import command, option
 from asr.utils.bfgs import BFGS
-
+from gpaw import KohnShamConvergenceError
 
 Uvalues = {}
 
@@ -98,7 +98,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
-    from asr.utils.gpaw import GPAW, KohnShamConvergenceError
+    from asr.utils.gpaw import GPAW
     dft = GPAW(**kwargs)
     if dftd3:
         calc = DFTD3(dft=dft)
@@ -109,28 +109,17 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     opt = BFGS(atoms,
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', atoms))
-    try:
-        opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
-    except KohnShamConvergenceError:
-        kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                      occupations={'name': 'fermi-dirac', 'width': 0.02},
-                      maxiter=999)
-        dft = GPAW(**kwargs)
-        if dftd3:
-            calc = DFTD3(dft=dft)
-        else:
-            calc = dft
-        atoms.calc = calc
-
-        opt = BFGS(atoms,
-                   logfile=name + '.log',
-                   trajectory=Trajectory(name + '.traj', 'a', atoms))
-        opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
-
+    opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
     return atoms, calc, dft, kwargs
 
 
-@command('asr.relax')
+# Please note these are relative number that
+# are multiplied on the original ones
+known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                               'width': 0.5}}
+
+@command('asr.relax',
+         known_exceptions=known_exceptions)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdensity', default=6.0,
