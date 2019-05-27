@@ -19,7 +19,6 @@ setup(
     include_package_data=True,
     install_requires=['Click', 'pytest', 'matplotlib',
                       'spglib', 'plotly'],
-    dependency_links=['https://gitlab.com/ase/ase/repository/archive.tar.bz2'],
     entry_points='''
         [console_scripts]
         asr=asr.utils.cli:cli
