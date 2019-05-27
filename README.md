@@ -15,7 +15,10 @@ $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
 $ python3 -m pip install -e ~/asr
 ```
 
-XXX You need a brand new ase version for this code to work!
+ASE has to be installed manually since we need the newest version:
+```console
+python3 -m pip install git+https://gitlab.com/ase/ase.git
+```
 
 We do relaxations with the D3 van-der-Waals contribution. To install the van 
 der Waals functional DFTD3 do
