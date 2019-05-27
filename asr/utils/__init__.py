@@ -32,16 +32,12 @@ class ASRCommand(click.Command):
         self.invoke_wrapped(ctx, skip_deps)
 
     def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
-        if skip_deps:
-            args = ['--skip-deps']
-        else:
-            args = []
-
         # Run all dependencies
         recipes = get_dep_tree(self._asr_name)
-        for recipe in recipes[:-1]:  # Don't include itself
-            if not recipe.done():
-                recipe.main(args=args)
+        if not skip_deps:
+            for recipe in recipes[:-1]:  # Don't include itself
+                if not recipe.done():
+                    recipe.main(args=['--skip-deps'])
 
         try:
             results = click.Command.invoke(self, ctx)
