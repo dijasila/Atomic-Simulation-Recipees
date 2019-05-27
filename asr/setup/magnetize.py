@@ -1,8 +1,7 @@
-from asr.utils import argument, option
-import click
+from asr.utils import command, argument, option
 
 
-@click.command()
+@command('asr.setup.magnetize')
 @argument('states', nargs=-1)
 @option('--name', default='unrelaxed.json',
         help='Atomic structure')

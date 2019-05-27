@@ -1,8 +1,7 @@
-from asr.utils import argument, option
-import click
+from asr.utils import command, argument, option
 
 
-@click.command()
+@command('asr.setup.unpackdatabase')
 @argument('database', nargs=1)
 @option('--run/--dry-run', default=False)
 @option('-s', '--selection', help='ASE-DB selection')

@@ -14,10 +14,12 @@ class ASRCommand(click.Command):
     _asr_command = True
 
     def __init__(self, asr_name=None, known_exceptions=None,
+                 results_file=False,
                  *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
+        self.asr_results_file = results_file
         click.Command.__init__(self, *args, **kwargs)
 
     def main(self, *args, **kwargs):
@@ -75,8 +77,9 @@ class ASRCommand(click.Command):
                 versions[f'{modname}'] = f'{version}'
         results['__versions__'] = versions
 
-        name = self._asr_name[4:]
-        write_json(f'results-{name}.json', results)
+        if self.asr_results_file:
+            name = self._asr_name[4:]
+            write_json(f'results-{name}.json', results)
         return results
 
 
@@ -126,63 +129,78 @@ excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
                'asr.bse', 'asr.gapsummary']
 
 
-def get_recipes(sort=True, exclude=True, group=None):
+def get_all_recipe_names():
     from pathlib import Path
-    from asr.utils.recipe import Recipe
-
-    files = Path(__file__).parent.parent.glob('[a-zA-Z]*.py')
-    recipes = []
+    folder = Path(__file__).parent.parent
+    files = list(folder.glob('[a-zA-Z]*.py'))
+    files += list(folder.glob('setup/[a-zA-Z]*.py'))
+    modulenames = []
     for file in files:
-        name = file.with_suffix('').name
-        modulename = f'asr.{name}'
+        name = str(file.with_suffix(''))[len(str(folder)):]
+        modulename = 'asr' + name.replace('/', '.')
+        modulenames.append(modulename)
+    return modulenames
+
+
+def get_recipes(sort=True, exclude=True, group=None):
+    from asr.utils.recipe import Recipe
+    names = get_all_recipe_names()
+    recipes = []
+    for modulename in names:
         if modulename in excludelist:
             continue
-        recipe = Recipe.frompath(f'asr.{name}')
+        recipe = Recipe.frompath(modulename)
         if group and not recipe.group == group:
             continue
         recipes.append(recipe)
 
     if sort:
-        sortedrecipes = []
-
-        # Add the recipes with no dependencies (these must exist)
-        for recipe in recipes:
-            if not recipe.dependencies:
-                sortedrecipes.append(recipe)
-
-        for i in range(1000):
-            for recipe in recipes:
-                names = [recipe.name for recipe in sortedrecipes]
-                if recipe.name in names:
-                    continue
-                for dep in recipe.dependencies:
-                    if dep not in names:
-                        break
-                else:
-                    sortedrecipes.append(recipe)
-
-            if len(recipes) == len(sortedrecipes):
-                break
-        else:
-            msg = 'Something went wrong when parsing dependencies!'
-            raise AssertionError(msg)
-        recipes = sortedrecipes
+        recipes = sort_recipes(recipes)
 
     return recipes
 
 
-def get_dep_tree(name):
-    recipes = get_recipes(sort=True)
+def sort_recipes(recipes):
+    sortedrecipes = []
 
-    names = [recipe.__name__ for recipe in recipes]
+    # Add the recipes with no dependencies (these must exist)
+    for recipe in recipes:
+        if not recipe.dependencies:
+            sortedrecipes.append(recipe)
+
+    for i in range(1000):
+        for recipe in recipes:
+            names = [recipe.name for recipe in sortedrecipes]
+            if recipe.name in names:
+                continue
+            for dep in recipe.dependencies:
+                if dep not in names:
+                    break
+            else:
+                sortedrecipes.append(recipe)
+
+        if len(recipes) == len(sortedrecipes):
+            break
+    else:
+        msg = 'Something went wrong when parsing dependencies!'
+        raise AssertionError(msg)
+    return sortedrecipes
+
+
+def get_dep_tree(name):
+    from asr.utils.recipe import Recipe
+    names = get_all_recipe_names()
     indices = [names.index(name)]
+    recipes = []
     for j in range(100):
         if not indices[j:]:
             break
         for ind in indices[j:]:
-            if not hasattr(recipes[ind], 'dependencies'):
+            recipe = Recipe.frompath(names[ind])
+            recipes.append(recipe)
+            if not hasattr(recipe, 'dependencies'):
                 continue
-            deps = recipes[ind].dependencies
+            deps = recipe.dependencies
             if not deps:
                 continue
             for dep in deps:
@@ -191,8 +209,9 @@ def get_dep_tree(name):
                     indices.append(index)
     else:
         raise RuntimeError('Dependencies are weird!')
-    indices = sorted(indices)
-    return [recipes[ind] for ind in indices]
+
+    recipes = sort_recipes(recipes)
+    return recipes
 
 
 def get_parameters(key):

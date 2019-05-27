@@ -1,5 +1,4 @@
-import click
-from asr.utils import argument, option
+from asr.utils import command, argument, option
 import numpy as np
 from pathlib import Path
 
@@ -76,7 +75,7 @@ def get_p_ab():
 
 
 help = 'Threshold of likelyhood of two atomic species to subsititute'
-@click.command('asr.setup.decorate')
+@command('asr.setup.decorate')
 @argument('atoms', type=str)
 @option('--threshold', default=0.08, help=help)
 @option('--database', default='decorated.db')
