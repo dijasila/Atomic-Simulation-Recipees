@@ -17,7 +17,13 @@ $ python3 -m pip install -e ~/asr
 
 ASE has to be installed manually since we need the newest version:
 ```console
-python3 -m pip install git+https://gitlab.com/ase/ase.git
+$ python3 -m pip install git+https://gitlab.com/ase/ase.git
+```
+Install a database of reference energies to calculate HOF and convex hull. Here 
+we use a database of one- and component-structures from OQMD
+```
+$ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+$ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
 ```
 
 We do relaxations with the D3 van-der-Waals contribution. To install the van 
