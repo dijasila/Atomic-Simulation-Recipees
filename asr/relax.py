@@ -163,7 +163,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
 
-    # Save to results-relax.json
+    # Save to results_relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,
                'edft': edft,
@@ -173,7 +173,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
 
 group = 'structure'
 resources = '8:xeon8:10h'
-creates = ['results-relax.json']
+creates = ['results_relax.json']
 
 if __name__ == '__main__':
     main()

@@ -104,7 +104,7 @@ def collect_data(atoms):
     key_descriptions = {}
 
     info = {}
-    structureinfo = read_json('results-structureinfo.json')
+    structureinfo = read_json('results_structureinfo.json')
     for key in structureinfo:
         if not key.startswith('__'):
             info[key] = structureinfo[key]

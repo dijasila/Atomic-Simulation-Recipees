@@ -79,7 +79,7 @@ class ASRCommand(click.Command):
 
         if self.asr_results_file:
             name = self._asr_name[4:]
-            write_json(f'results-{name}.json', results)
+            write_json(f'results_{name}.json', results)
         return results
 
 

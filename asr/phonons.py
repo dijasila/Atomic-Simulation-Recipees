@@ -92,7 +92,7 @@ def main(n, ecut, kptdensity):
 
 def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
     from asr.utils import read_json
-    dct = read_json('results-phonons.json')
+    dct = read_json('results_phonons.json')
     atoms = read('structure.json')
     p = Phonons(**dct['phonons'])
     p.atoms = atoms

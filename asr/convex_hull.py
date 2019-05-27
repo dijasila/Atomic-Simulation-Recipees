@@ -47,7 +47,7 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('results-structureinfo.json').read_text())
+        qi = json.loads(Path('results_structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
                       qi.get('prototype', ''),
@@ -56,7 +56,7 @@ def main(references: str, database: str):
 
     results['links'] = links
 
-    Path('convex_hull.json').write_text(json.dumps(results))
+    return results
 
 
 def get_hof(atoms, references):
@@ -123,7 +123,7 @@ def select_references(db, symbols):
 
 
 def collect_data(atoms):
-    path = Path('convex_hull.json')
+    path = Path('results_convex_hull.json')
     if not path.is_file():
         return {}, {}, {}
     dct = json.loads(path.read_text())
