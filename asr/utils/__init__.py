@@ -50,11 +50,11 @@ class ASRCommand(click.Command):
                              'Trying again.')
                     for key in parameters:
                         ctx.params[key] *= parameters[key]
-                    # We only allow the capture of one exception
                     return self.invoke_wrapped(ctx, catch_exceptions=False)
                 else:
+                    # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '
-                             'Already caught one exception, '
+                             'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
             raise
         if not results:
