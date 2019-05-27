@@ -99,7 +99,7 @@ def command(name, overwrite_params={}, *args, **kwargs):
                            *args, **kwargs)
 
         func = option('--skip-deps/--run-deps', is_flag=True, default=False,
-                      help="Don't skip dependencies?")(func)
+                      help="Skip execution of dependencies?")(func)
         
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
