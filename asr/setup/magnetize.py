@@ -1,7 +1,8 @@
 from asr.utils import command, argument, option
 
 
-@command('asr.setup.magnetize')
+@command('asr.setup.magnetize',
+         save_results_file=False)
 @argument('states', nargs=-1)
 @option('--name', default='unrelaxed.json',
         help='Atomic structure')

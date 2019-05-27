@@ -14,12 +14,12 @@ class ASRCommand(click.Command):
     _asr_command = True
 
     def __init__(self, asr_name=None, known_exceptions=None,
-                 results_file=False,
+                 save_results_file=True,
                  *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
-        self.asr_results_file = results_file
+        self.asr_results_file = save_results_file
         click.Command.__init__(self, *args, **kwargs)
 
     def main(self, *args, **kwargs):

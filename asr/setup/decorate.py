@@ -75,7 +75,8 @@ def get_p_ab():
 
 
 help = 'Threshold of likelyhood of two atomic species to subsititute'
-@command('asr.setup.decorate')
+@command('asr.setup.decorate',
+         save_results_file=False)
 @argument('atoms', type=str)
 @option('--threshold', default=0.08, help=help)
 @option('--database', default='decorated.db')

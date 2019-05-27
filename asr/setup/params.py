@@ -2,7 +2,8 @@ import click
 from asr.utils import command
 
 
-@command('asr.setup.params')
+@command('asr.setup.params',
+         save_results_file=False)
 def main():
     """Make a new params file"""
     import json

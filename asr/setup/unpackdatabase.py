@@ -1,7 +1,8 @@
 from asr.utils import command, argument, option
 
 
-@command('asr.setup.unpackdatabase')
+@command('asr.setup.unpackdatabase',
+         save_results_file=False)
 @argument('database', nargs=1)
 @option('--run/--dry-run', default=False)
 @option('-s', '--selection', help='ASE-DB selection')
