@@ -30,7 +30,8 @@ def test_group(recipe):
     if not recipe.group:
         return
 
-    assert recipe.group in ['structure', 'property', 'postprocessing'], \
+    assert recipe.group in ['structure', 'property', 'postprocessing',
+                            'setup'], \
         (f'Group {recipe.__name__} not known!')
 
 

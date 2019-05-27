@@ -168,6 +168,7 @@ def sort_recipes(recipes):
         if not recipe.dependencies:
             sortedrecipes.append(recipe)
 
+    assert len(sortedrecipes), 'No recipes without deps!'
     for i in range(1000):
         for recipe in recipes:
             names = [recipe.name for recipe in sortedrecipes]
@@ -182,7 +183,9 @@ def sort_recipes(recipes):
         if len(recipes) == len(sortedrecipes):
             break
     else:
-        msg = 'Something went wrong when parsing dependencies!'
+        names = [recipe.name for recipe in recipes]
+        msg = ('Something went wrong when parsing dependencies! '
+               f'Input recipes: {names}')
         raise AssertionError(msg)
     return sortedrecipes
 
@@ -191,13 +194,11 @@ def get_dep_tree(name):
     from asr.utils.recipe import Recipe
     names = get_all_recipe_names()
     indices = [names.index(name)]
-    recipes = []
     for j in range(100):
         if not indices[j:]:
             break
         for ind in indices[j:]:
             recipe = Recipe.frompath(names[ind])
-            recipes.append(recipe)
             if not hasattr(recipe, 'dependencies'):
                 continue
             deps = recipe.dependencies
@@ -209,7 +210,7 @@ def get_dep_tree(name):
                     indices.append(index)
     else:
         raise RuntimeError('Dependencies are weird!')
-
+    recipes = [Recipe.frompath(names[ind]) for ind in indices]
     recipes = sort_recipes(recipes)
     return recipes
 
