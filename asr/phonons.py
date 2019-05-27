@@ -13,7 +13,7 @@ from asr.utils import command, option
 
 class Phonons(ASEPhonons):
     def __init__(self, C_N=None, D_N=None, Z_avv=None, eps_vv=None,
-                 refcell=None, *args, **kwargs):
+                 refcell=None, m_inv_x=None, *args, **kwargs):
         ASEPhonons.__init__(self, refcell=refcell,
                             *args, **kwargs)
         self.C_N = C_N
@@ -21,6 +21,7 @@ class Phonons(ASEPhonons):
         self.Z_avv = Z_avv
         self.eps_vv = eps_vv
         self.refcell = refcell
+        self.m_inv_x = m_inv_x
 
     def todict(self):
         # It would be better to save the calculated forces
@@ -33,7 +34,8 @@ class Phonons(ASEPhonons):
                    C_N=self.C_N,
                    D_N=self.D_N,
                    Z_avv=self.Z_avv,
-                   eps_vv=self.eps_vv)
+                   eps_vv=self.eps_vv,
+                   m_inv_x=self.m_inv_x)
         return dct
 
 
@@ -64,7 +66,7 @@ def main(n, ecut, kptdensity):
         params['convergence'] = {'forces': 1e-4}
 
     atoms = read('structure.json')
-    fd = open('phonons-{}.txt'.format(n), 'a')
+    fd = open('phonons.txt'.format(n), 'a')
     calc = GPAW(txt=fd, **params)
 
     # Set initial magnetic moments
@@ -90,7 +92,7 @@ def main(n, ecut, kptdensity):
     return results
 
 
-def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
+def analyse(points=300, modes=False, q_qc=None):
     from asr.utils import read_json
     dct = read_json('results_phonons.json')
     atoms = read('structure.json')
