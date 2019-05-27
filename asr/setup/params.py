@@ -1,7 +1,9 @@
 import click
+from asr.utils import command
 
 
-@click.command()
+@command('asr.setup.params',
+         save_results_file=False)
 def main():
     """Make a new params file"""
     import json
@@ -27,6 +29,9 @@ def main():
     p = Path('params.json')
     assert not p.exists(), 'params.json already exists!'
     p.write_text(json.dumps(paramdict, indent=4))
+
+
+group = 'setup'
 
 
 if __name__ == '__main__':
