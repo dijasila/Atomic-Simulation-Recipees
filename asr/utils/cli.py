@@ -50,6 +50,17 @@ def run(ctx, command):
 
 
 @cli.command()
+@click.argument('command', type=str)
+def help(command):
+    """Run recipe"""
+    from asr.utils.recipe import Recipe
+    if not command.startswith('asr.'):
+        command = f'asr.{command}'
+    recipe = Recipe.frompath(command, reload=True)
+    recipe.run(args=['-h'])
+
+
+@cli.command()
 @click.option('--database', default='database.db')
 @click.option('--custom', default='asr.utils.custom')
 @click.option('--only-figures', is_flag=True, default=False,
