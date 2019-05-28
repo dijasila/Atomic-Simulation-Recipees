@@ -81,7 +81,7 @@ def status():
     for recipe in recipes:
         status = [recipe.__name__]
         done = True
-        if hasattr(recipe, 'creates'):
+        if recipe.creates:
             for create in recipe.creates:
                 if not Path(create).exists():
                     done = False
