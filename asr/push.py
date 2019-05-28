@@ -7,7 +7,6 @@ from asr.utils import command, option
 @option('-m', '--mode', default=0, type=int, help='Mode index')
 @option('-a', '--amplitude', default=0.1, type=float,
         help='Maximum distance an atom will be displaced')
-@option('-n', default=2, help='Supercell size')
 def main(momentum, mode, amplitude):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse

@@ -30,19 +30,24 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     from asr.calculators.gpaw import GPAW
     atoms = read(atomfile)
 
-    params = dict(
-        mode={'name': 'pw', 'ecut': ecut},
-        xc=xc,
-        basis='dzp',
-        kpts={
-            'density': kptdensity,
-            'gamma': True
-        },
-        symmetry={'do_not_symmetrize_the_density': True},
-        occupations={'name': 'fermi-dirac', 'width': width},
-        txt='gs.txt')
+    if Path('gs.gpw').is_file():
+        calc = GPAW('gs.gpw', txt=None)
+    else:
+        params = dict(
+            mode={'name': 'pw', 'ecut': ecut},
+            xc=xc,
+            basis='dzp',
+            kpts={
+                'density': kptdensity,
+                'gamma': True
+            },
+            symmetry={'do_not_symmetrize_the_density': True},
+            occupations={'name': 'fermi-dirac', 'width': width},
+            txt='gs.txt')
 
-    atoms.calc = GPAW(**params)
+        calc = GPAW(**params)
+
+    atoms.calc = calc
     forces = atoms.get_forces()
     stresses = atoms.get_stress()
     atoms.calc.write(gpwfilename)
