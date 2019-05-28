@@ -44,7 +44,7 @@ def run(ctx, command):
     from asr.utils.recipe import Recipe
     if not command.startswith('asr.'):
         command = f'asr.{command}'
-    
+
     recipe = Recipe.frompath(command, reload=True)
     recipe.run(args=ctx.args)
 
@@ -52,7 +52,7 @@ def run(ctx, command):
 @cli.command()
 @click.argument('command', type=str)
 def help(command):
-    """Run recipe"""
+    """See help for recipe"""
     from asr.utils.recipe import Recipe
     if not command.startswith('asr.'):
         command = f'asr.{command}'
@@ -92,7 +92,7 @@ def status():
     panel = []
     missing_files = []
     for recipe in recipes:
-        status = [recipe.__name__]
+        status = [recipe.name]
         done = True
         if recipe.creates:
             for create in recipe.creates:
@@ -106,9 +106,6 @@ def status():
                 panel.insert(0, status)
             else:
                 panel.append(status)
-        else:
-            status.append('No files created')
-            missing_files.append(status)
     
     print(format(panel))
     print(format(missing_files))
@@ -149,3 +146,18 @@ def plot(recipe):
             func(row, *names)
 
     plt.show()
+
+
+@cli.command()
+@click.argument('command', type=str)
+@click.argument('folders', type=str, nargs=-1)
+def runinfolders(command, folders):
+    """Run a command in many folders"""
+    from pathlib import Path
+    import subprocess
+    from asr.utils import chdir
+
+    for folder in folders:
+        with chdir(Path(folder)):
+            print(f'Running {command} in {folder}')
+            subprocess.run(command.split())

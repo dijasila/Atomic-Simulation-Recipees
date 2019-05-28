@@ -38,6 +38,8 @@ class ASRCommand(click.Command):
 
         if self.add_folders_arg:
             folders = ctx.params.pop('folders')
+        else:
+            folders = []
 
         if folders:
             for folder in folders:
