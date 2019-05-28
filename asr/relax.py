@@ -113,10 +113,11 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     return atoms, calc, dft, kwargs
 
 
-# Please note these are relative number that
+# Please note these are relative numbers that
 # are multiplied on the original ones
 known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
                                                'width': 0.5}}
+
 
 @command('asr.relax',
          known_exceptions=known_exceptions)
@@ -163,7 +164,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
 
-    # Save to results-relax.json
+    # Save to results_relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,
                'edft': edft,
@@ -173,7 +174,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
 
 group = 'structure'
 resources = '8:xeon8:10h'
-creates = ['results-relax.json']
+creates = ['results_relax.json']
 
 if __name__ == '__main__':
     main()

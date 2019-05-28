@@ -37,22 +37,14 @@ def cli():
 
 @cli.command()
 @click.argument('command', type=str)
-@click.argument('folders', type=str, nargs=-1)
-@click.option('-z', '--dry-run', is_flag=True,
-              help="Don't do anything")
-def run(command, folders, dry_run):
+def run(command):
     """Run NAME recipe"""
-    from pathlib import Path
-    from asr.utils import chdir
-    from importlib import import_module, reload
+    from asr.utils.recipe import Recipe
+    if not command.startswith('asr.'):
+        command = f'asr.{command}'
 
-    module = import_module(command)
-    for folder in folders:
-        print(f'Running {command} in {folder}')
-        if not dry_run:
-            with chdir(Path(folder)):
-                module = reload(module)
-                module.main(standalone_mode=False, args=[])
+    recipe = Recipe.frompath(command, reload=True)
+    recipe.run()
 
 
 @cli.command()
@@ -89,7 +81,7 @@ def status():
     for recipe in recipes:
         status = [recipe.__name__]
         done = True
-        if hasattr(recipe, 'creates'):
+        if recipe.creates:
             for create in recipe.creates:
                 if not Path(create).exists():
                     done = False

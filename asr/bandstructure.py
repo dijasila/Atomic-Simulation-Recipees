@@ -233,12 +233,12 @@ def collect_data(atoms):
     key_descriptions = {}
     data = {}
 
-    if not op.isfile('results-bandstructure.json'):
+    if not op.isfile('results_bandstructure.json'):
         return kvp, key_descriptions, data
 
     import numpy as np
     evac = kvp.get('evac')
-    bsdata = read_json('results-bandstructure.json')
+    bsdata = read_json('results_bandstructure.json')
     soc = bsdata['bs_soc']
     nosoc = bsdata['bs_nosoc']
     eps_skn = nosoc['energies']
@@ -271,7 +271,7 @@ def collect_data(atoms):
         op_scc = atoms2symmetry(atoms).op_scc
 
     from pathlib import Path
-    magstate = read_json('results-structureinfo.json')['magstate']
+    magstate = read_json('results_structureinfo.json')['magstate']
 
     for idx, kpt in enumerate(path.kpts):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
@@ -530,7 +530,7 @@ def bs_pbe(row,
            show_legend=True,
            s=0.5):
 
-    if 'results-bandstructure' not in row.data:
+    if 'results_bandstructure' not in row.data:
         return
     import matplotlib as mpl
     import matplotlib.pyplot as plt

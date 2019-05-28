@@ -1,35 +1,30 @@
-from asr.utils import command, argument, option
+from asr.utils import command, option
 
 
 @command('asr.setup.magnetize',
          save_results_file=False)
-@argument('states', nargs=-1)
+@option('--state', type=str, default='all', help='Choices: all, nm, fm, afm')
 @option('--name', default='unrelaxed.json',
         help='Atomic structure')
 @option('--copy-params', default=False, is_flag=True,
         help='Also copy params.json from this dir (if exists).')
-def main(states, name, copy_params):
-    """Set up magnetic moments of atomic structure
-
-    \b
-    STATES is a list of:
-        nm (non-magnetic),
-        fm (ferro-magnetic),
-        afm (anti-ferro-magnetic; only produced with two
-             magnetic atoms in unit cell)
-    """
+def main(state, name, copy_params):
+    """Set up magnetic moments of atomic structure."""
     from pathlib import Path
     from ase.io import read, write
     from ase.parallel import world
     from asr.utils import magnetic_atoms
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
-    if not states:
+
+    if state == 'all':
         states = known_states
     else:
-        for state in states:
-            msg = f'{state} is not a known state!'
-            assert state in known_states, msg
+        states = [state]
+
+    for state in states:
+        msg = f'{state} is not a known state!'
+        assert state in known_states, msg
 
     # Non-magnetic:
     if 'nm' in states:

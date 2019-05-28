@@ -29,7 +29,7 @@ class Recipe:
 
     def done(self):
         name = self.name[4:]
-        creates = [f'results-{name}.json']
+        creates = [f'results_{name}.json']
         if self.creates:
             creates += self.creates
 
@@ -47,10 +47,10 @@ class Recipe:
                 kvp, key_descriptions, data = self.collect_data(atoms)
 
             name = self.name[4:]
-            resultfile = Path(f'results-{name}.json')
+            resultfile = Path(f'results_{name}.json')
             from ase.io import jsonio
             results = jsonio.decode(resultfile.read_text())
-            key = f'results-{name}'
+            key = f'results_{name}'
             msg = f'{self.name}: You cannot put a {key} in data'
             assert key not in data, msg
             data[key] = results

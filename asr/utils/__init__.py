@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from contextlib import contextmanager
 from functools import partial
 import click
@@ -14,12 +15,14 @@ class ASRCommand(click.Command):
     _asr_command = True
 
     def __init__(self, asr_name=None, known_exceptions=None,
-                 save_results_file=True,
-                 *args, **kwargs):
+                 save_results_file=True, add_folders_arg=True,
+                 add_skip_opt=True, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
         self.asr_results_file = save_results_file
+        self.add_folders_arg = add_folders_arg
+        self.add_skip_opt = add_skip_opt
         click.Command.__init__(self, *args, **kwargs)
 
     def main(self, *args, **kwargs):
@@ -28,20 +31,28 @@ class ASRCommand(click.Command):
 
     def invoke(self, ctx):
         # Pop the skip deps argument
-        skip_deps = ctx.params.pop('skip_deps')
-        self.invoke_wrapped(ctx, skip_deps)
+        if self.add_skip_opt:
+            skip_deps = ctx.params.pop('skip_deps')
+        else:
+            skip_deps = True
+
+        if self.add_folders_arg:
+            folders = ctx.params.pop('folders', ['.'])
+            if not folders:
+                folders = ['.']
+            for folder in folders:
+                with chdir(Path(folder)):
+                    self.invoke_wrapped(ctx, skip_deps)
+        else:
+            self.invoke_wrapped(ctx, skip_deps)
 
     def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
-        if skip_deps:
-            args = ['--skip-deps']
-        else:
-            args = []
-
         # Run all dependencies
         recipes = get_dep_tree(self._asr_name)
-        for recipe in recipes[:-1]:  # Don't include itself
-            if not recipe.done():
-                recipe.main(args=args)
+        if not skip_deps:
+            for recipe in recipes[:-1]:  # Don't include itself
+                if not recipe.done():
+                    recipe.main(args=['--skip-deps'])
 
         try:
             results = click.Command.invoke(self, ctx)
@@ -54,11 +65,11 @@ class ASRCommand(click.Command):
                              'Trying again.')
                     for key in parameters:
                         ctx.params[key] *= parameters[key]
-                    # We only allow the capture of one exception
                     return self.invoke_wrapped(ctx, catch_exceptions=False)
                 else:
+                    # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '
-                             'Already caught one exception, '
+                             'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
             raise
         if not results:
@@ -79,11 +90,12 @@ class ASRCommand(click.Command):
 
         if self.asr_results_file:
             name = self._asr_name[4:]
-            write_json(f'results-{name}.json', results)
+            write_json(f'results_{name}.json', results)
         return results
 
 
-def command(name, overwrite_params={}, *args, **kwargs):
+def command(name, overwrite_params={}, add_folders_arg=True,
+            add_skip_opt=True, *args, **kwargs):
     params = get_parameters(name)
     params.update(overwrite_params)
 
@@ -96,11 +108,17 @@ def command(name, overwrite_params={}, *args, **kwargs):
         cc = click.command(cls=ASRCommand,
                            context_settings=CONTEXT_SETTINGS,
                            asr_name=name,
+                           add_folders_arg=add_folders_arg,
+                           add_skip_opt=add_skip_opt,
                            *args, **kwargs)
 
-        func = option('--skip-deps/--run-deps', is_flag=True, default=False,
-                      help="Skip execution of dependencies?")(func)
-        
+        if add_folders_arg:
+            func = argument('folders', type=str, nargs=-1)(func)
+        if add_skip_opt:
+            func = option('--skip-deps/--run-deps', is_flag=True,
+                          default=False,
+                          help="Skip execution of dependencies?")(func)
+
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
@@ -190,7 +208,7 @@ def sort_recipes(recipes):
     return sortedrecipes
 
 
-def get_dep_tree(name):
+def get_dep_tree(name, reload=True):
     from asr.utils.recipe import Recipe
     names = get_all_recipe_names()
     indices = [names.index(name)]
@@ -210,7 +228,7 @@ def get_dep_tree(name):
                     indices.append(index)
     else:
         raise RuntimeError('Dependencies are weird!')
-    recipes = [Recipe.frompath(names[ind]) for ind in indices]
+    recipes = [Recipe.frompath(names[ind], reload=reload) for ind in indices]
     recipes = sort_recipes(recipes)
     return recipes
 
