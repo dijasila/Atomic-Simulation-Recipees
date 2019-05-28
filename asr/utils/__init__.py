@@ -37,10 +37,11 @@ class ASRCommand(click.Command):
             skip_deps = True
 
         if self.add_folders_arg:
-            folders = ctx.params.pop('folders', ['.'])
-            if not folders:
-                folders = ['.']
+            folders = ctx.params.pop('folders')
+
+        if folders:
             for folder in folders:
+                parprint(f'Entering {folder}')
                 with chdir(Path(folder)):
                     self.invoke_wrapped(ctx, skip_deps)
         else:
@@ -52,9 +53,10 @@ class ASRCommand(click.Command):
         if not skip_deps:
             for recipe in recipes[:-1]:  # Don't include itself
                 if not recipe.done():
-                    recipe.main(args=['--skip-deps'])
+                    recipe.run(args=['--skip-deps'])
 
         try:
+            parprint(f'Running {self._asr_name}')
             results = click.Command.invoke(self, ctx)
         except Exception as e:
             if type(e) in self.known_exceptions:
@@ -65,7 +67,8 @@ class ASRCommand(click.Command):
                              'Trying again.')
                     for key in parameters:
                         ctx.params[key] *= parameters[key]
-                    return self.invoke_wrapped(ctx, catch_exceptions=False)
+                    return self.invoke_wrapped(ctx, skip_deps=skip_deps,
+                                               catch_exceptions=False)
                 else:
                     # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '

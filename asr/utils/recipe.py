@@ -57,8 +57,10 @@ class Recipe:
 
         return kvp, key_descriptions, data
     
-    def run(self):
-        return self.main(args=[])
+    def run(self, args=None):
+        if args is None:
+            args = []
+        return self.main(args=args)
 
 
 for attr in Recipe.known_attributes:

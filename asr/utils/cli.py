@@ -35,16 +35,18 @@ def cli():
     ...
 
 
-@cli.command()
+@cli.command(context_settings={'ignore_unknown_options': True,
+                               'allow_extra_args': True})
 @click.argument('command', type=str)
-def run(command):
-    """Run NAME recipe"""
+@click.pass_context
+def run(ctx, command):
+    """Run recipe"""
     from asr.utils.recipe import Recipe
     if not command.startswith('asr.'):
         command = f'asr.{command}'
-
+    
     recipe = Recipe.frompath(command, reload=True)
-    recipe.run()
+    recipe.run(args=ctx.args)
 
 
 @cli.command()
