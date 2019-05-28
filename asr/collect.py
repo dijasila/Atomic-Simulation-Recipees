@@ -38,7 +38,9 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     return errors
 
 
-@command('asr.collect')
+@command('asr.collect',
+         add_folders_arg=False,
+         add_skip_opt=False)
 @argument('folders', nargs=-1)
 @option('--references', default=None, type=str, help='Reference phases')
 @option('--verbose', default=False)

@@ -113,10 +113,11 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     return atoms, calc, dft, kwargs
 
 
-# Please note these are relative number that
+# Please note these are relative numbers that
 # are multiplied on the original ones
 known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
                                                'width': 0.5}}
+
 
 @command('asr.relax',
          known_exceptions=known_exceptions)
