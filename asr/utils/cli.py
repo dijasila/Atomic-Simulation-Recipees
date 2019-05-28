@@ -161,3 +161,74 @@ def runinfolders(command, folders):
         with chdir(Path(folder)):
             print(f'Running {command} in {folder}')
             subprocess.run(command.split())
+
+
+@cli.command()
+@click.option('-t', '--tasks', type=str,
+              help=('Only choose specific recipes and their dependencies '
+                    '(comma separated list of asr.recipes)'),
+              default=None)
+@click.option('--doforstable',
+              help='Only do these recipes for stable materials')
+def workflow(tasks, doforstable):
+    """Helper function to make workflows for MyQueue"""
+    from asr.utils import get_recipes, get_dep_tree
+
+    body = ''
+    body += 'from myqueue.task import task\n\n\n'
+
+    isstablefunc = """def is_stable():
+    # Example of function that looks at the heat of formation
+    # and returns True if the material is stable
+    from asr.utils import read_json
+    from pathlib import Path
+    fname = 'results_convex_hull.json'
+    if not Path(fname).is_file:
+        return False
+
+    data = read_json(fname)
+    if data['hform'] < 0.05:
+        return True
+    return False\n\n\n"""
+
+    if doforstable:
+        body += isstablefunc
+
+    body += 'def create_tasks():\n    tasks = []\n'
+
+    if tasks:
+        names = []
+        for task in tasks.split(','):
+            names += [recipe.name for recipe in get_dep_tree(task)]
+
+    for recipe in get_recipes(sort=True):
+        indent = 4
+        if tasks:
+            if recipe.name not in names:
+                continue
+
+        if not recipe.group:
+            continue
+
+        if recipe.group not in ['structure', 'property']:
+            continue
+
+        if recipe.resources:
+            resources = recipe.resources
+        else:
+            resources = '1:10m'
+
+        if doforstable and recipe.name in doforstable.split(','):
+            indent = 8
+            body += '    if is_stable():\n'
+        body += ' ' * indent + f"tasks += [task('{recipe.name}@{resources}'"
+        if recipe.dependencies:
+            deps = ','.join(recipe.dependencies)
+            body += f", deps='{deps}')"
+        else:
+            body += ')'
+        body += ']\n'
+
+    print(body)
+
+    print('    return tasks')
