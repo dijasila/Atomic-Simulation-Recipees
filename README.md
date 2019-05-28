@@ -29,14 +29,11 @@ $ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
 We do relaxations with the D3 van-der-Waals contribution. To install the van 
 der Waals functional DFTD3 do
 ```console
-$ cd
-$ mkdir functional
-$ cd functional
-$ mkdir PBED3
+$ mkdir ~/DFTD3 && cd ~/DFTD3
 $ wget http://chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
 $ tar -zxf dftd3.tgz
 $ make
-$ echo 'export ASE_DFTD3_COMMAND=$HOME/functional/PBED3/dftd3' >> ~/.bashrc
+$ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
 $ source ~/.bashrc
 ```
 
@@ -54,56 +51,37 @@ Additionally, you might also want
 
 if you want to run jobs on a computer-cluster.
 
-Requirements
-------------
-When you have done this installation you with have the following pythhon
-packages
-* ASE (Atomic Simulation Environment)
-* GPAW
-* click
-* spglib
-* pytest
-* plotly
-
-Packages you need to compile yourself:
-* bader (see instructions above)
-* DFTD3 functional (see instructions aobove)
-
-Additionally, but not a requirement, it can be nice to have
-* myqueue
-
-
 How to use
 ----------
-Lets calculate the properties of Silicon. To do this, we start by creating
-a new folder and put a 'structure.json' file into the directory containing
+Lets calculate some properties of Silicon. To do this, we start by creating
+a new folder and put a 'unrelaxed.json' file into the directory containing
 the atomic structure of Silicon. Then we relax the structure.
 ```console
 $ mkdir ~/silicon && cd ~/silicon
-$ ase build -x diamond Si structure.json
-$ python3 -m asr.relax
+$ ase build -x diamond Si unrelaxed.json
+$ asr run relax
 ```
 
-This generates a new folder `~/silicon/nm/` containing a new `structure.json`
-file that contains the final relaxed structure. Going into this directory we
-get some quick information about this structure by running the `asr.quickinfo`
-recipe which creates a `quickinfo.json` file that contains some simple
+The `relax` takes as input the structure in `unrelaxed.json` and generates a
+`~/silicon/structure.json` file that contains the final relaxed structure.
+We can get some quick information about this structure by 
+running the `structuralinfo`
+recipe which creates a `results_structuralinfo.json` file that contains some simple
 information about the atomic structure. Then we collect the data to a database
-`database.db` using `asr.collect` recipe and view it
+`database.db` using `collect` recipe and view it
 in a browser with the `browser` subcommand. This is done below
 
 ```console
-$ cd ~/silicon/nm
-$ python3 -m asr.quickinfo
-$ python3 -m asr.collect
-$ python3 -m asr browser
+$ cd ~/silicon
+$ asr run structuralinfo
+$ asr run collect
+$ asr browser
 ```
 
-Notice the space in the last command between `asr` and `browser`.
-`browser` is a subcommand of `asr` and not a recipe. To see the available
+To see the available
 subcommands of ASR simply do
 ```console
-$ python3 -m asr
+$ asr
 ```
 
 Change default settings in scripts
