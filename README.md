@@ -106,18 +106,20 @@ For example, to see the command line interface (CLI) help of the relax recipe
 simply do
 
 ```console
-$ python3 -m asr.gs --help
-Usage: gs.py [OPTIONS]
+$ asr help gs
+Usage: gs.py [OPTIONS] [FOLDERS]...
 
   Calculate ground state density
 
 Options:
-  -a, --atomfile TEXT     Atomic structure  [default: structure.json]
-  --gpwfilename TEXT      filename.gpw  [default: gs.gpw]
-  --ecut FLOAT            Plane-wave cutoff  [default: 800.0]
-  -k, --kptdensity FLOAT  K-point density  [default: 6.0]
-  --xc TEXT               XC-functional  [default: PBE]
-  --help                  Show this message and exit.
+  --skip-deps / --run-deps  Skip execution of dependencies?  [default: False]
+  -a, --atomfile TEXT       Atomic structure  [default: structure.json]
+  --gpwfilename TEXT        filename.gpw  [default: gs.gpw]
+  --ecut FLOAT              Plane-wave cutoff  [default: 800]
+  -k, --kptdensity FLOAT    K-point density  [default: 6.0]
+  --xc TEXT                 XC-functional  [default: PBE]
+  --width FLOAT             Fermi-Dirac smearing temperature  [default: 0.05]
+  -h, --help                Show this message and exit.
 ```
 
 Submit a recipe to a computer-cluster
