@@ -41,7 +41,6 @@ class ASRCommand(click.Command):
             if not folders:
                 folders = ['.']
             for folder in folders:
-                foldername = 'this folder' if folder == '.' else folder
                 with chdir(Path(folder)):
                     self.invoke_wrapped(ctx, skip_deps)
         else:
