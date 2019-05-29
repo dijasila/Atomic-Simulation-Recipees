@@ -58,21 +58,22 @@ def main():
     #mpi.world.barrier()
 
 
-def get_kpts_size(atoms, density):
-    """trying to get a reasonable monkhorst size which hits high
-    symmetry points
-    """
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=density)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
+# move to utils? [also in asr.polarizability]
+# def get_kpts_size(atoms, density):
+#     """trying to get a reasonable monkhorst size which hits high
+#     symmetry points
+#     """
+#     from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+#     size, offset = k2so(atoms=atoms, density=density)
+#     size[2] = 1
+#     for i in range(2):
+#         if size[i] % 6 != 0:
+#             size[i] = 6 * (size[i] // 6 + 1)
+#     kpts = {'size': size, 'gamma': True}
+#     return kpts
 
 
-def hse(kdens=12, emptybands=20):
+def hse(kptdensity=12, emptybands=20):
     if os.path.isfile('hse_eigenvalues.npz'):
         return
 
@@ -81,7 +82,28 @@ def hse(kdens=12, emptybands=20):
     if not os.path.isfile('hse.gpw'):
         calc = GPAW('gs.gpw', txt=None)
         atoms = calc.get_atoms()
-        kpts = get_kpts_size(atoms, kdens)
+        pbc = atoms.pbc.tolist()
+        ND = np.sum(pbc)
+        if ND == 3:
+            kpts = {'density': kptdensity, 'gamma': False, 'even': True}
+        elif ND == 2:
+
+            # move to utils? [also in asr.polarizability]
+            def get_kpts_size(atoms, kptdensity):
+                """trying to get a reasonable monkhorst size which hits high
+                symmetry points
+                """
+                from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+                size, offset = k2so(atoms=atoms, density=kptdensity)
+                size[2] = 1
+                for i in range(2):
+                    if size[i] % 6 != 0:
+                        size[i] = 6 * (size[i] // 6 + 1)
+                kpts = {'size': size, 'gamma': True}
+                return kpts
+
+            kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
+
         calc.set(nbands=-emptybands,
                  fixdensity=True,
                  kpts=kpts,
@@ -442,12 +464,12 @@ if __name__ == '__main__':
 
 group = 'property'
 resources = '24:10h'
-creates = ['hse.gpw',
-           'hse_nowfs.gpw',
+creates = ['hse_nowfs.gpw',
            'hse_eigenvalues.npz',
            'hse_eigenvalues_soc.npz',
            'hse_bandstructure.npz',
-           'hse_bandstructure3.npz']
-dependencies = ['asr.quickinfo', 'asr.gs']
+           'hse_bandstructure3.npz',
+           'hse-restart.json']
+dependencies = ['asr.structureinfo', 'asr.gs']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
