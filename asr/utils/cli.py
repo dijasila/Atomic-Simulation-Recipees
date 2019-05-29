@@ -45,7 +45,7 @@ def cli():
                 nargs=-1)
 @click.pass_context
 def run(ctx, command, args):
-    """Run recipe or ASE command
+    """Run recipe or python command.
 
     Can run an ASR recipe or command. Arguments that follow after
     '--' will be interpreted as folders in which the command should
@@ -64,6 +64,8 @@ def run(ctx, command, args):
         asr run "python -m ase convert gs.gpw structure.json"
     Run a python command in "folder1/":
         asr run "python -m ase convert gs.gpw structure.json" in folder1/
+
+    Notice that commands will not be accepted if they don't start with "python"
     """
     import subprocess
     from pathlib import Path
@@ -96,18 +98,21 @@ def run(ctx, command, args):
 
 
 @cli.command()
-@click.argument('command', type=str)
-def help(command):
+@click.argument('recipe', type=str)
+def help(recipe):
     """See help for recipe"""
     from asr.utils.recipe import Recipe
-    if not command.startswith('asr.'):
-        command = f'asr.{command}'
+    command = f'asr.{recipe}'
+    recipename = recipe
     recipe = Recipe.frompath(command, reload=True)
-    recipe.run(args=['-h'])
+
+    with click.Context(recipe.main, info_name=f'asr run {recipename}') as ctx:
+        print(recipe.main.get_help(ctx))
 
 
 @cli.command()
-def list():
+@click.argument('search', required=False)
+def list(search):
     """Show a list of all recipes"""
     recipes = get_recipes(sort=True)
     panel = [['Recipe', 'Description'],
@@ -115,11 +120,18 @@ def list():
 
     for recipe in recipes:
         if recipe.main:
-            status = [recipe.name[4:], recipe.main.get_short_help_str()]
+            with click.Context(recipe.main,
+                               info_name=f'asr run {recipe.name}') as ctx:
+                longhelp = recipe.main.get_help(ctx)
+                shorthelp = recipe.main.get_short_help_str()
         else:
-            status = [recipe.name[4:], '']
+            longhelp = ''
+            shorthelp = ''
+
+        if search and search not in longhelp:
+            continue
+        status = [recipe.name[4:], shorthelp]
         panel += [status]
-    print(panel)
     print(format(panel))
 
 
