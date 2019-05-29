@@ -2,64 +2,87 @@ Atomic Simulation Recipes
 =========================
 Recipes for Atomic Scale Materials Research.
 
-Collection of python recipes that just work(!) for common (and not so common)
+Collection of python recipes for common (and not so common)
 tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
 
-Requirements
-------------
-
-* ASE (Atomic Simulation Environment)
-* GPAW
-* click
-* spglib
-* pytest
-
-Additionally, but not a requirement, it can be nice to have
-* myqueue
-
 Installation
 ------------
-
+To install ASR first clone the code and pip-install the code
 ```console
 $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
-$ echo  'export PYTHONPATH=~/asr:$PYTHONPATH' >> ~/.bashrc
 $ python3 -m pip install -e ~/asr
 ```
 
+ASE has to be installed manually since we need the newest version:
+```console
+$ python3 -m pip install git+https://gitlab.com/ase/ase.git
+```
+Install a database of reference energies to calculate HOF and convex hull. Here 
+we use a database of one- and component-structures from OQMD
+```
+$ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+$ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
+```
+
+We do relaxations with the D3 van-der-Waals contribution. To install the van 
+der Waals functional DFTD3 do
+```console
+$ mkdir ~/DFTD3 && cd ~/DFTD3
+$ wget http://chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+$ tar -zxf dftd3.tgz
+$ make
+$ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+$ source ~/.bashrc
+```
+
+To make Bader analysis we use another program. Download the executable for Bader 
+analysis and put in path (this is for Linux, find the appropriate executable):
+```console
+$ cd ~ && mkdir baderext && cd baderext
+$ wget http://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz
+$ tar -zxf bader_lnx_64.tar.gz
+$ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
+```
+
+Additionally, you might also want
+* myqueue
+
+if you want to run jobs on a computer-cluster.
+
 How to use
 ----------
-Lets calculate the properties of Silicon. To do this, we start by creating
-a new folder and put a 'start.json' file into the directory containing
+Lets calculate some properties of Silicon. To do this, we start by creating
+a new folder and put a 'unrelaxed.json' file into the directory containing
 the atomic structure of Silicon. Then we relax the structure.
 ```console
 $ mkdir ~/silicon && cd ~/silicon
-$ ase build -x diamond Si start.json
-$ python3 -m asr.relax
+$ ase build -x diamond Si unrelaxed.json
+$ asr run relax
 ```
 
-This generates a new folder `~/silicon/nm/` containing a new `start.json`
-file that contains the final relaxed structure. Going into this directory we
-get some quick information about this structure by running the `asr.quickinfo`
-recipe which creates a `quickinfo.json` file that contains some simple
+The `relax` takes as input the structure in `unrelaxed.json` and generates a
+`~/silicon/structure.json` file that contains the final relaxed structure.
+We can get some quick information about this structure by 
+running the `structuralinfo`
+recipe which creates a `results_structuralinfo.json` file that contains some simple
 information about the atomic structure. Then we collect the data to a database
-`database.db` using `asr.collect` recipe and view it
+`database.db` using `collect` recipe and view it
 in a browser with the `browser` subcommand. This is done below
 
 ```console
-$ cd ~/silicon/nm
-$ python3 -m asr.quickinfo
-$ python3 -m asr.collect
-$ python3 -m asr browser
+$ cd ~/silicon
+$ asr run structuralinfo
+$ asr run collect
+$ asr browser
 ```
 
-Notice the space in the last command between `asr` and `browser`.
-`browser` is a subcommand of `asr` and not(!) a recipe. To see the available
+To see the available
 subcommands of ASR simply do
-`
-python3 -m asr
-`
+```console
+$ asr
+```
 
 Change default settings in scripts
 ----------------------------------
@@ -89,7 +112,7 @@ Usage: gs.py [OPTIONS]
   Calculate ground state density
 
 Options:
-  -a, --atomfile TEXT     Atomic structure  [default: start.json]
+  -a, --atomfile TEXT     Atomic structure  [default: structure.json]
   --gpwfilename TEXT      filename.gpw  [default: gs.gpw]
   --ecut FLOAT            Plane-wave cutoff  [default: 800.0]
   -k, --kptdensity FLOAT  K-point density  [default: 6.0]
@@ -107,6 +130,68 @@ documentation. To submit a job that relaxes a structure simply do
 ```console
 $ mq submit asr.relax@24:10h
 ```
+
+Make a screening study
+----------------------
+A screening study what we call a simultaneous automatic study of many materials. ASR
+has a set of tools to make such studies easy to handle. Suppose we have an ASE
+database that contain many atomic structures. In this case we take OQMD12 database
+that contain all unary and binary compounds on the convex hull.
+
+The first thing we do is to get the database:
+```console
+$ mkdir ~/oqmd12 && cd ~/oqmd12
+$ wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+```
+We then use the `unpackdatabase` function of ASR to unpack the database into a
+directory tree
+```console
+$ python3 -m asr.setup.unpackdatabase oqmd12.db -s u=False --run
+```
+(we have made the selection `u=False` since we are not interested in the DFT+U values).
+This function produces a new folder `~oqmd12/tree/` where you can find the tree. To see the contents of the tree
+it is recommended to use the linux command `tree`
+```console
+$ tree tree/
+```
+You will see that the unpacking of the database has produced many `unrelaxed.json`
+files that contain the unrelaxed atomic structures. Because we dont know the
+magnetic structure of the materials we also want to sample different magnetic structures.
+This can be done with the `magnetize` function of asr
+```console
+$ python3 -m asr run asr.setup.magnetize */*/*/*/
+```
+We use the `run` function because that gives us the option to deal with many folders
+at once. You are now ready to run a
+workflow on the entire tree. A simple workflow would be to relax all structures:
+```console
+$ cat workflow.py
+from myqueue.task import task
+
+
+def create_tasks():
+    tasks = [task('asr.relax@8:1d'),
+             task('asr.gs@8:1h', deps='asr.relax')]
+    return tasks
+```
+(copy this and save it to `workflow.py`). We now ask `myqueue` what jobs 
+it wants to run.
+```console
+$ mq workflow -z workflow.py tree/*/*/*/*/
+```
+To submit the jobs simply remove the `-z`, and run the command again.
+
+For more complex workflows the `mq workflow` function would have to be run 
+periodically to check for new jobs. In this case it is smart to set up a crontab
+to do the work for you. To do this write
+```console
+$ crontab -e
+```
+choose your editor and put the line 
+`*/5 * * * * . ~/.bashrc; cd ~/oqmd12; mq kick; mq workflow -z workflow.py tree/*/*/*/*/`
+into the file. This will restart any timeout jobs and run the workflow command 
+to see if any new tasks should be spawned with a 5 minute interval. 
+
 
 Developing
 ==========
@@ -152,7 +237,7 @@ python3 -m asr test
 When you make a new recipe ASR will automatically generate a test thats tests
 its dependencies and itself to make sure that all dependencies have been
 included. These automatically generated tests are generated from
-[template_recipe.py](asr/tests/template.py).
+[test_template.py](asr/tests/template.py).
 
 ASR uses the `pytest` module for its tests. To see what tests will run use
 ```
@@ -160,7 +245,7 @@ python3 -m asr test --collect-only
 ```
 To execute a single test use 
 ```
-python3 -m asr test --collect-only -k my_test.py
+python3 -m asr test -k my_test.py
 ```
 If you want more extended testing of your recipe you will have to implement them
 manually. Your test should be placed in the `asr/asr/tests/`-folder where other
@@ -200,18 +285,21 @@ Types of recipes
 ----------------
 The recipes are divided into the following groups:
 
-- Property recipes: Recipes that calculate a property for a given materials.
+- Property recipes: Recipes that calculate a property for a given atomic structure.
+  The scripts should use the file in the current folder called `structure.json`.
   These scripts should only assume the existence of files in the same folder.
-  For example: The ground state recipe gs.py should only require an existence
-  of a starting atomic structure, in our case this is called `start.json`
+  Example recipes: `asr.gs`, `asr.bandstructure`, `asr.structureinfo`.
 
-- Structure recipes: These are recipes that produce a new atomic structure.
-  When these scripts are run they produce a new folder containing a `start.json`
-  such that all property-recipes can be evaluated for the new structure in
-  the new folder. For example: The relax recipe which relaxes the atomic
-  structure produces new folders "nm/" "fm/" and "afm/" if these structures
-  are close to the lowest energy structure. Each of these folders contain
-  a new `start.json` from which the property recipes can be evaluated.
+- Structure recipes: These are recipes that can produce a new atomic structure in
+  this folder.
+  Example: `asr.relax` takes the atomic structure in `unrelaxed.json`
+  in the current folder and produces a relaxed structure in `structure.json` 
+  that the property recipes can use.
 
-- Post-processing recipes: Recipes that do no actual calculations and only
-  serves to collect and present data.
+- Setup recipes: These recipes are located in the asr.setup folder and the 
+  purpose of these recipes is to set up new atomic structures in new folders.
+  Example: `asr.setup.magnetize`, `asr.push`, `asr.setup.unpackdatabase` all
+  takes some sort of input and produces folders with new atomic structures that 
+  can be relaxed.
+
+

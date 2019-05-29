@@ -440,7 +440,7 @@ if __name__ == '__main__':
 
 #     return panel
 
-group = 'Property'
+group = 'property'
 resources = '24:10h'
 creates = ['hse.gpw',
            'hse_nowfs.gpw',
@@ -451,4 +451,3 @@ creates = ['hse.gpw',
 dependencies = ['asr.quickinfo', 'asr.gs']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
-

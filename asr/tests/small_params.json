@@ -1,23 +1,24 @@
 {
     "asr.relax": {
         "ecut": 100,
-        "kptdens": 2.0
+        "kptdensity": 2.0
     },
     "asr.gs": {
         "ecut": 100,
         "kptdensity": 2.0
     },
     "asr.dos": {
-        "density": 6.0
+        "kptdensity": 6.0
     },
     "asr.borncharges": {
-        "kpointdensity": 1.0
+        "kptdensity": 1.0
     },
     "asr.bandstructure": {
-        "npoints": 50
+        "npoints": 50,
+        "emptybands": 5
     },
     "asr.polarizability": {
-        "density": 6.0,
+        "kptdensity": 6.0,
         "ecut": 10.0,
         "bandfactor": 2
     },
@@ -26,8 +27,11 @@
     },
     "asr.phonons": {
         "n": 1,
-        "kptdens": 2.0,
+        "kptdensity": 1.0,
         "ecut": 100.0
+    },
+    "asr.push": {
+        "n": 1
     }
 
 }

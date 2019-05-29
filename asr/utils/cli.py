@@ -36,6 +36,18 @@ def cli():
 
 
 @cli.command()
+@click.argument('command', type=str)
+def run(command):
+    """Run NAME recipe"""
+    from asr.utils.recipe import Recipe
+    if not command.startswith('asr.'):
+        command = f'asr.{command}'
+
+    recipe = Recipe.frompath(command, reload=True)
+    recipe.run()
+
+
+@cli.command()
 @click.option('--database', default='database.db')
 @click.option('--custom', default='asr.utils.custom')
 @click.option('--only-figures', is_flag=True, default=False,
@@ -69,7 +81,7 @@ def status():
     for recipe in recipes:
         status = [recipe.__name__]
         done = True
-        if hasattr(recipe, 'creates'):
+        if recipe.creates:
             for create in recipe.creates:
                 if not Path(create).exists():
                     done = False
@@ -95,13 +107,14 @@ def status():
 def test(ctx):
     """Run test of recipes"""
     import subprocess
-    from asr.tests.generatetests import generatetests
+    from asr.tests.generatetests import generatetests, cleantests
     generatetests()
     args = ctx.args
 
     cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
     print(cmd)
     subprocess.run(cmd.split())
+    cleantests()
 
 
 @cli.command()

@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 
 
 class Recipe:
@@ -11,8 +12,7 @@ class Recipe:
                         'restart']
 
     def __init__(self, module):
-        self.__name__ = module.__name__
-        print(f'Initializing recipe {self.__name__}')
+        self.name = self.__name__ = module.__name__
         self.implemented_attributes = []
         for attr in Recipe.known_attributes:
             if hasattr(module, attr):
@@ -27,13 +27,39 @@ class Recipe:
             module = importlib.reload(module)
         return cls(module)
 
+    def done(self):
+        name = self.name[4:]
+        creates = [f'results_{name}.json']
+        if self.creates:
+            creates += self.creates
+
+        for file in creates:
+            if not Path(file).exists():
+                return False
+        return True
+
+    def collect(self, atoms):
+        kvp = {}
+        key_descriptions = {}
+        data = {}
+        if self.done():
+            if self.collect_data:
+                kvp, key_descriptions, data = self.collect_data(atoms)
+
+            name = self.name[4:]
+            resultfile = Path(f'results_{name}.json')
+            from ase.io import jsonio
+            results = jsonio.decode(resultfile.read_text())
+            key = f'results_{name}'
+            msg = f'{self.name}: You cannot put a {key} in data'
+            assert key not in data, msg
+            data[key] = results
+
+        return kvp, key_descriptions, data
+    
     def run(self):
         return self.main(args=[])
 
 
 for attr in Recipe.known_attributes:
-
-    def func():
-        raise NotImplementedError
-    
-    setattr(Recipe, attr, func)
+    setattr(Recipe, attr, None)

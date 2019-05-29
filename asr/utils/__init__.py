@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
 from contextlib import contextmanager
 from functools import partial
 import click
 import numpy as np
+from importlib import import_module
+from ase.io import jsonio
+from ase.parallel import parprint
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -10,22 +14,111 @@ argument = click.argument
 class ASRCommand(click.Command):
     _asr_command = True
 
-    def __call__(self, *args, **kwargs):
-        return self.main(standalone_mode=False, *args, **kwargs)
+    def __init__(self, asr_name=None, known_exceptions=None,
+                 save_results_file=True, add_folders_arg=True,
+                 add_skip_opt=True, *args, **kwargs):
+        assert asr_name, 'You have to give a name to your ASR command!'
+        self._asr_name = asr_name
+        self.known_exceptions = known_exceptions or {}
+        self.asr_results_file = save_results_file
+        self.add_folders_arg = add_folders_arg
+        self.add_skip_opt = add_skip_opt
+        click.Command.__init__(self, *args, **kwargs)
+
+    def main(self, *args, **kwargs):
+        return click.Command.main(self, standalone_mode=False,
+                                  *args, **kwargs)
+
+    def invoke(self, ctx):
+        # Pop the skip deps argument
+        if self.add_skip_opt:
+            skip_deps = ctx.params.pop('skip_deps')
+        else:
+            skip_deps = True
+
+        if self.add_folders_arg:
+            folders = ctx.params.pop('folders', ['.'])
+            if not folders:
+                folders = ['.']
+            for folder in folders:
+                with chdir(Path(folder)):
+                    self.invoke_wrapped(ctx, skip_deps)
+        else:
+            self.invoke_wrapped(ctx, skip_deps)
+
+    def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
+        # Run all dependencies
+        recipes = get_dep_tree(self._asr_name)
+        if not skip_deps:
+            for recipe in recipes[:-1]:  # Don't include itself
+                if not recipe.done():
+                    recipe.main(args=['--skip-deps'])
+
+        try:
+            results = click.Command.invoke(self, ctx)
+        except Exception as e:
+            if type(e) in self.known_exceptions:
+                parameters = self.known_exceptions[type(e)]
+                # Update context
+                if catch_exceptions:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'Trying again.')
+                    for key in parameters:
+                        ctx.params[key] *= parameters[key]
+                    return self.invoke_wrapped(ctx, catch_exceptions=False)
+                else:
+                    # We only allow the capture of one exception
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'ERROR: I already caught one exception, '
+                             'and I can at most catch one.')
+            raise
+        if not results:
+            results = {}
+        results['__params__'] = ctx.params
+        from ase.utils import search_current_git_hash
+        modnames = ['asr', 'ase', 'gpaw']
+        versions = {}
+        for modname in modnames:
+            mod = import_module(modname)
+            githash = search_current_git_hash(mod)
+            version = mod.__version__
+            if githash:
+                versions[f'{modname}'] = f'{version}-{githash}'
+            else:
+                versions[f'{modname}'] = f'{version}'
+        results['__versions__'] = versions
+
+        if self.asr_results_file:
+            name = self._asr_name[4:]
+            write_json(f'results_{name}.json', results)
+        return results
 
 
-def command(name, overwrite={}, *args, **kwargs):
+def command(name, overwrite_params={}, add_folders_arg=True,
+            add_skip_opt=True, *args, **kwargs):
     params = get_parameters(name)
-    params.update(overwrite)
+    params.update(overwrite_params)
 
     ud = update_defaults
 
     CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
     def decorator(func):
+
         cc = click.command(cls=ASRCommand,
                            context_settings=CONTEXT_SETTINGS,
+                           asr_name=name,
+                           add_folders_arg=add_folders_arg,
+                           add_skip_opt=add_skip_opt,
                            *args, **kwargs)
+
+        if add_folders_arg:
+            func = argument('folders', type=str, nargs=-1)(func)
+        if add_skip_opt:
+            func = option('--skip-deps/--run-deps', is_flag=True,
+                          default=False,
+                          help="Skip execution of dependencies?")(func)
+
         if hasattr(func, '__click_params__'):
             func = cc(ud(name, params)(func))
         else:
@@ -49,98 +142,112 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-# We need to reduce this list to zero
+# We need to reduce this list to only contain collect
 excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
-               'asr.bse', 'asr.emasses', 'asr.gapsummary']
+               'asr.bse', 'asr.gapsummary']
 
 
-def get_recipes(sort=True, exclude=True):
-    import importlib
+def get_all_recipe_names():
     from pathlib import Path
-
-    files = Path(__file__).parent.parent.glob('[a-zA-Z]*.py')
-    recipes = []
+    folder = Path(__file__).parent.parent
+    files = list(folder.glob('[a-zA-Z]*.py'))
+    files += list(folder.glob('setup/[a-zA-Z]*.py'))
+    modulenames = []
     for file in files:
-        name = file.with_suffix('').name
-        modulename = f'asr.{name}'
+        name = str(file.with_suffix(''))[len(str(folder)):]
+        modulename = 'asr' + name.replace('/', '.')
+        modulenames.append(modulename)
+    return modulenames
+
+
+def get_recipes(sort=True, exclude=True, group=None):
+    from asr.utils.recipe import Recipe
+    names = get_all_recipe_names()
+    recipes = []
+    for modulename in names:
         if modulename in excludelist:
             continue
-        module = importlib.import_module(f'asr.{name}')
-        recipes.append(module)
+        recipe = Recipe.frompath(modulename)
+        if group and not recipe.group == group:
+            continue
+        recipes.append(recipe)
 
     if sort:
-        sortedrecipes = []
-
-        # Add the recipes with no dependencies (these must exist)
-        for recipe in recipes:
-            if not hasattr(recipe, 'dependencies'):
-                sortedrecipes.append(recipe)
-            else:
-                if len(recipe.dependencies) == 0:
-                    sortedrecipes.append(recipe)
-
-        for i in range(1000):
-            for recipe in recipes:
-                names = [recipe.__name__ for recipe in sortedrecipes]
-                if recipe.__name__ in names:
-                    continue
-                for dep in recipe.dependencies:
-                    if dep not in names:
-                        break
-                else:
-                    sortedrecipes.append(recipe)
-
-            if len(recipes) == len(sortedrecipes):
-                break
-        else:
-            msg = 'Something went wrong when parsing dependencies!'
-            raise AssertionError(msg)
-        recipes = sortedrecipes
+        recipes = sort_recipes(recipes)
 
     return recipes
 
 
-def get_dep_tree(name):
-    recipes = get_recipes(sort=True)
+def sort_recipes(recipes):
+    sortedrecipes = []
 
-    names = [recipe.__name__ for recipe in recipes]
+    # Add the recipes with no dependencies (these must exist)
+    for recipe in recipes:
+        if not recipe.dependencies:
+            sortedrecipes.append(recipe)
+
+    assert len(sortedrecipes), 'No recipes without deps!'
+    for i in range(1000):
+        for recipe in recipes:
+            names = [recipe.name for recipe in sortedrecipes]
+            if recipe.name in names:
+                continue
+            for dep in recipe.dependencies:
+                if dep not in names:
+                    break
+            else:
+                sortedrecipes.append(recipe)
+
+        if len(recipes) == len(sortedrecipes):
+            break
+    else:
+        names = [recipe.name for recipe in recipes]
+        msg = ('Something went wrong when parsing dependencies! '
+               f'Input recipes: {names}')
+        raise AssertionError(msg)
+    return sortedrecipes
+
+
+def get_dep_tree(name, reload=True):
+    from asr.utils.recipe import Recipe
+    names = get_all_recipe_names()
     indices = [names.index(name)]
     for j in range(100):
         if not indices[j:]:
             break
         for ind in indices[j:]:
-            if not hasattr(recipes[ind], 'dependencies'):
+            recipe = Recipe.frompath(names[ind])
+            if not hasattr(recipe, 'dependencies'):
                 continue
-            deps = recipes[ind].dependencies
+            deps = recipe.dependencies
+            if not deps:
+                continue
             for dep in deps:
                 index = names.index(dep)
                 if index not in indices:
                     indices.append(index)
     else:
         raise RuntimeError('Dependencies are weird!')
-    print(indices)
-    indices = sorted(indices)
-    return [recipes[ind] for ind in indices]
+    recipes = [Recipe.frompath(names[ind], reload=reload) for ind in indices]
+    recipes = sort_recipes(recipes)
+    return recipes
 
 
-def get_parameters(key=None):
+def get_parameters(key):
     from pathlib import Path
-    import json
     if Path('params.json').is_file():
-        with open('params.json', 'r') as fd:
-            params = json.load(fd)
+        params = read_json('params.json')
     else:
         params = {}
 
-    if key and key in params:
-        params = params[key]
-
+    params = params.get(key, {})
     return params
 
 
 def is_magnetic():
     import numpy as np
-    atoms = get_start_atoms()
+    from ase.io import read
+    atoms = read('structure.json')
     magmom_a = atoms.get_initial_magnetic_moments()
     maxmom = np.max(np.abs(magmom_a))
     if maxmom > 1e-3:
@@ -151,8 +258,9 @@ def is_magnetic():
 
 def get_dimensionality():
     import numpy as np
-    start = get_start_atoms()
-    nd = int(np.sum(start.get_pbc()))
+    from ase.io import read
+    atoms = read('structure.json')
+    nd = int(np.sum(atoms.get_pbc()))
     return nd
 
 
@@ -173,39 +281,21 @@ def update_defaults(key, params={}):
 
     def update_defaults_dec(func):
         fparams = func.__click_params__
-        for param in fparams:
-            for externaldefault in params:
+        for externaldefault in params:
+            for param in fparams:
                 if externaldefault == param.name:
                     param.default = params[param.name]
                     break
-
+            else:
+                msg = f'{key}: {externaldefault} is unknown'
+                raise AssertionError(msg)
         return func
     return update_defaults_dec
 
 
-def get_start_file():
-    "Get starting atomic structure"
-    from pathlib import Path
-    fnames = list(Path('.').glob('start.*'))
-    assert len(fnames) == 1, fnames
-    return str(fnames[0])
-
-
-def get_start_atoms():
-    from ase.io import read
-    fname = get_start_file()
-    atoms = read(str(fname))
-    return atoms
-
-
-def get_start_parameters(atomfile=None):
+def get_start_parameters():
     import json
-    if atomfile is None:
-        try:
-            atomfile = get_start_file()
-        except AssertionError:
-            return {}
-    with open(atomfile, 'r') as fd:
+    with open('structure.json', 'r') as fd:
         asejsondb = json.load(fd)
     params = asejsondb.get('1').get('calculator_parameters', {})
 
@@ -276,3 +366,17 @@ def has_inversion(atoms, use_spglib=True):
     else:
         from gpaw.symmetry import atoms2symmetry
         return atoms2symmetry(atoms2).has_inversion
+
+
+def write_json(filename, data):
+    from pathlib import Path
+    from ase.io.jsonio import MyEncoder
+    from ase.parallel import world
+    if world.rank == 0:
+        Path(filename).write_text(MyEncoder(indent=4).encode(data))
+
+
+def read_json(filename):
+    from pathlib import Path
+    dct = jsonio.decode(Path(filename).read_text())
+    return dct

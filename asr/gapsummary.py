@@ -40,4 +40,4 @@ def webpanel2(row, key_descriptions):
     return panel, things
 
 
-group = 'Postprocessing'
+group = 'postprocessing'

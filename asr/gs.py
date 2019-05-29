@@ -1,61 +1,72 @@
-from asr.utils import command, option, get_start_parameters
+from asr.utils import command, option
+from pathlib import Path
 
-# Get some parameters from start.json
-params = get_start_parameters()
+# Get some parameters from structure.json
 defaults = {}
-if 'ecut' in params.get('mode', {}):
-    defaults['ecut'] = params['mode']['ecut']
+if Path('gs_params.json').exists():
+    from asr.utils import read_json
+    dct = read_json('gs_params.json')
+    if 'ecut' in dct.get('mode', {}):
+        defaults['ecut'] = dct['mode']['ecut']
 
-if 'density' in params.get('kpts', {}):
-    defaults['kptdensity'] = params['kpts']['density']
+    if 'density' in dct.get('kpts', {}):
+        defaults['kptdensity'] = dct['kpts']['density']
 
 
 @command('asr.gs', defaults)
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
-        default='start.json')
+        default='structure.json')
 @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
-def main(atomfile, gpwfilename, ecut, xc, kptdensity):
+@option('--width', default=0.05,
+        help='Fermi-Dirac smearing temperature')
+def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     """Calculate ground state density"""
-    from pathlib import Path
     from ase.io import read
-    from asr.utils.gpaw import GPAW
-    path = Path(atomfile)
-    if not path.is_file():
-        from asr.utils import get_start_atoms
-        atoms = get_start_atoms()
+    from asr.calculators.gpaw import GPAW
+    atoms = read(atomfile)
+
+    if Path('gs.gpw').is_file():
+        calc = GPAW('gs.gpw', txt=None)
     else:
-        atoms = read(atomfile)
+        params = dict(
+            mode={'name': 'pw', 'ecut': ecut},
+            xc=xc,
+            basis='dzp',
+            kpts={
+                'density': kptdensity,
+                'gamma': True
+            },
+            symmetry={'do_not_symmetrize_the_density': True},
+            occupations={'name': 'fermi-dirac', 'width': width},
+            txt='gs.txt')
 
-    params = dict(
-        mode={'name': 'pw', 'ecut': ecut},
-        xc=xc,
-        basis='dzp',
-        kpts={
-            'density': kptdensity,
-            'gamma': True
-        },
-        occupations={'name': 'fermi-dirac', 'width': 0.05},
-        txt='gs.txt')
+        calc = GPAW(**params)
 
-    atoms.calc = GPAW(**params)
-    atoms.get_forces()
-    atoms.get_stress()
+    atoms.calc = calc
+    forces = atoms.get_forces()
+    stresses = atoms.get_stress()
     atoms.calc.write(gpwfilename)
+    etot = atoms.get_potential_energy()
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot}
+    return results
 
 
 # The metadata is put it the bottom
-group = 'Property'
+group = 'property'
 description = ''
-dependencies = []  # What other recipes does this recipe depend on
-creates = ['gs.gpw']  # What files are created
-resources = '8:10h'  # How many resources are used
-diskspace = 0  # How much diskspace is used
-restart = 1  # Does it make sense to restart the script?
+dependencies = ['asr.structureinfo']
+creates = ['gs.gpw']
+resources = '8:10h'
+diskspace = 0
+restart = 1
 
 if __name__ == '__main__':
     main()
