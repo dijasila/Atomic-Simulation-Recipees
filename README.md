@@ -339,7 +339,7 @@ Testing
 -------
 Tests can be run using
 ```
-python3 -m asr test
+asr test
 ```
 When you make a new recipe ASR will automatically generate a test thats tests
 its dependencies and itself to make sure that all dependencies have been
@@ -348,11 +348,11 @@ included. These automatically generated tests are generated from
 
 ASR uses the `pytest` module for its tests. To see what tests will run use
 ```
-python3 -m asr test --collect-only
+asr test --collect-only
 ```
 To execute a single test use 
 ```
-python3 -m asr test -k my_test.py
+asr test -k my_test.py
 ```
 If you want more extended testing of your recipe you will have to implement them
 manually. Your test should be placed in the `asr/asr/tests/`-folder where other
