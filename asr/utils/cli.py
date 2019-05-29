@@ -30,23 +30,69 @@ def format(content, indent=0, title=None, pad=2):
     return output
 
 
-@click.group()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
     ...
 
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@click.argument('command', type=str)
+@click.argument('command', required=True, type=str)
+@click.argument('args', metavar='[ARGS] -- [FOLDER] ...',
+                nargs=-1)
 @click.pass_context
-def run(ctx, command):
-    """Run recipe"""
-    from asr.utils.recipe import Recipe
-    if not command.startswith('asr.'):
-        command = f'asr.{command}'
+def run(ctx, command, args):
+    """Run recipe or ASE command
 
-    recipe = Recipe.frompath(command, reload=True)
-    recipe.run(args=ctx.args)
+    Can run an ASR recipe or command. Arguments that follow after
+    '--' will be interpreted as folders in which the command should
+    be executed.
+
+    Examples:
+
+    \b
+    Run the relax recipe:
+        asr run relax
+    Specify an argument:
+        asr run relax --ecut 600
+    Run relax recipe in two folders sequentially:
+        asr run relax in folder1/ folder2/
+    Run a python command in this folder:
+        asr run "python -m ase convert gs.gpw structure.json"
+    Run a python command in "folder1/":
+        asr run "python -m ase convert gs.gpw structure.json" in folder1/
+    """
+    import subprocess
+    from pathlib import Path
+
+    # Are there any folders?
+    folders = None
+    if 'in' in args:
+        ind = args.index('in')
+        folders = args[ind + 1:]
+        args = args[:ind]
+
+    if not command.startswith('python'):
+        # If command doesn't start with python then we assume that the
+        # command is a recipe
+        command = f'python3 -m asr.{command}'
+
+    if args:
+        command += ' ' + ' '.join(args)
+        
+    if folders:
+        from asr.utils import chdir
+
+        for folder in folders:
+            with chdir(Path(folder)):
+                print(f'Running {command} in {folder}')
+                subprocess.run(command.split())
+    else:
+        print(f'Running {command}')
+        subprocess.run(command.split())
 
 
 @cli.command()
@@ -146,21 +192,6 @@ def plot(recipe):
             func(row, *names)
 
     plt.show()
-
-
-@cli.command()
-@click.argument('command', type=str)
-@click.argument('folders', type=str, nargs=-1)
-def runinfolders(command, folders):
-    """Run a command in many folders"""
-    from pathlib import Path
-    import subprocess
-    from asr.utils import chdir
-
-    for folder in folders:
-        with chdir(Path(folder)):
-            print(f'Running {command} in {folder}')
-            subprocess.run(command.split())
 
 
 @cli.command()
