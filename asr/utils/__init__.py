@@ -15,13 +15,12 @@ class ASRCommand(click.Command):
     _asr_command = True
 
     def __init__(self, asr_name=None, known_exceptions=None,
-                 save_results_file=True, add_folders_arg=True,
+                 save_results_file=True,
                  add_skip_opt=True, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
         self.asr_results_file = save_results_file
-        self.add_folders_arg = add_folders_arg
         self.add_skip_opt = add_skip_opt
         click.Command.__init__(self, *args, **kwargs)
 
@@ -36,18 +35,7 @@ class ASRCommand(click.Command):
         else:
             skip_deps = True
 
-        if self.add_folders_arg:
-            folders = ctx.params.pop('folders')
-        else:
-            folders = []
-
-        if folders:
-            for folder in folders:
-                parprint(f'Entering {folder}')
-                with chdir(Path(folder)):
-                    self.invoke_wrapped(ctx, skip_deps)
-        else:
-            self.invoke_wrapped(ctx, skip_deps)
+        self.invoke_wrapped(ctx, skip_deps)
 
     def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
         # Run all dependencies
@@ -99,7 +87,7 @@ class ASRCommand(click.Command):
         return results
 
 
-def command(name, overwrite_params={}, add_folders_arg=True,
+def command(name, overwrite_params={},
             add_skip_opt=True, *args, **kwargs):
     params = get_parameters(name)
     params.update(overwrite_params)
@@ -113,12 +101,9 @@ def command(name, overwrite_params={}, add_folders_arg=True,
         cc = click.command(cls=ASRCommand,
                            context_settings=CONTEXT_SETTINGS,
                            asr_name=name,
-                           add_folders_arg=add_folders_arg,
                            add_skip_opt=add_skip_opt,
                            *args, **kwargs)
 
-        if add_folders_arg:
-            func = argument('folders', type=str, nargs=-1)(func)
         if add_skip_opt:
             func = option('--skip-deps/--run-deps', is_flag=True,
                           default=False,
