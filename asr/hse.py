@@ -35,7 +35,7 @@ from gpaw.xc.tools import vxc
 from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
 import numpy as np
 from ase.parallel import paropen
-import os.path as op
+import os
 import gpaw.mpi as mpi
 from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                              monkhorst_pack_interpolate,
@@ -54,8 +54,8 @@ def main():
     hse_spinorbit()
     mpi.world.barrier()
     # Move these to separate step as in c2db?
-    bs_interpolate()
-    mpi.world.barrier()
+    #bs_interpolate()
+    #mpi.world.barrier()
 
 
 def get_kpts_size(atoms, density):
@@ -73,12 +73,12 @@ def get_kpts_size(atoms, density):
 
 
 def hse(kdens=12, emptybands=20):
-    if op.isfile('hse_eigenvalues.npz'):
+    if os.path.isfile('hse_eigenvalues.npz'):
         return
 
     convbands = int(emptybands / 2)
 
-    if not op.isfile('hse.gpw'):
+    if not os.path.isfile('hse.gpw'):
         calc = GPAW('gs.gpw', txt=None)
         atoms = calc.get_atoms()
         kpts = get_kpts_size(atoms, kdens)
@@ -121,9 +121,9 @@ def hse(kdens=12, emptybands=20):
 
 
 def hse_spinorbit():
-    if not op.isfile('hse_eigenvalues.npz'):
+    if not os.path.isfile('hse_eigenvalues.npz'):
         return
-    if not op.isfile('hse_nowfs.gpw'):
+    if not os.path.isfile('hse_nowfs.gpw'):
         return
 
     ranks = [0]
@@ -376,10 +376,10 @@ def get_spin_direction(fname='anisotropy_xy.npz'):
     '''
 
     import numpy as np
-    import os.path as op
+    import os
     theta = 0
     phi = 0
-    if op.isfile(fname):
+    if os.path.isfile(fname):
         data = np.load(fname)
         DE = max(data['dE_zx'], data['dE_zy'])
         if DE > 0:
@@ -405,8 +405,8 @@ def cleanup(*files):
     try:
         yield
     finally:
-        world.barrier()
-        if world.rank == 0:
+        mpi.world.barrier()
+        if mpi.world.rank == 0:
             for f in files:
                 if os.path.isfile(f):
                     os.remove(f)
