@@ -256,7 +256,7 @@ def is_stable():
     from asr.utils import read_json
     from pathlib import Path
     fname = 'results_convex_hull.json'
-    if not Path(fname).is_file:
+    if not Path(fname).is_file():
         return False
 
     data = read_json(fname)
