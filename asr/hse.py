@@ -172,15 +172,16 @@ def bs_interpolate(npoints=400, show=False):
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
     path = atoms.cell.bandpath(npoints=npoints) # is it the correct usage
+    str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset) # path.kpts...correct?
+                                     icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) array
     eps_skn = eps.transpose(1, 0, 2)
-    dct = dict(eps_skn=eps_skn, path=path, kptpath=str_path)
+    dct = dict(eps_skn=eps_skn, path=path.kpts, kptpath=str_path)
     if e_mk is not None:
-        eps_soc = monkhorst_pack_interpolate(path, e_mk.transpose(1, 0),
+        eps_soc = monkhorst_pack_interpolate(path.kpts, e_mk.transpose(1, 0),
                                              icell, bz2ibz, size, offset)
-        s_soc = monkhorst_pack_interpolate(path, s_mk.transpose(1, 0),
+        s_soc = monkhorst_pack_interpolate(path.kpts, s_mk.transpose(1, 0),
                                            icell, bz2ibz, size, offset)
         e_mk = eps_soc.transpose(1, 0)
         s_mk = s_soc.transpose(1, 0)
@@ -191,12 +192,11 @@ def bs_interpolate(npoints=400, show=False):
     # use spline
     # get edge points
     cell = read('gs.gpw').cell
-    kptpath = get_special_2d_path(cell)
-    special_points = get_cellinfo(cell).special_points
+    special_points = path.special_points # a dictionary of special points
     kpoints = []
     for k in parse_path_string(kptpath)[0]:
         kpoints.append(special_points[k])
-    kpoints = np.array(kpoints)
+    kpoints = np.array(kpoints) # an array with special points coordinates
 
     # third time is a charm
     eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
@@ -213,7 +213,7 @@ def bs_interpolate(npoints=400, show=False):
         with open('hse_bandstructure3.npz', 'wb') as fd:
             np.savez(fd, **dct)
 
-# remove this functions
+# remove these functions
 # def _interpolate(calc, kpts_kc, e_skn=None):
 #     """
 #     Parameters:
@@ -271,13 +271,12 @@ def interpolate_bandstructure(calc, e_skn=None, npoints=400):
     Returns:
         out: kpts, e_skn, xreal, epsreal_skn
     """
-    path = get_special_2d_path(cell=calc.atoms.cell)
-    r = interpolate_bandlines2(calc=calc, path=path, e_skn=e_skn,
-                               npoints=npoints)
+    #path = get_special_2d_path(cell=calc.atoms.cell) # no need for that! you can get from calc.atoms.cell.bandpath(npoints=npoints)
+    r = interpolate_bandlines2(calc=calc, e_skn=e_skn, npoints=npoints)
     return r['kpts'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
 # move to utils?
-def interpolate_bandlines2(calc, path, e_skn=None, npoints=400):
+def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     """Interpolate bandstructure
     Parameters:
         calc: ASE calculator
@@ -307,7 +306,8 @@ def interpolate_bandlines2(calc, path, e_skn=None, npoints=400):
     cell = calc.atoms.cell
     indices, x = segment_indices_and_x(cell=cell, path_str=path, kpts=kpts)
     # kpoints and positions to interpolate onto
-    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints)
+    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints) ### NO! USE BandPath class instead!!
+    # patu = cell.bandpath(npoints=npoints) # use this
     # remove double points
     for n in range(len(indices) - 1):
         if indices[n][-1] == indices[n + 1][0]:
