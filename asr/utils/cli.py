@@ -91,7 +91,7 @@ def run(ctx, command, args):
                 print(f'Running {command} in {folder}')
                 subprocess.run(command.split())
     else:
-        print(f'Running {command}')
+        print(f'Running command: {command}')
         subprocess.run(command.split())
 
 
