@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from contextlib import contextmanager
 from functools import partial
 import click

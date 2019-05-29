@@ -3,8 +3,6 @@ from pathlib import Path
 import numpy as np
 
 from ase.parallel import world
-from ase.geometry import crystal_structure_from_cell
-from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons as ASEPhonons
 
