@@ -66,8 +66,8 @@ def collect(cls, directory):
 def browser(cls, directory):
     with chdir(directory):
         # Make sure to reload the module
-        from asr.utils.cli import browser
-        browser(standalone_mode=False, args=['--only-figures'])
+        recipe = Recipe.frompath('asr.browser', reload=True)
+        recipe.main(args=['--only-figures'])
 
 
 # Finally collect
