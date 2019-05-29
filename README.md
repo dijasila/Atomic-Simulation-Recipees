@@ -196,6 +196,17 @@ In this way all default parameters exposed through the CLI of a recipe
 can be corrected.
 
 
+The setup recipes
+-----------------
+ASR also includes some special `setup` recipes. These recipes are meant to give
+the user some easy tools to setup atomic structures.
+
+unpackdatabase
+magnetize
+decorate
+
+
+
 Submit a recipe to a computer-cluster
 -------------------------------------
 It is also recommended to use these recipes together with the `myqueue`
