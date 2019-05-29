@@ -176,7 +176,7 @@ def plot(row, fname):
             else:
                 ax.plot([x], [y], 'v', color='C1', label=label)
             label = None
-            ax.text(x + 0.03, y, '{}-{}'.format(prot, magstate))
+            # ax.text(x + 0.03, y, '{}-{}'.format(prot, magstate))
             ymin = min(ymin, y)
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * dy)
     else:
