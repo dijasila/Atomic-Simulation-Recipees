@@ -107,6 +107,23 @@ def help(command):
 
 
 @cli.command()
+def list():
+    """Show a list of all recipes"""
+    recipes = get_recipes(sort=True)
+    panel = [['Recipe', 'Description'],
+             ['------', '-----------']]
+
+    for recipe in recipes:
+        if recipe.main:
+            status = [recipe.name[4:], recipe.main.get_short_help_str()]
+        else:
+            status = [recipe.name[4:], '']
+        panel += [status]
+    print(panel)
+    print(format(panel))
+
+
+@cli.command()
 def status():
     """Show the status of the current folder for all ASR recipes"""
     from pathlib import Path
