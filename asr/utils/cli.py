@@ -30,56 +30,108 @@ def format(content, indent=0, title=None, pad=2):
     return output
 
 
-@click.group()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
     ...
 
 
-@cli.command()
-@click.argument('command', type=str)
-def run(command):
-    """Run NAME recipe"""
-    from asr.utils.recipe import Recipe
-    if not command.startswith('asr.'):
-        command = f'asr.{command}'
+@cli.command(context_settings={'ignore_unknown_options': True,
+                               'allow_extra_args': True})
+@click.argument('command', required=True, type=str)
+@click.argument('args', metavar='[ARGS] -- [FOLDER] ...',
+                nargs=-1)
+@click.pass_context
+def run(ctx, command, args):
+    """Run recipe or ASE command
 
-    recipe = Recipe.frompath(command, reload=True)
-    recipe.run()
+    Can run an ASR recipe or command. Arguments that follow after
+    '--' will be interpreted as folders in which the command should
+    be executed.
 
+    Examples:
 
-@cli.command()
-@click.option('--database', default='database.db')
-@click.option('--custom', default='asr.utils.custom')
-@click.option('--only-figures', is_flag=True, default=False,
-              help='Dont show browser, just save figures')
-def browser(database, custom, only_figures):
-    """Open results in web browser"""
+    \b
+    Run the relax recipe:
+        asr run relax
+    Specify an argument:
+        asr run relax --ecut 600
+    Run relax recipe in two folders sequentially:
+        asr run relax in folder1/ folder2/
+    Run a python command in this folder:
+        asr run "python -m ase convert gs.gpw structure.json"
+    Run a python command in "folder1/":
+        asr run "python -m ase convert gs.gpw structure.json" in folder1/
+    """
     import subprocess
     from pathlib import Path
 
-    if custom == 'asr.utils.custom':
-        custom = Path(__file__).parent / 'custom.py'
+    # Are there any folders?
+    folders = None
+    if 'in' in args:
+        ind = args.index('in')
+        folders = args[ind + 1:]
+        args = args[:ind]
 
-    cmd = f'python3 -m ase db {database} -w -M {custom}'
-    if only_figures:
-        cmd += ' -l'
-    print(cmd)
-    try:
-        subprocess.check_output(cmd.split())
-    except subprocess.CalledProcessError as e:
-        print(e.output)
-        exit(1)
+    if not command.startswith('python'):
+        # If command doesn't start with python then we assume that the
+        # command is a recipe
+        command = f'python3 -m asr.{command}'
+
+    if args:
+        command += ' ' + ' '.join(args)
+        
+    if folders:
+        from asr.utils import chdir
+
+        for folder in folders:
+            with chdir(Path(folder)):
+                print(f'Running {command} in {folder}')
+                subprocess.run(command.split())
+    else:
+        print(f'Running command: {command}')
+        subprocess.run(command.split())
+
+
+@cli.command()
+@click.argument('command', type=str)
+def help(command):
+    """See help for recipe"""
+    from asr.utils.recipe import Recipe
+    if not command.startswith('asr.'):
+        command = f'asr.{command}'
+    recipe = Recipe.frompath(command, reload=True)
+    recipe.run(args=['-h'])
+
+
+@cli.command()
+def list():
+    """Show a list of all recipes"""
+    recipes = get_recipes(sort=True)
+    panel = [['Recipe', 'Description'],
+             ['------', '-----------']]
+
+    for recipe in recipes:
+        if recipe.main:
+            status = [recipe.name[4:], recipe.main.get_short_help_str()]
+        else:
+            status = [recipe.name[4:], '']
+        panel += [status]
+    print(panel)
+    print(format(panel))
 
 
 @cli.command()
 def status():
-    """Show status of current directory"""
+    """Show the status of the current folder for all ASR recipes"""
     from pathlib import Path
     recipes = get_recipes()
     panel = []
     missing_files = []
     for recipe in recipes:
-        status = [recipe.__name__]
+        status = [recipe.name]
         done = True
         if recipe.creates:
             for create in recipe.creates:
@@ -93,9 +145,6 @@ def status():
                 panel.insert(0, status)
             else:
                 panel.append(status)
-        else:
-            status.append('No files created')
-            missing_files.append(status)
     
     print(format(panel))
     print(format(missing_files))
@@ -118,21 +167,71 @@ def test(ctx):
 
 
 @cli.command()
-@click.argument('recipe')
-def plot(recipe):
-    """Plot figures interactively"""
-    import importlib
-    from ase.db import connect
-    from matplotlib import pyplot as plt
-    
-    module = importlib.import_module(recipe)
-    db = connect('database.db')
+@click.option('-t', '--tasks', type=str,
+              help=('Only choose specific recipes and their dependencies '
+                    '(comma separated list of asr.recipes)'),
+              default=None)
+@click.option('--doforstable',
+              help='Only do these recipes for stable materials')
+def workflow(tasks, doforstable):
+    """Helper function to make workflows for MyQueue"""
+    from asr.utils import get_recipes, get_dep_tree
 
-    rows = list(db.select())
-    for row in rows:
-        _, things = module.webpanel(rows[-1], {})
+    body = ''
+    body += 'from myqueue.task import task\n\n\n'
 
-        for func, names in things:
-            func(row, *names)
+    isstablefunc = """def is_stable():
+    # Example of function that looks at the heat of formation
+    # and returns True if the material is stable
+    from asr.utils import read_json
+    from pathlib import Path
+    fname = 'results_convex_hull.json'
+    if not Path(fname).is_file:
+        return False
 
-    plt.show()
+    data = read_json(fname)
+    if data['hform'] < 0.05:
+        return True
+    return False\n\n\n"""
+
+    if doforstable:
+        body += isstablefunc
+
+    body += 'def create_tasks():\n    tasks = []\n'
+
+    if tasks:
+        names = []
+        for task in tasks.split(','):
+            names += [recipe.name for recipe in get_dep_tree(task)]
+
+    for recipe in get_recipes(sort=True):
+        indent = 4
+        if tasks:
+            if recipe.name not in names:
+                continue
+
+        if not recipe.group:
+            continue
+
+        if recipe.group not in ['structure', 'property']:
+            continue
+
+        if recipe.resources:
+            resources = recipe.resources
+        else:
+            resources = '1:10m'
+
+        if doforstable and recipe.name in doforstable.split(','):
+            indent = 8
+            body += '    if is_stable():\n'
+        body += ' ' * indent + f"tasks += [task('{recipe.name}@{resources}'"
+        if recipe.dependencies:
+            deps = ','.join(recipe.dependencies)
+            body += f", deps='{deps}')"
+        else:
+            body += ')'
+        body += ']\n'
+
+    print(body)
+
+    print('    return tasks')

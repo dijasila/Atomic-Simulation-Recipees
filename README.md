@@ -75,13 +75,26 @@ in a browser with the `browser` subcommand. This is done below
 $ cd ~/silicon
 $ asr run structuralinfo
 $ asr run collect
-$ asr browser
+$ asr run browser
 ```
 
-To see the available
-subcommands of ASR simply do
+Subcommands
+-----------
+To see the available subcommands of ASR simply do
 ```console
 $ asr
+Usage: asr [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -h, --help  Show this message and exit.
+
+Commands:
+  help      See help for recipe
+  list      Show a list of all recipes
+  run       Run recipe or ASE command Can run an ASR recipe or command.
+  status    Show the status of the current folder for all ASR recipes
+  test      Run test of recipes
+  workflow  Helper function to make workflows for MyQueue
 ```
 
 Change default settings in scripts
@@ -100,25 +113,6 @@ changed to overwrite default settings in scripts. For example:
 In this way all default parameters exposed through the CLI of a recipe
 can be corrected.
 
-See help for a recipe
----------------------
-For example, to see the command line interface (CLI) help of the relax recipe
-simply do
-
-```console
-$ python3 -m asr.gs --help
-Usage: gs.py [OPTIONS]
-
-  Calculate ground state density
-
-Options:
-  -a, --atomfile TEXT     Atomic structure  [default: structure.json]
-  --gpwfilename TEXT      filename.gpw  [default: gs.gpw]
-  --ecut FLOAT            Plane-wave cutoff  [default: 800.0]
-  -k, --kptdensity FLOAT  K-point density  [default: 6.0]
-  --xc TEXT               XC-functional  [default: PBE]
-  --help                  Show this message and exit.
-```
 
 Submit a recipe to a computer-cluster
 -------------------------------------
