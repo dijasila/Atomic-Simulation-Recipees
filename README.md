@@ -179,6 +179,62 @@ local server and lets you browse the database interactively:
 $ asr run browser
 ```
 
+The ASR run command
+-------------------
+As you have just seen, the `run` command is used to execute run the recipes of ASR.
+In most cases the run command is identical to executing the recipes as modules, ie.,
+`asr run relax` is equivalent to `python -m asr.relax`. However, another usecase 
+encountered frequently enough is to want to run a recipe in multiple directories.
+
+The asr run command enables this with the following syntax:
+```console
+$ asr run relax in folder1/ folder1/
+```
+which makes it easy to run commands in multiple folders. If you want to provide
+arguments for the recipe (the relax recipe in this example) you can use
+```console
+$ asr run relax --ecut 100 in folder1/ folder1/
+```
+The last option that the run commands provides is to execute other python modules
+like `ase`. For example, suppose you have a lot of folders with a `structure.traj`
+that you want to convert to `structure.json`. This can be done with the ase command
+`python -m ase convert structure.traj structure.json`. `run` can run this script in
+many folders for you with
+```console
+$ asr run "ase convert structure.traj structure.json" in materials/*/
+```
+
+
+The setup recipes
+-----------------
+ASR also includes some special `setup` recipes. These recipes are meant to give
+the user some easy tools to setup atomic structures. Here we provice some examples
+of their usage.
+
+The `setup.magnetize` recipe is useful if you don't know the magnetic configuration
+of the material you are currently investigation. It sets up non-magnetic (nm), magnetic (fm)
+and anti-ferro magnetic (afm, only for exactly two magnetic atoms in the unit cell) 
+configurations of the inital magnetic moments of the structure in new subfolders `nm/` `fm/`
+and `afm`, respectively. For another example of using the magnetize recipe see the 
+"Advanced Example: Make a screening study" section. For more information see `asr help setup.magnetize`
+
+The `setup.decorate` recipe is useful if you want to create new atomic that are similar
+to an existing atomic structure. The decorate recipe contains a table describing the
+likelyhood of two atoms to be substituted. By default the decorate recipe creates a
+new ASE database with the decorated atomic structure (including itself). For more information see `asr help setup.decorate`.
+
+The `setup.unpackdatabase` is useful if you have a database of materials that you wish
+to conduct some calculations on. By default, running `asr run setup.unpackdatabase` creates a new
+folder `tree/` in the current directory with all mateirals distributed according to the 
+following folder structure `tree/{stoi}/{spg}/{formula:metal}-{stoi}-{spg}-{wyck}-{uid}` 
+where `stoi` is the stoichiometry, `spg` is the space group number, `wyck` are the alphabetically
+sorted unique Wyckoff positions of the materials, `formula:metal` is the chemical formula 
+sorted after metal atoms first and `uid` is a unique identifier to avoid collisions between
+materials that would otherwise end up in the same folder. For another example of using the 
+unpackdatabase recipe see the "Advanced Example: Make a screening study" section. For more
+information see `asr help setup.unpackdatabase`.
+
+
 Change default settings in scripts
 ----------------------------------
 All material folders can contain a `params.json`-file. This file can
@@ -195,18 +251,6 @@ changed to overwrite default settings in scripts. For example:
 In this way all default parameters exposed through the CLI of a recipe
 can be corrected.
 
-
-The setup recipes
------------------
-ASR also includes some special `setup` recipes. These recipes are meant to give
-the user some easy tools to setup atomic structures.
-
-unpackdatabase
-magnetize
-decorate
-
-
-
 Submit a recipe to a computer-cluster
 -------------------------------------
 It is also recommended to use these recipes together with the `myqueue`
@@ -218,8 +262,8 @@ documentation. To submit a job that relaxes a structure simply do
 $ mq submit asr.relax@24:10h
 ```
 
-Make a screening study
-----------------------
+Advanced Example: Make a screening study
+----------------------------------------
 A screening study what we call a simultaneous automatic study of many materials. ASR
 has a set of tools to make such studies easy to handle. Suppose we have an ASE
 database that contain many atomic structures. In this case we take OQMD12 database
