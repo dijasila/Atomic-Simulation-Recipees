@@ -1,5 +1,8 @@
 import click
 from asr.utils import get_recipes
+from asr.utils import argument, option
+
+stdlist = list
 
 
 def format(content, indent=0, title=None, pad=2):
@@ -150,20 +153,68 @@ def status():
     print(format(missing_files))
 
 
+from gpaw.test import TestRunner
+
+
+class ASRTestRunner(TestRunner):
+    def __init__(self, *args, **kwargs):
+        TestRunner.__init__(self, *args, **kwargs)
+
+
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@click.pass_context
-def test(ctx):
-    """Run test of recipes"""
-    import subprocess
+@argument('tests', nargs=-1, required=False)
+@option('-P', '--parallel',
+        type=int,
+        help='Exclude tests (comma separated list of tests).',
+        metavar='test1.py,test2.py,...')
+@option('-j', '--jobs', type=int, default=1,
+        help='Run JOBS threads.  Each test will be executed '
+        'in serial by one thread.  This option cannot be used '
+        'for parallelization together with MPI.')
+@option('-s', '--show-output', is_flag=True,
+        help='Show standard output from tests.')
+def test(tests, parallel, jobs, show_output):
+    import os
+    import sys
+    from pathlib import Path
     from asr.tests.generatetests import generatetests, cleantests
-    generatetests()
-    args = ctx.args
 
-    cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
-    print(cmd)
-    subprocess.run(cmd.split())
-    cleantests()
+    from gpaw.mpi import world
+    print(world.rank, parallel)
+    if parallel:
+        from gpaw.mpi import have_mpi
+        if not have_mpi:
+            # Start again using gpaw-python in parallel:
+            arguments = ['mpiexec', '-np', str(parallel),
+                         'gpaw-python', '-m', 'asr', 'test'] + sys.argv[2:]
+            # arguments += ['-m', 'gpaw'] +
+            os.execvp('mpiexec', arguments)
+
+    if world.rank == 0:
+        generatetests()
+    world.barrier()
+    if not tests:
+        folder = Path(__file__).parent.parent / 'tests'
+        tests = [str(path) for path in folder.glob('test_*.py')]
+    
+    ASRTestRunner(tests, jobs=jobs, show_output=show_output)
+    
+    print('tests', str(folder), tests)
+    if world.rank == 0:
+        cleantests()
+    # args = type()
+    # args.tests = tests
+
+
+    # main
+    
+    # args = ctx.args
+
+    # cmd = f'python3 -m pytest --pyargs asr ' + ' '.join(args)
+    # print(cmd)
+    # subprocess.run(cmd.split())
+
 
 
 @cli.command()
