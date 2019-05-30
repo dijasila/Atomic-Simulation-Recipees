@@ -280,8 +280,8 @@ directory tree
 $ asr run setup.unpackdatabase oqmd12.db -s u=False --run
 ```
 (we have made the selection `u=False` since we are not interested in the DFT+U values).
-This function produces a new folder `~oqmd12/tree/` where you can find the tree. To see the contents of the tree
-it is recommended to use the linux command `tree`
+This function produces a new folder `~oqmd12/tree/` where you can find the tree. 
+To see the contents of the tree it is recommended to use the linux command `tree`
 ```console
 $ tree tree/
 ```
