@@ -52,7 +52,7 @@ def main():
     hse()
     mpi.world.barrier()
     hse_spinorbit()
-    mpi.world.barrier()
+    #mpi.world.barrier()
     # Move these to separate step as in c2db?
     #bs_interpolate()
     #mpi.world.barrier()
@@ -288,6 +288,78 @@ def bs_interpolate(npoints=400, show=False):
 #             np.savez(fd, **dct)
 
 # move to utils?
+def ontheline(p1, p2, p3s, eps=1.0e-5):
+    """
+    line = p1 + t * (p2 - p1)
+    check whether p3 is on the line (t is between 0 and 1)
+    Parameters:
+        p1, p2: ndarray
+            point defining line p1, p2 and third point p3 we are checking
+        p3s: list [ndarray,]
+        eps: float
+            slack in distance to be considered on the line
+    Returns:
+        indices: [(int, float), ] * Np
+            indices and t's for p3s on the line,
+            i.e [(0, 0.1), (4, 0.2), (3, 1.0], sorted accorting to t
+    """
+    nk = len(p3s)
+    kpts = np.zeros((nk * 4, 3))
+    kpts[:nk] = p3s
+    kpts[nk:2 * nk] = p3s - (1, 0, 0)
+    kpts[2 * nk:3 * nk] = p3s - (1, 1, 0)
+    kpts[3 * nk:4 * nk] = p3s - (0, 1, 0)
+    d = p2 - p1  # direction
+    d2 = np.dot(d, d)
+    its = []
+    for i, p3 in enumerate(kpts):
+        t = np.dot(d, p3 - p1) / d2
+        x = p1 + t * d  # point on the line that minizes distance to p3
+        dist = la.norm(x - p3)
+        if (0 - eps <= t <= 1 + eps) and (dist < eps):
+            its.append((i % nk, t))
+    its = sorted(its, key=lambda x: x[1])
+    return its
+
+# move to utils?
+def segment_indices_and_x(cell, path_str, kpts):
+    """finds indices of bz k-points that is located on segments of a bandpath
+    Parameters:
+        cell: ndarray (3, 3)-shape
+            unit cell
+        path_str: str
+            i.e. 'GMKG'
+        kpts: ndarray (nk, 3)-shape
+    Returns:
+        out: ([[int,] * Np,] * Ns, [[float,] * Np, ] * Ns)
+            list of indices and list of x
+    """
+    from ase.dft.kpoints import parse_path_string, get_special_points
+    special = get_special_points(cell)
+    _, _, X = bandpath(path=path_str, cell=cell, npoints=len(path_str))
+    segments_length = np.diff(X)  # length of band segments
+    path = parse_path_string(path_str)[0]  # list str, i.e. ['G', 'M', 'K','G']
+    segments_points = []
+    # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
+    for i in range(len(path) - 1):
+        kstr1, kstr2 = path[i:i + 2]
+        s1, s2 = special[kstr1], special[kstr2]
+        segments_points.append((s1, s2))
+
+    # find indices where kpts is on the segments
+    segments_indices = []
+    segments_xs = []
+    for (k1, k2), d, x0 in zip(segments_points, segments_length, X):
+        its = ontheline(k1, k2, kpts)
+        indices = [i for i, t in its]
+        ts = np.asarray([t for i, t in its])
+        xs = ts * d  # positions on the line of length d
+        segments_xs.append(xs + x0)
+        segments_indices.append(indices)
+
+    return segments_indices, segments_xs
+
+# move to utils?
 def interpolate_bandstructure(calc, e_skn=None, npoints=400):
     """simple wrapper for interpolate_bandlines2
     Returns:
@@ -328,8 +400,14 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     cell = calc.atoms.cell
     indices, x = segment_indices_and_x(cell=cell, path_str=path, kpts=kpts)
     # kpoints and positions to interpolate onto
-    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints) ### NO! USE BandPath class instead!!
-    # patu = cell.bandpath(npoints=npoints) # use this
+    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints)
+    """
+    XXX: use method 'interpolate' from BandPath class!
+    it takes a BandPath object with a given number of points
+    and creates a new BandPath object with nkpts specified by the user
+    example:
+        new_path = path.interpolate(npoints=400)
+    """
     # remove double points
     for n in range(len(indices) - 1):
         if indices[n][-1] == indices[n + 1][0]:
