@@ -2,58 +2,50 @@ import os
 from pathlib import Path
 import pytest
 
+os.environ['ASR_TEST_MODE'] = '1'
 
-@pytest.fixture(scope='class')
-def directory(tmpdir_factory):
-    path = tmpdir_factory.mktemp('emt')
-    return path
+from ase.build import bulk
+from asr.collect import main as collect
+from asr.convex_hull import main as chull
+from asr.gs import main as gs
+from asr.phonons import main as phonons
+from asr.structureinfo import main as structureinfo
+from asr.relax import main as relax
+from asr.utils import chdir
 
+structures = [
+    bulk('Cu'),
+    bulk('Au'),
+    bulk('CuAu', crystalstructure='rocksalt', a=5.0),
+    bulk('CuAuAu', crystalstructure='fluorite', a=5.8)]
 
-def test_cuag(directory):
-    os.environ['ASR_TEST_MODE'] = '1'
-    from ase.build import bulk
-    from asr.collect import main as collect
-    from asr.convex_hull import main as chull
-    from asr.gs import main as gs
-    from asr.phonons import main as phonons
-    from asr.structureinfo import main as structureinfo
-    from asr.relax import main as relax
-    from asr.utils import chdir
+for atoms in structures:
+    dir = Path(atoms.get_chemical_formula())
+    with chdir(dir, create=True, empty=True):
+        atoms.write('unrelaxed.json')
 
-    with chdir(directory):
-        structures = [
-            bulk('Cu'),
-            bulk('Au'),
-            bulk('CuAu', crystalstructure='rocksalt', a=5.0),
-            bulk('CuAuAu', crystalstructure='fluorite', a=5.8)]
+        relax(args=['--nod3'])
 
-        for atoms in structures:
-            dir = Path(atoms.get_chemical_formula())
-            with chdir(dir, create=True, empty=True):
-                atoms.write('unrelaxed.json')
+        gs(args=[])
+        phonons(args=[])
 
-                relax(args=['--nod3'])
+for dir in Path().glob('*u/'):
+    with chdir(dir):
+        structureinfo(args=[])
 
-                gs(args=[])
-                phonons(args=[])
+db = Path('database.db')
+if db.is_file():
+    db.unlink()
 
-        for dir in Path().glob('*u/'):
-            with chdir(dir):
-                structureinfo(args=[])
+collect(args=[str(dir) for dir in Path().glob('?u/')])
+db.rename('refs.db')
 
-        db = Path('database.db')
-        if db.is_file():
-            db.unlink()
+collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
+db.rename('database1.db')
 
-        collect(args=[str(dir) for dir in Path().glob('?u/')])
-        db.rename('refs.db')
+for dir in Path().glob('Au*Cu/'):
+    with chdir(dir):
+        chull(args=['-r', '../refs.db',
+                    '-d', '../database1.db'])
 
-        collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
-        db.rename('database1.db')
-
-        for dir in Path().glob('Au*Cu/'):
-            with chdir(dir):
-                chull(args=['-r', '../refs.db',
-                            '-d', '../database1.db'])
-
-        collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
+collect(args=[str(dir) for dir in Path().glob('Au*Cu/')])
