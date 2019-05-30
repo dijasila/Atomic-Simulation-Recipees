@@ -51,6 +51,11 @@ Additionally, you might also want
 
 if you want to run jobs on a computer-cluster.
 
+Finally, test the package with
+```console
+$ asr test
+```
+
 How to use
 ----------
 ASR comes with some built in functions. To see these simply write
@@ -234,6 +239,9 @@ materials that would otherwise end up in the same folder. For another example of
 unpackdatabase recipe see the "Advanced Example: Make a screening study" section. For more
 information see `asr help setup.unpackdatabase`.
 
+The `setup.params` is useful as it makes a `params.json` file containing the default
+parameters of all recipes. This makes it possible to modify the input parameters used by each
+recipe. See the "Change default settings in scripts" section for more information on how this works.
 
 Change default settings in scripts
 ----------------------------------
