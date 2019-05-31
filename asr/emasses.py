@@ -57,7 +57,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
                 for both cb and vb
 
     """
-    from gpaw import GPAW
+    from gpaw import GPAW, PW
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -88,7 +88,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     elif bandtype == 'cb':
         bandtypes = ('cb', )
         ks = (k2_c, )
-    
+
     for bt, k_c in zip(bandtypes, ks):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
@@ -99,7 +99,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         calc.write(name + '.gpw')
 
 
-def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=True):
+def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=False):
     import numpy as np
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
@@ -153,6 +153,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     atoms = calc.get_atoms()
     cell_cv = atoms.get_cell()
     ibz_kc = calc.get_ibz_k_points()
+       
     ibz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ibz_kc)
     masses = {'indices': indices}
     for b in indices:
@@ -225,7 +226,7 @@ def em(kpts_kv, eps_k, bandtype=None):
     fx = c[6]
     fy = c[7]
     fz = c[8]
-    
+
     # This commented out code is needed for further
     # refinement of the effective mass calculation
     # def get_bt(fxx, fyy, fzz, fxy, fxz, fyz):
@@ -263,7 +264,7 @@ def fit(kpts_kv, eps_k, thirdorder=False):
     import numpy.linalg as la
     A_kp = model(kpts_kv)
     if not thirdorder:
-        A_kp = A_kp[:, :9]
+        A_kp = A_kp[:, :10]
     return la.lstsq(A_kp, eps_k, rcond=-1)
 
 
@@ -275,6 +276,7 @@ def model(kpts_kv):
     """
     import numpy as np
     k_kx, k_ky, k_kz = kpts_kv[:, 0], kpts_kv[:, 1], kpts_kv[:, 2]
+
     ones = np.ones(len(k_kx))
 
     A_dp = np.array([k_kx**2,
@@ -296,6 +298,7 @@ def model(kpts_kv):
                      k_ky**2 * k_kz,
                      k_kz**2 * k_kx,
                      k_kz**2 * k_ky]).T
+
     return A_dp
 
 
