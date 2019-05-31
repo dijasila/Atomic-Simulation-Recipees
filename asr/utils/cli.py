@@ -300,7 +300,6 @@ def test(tests, parallel, pattern, jobs, show_output):
     from asr.tests.generatetests import generatetests, cleantests
 
     from gpaw.mpi import world
-    print(world.rank, parallel)
     if parallel:
         from gpaw.mpi import have_mpi
         if not have_mpi:
