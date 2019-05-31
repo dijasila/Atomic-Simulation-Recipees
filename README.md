@@ -65,7 +65,7 @@ $ asr run relax
 The `relax` takes as input the structure in `unrelaxed.json` and generates a
 `~/silicon/structure.json` file that contains the final relaxed structure.
 We can get some quick information about this structure by 
-running the `structuralinfo`
+running the `structureinfo`
 recipe which creates a `results_structuralinfo.json` file that contains some simple
 information about the atomic structure. Then we collect the data to a database
 `database.db` using `collect` recipe and view it
@@ -73,7 +73,7 @@ in a browser with the `browser` subcommand. This is done below
 
 ```console
 $ cd ~/silicon
-$ asr run structuralinfo
+$ asr run structureinfo
 $ asr run collect
 $ asr run browser
 ```
