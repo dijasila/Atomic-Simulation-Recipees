@@ -285,9 +285,9 @@ class ASRTestRunner(TestRunner):
         type=int,
         help='Exclude tests (comma separated list of tests).',
         metavar='test1.py,test2.py,...')
-@option('-k', '--pattern', type=str,
+@option('-k', '--pattern', type=str, metavar='PATTERN',
         help='Select tests containing PATTERN.')
-@option('-j', '--jobs', type=int, default=1,
+@option('-j', '--jobs', type=int, metavar='JOBS', default=1,
         help='Run JOBS threads.  Each test will be executed '
         'in serial by one thread.  This option cannot be used '
         'for parallelization together with MPI.')
