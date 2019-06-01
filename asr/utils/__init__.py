@@ -363,6 +363,7 @@ def write_json(filename, data):
     from ase.parallel import world
     if world.rank == 0:
         Path(filename).write_text(MyEncoder(indent=4).encode(data))
+    world.barrier()
 
 
 def read_json(filename):
