@@ -2,7 +2,7 @@ from asr.utils import read_json
 from pathlib import Path
 
 
-def get_DFT_calculator():
+def get_calculator():
     if not Path('params.json').is_file():
         name = 'GPAW'
     else:
