@@ -7,6 +7,13 @@ import numpy as np
 from asr.utils import get_recipes
 from asr.utils import argument, option
 from gpaw import setup_paths
+from gpaw.test import TestRunner
+from asr.utils import chdir
+import tempfile
+from gpaw import mpi
+from gpaw.cli.info import info
+import time
+
 
 stdlist = list
 
@@ -159,12 +166,6 @@ def status():
     print(format(missing_files))
 
 
-from gpaw.test import TestRunner
-from asr.utils import chdir
-import tempfile
-from gpaw import mpi
-from gpaw.cli.info import info
-import time
 exclude = []
 
 
