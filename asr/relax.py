@@ -98,8 +98,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
-    from asr.calculators.gpaw import GPAW
-    dft = GPAW(**kwargs)
+    from asr.calculators import get_calculator
+    dft = get_calculator()(**kwargs)
     if dftd3:
         calc = DFTD3(dft=dft)
     else:
