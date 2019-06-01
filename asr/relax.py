@@ -9,7 +9,7 @@ from ase.parallel import world, broadcast
 
 from asr.utils import command, option
 from asr.utils.bfgs import BFGS
-from asr.calculators.gpaw import KohnShamConvergenceError
+from gpaw import KohnShamConvergenceError
 
 Uvalues = {}
 

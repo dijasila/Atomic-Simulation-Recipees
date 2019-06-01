@@ -9,7 +9,6 @@ from asr.relax import main as relax
 from asr.utils import chdir, write_json
 
 params = {'_calculator': 'EMT'}
-write_json('params.json', params)
 
 structures = [
     bulk('Cu'),
@@ -20,6 +19,7 @@ structures = [
 for atoms in structures:
     dir = Path(atoms.get_chemical_formula())
     with chdir(dir, create=True, empty=True):
+        write_json('params.json', params)
         atoms.write('unrelaxed.json')
 
         relax(args=['--nod3'])

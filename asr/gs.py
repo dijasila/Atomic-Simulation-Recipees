@@ -27,11 +27,11 @@ if Path('gs_params.json').exists():
 def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     """Calculate ground state density"""
     from ase.io import read
-    from asr.calculators.gpaw import GPAW
+    from asr.calculators import get_calculator
     atoms = read(atomfile)
 
     if Path('gs.gpw').is_file():
-        calc = GPAW('gs.gpw', txt=None)
+        calc = get_calculator()('gs.gpw', txt=None)
     else:
         params = dict(
             mode={'name': 'pw', 'ecut': ecut},
@@ -45,7 +45,7 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
             occupations={'name': 'fermi-dirac', 'width': width},
             txt='gs.txt')
 
-        calc = GPAW(**params)
+        calc = get_calculator()(**params)
 
     atoms.calc = calc
     forces = atoms.get_forces()
