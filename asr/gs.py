@@ -50,8 +50,8 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     atoms.calc = calc
     forces = atoms.get_forces()
     stresses = atoms.get_stress()
-    atoms.calc.write(gpwfilename)
     etot = atoms.get_potential_energy()
+    atoms.calc.write(gpwfilename)
 
     results = {'forces': forces,
                'stresses': stresses,
