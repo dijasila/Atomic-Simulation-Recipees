@@ -212,35 +212,35 @@ $ asr run "ase convert structure.traj structure.json" in materials/*/
 The setup recipes
 -----------------
 ASR also includes some special `setup` recipes. These recipes are meant to give
-the user some easy tools to setup atomic structures. Here we provice some examples
+the user some easy tools to setup atomic structures. Here we provide some explanations
 of their usage.
 
-The `setup.magnetize` recipe is useful if you don't know the magnetic configuration
-of the material you are currently investigation. It sets up non-magnetic (nm), magnetic (fm)
-and anti-ferro magnetic (afm, only for exactly two magnetic atoms in the unit cell) 
-configurations of the inital magnetic moments of the structure in new subfolders `nm/` `fm/`
-and `afm`, respectively. For another example of using the magnetize recipe see the 
-"Advanced Example: Make a screening study" section. For more information see `asr help setup.magnetize`
-
-The `setup.decorate` recipe is useful if you want to create new atomic that are similar
-to an existing atomic structure. The decorate recipe contains a table describing the
-likelyhood of two atoms to be substituted. By default the decorate recipe creates a
-new ASE database with the decorated atomic structure (including itself). For more information see `asr help setup.decorate`.
-
-The `setup.unpackdatabase` is useful if you have a database of materials that you wish
-to conduct some calculations on. By default, running `asr run setup.unpackdatabase` creates a new
-folder `tree/` in the current directory with all mateirals distributed according to the 
-following folder structure `tree/{stoi}/{spg}/{formula:metal}-{stoi}-{spg}-{wyck}-{uid}` 
-where `stoi` is the stoichiometry, `spg` is the space group number, `wyck` are the alphabetically
-sorted unique Wyckoff positions of the materials, `formula:metal` is the chemical formula 
-sorted after metal atoms first and `uid` is a unique identifier to avoid collisions between
-materials that would otherwise end up in the same folder. For another example of using the 
-unpackdatabase recipe see the "Advanced Example: Make a screening study" section. For more
-information see `asr help setup.unpackdatabase`.
-
-The `setup.params` is useful as it makes a `params.json` file containing the default
-parameters of all recipes. This makes it possible to modify the input parameters used by each
-recipe. See the "Change default settings in scripts" section for more information on how this works.
+* The `setup.magnetize` recipe is useful if you don't know the magnetic configuration
+  of the material you are currently investigation. It sets up non-magnetic (nm), magnetic (fm)
+  and anti-ferro magnetic (afm, only for exactly two magnetic atoms in the unit cell) 
+  configurations of the inital magnetic moments of the structure in new subfolders `nm/` `fm/`
+  and `afm`, respectively. For another example of using the magnetize recipe see the 
+  "Advanced Example: Make a screening study" section. For more information see 
+  `asr help setup.magnetize`
+* The `setup.decorate` recipe is useful if you want to create new atomic that are similar
+  to an existing atomic structure. The decorate recipe contains a table describing the
+  likelyhood of two atoms to be substituted. By default the decorate recipe creates a
+  new ASE database with the decorated atomic structure (including itself). For more 
+  information see `asr help setup.decorate`.
+* The `setup.unpackdatabase` is useful if you have a database of materials that you wish
+  to conduct some calculations on. By default, running `asr run setup.unpackdatabase` creates a new
+  folder `tree/` in the current directory with all mateirals distributed according to the 
+  following folder structure `tree/{stoi}/{spg}/{formula:metal}-{stoi}-{spg}-{wyck}-{uid}` 
+  where `stoi` is the stoichiometry, `spg` is the space group number, `wyck` are the alphabetically
+  sorted unique Wyckoff positions of the materials, `formula:metal` is the chemical formula 
+  sorted after metal atoms first and `uid` is a unique identifier to avoid collisions between
+  materials that would otherwise end up in the same folder. For another example of using the 
+  unpackdatabase recipe see the "Advanced Example: Make a screening study" section. For more
+  information see `asr help setup.unpackdatabase`.
+* The `setup.params` is useful as it makes a `params.json` file containing the default
+  parameters of all recipes. This makes it possible to modify the input parameters used by each
+  recipe. See the "Change default settings in scripts" section for more information on 
+  how this works.
 
 Change default settings in scripts
 ----------------------------------
@@ -451,10 +451,8 @@ in you `params.json` file:
     "_calculator": "EMT"
 }
 ```
-We use the `_calculator` keyword because this functionality is not meant to be used for
-anything else than testing at the moment.
-
-
+We use the `_calculator` keyword as opposed to `calculator` because this functionality 
+is not meant to be used for anything else than testing at the moment.
 
 	
 Testing
