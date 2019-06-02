@@ -436,7 +436,23 @@ used. This is specifically true for the ground state recipe which need to use th
 kpoint density and Fermi Temperature as the relax recipe. The command decorator supports 
 the `overwrite_params` keyword which lets you load in other default parameters. In practice,
 the ground state recipe reads parameters from the `gs_params.json` file (if it exists) which
-is produced by the relax recipe.
+is produced by the relax recipe. Below you can see how this works for the ground state recipe:
+
+```python
+# Get some parameters from structure.json
+defaults = {}
+if Path('gs_params.json').exists():
+    from asr.utils import read_json
+    dct = read_json('gs_params.json')
+    if 'ecut' in dct.get('mode', {}):
+        defaults['ecut'] = dct['mode']['ecut']
+
+    if 'density' in dct.get('kpts', {}):
+        defaults['kptdensity'] = dct['kpts']['density']
+
+
+@command('asr.gs', defaults)
+```
 
 
 Setting a different calculator
