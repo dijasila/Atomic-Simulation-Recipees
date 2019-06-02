@@ -33,13 +33,8 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     from asr.calculators import get_calculator
     atoms = read(atomfile)
 
-<<<<<<< HEAD
     if Path(gpwfilename).is_file():
-        calc = GPAW(gpwfilename, txt=None)
-=======
-    if Path('gs.gpw').is_file():
-        calc = get_calculator()('gs.gpw', txt=None)
->>>>>>> master
+        calc = get_calculator()(gpwfilename, txt=None)
     else:
         params = dict(
             mode={'name': 'pw', 'ecut': ecut},
