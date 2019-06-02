@@ -25,13 +25,16 @@ if Path('gs_params.json').exists():
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
 def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
-    """Calculate ground state density"""
+    """Calculate ground state density.
+
+    By default, this recipe reads the structure in 'structure.json'
+    and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
     from asr.calculators import get_calculator
     atoms = read(atomfile)
 
-    if Path('gs.gpw').is_file():
-        calc = get_calculator()('gs.gpw', txt=None)
+    if Path(gpwfilename).is_file():
+        calc = get_calculator()(gpwfilename, txt=None)
     else:
         params = dict(
             mode={'name': 'pw', 'ecut': ecut},

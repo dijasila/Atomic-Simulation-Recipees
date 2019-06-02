@@ -3,16 +3,12 @@ import asr
 from asr.utils.recipe import Recipe
 from pathlib import Path
 
-# Test name
-recipename = '###'
-
-# We create temporary directory and move the structure.json
-# and params.json into that directory
+material = '# Material #'
+formula = material.split('.')[0]
 
 asrtestfolder = Path(asr.__path__[0]) / 'tests'
-
-srcstart = Path(asrtestfolder) / 'Si.json'
-srcparams = Path(asrtestfolder) / 'small_params.json'
+srcstart = Path(asrtestfolder) / material
+srcparams = Path(asrtestfolder) / f'{formula}_params.json'
 dststart = Path('.') / 'unrelaxed.json'
 dstparams = Path('.') / 'params.json'
 

@@ -132,7 +132,13 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
 def main(plusu, ecut, kptdensity, xc, d3, width):
-    """Relax atomic positions and unit cell."""
+    """Relax atomic positions and unit cell.
+
+    By default, this recipe takes the atomic structure in 'unrelaxed.json'
+    and relaxes the structure including the DFTD3 van der Waals
+    correction. The relaxed structure is saved to `structure.json` which can be
+    processed by other recipes.
+    """
     msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
            'what the relax recipe produces. You should '

@@ -173,7 +173,10 @@ def sort_recipes(recipes):
     # Add the recipes with no dependencies (these must exist)
     for recipe in recipes:
         if not recipe.dependencies:
-            sortedrecipes.append(recipe)
+            if recipe.group in ['postprocessing', 'property']:
+                sortedrecipes.append(recipe)
+            else:
+                sortedrecipes = [recipe] + sortedrecipes
 
     assert len(sortedrecipes), 'No recipes without deps!'
     for i in range(1000):

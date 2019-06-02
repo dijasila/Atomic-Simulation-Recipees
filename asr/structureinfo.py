@@ -4,7 +4,13 @@ from asr.utils.prototype import get_symmetry_id
 
 @command('asr.structureinfo')
 def main():
-    """Get quick information about structure based on structure.json"""
+    """Get structural information of atomic structure.
+
+    This recipe produces information such as the space group and magnetic
+    state properties that requires only an atomic structure. This recipes read
+    the atomic structure in `structure.json`.
+    """
+
     from random import randint
     from ase.io import read
     from pathlib import Path

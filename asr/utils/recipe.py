@@ -14,10 +14,19 @@ class Recipe:
     def __init__(self, module):
         self.name = self.__name__ = module.__name__
         self.implemented_attributes = []
+
+        self.module = module
+
         for attr in Recipe.known_attributes:
             if hasattr(module, attr):
                 self.implemented_attributes.append(attr)
                 setattr(self, attr, getattr(module, attr))
+
+    # def main(self, *args, **kwargs):
+    #     self.module.main(*args, **kwargs)
+
+    # def webpanel(self, *args, **kwargs):
+    #     self.module.main(*args, **kwargs)
 
     # Alternative contructors
     @classmethod
