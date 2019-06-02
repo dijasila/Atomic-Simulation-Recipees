@@ -294,7 +294,7 @@ $ tree tree/
 ```
 You will see that the unpacking of the database has produced many `unrelaxed.json`
 files that contain the unrelaxed atomic structures. Because we don't know the
-magnetic structure of the materials we also want to sample different magnetic structures.
+magnetic structure of the materials we also want to sample different magnetic structOBures.
 This can be done with the `magnetize` function of asr
 ```console
 $ asr run setup.magnetize in */*/*/*/
@@ -362,15 +362,15 @@ into the file. This will restart any timeout jobs and run the workflow command
 to see if any new tasks should be spawned with a 5 minute interval. 
 
 
-Developing
-==========
+Developing new recipes
+======================
 In the following you will find the necessary information needed to implement new
 recipes into the ASR framework. The first section gives an ultra short
 description of how to implement new recipes, and the following sections go
 into more detail.
 
-Guide to making new recipes for geniuses
-----------------------------------------
+Guide to making new recipes
+---------------------------
 
 - Start by copying the template [template_recipe.py](asr/utils/something.py) 
   into your asr/asr/ directory. The filename of this file is important since
@@ -384,7 +384,7 @@ Guide to making new recipes for geniuses
   this case it collects the data in `something.json`). It is important that this
   function returns a dict of key-value pairs `kvp` alongside their
   `key-descriptions` and any data you want to save in the collected database.
-- Now implement the `web_panel` function which tells ASR how to present the data
+- Now implement the `webpanel` function which tells ASR how to present the data
   on the website. This function returns a `panel` and a `things` list. The panel
   is simply a tuple of the title that goes into the panel title and a list of
   columns and their contents. This should be clear from studying the example.
@@ -392,11 +392,71 @@ Guide to making new recipes for geniuses
   possible groups), `creates` which tells ASR what files are created and
   `dependencies` which should be a list of ASR recipes (e. g. ['asr.gs']).
 
-
 When you have implemented your first draft of your recipe make sure to test it.
 See the section below for more information.
 
+The ASRCommand decorator
+------------------------
+As you will have seen in the template recipe [template_recipe.py](asr/utils/something.py)
+all main functions in ASR are decorated using a special `command` decorator that ASR 
+provides. In practice, the `command` decorator basically instantiates a new class
+`ASRCommand()` which essentially is a `click.Command` with extra attributes.
 
+When wrapping a command in this decorator the function will automatically:
+
+* Make sure that the returned results of the function
+  are safely stored to a file named `results_RECIPENAME.json`, where `RECIPENAME` is the
+  filename of the recipe like `relax`, `gs` or `borncharges`. This means that you should
+  make sure to return your results using the `return results` statement in python.
+* The results file with additionally also contain the version number of ASR, ASE and GPAW.
+  This is nice since they will be stored together with the actual results.
+* Update the command defaults based on the `params.json` file in the current directory.
+* Execute any missing dependencies if they haven't been run yet.
+  Additionally, the `ASRCommand` will also add a `skip-deps` flag argument if you for some
+  reason don't care about running the dependencies.
+* Store to the the results file in the data key of ASR under the key
+  `data['results_RECIPENAME']`.
+
+The `command` decorator also support the `known_exceptions` keyword.
+This keyword is a dictionary of errors (in python lingo: an exception) and some
+multiplication factors that the parameters should be updated with if the programs
+fails with that excact error. For example, take a look at how this is used in the
+`relax` recipe below:
+```python
+known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                               'width': 0.5}}
+@command('asr.relax',
+	     known_exceptions=known_exceptions)
+```
+In other words, if the relax recipe encounters a `KohnShamConvergenceError` it execute
+the recipe again with a 50% larger kpoint density and half the Fermi temperature smearing.
+
+For some `recipes` it is necessary to use the exact some parameters that some other recipes
+used. This is specifically true for the ground state recipe which need to use the same 
+kpoint density and Fermi Temperature as the relax recipe. The command decorator supports 
+the `overwrite_params` keyword which lets you load in other default parameters. In practice,
+the ground state recipe reads parameters from the `gs_params.json` file (if it exists) which
+is produced by the relax recipe.
+
+
+Setting a different calculator
+==============================
+The default DFT calculator of ASR is `GPAW`, however, at the moment some recipes
+support using the EMT calculator of ASE, specifically the `relax` and the `gs` recipes.
+This is mostly meant for testing, however in the future, we might want to support other
+calculators. To change change the calculator simply add the keyword `_calculator: EMT`
+in you `params.json` file:
+```javascript
+{
+    "_calculator": "EMT"
+}
+```
+We use the `_calculator` keyword because this functionality is not meant to be used for
+anything else than testing at the moment.
+
+
+
+	
 Testing
 -------
 Tests can be run using
@@ -408,18 +468,13 @@ its dependencies and itself to make sure that all dependencies have been
 included. These automatically generated tests are generated from
 [test_template.py](asr/tests/template.py).
 
-ASR uses the `pytest` module for its tests. To see what tests will run use
-```
-asr test --collect-only
-```
 To execute a single test use 
 ```
 asr test -k my_test.py
 ```
 If you want more extended testing of your recipe you will have to implement them
-manually. Your test should be placed in the `asr/asr/tests/`-folder where other
-tests are located as well. where you will find folders containing
-the specific materials.
+manually. Your test should be placed in the `asr/asr/tests/`-folder and prefixed
+with `test_` which is how ASR locates the tests.
 
 
 Special recipe metadata keywords
