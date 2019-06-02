@@ -43,7 +43,7 @@ class Phonons(ASEPhonons):
 @option('--kptdensity', default=6.0, help='Kpoint density')
 def main(n, ecut, kptdensity):
     """Calculate Phonons"""
-    from asr.calculators.gpaw import GPAW
+    from asr.calculators import get_calculator
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -65,12 +65,12 @@ def main(n, ecut, kptdensity):
 
     atoms = read('structure.json')
     fd = open('phonons.txt'.format(n), 'a')
-    calc = GPAW(txt=fd, **params)
+    calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
     if is_magnetic():
-        gsold = GPAW('gs.gpw', txt=None)
+        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 

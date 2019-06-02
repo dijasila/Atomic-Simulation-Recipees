@@ -1,19 +1,13 @@
 from asr.utils import get_recipes
-import pytest
-from pathlib import Path
-
-folder = Path(__file__).parent
 
 # Can we get all recipes?
 recipes = get_recipes()
 
-
-@pytest.mark.parametrize('recipe', recipes)
-def test_help(recipe):
+for recipe in recipes:
     """Call all main functions with --help"""
 
     if not recipe.main:
-        return
+        continue
 
     try:
         func = recipe.main
@@ -24,22 +18,20 @@ def test_help(recipe):
         raise
 
 
-@pytest.mark.parametrize('recipe', recipes)
-def test_group(recipe):
+for recipe in recipes:
     """Make sure that the group property is implemented"""
     if not recipe.group:
-        return
+        continue
 
     assert recipe.group in ['structure', 'property', 'postprocessing',
                             'setup'], \
         (f'Group {recipe.__name__} not known!')
 
 
-@pytest.mark.parametrize('recipe', recipes)
-def test_asr_command(recipe):
+for recipe in recipes:
     """Make sure that the correct _asr_command is being used"""
     if not recipe.main:
-        return
+        continue
     
     try:
         assert hasattr(recipe.main, '_asr_command')

@@ -167,7 +167,6 @@ some information about the atomic structure of the materials. Let's run that:
 $ asr run structureinfo
 ```
 
-
 ASR lets us save all data to a database by running the `collect` recipe. The 
 database is saved to a file `database.db`. This database is an ASE database and
 can be browsed using the `ase db` module:

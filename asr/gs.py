@@ -30,11 +30,16 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     By default, this recipe reads the structure in 'structure.json'
     and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
-    from asr.calculators.gpaw import GPAW
+    from asr.calculators import get_calculator
     atoms = read(atomfile)
 
+<<<<<<< HEAD
     if Path(gpwfilename).is_file():
         calc = GPAW(gpwfilename, txt=None)
+=======
+    if Path('gs.gpw').is_file():
+        calc = get_calculator()('gs.gpw', txt=None)
+>>>>>>> master
     else:
         params = dict(
             mode={'name': 'pw', 'ecut': ecut},
@@ -48,13 +53,13 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
             occupations={'name': 'fermi-dirac', 'width': width},
             txt='gs.txt')
 
-        calc = GPAW(**params)
+        calc = get_calculator()(**params)
 
     atoms.calc = calc
     forces = atoms.get_forces()
     stresses = atoms.get_stress()
-    atoms.calc.write(gpwfilename)
     etot = atoms.get_potential_energy()
+    atoms.calc.write(gpwfilename)
 
     results = {'forces': forces,
                'stresses': stresses,
