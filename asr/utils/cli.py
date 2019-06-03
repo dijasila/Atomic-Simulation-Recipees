@@ -57,14 +57,14 @@ def cli():
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
 @click.argument('command', required=True, type=str)
-@click.argument('args', metavar='[ARGS] -- [FOLDER] ...',
+@click.argument('args', metavar='[ARGS] in [FOLDER] ...',
                 nargs=-1)
 @click.pass_context
 def run(ctx, command, args):
     """Run recipe or python command.
 
     Can run an ASR recipe or command. Arguments that follow after
-    '--' will be interpreted as folders in which the command should
+    'in' will be interpreted as folders in which the command should
     be executed.
 
     Examples:
@@ -76,12 +76,13 @@ def run(ctx, command, args):
         asr run relax --ecut 600
     Run relax recipe in two folders sequentially:
         asr run relax in folder1/ folder2/
-    Run a python command in this folder:
-        asr run "python -m ase convert gs.gpw structure.json"
+    Run a command in this folder:
+        asr run command ase convert gs.gpw structure.json
     Run a python command in "folder1/":
-        asr run "python -m ase convert gs.gpw structure.json" in folder1/
+        asr run command ase convert gs.gpw structure.json in folder1/
 
-    Notice that commands will not be accepted if they don't start with "python"
+    Notice that the special "run command" is used to identify commands that
+    are not recipes.
     """
     import subprocess
     from pathlib import Path
@@ -93,13 +94,15 @@ def run(ctx, command, args):
         folders = args[ind + 1:]
         args = args[:ind]
 
-    if not command.startswith('python'):
+    if not command.startswith('command'):
         # If command doesn't start with python then we assume that the
         # command is a recipe
         command = f'python3 -m asr.{command}'
+    else:
+        command = ''  # The arguments are actually the command
 
     if args:
-        command += ' ' + ' '.join(args)
+        command += ' ' * (len(command) > 0) + ' '.join(args)
         
     if folders:
         from asr.utils import chdir
