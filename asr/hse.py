@@ -34,12 +34,15 @@ from gpaw.xc.exx import EXX
 from gpaw.xc.tools import vxc
 from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
 import numpy as np
+from numpy import linalg as la
+from scipy.interpolate import CubicSpline
+
 from ase.parallel import paropen
 import os
 import gpaw.mpi as mpi
 from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                              monkhorst_pack_interpolate,
-                             bandpath, parse_path_string)
+                             bandpath, parse_path_string, labels_from_kpts)
 #from c2db.utils import (eigenvalues, get_special_2d_path, get_spin_direction,
 #                        spin_axis)
 from ase.io import read
@@ -213,12 +216,13 @@ def bs_interpolate(npoints=400, show=False):
             np.savez(f, **dct)
     # use spline
     # get edge points
-    cell = read('gs.gpw').cell
-    special_points = path.special_points # a dictionary of special points
-    kpoints = []
-    for k in parse_path_string(kptpath)[0]:
-        kpoints.append(special_points[k])
-    kpoints = np.array(kpoints) # an array with special points coordinates
+    #cell = read('gs.gpw').cell
+    #kptpath = path.labelseq
+    #special_points = path.special_points # a dictionary of special points
+    #kpoints = []
+    #for k in parse_path_string(kptpath)[0]:
+    #    kpoints.append(special_points[k])
+    #kpoints = np.array(kpoints) # an array with special points coordinates
 
     # third time is a charm
     eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
@@ -322,28 +326,27 @@ def ontheline(p1, p2, p3s, eps=1.0e-5):
     return its
 
 # move to utils?
-def segment_indices_and_x(cell, path_str, kpts):
+def segment_indices_and_x(cell, kpts):
     """finds indices of bz k-points that is located on segments of a bandpath
     Parameters:
         cell: ndarray (3, 3)-shape
             unit cell
-        path_str: str
-            i.e. 'GMKG'
         kpts: ndarray (nk, 3)-shape
     Returns:
         out: ([[int,] * Np,] * Ns, [[float,] * Np, ] * Ns)
             list of indices and list of x
     """
-    from ase.dft.kpoints import parse_path_string, get_special_points
-    special = get_special_points(cell)
-    _, _, X = bandpath(path=path_str, cell=cell, npoints=len(path_str))
+    from ase.dft.kpoints import parse_path_string, bandpath
+    path_special = cell.bandpath()
+    special_points = path_special.special_points
+    _, X, _ = labels_from_kpts(path_special.kpts, cell, eps=1e-5, special_points=special_points)
     segments_length = np.diff(X)  # length of band segments
-    path = parse_path_string(path_str)[0]  # list str, i.e. ['G', 'M', 'K','G']
+    path = parse_path_string(path_special.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
     segments_points = []
     # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
     for i in range(len(path) - 1):
         kstr1, kstr2 = path[i:i + 2]
-        s1, s2 = special[kstr1], special[kstr2]
+        s1, s2 = special_points[kstr1], special_points[kstr2]
         segments_points.append((s1, s2))
 
     # find indices where kpts is on the segments
@@ -365,7 +368,9 @@ def interpolate_bandstructure(calc, e_skn=None, npoints=400):
     Returns:
         out: kpts, e_skn, xreal, epsreal_skn
     """
-    #path = get_special_2d_path(cell=calc.atoms.cell) # no need for that! you can get from calc.atoms.cell.bandpath(npoints=npoints)
+    # no need for path = ...
+    # you can get from calc.atoms.cell.bandpath(npoints=npoints)
+    #path = get_special_2d_path(cell=calc.atoms.cell)
     r = interpolate_bandlines2(calc=calc, e_skn=e_skn, npoints=npoints)
     return r['kpts'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
@@ -393,14 +398,19 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 position of special points (G, M, K, G) on x axis
 
     """
+    # do not give path as argument! generate path from cell
+
     if e_skn is None:
         e_skn = eigenvalues(calc)
     kpts = calc.get_bz_k_points()
     bz2ibz = calc.get_bz_to_ibz_map()
     cell = calc.atoms.cell
-    indices, x = segment_indices_and_x(cell=cell, path_str=path, kpts=kpts)
+
+    path = cell.bandpath(npoints=npoints)
+    str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
+
+    indices, x = segment_indices_and_x(cell=cell, kpts=kpts)
     # kpoints and positions to interpolate onto
-    kpts2, x2, X2 = bandpath(cell=cell, path=path, npoints=npoints)
     """
     XXX: use method 'interpolate' from BandPath class!
     it takes a BandPath object with a given number of points
@@ -408,6 +418,10 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     example:
         new_path = path.interpolate(npoints=400)
     """
+    new_path = path.interpolate(npoints=400)
+    kpts2 = new_path.kpts
+    x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
+    
     # remove double points
     for n in range(len(indices) - 1):
         if indices[n][-1] == indices[n + 1][0]:
@@ -428,7 +442,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
             epsreal_skn[s, :, n] = y
             bc_type = ['not-a-knot', 'not-a-knot']
             for i in [0, -1]:
-                if path[i] == 'G':
+                if str_path[i] == 'G':
                     bc_type[i] = [1, 0.0]
             sp = CubicSpline(x=x, y=y, bc_type=bc_type)
             # sp = InterpolatedUnivariateSpline(x, y)
