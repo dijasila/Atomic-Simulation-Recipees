@@ -56,9 +56,14 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     etot = atoms.get_potential_energy()
     atoms.calc.write(gpwfilename)
 
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+
     results = {'forces': forces,
                'stresses': stresses,
-               'etot': etot}
+               'etot': etot,
+               '__setup_fingerprints__': fingerprint}
     return results
 
 
