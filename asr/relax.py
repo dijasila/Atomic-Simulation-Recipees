@@ -170,11 +170,17 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
 
+    # Get setup fingerprints
+    fingerprint = {}
+    for setup in dft.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+
     # Save to results_relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,
                'edft': edft,
-               'relaxedstructure': structure}
+               'relaxedstructure': structure,
+               '__setup_fingerprints__': fingerprint}
     return results
 
 
