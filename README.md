@@ -202,11 +202,13 @@ $ asr run relax --ecut 100 in folder1/ folder1/
 The last option that the run commands provides is to execute other python modules
 like `ase`. For example, suppose you have a lot of folders with a `structure.traj`
 that you want to convert to `structure.json`. This can be done with the ase command
-`python -m ase convert structure.traj structure.json`. `run` can run this script in
+`ase convert structure.traj structure.json`. `run` can run this script in
 many folders for you with
 ```console
-$ asr run "ase convert structure.traj structure.json" in materials/*/
+$ asr run command ase convert structure.traj structure.json in materials/*/
 ```
+where the `command` `asr run command` is used to tell ASR that the command you
+wish to run is not a recipe.
 
 
 The setup recipes
