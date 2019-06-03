@@ -13,8 +13,10 @@ from asr.utils import command, argument, option
 @option('--data', is_flag=True, help='Unpack data')
 @option('--atomsname', default='unrelaxed.json',
         help='Filename to unpack atomic structure to')
+@option('--chunks', default=1, metavar='CHUNKS',
+        help='Divide the tree into CHUNKS chunks')
 def main(database, run, selection, tree_structure,
-         kvp, data, atomsname):
+         kvp, data, atomsname, chunks):
     """Set up folders with atomic structures based on ase-database"""
     from os import makedirs
     from pathlib import Path
@@ -79,8 +81,14 @@ def main(database, run, selection, tree_structure,
     if not run:
         print(f'Would make {len(folders)} folders')
         return
-    
-    for folder, row in zip(folders, rows):
+
+    for i, (folder, row) in enumerate(zip(folders, rows)):
+        if chunks > 1:
+            chunkno = i % chunks
+            parts = list(Path(folder).parts)
+            parts[0] += str(chunkno)
+            folder = str(Path().joinpath(*parts))
+
         makedirs(folder)
         folder = Path(folder)
         with chdir(folder):
