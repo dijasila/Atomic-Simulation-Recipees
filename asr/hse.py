@@ -7,21 +7,12 @@ Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, h
 """
 to do:
 
-- restyle according to asr/asr/utils/something.py [template recipe]
-- eliminate calls to C2DB
-- dependencies? asr.gs, asr.anisotropy?
-- should hse.gpw be removed afterwards?
-  [currently both hse.gpw and hse_nowfs.gpw are kept, which is probably redundant]
-- interpolation: here or in separate script (as C2DB)?
-- functions _interpolate and interpolate_bandstructure are NOT used!!
-- instead, interpolate_bandstructure is imported from c2db.bsinterpol as ip_bs
-- substitute .npz with .json?
-- set diskspace, restart
-- from c2db.utils import eigenvalues -> eigenvaules function in asr.bandstructure?
-- for interpolation:
-  UserWarning: Please do not use (kpts, x, X) = bandpath(...). 
-  Use path = bandpath(...) and then use the methods of the path object (see the BandPath class)
-  otherwise you get ValueError: `x` must be strictly increasing sequence.
+- should kptpath be customizable?
+- solve issue with segment_indices_and_x [some segments are empty!]
+- what to do with piecewise path? [eg. GXWKGLUWLK,UX for fcc]
+- substitute .npz with .json
+- create plot
+- create web panel
 """
 import json
 from pathlib import Path
@@ -43,11 +34,8 @@ import gpaw.mpi as mpi
 from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                              monkhorst_pack_interpolate,
                              bandpath, parse_path_string, labels_from_kpts)
-#from c2db.utils import (eigenvalues, get_special_2d_path, get_spin_direction,
-#                        spin_axis)
 from ase.io import read
 from ase.dft.kpoints import get_cellinfo
-#from c2db.bsinterpol import interpolate_bandstructure as ip_bs
 from contextlib import contextmanager
 
 
@@ -239,58 +227,6 @@ def bs_interpolate(npoints=400, show=False):
         with open('hse_bandstructure3.npz', 'wb') as fd:
             np.savez(fd, **dct)
 
-# remove these functions
-# def _interpolate(calc, kpts_kc, e_skn=None):
-#     """
-#     Parameters:
-#         calc: Calculator
-#             GPAW calcualtor
-#         kpts_kc: (nk, 3)-shape array
-#             kpoints to interpolate onto
-#         e_skn: (ns, nk, nb)-shape array
-#             array values on the kpoint grid in calc
-#     Returns:
-#         eps_skn: (ns ,nk, nb)-shape array
-#             the array values in e_skn interpolated onto kpts_kc
-#     """
-#     if e_skn is None:
-#         e_skn = eigenvalues(calc)
-#     atoms = calc.get_atoms()
-#     icell = atoms.get_reciprocal_cell()
-#     bz2ibz = calc.get_bz_to_ibz_map()
-#     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
-#     eps = monkhorst_pack_interpolate(kpts_kc, e_skn.transpose(1, 0, 2),
-#                                      icell, bz2ibz, size, offset)
-#     return eps.transpose(1, 0, 2)
-
-# remove this function? 
-# def interpolate_bandstructure():
-#     """Interpolate eigenvalues onto the kpts in bs.gpw (bandstruct calc) using the
-#        eigenvalues in hse_eigenvalues.npz (which comes from hse@hse_nowfs.gpw).
-#        Spin orbit coupling is calculated using the interpolated eigenvalues and
-#        the projetor overlaps in bs.gpw.
-#     """
-#     ranks = [0]
-#     comm = mpi.world.new_communicator(ranks)
-#     if mpi.world.rank in ranks:
-#         calc1 = GPAW('bs.gpw', txt=None, communicator=comm)
-#         calc2 = GPAW('hse_nowfs.gpw', txt=None, communicator=comm)
-#         e_hse_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
-#         e_hse_skn.sort(axis=2)  # this will prob give problems with s_mk
-#         path = calc1.get_ibz_k_points()
-#         eps_hse_skn = _interpolate(calc=calc2,
-#                                    kpts_kc=path,
-#                                    e_skn=e_hse_skn)
-#         eps_skn = eps_hse_skn
-#         theta, phi = get_spin_direction()
-#         e_mk, s_kvm = get_soc_eigs(calc1, gw_kn=eps_skn, return_spin=True,
-#                                    bands=range(eps_skn.shape[2]),
-#                                    theta=theta, phi=phi)
-#         s_mk = s_kvm.transpose(1, 2, 0)[spin_axis()]
-#         dct = dict(e_mk=e_mk, s_mk=s_mk, eps_skn=eps_hse_skn, path=path)
-#         with open('hse_bandstructure.npz', 'wb') as fd:
-#             np.savez(fd, **dct)
-
 # move to utils?
 def ontheline(p1, p2, p3s, eps=1.0e-5):
     """
@@ -398,8 +334,6 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 position of special points (G, M, K, G) on x axis
 
     """
-    # do not give path as argument! generate path from cell
-
     if e_skn is None:
         e_skn = eigenvalues(calc)
     kpts = calc.get_bz_k_points()
@@ -411,13 +345,6 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
 
     indices, x = segment_indices_and_x(cell=cell, kpts=kpts)
     # kpoints and positions to interpolate onto
-    """
-    XXX: use method 'interpolate' from BandPath class!
-    it takes a BandPath object with a given number of points
-    and creates a new BandPath object with nkpts specified by the user
-    example:
-        new_path = path.interpolate(npoints=400)
-    """
     new_path = path.interpolate(npoints=400)
     kpts2 = new_path.kpts
     x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
