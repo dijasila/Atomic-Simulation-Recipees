@@ -290,11 +290,17 @@ def segment_indices_and_x(cell, kpts):
     segments_xs = []
     for (k1, k2), d, x0 in zip(segments_points, segments_length, X):
         its = ontheline(k1, k2, kpts)
-        indices = [i for i, t in its]
-        ts = np.asarray([t for i, t in its])
-        xs = ts * d  # positions on the line of length d
-        segments_xs.append(xs + x0)
-        segments_indices.append(indices)
+        """
+        Warning: the list returned by ontheline may be empty!
+        This may happen if there is no BZ kpoint close enough to the bandpath for one segment
+        In such a case we should't append anything to segments_xs and segments_indices
+        """
+        if len(its)!=0:
+            indices = [i for i, t in its]
+            ts = np.asarray([t for i, t in its])
+            xs = ts * d  # positions on the line of length d
+            segments_xs.append(xs + x0)
+            segments_indices.append(indices)
 
     return segments_indices, segments_xs
 
