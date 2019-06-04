@@ -1,12 +1,11 @@
 import click
-from asr.utils import command, argument, option
+from asr.utils import command, argument
 
 
 @command('asr.setup.scanparams',
          save_results_file=False)
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg and recipe:option arg arg arg')
-@option('--separate', is_flag=True, help='Vary parameters separate')
 def main(scanparams, separate):
     """Make a new params file"""
     from pathlib import Path
