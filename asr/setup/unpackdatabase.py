@@ -9,14 +9,16 @@ from asr.utils import command, argument, option
 @option('-t', '--tree-structure',
         default=('tree/{stoi}/{spg}/{formula:metal}-{stoi}'
                  '-{spg}-{wyck}-{uid}'))
+@option('--sort', help='Sort the generated materials '
+        '(only useful when dividing chunking tree)')
 @option('--kvp', is_flag=True, help='Unpack key-value-pairs')
 @option('--data', is_flag=True, help='Unpack data')
 @option('--atomsname', default='unrelaxed.json',
         help='Filename to unpack atomic structure to')
-@option('--chunks', default=1, metavar='CHUNKS',
-        help='Divide the tree into CHUNKS chunks')
+@option('-c', '--chunks', default=1, metavar='N',
+        help='Divide the tree into N chunks')
 def main(database, run, selection, tree_structure,
-         kvp, data, atomsname, chunks):
+         sort, kvp, data, atomsname, chunks):
     """Set up folders with atomic structures based on ase-database"""
     from os import makedirs
     from pathlib import Path
@@ -26,10 +28,14 @@ def main(database, run, selection, tree_structure,
     from asr.utils import chdir, write_json
 
     # from ase import Atoms
-    if not selection:
-        selection = ''
+    if selection:
+        print(f'Selecting {selection}')
+
+    if sort:
+        print(f'Sorting after {sort}')
+
     db = connect(database)
-    rows = list(db.select(selection))
+    rows = list(db.select(selection, sort=sort))
 
     folders = []
     err = []
@@ -80,6 +86,14 @@ def main(database, run, selection, tree_structure,
 
     if not run:
         print(f'Would make {len(folders)} folders')
+        if chunks > 1:
+            print(f'Would divide these folders into {chunks} chunks')
+
+        print('The first 10 folders would be')
+        for folder in folders[:10]:
+            print(f'    {folder}')
+        print('    ...')
+        print('To run the command use the --run option')
         return
 
     for i, (folder, row) in enumerate(zip(folders, rows)):
