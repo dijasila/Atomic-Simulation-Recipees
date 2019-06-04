@@ -6,7 +6,7 @@ from asr.utils import command, argument
          save_results_file=False)
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg and recipe:option arg arg arg')
-def main(scanparams, separate):
+def main(scanparams):
     """Make a new params file"""
     from pathlib import Path
     from asr.utils import get_recipes, ASRCommand
@@ -72,10 +72,6 @@ def main(scanparams, separate):
             params[recipe][option] = value
         allparams.append(params)
 
-    for i, params in enumerate(allparams):
-        folder = f'scanparams{i}'
-        print(f'Generated {folder}/params.json with {params}')
-
     # Find parameter combinations that have already been used
     from asr.utils import read_json, write_json
     newparams = []
@@ -89,12 +85,16 @@ def main(scanparams, separate):
 
         for i, generatedparams in enumerate(allparams):
             if params == generatedparams:
+                print(f'{params} already exists in {p}!')
                 allparams.pop(i)
                 break
-        maxind = max(maxind, str(p)[len('scanparams'):])
+        maxind = max(maxind, int(str(p)[10:]))
 
-    for params in allparams:
-        folder = Path(f'scanparams{i}')
+    if not allparams:
+        print('All parameter combinations already exists. '
+              'Generated no new folders.')
+    for j, params in enumerate(allparams):
+        folder = Path(f'scanparams{maxind + j}')
         folder.mkdir()
         write_json(str(folder / 'params.json'), params)
 
