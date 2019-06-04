@@ -5,9 +5,28 @@ from asr.utils import command, argument
 @command('asr.setup.scanparams',
          save_results_file=False)
 @argument('scanparams', nargs=-1,
-          metavar='recipe:option arg arg arg and recipe:option arg arg arg')
+          metavar='recipe:option arg arg arg recipe:option arg arg arg')
 def main(scanparams):
-    """Make a new params file"""
+    """Make new folders different parameters (for example for convergence test)
+
+    This function will take a number of arguments in the syntax
+    recipe:option arg arg arg and setup a number of folders named
+    "scanparams*/" (where * is an integer) with a params.json file.
+
+    If you set multiple options setup.scanparams will test all combinations
+    of parameters.
+
+    The function checks if any of the parameter combinations you ask for
+    already exists and skips these parameter combinations if this is the case.
+
+    Examples:
+    \b
+    Test different kpoint density in the relax recipe
+        asr run setup.scanparams asr.relax:kptdensity 3 4 5
+    Test combination of kpoint densities and planewave cutoff in relax:
+        asr run setup.scanparams asr.relax:kptdensity 3 4 5 \
+            asr.relax:ecut 300 400 500
+    """
     from pathlib import Path
     from asr.utils import get_recipes, ASRCommand
 
@@ -85,7 +104,7 @@ def main(scanparams):
 
         for i, generatedparams in enumerate(allparams):
             if params == generatedparams:
-                print(f'{params} already exists in {p}!')
+                print(f'{params} already exists in {p}')
                 allparams.pop(i)
                 break
         maxind = max(maxind, int(str(p)[10:]) + 1)
