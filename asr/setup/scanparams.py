@@ -88,13 +88,15 @@ def main(scanparams):
                 print(f'{params} already exists in {p}!')
                 allparams.pop(i)
                 break
-        maxind = max(maxind, int(str(p)[10:]))
+        maxind = max(maxind, int(str(p)[10:]) + 1)
 
     if not allparams:
         print('All parameter combinations already exists. '
               'Generated no new folders.')
+
     for j, params in enumerate(allparams):
         folder = Path(f'scanparams{maxind + j}')
+        print(f'Generating {folder} with params: {params}')
         folder.mkdir()
         write_json(str(folder / 'params.json'), params)
 
