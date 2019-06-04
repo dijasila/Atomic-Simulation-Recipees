@@ -1,12 +1,15 @@
 import click
-from asr.utils import command, argument
+from asr.utils import command, argument, option
 
 
 @command('asr.setup.scanparams',
          save_results_file=False)
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg recipe:option arg arg arg')
-def main(scanparams):
+@option('--symlink/--no-symlink', default=True,
+        help='Make symbolic link to everything '
+        'in this folder (except params.json)')
+def main(scanparams, symlink):
     """Make new folders different parameters (for example for convergence test)
 
     This function will take a number of arguments in the syntax
@@ -28,7 +31,7 @@ def main(scanparams):
             asr.relax:ecut 300 400 500
     """
     from pathlib import Path
-    from asr.utils import get_recipes, ASRCommand
+    from asr.utils import get_recipes, ASRCommand, read_json, write_json
 
     paramdict = {}
     recipes = get_recipes(sort=True)
@@ -53,6 +56,21 @@ def main(scanparams):
                 assert ':' in arg, 'You have to use the recipe:option syntax'
                 optioninds.append(i)
     optioninds.append(len(scanparams))
+
+    if Path('params.json').is_file():
+        optionnames = [scanparams[ind] for ind in optioninds[:-1]]
+
+        # Compile parameters from params.json
+        orig_params = read_json('params.json')
+        orignames = []
+        for recipe, recipeparams in orig_params.items():
+            for opt in recipeparams:
+                orignames.append(f'{recipe}:{opt}')
+
+        for opt in optionnames:
+            assert opt not in orignames, \
+                (f'You cannot set {opt} because it '
+                 'is already set in params.json')
 
     splitscanparams = []
     scanparamsdict = {}
@@ -92,7 +110,6 @@ def main(scanparams):
         allparams.append(params)
 
     # Find parameter combinations that have already been used
-    from asr.utils import read_json, write_json
     newparams = []
     maxind = 0
     for p in Path().glob('scanparams*'):
@@ -117,6 +134,13 @@ def main(scanparams):
         folder = Path(f'scanparams{maxind + j}')
         print(f'Generating {folder} with params: {params}')
         folder.mkdir()
+        if symlink:
+            for p in Path().glob('*'):
+                if not p.is_file():
+                    continue
+                if p.name == 'params.json':
+                    continue
+                (folder / p.name).resolve().symlink_to(p.resolve())
         write_json(str(folder / 'params.json'), params)
 
 
