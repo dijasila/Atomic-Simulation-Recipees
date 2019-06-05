@@ -10,7 +10,7 @@ from asr.utils import command, argument, option
         help='Make symbolic link to everything '
         'in this folder (except params.json)')
 def main(scanparams, symlink):
-    """Make new folders different parameters (for example for convergence test)
+    """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax
     recipe:option arg arg arg and setup a number of folders named
@@ -21,6 +21,8 @@ def main(scanparams, symlink):
 
     The function checks if any of the parameter combinations you ask for
     already exists and skips these parameter combinations if this is the case.
+
+    This function can be useful when conducting convergence tests of recipes.
 
     Examples:
     \b
