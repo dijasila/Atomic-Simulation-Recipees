@@ -185,7 +185,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
 
 
 group = 'structure'
-resources = '8:xeon8:10h'
+resources = '24:10h'
 creates = ['results_relax.json']
 
 if __name__ == '__main__':
