@@ -98,8 +98,10 @@ def main(atoms, threshold, database):
     database which can be unpacked into a folder structure using the
     "setup.unpackdatabase" recipe.
 
+    \b
     Examples:
-
+    ---------
+    \b
     Perform likely substitions of atomic structure in structure.json
         asr run setup.decorate structure.json
     """

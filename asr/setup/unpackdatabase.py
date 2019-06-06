@@ -50,25 +50,32 @@ def main(database, run, selection, tree_structure,
     respectively. The key-value-pairs will be saved to key-value-pairs.json
     and each key in data will be saved to "key.json"
 
+    \b
     Examples:
-    For all these example, suppose you have a database named "database.db".
+    ---------
+    For all these examples, suppose you have a database named "database.db".
 
     \b
     Unpack database using default parameters:
-        asr run setup.unpackdatabase database.db --run
-    Don't actually unpack the database but do a dry-run
-        asr run setup.unpackdatabase database.db
+      asr run setup.unpackdatabase database.db --run
+    \b
+    Don't actually unpack the database but do a dry-run:
+      asr run setup.unpackdatabase database.db
+    \b
     Only select a part of the database to unpack:
-        asr run setup.unpackdatabase database.db --selection "natoms<3" --run
-    Set custom folder tree-structure
-        asr run setup.unpackdatabase database.db --tree-structure \
-            tree/{stoi}/{spg}/{formula:metal} --run
+      asr run setup.unpackdatabase database.db --selection "natoms<3" --run
+    \b
+    Set custom folder tree-structure:
+      asr run setup.unpackdatabase database.db --tree-structure
+          tree/{stoi}/{spg}/{formula:metal} --run
+    \b
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
-    so computationally expensive materials are divided evenly
-        asr run setup.unpackdatabase database.db --sort natoms --chunks 2 --run
-    Unpack key-value-pairs and data keys of the ASE database as well
-        asr run setup.unpackdatabase database.db --kvp --data --run
+    so computationally expensive materials are divided evenly:
+      asr run setup.unpackdatabase database.db --sort natoms --chunks 2 --run
+    \b
+    Unpack key-value-pairs and data keys of the ASE database as well:
+      asr run setup.unpackdatabase database.db --kvp --data --run
     """
     from os import makedirs
     from pathlib import Path
