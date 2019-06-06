@@ -138,6 +138,13 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     and relaxes the structure including the DFTD3 van der Waals
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
+
+    \b
+    Examples:
+    Relax without using DFTD3
+        asr run relax --nod3
+    Relax using the LDA exchange-correlation functional
+        asr run relax --xc LDA
     """
     msg = ('You cannot have a structure.json file '
            'if you relax the structure because this is '
