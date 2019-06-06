@@ -24,10 +24,12 @@ def main(scanparams, symlink):
 
     This function can be useful when conducting convergence tests of recipes.
 
-    Examples:
     \b
+    Examples:
+    ---------
     Test different kpoint density in the relax recipe
         asr run setup.scanparams asr.relax:kptdensity 3 4 5
+    \b
     Test combination of kpoint densities and planewave cutoff in relax:
         asr run setup.scanparams asr.relax:kptdensity 3 4 5 \
             asr.relax:ecut 300 400 500
