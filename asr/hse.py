@@ -7,9 +7,11 @@ Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, h
 """
 to do:
 
+- what to do with piecewise path? [eg. GXWKGLUWLK,UX for fcc]
+   -> modify segment_indices_and_x so that it works with piecewise path
+   -> modify interpolation accordingly (interpolate separate segments one by one)
 - should kptpath be customizable?
 - solve issue with segment_indices_and_x [some segments are empty!]
-- what to do with piecewise path? [eg. GXWKGLUWLK,UX for fcc]
 - substitute .npz with .json
 - create plot
 - create web panel
@@ -26,7 +28,7 @@ from gpaw.xc.tools import vxc
 from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
 import numpy as np
 from numpy import linalg as la
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import CubicSpline, InterpolatedUnivariateSpline
 
 from ase.parallel import paropen
 import os
@@ -261,27 +263,69 @@ def ontheline(p1, p2, p3s, eps=1.0e-5):
     its = sorted(its, key=lambda x: x[1])
     return its
 
+# REMOVE THIS FUNCTION
+# def segment_indices_and_x(cell, kpts):
+#     """finds indices of bz k-points that is located on segments of a bandpath
+#     Parameters:
+#         cell: ndarray (3, 3)-shape
+#             unit cell
+#         kpts: ndarray (nk, 3)-shape
+#     Returns:
+#         out: ([[int,] * Np,] * Ns, [[float,] * Np, ] * Ns)
+#             list of indices and list of x
+#     """
+#     from ase.dft.kpoints import parse_path_string, bandpath
+#     path_special = cell.bandpath()
+#     special_points = path_special.special_points
+#     _, X, _ = labels_from_kpts(path_special.kpts, cell, eps=1e-5, special_points=special_points)
+#     segments_length = np.diff(X)  # length of band segments
+#     path = parse_path_string(path_special.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
+#     segments_points = []
+#     # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
+#     for i in range(len(path) - 1):
+#         kstr1, kstr2 = path[i:i + 2]
+#         s1, s2 = special_points[kstr1], special_points[kstr2]
+#         segments_points.append((s1, s2))
+
+#     # find indices where kpts is on the segments
+#     segments_indices = []
+#     segments_xs = []
+#     for (k1, k2), d, x0 in zip(segments_points, segments_length, X):
+#         its = ontheline(k1, k2, kpts)
+#         """
+#         Warning: the list returned by ontheline may be empty!
+#         This may happen if there is no BZ kpoint close enough to the bandpath for one segment
+#         In such a case we should't append anything to segments_xs and segments_indices
+#         """
+#         if len(its)!=0:
+#             indices = [i for i, t in its]
+#             ts = np.asarray([t for i, t in its])
+#             xs = ts * d  # positions on the line of length d
+#             segments_xs.append(xs + x0)
+#             segments_indices.append(indices)
+
+#     return segments_indices, segments_xs
+
 # move to utils?
-def segment_indices_and_x(cell, kpts):
+def segment_indices_and_x(cell, path, kpts):
     """finds indices of bz k-points that is located on segments of a bandpath
     Parameters:
-        cell: ndarray (3, 3)-shape
-            unit cell
+        cell: a Cell object
+        path: a BandPath object
         kpts: ndarray (nk, 3)-shape
     Returns:
         out: ([[int,] * Np,] * Ns, [[float,] * Np, ] * Ns)
             list of indices and list of x
     """
     from ase.dft.kpoints import parse_path_string, bandpath
-    path_special = cell.bandpath()
-    special_points = path_special.special_points
-    _, X, _ = labels_from_kpts(path_special.kpts, cell, eps=1e-5, special_points=special_points)
+    special_points = path.special_points
+    _, X, _ = labels_from_kpts(path.kpts, cell, eps=1e-5, special_points=special_points)
     segments_length = np.diff(X)  # length of band segments
-    path = parse_path_string(path_special.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
+    list_str_path = parse_path_string(path.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
     segments_points = []
     # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
-    for i in range(len(path) - 1):
-        kstr1, kstr2 = path[i:i + 2]
+    for i in range(len(list_str_path) - 1):
+        kstr1, kstr2 = list_str_path[i:i + 2]
         s1, s2 = special_points[kstr1], special_points[kstr2]
         segments_points.append((s1, s2))
 
@@ -346,40 +390,67 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     bz2ibz = calc.get_bz_to_ibz_map()
     cell = calc.atoms.cell
 
-    path = cell.bandpath(npoints=npoints)
-    str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
+    path_interpol = cell.bandpath(npoints=npoints)
+    str_path = path_interpol.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
+    x_interpol, X_interpol, _ = labels_from_kpts(path_interpol.kpts, cell) # x coord. of high symmetry points
+    L = X_interpol[-1] # total lengths of x axis
+    """
+    Now split disconnected segments into separate paths (if there are any)
+    Example: 3D fcc path GXWKGLUWLK,UX -> separate GXWKGLUWLK and UX """
+    segments = str_path.split(',')
+    # get length of each segment on x axis
+    lengths = []
+    index = 0
+    for segment in segments:
+        index+=len(segment)
+        lengths.append(X_interpol[index-1])
+    lengths = np.diff(lengths, prepend=0) # prepend a '0' (need numpy 1.16 or later!)
+    # create list of disconnected paths
+    paths = [] # a list of BandPath objects
+    for n, segment in enumerate(segments):
+        path = cell.bandpath(path=segment, npoints=npoints*lengths[n]/L) # a fraction lengths[n]/L of npoints!
+        paths.append(path)
 
-    indices, x = segment_indices_and_x(cell=cell, kpts=kpts)
+    """ DO I STILL NEED THIS?? XXX
     # kpoints and positions to interpolate onto
     new_path = path.interpolate(npoints=400)
     kpts2 = new_path.kpts
     x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
-    
-    # remove double points
-    for n in range(len(indices) - 1):
-        if indices[n][-1] == indices[n + 1][0]:
-            del indices[n][-1]
-            x[n] = x[n][:-1]
-    # flatten lists [[0, 1], [2, 3, 4]] -> [0, 1, 2, 3, 4]
-    indices = [a for b in indices for a in b]
-    kptsreal_kc = kpts[indices]
-    x = [a for b in x for a in b]
-    # loop over spin and bands and interpolate
-    ns, nk, nb = e_skn.shape
-    e2_skn = np.zeros((ns, len(x2), nb), float)
-    epsreal_skn = np.zeros((ns, len(x), nb), float)
-    for s in range(ns):
-        for n in range(nb):
-            e_k = e_skn[s, :, n]
-            y = [e_k[bz2ibz[i]] for i in indices]
-            epsreal_skn[s, :, n] = y
-            bc_type = ['not-a-knot', 'not-a-knot']
-            for i in [0, -1]:
-                if str_path[i] == 'G':
-                    bc_type[i] = [1, 0.0]
-            sp = CubicSpline(x=x, y=y, bc_type=bc_type)
-            # sp = InterpolatedUnivariateSpline(x, y)
-            e2_skn[s, :, n] = sp(x2)
+    """
+    for path in paths:
+        indices, x = segment_indices_and_x(cell=cell, path=path, kpts=kpts)
+        # remove double points
+        for n in range(len(indices) - 1):
+            if indices[n][-1] == indices[n + 1][0]:
+                del indices[n][-1]
+                x[n] = x[n][:-1]
+        # flatten lists [[0, 1], [2, 3, 4]] -> [0, 1, 2, 3, 4]
+        indices = [a for b in indices for a in b]
+        kptsreal_kc = kpts[indices]
+        x = [a for b in x for a in b]
+        # loop over spin and bands and interpolate
+        ns, nk, nb = e_skn.shape
+        e2_skn = np.zeros((ns, len(x2), nb), float)
+        epsreal_skn = np.zeros((ns, len(x), nb), float)
+        for s in range(ns):
+            for n in range(nb):
+                e_k = e_skn[s, :, n]
+                y = [e_k[bz2ibz[i]] for i in indices]
+                epsreal_skn[s, :, n] = y
+                bc_type = ['not-a-knot', 'not-a-knot']
+                for i in [0, -1]:
+                    if str_path[i] == 'G':
+                        bc_type[i] = [1, 0.0]
+                sp = CubicSpline(x=x, y=y, bc_type=bc_type)
+                #sp = InterpolatedUnivariateSpline(x, y)
+                e2_skn[s, :, n] = sp(x2)
+        """
+        get results for all paths and concatenate
+        
+        ...
+        
+        """
+
     results = {'kpts': kpts2,    # kpts_kc on bandpath
                'e_skn': e2_skn,  # eigenvalues on bandpath
                'x': x2,          # distance along bandpath
