@@ -30,7 +30,7 @@ import numpy as np
 from numpy import linalg as la
 from scipy.interpolate import CubicSpline, InterpolatedUnivariateSpline
 
-from ase.parallel import paropen
+from ase.parallel import paropen, parprint
 import os
 import gpaw.mpi as mpi
 from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
@@ -105,6 +105,7 @@ def hse(kptdensity=12, emptybands=20):
         calc.get_potential_energy()
         calc.write('hse.gpw', 'all')
         calc.write('hse_nowfs.gpw')
+        parprint('------------- 1) created hse.gpw, hse_nowfs.gpw')
     mpi.world.barrier()
     time.sleep(10)  # is this needed?
 
@@ -114,17 +115,22 @@ def hse(kptdensity=12, emptybands=20):
     nb = calc.get_number_of_bands()
 
     hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
+    parprint('------------- 2) start EXX calc')
     hse_calc.calculate(restart='hse-restart.json')
     vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
+    parprint('------------- 3) end EXX calc')
 
     vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
+    parprint('------------- 4) got vxc PBE')
     e_pbe_skn = np.zeros((ns, nk, nb))
     for s in range(ns):
         for k in range(nk):
             e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
     e_pbe_skn = e_pbe_skn[:, :, :-convbands]
+    parprint('------------- 5) got e_pbe_skn')
 
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
+    parprint('------------- 6) got e_hse_skn')
 
     if mpi.world.rank == 0:
         dct = dict(vxc_hse_skn=vxc_hse_skn,
@@ -133,7 +139,7 @@ def hse(kptdensity=12, emptybands=20):
                    e_hse_skn=e_hse_skn)
         with open('hse_eigenvalues.npz', 'wb') as f:
             np.savez(f, **dct)
-
+    parprint('------------- 7) saved hse_eigenvalues.npz')
 
 def hse_spinorbit():
     if not os.path.isfile('hse_eigenvalues.npz'):
