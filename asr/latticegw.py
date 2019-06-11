@@ -23,7 +23,8 @@ def main(ecut):
     from asr.phonons import analyse
     
     if not exists('GW+lat-bs'):
-        os.makedirs('GW+lat-bs')
+        if world.rank == 0:
+            os.makedirs('GW+lat-bs')
     
     print('Calculating GW lattice contribution')
 
@@ -62,7 +63,7 @@ def main(ecut):
         print('Performing new groundstate calculation')
         calc = GPAW('gs.gpw',
                     fixdensity=True,
-                    kpts={'density': 12.0,
+                    kpts={'density': 16.0,
                           'even': True,
                           'gamma': True},
                     nbands=-10,
@@ -134,6 +135,7 @@ def main(ecut):
     
     qabs_qecut = np.zeros(nq)
     B_cv = calc.wfs.gd.icell_cv * 2 * np.pi
+    E_cv = B_cv / ((np.sum(B_cv**2, 1))**(1 / 2))[:, None]
     for iq, q_c in zip(myiqs, mybzq_qc):
         dq_cc = np.eye(3) / N_c[:, None]
         dq_c = ((np.dot(dq_cc, B_cv)**2).sum(1) ** 0.5)
@@ -150,8 +152,6 @@ def main(ecut):
         Q_aGii = pair.initialize_paw_corrections(pd)
         q_v = np.dot(q_c, pd.gd.icell_cv) * 2 * np.pi
         q2abs = np.sum(q_v**2)
-        B_cv = pd.gd.icell_cv * 2 * np.pi
-        E_cv = B_cv / ((np.sum(B_cv**2, 1))**(1 / 2))[:, None]
 
         qabs_qecut[iq] = q2abs**(1 / 2)
         
@@ -219,7 +219,51 @@ def main(ecut):
     world.sum(sigmalat_temp_nk)
     sigmalat_nk = prefactor * sigmalat_temp_nk
     data = {'sigmalat_nk': sigmalat_nk}
-    return sigmalat_nk
+    return data
+
+
+def plot():
+    from matplotlib import pyplot as plt
+    import numpy as np
+    from gpaw import GPAW
+    from asr.utils import read_json
+
+    data = read_json('results_latticegw.json')
+    sigmalat_nk = data['sigmalat_nk']
+    
+    eval_k = sigmalat_nk[0, :]
+    
+    calc = GPAW('gwlatgs.gpw', txt=None)
+    icell_cv = calc.wfs.gd.icell_cv
+    N_c = calc.wfs.kd.N_c
+    kd = calc.wfs.kd
+    bz2ibz_k = kd.bz2ibz_k
+
+    correction_k = np.zeros(N_c, complex).ravel()
+
+    for k, ik in enumerate(bz2ibz_k):
+        correction_k[k] = eval_k[ik]
+
+    kpts_kv = 2 * np.pi * np.dot(calc.wfs.kd.bzk_kc, icell_cv)
+
+    plt.figure()
+    correction_kkk = correction_k.reshape(N_c)
+    kpts_kkkv = kpts_kv.reshape(list(N_c) + [3])
+
+    ind = N_c[0] // 2  # - (N_c[0] + 1) % 2
+    
+    slc_kk = correction_kkk[ind, :, :]
+    slk_kkv = kpts_kkkv[ind, :, :, :]
+    plt.scatter(slk_kkv[:, :, 0], slk_kkv[:, :, 1], s=0.5, c='black', zorder=2)
+    plt.pcolormesh(slk_kkv[:, :, 0], slk_kkv[:, :, 1], slc_kk.real)
+    plt.colorbar()
+
+    plt.figure()
+    plt.scatter(slk_kkv[:, :, 0], slk_kkv[:, :, 1], s=0.5, c='black', zorder=2)
+    plt.contourf(slk_kkv[:, :, 0], slk_kkv[:, :, 1], slc_kk.real, levels=40)
+    plt.colorbar()
+
+    plt.show()
 
 
 if __name__ == '__main__':
