@@ -2,15 +2,17 @@ from asr.utils import command, option
 
 
 @command('asr.latticegw')
-@option('--ecut', help='Plane wave cut off', default=10,
+@option('--eta', help='Broadening parameter', default=0.001,
         type=float)
-def main(ecut):
+@option('--qcut', help='Cutoff for q-integration', default=0.5)
+@option('--microvolume/--no-microvolume', help='Use microvolume integration',
+        default=True)
+def main(eta, qcut, microvolume):
     """Calculate GW Lattice contribution. """
     import numpy as np
     from ase.units import Hartree
     import json
     from ase.io import jsonio
-    import os
     from os.path import exists
     from ase.parallel import paropen
     from ase.dft.kpoints import monkhorst_pack
@@ -21,10 +23,6 @@ def main(ecut):
     from gpaw.mpi import world
     from gpaw.kpt_descriptor import KPointDescriptor
     from asr.phonons import analyse
-    
-    if not exists('GW+lat-bs'):
-        if world.rank == 0:
-            os.makedirs('GW+lat-bs')
     
     print('Calculating GW lattice contribution')
 
@@ -59,22 +57,22 @@ def main(ecut):
     Z2_vv = Z2_lvv[mode]
     print('     Done.')
 
-    if not exists('GW+lat-bs/gwlatgs.gpw'):
+    if not exists('gwlatgs.gpw'):
         print('Performing new groundstate calculation')
         calc = GPAW('gs.gpw',
                     fixdensity=True,
-                    kpts={'density': 16.0,
+                    kpts={'density': 24.0,
                           'even': True,
                           'gamma': True},
                     nbands=-10,
                     convergence={'bands': -5},
-                    txt='GW+lat-bs/gwlatgs.txt')
+                    txt='gwlatgs.txt')
 
         calc.get_potential_energy()
-        calc.write('GW+lat-bs/gwlatgs.gpw', mode='all')
+        calc.write('gwlatgs.gpw', mode='all')
         print('     Done.')
     else:
-        calc = GPAW('GW+lat-bs/gwlatgs.gpw', txt=None)
+        calc = GPAW('gwlatgs.gpw', txt=None)
 
     # Electronic dielectric constant in infrared
     print('Calculating infrared regime '
@@ -87,7 +85,7 @@ def main(ecut):
     print('Preparing for calculation of pair-densities')
     # The aim here is to calculate the pair-densities
     ecut = 10
-    pair = PairDensity('GW+lat-bs/gwlatgs.gpw', ecut)
+    pair = PairDensity('gwlatgs.gpw', ecut)
     nocc = pair.nocc1
 
     # Calculation loop for n-bands and k-points
@@ -105,7 +103,7 @@ def main(ecut):
     
     # constants for lattice correction term
     volume = pair.vol
-    eta = 0.001 / Hartree
+    eta = eta / Hartree
     eps = epsmac
     ZBM = (volume * eps * (0.00299**2 - 0.00139**2) / (4 * np.pi))**(1 / 2)
     prefactor = (((4 * np.pi * ZBM) / eps)**2 * 1 / volume)
@@ -119,8 +117,8 @@ def main(ecut):
     bzq_qv = np.dot(bzq_qc, calc.wfs.gd.icell_cv) * 2 * np.pi
 
     qabs_q = np.sum(bzq_qv**2, axis=1)
-    qecut = 0.5 / Hartree
-    mask_q = qabs_q / 2 < qecut
+    qcut = qcut / Hartree
+    mask_q = qabs_q / 2 < qcut
     bzq_qc = bzq_qc[mask_q]
     nqtot = len(mask_q)
     nq = len(bzq_qc)
@@ -130,48 +128,47 @@ def main(ecut):
     
     print('total number of q:', nqtot)
     print('number of included q:', nq)
+
+    if microvolume:
+        prefactor *= nqtot / (2 * np.pi)**3 * volume
     
-    prefactor *= nqtot / (2 * np.pi)**3 * volume
-    
-    qabs_qecut = np.zeros(nq)
     B_cv = calc.wfs.gd.icell_cv * 2 * np.pi
     E_cv = B_cv / ((np.sum(B_cv**2, 1))**(1 / 2))[:, None]
     for iq, q_c in zip(myiqs, mybzq_qc):
-        dq_cc = np.eye(3) / N_c[:, None]
-        dq_c = ((np.dot(dq_cc, B_cv)**2).sum(1) ** 0.5)
-
         qd = KPointDescriptor([q_c])
-        qd1 = KPointDescriptor([q_c + dq_cc[0]])
-        qd2 = KPointDescriptor([q_c + dq_cc[1]])
-        qd3 = KPointDescriptor([q_c + dq_cc[2]])
         pd = PWDescriptor(ecut, calc.wfs.gd, complex, qd)
-        pd1 = PWDescriptor(ecut, calc.wfs.gd, complex, qd1)
-        pd2 = PWDescriptor(ecut, calc.wfs.gd, complex, qd2)
-        pd3 = PWDescriptor(ecut, calc.wfs.gd, complex, qd3)
+        if microvolume:
+            dq_cc = np.eye(3) / N_c[:, None]
+            dq_c = ((np.dot(dq_cc, B_cv)**2).sum(1) ** 0.5)
+            qd1 = KPointDescriptor([q_c + dq_cc[0]])
+            qd2 = KPointDescriptor([q_c + dq_cc[1]])
+            qd3 = KPointDescriptor([q_c + dq_cc[2]])
+            pd1 = PWDescriptor(ecut, calc.wfs.gd, complex, qd1)
+            pd2 = PWDescriptor(ecut, calc.wfs.gd, complex, qd2)
+            pd3 = PWDescriptor(ecut, calc.wfs.gd, complex, qd3)
 
         Q_aGii = pair.initialize_paw_corrections(pd)
         q_v = np.dot(q_c, pd.gd.icell_cv) * 2 * np.pi
         q2abs = np.sum(q_v**2)
 
-        qabs_qecut[iq] = q2abs**(1 / 2)
-        
         for k in np.arange(0, nikpts):
             # set k-point value
             k_c = ikpts[k]
             # K-point pair (k+-q)
             kptpair = pair.get_kpoint_pair(pd, s, k_c, 0, nall, m1, m2)
-            kptpair1 = pair.get_kpoint_pair(pd1, s, k_c, 0, nall, m1, m2)
-            kptpair2 = pair.get_kpoint_pair(pd2, s, k_c, 0, nall, m1, m2)
-            kptpair3 = pair.get_kpoint_pair(pd3, s, k_c, 0, nall, m1, m2)
-            # -- Kohn-Sham energy difference (e_n - e_m) -- #
             deps0_nm = kptpair.get_transition_energies(n_n, m_m)
-            deps1_nm = kptpair1.get_transition_energies(n_n, m_m)
-            deps2_nm = kptpair2.get_transition_energies(n_n, m_m)
-            deps3_nm = kptpair3.get_transition_energies(n_n, m_m)
+            if microvolume:
+                kptpair1 = pair.get_kpoint_pair(pd1, s, k_c, 0, nall, m1, m2)
+                kptpair2 = pair.get_kpoint_pair(pd2, s, k_c, 0, nall, m1, m2)
+                kptpair3 = pair.get_kpoint_pair(pd3, s, k_c, 0, nall, m1, m2)
 
-            de_nm = np.array([deps1_nm, deps2_nm, deps3_nm]) - deps0_nm
-            v_nmc = de_nm.transpose(1, 2, 0) / dq_c
-            v_nmv = np.dot(v_nmc, np.linalg.inv(E_cv).T)
+            if microvolume:
+                deps1_nm = kptpair1.get_transition_energies(n_n, m_m)
+                deps2_nm = kptpair2.get_transition_energies(n_n, m_m)
+                deps3_nm = kptpair3.get_transition_energies(n_n, m_m)
+                de_nm = np.array([deps1_nm, deps2_nm, deps3_nm]) - deps0_nm
+                v_nmc = de_nm.transpose(1, 2, 0) / dq_c
+                v_nmv = np.dot(v_nmc, np.linalg.inv(E_cv).T)
 
             # -- Pair-Densities -- #
             pairrho_nmG = pair.get_pair_density(pd, kptpair, n_n, m_m,
@@ -197,25 +194,27 @@ def main(ecut):
                         if n != m[i]:
                             pairrho2_m[m[i]] = 0.0
 
-                # -- Lattice correction term -- #
-                v_mv = v_nmv[n]
-                v_m = np.linalg.norm(v_mv, axis=1)
-                dq_cv = np.dot(dq_cc, B_cv)
-                qz = np.linalg.norm(dq_cv, axis=1).sum() / 3
-                qrvol = abs(np.linalg.det(dq_cv))
-                qr = np.sqrt(qrvol / (qz * np.pi))
-                
-                muVol_m = (np.pi * qr**2 / (freqLO * v_m) *
-                           (np.arctanh((deps_m - v_m * qz - 1j * eta) /
-                                       freqLO) -
-                            np.arctanh((deps_m - 1j * eta) / freqLO)))
-                
-                corr = np.sum(pairrho2_m * muVol_m)
+                if microvolume:
+                    # -- Lattice correction term -- #
+                    v_mv = v_nmv[n]
+                    v_m = np.linalg.norm(v_mv, axis=1)
+                    dq_cv = np.dot(dq_cc, B_cv)
+                    qz = np.linalg.norm(dq_cv, axis=1).sum() / 3
+                    qrvol = abs(np.linalg.det(dq_cv))
+                    qr = np.sqrt(qrvol / (qz * np.pi))
+
+                    muVol_m = (np.pi * qr**2 / (freqLO * v_m) *
+                               (np.arctanh((deps_m - v_m * qz - 1j * eta) /
+                                           freqLO) -
+                                np.arctanh((deps_m - 1j * eta) / freqLO)))
+
+                    corr = np.sum(pairrho2_m * muVol_m)
+                else:
+                    corr = np.sum(pairrho2_m /
+                                  ((deps_m - 1j * eta)**2 - freqTO**2 -
+                                   ((4 * np.pi * ZBM**2) / (volume * eps))))
                 sigmalat_temp_nk[n, k] += corr
 
-                corr = np.sum(pairrho2_m /
-                              ((deps_m - 1j * eta)**2 - freqTO**2 -
-                               ((4 * np.pi * ZBM**2) / (volume * eps))))
     world.sum(sigmalat_temp_nk)
     sigmalat_nk = prefactor * sigmalat_temp_nk
     data = {'sigmalat_nk': sigmalat_nk}
@@ -223,16 +222,17 @@ def main(ecut):
 
 
 def plot():
+    import matplotlib
+    matplotlib.use('tkagg')
     from matplotlib import pyplot as plt
     import numpy as np
     from gpaw import GPAW
     from asr.utils import read_json
+    from ase.units import Hartree
 
     data = read_json('results_latticegw.json')
     sigmalat_nk = data['sigmalat_nk']
-    
-    eval_k = sigmalat_nk[0, :]
-    
+    eval_k = sigmalat_nk[0, :] * Hartree
     calc = GPAW('gwlatgs.gpw', txt=None)
     icell_cv = calc.wfs.gd.icell_cv
     N_c = calc.wfs.kd.N_c
@@ -250,7 +250,7 @@ def plot():
     correction_kkk = correction_k.reshape(N_c)
     kpts_kkkv = kpts_kv.reshape(list(N_c) + [3])
 
-    ind = N_c[0] // 2  # - (N_c[0] + 1) % 2
+    ind = N_c[0] // 2 - 1
     
     slc_kk = correction_kkk[ind, :, :]
     slk_kkv = kpts_kkkv[ind, :, :, :]
