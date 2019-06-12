@@ -54,7 +54,8 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     forces = atoms.get_forces()
     stresses = atoms.get_stress()
     etot = atoms.get_potential_energy()
-    atoms.calc.write(gpwfilename)
+    if not Path(gpwfilename).is_file():
+        atoms.calc.write(gpwfilename)
 
     fingerprint = {}
     for setup in calc.setups:
