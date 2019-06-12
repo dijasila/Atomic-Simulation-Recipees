@@ -13,11 +13,12 @@ if Path('gs_params.json').exists():
         defaults['kptdensity'] = dct['kpts']['density']
 
 
-@command('asr.gs', defaults)
+@command('asr.gs', defaults,
+         creates=['gs.gpw'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='structure.json')
-@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+# @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
@@ -31,31 +32,37 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
     from asr.calculators import get_calculator
-    atoms = read(atomfile)
+    atoms = read('structure.json')
 
-    if Path(gpwfilename).is_file():
-        calc = get_calculator()(gpwfilename, txt=None)
-    else:
-        params = dict(
-            mode={'name': 'pw', 'ecut': ecut},
-            xc=xc,
-            basis='dzp',
-            kpts={
-                'density': kptdensity,
-                'gamma': True
-            },
-            symmetry={'do_not_symmetrize_the_density': True},
-            occupations={'name': 'fermi-dirac', 'width': width},
-            txt='gs.txt')
+    params = dict(
+        mode={'name': 'pw', 'ecut': ecut},
+        xc=xc,
+        basis='dzp',
+        kpts={
+            'density': kptdensity,
+            'gamma': True
+        },
+        symmetry={'do_not_symmetrize_the_density': True},
+        occupations={'name': 'fermi-dirac', 'width': width},
+        txt='gs.txt')
 
-        calc = get_calculator()(**params)
+    calc = get_calculator()(**params)
 
     atoms.calc = calc
-    forces = atoms.get_forces()
-    stresses = atoms.get_stress()
-    etot = atoms.get_potential_energy()
-    atoms.calc.write(gpwfilename)
+    atoms.get_forces()
+    atoms.get_stress()
+    atoms.get_potential_energy()
 
+
+def postprocessing():
+    """Extract data from groundstate in gs.gpw"""
+    from gpaw import GPAW
+    calc = GPAW('gs.gpw', txt=None)
+    atoms = calc.atoms
+    forces = atoms.get_forces()
+    stresses = atoms.get_stresses()
+    etot = atoms.get_potential_energy()
+    
     fingerprint = {}
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint

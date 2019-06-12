@@ -1,6 +1,8 @@
 import os
 from contextlib import contextmanager
 from functools import partial
+from pathlib import Path
+
 import click
 import numpy as np
 from importlib import import_module
@@ -15,35 +17,54 @@ class ASRCommand(click.Command):
 
     def __init__(self, asr_name=None, known_exceptions=None,
                  save_results_file=True,
-                 add_skip_opt=True, *args, **kwargs):
+                 add_skip_opt=True, callback=None,
+                 cheap_callback='postprocessing',
+                 creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
         self.asr_results_file = save_results_file
         self.add_skip_opt = add_skip_opt
-        click.Command.__init__(self, *args, **kwargs)
+        self._callback = callback
+        self.creates = creates
+        self.module = import_module(asr_name)
+        self.cheap_callback = cheap_callback
+        click.Command.__init__(self, callback=callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
                                   *args, **kwargs)
 
+    def done(self):
+        if self.creates:
+            for file in self.creates:
+                if not Path(file).exists():
+                    return False
+            return True
+        return False
+    
     def invoke(self, ctx):
+        """Invoke a recipe.
+        
+        By default, invoking a recipe also means invoking its dependencies.
+        This can be avoided using the --skip-deps keyword."""
         # Pop the skip deps argument
         if self.add_skip_opt:
             skip_deps = ctx.params.pop('skip_deps')
         else:
             skip_deps = True
 
-        self.invoke_wrapped(ctx, skip_deps)
-
-    def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
         # Run all dependencies
-        recipes = get_dep_tree(self._asr_name)
         if not skip_deps:
-            for recipe in recipes[:-1]:  # Don't include itself
+            recipes = get_dep_tree(self._asr_name)
+            for recipe in recipes[:-1]:
                 if not recipe.done():
-                    recipe.run(args=['--skip-deps'])
+                    recipe.run(args=['--skip_deps'])
 
+        return self.invoke_myself(ctx)
+
+    def invoke_myself(self, ctx, catch_exceptions=True):
+        """Invoke my own callback."""
         try:
             parprint(f'Running {self._asr_name}')
             results = click.Command.invoke(self, ctx)
@@ -56,8 +77,7 @@ class ASRCommand(click.Command):
                              'Trying again.')
                     for key in parameters:
                         ctx.params[key] *= parameters[key]
-                    return self.invoke_wrapped(ctx, skip_deps=skip_deps,
-                                               catch_exceptions=False)
+                    return self.invoke_myself(ctx, catch_exceptions=False)
                 else:
                     # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '
@@ -83,6 +103,20 @@ class ASRCommand(click.Command):
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
+        return results
+
+    def callback(self, *args, **kwargs):
+        results = None
+        # Skip main callback?
+        if not self.done():
+            results = self._callback(*args, **kwargs)
+
+        if results is None:
+            # Then the results are calculated by another callback function
+            assert hasattr(self.module, self.cheap_callback), \
+                f'{self._asr_name} recipe should have a {self.cheap_callback}'
+            func = getattr(self.module, self.cheap_callback)
+            results = func()
         return results
 
 
@@ -198,6 +232,11 @@ def sort_recipes(recipes):
                f'Input recipes: {names}')
         raise AssertionError(msg)
     return sortedrecipes
+
+
+def get_recipe(name):
+    from asr.utils import Recipe
+    return Recipe.frompath(name)
 
 
 def get_dep_tree(name, reload=True):
