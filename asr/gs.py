@@ -18,14 +18,13 @@ if Path('gs_params.json').exists():
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='structure.json')
-# @option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
-def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
+def main(atomfile, ecut, xc, kptdensity, width):
     """Calculate ground state density.
 
     By default, this recipe reads the structure in 'structure.json'
@@ -52,16 +51,17 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
     atoms.get_forces()
     atoms.get_stress()
     atoms.get_potential_energy()
+    atoms.calc.write('gs.gpw')
 
 
 def postprocessing():
     """Extract data from groundstate in gs.gpw"""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
-    atoms = calc.atoms
-    forces = atoms.get_forces()
-    stresses = atoms.get_stresses()
-    etot = atoms.get_potential_energy()
+    # atoms = calc.atoms
+    forces = calc.get_forces()
+    stresses = calc.get_stress()
+    etot = calc.get_potential_energy()
     
     fingerprint = {}
     for setup in calc.setups:

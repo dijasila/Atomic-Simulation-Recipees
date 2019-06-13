@@ -18,7 +18,7 @@ class ASRCommand(click.Command):
     def __init__(self, asr_name=None, known_exceptions=None,
                  save_results_file=True,
                  add_skip_opt=True, callback=None,
-                 cheap_callback='postprocessing',
+                 additional_callback='postprocessing',
                  creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
@@ -28,8 +28,8 @@ class ASRCommand(click.Command):
         self._callback = callback
         self.creates = creates
         self.module = import_module(asr_name)
-        self.cheap_callback = cheap_callback
-        click.Command.__init__(self, callback=callback, *args, **kwargs)
+        self.additional_callback = additional_callback
+        click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
@@ -113,9 +113,9 @@ class ASRCommand(click.Command):
 
         if results is None:
             # Then the results are calculated by another callback function
-            assert hasattr(self.module, self.cheap_callback), \
+            assert hasattr(self.module, self.additional_callback), \
                 f'{self._asr_name} recipe should have a {self.cheap_callback}'
-            func = getattr(self.module, self.cheap_callback)
+            func = getattr(self.module, self.additional_callback)
             results = func()
         return results
 
