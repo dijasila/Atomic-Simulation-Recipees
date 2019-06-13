@@ -55,7 +55,13 @@ def main(atomfile, ecut, xc, kptdensity, width):
 
 
 def postprocessing():
-    """Extract data from groundstate in gs.gpw"""
+    """Extract data from groundstate in gs.gpw.
+
+    This function is very fast which can be nice when our
+    main function can be divided into a fast and a slow part.
+    In this case, the slow part is the actual calculation of the
+    ground state file 'gs.gpw' and the fast part is simply extracting
+    the relevant results from this file."""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
     forces = calc.get_forces()
@@ -69,6 +75,10 @@ def postprocessing():
     results = {'forces': forces,
                'stresses': stresses,
                'etot': etot,
+               '__key_descriptions__':
+               {'forces': 'Forces on atoms [eV/Angstrom]',
+                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'KVP: Total energy [eV]'},
                '__setup_fingerprints__': fingerprint}
     return results
 
