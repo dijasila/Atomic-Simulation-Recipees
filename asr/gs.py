@@ -58,7 +58,6 @@ def postprocessing():
     """Extract data from groundstate in gs.gpw"""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
-    # atoms = calc.atoms
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()
