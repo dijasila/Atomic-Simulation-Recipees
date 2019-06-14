@@ -24,21 +24,10 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def relax_done(fname, emin=-np.inf):
+def is_relax_done(fname, fmax=0.01, smax=0.002, emin=-np.inf):
     """Check if a relaxation is done"""
-    if world.rank == 0:
-        result = relax_done_master(fname, emin=emin)
-    else:
-        result = None
-    return broadcast(result)
-
-
-def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
-    if not Path(fname).is_file():
-        return None, False
-
     try:
-        slab = read(fname, parallel=False)
+        slab = read(fname)
     except (IOError, UnknownFileTypeError):
         return None, False
 
@@ -59,11 +48,6 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
-
-    trajname = f'{name}.traj'
-
-    # Are we done?
-    atoms_relaxed, done = relax_done(trajname)
 
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
@@ -167,7 +151,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
            'what the relax recipe produces. You should '
            'call your original/start file "unrelaxed.json!"')
     assert not Path('structure.json').is_file(), msg
-    atoms, done = relax_done('relax.traj')
+    atoms, done = is_relax_done('relax.traj')
 
     if atoms is None:
         if Path('relax.traj').exists():
@@ -203,6 +187,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     results = {'etot': etot,
                'edft': edft,
                'relaxedstructure': structure,
+               '__key_descriptions__': {},
                '__setup_fingerprints__': fingerprint}
     return results
 
