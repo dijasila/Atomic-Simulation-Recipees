@@ -34,7 +34,6 @@ def main():
     err.close()
 
 
-@command('asr.bader.print')
 def print():
     """Print Bader charges"""
     import os.path as op
