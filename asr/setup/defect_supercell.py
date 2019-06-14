@@ -30,10 +30,11 @@ def setup_supercell(structure, max_lattice=6., is_2D=True):
     :return structure_sc: supercell structure 
     """
     # TBD    
-    return structure_sc, N_x, N_y, N_z
+    #return structure_sc, N_x, N_y, N_z
+    return None
 
-def def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
-                  extrinsic=False, replace_list=None):
+def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
+                      extrinsic=False, replace_list=None):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, extrinsic
     point defects('extrinsic=True')) for a given structure.
@@ -53,7 +54,8 @@ def def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True
                                               'formula_ ... : {'structure': ..., 'parameters': ...}}
     """
     # TBD
-    return structure_dict
+    #return structure_dict
+    return None
 
 
 def collect_data(atoms):
