@@ -39,7 +39,7 @@ def main(displacement, kptdensity, folder):
     import numpy as np
     from gpaw import GPAW
     from gpaw.mpi import world
-    from c2db.berryphase import get_polarization_phase
+    from asr.utils.berryphase import get_polarization_phase
 
     from ase.parallel import paropen
     from ase.units import Bohr
@@ -214,12 +214,6 @@ def collect_data(atoms):
 
     with open(fname) as fd:
         dct = jsonio.decode(json.load(fd))
-
-    if 'P_asvv' not in dct:
-        from c2db.borncharges import borncharges
-        borncharges(delta)
-        with open(fname) as fd:
-            dct = jsonio.decode(json.load(fd))
 
     P_davv.append(dct['P_asvv'][:, 0])
     P_davv.append(dct['P_asvv'][:, 1])
