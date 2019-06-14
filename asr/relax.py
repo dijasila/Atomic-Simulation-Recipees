@@ -55,6 +55,7 @@ def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True):
+    import spglib
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
@@ -106,10 +107,25 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         calc = dft
     atoms.calc = calc
 
+    spgname, number = spglib.get_spacegroup(read('unrelaxed.json'),
+                                            symprec=1e-4).split()
+
+    def check_symmetry():
+        atoms = read(name + '.traj')
+        spgname2, number2 = spglib.get_spacegroup(atoms, symprec=1e-4).split()
+
+        assert number == number2, \
+            ('The symmetry was broken during the relaxation! '
+             f'The initial spacegroup was {spgname} {number} '
+             f'but it changed to {spgname2} {number2} during '
+             'the relaxation.')
+
     opt = BFGS(atoms,
+               fmax=0.01, smax=0.002, smask=smask, emin=emin,
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', atoms))
-    opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+    opt.opt.attach(check_symmetry)
+    opt.run()
     return atoms, calc, dft, kwargs
 
 

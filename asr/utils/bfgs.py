@@ -6,14 +6,16 @@ from ase.constraints import UnitCellFilter
 
 
 class BFGS:
-    def __init__(self, atoms, logfile=None, trajectory=None):
+    def __init__(self, atoms,
+                 fmax, smax, smask=None, emin=-np.inf,
+                 logfile=None, trajectory=None):
         self.atoms = atoms
         self._logfile = logfile
         self.trajectory = trajectory
 
-    def run(self, fmax, smax, smask=None, emin=-np.inf):
         self.smax = smax
         self.smask = smask
+        self.fmax = fmax
         self.emin = emin
         uf = UnitCellFilter(self.atoms, mask=smask)
 
@@ -25,7 +27,9 @@ class BFGS:
         self.force_consistent = self.opt.force_consistent
         self.step0 = self.opt.step
         self.opt.step = self.step
-        self.opt.run(fmax)
+
+    def run(self):
+        return self.opt.run(self.fmax)
 
     def step(self, f=None):
         m = self.atoms.get_magnetic_moments()
