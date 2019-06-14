@@ -57,11 +57,7 @@ def main(atomfile, ecut, xc, kptdensity, width):
 def postprocessing():
     """Extract data from groundstate in gs.gpw.
 
-    This function is very fast which can be nice when our
-    main function can be divided into a fast and a slow part.
-    In this case, the slow part is the actual calculation of the
-    ground state file 'gs.gpw' and the fast part is simply extracting
-    the relevant results from this file."""
+    This will be called after main by default."""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
     forces = calc.get_forces()
