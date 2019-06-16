@@ -5,10 +5,9 @@ from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
-from ase.parallel import world, broadcast
+from ase.parallel import world
 
 from asr.utils import command, option
-from asr.utils.bfgs import BFGS
 from gpaw import KohnShamConvergenceError
 
 Uvalues = {}
@@ -24,22 +23,21 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def is_relax_done(fname, fmax=0.01, smax=0.002, emin=-np.inf):
-    """Check if a relaxation is done"""
+def get_atoms(fname):
     try:
-        slab = read(fname)
+        atoms = read(fname)
     except (IOError, UnknownFileTypeError):
-        return None, False
+        return read('unrelaxed.json')
 
-    if slab.calc is None:
-        return slab, False
+    return atoms
 
-    e = slab.get_potential_energy()
-    f = slab.get_forces()
-    s = slab.get_stress()
-    done = e < emin or (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
-    return slab, done
+def is_relax_done(atoms, fmax=0.01, smax=0.002):
+    f = atoms.get_forces()
+    s = atoms.get_stress()
+    done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+
+    return done
 
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
@@ -94,9 +92,20 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     spgname, number = spglib.get_spacegroup(read('unrelaxed.json'),
                                             symprec=1e-4).split()
 
-    def check_symmetry():
-        atoms = read(name + '.traj')
-        spgname2, number2 = spglib.get_spacegroup(atoms, symprec=1e-4).split()
+    from ase.constraints import ExpCellFilter
+    filter = ExpCellFilter(atoms, mask=smask)
+
+    from ase.optimize import BFGS
+    opt = BFGS(filter,
+               logfile=name + '.log',
+               trajectory=Trajectory(name + '.traj', 'a', atoms))
+
+    # fmax=0 here because we have implemented our own convergence criteria
+    runner = opt.irun(fmax=0)
+    for _ in runner:
+        # Check that the symmetry is has not been broken
+        spgname2, number2 = spglib.get_spacegroup(atoms,
+                                                  symprec=1e-4).split()
 
         assert number == number2, \
             ('The symmetry was broken during the relaxation! '
@@ -104,30 +113,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
              f'but it changed to {spgname2} {number2} during '
              'the relaxation.')
 
-    from ase.constraints import ExpCellFilter
-    filter = ExpCellFilter(atoms, mask=smask)
-
-    from ase.optimize import BFGS
-    opt = BFGS(filter,
-               logfile=name + '.log',
-               log='relax.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
-
-    runner = opt.irun(fmax=0)
-    for _ in runner:
-        # Check that the symmetry is has not been broken
-        check_symmetry()
-
+        if is_relax_done(atoms, fmax=0.01, smax=0.002):
+            break
         
-        
-        
-        
-    opt = BFGS(atoms,
-               fmax=0.01, smax=0.002, smask=smask, emin=emin,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
-    opt.opt.attach(check_symmetry)
-    opt.run()
     return atoms, calc, dft, kwargs
 
 
@@ -169,16 +157,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
            'what the relax recipe produces. You should '
            'call your original/start file "unrelaxed.json!"')
     assert not Path('structure.json').is_file(), msg
-    atoms, done = is_relax_done('relax.traj')
-
-    if atoms is None:
-        if Path('relax.traj').exists():
-            try:
-                atoms = read('relax.traj')
-            except UnknownFileTypeError:
-                pass
-        if atoms is None:
-            atoms = read('unrelaxed.json')
+    atoms = get_atoms('relax.traj')
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
