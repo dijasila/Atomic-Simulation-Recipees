@@ -14,6 +14,9 @@ def main():
     from pathlib import Path
     from asr.utils import get_recipes, ASRCommand
 
+    p = Path('params.json')
+    assert not p.exists(), 'params.json already exists!'
+
     paramdict = {}
     
     recipes = get_recipes(sort=True)
@@ -30,9 +33,9 @@ def main():
 
         paramdict[recipe.name] = params
 
-    p = Path('params.json')
-    assert not p.exists(), 'params.json already exists!'
     p.write_text(json.dumps(paramdict, indent=4))
+
+    return paramdict
 
 
 group = 'setup'
