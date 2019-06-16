@@ -5,10 +5,9 @@ from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
-from ase.parallel import world, broadcast
+from ase.parallel import world
 
 from asr.utils import command, option
-from asr.utils.bfgs import BFGS
 from gpaw import KohnShamConvergenceError
 
 Uvalues = {}
@@ -24,33 +23,12 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def relax_done(fname, emin=-np.inf):
-    """Check if a relaxation is done"""
-    if world.rank == 0:
-        result = relax_done_master(fname, emin=emin)
-    else:
-        result = None
-    return broadcast(result)
+def is_relax_done(atoms, fmax=0.01, smax=0.002):
+    f = atoms.get_forces()
+    s = atoms.get_stress()
+    done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
-
-def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
-    if not Path(fname).is_file():
-        return None, False
-
-    try:
-        slab = read(fname, parallel=False)
-    except (IOError, UnknownFileTypeError):
-        return None, False
-
-    if slab.calc is None:
-        return slab, False
-
-    e = slab.get_potential_energy()
-    f = slab.get_forces()
-    s = slab.get_stress()
-    done = e < emin or (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
-
-    return slab, done
+    return done
 
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
@@ -59,11 +37,6 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
-
-    trajname = f'{name}.traj'
-
-    # Are we done?
-    atoms_relaxed, done = relax_done(trajname)
 
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
@@ -110,9 +83,20 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     spgname, number = spglib.get_spacegroup(read('unrelaxed.json'),
                                             symprec=1e-4).split()
 
-    def check_symmetry():
-        atoms = read(name + '.traj')
-        spgname2, number2 = spglib.get_spacegroup(atoms, symprec=1e-4).split()
+    from ase.constraints import ExpCellFilter
+    filter = ExpCellFilter(atoms, mask=smask)
+
+    from ase.optimize import BFGS
+    opt = BFGS(filter,
+               logfile=name + '.log',
+               trajectory=Trajectory(name + '.traj', 'a', atoms))
+
+    # fmax=0 here because we have implemented our own convergence criteria
+    runner = opt.irun(fmax=0)
+    for _ in runner:
+        # Check that the symmetry is has not been broken
+        spgname2, number2 = spglib.get_spacegroup(atoms,
+                                                  symprec=1e-4).split()
 
         assert number == number2, \
             ('The symmetry was broken during the relaxation! '
@@ -120,12 +104,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
              f'but it changed to {spgname2} {number2} during '
              'the relaxation.')
 
-    opt = BFGS(atoms,
-               fmax=0.01, smax=0.002, smask=smask, emin=emin,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
-    opt.opt.attach(check_symmetry)
-    opt.run()
+        if is_relax_done(atoms, fmax=0.01, smax=0.002):
+            break
+        
     return atoms, calc, dft, kwargs
 
 
@@ -162,21 +143,15 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     Relax using the LDA exchange-correlation functional
         asr run relax --xc LDA
     """
-    msg = ('You cannot have a structure.json file '
-           'if you relax the structure because this is '
-           'what the relax recipe produces. You should '
-           'call your original/start file "unrelaxed.json!"')
+    msg = ('You cannot already have a structure.json file '
+           'when you relax a structure, because this is '
+           'what the relax recipe is supposed to produce. You should '
+           'name your original/start structure "unrelaxed.json!"')
     assert not Path('structure.json').is_file(), msg
-    atoms, done = relax_done('relax.traj')
-
-    if atoms is None:
-        if Path('relax.traj').exists():
-            try:
-                atoms = read('relax.traj')
-            except UnknownFileTypeError:
-                pass
-        if atoms is None:
-            atoms = read('unrelaxed.json')
+    try:
+        atoms = read('relax.traj')
+    except (IOError, UnknownFileTypeError):
+        atoms = read('unrelaxed.json')
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
@@ -190,7 +165,6 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     write('structure.json', atoms)
 
     from asr.utils import write_json
-    kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
 
     # Get setup fingerprints
@@ -203,6 +177,10 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     results = {'etot': etot,
                'edft': edft,
                'relaxedstructure': structure,
+               '__key_descriptions__':
+               {'etot': 'Total energy [eV]',
+                'edft': 'DFT total energy [eV]',
+                'relaxedstructure': 'Relaxed atomic structure'},
                '__setup_fingerprints__': fingerprint}
     return results
 

@@ -74,7 +74,7 @@ def postprocessing():
                '__key_descriptions__':
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'KVP: Total energy [eV]'},
+                'etot': 'Total energy [eV]'},
                '__setup_fingerprints__': fingerprint}
     return results
 
