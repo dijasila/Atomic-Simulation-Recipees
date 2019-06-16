@@ -104,6 +104,24 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
              f'but it changed to {spgname2} {number2} during '
              'the relaxation.')
 
+    from ase.constraints import ExpCellFilter
+    filter = ExpCellFilter(atoms, mask=smask)
+
+    from ase.optimize import BFGS
+    opt = BFGS(filter,
+               logfile=name + '.log',
+               log='relax.log',
+               trajectory=Trajectory(name + '.traj', 'a', atoms))
+
+    runner = opt.irun(fmax=0)
+    for _ in runner:
+        # Check that the symmetry is has not been broken
+        check_symmetry()
+
+        
+        
+        
+        
     opt = BFGS(atoms,
                fmax=0.01, smax=0.002, smask=smask, emin=emin,
                logfile=name + '.log',
@@ -187,7 +205,10 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     results = {'etot': etot,
                'edft': edft,
                'relaxedstructure': structure,
-               '__key_descriptions__': {},
+               '__key_descriptions__':
+               {'etot': 'Total energy [eV]',
+                'edft': 'DFT total energy [eV]',
+                'relaxedstructure': 'Relaxed atomic structure'},
                '__setup_fingerprints__': fingerprint}
     return results
 
