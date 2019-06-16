@@ -23,15 +23,6 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def get_atoms(fname):
-    try:
-        atoms = read(fname)
-    except (IOError, UnknownFileTypeError):
-        return read('unrelaxed.json')
-
-    return atoms
-
-
 def is_relax_done(atoms, fmax=0.01, smax=0.002):
     f = atoms.get_forces()
     s = atoms.get_stress()
@@ -152,12 +143,15 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     Relax using the LDA exchange-correlation functional
         asr run relax --xc LDA
     """
-    msg = ('You cannot have a structure.json file '
-           'if you relax the structure because this is '
-           'what the relax recipe produces. You should '
-           'call your original/start file "unrelaxed.json!"')
+    msg = ('You cannot already have a structure.json file '
+           'when you relax a structure, because this is '
+           'what the relax recipe is supposed to produce. You should '
+           'name your original/start structure "unrelaxed.json!"')
     assert not Path('structure.json').is_file(), msg
-    atoms = get_atoms('relax.traj')
+    try:
+        atoms = read('relax.traj')
+    except (IOError, UnknownFileTypeError):
+        atoms = read('unrelaxed.json')
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
@@ -171,7 +165,6 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     write('structure.json', atoms)
 
     from asr.utils import write_json
-    kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
 
     # Get setup fingerprints
