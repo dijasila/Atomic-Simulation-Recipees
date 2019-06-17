@@ -1,10 +1,9 @@
-import json
 from pathlib import Path
-from asr.utils import command, option
+#from asr.utils import command, option
 
-#@command('asr.defect_supercell')
+#@command('asr.setup.defect_supercell')
 #@option('--number', default=5)
-#def main(structure):
+def main(structure):
 #    """
 #    Recipe setting up all possible defects within a reasonable
 #    supercell as well as the respective pristine system for a 
@@ -15,7 +14,7 @@ from asr.utils import command, option
 #    results = {'number': number,
 #               'something': something}
 #    Path('something.json').write_text(json.dumps(results))
-#    return results
+    return None 
 
 
 def setup_supercell(structure, max_lattice=8., is_2D=True):
@@ -52,14 +51,14 @@ def setup_supercell(structure, max_lattice=8., is_2D=True):
         z_size = 1
 
     print('Setting up supercell: ({0}, {1}, {2})'.format(
-                                                  x_size, y_size, z_size))
+          x_size, y_size, z_size))
     structure_sc = structure.repeat((x_size, y_size, z_size))
 
     return structure_sc, x_size, y_size, z_size
 
 
 def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
-                      extrinsic=False, replace_list=None):
+                  extrinsic=False, replace_list=None):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, 
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -108,7 +107,7 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
     if vacancies:
         for i in range(len(structure)):
             if not eq_pos[i] in finished_list:
-                for q in range ((-1) * charge_states, charge_states + 1):
+                for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
                     vacancy = pristine.copy()
                     vacancy.pop(i)
@@ -116,7 +115,7 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                              formula, N_x, N_y, N_z, i, q)
                     parameters['txt'] = '{0}.txt'.format(string)
                     parameters['charge'] = q
-                    structure_dict[string] = {'structure': vacancy, 
+                    structure_dict[string] = {'structure': vacancy,  
                                               'parameters': parameters}
             finished_list.append(eq_pos[i])
 
@@ -153,22 +152,31 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
     return structure_dict
 
 
-def create_folder_structure(structure_dict):
+def create_folder_structure(structure, structure_dict):
     """
     Creates a folder for every configuration of the defect supercell in 
     the following way: ... TBD!
     """
-    from pathlib import Path
     from ase.io import write
     from asr.utils import write_json
+
     # ToDo: check if folders already exist
+
+    # first, create parent folder for the parent structure
+    parent_folder = str(structure.symbols)
+    Path(parent_folder).mkdir()
+
+    # then, create a seperate folder for each possible defect
+    # configuration of this parent folder
     for element in structure_dict:
-        folder_name = element
+        folder_name = parent_folder + '/' + element
         struc = structure_dict[element].get('structure')
         params = structure_dict[element].get('parameters')
+        #if not folder_name in folder_list:
         Path(folder_name).mkdir()
-        write(folder_name+'/structure.json', struc)
-        write_json(folder_name+'/params.json', params)
+        write(folder_name + '/structure.json', struc)
+        write_json(folder_name + '/params.json', params)
+
     return None
 
 
