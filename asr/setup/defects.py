@@ -1,19 +1,43 @@
 from pathlib import Path
 #from asr.utils import command, option
 
+##################################################################
+# ToDo: incorporate extrinsic defects similar to the decorate
+#       recipe 
+# ToDo: figure out how to pass on all of the different parameters
+#       from the 'params.json' files within each folder
+# ToDo: write main function by using the created functions
+# ToDo: implement 'collect_data' and 'webpanel'
+# ToDo: generalise recipe to 3D
+##################################################################
+
 #@command('asr.setup.defect')
 #@option('--number', default=5)
-def main(structure):
-#    """
-#    Recipe setting up all possible defects within a reasonable
-#    supercell as well as the respective pristine system for a 
-#    given input structure. Defects include: vacancies, 
-#    anti-site defects.
-#    """
-#    something = calculate_something(number)
-#    results = {'number': number,
-#               'something': something}
-#    Path('something.json').write_text(json.dumps(results))
+
+def main(structure, intrinsic=True, charge_states=3, vacancies=True,
+         extrinsic=False, replace_list=None, max_lattice=8., is_2D=True)
+    """
+    Recipe setting up all possible defects within a reasonable
+    supercell as well as the respective pristine system for a 
+    given input structure. Defects include: vacancies, 
+    anti-site defects. For a given primitive input structure this
+    recipe will create a parent folder for this structure. Afterwards,
+    within this folder it will create a seperate folder for each possible
+    defect and charge state configuration with the unrelaxed structure 
+    and the non general parameters in it ('structure.json', 'params.json').
+    """
+    # first, set up the different defect systems and store their properties
+    # in a dictionary
+    structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
+                                   charge_states=charge_states,
+                                   vacancies=vacancies, extrinsic=extrinsic, 
+                                   replace_list=replace_list, 
+                                   max_lattice=max_lattice, is_2D=is_2D)
+    
+    # based on this dictionary, create a folder structure for all defects 
+    # and respective charge states
+    create_folder_structure(structure, structure_dict)
+
     return None 
 
 
@@ -24,7 +48,7 @@ def setup_supercell(structure, max_lattice=8., is_2D=True):
 
     :param structure: input structure (primitive cell)
     :param max_lattice (float): maximum supercell lattice vector length in Å
-    :param is_2D (bool): choose 2D or 3D supercell
+    :param is_2D (bool): choose 2D or 3D supercell (False)
 
     :return structure_sc: supercell structure 
     """
@@ -58,7 +82,8 @@ def setup_supercell(structure, max_lattice=8., is_2D=True):
 
 
 def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
-                  extrinsic=False, replace_list=None):
+                  extrinsic=False, replace_list=None, max_lattice=8., 
+                  is_2D=True):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, 
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -93,7 +118,7 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
     formula = structure.symbols
 
     # first set up the pristine system by finding the desired supercell
-    pristine, N_x, N_y, N_z = setup_supercell(structure)
+    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
     string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
     parameters['txt'] = '{0}.txt'.format(string)
@@ -155,7 +180,16 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
 def create_folder_structure(structure, structure_dict):
     """
     Creates a folder for every configuration of the defect supercell in 
-    the following way: ... TBD!
+    the following way:
+        - parent folder: name of the structure
+        - for this parent folder, a set of sub-folders with the possible
+          defects, vacancies, pristine systems in the respective charge
+          states will be created
+        - these each contain two files: 'structure.json' (the defect 
+          supercell structure), 'params.json' (the non-general parameters
+          of each system)
+        - the content of those folders can then be used to do further 
+          processing (e.g. relax the defect structure)
     """
     from ase.io import write
     from asr.utils import write_json
