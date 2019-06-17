@@ -2,8 +2,7 @@ import json
 from pathlib import Path
 from asr.utils import command, option
 
-
-@command('asr.defect_supercell')
+#@command('asr.defect_supercell')
 #@option('--number', default=5)
 def main(structure):
     """
@@ -18,6 +17,7 @@ def main(structure):
     Path('something.json').write_text(json.dumps(results))
     return results
 
+
 def setup_supercell(structure, max_lattice=6., is_2D=True):
     """
     Sets up the supercell of a given structure depending on a 
@@ -29,9 +29,33 @@ def setup_supercell(structure, max_lattice=6., is_2D=True):
 
     :return structure_sc: supercell structure 
     """
-    # TBD    
-    #return structure_sc, N_x, N_y, N_z
-    return None
+    for x in range(1, 20):
+        struc_temp = structure.repeat((x, 1, 1))
+        diff = abs(struc_temp[0].position - struc_temp[-1].position)
+        if diff[0] > max_lattice:
+            x_size = x - 1
+            break
+    for y in range(1, 20):
+        struc_temp = structure.repeat((1, y, 1))
+        diff = abs(struc_temp[0].position - struc_temp[-1].position)
+        if diff[1] > max_lattice:
+            y_size = y - 1
+            break
+    if not is_2D:
+        for z in range(1, 20):
+            struc_temp = structure.repeat((1, 1, z))
+            diff = abs(struc_temp[0].position - struc_temp[-1].position)
+            if diff[2] > max_lattice:
+                z_size = z - 1
+                break
+    else:
+        z_size = 1
+
+    print('Setting up supercell: ({0}, {1}, {2})'.format(x_size, y_size, z_size))
+    structure_sc = structure.repeat((x_size, y_size, z_size))
+
+    return structure_sc, x_size, y_size, z_size
+
 
 def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                       extrinsic=False, replace_list=None):
@@ -53,9 +77,69 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                                                'parameters': parameters},
                                               'formula_ ... : {'structure': ..., 'parameters': ...}}
     """
-    # TBD
-    #return structure_dict
-    return None
+    import spglib
+
+    # set up artificial array in order to check for equivalent positions later
+    cell = (structure.cell.array, structure.get_scaled_positions(), structure.numbers)
+
+    # set up a dictionary 
+    structure_dict = {}
+    formula = structure.symbols
+
+    # first set up the pristine system by finding the desired supercell
+    pristine, N_x, N_y, N_z = setup_supercell(structure)
+    parameters = {}
+    string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
+    parameters['txt'] = '{0}.txt'.format(string)
+    parameters['charge'] = 0
+    structure_dict[string] = {'structure': pristine, 'parameters': parameters}
+
+    # incorporate the possible vacancies
+    dataset = spglib.get_symmetry_dataset(cell)
+    eq_pos = dataset.get('equivalent_atoms')
+    finished_list = []
+    if vacancies:
+        for i in range(len(structure)):
+            if not eq_pos[i] in finished_list:
+                for q in range ((-1) * charge_states, charge_states + 1):
+                    parameters = {}
+                    vacancy = pristine.copy()
+                    vacancy.pop(i)
+                    string = '{0}_{1}{2}{3}.vacancy@{4}.charged_({5})'.format(formula, N_x, N_y, N_z, i, q)
+                    parameters['txt'] = '{0}.txt'.format(string)
+                    parameters['charge'] = q
+                    structure_dict[string] = {'structure': vacancy, 'parameters': parameters}
+            finished_list.append(eq_pos[i])
+
+    # incorporate anti-site defects
+    finished_list = []
+    if intrinsic:
+        defect_list = []
+        for i in range(len(structure)):
+            symbol = structure[i].symbol
+            if symbol not in defect_list:
+                defect_list.append(symbol)
+        for i in range(len(structure)):
+            if not eq_pos[i] in finished_list:
+                for element in defect_list:
+                    if not structure[i].symbol == element:
+                        for q in range((-1) * charge_states, charge_states + 1):
+                            parameters = {}
+                            defect = pristine.copy()
+                            defect[i].symbol = element
+                            string = '{0}_{1}{2}{3}.defect_{4}@{5}.charged_({6})'.format(formula, N_x, N_y, N_z, element, i, q)
+                            parameters['txt'] = '{0}.txt'.format(string)
+                            parameters['charge'] = q
+                            structure_dict[string] = {'structure': defect, 'parameters': parameters}
+                finished_list.append(eq_pos[i])
+
+    # incorporate extrinsic dopants
+    # TBD!
+#    if extrinsic:
+#        for element in replace_list:
+#            pass
+
+    return structure_dict
 
 
 def collect_data(atoms):
