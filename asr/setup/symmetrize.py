@@ -11,7 +11,7 @@ def atomstospgcell(atoms, magmoms=None):
             magmoms = atoms.get_magnetic_moments()
         except PropertyNotImplementedError:
             magmoms = None
-    if magmoms:
+    if magmoms is not None:
         return (lattice, positions, numbers, magmoms)
     else:
         return (lattice, positions, numbers)
