@@ -54,8 +54,6 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                   xc=xc,
                   basis='dzp',
                   kpts={'density': kptdensity, 'gamma': True},
-                  # This is the new default symmetry settings
-                  symmetry={'do_not_symmetrize_the_density': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
 
     if plusu:
