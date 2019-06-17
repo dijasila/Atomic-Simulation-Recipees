@@ -6,13 +6,16 @@ from pathlib import Path
 #       recipe 
 # ToDo: figure out how to pass on all of the different parameters
 #       from the 'params.json' files within each folder
-# ToDo: write main function by using the created functions
 # ToDo: implement 'collect_data' and 'webpanel'
-# ToDo: generalise recipe to 3D
+# ToDo: check for already existing folders to avoid multiple 
+#       and unnecessary calculations (compare to 'scanparams.py')
+# ToDo: think of outputs and plots of the recipe
 ##################################################################
 
-#@command('asr.setup.defect')
-#@option('--number', default=5)
+@command('asr.setup.defect')
+@option('-a', '--atomfile', type=str,
+        help='Atomic structure',
+        default='structure.json')
 
 def main(structure, intrinsic=True, charge_states=3, vacancies=True,
          extrinsic=False, replace_list=None, max_lattice=8., is_2D=True)
@@ -22,9 +25,9 @@ def main(structure, intrinsic=True, charge_states=3, vacancies=True,
     given input structure. Defects include: vacancies, 
     anti-site defects. For a given primitive input structure this
     recipe will create a parent folder for this structure. Afterwards,
-    within this folder it will create a seperate folder for each possible
+    within this folder it will create a separate folder for each possible
     defect and charge state configuration with the unrelaxed structure 
-    and the non general parameters in it ('structure.json', 'params.json').
+    and the non general parameters in it ('unrelaxed.json', 'params.json').
     """
     # first, set up the different defect systems and store their properties
     # in a dictionary
@@ -185,7 +188,7 @@ def create_folder_structure(structure, structure_dict):
         - for this parent folder, a set of sub-folders with the possible
           defects, vacancies, pristine systems in the respective charge
           states will be created
-        - these each contain two files: 'structure.json' (the defect 
+        - these each contain two files: 'unrelaxed.json' (the defect 
           supercell structure), 'params.json' (the non-general parameters
           of each system)
         - the content of those folders can then be used to do further 
@@ -197,7 +200,7 @@ def create_folder_structure(structure, structure_dict):
     # ToDo: check if folders already exist
 
     # first, create parent folder for the parent structure
-    parent_folder = str(structure.symbols)
+    parent_folder = str(structure.symbols) + '_defects'
     Path(parent_folder).mkdir()
 
     # then, create a seperate folder for each possible defect
@@ -208,7 +211,7 @@ def create_folder_structure(structure, structure_dict):
         params = structure_dict[element].get('parameters')
         #if not folder_name in folder_list:
         Path(folder_name).mkdir()
-        write(folder_name + '/structure.json', struc)
+        write(folder_name + '/unrelaxed.json', struc)
         write_json(folder_name + '/params.json', params)
 
     return None
@@ -256,7 +259,7 @@ def create_folder_structure(structure, structure_dict):
 
 
 group = 'property'
-creates = ['something.json']  # what files are created
+creates = ['unrelaxed.json', 'params.json']  # what files are created
 dependencies = []  # no dependencies
 resources = '1:10m'  # 1 core for 10 minutes
 diskspace = 0  # how much diskspace is used
