@@ -1,10 +1,29 @@
 from asr.utils import command, option
 
+
+def atomstospgcell(atoms, magmoms=None):
+    from ase.calculators.calculator import PropertyNotImplementedError
+    lattice = atoms.get_cell()
+    positions = atoms.get_scaled_positions(wrap=False)
+    numbers = atoms.get_atomic_numbers()
+    if magmoms is None:
+        try:
+            magmoms = atoms.get_magnetic_moments()
+        except PropertyNotImplementedError:
+            magmoms = None
+    if magmoms:
+        return (lattice, positions, numbers, magmoms)
+    else:
+        return (lattice, positions, numbers)
+
+
 @command('asr.setup.symmetrize',
          save_results_file=False)
 @option('--tolerance', type=float, default=1e-3,
         help='Tolerance when evaluating symmetries')
-def main(tolerance):
+@option('--angle-tolerance', type=float, default=0.1,
+        help='Tolerance one angles when evaluating symmetries')
+def main(tolerance, angle_tolerance):
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell
@@ -13,27 +32,36 @@ def main(tolerance):
 
     In practice, the spacegroup of the structure located in 'original.json'
     is evaluated using a not-very-strict tolerance, which can be adjusted using
-    the --tolerance switch. Then the symmetries of the spacegroup are used
-    to generate equivalent atomic structures and by taking an average of these
-    atomic positions we generate an exactly symmetric atomic structure.
+    the --tolerance and --angle-tolerance switches. Then the symmetries of the
+    spacegroup are used to generate equivalent atomic structures and by taking
+    an average of these atomic positions we generate an exactly symmetric
+    atomic structure.
 
     \b
     Examples:
     ---------
-    Symmetrize an atomic structure using the default tolerance
+    Symmetrize an atomic structure using the default tolerances
         asr run setup.symmetrize
     """
 
     import numpy as np
     import spglib
     from ase.io import read, write
+    from ase.calculators.calculator import PropertyNotImplementedError
     atoms = read('original.json')
-
+    try:
+        magmoms_a = atoms.get_magnetic_moments()
+    except PropertyNotImplementedError:
+        magmoms_a = None
+        
+    spgcell = atomstospgcell(atoms)
+    symmetry = spglib.get_symmetry(spgcell, symprec=tolerance,
+                                   angle_tolerance=angle_tolerance)
     spos_ac = atoms.get_scaled_positions(wrap=False)
     cell_cv = atoms.get_cell()
-    
-    symmetry = spglib.get_symmetry(atoms, symprec=tolerance)
-    spacegroup = spglib.get_spacegroup(atoms, symprec=tolerance)
+
+    spacegroup = spglib.get_spacegroup(spgcell, symprec=tolerance,
+                                       angle_tolerance=angle_tolerance)
 
     uspos_sac = []
     M_scc = []
@@ -79,7 +107,13 @@ def main(tolerance):
 
     print('Cell Change: (Δa, Δb, Δc, Δα, Δβ, Δγ) = '
           f'({a1:.1e} Å, {b1:.1e} Å, {c1:.1e} Å, '
-          f'{alpha1:.2f}°, {beta1:.2f}°, {gamma1:.2f}°)')
+          f'{alpha1:.2e}°, {beta1:.2e}°, {gamma1:.2e}°)')
+
+    abcabg = cp - origcp
+    assert (np.abs(abcabg[:3]) < 10 * tolerance).all(), \
+        'a, b and/or c changed too much! See output above.'
+    assert (np.abs(abcabg[3:]) < 10 * angle_tolerance).all(), \
+        'α, β and/or γ changed too much! See output above.'
 
     origcell = atoms.get_cell()
     ab_normal = np.cross(origcell[0], origcell[1])
@@ -90,7 +124,7 @@ def main(tolerance):
     dpos_av = np.dot(spos_ac - origspos_ac, cell)
     dpos_a = np.sqrt(np.sum(dpos_av**2, 1))
     with np.printoptions(precision=2, suppress=False):
-        print(f'Change of pos.:')
+        print(f'Change of positions:')
         msg = '    '
         for symbol, dpos in zip(atoms.symbols, dpos_a):
             msg += f' {symbol}: {dpos:.1e} Å,'
@@ -98,12 +132,18 @@ def main(tolerance):
                 print(msg[:-1])
                 msg = '    '
         print(msg[:-1])
+
+    assert (dpos_a < 10 * tolerance).all(), \
+        'Some atoms moved too much! See output above.'
     atoms.set_cell(cell)
     atoms.set_scaled_positions(spos_ac)
 
     # Sanity check
-    newspacegroup = spglib.get_spacegroup(atoms, symprec=tolerance)
-    assert spacegroup == newspacegroup
+    newspacegroup = spglib.get_spacegroup(atomstospgcell(atoms,
+                                                         magmoms=magmoms_a),
+                                          symprec=tolerance,
+                                          angle_tolerance=angle_tolerance)
+    assert spacegroup == newspacegroup, f'{spacegroup} -> {newspacegroup}'
     write('unrelaxed.json', atoms)
 
 
