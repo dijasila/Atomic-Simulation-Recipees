@@ -7,17 +7,22 @@ from asr.utils import command, option
 def main(tolerance):
     """Symmetrize atomic structure.
 
-    
+    This function changes the atomic positions and the unit cell
+    of an approximately symmetrical structure into an exactly
+    symmetrical structure.
+
+    In practice, the spacegroup of the structure located in 'original.json'
+    is evaluated using a not-very-strict tolerance, which can be adjusted using
+    the --tolerance switch. Then the symmetries of the spacegroup are used
+    to generate equivalent atomic structures and by taking an average of these
+    atomic positions we generate an exactly symmetric atomic structure.
 
     \b
     Examples:
     ---------
     Set up all known magnetic configurations (assuming existence of
     'unrelaxed.json')
-        asr run setup.magnetize
-    \b
-    Only set up ferromagnetic configuration
-        asr run setup.magnetic --state fm
+        asr run setup.symmetrize
     """
 
     import numpy as np
@@ -25,10 +30,7 @@ def main(tolerance):
     from ase.io import read, write
     atoms = read('original.json')
 
-    spos_ac = atoms.get_scaled_positions()
-    spos_ac -= spos_ac[0] * atoms.pbc
-    atoms.set_scaled_positions(spos_ac)
-    spos_ac = atoms.get_scaled_positions()
+    spos_ac = atoms.get_scaled_positions(wrap=False)
     cell_cv = atoms.get_cell()
     
     symmetry = spglib.get_symmetry(atoms, symprec=tolerance)
@@ -51,7 +53,8 @@ def main(tolerance):
             ind = np.argwhere(np.all(dm_ac < tolerance, axis=1))[0][0]
             symspos_ac[ind] += np.round(d_ac[ind])
             inds.append(ind)
-
+            assert atoms.numbers[i] == atoms.numbers[ind]
+            
         assert len(set(inds)) == len(atoms)
         uspos_ac = symspos_ac[inds]
         uspos_sac.append(uspos_ac)
@@ -70,24 +73,29 @@ def main(tolerance):
     origcp = atoms.cell.cellpar()
 
     nsym = len(symmetry['rotations'])
-    print(f'Spacegroup {spacegroup} with {nsym} symmetries (tol: {tolerance})')
+    print(f'Forcing structure into spacegroup {spacegroup} '
+          f'with {nsym} symmetries (tol: {tolerance})')
     
-    # a0, b0, c0, alpha0, beta0, gamma0 = origcp
-    # a, b, c, alpha, beta, gamma = cp
     a1, b1, c1, alpha1, beta1, gamma1 = cp - origcp
 
     print('Cell Change: (Δa, Δb, Δc, Δα, Δβ, Δγ) = '
           f'({a1:.5f}, {b1:.5f}, {c1:.5f}, '
           f'{alpha1:.5f}°, {beta1:.5f}°, {gamma1:.5f}°)')
 
-    cell = cellpar_to_cell(cp)
-    print(cell - atoms.get_cell())
-    
-    origspos_ac = atoms.get_scaled_positions()
-    dspos_ac = spos_ac - origspos_ac
+    origcell = atoms.get_cell()
+    ab_normal = np.cross(origcell[0], origcell[1])
+    cell = cellpar_to_cell(cp, ab_normal=ab_normal,
+                           a_direction=origcell[0])
+
+    origspos_ac = atoms.get_scaled_positions(wrap=False)
+    dpos_av = np.dot(spos_ac - origspos_ac, cell)
+    dpos_a = np.sqrt(np.sum(dpos_av**2, 1))
     with np.printoptions(precision=2, suppress=False):
-        print(f'Change of (scaled) pos.:')
-        print(dspos_ac)
+        print(f'Change of pos.:')
+        msg = '    '
+        for symbol, dpos in zip(atoms.symbols, dpos_a):
+            msg += '{symbol}: {dpos:.1e} Å,'
+        print(msg)
     atoms.set_cell(cell)
     atoms.set_scaled_positions(spos_ac)
 
