@@ -18,14 +18,14 @@ def main(structure):
     return results
 
 
-def setup_supercell(structure, max_lattice=6., is_2D=True):
+def setup_supercell(structure, max_lattice=8., is_2D=True):
     """
     Sets up the supercell of a given structure depending on a 
     maximum supercell lattice vector length for 2D or 3D structures.
 
     :param structure: input structure (primitive cell)
     :param max_lattice (float): maximum supercell lattice vector length in Å
-    :param is_2D (boolean): choose 2D or 3D supercell
+    :param is_2D (bool): choose 2D or 3D supercell
 
     :return structure_sc: supercell structure 
     """
@@ -51,7 +51,8 @@ def setup_supercell(structure, max_lattice=6., is_2D=True):
     else:
         z_size = 1
 
-    print('Setting up supercell: ({0}, {1}, {2})'.format(x_size, y_size, z_size))
+    print('Setting up supercell: ({0}, {1}, {2})'.format(
+                                                  x_size, y_size, z_size))
     structure_sc = structure.repeat((x_size, y_size, z_size))
 
     return structure_sc, x_size, y_size, z_size
@@ -60,27 +61,33 @@ def setup_supercell(structure, max_lattice=6., is_2D=True):
 def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                       extrinsic=False, replace_list=None):
     """
-    Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, extrinsic
-    point defects('extrinsic=True')) for a given structure.
+    Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, 
+    extrinsic point defects('extrinsic=True')) for a given structure.
 
     :param structure: input structure (primitive cell)
-    :param intrinsic (boolean): incorporate intrinsic point defects
-    :param vacancies (boolean): incorporate vacancies
-    :param extrinsic (boolean): incorporate extrinsic point defects
-    :param replace_list (array): array of extrinsic dopants and their respective positions
+    :param intrinsic (bool): incorporate intrinsic point defects
+    :param vacancies (bool): incorporate vacancies
+    :param extrinsic (bool): incorporate extrinsic point defects
+    :param replace_list (array): array of extrinsic dopants and their 
+                                 respective positions
 
-    :return structure_dict: dictionary of all possible defect configurations of the given 
-                            structure with different charge states. The dictionary is built 
-                            up in the following way: 
-                            structure_dict = {'formula_N_x, N_y, N_z.(pristine, vacancy, defect)@
-                                               atom_index.charged_(q)': {'structure': defect_structure,
+    :return structure_dict: dictionary of all possible defect configurations
+                            of the given structure with different charge 
+                            states. The dictionary is built up in the 
+                            following way: 
+                            structure_dict = {'formula_N_x, N_y, N_z.(
+                                               pristine, vacancy, defect)@
+                                               atom_index.charged_(q)': 
+                                               {'structure': defect_structure,
                                                'parameters': parameters},
-                                              'formula_ ... : {'structure': ..., 'parameters': ...}}
+                                              'formula_ ... : 
+                                             {'structure': ..., ...}}
     """
     import spglib
 
     # set up artificial array in order to check for equivalent positions later
-    cell = (structure.cell.array, structure.get_scaled_positions(), structure.numbers)
+    cell = (structure.cell.array, structure.get_scaled_positions(), 
+            structure.numbers)
 
     # set up a dictionary 
     structure_dict = {}
@@ -105,10 +112,12 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                     parameters = {}
                     vacancy = pristine.copy()
                     vacancy.pop(i)
-                    string = '{0}_{1}{2}{3}.vacancy@{4}.charged_({5})'.format(formula, N_x, N_y, N_z, i, q)
+                    string = '{0}_{1}{2}{3}.vacancy@{4}.charged_({5})'.format(
+                             formula, N_x, N_y, N_z, i, q)
                     parameters['txt'] = '{0}.txt'.format(string)
                     parameters['charge'] = q
-                    structure_dict[string] = {'structure': vacancy, 'parameters': parameters}
+                    structure_dict[string] = {'structure': vacancy, 
+                                              'parameters': parameters}
             finished_list.append(eq_pos[i])
 
     # incorporate anti-site defects
@@ -123,14 +132,16 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
             if not eq_pos[i] in finished_list:
                 for element in defect_list:
                     if not structure[i].symbol == element:
-                        for q in range((-1) * charge_states, charge_states + 1):
+                        for q in range((-1)*charge_states, charge_states+1):
                             parameters = {}
                             defect = pristine.copy()
                             defect[i].symbol = element
-                            string = '{0}_{1}{2}{3}.defect_{4}@{5}.charged_({6})'.format(formula, N_x, N_y, N_z, element, i, q)
+                            string = '{0}_{1}{2}{3}.defect_{4}@{5}.charged_({6})'.format(
+                                     formula, N_x, N_y, N_z, element, i, q)
                             parameters['txt'] = '{0}.txt'.format(string)
                             parameters['charge'] = q
-                            structure_dict[string] = {'structure': defect, 'parameters': parameters}
+                            structure_dict[string] = {'structure': defect, 
+                                                      'parameters': parameters}
                 finished_list.append(eq_pos[i])
 
     # incorporate extrinsic dopants
@@ -142,45 +153,62 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
     return structure_dict
 
 
-def collect_data(atoms):
-    path = Path('something.json')
-    if not path.is_file():
-        return {}, {}, {}
-    # Read data:
-    dct = json.loads(path.read_text())
-    # Define key-value pairs, key descriptions and data:
-    kvp = {'something': dct['something']}
-    kd = {'something': ('Something', 'Longer description', 'unit')}
-    data = {'something':
-            {'stuff': 'more complicated data structures',
-             'things': [0, 1, 2, 1, 0]}}
-    return kvp, kd, data
+def create_folder_structure(structure_dict):
+    """
+    Creates a folder for every configuration of the defect supercell in 
+    the following way: ... TBD!
+    """
+    from pathlib import Path
+    from ase.io import write
+    # ToDo: check if folders already exist
+    # ToDo: also include the respective parameters somehow ('params.json')
+    for element in structure_dict:
+        folder_name = element
+        struc = structure_dict[element].get('structure')
+        Path(folder_name).mkdir()
+        write(folder_name+'/structure.json', struc)
+    return None
 
 
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+#def collect_data(atoms):
+#    path = Path('something.json')
+#    if not path.is_file():
+#        return {}, {}, {}
+#    # Read data:
+#    dct = json.loads(path.read_text())
+#    # Define key-value pairs, key descriptions and data:
+#    kvp = {'something': dct['something']}
+#    kd = {'something': ('Something', 'Longer description', 'unit')}
+#    data = {'something':
+#            {'stuff': 'more complicated data structures',
+#             'things': [0, 1, 2, 1, 0]}}
+#    return kvp, kd, data
+ 
 
-    if 'something' not in row.data:
-        return None, []
+#def webpanel(row, key_descriptions):
+#    from asr.utils.custom import fig, table
+#
+#    if 'something' not in row.data:
+#        return None, []
+#
+#    table1 = table(row,
+#                   'Property',
+#                   ['something'],
+#                   kd=key_descriptions)
+#    panel = ('Title',
+#             [[fig('something.png'), table1]])
+#    things = [(create_plot, ['something.png'])]
+#    return panel, things
 
-    table1 = table(row,
-                   'Property',
-                   ['something'],
-                   kd=key_descriptions)
-    panel = ('Title',
-             [[fig('something.png'), table1]])
-    things = [(create_plot, ['something.png'])]
-    return panel, things
 
-
-def create_plot(row, fname):
-    import matplotlib.pyplot as plt
-
-    data = row.data.something
-    fig = plt.figure()
-    ax = fig.gca()
-    ax.plot(data.things)
-    plt.savefig(fname)
+#def create_plot(row, fname):
+#    import matplotlib.pyplot as plt
+#
+#    data = row.data.something
+#    fig = plt.figure()
+#    ax = fig.gca()
+#    ax.plot(data.things)
+#    plt.savefig(fname)
 
 
 group = 'property'
