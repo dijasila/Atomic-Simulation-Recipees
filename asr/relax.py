@@ -92,7 +92,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
     for _ in runner:
-        # Check that the symmetry is has not been broken
+        # Check that the symmetry has not been broken
         spgname2, number2 = spglib.get_spacegroup(atoms,
                                                   symprec=1e-4).split()
 

@@ -106,7 +106,8 @@ def main(database, run, selection, tree_structure,
                 atoms.numbers)
         stoi = atoms.symbols.formula.stoichiometry()
         st = stoi[0]
-        dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3)
+        dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3,
+                                              angle_tolerance=0.1)
         sg = dataset['number']
         w = '-'.join(sorted(set(dataset['wyckoffs'])))
         if 'magstate' in row:

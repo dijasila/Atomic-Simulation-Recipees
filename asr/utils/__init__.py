@@ -111,11 +111,8 @@ class ASRCommand(click.Command):
         if not self.done():
             results = self._callback(*args, **kwargs)
 
-        if results is None:
+        if results is None and hasattr(self.module, self.additional_callback):
             # Then the results are calculated by another callback function
-            assert hasattr(self.module, self.additional_callback), \
-                (f'{self._asr_name} recipe should have a function named: '
-                 f'{self.additional_callback}')
             func = getattr(self.module, self.additional_callback)
             results = func()
         return results
