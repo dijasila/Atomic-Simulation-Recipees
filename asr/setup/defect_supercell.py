@@ -4,18 +4,18 @@ from asr.utils import command, option
 
 #@command('asr.defect_supercell')
 #@option('--number', default=5)
-def main(structure):
-    """
-    Recipe setting up all possible defects within a reasonable
-    supercell as well as the respective pristine system for a 
-    given input structure. Defects include: vacancies, 
-    anti-site defects.
-    """
-    something = calculate_something(number)
-    results = {'number': number,
-               'something': something}
-    Path('something.json').write_text(json.dumps(results))
-    return results
+#def main(structure):
+#    """
+#    Recipe setting up all possible defects within a reasonable
+#    supercell as well as the respective pristine system for a 
+#    given input structure. Defects include: vacancies, 
+#    anti-site defects.
+#    """
+#    something = calculate_something(number)
+#    results = {'number': number,
+#               'something': something}
+#    Path('something.json').write_text(json.dumps(results))
+#    return results
 
 
 def setup_supercell(structure, max_lattice=8., is_2D=True):
@@ -160,13 +160,15 @@ def create_folder_structure(structure_dict):
     """
     from pathlib import Path
     from ase.io import write
+    from asr.utils import write_json
     # ToDo: check if folders already exist
-    # ToDo: also include the respective parameters somehow ('params.json')
     for element in structure_dict:
         folder_name = element
         struc = structure_dict[element].get('structure')
+        params = structure_dict[element].get('parameters')
         Path(folder_name).mkdir()
         write(folder_name+'/structure.json', struc)
+        write_json(folder_name+'/params.json', params)
     return None
 
 
