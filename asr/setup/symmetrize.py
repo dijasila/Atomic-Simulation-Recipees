@@ -79,8 +79,8 @@ def main(tolerance):
     a1, b1, c1, alpha1, beta1, gamma1 = cp - origcp
 
     print('Cell Change: (Δa, Δb, Δc, Δα, Δβ, Δγ) = '
-          f'({a1:.5f}, {b1:.5f}, {c1:.5f}, '
-          f'{alpha1:.5f}°, {beta1:.5f}°, {gamma1:.5f}°)')
+          f'({a1:.1e} Å, {b1:.1e} Å, {c1:.1e} Å, '
+          f'{alpha1:.2f}°, {beta1:.2f}°, {gamma1:.2f}°)')
 
     origcell = atoms.get_cell()
     ab_normal = np.cross(origcell[0], origcell[1])
@@ -94,8 +94,11 @@ def main(tolerance):
         print(f'Change of pos.:')
         msg = '    '
         for symbol, dpos in zip(atoms.symbols, dpos_a):
-            msg += '{symbol}: {dpos:.1e} Å,'
-        print(msg)
+            msg += f' {symbol}: {dpos:.1e} Å,'
+            if len(msg) > 70:
+                print(msg[:-1])
+                msg = '    '
+        print(msg[:-1])
     atoms.set_cell(cell)
     atoms.set_scaled_positions(spos_ac)
 
