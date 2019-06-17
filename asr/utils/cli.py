@@ -56,7 +56,6 @@ def cli():
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-# @click.argument('command', required=True, type=str)
 @click.argument('args', metavar=('[shell] [dry] command '
                                  '[ARGS] in [FOLDER] ...'),
                 nargs=-1)
