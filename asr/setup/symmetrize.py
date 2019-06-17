@@ -20,8 +20,7 @@ def main(tolerance):
     \b
     Examples:
     ---------
-    Set up all known magnetic configurations (assuming existence of
-    'unrelaxed.json')
+    Symmetrize an atomic structure using the default tolerance
         asr run setup.symmetrize
     """
 
