@@ -45,6 +45,8 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
 
     # first, read input atomic structure and store it in ase's atoms object
     structure = read(atomfile)    
+    print('INFO: started recipe for setting up defect systems of '
+          '{} host system.'.format(structure.symbols))
 
     # set up the different defect systems and store their properties
     # in a dictionary
@@ -71,29 +73,29 @@ def setup_supercell(structure, max_lattice, is_2D):
 
     :return structure_sc: supercell structure 
     """
-    for x in range(1, 20):
+    for x in range(1, 50):
         struc_temp = structure.repeat((x, 1, 1))
-        diff = abs(struc_temp[0].position - struc_temp[-1].position)
-        if diff[0] > max_lattice:
+        diff = struc_temp.get_distance(0, -1)
+        if diff > max_lattice:
             x_size = x - 1
             break
-    for y in range(1, 20):
+    for y in range(1, 50):
         struc_temp = structure.repeat((1, y, 1))
-        diff = abs(struc_temp[0].position - struc_temp[-1].position)
-        if diff[1] > max_lattice:
+        diff = struc_temp.get_distance(0, -1)
+        if diff > max_lattice:
             y_size = y - 1
             break
     if not is_2D:
-        for z in range(1, 20):
+        for z in range(1, 50):
             struc_temp = structure.repeat((1, 1, z))
-            diff = abs(struc_temp[0].position - struc_temp[-1].position)
-            if diff[2] > max_lattice:
+            diff = struc_temp.get_distance(0, -1)
+            if diff > max_lattice:
                 z_size = z - 1
                 break
     else:
         z_size = 1
 
-    print('Setting up supercell: ({0}, {1}, {2})'.format(
+    print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
           x_size, y_size, z_size))
     structure_sc = structure.repeat((x_size, y_size, z_size))
 
@@ -186,6 +188,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                                                       'parameters': parameters}
                 finished_list.append(eq_pos[i])
 
+    print('INFO: setting up {0} different defect supercell systems'.format(
+          len(structure_dict)))
+
     return structure_dict
 
 
@@ -206,22 +211,36 @@ def create_folder_structure(structure, structure_dict):
     from ase.io import write
     from asr.utils import write_json
 
-    # ToDo: check if folders already exist
-
     # first, create parent folder for the parent structure
-    parent_folder = str(structure.symbols) + '_defects'
-    Path(parent_folder).mkdir()
+    try:
+        parent_folder = str(structure.symbols) + '_defects'
+        Path(parent_folder).mkdir()
+    except FileExistsError:
+        print('WARNING: parent folder ("{0}") for this structure already '
+              f'exists in this directory. Skip creating parent folder '
+              f'and continue with sub-directories.'.format(parent_folder))
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder
+    count_old = 0
+    count_new = 0
     for element in structure_dict:
         folder_name = parent_folder + '/' + element
         struc = structure_dict[element].get('structure')
         params = structure_dict[element].get('parameters')
-        #if not folder_name in folder_list:
-        Path(folder_name).mkdir()
-        write(folder_name + '/unrelaxed.json', struc)
-        write_json(folder_name + '/params.json', params)
+        try:
+            Path(folder_name).mkdir()
+            write(folder_name + '/unrelaxed.json', struc)
+            write_json(folder_name + '/params.json', params)
+            count_new = count_new + 1
+        except FileExistsError:
+            print('WARNING: folder ("{0}") for this defect already '
+                  f'exists in this directory. Skip and proceed with '
+                  f'the next configuration.'.format(folder_name))
+            count_old = count_old + 1
+    print('INFO: Created {} new folders for different defect configurations '
+          'inside "{}". {} folders already existed and were reused.'
+          .format(count_new, parent_folder, count_old))
 
     return None
 
