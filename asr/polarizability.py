@@ -35,7 +35,7 @@ def main(gs, kptdensity, ecut, xc, bandfactor):
     }
 
     ND = np.sum(pbc)
-    if ND == 3:
+    if ND == 3 or ND == 1:
         kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
 
