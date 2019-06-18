@@ -9,7 +9,7 @@ def atomstospgcell(atoms, magmoms=None):
     if magmoms is None:
         try:
             magmoms = atoms.get_magnetic_moments()
-        except PropertyNotImplementedError:
+        except (RuntimeError, PropertyNotImplementedError):
             magmoms = None
     if magmoms is not None:
         return (lattice, positions, numbers, magmoms)
@@ -136,6 +136,8 @@ def main(tolerance, angle_tolerance):
     assert (dpos_a < 10 * tolerance).all(), \
         'Some atoms moved too much! See output above.'
     atoms.set_cell(cell)
+    originatom = np.argmin(np.sum(np.abs(spos_ac * atoms.pbc), axis=1))
+    spos_ac -= spos_ac[originatom] * atoms.pbc
     atoms.set_scaled_positions(spos_ac)
 
     # Sanity check

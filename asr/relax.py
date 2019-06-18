@@ -78,8 +78,10 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         calc = dft
     atoms.calc = calc
 
-    spgname, number = spglib.get_spacegroup(read('unrelaxed.json'),
-                                            symprec=1e-4).split()
+    from asr.setup.symmetrize import atomstospgcell as ats
+    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json')),
+                                            symprec=1e-4,
+                                            angle_tolerance=0.1).split()
 
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
@@ -93,8 +95,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     runner = opt.irun(fmax=0)
     for _ in runner:
         # Check that the symmetry has not been broken
-        spgname2, number2 = spglib.get_spacegroup(atoms,
-                                                  symprec=1e-4).split()
+        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
+                                                  symprec=1e-4,
+                                                  angle_tolerance=0.1).split()
 
         assert number == number2, \
             ('The symmetry was broken during the relaxation! '
