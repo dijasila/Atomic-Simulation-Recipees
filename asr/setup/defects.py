@@ -5,15 +5,13 @@ from asr.utils import command, option
 # ToDo: incorporate extrinsic defects
 # ToDo: figure out how to pass on all of the different parameters
 #       from the 'params.json' files within each folder
-# ToDo: implement 'collect_data' and 'webpanel' (only optional)
-# ToDo: check for already existing folders to avoid multiple 
-#       and unnecessary calculations (compare to 'scanparams.py')
+# ToDo: implement postprocessing 'collect_data' and 'webpanel'
 ##################################################################
 
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
-        default='structure.json')
+        default='unrelaxed.json')
 @option('-q', '--chargestates', type=int,
         help='Charge states included (-q, ..., +q)',
         default=3)
@@ -245,20 +243,12 @@ def create_folder_structure(structure, structure_dict):
     return None
 
 
-#def collect_data(atoms):
-#    path = Path('something.json')
-#    if not path.is_file():
-#        return {}, {}, {}
-#    # Read data:
-#    dct = json.loads(path.read_text())
-#    # Define key-value pairs, key descriptions and data:
-#    kvp = {'something': dct['something']}
-#    kd = {'something': ('Something', 'Longer description', 'unit')}
-#    data = {'something':
-#            {'stuff': 'more complicated data structures',
-#             'things': [0, 1, 2, 1, 0]}}
-#    return kvp, kd, data
- 
+def collect_data():
+    return None
+
+
+def postprocessing():
+    return None 
 
 #def webpanel(row, key_descriptions):
 #    from asr.utils.custom import fig, table
