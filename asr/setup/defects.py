@@ -2,14 +2,12 @@ from pathlib import Path
 #from asr.utils import command, option
 
 ##################################################################
-# ToDo: incorporate extrinsic defects similar to the decorate
-#       recipe 
+# ToDo: incorporate extrinsic defects
 # ToDo: figure out how to pass on all of the different parameters
 #       from the 'params.json' files within each folder
 # ToDo: implement 'collect_data' and 'webpanel' (only optional)
 # ToDo: check for already existing folders to avoid multiple 
 #       and unnecessary calculations (compare to 'scanparams.py')
-# ToDo: implement suitable options of the recipe
 ##################################################################
 
 @command('asr.setup.defect')
@@ -24,6 +22,12 @@ from pathlib import Path
         default=8.)
 @option('--is2d', type=bool,
         help='Specifies if parent structure in atomfile is 2D (3D else)',
+        default=True)
+@option('--intrinsic', type=bool,
+        help='Specify whether you want to incorporate anti-site defects',
+        default=True)
+@option('--vacancies', type=bool,
+        help='Specify whether you want to incorporate vacancies',
         default=True)
 
 def main(atomfile, chargestates, maxsize, is2d)
@@ -56,14 +60,14 @@ def main(atomfile, chargestates, maxsize, is2d)
     return None 
 
 
-def setup_supercell(structure, max_lattice=8., is_2D=True):
+def setup_supercell(structure, max_lattice, is_2D):
     """
     Sets up the supercell of a given structure depending on a 
     maximum supercell lattice vector length for 2D or 3D structures.
 
     :param structure: input structure (primitive cell)
     :param max_lattice (float): maximum supercell lattice vector length in Å
-    :param is_2D (bool): choose 2D or 3D supercell (False)
+    :param is_2D (bool): choose 2D or 3D supercell (is_2D=False)
 
     :return structure_sc: supercell structure 
     """
@@ -96,9 +100,8 @@ def setup_supercell(structure, max_lattice=8., is_2D=True):
     return structure_sc, x_size, y_size, z_size
 
 
-def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
-                  extrinsic=False, replace_list=None, max_lattice=8., 
-                  is_2D=True):
+def setup_defects(structure, intrinsic, charge_states, vacancies,
+                  max_lattice, is_2D):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites, 
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -182,12 +185,6 @@ def setup_defects(structure, intrinsic=True, charge_states=3, vacancies=True,
                             structure_dict[string] = {'structure': defect, 
                                                       'parameters': parameters}
                 finished_list.append(eq_pos[i])
-
-    # incorporate extrinsic dopants
-    # TBD!
-#    if extrinsic:
-#        for element in replace_list:
-#            pass
 
     return structure_dict
 
@@ -273,9 +270,9 @@ def create_folder_structure(structure, structure_dict):
 group = 'setup'
 creates = ['unrelaxed.json', 'params.json']  # what files are created
 dependencies = []  # no dependencies
-resources = '1:10m'  # 1 core for 10 minutes
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
+#resources = '1:10m'  # 1 core for 10 minutes
+#diskspace = 0  # how much diskspace is used
+#restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     main()
