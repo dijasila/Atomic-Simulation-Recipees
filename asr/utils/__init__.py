@@ -1,13 +1,18 @@
 import os
+import time
 from contextlib import contextmanager
 from functools import partial
+from importlib import import_module
 from pathlib import Path
+from typing import Union
 
 import click
 import numpy as np
-from importlib import import_module
 from ase.io import jsonio
 from ase.parallel import parprint
+import ase.parallel as parallel
+
+
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -42,10 +47,10 @@ class ASRCommand(click.Command):
                     return False
             return True
         return False
-    
+
     def invoke(self, ctx):
         """Invoke a recipe.
-        
+
         By default, invoking a recipe also means invoking its dependencies.
         This can be avoided using the --skip-deps keyword."""
         # Pop the skip deps argument
@@ -146,7 +151,7 @@ def command(name, overwrite_params={},
             func = cc(func)
 
         return func
-    
+
     return decorator
 
 
@@ -410,3 +415,40 @@ def read_json(filename):
     from pathlib import Path
     dct = jsonio.decode(Path(filename).read_text())
     return dct
+
+
+@contextmanager
+def file_barrier(path: Union[str, Path], world=None):
+    """Context manager for writing a file.
+
+    After the with-block all cores will be able to read the file.
+
+    >>> with file_barrier('something.txt'):
+    ...     <write file>
+    ...
+
+    This will remove the file, write the file and wait for the file.
+    """
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    if world.rank == 0:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    else:
+        while path.is_file():
+            time.sleep(1.0)
+    world.barrier()
+
+    yield
+
+    # Wait for file:
+    while not path.is_file():
+        time.sleep(1.0)
+    world.barrier()
