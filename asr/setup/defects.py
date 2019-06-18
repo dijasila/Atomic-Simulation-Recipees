@@ -6,19 +6,27 @@ from pathlib import Path
 #       recipe 
 # ToDo: figure out how to pass on all of the different parameters
 #       from the 'params.json' files within each folder
-# ToDo: implement 'collect_data' and 'webpanel'
+# ToDo: implement 'collect_data' and 'webpanel' (only optional)
 # ToDo: check for already existing folders to avoid multiple 
 #       and unnecessary calculations (compare to 'scanparams.py')
-# ToDo: think of outputs and plots of the recipe
+# ToDo: implement suitable options of the recipe
 ##################################################################
 
 @command('asr.setup.defect')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='structure.json')
+@option('-q', '--chargestates', type=int,
+        help='Charge states included (-q, ..., +q)',
+        default=3)
+@option('--maxsize', type=float,
+        help='Maximum supercell size in Å',
+        default=8.)
+@option('--is2d', type=bool,
+        help='Specifies if parent structure in atomfile is 2D (3D else)',
+        default=True)
 
-def main(structure, intrinsic=True, charge_states=3, vacancies=True,
-         extrinsic=False, replace_list=None, max_lattice=8., is_2D=True)
+def main(atomfile, chargestates, maxsize, is2d)
     """
     Recipe setting up all possible defects within a reasonable
     supercell as well as the respective pristine system for a 
@@ -29,13 +37,17 @@ def main(structure, intrinsic=True, charge_states=3, vacancies=True,
     defect and charge state configuration with the unrelaxed structure 
     and the non general parameters in it ('unrelaxed.json', 'params.json').
     """
-    # first, set up the different defect systems and store their properties
+    from ase.io import read
+
+    # first, read input atomic structure and store it in ase's atoms object
+    structure = read(atomfile)    
+
+    # set up the different defect systems and store their properties
     # in a dictionary
-    structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
-                                   charge_states=charge_states,
-                                   vacancies=vacancies, extrinsic=extrinsic, 
-                                   replace_list=replace_list, 
-                                   max_lattice=max_lattice, is_2D=is_2D)
+    structure_dict = setup_defects(structure=structure, intrinsic=True,
+                                   charge_states=chargestates,
+                                   vacancies=True, 
+                                   max_lattice=maxsize, is_2D=is2d)
     
     # based on this dictionary, create a folder structure for all defects 
     # and respective charge states
@@ -258,7 +270,7 @@ def create_folder_structure(structure, structure_dict):
 #    plt.savefig(fname)
 
 
-group = 'property'
+group = 'setup'
 creates = ['unrelaxed.json', 'params.json']  # what files are created
 dependencies = []  # no dependencies
 resources = '1:10m'  # 1 core for 10 minutes
