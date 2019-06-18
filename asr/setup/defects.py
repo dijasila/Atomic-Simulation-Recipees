@@ -1,5 +1,5 @@
 from pathlib import Path
-#from asr.utils import command, option
+from asr.utils import command, option
 
 ##################################################################
 # ToDo: incorporate extrinsic defects
@@ -10,7 +10,7 @@ from pathlib import Path
 #       and unnecessary calculations (compare to 'scanparams.py')
 ##################################################################
 
-@command('asr.setup.defect')
+@command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='structure.json')
@@ -30,7 +30,7 @@ from pathlib import Path
         help='Specify whether you want to incorporate vacancies',
         default=True)
 
-def main(atomfile, chargestates, maxsize, is2d)
+def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     """
     Recipe setting up all possible defects within a reasonable
     supercell as well as the respective pristine system for a 
@@ -48,9 +48,9 @@ def main(atomfile, chargestates, maxsize, is2d)
 
     # set up the different defect systems and store their properties
     # in a dictionary
-    structure_dict = setup_defects(structure=structure, intrinsic=True,
+    structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                    charge_states=chargestates,
-                                   vacancies=True, 
+                                   vacancies=vacancies, 
                                    max_lattice=maxsize, is_2D=is2d)
     
     # based on this dictionary, create a folder structure for all defects 
