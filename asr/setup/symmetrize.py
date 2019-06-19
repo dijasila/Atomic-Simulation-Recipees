@@ -95,7 +95,7 @@ def symmetrize_atoms(atoms, tolerance=None, angle_tolerance=None,
 
 @command('asr.setup.symmetrize',
          save_results_file=False)
-@option('--tolerance', type=float, default=1e-2,
+@option('--tolerance', type=float, default=1e-3,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float, default=0.1,
         help='Tolerance one angles when evaluating symmetries')
