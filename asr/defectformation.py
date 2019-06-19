@@ -1,14 +1,13 @@
 #import json
 #from pathlib import Path
-#from asr.utils import command, option
+from asr.utils import command, option
 
 
 @command('asr.defectformation')
 #@option('--number', default=5)
 def main():
     """
-    Calculate the formation energy of a given defect within a 
-    host crystal
+    Calculate defect formation energy within a host crystal
     """
     return None
 

@@ -154,7 +154,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                     parameters = {}
                     vacancy = pristine.copy()
                     vacancy.pop(i)
-                    string = '{0}_{1}{2}{3}.vacancy@{4}.charged_({5})'.format(
+                    string = '{0}_{1}{2}{3}.vacancy_at{4}.charged_{5}'.format(
                              formula, N_x, N_y, N_z, i, q)
                     parameters['txt'] = '{0}.txt'.format(string)
                     parameters['charge'] = q
@@ -178,7 +178,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                             parameters = {}
                             defect = pristine.copy()
                             defect[i].symbol = element
-                            string = '{0}_{1}{2}{3}.defect_{4}@{5}.charged_({6})'.format(
+                            string = '{0}_{1}{2}{3}.defect_{4}at{5}.charged_{6}'.format(
                                      formula, N_x, N_y, N_z, element, i, q)
                             parameters['txt'] = '{0}.txt'.format(string)
                             parameters['charge'] = q
