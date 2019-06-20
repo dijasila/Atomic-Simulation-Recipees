@@ -7,7 +7,13 @@ from asr.utils import command, option
 @option('--qcut', help='Cutoff for q-integration', default=0.5)
 @option('--microvolume/--no-microvolume', help='Use microvolume integration',
         default=True)
-def main(eta, qcut, microvolume):
+@option('--only-intraband', is_flag=True,
+        help='Neglect interband contribution')
+@option('--maxband', default=None, type=int,
+        help='Maximum band index to calculate correction of')
+@option('--kptdensity', default=24, type=int,
+        help='K Point density for ground state calculation')
+def main(eta, qcut, microvolume, only_intraband, maxband, kptdensity):
     """Calculate GW Lattice contribution. """
     import numpy as np
     from ase.units import Hartree
@@ -23,9 +29,11 @@ def main(eta, qcut, microvolume):
     from gpaw.mpi import world
     from gpaw.kpt_descriptor import KPointDescriptor
     from asr.phonons import analyse
+    from ase.utils.timing import Timer
     
     print('Calculating GW lattice contribution')
 
+    timer = Timer()
     calc = GPAW('gs.gpw', txt=None)
     # Vibrational frequency (phonon) mode
     print('Loading phonons')
@@ -61,7 +69,7 @@ def main(eta, qcut, microvolume):
         print('Performing new groundstate calculation')
         calc = GPAW('gs.gpw',
                     fixdensity=True,
-                    kpts={'density': 24.0,
+                    kpts={'density': kptdensity,
                           'even': True,
                           'gamma': True},
                     nbands=-10,
@@ -95,12 +103,16 @@ def main(eta, qcut, microvolume):
 
     # various variables (bands and spin)
     s = 0
-    nall = nocc + 5
+    nall = maxband or nocc + 5
     n_n = np.arange(0, nall)
     m1 = 0
-    m2 = nocc
+    if maxband and maxband < nocc:
+        m2 = maxband
+    else:
+        m2 = nocc
+
     m_m = np.arange(m1, m2)
-    
+
     # constants for lattice correction term
     volume = pair.vol
     eta = eta / Hartree
@@ -109,7 +121,8 @@ def main(eta, qcut, microvolume):
     prefactor = (((4 * np.pi * ZBM) / eps)**2 * 1 / volume)
     freqTO = omega_kl[0, mode] / Hartree
     freqLO = (freqTO**2 + 4 * np.pi * ZBM**2 / (eps * volume))**(1 / 2)
-    sigmalat_temp_nk = np.zeros([nall, nikpts], dtype=complex)
+    freqLO2 = freqLO**2
+
     
     # q-dependency
     offset_c = 0.5 * ((N_c + 1) % 2) / N_c
@@ -131,10 +144,18 @@ def main(eta, qcut, microvolume):
 
     if microvolume:
         prefactor *= nqtot / (2 * np.pi)**3 * volume
-    
+
     B_cv = calc.wfs.gd.icell_cv * 2 * np.pi
     E_cv = B_cv / ((np.sum(B_cv**2, 1))**(1 / 2))[:, None]
+    timer.start('q loop')
+    # qd = KPointDescriptor([[0, 0, 0]])
+    # pd0 = PWDescriptor(ecut, calc.wfs.gd, complex, qd)
+    # with timer('initialize_paw_corrections'):
+    #     Q_aGii = pair.initialize_paw_corrections(pd0)
+
+    sigmalat_temp_nk = np.zeros([nall, nikpts], dtype=complex)
     for iq, q_c in zip(myiqs, mybzq_qc):
+        print(iq)
         qd = KPointDescriptor([q_c])
         pd = PWDescriptor(ecut, calc.wfs.gd, complex, qd)
         if microvolume:
@@ -147,7 +168,8 @@ def main(eta, qcut, microvolume):
             pd2 = PWDescriptor(ecut, calc.wfs.gd, complex, qd2)
             pd3 = PWDescriptor(ecut, calc.wfs.gd, complex, qd3)
 
-        Q_aGii = pair.initialize_paw_corrections(pd)
+        with timer('initialize_paw_corrections'):
+            Q_aGii = pair.initialize_paw_corrections(pd)
         q_v = np.dot(q_c, pd.gd.icell_cv) * 2 * np.pi
         q2abs = np.sum(q_v**2)
 
@@ -155,7 +177,8 @@ def main(eta, qcut, microvolume):
             # set k-point value
             k_c = ikpts[k]
             # K-point pair (k+-q)
-            kptpair = pair.get_kpoint_pair(pd, s, k_c, 0, nall, m1, m2)
+            with timer('get_kpoint_pair'):
+                kptpair = pair.get_kpoint_pair(pd, s, k_c, 0, nall, m1, m2)
             deps0_nm = kptpair.get_transition_energies(n_n, m_m)
             if microvolume:
                 kptpair1 = pair.get_kpoint_pair(pd1, s, k_c, 0, nall, m1, m2)
@@ -171,14 +194,31 @@ def main(eta, qcut, microvolume):
                 v_nmv = np.dot(v_nmc, np.linalg.inv(E_cv).T)
 
             # -- Pair-Densities -- #
-            pairrho_nmG = pair.get_pair_density(pd, kptpair, n_n, m_m,
-                                                Q_aGii=Q_aGii,
-                                                extend_head=True)
+            with timer('Pair densities'):
+                if only_intraband:
+                    ol = np.allclose(q_c, 0.0)
+                    n_nmG = np.zeros((len(n_n), len(m_m),
+                                      len(kptpair.Q_G) + 2 * ol),
+                                     pd.dtype)
+                    for m in range(max(len(n_n), len(m_m))):
+                        marr = np.array([m, ], int)
+                        n_nmG[m, m] = pair.get_pair_density(pd, kptpair,
+                                                            marr, marr,
+                                                            Q_aGii=Q_aGii,
+                                                            extend_head=True)
+                    pairrho_nmG = n_nmG
+                else:
+                    pairrho_nmG = pair.get_pair_density(pd, kptpair, n_n, m_m,
+                                                        Q_aGii=Q_aGii,
+                                                        extend_head=True)
+
             if np.allclose(q_c, 0.0):
                 pairrho2_nm = np.sum(np.abs(pairrho_nmG[:, :, 0:3])**2,
                                      axis=-1) / (3 * volume * nqtot)
                 pairrho2_nm[m_m, m_m] = 1 / (4 * np.pi**2) * \
                     ((48 * np.pi**2) / (volume * nqtot))**(1 / 3)
+                print('intraband q=0 pair densities')
+                print(pairrho2_nm)
             else:
                 pairrho2_nm = (np.abs(pairrho_nmG[:, :, 0])**2 /
                                (volume * nqtot * q2abs))
@@ -188,36 +228,49 @@ def main(eta, qcut, microvolume):
                 deps_m = deps0_nm[n]
                 
                 # -- Remove degenerate states -- #
-                if n < nocc and np.allclose(q_c, 0.0):
-                    m = np.where(np.isclose(deps_m, 0.0))[0]
-                    for i in np.arange(0, len(m)):
-                        if n != m[i]:
-                            pairrho2_m[m[i]] = 0.0
+                if not only_intraband:
+                    if n < nocc and np.allclose(q_c, 0.0):
+                        m = np.where(np.isclose(deps_m, 0.0))[0]
+                        for i in np.arange(0, len(m)):
+                            if n != m[i]:
+                                pairrho2_m[m[i]] = 0.0
 
-                if microvolume:
-                    # -- Lattice correction term -- #
-                    v_mv = v_nmv[n]
-                    v_m = np.linalg.norm(v_mv, axis=1)
-                    dq_cv = np.dot(dq_cc, B_cv)
-                    qz = np.linalg.norm(dq_cv, axis=1).sum() / 3
-                    qrvol = abs(np.linalg.det(dq_cv))
-                    qr = np.sqrt(qrvol / (qz * np.pi))
+                with timer('calculate correction'):
+                    if microvolume:
+                        # -- Lattice correction term -- #
+                        v_mv = v_nmv[n]
+                        v_m = np.linalg.norm(v_mv, axis=1)
+                        dq_cv = np.dot(dq_cc, B_cv)
+                        qz = np.linalg.norm(dq_cv, axis=1).sum() / 3
+                        qrvol = abs(np.linalg.det(dq_cv))
+                        qr = np.sqrt(qrvol / (qz * np.pi))
 
-                    muVol_m = (np.pi * qr**2 / (freqLO * v_m) *
-                               (np.arctanh((deps_m - v_m * qz - 1j * eta) /
-                                           freqLO) -
-                                np.arctanh((deps_m - 1j * eta) / freqLO)))
+                        muVol_m = (np.pi * qr**2 / (freqLO * v_m) *
+                                   (np.arctanh((deps_m - v_m * qz - 1j * eta) /
+                                               freqLO) -
+                                    np.arctanh((deps_m - 1j * eta) / freqLO)))
 
-                    corr = np.sum(pairrho2_m * muVol_m)
-                else:
-                    corr = np.sum(pairrho2_m /
-                                  ((deps_m - 1j * eta)**2 - freqTO**2 -
-                                   ((4 * np.pi * ZBM**2) / (volume * eps))))
-                sigmalat_temp_nk[n, k] += corr
+                        corr = np.sum(pairrho2_m * muVol_m)
+                    else:
+                        corr = np.sum(pairrho2_m /
+                                      ((deps_m - 1j * eta)**2 - freqLO2))
+                with timer('add'):
+                    sigmalat_temp_nk[n, k] += corr
+        if iq > 0 and iq % 100 == 0:
+            from asr.utils import write_json, read_json
+            from pathlib import Path
+            world.sum(sigmalat_temp_nk)
+            if Path('tmp_sigmalat.json').is_file():
+                sigmalat_temp_nk += \
+                    read_json('tmp_sigmalat.json')['sigmalat_nk']
+            write_json('tmp_sigmalat.json',
+                       {'sigmalat_nk': sigmalat_temp_nk})
+            sigmalat_temp_nk *= 0
+    timer.stop()
 
-    world.sum(sigmalat_temp_nk)
     sigmalat_nk = prefactor * sigmalat_temp_nk
     data = {'sigmalat_nk': sigmalat_nk}
+    timer.write()
     return data
 
 
