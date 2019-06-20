@@ -318,5 +318,76 @@ def plot():
     plt.show()
 
 
+def atoms2bandstructure(atoms, eps_skn=None, path=None, points=300):
+    import matplotlib
+    matplotlib.use('tkagg')
+    from ase.geometry import crystal_structure_from_cell
+    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
+                                 monkhorst_pack_interpolate,
+                                 bandpath, BandPath,
+                                 get_special_points)
+    from ase.dft.band_structure import BandStructure
+    import numpy as np
+
+    cell = atoms.get_cell()
+    calc = atoms.calc
+    bzkpts = calc.get_bz_k_points()
+    ibzkpts = calc.get_ibz_k_points()
+    efermi = calc.get_fermi_level()
+    nibz = len(ibzkpts)
+    nspins = 1 + int(calc.get_spin_polarized())
+
+    if eps_skn is None:
+        eps_skn = np.array([[calc.get_eigenvalues(kpt=k, spin=s)
+                             for k in range(nibz)]
+                            for s in range(nspins)])
+
+    print('Spins, k-points, bands: {}, {}, {}'.format(*eps_skn.shape))
+    try:
+        size, offset = get_monkhorst_pack_size_and_offset(bzkpts)
+    except ValueError:
+        path_kpts = ibzkpts
+    else:
+        print('Interpolating from Monkhorst-Pack grid (size, offset):')
+        print(size, offset)
+        if path is None:
+            cs = crystal_structure_from_cell(cell)
+            from ase.dft.kpoints import special_paths
+            kptpath = special_paths[cs]
+            path = kptpath
+
+        bz2ibz = calc.get_bz_to_ibz_map()
+
+        path_kpts = bandpath(path, atoms.cell, points)[0]
+        icell = atoms.get_reciprocal_cell()
+        eps = monkhorst_pack_interpolate(path_kpts, eps_skn.transpose(1, 0, 2),
+                                         icell, bz2ibz, size, offset)
+        eps = eps.transpose(1, 0, 2)
+
+    special_points = get_special_points(cell)
+    path = BandPath(atoms.cell, kpts=path_kpts,
+                    special_points=special_points)
+
+    return BandStructure(path, eps, reference=efermi)
+
+
+def plotbs():
+    # import numpy as np
+    from ase.io import read
+    from asr.utils import read_json
+    from ase.units import Hartree
+
+    data = read_json('results_latticegw.json')
+    sigmalat_nk = data['sigmalat_nk']
+    eps_skn = sigmalat_nk.T[None].real * Hartree
+    bs = atoms2bandstructure(read('gwlatgs.gpw'))
+    ax = bs.plot(emin=-20, emax=20, show=False)
+
+    nbands = sigmalat_nk.shape[0]
+    bs2 = atoms2bandstructure(read('gwlatgs.gpw'), eps_skn=eps_skn)
+    bs2.energies += bs.energies[:, :, :nbands]
+    bs2.plot(emin=-20, emax=20, ax=ax, colors='r')
+
+
 if __name__ == '__main__':
     main()
