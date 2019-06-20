@@ -123,7 +123,6 @@ def main(eta, qcut, microvolume, only_intraband, maxband, kptdensity):
     freqLO = (freqTO**2 + 4 * np.pi * ZBM**2 / (eps * volume))**(1 / 2)
     freqLO2 = freqLO**2
 
-    
     # q-dependency
     offset_c = 0.5 * ((N_c + 1) % 2) / N_c
     bzq_qc = monkhorst_pack(N_c) + offset_c
