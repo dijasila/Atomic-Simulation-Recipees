@@ -131,76 +131,11 @@ def symmetrize_atoms(atoms, tolerance=None,
 
     newdataset = spglib.get_symmetry_dataset(atomstospgcell(idealized),
                                              symprec=tolerance,
-                                             angle_tolerance=angle_tolerance)
     if return_dataset:
+                                             angle_tolerance=angle_tolerance)
         return idealized, origin_c, dataset, newdataset
 
     return idealized, origin_c
-
-
-def symmetrize_atoms_spglib(atoms, tolerance=None, angle_tolerance=None,
-                            return_dataset=False):
-    """ Atoms() -> SymmetrizedAtoms()"""
-
-    import spglib
-    import numpy as np
-    from ase import Atoms
-
-    spgcell = atomstospgcell(atoms)
-    if len(spgcell) > 3:
-        magmoms_a = spgcell[3]
-    else:
-        magmoms_a = None
-        newmagmoms_a = None
-    dataset = spglib.get_symmetry_dataset(spgcell,
-                                          symprec=tolerance,
-                                          angle_tolerance=angle_tolerance)
-    TM = dataset['transformation_matrix']
-    RM = dataset['std_rotation_matrix']
-    symcell = (TM.T).dot(dataset['std_lattice'].dot(np.linalg.inv(RM)))
-    assert np.allclose(symcell, spgcell[0], atol=1e-3)
-
-    sympos_ac = np.dot(dataset['std_positions'],
-                       np.linalg.inv(TM.T))
-    tmppos_ac = sympos_ac
-
-    spos_ac = []
-    inds = []
-
-    for pos_c, number in zip(spgcell[1], spgcell[2]):
-        delta_ac = tmppos_ac - pos_c
-        delta_ac -= np.rint(delta_ac)
-        ind = np.argmin(np.abs(delta_ac).sum(1))
-        if not number == dataset['std_types'][ind]:
-            continue
-        assert ind not in inds, delta_ac
-        inds.append(ind)
-        newpos_c = sympos_ac[ind] + np.rint(pos_c - tmppos_ac[ind])
-        spos_ac.append(newpos_c)
-
-    assert len(inds) == len(atoms)
-    spos_ac = np.mod(np.array(spos_ac), 1)
-
-    # Translate such that atoms are moved as little as possible
-    newspgcell = (symcell, spos_ac, spgcell[2])
-    
-    if magmoms_a:
-        newmagmoms_a = np.zeros(len(newspgcell[1]), float)
-        newmagmoms_a[dataset['mapping_to_primitive']] = magmoms_a
-
-    newdataset = spglib.get_symmetry_dataset(newspgcell,
-                                             symprec=tolerance,
-                                             angle_tolerance=angle_tolerance)
-
-    cell = newspgcell[0]
-    spos_ac = newspgcell[1]
-    numbers = newspgcell[2]
-    idealized = Atoms(numbers=numbers, scaled_positions=spos_ac, cell=cell,
-                      pbc=True, magmoms=newmagmoms_a)
-    if return_dataset:
-        return idealized, dataset, newdataset
-
-    return idealized
     
 
 @command('asr.setup.symmetrize',
@@ -329,8 +264,6 @@ def main(tolerance, angle_tolerance):
         spgsym.ft_sc = np.array([t_c for t_c in dataset2['translations']])
         msg += print_symmetries(spgsym)
         raise AssertionError(msg)
-
-
 
 
 group = 'setup'
