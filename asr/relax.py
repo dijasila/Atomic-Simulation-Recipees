@@ -49,12 +49,14 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
             msg = 'Relax recipe not implemented for 1D structures'
             raise NotImplementedError(msg)
 
+    from ase.calculators.calculator import kpts2sizeandoffsets
+    size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
     kwargs = dict(txt=name + '.txt',
                   mode={'name': 'pw', 'ecut': ecut},
                   xc=xc,
                   basis='dzp',
                   symmetry={'symmorphic': False},
-                  kpts={'density': kptdensity, 'gamma': True},
+                  kpts={'size': size, 'gamma': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
 
     if plusu:
