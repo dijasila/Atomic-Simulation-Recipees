@@ -131,8 +131,8 @@ def symmetrize_atoms(atoms, tolerance=None,
 
     newdataset = spglib.get_symmetry_dataset(atomstospgcell(idealized),
                                              symprec=tolerance,
-    if return_dataset:
                                              angle_tolerance=angle_tolerance)
+    if return_dataset:
         return idealized, origin_c, dataset, newdataset
 
     return idealized, origin_c
