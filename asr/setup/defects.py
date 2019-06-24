@@ -139,7 +139,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # first set up the pristine system by finding the desired supercell
     pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
-    string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
+    #string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
+    # try to make naming compatible with defectformation recipe
+    string = 'pristine' 
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}

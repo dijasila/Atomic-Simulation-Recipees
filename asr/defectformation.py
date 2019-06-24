@@ -1,14 +1,35 @@
-#import json
+import json
 #from pathlib import Path
 from asr.utils import command, option
 
 
 @command('asr.defectformation')
-#@option('--number', default=5)
+@option('--hostfile', default='../pristine/gs.gpw', 
+        help='Relative path to ground state gpw file of pristine host system '
+             'on which formation energy calculation is based. Here, the '
+             'reference folder is the one with the defects and vacancies '
+             'in it, as it was created from setup.defects.')
+@option('--defectfile', default='gs.gpw',
+        help='Ground state of disturbed system on which formation energy '
+             'calculation is based')
+@option('--size', default=None, help='Supercell size of both host and defect '
+                                     'system')
+@option('--is2D/--is3D', default=True, help='Specify wheter you calculate '
+                                            'the formation energy in 2D or '
+                                            '3D')
+
+
 def main():
     """
     Calculate defect formation energy within a host crystal
     """
+    import numpy as np
+    from gpaw.defects import ElectrostaticCorrections
+    from ase.io import read
+    
+    # first, get supercell information from previous gs calculation
+    
+
     return None
 
 
