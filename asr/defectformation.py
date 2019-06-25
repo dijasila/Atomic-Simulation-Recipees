@@ -4,12 +4,12 @@ from asr.utils import command, option
 
 
 @command('asr.defectformation')
-@option('--hostfile', default='../pristine/gs.gpw', 
+@option('--pristine', default='../pristine/gs.gpw', 
         help='Relative path to ground state gpw file of pristine host system '
              'on which formation energy calculation is based. Here, the '
              'reference folder is the one with the defects and vacancies '
              'in it, as it was created from setup.defects.')
-@option('--defectfile', default='gs.gpw',
+@option('--defect', default='gs.gpw',
         help='Ground state of disturbed system on which formation energy '
              'calculation is based')
 @option('--size', default=None, help='Supercell size of both host and defect '
@@ -19,16 +19,46 @@ from asr.utils import command, option
                                             '3D')
 
 
-def main():
+def main(pristine, defect, size, is2D):
     """
     Calculate defect formation energy within a host crystal
     """
     import numpy as np
     from gpaw.defects import ElectrostaticCorrections
-    from ase.io import read
+    from asr.utils import read_json
     
+    # ToDo: loop somehow over all charge states and return a list of 
+    #       formation energies
+
+    # TBD!!!
+    sigma = 1.0
+
     # first, get supercell information from previous gs calculation
     
+    # load relaxed pristine groundstate and relaxed impurity groundstate
+    pristine_gs = read(pristine)
+    defect_gs = read(defect)
+    
+    # get charge state of the defect system from params.json
+    params = read_json('params.json')
+    q = params.get('q')     
+
+    # get dimensionality of the system
+    if is2D  == True:
+        dim = '2d'
+    elif is2D == False:
+        dim = '3d'
+
+    # calculate electrostatic corrections of the charged defect
+    elc = ElectrostaticCorrections(pristine=pristine_gs, 
+                                   charged=charged_gs,
+                                   q=q,
+                                   sigma=sigma,
+                                   dimensionality=dim)
+    elc.set_epsilons(epsilons)
+
+    # finally, compute the corrected formation energy
+    eform = elc.calculate_corrected_formation_energy()
 
     return None
 
