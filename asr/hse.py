@@ -484,13 +484,13 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
 
     # get results for all paths and concatenate
 
-    tot_kptsreal_kc = np.array([])
-    tot_epsreal_skn = np.array([])
-    tot_xreal = np.array([])
-    tot_e2_skn = np.array([])
+    list_kptsreal_kc = []
+    list_epsreal_skn = []
+    list_xreal = []
+    list_e2_skn = []
 
-    tot_x2 = np.array([]) # XXX: to check. Remove afterwards
-    tot_X2 = np.array([]) # XXX: to check. Remove afterwards
+    list_x2 = [] # XXX: to check. Remove afterwards
+    list_X2 = [] # XXX: to check. Remove afterwards
  
     for path in partial_paths:
         x2, X2, _ = labels_from_kpts(path.kpts, cell, special_points=path.special_points)
@@ -516,19 +516,33 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 epsreal_skn[s, :, n] = y
                 bc_type = ['not-a-knot', 'not-a-knot']
                 for i in [0, -1]:
-                    if str_path[i] == 'G':
+                    if path.labelseq[i] == 'G':
                         bc_type[i] = [1, 0.0]
                 sp = CubicSpline(x=x, y=y, bc_type=bc_type)
                 #sp = InterpolatedUnivariateSpline(x, y)
                 e2_skn[s, :, n] = sp(x2)
+        list_kptsreal_kc.append(kptsreal_kc)
+        list_epsreal_skn.append(epsreal_skn)
+        list_xreal.append(x)
+        list_e2_skn.append(e2_skn)
+        list_x2.append(x2) # XXX: to check. Remove afterwards
+        list_X2.append(X2) # XXX: to check. Remove afterwards
         
+    tot_kptsreal_kc = list_kptsreal_kc[0]
+    tot_epsreal_skn = list_epsreal_skn[0]
+    tot_xreal = list_xreal[0]
+    tot_e2_skn = list_e2_skn[0]
+    tot_x2 = list_x2[0] # XXX: to check. Remove afterwards
+    tot_X2 = list_X2[0] # XXX: to check. Remove afterwards
+    
+    for i in range(1, len(partial_paths)):
         tot_kptsreal_kc = np.concatenate([tot_kptsreal_kc, kptsreal_kc])
         tot_epsreal_skn = np.concatenate([tot_epsreal_skn, epsreal_skn])
         tot_xreal = np.concatenate([tot_xreal, x + tot_xreal[-1]])
         tot_e2_skn = np.concatenate([tot_e2_skn, e2_skn])
         tot_x2 = np.concatenate([tot_x2, x2 + tot_x2[-1]]) # XXX: to check. Remove afterwards
         tot_X2 = np.concatenate([tot_X2, X2 + tot_X2[-1]]) # XXX: to check. Remove afterwards
-
+    
     tot_kpts = total_path.kpts
     tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
     results = {'kpts': tot_kpts,    # kpts_kc on bandpath
