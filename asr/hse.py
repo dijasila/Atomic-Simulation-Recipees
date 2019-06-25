@@ -481,7 +481,20 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     kpts2 = new_path.kpts
     x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
     """
+
+    # get results for all paths and concatenate
+
+    tot_kptsreal_kc = np.array([])
+    tot_epsreal_skn = np.array([])
+    tot_xreal = np.array([])
+    tot_e2_skn = np.array([])
+
+    tot_x2 = np.array([]) # XXX: to check. Remove afterwards
+    tot_X2 = np.array([]) # XXX: to check. Remove afterwards
+ 
     for path in partial_paths:
+        x2, X2, _ = labels_from_kpts(path.kpts, cell, special_points=path.special_points)
+
         indices, x = segment_indices_and_x(cell=cell, path=path, kpts=kpts)
         # remove double points
         for n in range(len(indices) - 1):
@@ -508,20 +521,25 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 sp = CubicSpline(x=x, y=y, bc_type=bc_type)
                 #sp = InterpolatedUnivariateSpline(x, y)
                 e2_skn[s, :, n] = sp(x2)
-        """
-        get results for all paths and concatenate
         
-        ...
-        
-        """
+        tot_kptsreal_kc = np.concatenate([tot_kptsreal_kc, kptsreal_kc])
+        tot_epsreal_skn = np.concatenate([tot_epsreal_skn, epsreal_skn])
+        tot_xreal = np.concatenate([tot_xreal, x + tot_xreal[-1]])
+        tot_e2_skn = np.concatenate([tot_e2_skn, e2_skn])
+        tot_x2 = np.concatenate([tot_x2, x2 + tot_x2[-1]]) # XXX: to check. Remove afterwards
+        tot_X2 = np.concatenate([tot_X2, X2 + tot_X2[-1]]) # XXX: to check. Remove afterwards
 
-    results = {'kpts': kpts2,    # kpts_kc on bandpath
-               'e_skn': e2_skn,  # eigenvalues on bandpath
-               'x': x2,          # distance along bandpath
-               'X': X2,          # positons of vertices on bandpath
-               'xreal': x,       # distance along path (at MonkhorstPack kpts)
-               'epsreal_skn': epsreal_skn,  # path eigenvalues at MP kpts
-               'kptsreal_kc': kptsreal_kc   # path k-points at MP kpts
+    tot_kpts = total_path.kpts
+    tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
+    results = {'kpts': tot_kpts,    # kpts_kc on bandpath
+               'e_skn': tot_e2_skn,  # eigenvalues on bandpath
+               'x': tot_x,     # distance along bandpath
+               'X': tot_X,     # positons of vertices on bandpath
+               'x2': tot_x2,     # XXX: to check. Remove afterwards
+               'X2': tot_X2,     # XXX: to check. Remove afterwards
+               'xreal': tot_xreal,       # distance along path (at MonkhorstPack kpts)
+               'epsreal_skn': tot_epsreal_skn,  # path eigenvalues at MP kpts
+               'kptsreal_kc': tot_kptsreal_kc   # path k-points at MP kpts
                }
     return results
 
