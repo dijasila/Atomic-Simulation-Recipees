@@ -222,12 +222,12 @@ def bs_interpolate(npoints=400, show=False):
 
     # third time is a charm
     eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
-    kpts, e_skn, _, _ = interpolate_bandstructure(calc, e_skn=e_skn, npoints=npoints)
-    dct = dict(eps_skn=e_skn, path=kpts)
+    kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, e_skn=e_skn, npoints=npoints)
+    dct = dict(eps_skn=e_skn, path=kpts, x=x, X=X)
 
     eps_smk = np.load('hse_eigenvalues_soc.npz')['e_hse_mk']
     eps_smk = eps_smk[np.newaxis]
-    kpts, e_skn, xr, yr_skn = interpolate_bandstructure(calc, e_skn=eps_smk.transpose(0, 2, 1),
+    kpts, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, e_skn=eps_smk.transpose(0, 2, 1),
                                     npoints=npoints)
     dct.update(e_mk=e_skn[0].transpose(), path=kpts, xreal=xr,
                epsreal_skn=yr_skn)
@@ -364,7 +364,7 @@ def interpolate_bandstructure(calc, e_skn=None, npoints=400):
     # you can get from calc.atoms.cell.bandpath(npoints=npoints)
     #path = get_special_2d_path(cell=calc.atoms.cell)
     r = interpolate_bandlines2(calc=calc, e_skn=e_skn, npoints=npoints)
-    return r['kpts'], r['e_skn'], r['xreal'], r['epsreal_skn']
+    return r['kpts'], r['x'], r['X'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
 # move to utils?
 def interpolate_bandlines2(calc, e_skn=None, npoints=400):
