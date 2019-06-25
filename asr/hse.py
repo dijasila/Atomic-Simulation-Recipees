@@ -396,13 +396,69 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     bz2ibz = calc.get_bz_to_ibz_map()
     cell = calc.atoms.cell
 
+
+    total_path = cell.bandpath(npoints=npoints)
+    labelseq = total_path.labelseq
+    special_points = total_path.special_points
+    x, X, labels = labels_from_kpts(total_path.kpts, cell)
+    
+    """
+    # XXX
+    segments = labelseq.split(',')
+    for n, segment in enumerate(segments):
+        print(n, segment)
+    """
+
+    """
+    Now split disconnected segments into separate paths (if there are any)
+    Example: 3D fcc path GXWKGLUWLK,UX -> separate GXWKGLUWLK and UX """
+    # create a list of indices where a new segment starts
+    list_n = []
+    list_n.append(0)
+    for n in range(len(x)-1):
+        # find indices for which x[n]==x[n+1]
+        # they are the values of x where bandpath is disconnected
+        if x[n]==x[n+1]:
+            #print(n, x[n], total_path.kpts[n,:])
+            list_n.append(n+1)
+    list_n.append(len(x-1))
+
+    #print(list_n)
+
+    #print('----- Create list of disconnected paths -----')
+    partial_paths = [] # list of disconnected paths
+    for i in range(len(list_n)-1):
+        n0 = list_n[i]
+        n1 = list_n[i+1]
+        #print('n0, n1', n0, n1)
+        # select a portion of total kpts between n0 and n1
+        partial_kpts = total_path.kpts[n0:n1,:]
+        #print(partial_kpts)
+        partial_n=partial_kpts.shape[0]
+        #print(partial_n)
+        # create partial path from partial_kpts
+        partial_path = bandpath(path=partial_kpts, cell=cell, npoints=partial_n)
+        # note: you have to assign labels to the new partial_path manually!
+        _, _, partial_labels = labels_from_kpts(partial_kpts, total_path.cell, special_points=total_path.special_points)
+        #print(partial_labels)
+        partial_path.labelseq = ''.join(partial_labels)
+        partial_path.special_points = special_points
+        # some checks
+        #print(partial_n)
+        #print('labels', partial_path.labelseq)
+        #print('shape', partial_path.kpts.shape[0])
+        #print('special_points', partial_path.special_points)
+        #print(partial_kpts-partial_path.kpts)
+        partial_paths.append(partial_path)
+
+
+    """
+    ###
     path_interpol = cell.bandpath(npoints=npoints)
     str_path = path_interpol.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     x_interpol, X_interpol, _ = labels_from_kpts(path_interpol.kpts, cell) # x coord. of high symmetry points
     L = X_interpol[-1] # total lengths of x axis
-    """
-    Now split disconnected segments into separate paths (if there are any)
-    Example: 3D fcc path GXWKGLUWLK,UX -> separate GXWKGLUWLK and UX """
+    
     segments = str_path.split(',')
     # get length of each segment on x axis
     lengths = []
@@ -416,6 +472,8 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     for n, segment in enumerate(segments):
         path = cell.bandpath(path=segment, npoints=npoints*lengths[n]/L) # a fraction lengths[n]/L of npoints!
         paths.append(path)
+    ###
+    """
 
     """ DO I STILL NEED THIS?? XXX
     # kpoints and positions to interpolate onto
@@ -423,7 +481,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     kpts2 = new_path.kpts
     x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
     """
-    for path in paths:
+    for path in partial_paths:
         indices, x = segment_indices_and_x(cell=cell, path=path, kpts=kpts)
         # remove double points
         for n in range(len(indices) - 1):
