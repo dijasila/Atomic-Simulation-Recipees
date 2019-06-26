@@ -8,8 +8,6 @@ from asr.utils import command, option
 # ToDo: implement postprocessing 'collect_data' and 'webpanel'
 # ToDo: improve structure and naming of recipe options
 # ToDo: clean up structure
-# ToDo: apply new folder structure also to anti-site defects and
-#       add the bulk system
 ##################################################################
 
 @command('asr.setup.defects')
@@ -139,11 +137,17 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     structure_dict = {}
     formula = structure.symbols
 
+    # set up bulk system
+    parameters = {}
+    string = 'bulk'
+    parameters['txt'] = '{0}.txt'.format(string)
+    parameters['charge'] = 0
+    structure_dict[string] = {'structure': structure, 'parameters': parameters}
+
     # first set up the pristine system by finding the desired supercell
     pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
     string = 'pristine'
-    #string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
     # try to make naming compatible with defectformation recipe
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
@@ -152,31 +156,16 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
+
     finished_list = []
-#    if vacancies:
-#        for i in range(len(structure)):
-#            if not eq_pos[i] in finished_list:
-#                for q in range((-1) * charge_states, charge_states + 1):
-#                    parameters = {}
-#                    vacancy = pristine.copy()
-#                    vacancy.pop(i)
-#                    string = '{0}_{1}{2}{3}.vacancy_at_{4}.charged_{5}'.format(
-#                             formula, N_x, N_y, N_z, i, q)
-#                    parameters['txt'] = '{0}.txt'.format(string)
-#                    parameters['charge'] = q
-#                    structure_dict[string] = {'structure': vacancy,  
-#                                              'parameters': parameters}
-#            finished_list.append(eq_pos[i])
     if vacancies:
         temp_dict = {}
         for i in range(len(structure)):
             if not eq_pos[i] in finished_list:
-                print('THIS IS I: {}'.format(i))
                 vacancy = pristine.copy()
                 vacancy.pop(i)
                 string = '{0}_{1}{2}{3}.HX_at_{4}'.format(
                          formula, N_x, N_y, N_z, i)
-                print(string)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
@@ -185,11 +174,10 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {'structure': vacancy,
                                                   'parameters': parameters} 
-                temp_dict[string] = charge_dict
-                print(temp_dict)
-                structure_dict['defects'] = temp_dict
+                    temp_dict[string] = charge_dict
             finished_list.append(eq_pos[i])
-
+        #structure_dict['defects'] = temp_dict
+    
     # incorporate anti-site defects
     finished_list = []
     if intrinsic:
@@ -202,18 +190,25 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
             if not eq_pos[i] in finished_list:
                 for element in defect_list:
                     if not structure[i].symbol == element:
-                        for q in range((-1)*charge_states, charge_states+1):
+                        defect = pristine.copy()
+                        defect[i].symbol = element
+                        string = '{0}_{1}{2}{3}.{4}_at_{5}'.format(
+                                 formula, N_x, N_y, N_z, element, i)
+                        charge_dict = {}
+                        for q in range((-1) * charge_states, charge_states +1):
                             parameters = {}
-                            defect = pristine.copy()
-                            defect[i].symbol = element
-                            string = '{0}_{1}{2}{3}.defect_{4}_at_{5}.charged_{6}'.format(
-                                     formula, N_x, N_y, N_z, element, i, q)
-                            parameters['txt'] = '{0}.txt'.format(string)
+                            parameters['txt'] = '{0}.charged_{1}'.format(string, q)
                             parameters['charge'] = q
-                            structure_dict[string] = {'structure': defect, 
-                                                      'parameters': parameters}
+                            charge_string = 'charge_{}'.format(q)
+                            charge_dict[charge_string] = {'structure': defect,
+                                                          'parameters': parameters}
+                            temp_dict[string] = charge_dict
                 finished_list.append(eq_pos[i])
 
+    # put together structure dict
+    structure_dict['defects'] = temp_dict
+                
+    # TBD!!!
     print('INFO: setting up {0} different defect supercell systems'.format(
           len(structure_dict)))
 
@@ -255,7 +250,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
         try:
             Path(folder_name).mkdir()
         except FileExistsError:
-            print('WARNING: sub-folder ("{0}") already exists in this '
+            print('WARNING: folder ("{0}") already exists in this '
                   f'directory. Skip creating it and continue with sub-'
                   f'directories.'.format(folder_name))
         if structure_dict[element].get('structure') is not None:    
@@ -267,20 +262,16 @@ def create_folder_structure(structure, structure_dict, chargestates):
             except FileExistsError:
                 print('WARNING: files already exist inside this folder')
         else:
-            print(structure_dict)
             sub_dict = structure_dict[element]
-            #sub_dict = element
             j = 0
             for sub_element in sub_dict:
-                print('THIS IS i: {}'.format(j))
                 defect_name = [key for key in sub_dict.keys()]
-                print('DEFECT NAME: {}'.format(defect_name[j]))
                 defect_folder_name = folder_name + '/' + defect_name[j]
                 j = j + 1
                 try:
                     Path(defect_folder_name).mkdir()
                 except FileExistsError:
-                    print('WARNING: folder ("{0}") already existst in this '
+                    print('WARNING: folder ("{0}") already exists in this '
                           f'directory'.format(defect_folder_name))
                 for i in range((-1)*chargestates, chargestates + 1):
                     charge_name = 'charge_{}'.format(i)
