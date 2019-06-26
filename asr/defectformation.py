@@ -2,6 +2,14 @@ import json
 #from pathlib import Path
 from asr.utils import command, option
 
+#############################################################################
+# ToDo: include option for distinguishing between 2D and 3D
+# ToDo: include postprocessing functions
+# ToDo: get rid of hardcoded sigma, epsilons and q
+# ToDo: calculate eform for all charge states of the specific defect
+# ToDo: add information on system and supercell size in output
+# ToDo: get information on Fermi energy for the different formation energies
+#############################################################################
 
 @command('asr.defectformation')
 @option('--pristine', default='../pristine/gs.gpw', 

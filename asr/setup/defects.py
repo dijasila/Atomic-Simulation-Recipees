@@ -7,6 +7,9 @@ from asr.utils import command, option
 #       from the 'params.json' files within each folder
 # ToDo: implement postprocessing 'collect_data' and 'webpanel'
 # ToDo: improve structure and naming of recipe options
+# ToDo: clean up structure
+# ToDo: apply new folder structure also to anti-site defects and
+#       add the bulk system
 ##################################################################
 
 @command('asr.setup.defects')
@@ -56,7 +59,7 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     
     # based on this dictionary, create a folder structure for all defects 
     # and respective charge states
-    create_folder_structure(structure, structure_dict)
+    create_folder_structure(structure, structure_dict, chargestates)
 
     return None 
 
@@ -139,9 +142,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # first set up the pristine system by finding the desired supercell
     pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
+    string = 'pristine'
     #string = '{0}_{1}{2}{3}.pristine'.format(formula, N_x, N_y, N_z)
     # try to make naming compatible with defectformation recipe
-    string = 'pristine' 
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
@@ -150,19 +153,41 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
     finished_list = []
+#    if vacancies:
+#        for i in range(len(structure)):
+#            if not eq_pos[i] in finished_list:
+#                for q in range((-1) * charge_states, charge_states + 1):
+#                    parameters = {}
+#                    vacancy = pristine.copy()
+#                    vacancy.pop(i)
+#                    string = '{0}_{1}{2}{3}.vacancy_at_{4}.charged_{5}'.format(
+#                             formula, N_x, N_y, N_z, i, q)
+#                    parameters['txt'] = '{0}.txt'.format(string)
+#                    parameters['charge'] = q
+#                    structure_dict[string] = {'structure': vacancy,  
+#                                              'parameters': parameters}
+#            finished_list.append(eq_pos[i])
     if vacancies:
+        temp_dict = {}
         for i in range(len(structure)):
             if not eq_pos[i] in finished_list:
+                print('THIS IS I: {}'.format(i))
+                vacancy = pristine.copy()
+                vacancy.pop(i)
+                string = '{0}_{1}{2}{3}.HX_at_{4}'.format(
+                         formula, N_x, N_y, N_z, i)
+                print(string)
+                charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
-                    vacancy = pristine.copy()
-                    vacancy.pop(i)
-                    string = '{0}_{1}{2}{3}.vacancy_at_{4}.charged_{5}'.format(
-                             formula, N_x, N_y, N_z, i, q)
-                    parameters['txt'] = '{0}.txt'.format(string)
+                    parameters['txt'] = '{0}.charged_{1}'.format(string, q)
                     parameters['charge'] = q
-                    structure_dict[string] = {'structure': vacancy,  
-                                              'parameters': parameters}
+                    charge_string = 'charge_{}'.format(q)
+                    charge_dict[charge_string] = {'structure': vacancy,
+                                                  'parameters': parameters} 
+                temp_dict[string] = charge_dict
+                print(temp_dict)
+                structure_dict['defects'] = temp_dict
             finished_list.append(eq_pos[i])
 
     # incorporate anti-site defects
@@ -195,7 +220,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     return structure_dict
 
 
-def create_folder_structure(structure, structure_dict):
+def create_folder_structure(structure, structure_dict, chargestates):
     """
     Creates a folder for every configuration of the defect supercell in 
     the following way:
@@ -214,7 +239,7 @@ def create_folder_structure(structure, structure_dict):
 
     # first, create parent folder for the parent structure
     try:
-        parent_folder = str(structure.symbols) + '_defects'
+        parent_folder = str(structure.symbols) + '_defects_setup'
         Path(parent_folder).mkdir()
     except FileExistsError:
         print('WARNING: parent folder ("{0}") for this structure already '
@@ -227,21 +252,48 @@ def create_folder_structure(structure, structure_dict):
     count_new = 0
     for element in structure_dict:
         folder_name = parent_folder + '/' + element
-        struc = structure_dict[element].get('structure')
-        params = structure_dict[element].get('parameters')
         try:
             Path(folder_name).mkdir()
-            write(folder_name + '/unrelaxed.json', struc)
-            write_json(folder_name + '/params.json', params)
-            count_new = count_new + 1
         except FileExistsError:
-            print('WARNING: folder ("{0}") for this defect already '
-                  f'exists in this directory. Skip and proceed with '
-                  f'the next configuration.'.format(folder_name))
-            count_old = count_old + 1
-    print('INFO: Created {} new folders for different defect configurations '
-          'inside "{}". {} folders already existed and were reused.'
-          .format(count_new, parent_folder, count_old))
+            print('WARNING: sub-folder ("{0}") already exists in this '
+                  f'directory. Skip creating it and continue with sub-'
+                  f'directories.'.format(folder_name))
+        if structure_dict[element].get('structure') is not None:    
+            struc = structure_dict[element].get('structure')
+            params = structure_dict[element].get('parameters')
+            try:
+                write(folder_name + '/unrelaxed.json', struc)
+                write_json(folder_name + '/params.json', params)
+            except FileExistsError:
+                print('WARNING: files already exist inside this folder')
+        else:
+            print(structure_dict)
+            sub_dict = structure_dict[element]
+            #sub_dict = element
+            j = 0
+            for sub_element in sub_dict:
+                print('THIS IS i: {}'.format(j))
+                defect_name = [key for key in sub_dict.keys()]
+                print('DEFECT NAME: {}'.format(defect_name[j]))
+                defect_folder_name = folder_name + '/' + defect_name[j]
+                j = j + 1
+                try:
+                    Path(defect_folder_name).mkdir()
+                except FileExistsError:
+                    print('WARNING: folder ("{0}") already existst in this '
+                          f'directory'.format(defect_folder_name))
+                for i in range((-1)*chargestates, chargestates + 1):
+                    charge_name = 'charge_{}'.format(i)
+                    charge_folder_name = defect_folder_name + '/' + charge_name
+                    try:
+                        Path(charge_folder_name).mkdir()
+                    except:
+                        print('WARNING: folder ("{0}") already exists in this '
+                              f'directory'.format(charge_folder_name))
+                    struc = sub_dict[sub_element].get(charge_name).get('structure')
+                    params = sub_dict[sub_element].get(charge_name).get('parameters')
+                    write(charge_folder_name + '/unrelaxed.json', struc)
+                    write_json(charge_folder_name + '/params.json', params)
 
     return None
 
