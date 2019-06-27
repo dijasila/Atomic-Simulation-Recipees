@@ -19,8 +19,8 @@ from asr.utils import command, option
 @option('--maxsize', type=float,
         help='Maximum supercell size in Å',
         default=8.)
-@option('--is2d', type=bool,
-        help='Specifies if input structure in atomfile is 2D (3D else)',
+@option('--is2d/--is3d', 
+        help='Specifies if input structure in atomfile is 2D or 3D',
         default=True)
 @option('--intrinsic', type=bool,
         help='Specify whether you want to incorporate anti-site defects',
@@ -44,7 +44,7 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
         this:
 
     .                                                                         
-    ├── MoS2_setup                                                            
+    ├── MoS2_defects_setup                                                    
     │   ├── bulk                                                              
     │   │   ├── params.json                                                   
     │   │   └── unrelaxed.json                                                
@@ -199,7 +199,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     parameters['charge'] = 0
     structure_dict[string] = {'structure': structure, 'parameters': parameters}
 
-    # first set up the pristine system by finding the desired supercell
+    # first, find the desired supercell
     pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
     string = 'pristine'
@@ -293,6 +293,12 @@ def create_folder_structure(structure, structure_dict, chargestates):
         print('WARNING: parent folder ("{0}") for this structure already '
               f'exists in the directory. Skip creating parent folder '
               f'and continue with sub-directories.'.format(parent_folder))
+    
+    # create a json file for general parameters that are equivalent for all
+    # the different defect systems 
+    gen_params = {}
+    gen_params['chargestates'] = chargestates
+    write_json(parent_folder + '/general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder

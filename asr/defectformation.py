@@ -3,82 +3,102 @@ import json
 from asr.utils import command, option
 
 #############################################################################
-# ToDo: include option for distinguishing between 2D and 3D
 # ToDo: include postprocessing functions
-# ToDo: get rid of hardcoded sigma, epsilons and q
-# ToDo: calculate eform for all charge states of the specific defect
+# ToDo: get rid of hardcoded sigma, epsilons
+# ToDo: read out epsilons from params.json file that is in the bulk folder 
+#       of the defect setup
 # ToDo: add information on system and supercell size in output
 # ToDo: get information on Fermi energy for the different formation energies
+# ToDo: maybe read out chargestates from 'params.json' file inside the 
+#       'structure_defects_setup' folder in order to ensure compability
 #############################################################################
 
 @command('asr.defectformation')
-@option('--pristine', default='../pristine/gs.gpw', 
-        help='Relative path to ground state gpw file of pristine host system '
+@option('--pristine', type=str, default='../../pristine/gs.gpw', 
+        help='Relative path to ground state .gpw file of pristine host system '
              'on which formation energy calculation is based. Here, the '
              'reference folder is the one with the defects and vacancies '
              'in it, as it was created from setup.defects.')
-@option('--defect', default='gs.gpw',
-        help='Ground state of disturbed system on which formation energy '
-             'calculation is based')
-@option('--size', default=None, help='Supercell size of both host and defect '
-                                     'system')
-#@option('--is2D/--is3D', default=True, help='Specify wheter you calculate '
-                                    #        'the formation energy in 2D or '
-                                     #       '3D')
+@option('--defect', type=str, default='gs.gpw',
+        help='Ground state .gpw file of disturbed system on which formation energy '
+             'calculation is based.')
+@option('-q', '--chargestates', type=int, 
+        help='Charge states included (-q, ..., +q).', default=3)
+
+@option('--is2d/--is3d', default=True, help='Specify wheter you calculate '
+                                            'the formation energy in 2D or '
+                                            '3D.')
 
 
-def main(pristine, defect, size):
+def main(pristine, defect, chargestates, is2d):
     """
-    Calculate defect formation energy within a host crystal
+    Calculate formation energy of defects.
+
+    This recipe needs the directory structure that was created with           
+    setup.defects in order to run properly and needs to be launched within    
+    a particular defect folder, i.e. all of the 'charge_x' folders need to be 
+    below that folder.
     """
     import numpy as np
     from gpaw.defects import ElectrostaticCorrections
     from asr.utils import read_json
     from ase.io import read
     
-    # ToDo: loop somehow over all charge states and return a list of 
-    #       formation energies
     # ToDo: calculate sigma correctly for different systems
+    # ToDo: get rid of hardcoded epsilon
+    # ToDo: get charge state not as an argument of main (easier to use)
 
     # TBD!!!
     sigma = 1.0
     epsilons = [1.9, 1.15]
 
-    # first, get supercell information from previous gs calculation
+    # read out general parameters from generals_params.json
+    gen_params = read_json('../../general_parameters.json')
+    chargestates_read = gen_params.get('chargestates')
+    print('INFO: read out general parameters: {}'.format(chargestates_read))
     
-    # load relaxed pristine groundstate and relaxed impurity groundstate
-    pristine_gs = pristine
-    defect_gs = defect
-    
-    # get charge state of the defect system from params.json
-    params = read_json('params.json')
-    q = params.get('q') 
-
     # get dimensionality of the system
-    #if is2D  == True:
-    #    dim = '2d'
-    #    #epsilons = [x, y]
-    #elif is2D == False:
-    #    dim = '3d'
-    #    #epsilons = x
+    if is2d  == True:
+        dim = '2d'
+        #epsilons = [x, y]
+    elif is2d == False:
+        dim = '3d'
+        #epsilons = x
+    
+    # get groundstate file name of the pristine system
+    pristine_file = pristine
+    print('INFO: get pristine gs file "{}"'.format(pristine_file))
 
-    # calculate electrostatic corrections of the charged defect
-    elc = ElectrostaticCorrections(pristine=pristine_gs, 
-                                   charged=defect_gs,
-                                   q=q,
-                                   sigma=sigma,
-                                   dimensionality='2d')
-    elc.set_epsilons(epsilons)
-
-    # finally, compute the corrected formation energy
-    eform = elc.calculate_corrected_formation_energy()
-
-    print('formation energy of the defect: {}'.format(eform))
+    # first, loop over all charge states and access the right charge state
+    # folder with the correct 'gs.gpw'
+    eform_array = np.array([])
+    q_array = []
+    for i in range((-1) * chargestates, chargestates + 1):
+        folder = 'charge_{}'.format(i)
+        chargefile = folder + '/' + defect
+        print('INFO: accessing charged .gpw file "{}"'.format(chargefile))
+        params = read_json(folder + '/params.json')
+        q = params.get('charge')
+        print(dim)
+        #elc = ElectrostaticCorrections(pristine=pristine_file,
+        #                               charged=chargefile,
+        #                               q=q,
+        #                               sigma=sigma,
+        #                               dimensionality=dim)
+        #elc.set_epsilons(epsilons)
+        #eform = elc.calculate_corrected_formation_energy()
+        #eform_array.append(eform)
+        q_array.append(q)
+    print(q_array)
 
     return None
 
 
 def collect_data():
+    return None
+
+
+def postprocessing():
     return None
 
 
