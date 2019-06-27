@@ -2,12 +2,11 @@ from pathlib import Path
 from asr.utils import command, option
 
 ##################################################################
-# ToDo: incorporate extrinsic defects
+# ToDo: incorporate extrinsic defects (optional)
 # ToDo: figure out how to pass on all of the different parameters
 #       from the 'params.json' files within each folder
 # ToDo: implement postprocessing 'collect_data' and 'webpanel'
 # ToDo: improve structure and naming of recipe options
-# ToDo: clean up structure
 ##################################################################
 
 @command('asr.setup.defects')
@@ -21,7 +20,7 @@ from asr.utils import command, option
         help='Maximum supercell size in Å',
         default=8.)
 @option('--is2d', type=bool,
-        help='Specifies if parent structure in atomfile is 2D (3D else)',
+        help='Specifies if input structure in atomfile is 2D (3D else)',
         default=True)
 @option('--intrinsic', type=bool,
         help='Specify whether you want to incorporate anti-site defects',
@@ -32,20 +31,86 @@ from asr.utils import command, option
 
 def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     """
-    Recipe setting up all possible defects within a reasonable
-    supercell as well as the respective pristine system for a 
-    given input structure. Defects include: vacancies, 
-    anti-site defects. For a given primitive input structure this
-    recipe will create a parent folder for this structure. Afterwards,
-    within this folder it will create a separate folder for each possible
-    defect and charge state configuration with the unrelaxed structure 
-    and the non general parameters in it ('unrelaxed.json', 'params.json').
+    Sets up defect structures for a given host.                               
+
+    Recipe setting up all possible defects within a reasonable supercell as   
+    well as the respective pristine system for a given input structure.       
+    Defects include: vacancies, anti-site defects. For a given primitive input
+    structure this recipe will create a directory tree in the following way:  
+    For the example of MoS2:                                                  
+      - There has to be a 'unrelaxed.json' file with the primitive structure  
+        of the desired system in the folder you run setup.defects. Let this   
+        folder be called 'MoS2_setup'. The tree structure will then look like 
+        this:
+
+    .                                                                         
+    ├── MoS2_setup                                                            
+    │   ├── bulk                                                              
+    │   │   ├── params.json                                                   
+    │   │   └── unrelaxed.json                                                
+    │   ├── defects                                                           
+    │   │   ├── MoS2_231.HX_at_0                                              
+    │   │   │   ├── charge_0                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_1                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_-1                                                 
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_2                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_-2                                                 
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    .   .   .   .                                                             
+    .   .   .                                                                 
+    .   .   .                                                                 
+    │   │   ├── MoS2_231.HX_at_1                                              
+    │   │   │   ├── charge_0                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_1                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    .   .   .   .                                                             
+    .   .   .                                                                 
+    .   .   .                                                                 
+    │   │   ├── MoS2_231.Mo_at_1                                              
+    │   │   │   ├── charge_0                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    │   │   │   ├── charge_1                                                  
+    │   │   │   │   ├── params.json                                           
+    │   │   │   │   └── unrelaxed.json                                        
+    .   .   .   .                                                             
+    .   .   .                                                                 
+    .   .   .                                                                 
+    │   │   └── MoS2_231.S_at_0                                               
+    │   │       ├── charge_0                                                  
+    .   .       .                                                             
+    .   .                                                                     
+    .   .                                                                     
+    │   └── pristine                                                          
+    │       ├── params.json                                                   
+    │       └── unrelaxed.json                                                
+    ├── results_setup.defects.json                                            
+    └── unrelaxed.json                                                        
+
+      - Here, the notation for the defects is the following:                  
+        'formula_supercellsize.defect_at_substitutionposition' where 'HX'     
+        denotes a vacancy                                                     
+      - In the resulting folders you can find the unrelaxed structures, as    
+        well as a 'params.json' file which contains the charge states of the  
+        different defect structures.
     """
     from ase.io import read
 
     # first, read input atomic structure and store it in ase's atoms object
     structure = read(atomfile)    
-    print('INFO: started recipe for setting up defect systems of '
+    print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
 
     # set up the different defect systems and store their properties
@@ -111,21 +176,11 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     :param structure: input structure (primitive cell)
     :param intrinsic (bool): incorporate intrinsic point defects
     :param vacancies (bool): incorporate vacancies
-    :param extrinsic (bool): incorporate extrinsic point defects
-    :param replace_list (array): array of extrinsic dopants and their 
-                                 respective positions
 
     :return structure_dict: dictionary of all possible defect configurations
                             of the given structure with different charge 
                             states. The dictionary is built up in the 
-                            following way: 
-                            structure_dict = {'formula_N_x, N_y, N_z.(
-                                               pristine, vacancy, defect)@
-                                               atom_index.charged_(q)': 
-                                               {'structure': defect_structure,
-                                               'parameters': parameters},
-                                              'formula_ ... : 
-                                             {'structure': ..., ...}}
+                            following way: see folder structure in 'main()'. 
     """
     import spglib
 
@@ -209,8 +264,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     structure_dict['defects'] = temp_dict
                 
     # TBD!!!
-    print('INFO: setting up {0} different defect supercell systems'.format(
-          len(structure_dict)))
+    print('INFO: setting up {0} different defect supercell systems in '
+          'charge states -{1}, ..., +{1}, as well as the pristine and bulk '
+          'systems.'.format(len(structure_dict['defects']), charge_states))
 
     return structure_dict
 
@@ -219,10 +275,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
     """
     Creates a folder for every configuration of the defect supercell in 
     the following way:
-        - parent folder: name of the structure
-        - for this parent folder, a set of sub-folders with the possible
-          defects, vacancies, pristine systems in the respective charge
-          states will be created
+        - see example directory tree in 'main()'
         - these each contain two files: 'unrelaxed.json' (the defect 
           supercell structure), 'params.json' (the non-general parameters
           of each system)
@@ -238,7 +291,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
         Path(parent_folder).mkdir()
     except FileExistsError:
         print('WARNING: parent folder ("{0}") for this structure already '
-              f'exists in this directory. Skip creating parent folder '
+              f'exists in the directory. Skip creating parent folder '
               f'and continue with sub-directories.'.format(parent_folder))
 
     # then, create a seperate folder for each possible defect
@@ -251,8 +304,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
             Path(folder_name).mkdir()
         except FileExistsError:
             print('WARNING: folder ("{0}") already exists in this '
-                  f'directory. Skip creating it and continue with sub-'
-                  f'directories.'.format(folder_name))
+                  f'directory. Skip creating it.'.format(folder_name))
         if structure_dict[element].get('structure') is not None:    
             struc = structure_dict[element].get('structure')
             params = structure_dict[element].get('parameters')
@@ -260,7 +312,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
                 write(folder_name + '/unrelaxed.json', struc)
                 write_json(folder_name + '/params.json', params)
             except FileExistsError:
-                print('WARNING: files already exist inside this folder')
+                print('WARNING: files already exist inside this folder.')
         else:
             sub_dict = structure_dict[element]
             j = 0
@@ -272,7 +324,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
                     Path(defect_folder_name).mkdir()
                 except FileExistsError:
                     print('WARNING: folder ("{0}") already exists in this '
-                          f'directory'.format(defect_folder_name))
+                          f'directory. Skip creating it.'.format(defect_folder_name))
                 for i in range((-1)*chargestates, chargestates + 1):
                     charge_name = 'charge_{}'.format(i)
                     charge_folder_name = defect_folder_name + '/' + charge_name
@@ -280,7 +332,7 @@ def create_folder_structure(structure, structure_dict, chargestates):
                         Path(charge_folder_name).mkdir()
                     except:
                         print('WARNING: folder ("{0}") already exists in this '
-                              f'directory'.format(charge_folder_name))
+                              f'directory. Skip creating it.'.format(charge_folder_name))
                     struc = sub_dict[sub_element].get(charge_name).get('structure')
                     params = sub_dict[sub_element].get(charge_name).get('parameters')
                     write(charge_folder_name + '/unrelaxed.json', struc)
@@ -325,9 +377,9 @@ def postprocessing():
 group = 'setup'
 creates = ['unrelaxed.json', 'params.json']  # what files are created
 dependencies = []  # no dependencies
-#resources = '1:10m'  # 1 core for 10 minutes
-#diskspace = 0  # how much diskspace is used
-#restart = 0  # how many times to restart
+resources = '1:10m'  # 1 core for 10 minutes
+diskspace = 0  # how much diskspace is used
+restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     main()
