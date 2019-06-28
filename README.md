@@ -395,6 +395,14 @@ $ asr run setup.scanparams asr.relax:ecut 600 700 800 asr.relax:kptdensity 4 5 6
 $ mq submit asr.relax@24:10h */*/
 ```
 
+When the calculations are done you can collect all results into a database and
+inspect them:
+```console
+$ cd convergence-test
+$ asr run collect */*/
+$ asr run browser
+```
+
 
 Developing new recipes
 ======================
