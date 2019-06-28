@@ -368,6 +368,33 @@ choose your editor and put the line
 into the file. This will restart any timeout jobs and run the workflow command 
 to see if any new tasks should be spawned with a 5 minute interval. 
 
+Recommended Procedures
+=======================
+The tools of ASR can be combined to perform complicated tasks with little
+effort. Below you will find the recommended procedures to perform common
+tasks within the ASR framework.
+
+
+Make a convergence study
+------------------------
+When you have created a new recipe it is highly likely that you would have to
+make a convergence study of the parameters in your such that you have proof that
+your choice of parameters are converged. The tools of ASR makes it easier to
+conduct such convergence studies. ASR has a built-in database with materials
+that could be relevant to investigate in your convergence tests. These materials
+can be retrieved using the `setup.materials` recipe. See
+`asr help setup.materials` for more information. For example, to convergence
+check the parameters of `asr.relax` you can do the following.
+
+```console
+$ mkdir convergence-test && cd convergence-test
+$ asr run setup.materials
+$ asr run setup.unpackdatabase materials.json --tree-structure materials/{formula:metal} --run
+$ cd materials/
+$ asr run setup.scanparams asr.relax:ecut 600 700 800 asr.relax:kptdensity 4 5 6 in */
+$ mq submit asr.relax@24:10h */*/
+```
+
 
 Developing new recipes
 ======================
