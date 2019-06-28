@@ -4,15 +4,15 @@ from asr.utils import command, option
 @command('asr.setup.materials',
          save_results_file=False)
 @option('-s', '--selection', type=str,
-        help='Choose materials matching SELECTION')
+        help='ASE DB selection string')
 def main(selection):
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and
     binary materials from the Nomad benchmarking database.
 
-    By default the created materials will be saved into the database
-    "materials.db".
+    The created materials will be saved into the database
+    "materials.json".
 
     \b
     Examples:
