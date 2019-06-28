@@ -334,9 +334,9 @@ class ASRTestRunner(TestRunner):
                                'allow_extra_args': True})
 @argument('tests', nargs=-1, required=False)
 @option('-P', '--parallel',
+        metavar='NCORES',
         type=int,
-        help='Exclude tests (comma separated list of tests).',
-        metavar='test1.py,test2.py,...')
+        help='Run tests in parallel on NCORES')
 @option('-k', '--pattern', type=str, metavar='PATTERN',
         help='Select tests containing PATTERN.')
 @option('-j', '--jobs', type=int, metavar='JOBS', default=1,
