@@ -1,5 +1,6 @@
 from asr.utils import option, update_defaults
 import click
+from pathlib import Path
 
 from collections import defaultdict
 import json
@@ -83,49 +84,27 @@ def main(kptdens, emptybands):
     # Refine ground state with more k-points
     calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
 
-    # Calculate and write the pdos
-    write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
-    write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
+    results = {}
 
-    # Calculate and write the dos at the Fermi energy
-    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=False), soc=False)
-    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
+    # ----- Slow steps ----- #
+    # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
+    results['pdos_nosoc'] = pdos(calc, gpw, soc=False)
+    # Yield results XXX
+    results['pdos_soc'] = pdos(calc, gpw, soc=True)
+    # Yield results XXX
 
-    write_results(get_results())
+    # ----- Fast steps ----- #
+    # Calculate the dos at the Fermi energy
+    results['dos_at_ef_nosoc'] = calculate_dos_at_ef(calc, gpw, soc=False)
+    results['dos_at_ef_soc'] = calculate_dos_at_ef(calc, gpw, soc=True)
 
-
-def get_results():
-    """All distributable results calculated by pdos.py"""
-    return {'dos_at_ef_nosoc': read_dos_at_ef(soc=False),
-            'dos_at_ef_soc': read_dos_at_ef(soc=True),
-            'pdos_data_nosoc': analyse_pdos(*read_pdos(soc=False)),
-            'pdos_data_soc': analyse_pdos(*read_pdos(soc=True))}
-
-
-def analyse_pdos(energies, pdos_sal, symbols, efermi):
-    """
-    Subtract the vacuum energy.
-    """
-    # get evac XXX
-    evac = 0.
-
-    e = energies - evac
-    ef = efermi - evac
-
-    # maybe use "old_to_new" pdos_sal? XXX
-
-    return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
+    # Write results file  # Yield instead XXX
+    write_results(results)
 
 
 def write_results(results):
     with paropen('results_pdos.json', 'w') as fd:
         json.dump(jsonio.encode(results), fd)
-
-
-def read_results():
-    with paropen('results_pdos.json', 'r') as fd:
-        results = jsonio.decode(json.load(fd))
-    return results
 
 
 # ---------- Recipe methodology ---------- #
@@ -135,11 +114,28 @@ def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
     from asr.utils.refinegs import refinegs
     calc, gpw = refinegs(selfc=False, outf=True,
                          kptdens=kptdens, emptybands=emptybands,
-                         txt='pdos.txt')
+                         txt='pdos.txt')  # Change name XXX
     return calc, gpw
 
 
 # ----- PDOS ----- #
+
+# SOME WRAPPER XXX
+def pdos(calc, gpw, soc=True):
+    """Main functionality to do a single pdos calculation"""
+    # Do calculation
+    energies, pdos_sal, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
+
+    # Subtract the vacuum energy
+    # get evac XXX
+    evac = 0.
+    e = energies - evac
+    ef = efermi - evac
+
+    results = {'pdos_sal': pdos_sal, 'symbols': symbols,
+               'energies': e, 'efermi': ef}
+
+    return results
 
 
 def calculate_pdos(calc, gpw, soc=True):
@@ -229,25 +225,6 @@ def get_l_a(zs):
     return l_a
 
 
-def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
-    data = {'energies': energies,
-            'pdos_sal': pdos_sal,
-            'symbols': symbols,
-            'efermi': efermi}
-    with paropen('pdos_soc«%s».json' % str(soc), 'w') as fd:
-        json.dump(jsonio.encode(data), fd)
-
-
-def read_pdos(soc=False):
-    with paropen('pdos_soc«%s».json' % str(soc), 'r') as fd:
-        data = jsonio.decode(json.load(fd))
-    energies = data['energies']
-    pdos_sal = data['pdos_sal']
-    symbols = data['symbols']
-    efermi = data['efermi']
-    return energies, pdos_sal, symbols, efermi
-
-
 # ----- DOS at Fermi energy ----- #
 
 
@@ -260,17 +237,13 @@ def calculate_dos_at_ef(calc, gpw, soc=False):
     return dos.get_dos()[1]
 
 
-def write_dos_at_ef(dos_at_ef, soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
-        print('{}'.format(dos_at_ef), file=fd)
-
-
-def read_dos_at_ef(soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
-        return float(fd.read())
-
-
 # ---------- Database and webpanel ---------- #
+
+
+def read_results():
+    with paropen('results_pdos.json', 'r') as fd:
+        results = jsonio.decode(json.load(fd))
+    return results
 
 
 def collect_data(atoms):
@@ -282,8 +255,8 @@ def collect_data(atoms):
 
     kvp['dos_at_ef_nosoc'] = results['dos_at_ef_nosoc']
     kvp['dos_at_ef_soc'] = results['dos_at_ef_soc']
-    data['pdos_nosoc'] = results['pdos_data_nosoc']
-    data['pdos_soc'] = results['pdos_data_soc']
+    data['pdos_nosoc'] = results['pdos_nosoc']
+    data['pdos_soc'] = results['pdos_soc']
     
     return kvp, key_descriptions, data
 
