@@ -28,6 +28,276 @@ from asr.utils import magnetic_atoms
 from asr.utils.gpw import gpw2eigs, get_spin_direction
 
 
+# ---------- GPAW hacks ---------- #
+
+
+class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
+    """Hack to make DOS class work with spin orbit coupling"""
+    def __init__(self, gpw, **kwargs):
+        """
+        Parameters:
+        -----------
+        gpw : str
+            The SOCDOS takes a filename of the GPAW calculator object and loads
+            it, instead of the normal ASE compliant calculator object.
+        """
+        self.gpw = gpw
+
+        if mpi.world.rank == 0:
+            self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            self.dos = DOS(self.calc, **kwargs)
+        else:
+            self.calc = None
+            self.dos = None
+
+    def get_dos(self):
+        if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
+            # hack dos
+            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
+            if e_skm.ndim == 2:
+                e_skm = e_skm[np.newaxis]
+            self.dos.nspins = 1
+            self.dos.e_skn = e_skm - ef
+            bzkpts = self.calc.get_bz_k_points()
+            size, offset = k2so(bzkpts)
+            bz2ibz = self.calc.get_bz_to_ibz_map()
+            shape = (self.dos.nspins, ) + tuple(size) + (-1, )
+            self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
+            dos = self.dos.get_dos() / 2
+            mpi.broadcast(dos)
+        else:
+            dos = mpi.broadcast(None)
+        return dos
+
+
+# ---------- Main functionality ---------- #
+
+
+@click.command()
+@update_defaults('asr.pdos')
+@option('--kptdens', default=36.0,
+        help='k-point density')
+@option('--emptybands', default=20,
+        help='number of empty bands to include')
+def main(kptdens, emptybands):
+    # Refine ground state with more k-points
+    calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
+
+    # Calculate and write the pdos
+    write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
+    write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
+
+    # Calculate and write the dos at the Fermi energy
+    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=False), soc=False)
+    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
+
+    write_results(get_results())
+
+
+def get_results():
+    """All distributable results calculated by pdos.py"""
+    return {'dos_at_ef_nosoc': read_dos_at_ef(soc=False),
+            'dos_at_ef_soc': read_dos_at_ef(soc=True),
+            'pdos_data_nosoc': analyse_pdos(*read_pdos(soc=False)),
+            'pdos_data_soc': analyse_pdos(*read_pdos(soc=True))}
+
+
+def analyse_pdos(energies, pdos_sal, symbols, efermi):
+    """
+    Subtract the vacuum energy.
+    """
+    # get evac XXX
+    evac = 0.
+
+    e = energies - evac
+    ef = efermi - evac
+
+    # maybe use "old_to_new" pdos_sal? XXX
+
+    return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
+
+
+def write_results(results):
+    with paropen('results_pdos.json', 'w') as fd:
+        json.dump(jsonio.encode(results), fd)
+
+
+def read_results():
+    with paropen('results_pdos.json', 'r') as fd:
+        results = jsonio.decode(json.load(fd))
+    return results
+
+
+# ---------- Recipe methodology ---------- #
+
+
+def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
+    from asr.utils.refinegs import refinegs
+    calc, gpw = refinegs(selfc=False, outf=True,
+                         kptdens=kptdens, emptybands=emptybands,
+                         txt='pdos.txt')
+    return calc, gpw
+
+
+# ----- PDOS ----- #
+
+
+def calculate_pdos(calc, gpw, soc=True):
+    """Calculate the projected density of states
+
+    Returns:
+    --------
+    energies : nd.array
+        energies 10 eV under and above Fermi energy
+    pdos_sal : defaultdict
+        pdos for spin, atom and orbital angular momentum
+    symbols : list
+        chemical symbols in Atoms object
+    efermi : float
+        Fermi energy
+    """
+    world = mpi.world
+
+    if soc and world.rank == 0:
+        calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+
+    zs = calc.atoms.get_atomic_numbers()
+    chem_symbols = calc.atoms.get_chemical_symbols()
+    efermi = calc.get_fermi_level()
+    l_a = get_l_a(zs)
+    kd = calc.wfs.kd
+
+    if soc:
+        ldos = raw_spinorbit_orbital_LDOS
+    else:
+        ldos = raw_orbital_LDOS
+
+    e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    ns = calc.get_number_of_spins()
+    pdos_sal = defaultdict(float)
+    e_s = {}
+    for spin in range(ns):
+        for a in l_a:
+            spec = chem_symbols[a]
+            for l in l_a[a]:
+                if soc:
+                    if world.rank == 0:  # GPAW soc is done in serial
+                        theta, phi = get_spin_direction()
+                        energies, weights = ldos(calc0, a, spin, l, theta, phi)
+                        mpi.broadcast((energies, weights))
+                    else:
+                        energies, weights = mpi.broadcast(None)
+                else:
+                    energies, weights = ldos(calc, a, spin, l)
+
+                energies.shape = (kd.nibzkpts, -1)
+                energies = energies[kd.bz2ibz_k]
+                energies.shape = tuple(kd.N_c) + (-1, )
+                weights.shape = (kd.nibzkpts, -1)
+                weights /= kd.weight_k[:, np.newaxis]
+                w = weights[kd.bz2ibz_k]
+                w.shape = tuple(kd.N_c) + (-1, )
+                p = lti(calc.atoms.cell, energies * Ha, e, w)
+                key = ','.join([str(spin), str(spec), str(l)])
+                pdos_sal[key] += p
+        e_s[spin] = e
+
+    return e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
+
+
+def get_l_a(zs):
+    """Defines which atoms and angular momentum to project onto.
+
+    Parameters:
+    -----------
+    zs : [z1, z2, ...]-list or array
+        list of atomic numbers (zi: int)
+
+    Returns:
+    --------
+    l_a : {int: str, ...}-dict
+        keys are atomic indices and values are a string such as 'spd'
+        that determines which angular momentum to project onto or a
+        given atom
+    """
+    zs = np.asarray(zs)
+    l_a = {}
+    atoms = Atoms(numbers=zs)
+    mag_elements = magnetic_atoms(atoms)
+    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
+        l_a[a] = 'spd' if mag else 'sp'
+    return l_a
+
+
+def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
+    data = {'energies': energies,
+            'pdos_sal': pdos_sal,
+            'symbols': symbols,
+            'efermi': efermi}
+    with paropen('pdos_soc«%s».json' % str(soc), 'w') as fd:
+        json.dump(jsonio.encode(data), fd)
+
+
+def read_pdos(soc=False):
+    with paropen('pdos_soc«%s».json' % str(soc), 'r') as fd:
+        data = jsonio.decode(json.load(fd))
+    energies = data['energies']
+    pdos_sal = data['pdos_sal']
+    symbols = data['symbols']
+    efermi = data['efermi']
+    return energies, pdos_sal, symbols, efermi
+
+
+# ----- DOS at Fermi energy ----- #
+
+
+def calculate_dos_at_ef(calc, gpw, soc=False):
+    """Get dos at the Fermi energy"""
+    if soc:
+        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
+    else:
+        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
+    return dos.get_dos()[1]
+
+
+def write_dos_at_ef(dos_at_ef, soc=False):
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
+        print('{}'.format(dos_at_ef), file=fd)
+
+
+def read_dos_at_ef(soc=False):
+    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
+        return float(fd.read())
+
+
+# ---------- Database and webpanel ---------- #
+
+
+def collect_data(atoms):
+    kvp = {}
+    data = {}
+    key_descriptions = {}  # what does key_descriptions refer to? XXX
+
+    results = read_results()
+
+    kvp['dos_at_ef_nosoc'] = results['dos_at_ef_nosoc']
+    kvp['dos_at_ef_soc'] = results['dos_at_ef_soc']
+    data['pdos_nosoc'] = results['pdos_data_nosoc']
+    data['pdos_soc'] = results['pdos_data_soc']
+    
+    return kvp, key_descriptions, data
+
+
+def webpanel(row, key_descriptions):
+    panel = []
+    things = [(pdos_pbe, ['pbe-pdos.png'])]
+
+    return panel, things
+
+
+# ---------- Plotting ---------- #
+
+
 def plot_pdos():
     """only for testing
     """
@@ -145,253 +415,7 @@ def pdos_pbe(row,
     plt.close()
 
 
-class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
-    """Hack to make DOS class work with spin orbit coupling"""
-    def __init__(self, gpw, **kwargs):
-        """
-        Parameters:
-        -----------
-        gpw : str
-            The SOCDOS takes a filename of the GPAW calculator object and loads
-            it, instead of the normal ASE compliant calculator object.
-        """
-        self.gpw = gpw
-
-        if mpi.world.rank == 0:
-            self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            self.dos = DOS(self.calc, **kwargs)
-        else:
-            self.calc = None
-            self.dos = None
-
-    def get_dos(self):
-        if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
-            # hack dos
-            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
-            if e_skm.ndim == 2:
-                e_skm = e_skm[np.newaxis]
-            self.dos.nspins = 1
-            self.dos.e_skn = e_skm - ef
-            bzkpts = self.calc.get_bz_k_points()
-            size, offset = k2so(bzkpts)
-            bz2ibz = self.calc.get_bz_to_ibz_map()
-            shape = (self.dos.nspins, ) + tuple(size) + (-1, )
-            self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
-            dos = self.dos.get_dos() / 2
-            mpi.broadcast(dos)
-        else:
-            dos = mpi.broadcast(None)
-        return dos
-
-
-def get_l_a(zs):
-    """Defines which atoms and angular momentum to project onto.
-
-    Parameters:
-    -----------
-    zs : [z1, z2, ...]-list or array
-        list of atomic numbers (zi: int)
-
-    Returns:
-    --------
-    l_a : {int: str, ...}-dict
-        keys are atomic indices and values are a string such as 'spd'
-        that determines which angular momentum to project onto or a
-        given atom
-    """
-    zs = np.asarray(zs)
-    l_a = {}
-    atoms = Atoms(numbers=zs)
-    mag_elements = magnetic_atoms(atoms)
-    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
-        l_a[a] = 'spd' if mag else 'sp'
-    return l_a
-
-
-def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
-    from asr.utils.refinegs import refinegs
-    calc, gpw = refinegs(selfc=False, outf=True,
-                         kptdens=kptdens, emptybands=emptybands,
-                         txt='pdos.txt')
-    return calc, gpw
-
-
-def calculate_dos_at_ef(calc, gpw, soc=False):
-    """Get dos at the Fermi energy"""
-    if soc:
-        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
-    else:
-        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-    return dos.get_dos()[1]
-
-
-def write_dos_at_ef(dos_at_ef, soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'w') as fd:
-        print('{}'.format(dos_at_ef), file=fd)
-
-
-def read_dos_at_ef(soc=False):
-    with paropen('dos-at-ef_soc«%s»' % str(soc), 'r') as fd:
-        return float(fd.read())
-
-
-def calculate_pdos(calc, gpw, soc=True):
-    """Calculate the projected density of states
-
-    Returns:
-    --------
-    energies : nd.array
-        energies 10 eV under and above Fermi energy
-    pdos_sal : defaultdict
-        pdos for spin, atom and orbital angular momentum
-    symbols : list
-        chemical symbols in Atoms object
-    efermi : float
-        Fermi energy
-    """
-    world = mpi.world
-
-    if soc and world.rank == 0:
-        calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-
-    zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
-    efermi = calc.get_fermi_level()
-    l_a = get_l_a(zs)
-    kd = calc.wfs.kd
-
-    if soc:
-        ldos = raw_spinorbit_orbital_LDOS
-    else:
-        ldos = raw_orbital_LDOS
-
-    e = np.linspace(-10 + efermi, 10 + efermi, 2000)
-    ns = calc.get_number_of_spins()
-    pdos_sal = defaultdict(float)
-    e_s = {}
-    for spin in range(ns):
-        for a in l_a:
-            spec = chem_symbols[a]
-            for l in l_a[a]:
-                if soc:
-                    if world.rank == 0:  # GPAW soc is done in serial
-                        theta, phi = get_spin_direction()
-                        energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                        mpi.broadcast((energies, weights))
-                    else:
-                        energies, weights = mpi.broadcast(None)
-                else:
-                    energies, weights = ldos(calc, a, spin, l)
-
-                energies.shape = (kd.nibzkpts, -1)
-                energies = energies[kd.bz2ibz_k]
-                energies.shape = tuple(kd.N_c) + (-1, )
-                weights.shape = (kd.nibzkpts, -1)
-                weights /= kd.weight_k[:, np.newaxis]
-                w = weights[kd.bz2ibz_k]
-                w.shape = tuple(kd.N_c) + (-1, )
-                p = lti(calc.atoms.cell, energies * Ha, e, w)
-                key = ','.join([str(spin), str(spec), str(l)])
-                pdos_sal[key] += p
-        e_s[spin] = e
-
-    return e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
-    
-
-def write_pdos(energies, pdos_sal, symbols, efermi, soc=False):
-    data = {'energies': energies,
-            'pdos_sal': pdos_sal,
-            'symbols': symbols,
-            'efermi': efermi}
-    with paropen('pdos_soc«%s».json' % str(soc), 'w') as fd:
-        json.dump(jsonio.encode(data), fd)
-
-
-def read_pdos(soc=False):
-    with paropen('pdos_soc«%s».json' % str(soc), 'r') as fd:
-        data = jsonio.decode(json.load(fd))
-    energies = data['energies']
-    pdos_sal = data['pdos_sal']
-    symbols = data['symbols']
-    efermi = data['efermi']
-    return energies, pdos_sal, symbols, efermi
-
-
-def analyse_pdos(energies, pdos_sal, symbols, efermi):
-    """
-    Subtract the vacuum energy.
-    """
-    # get evac XXX
-    evac = 0.
-
-    e = energies - evac
-    ef = efermi - evac
-
-    # maybe use "old_to_new" pdos_sal? XXX
-
-    return {'pdos_sal': pdos_sal, 'energies': e, 'efermi': ef}
-
-
-def get_results():
-    """All distributable results calculated by pdos.py"""
-    return {'dos_at_ef_nosoc': read_dos_at_ef(soc=False),
-            'dos_at_ef_soc': read_dos_at_ef(soc=True),
-            'pdos_data_nosoc': analyse_pdos(*read_pdos(soc=False)),
-            'pdos_data_soc': analyse_pdos(*read_pdos(soc=True))}
-
-
-def write_results(results):
-    with paropen('results_pdos.json', 'w') as fd:
-        json.dump(jsonio.encode(results), fd)
-
-
-def read_results():
-    with paropen('results_pdos.json', 'r') as fd:
-        results = jsonio.decode(json.load(fd))
-    return results
-
-
-@click.command()
-@update_defaults('asr.pdos')
-@option('--kptdens', default=36.0,
-        help='k-point density')
-@option('--emptybands', default=20,
-        help='number of empty bands to include')
-def main(kptdens, emptybands):
-    # Refine ground state with more k-points
-    calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
-
-    # Calculate and write the dos at the Fermi energy
-    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=False), soc=False)
-    write_dos_at_ef(calculate_dos_at_ef(calc, gpw, soc=True), soc=True)
-
-    # Calculate and write the pdos
-    write_pdos(*calculate_pdos(calc, gpw, soc=False), soc=False)
-    write_pdos(*calculate_pdos(calc, gpw, soc=True), soc=True)
-
-    write_results(get_results())
-
-
-def collect_data(atoms):
-    kvp = {}
-    data = {}
-    key_descriptions = {}  # what does key_descriptions refer to? XXX
-
-    results = read_results()
-
-    kvp['dos_at_ef_nosoc'] = results['dos_at_ef_nosoc']
-    kvp['dos_at_ef_soc'] = results['dos_at_ef_soc']
-    data['pdos_nosoc'] = results['pdos_data_nosoc']
-    data['pdos_soc'] = results['pdos_data_soc']
-    
-    return kvp, key_descriptions, data
-
-
-def webpanel(row, key_descriptions):
-    panel = []
-    things = [(pdos_pbe, ['pbe-pdos.png'])]
-
-    return panel, things
+# ---------- ASR globals and main ---------- #
 
 
 group = 'Property'
