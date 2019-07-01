@@ -67,29 +67,31 @@ def main(pristine, defect, chargestates, is2d):
     
     # get groundstate file name of the pristine system
     pristine_file = pristine
-    print('INFO: get pristine gs file "{}"'.format(pristine_file))
+    print('INFO: use pristine gs file "{}"'.format(pristine_file))
 
     # first, loop over all charge states and access the right charge state
     # folder with the correct 'gs.gpw'
-    eform_array = np.array([])
+    eform_array = []
     q_array = []
     for i in range((-1) * chargestates, chargestates + 1):
         folder = 'charge_{}'.format(i)
         chargefile = folder + '/' + defect
-        print('INFO: accessing charged .gpw file "{}"'.format(chargefile))
         params = read_json(folder + '/params.json')
         q = params.get('charge')
-        print(dim)
         #elc = ElectrostaticCorrections(pristine=pristine_file,
         #                               charged=chargefile,
         #                               q=q,
         #                               sigma=sigma,
         #                               dimensionality=dim)
+        print('INFO: using charged .gpw file "{}"'.format(chargefile))
         #elc.set_epsilons(epsilons)
         #eform = elc.calculate_corrected_formation_energy()
         #eform_array.append(eform)
         q_array.append(q)
     print(q_array)
+
+    # ToDo: generate file with the results for eform and q_array which can
+    #       can afterwards be read using 'postprocessing'
 
     return None
 

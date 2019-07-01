@@ -11,22 +11,22 @@ from asr.utils import command, option
 
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
-        help='Atomic structure',
+        help='Atomic structure.',
         default='unrelaxed.json')
 @option('-q', '--chargestates', type=int,
-        help='Charge states included (-q, ..., +q)',
+        help='Charge states included (-q, ..., +q).',
         default=3)
 @option('--maxsize', type=float,
-        help='Maximum supercell size in Å',
+        help='Maximum supercell size in Å.',
         default=8.)
 @option('--is2d/--is3d', 
-        help='Specifies if input structure in atomfile is 2D or 3D',
+        help='Specifies if input structure in atomfile is 2D or 3D.',
         default=True)
 @option('--intrinsic', type=bool,
-        help='Specify whether you want to incorporate anti-site defects',
+        help='Specify whether you want to incorporate anti-site defects.',
         default=True)
 @option('--vacancies', type=bool,
-        help='Specify whether you want to incorporate vacancies',
+        help='Specify whether you want to incorporate vacancies.',
         default=True)
 
 def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
@@ -302,8 +302,6 @@ def create_folder_structure(structure, structure_dict, chargestates):
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder
-    count_old = 0
-    count_new = 0
     for element in structure_dict:
         folder_name = parent_folder + '/' + element
         try:
@@ -352,6 +350,10 @@ def collect_data():
 
 
 def postprocessing():
+    """
+    Extract data after running setup.defects recipe.
+    """
+    
     return None 
 
 #def webpanel(row, key_descriptions):
