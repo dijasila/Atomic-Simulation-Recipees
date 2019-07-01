@@ -56,6 +56,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                   xc=xc,
                   basis='dzp',
                   symmetry={'symmorphic': False},
+                  convergence={'forces': 1e-4},
                   kpts={'size': size, 'gamma': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
 
