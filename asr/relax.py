@@ -6,6 +6,7 @@ from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world
+from ase import Atoms
 
 from asr.utils import command, option
 from gpaw import KohnShamConvergenceError
@@ -29,6 +30,45 @@ def is_relax_done(atoms, fmax=0.01, smax=0.002):
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
+
+
+class SpgGroupAtoms(Atoms):
+
+    @classmethod
+    def from_atoms(cls, atoms):
+        # Due to technicalities we cannot mess with the __init__ constructor
+        # -> therefore we make our own
+        return cls(atoms)
+
+    def set_symmetries(self, symmetries, translations, atomsmap):
+        self.op_scc = symmetries
+        self.t_sc = translations
+        self.op_svv = [np.linalg.inv(self.cell).dot(op_cc).dot(self.cell) for
+                       op_cc in symmetries]
+        self.nsym = len(symmetries)
+        self.a_sa = atomsmap
+
+    def get_stress(self, voigt=True, *args, **kwargs):
+        sigma0_vv = Atoms.get_stress(self, voigt=False, *args, **kwargs)
+
+        sigma_vv = np.zeros((3, 3))
+        for op_vv in self.op_svv:
+            sigma_vv += np.dot(np.dot(op_vv, sigma0_vv), op_vv.T)
+        sigma_vv /= self.nsym
+
+        if voigt:
+            return sigma_vv.flat[[0, 4, 8, 5, 2, 1]]
+
+        return sigma_vv
+
+    def get_forces(self, *args, **kwargs):
+        f0_av = Atoms.get_forces(self, *args, **kwargs)
+        f_av = np.zeros_like(f0_av)
+        for map_a, op_vv in zip(self.a_sa, self.op_svv):
+            for a1, a2 in enumerate(map_a):
+                f_av[a2] += np.dot(f0_av[a1], op_vv)
+        f_av /= self.nsym
+        return f_av
 
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
@@ -75,6 +115,12 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         world.barrier()
 
     from asr.calculators import get_calculator
+    from gpaw.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms)
+    atoms = SpgGroupAtoms.from_atoms(atoms)
+    atoms.set_symmetries(symmetries=symmetry.op_scc,
+                         translations=symmetry.ft_sc,
+                         atomsmap=symmetry.a_sa)
     dft = get_calculator()(**kwargs)
     if dftd3:
         calc = DFTD3(dft=dft)
@@ -88,9 +134,10 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                                             angle_tolerance=0.1).split()
 
     from ase.constraints import ExpCellFilter
-    filter = ExpCellFilter(atoms, mask=smask)
 
-    from ase.optimize import BFGS
+    smask = [1, 1, 1, 1, 1, 1]
+    filter = ExpCellFilter(atoms, mask=smask)
+    from ase.optimize.bfgs import BFGS
     opt = BFGS(filter,
                logfile=name + '.log',
                trajectory=Trajectory(name + '.traj', 'a', atoms))
@@ -103,11 +150,15 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                                                   symprec=1e-4,
                                                   angle_tolerance=0.1).split()
 
-        assert number == number2, \
-            ('The symmetry was broken during the relaxation! '
-             f'The initial spacegroup was {spgname} {number} '
-             f'but it changed to {spgname2} {number2} during '
-             'the relaxation.')
+        if not number == number2:
+            # Log the last step
+            opt.log()
+            opt.call_observers()
+            msg = ('The symmetry was broken during the relaxation! '
+                   f'The initial spacegroup was {spgname} {number} '
+                   f'but it changed to {spgname2} {number2} during '
+                   'the relaxation.')
+            raise AssertionError(msg)
 
         if is_relax_done(atoms, fmax=0.01, smax=0.002):
             break
