@@ -58,8 +58,8 @@ def postprocessing():
     """Extract data from groundstate in gs.gpw.
 
     This will be called after main by default."""
-    from gpaw import GPAW
-    calc = GPAW('gs.gpw', txt=None)
+    from asr.calculators import get_calculator
+    calc = get_calculator()('gs.gpw', txt=None)
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()

@@ -371,8 +371,9 @@ def test(tests, parallel, pattern, jobs, show_output):
     if pattern:
         tests = [test for test in tests if pattern in test]
         
-    ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
-    
+    failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
+
+    assert not failed, 'Some tests failed!'
     if world.rank == 0:
         cleantests()
 
