@@ -147,6 +147,10 @@ class ASRSubCommand(click.Command):
 
         return results
 
+    def main(self, *args, **kwargs):
+        return click.Command.main(self, standalone_mode=False,
+                                  *args, **kwargs)
+
     def invoke(self, ctx):
         """Invoke the subcommand callback only"""
         results = click.Command.invoke(self, ctx)
