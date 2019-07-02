@@ -189,12 +189,7 @@ class ASRSubResult:
 def subresult(name):
     """Decorator pattern for sub-result"""
     def decorator(calculator):
-        subresult = ASRSubResult(name, calculator)
-
-        def wrapper(*args, **kwargs):
-            return subresult.__call__(*args, **kwargs)
-
-        return wrapper
+        return ASRSubResult(name, calculator)
 
     return decorator
 
