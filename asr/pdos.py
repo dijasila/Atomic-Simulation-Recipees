@@ -1,4 +1,4 @@
-from asr.utils import command, subcommand, option
+from asr.utils import command, subresult, option
 
 from collections import defaultdict
 import json
@@ -111,12 +111,12 @@ def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
 
 # ----- PDOS ----- #
 
-@subcommand('asr.pdos')
+@subresult('asr.pdos')
 def pdos_nosoc(calc, gpw):
     return pdos(calc, gpw, soc=False)
 
 
-@subcommand('asr.pdos')
+@subresult('asr.pdos')
 def pdos_soc(calc, gpw):
     return pdos(calc, gpw, soc=True)
 
@@ -132,10 +132,10 @@ def pdos(calc, gpw, soc=True):
     e = energies - evac
     ef = efermi - evac
 
-    results = {'pdos_sal': pdos_sal, 'symbols': symbols,
-               'energies': e, 'efermi': ef}
+    subresults = {'pdos_sal': pdos_sal, 'symbols': symbols,
+                  'energies': e, 'efermi': ef}
 
-    return results
+    return subresults
 
 
 def calculate_pdos(calc, gpw, soc=True):
