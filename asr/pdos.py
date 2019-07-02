@@ -86,9 +86,7 @@ def main(kptdensity, emptybands):
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
     results['pdos_nosoc'] = pdos_nosoc(calc, gpw)
-    # Yield results XXX
     results['pdos_soc'] = pdos_soc(calc, gpw)
-    # Yield results XXX
 
     # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
