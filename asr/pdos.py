@@ -75,13 +75,13 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
 
 @click.command()
 @update_defaults('asr.pdos')
-@option('--kptdens', default=36.0,
+@option('--kptdensity', default=36.0,
         help='k-point density')
 @option('--emptybands', default=20,
         help='number of empty bands to include')
-def main(kptdens, emptybands):
+def main(kptdensity, emptybands):
     # Refine ground state with more k-points
-    calc, gpw = refine_gs_for_pdos(kptdens, emptybands)
+    calc, gpw = refine_gs_for_pdos(kptdensity, emptybands)
 
     results = {}
 
@@ -109,10 +109,10 @@ def write_results(results):
 # ---------- Recipe methodology ---------- #
 
 
-def refine_gs_for_pdos(kptdens=36.0, emptybands=20):
+def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
     from asr.utils.refinegs import refinegs
     calc, gpw = refinegs(selfc=False, outf=True,
-                         kptdens=kptdens, emptybands=emptybands,
+                         kptdensity=kptdensity, emptybands=emptybands,
                          txt='pdos.txt')  # Change name XXX
     return calc, gpw
 

@@ -23,7 +23,8 @@
         "bandfactor": 2
     },
     "asr.pdos": {
-        "kptdensity": 6.0
+        "kptdensity": 3.0,
+	"emptybands": 8
     },
     "asr.phonons": {
         "n": 1,
