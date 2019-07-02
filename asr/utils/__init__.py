@@ -113,6 +113,55 @@ class ASRCommand(click.Command):
         return results
 
 
+def ASRSubCommand(click.Command):
+    def __init__(self, asr_name, asr_key, save_results_file=True,
+                 callback=None, *args, **kwargs):
+        self._asr_name = asr_name[4:]
+        self._asr_key = asr_key
+
+        self.asr_tmpresults_file
+        if self.asr_tmpresults_file:
+            self.allresults = {}
+
+        self._callback = callback
+        click.Command.__init__(self, callback=self.callback, *args, **kwargs)
+
+    def callback(self, *args, **kwargs):
+        # Try to read results from previous calculation
+        results = self.read_results()
+        if results is None:
+            results = self._callback(*args, **kwargs)
+
+        return results
+
+    def read_results(self):
+        """Read results from tmpresults file if possible"""
+        results = None
+        if self.asr_tmpresults_file:
+            path = Path(f'tmpresults_{self._asr_name}.json')
+            if path.exists():
+                self.allresults = jsonio.decode(path.read_text())
+                # Get subcommand results, if available
+                if self._asr_key in self.allresults.keys():
+                    results = self.allresults[self._asr_key]
+
+        return results
+
+    def invoke(self, ctx):
+        """Invoke the subcommand callback only"""
+        results = click.Command.invoke(self, ctx)
+        if not isinstance(results, dict):
+            results = {'__data__': results}
+
+        results.update(get_excecution_info(ctx.params))
+        self.allresults[self._asr_key] = results
+        
+        if self.asr_tmpresults_file:
+            write_json(f'tmpresults_{self._asr_name}.json', self.allresults)
+
+        return results
+
+
 def command(name, overwrite_params={},
             add_skip_opt=True, *args, **kwargs):
     params = get_parameters(name)
