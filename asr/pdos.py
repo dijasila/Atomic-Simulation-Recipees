@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.utils import command, subcommand, option
 
 from collections import defaultdict
 import json
@@ -85,9 +85,9 @@ def main(kptdensity, emptybands):
 
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos(calc, gpw, soc=False)
+    results['pdos_nosoc'] = pdos_nosoc(calc, gpw)
     # Yield results XXX
-    results['pdos_soc'] = pdos(calc, gpw, soc=True)
+    results['pdos_soc'] = pdos_soc(calc, gpw)
     # Yield results XXX
 
     # ----- Fast steps ----- #
@@ -111,7 +111,16 @@ def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
 
 # ----- PDOS ----- #
 
-# SOME WRAPPER XXX
+@subcommand('asr.pdos', 'pdos_nosoc')
+def pdos_nosoc(calc, gpw):
+    return pdos(calc, gpw, soc=False)
+
+
+@subcommand('asr.pdos', 'pdos_soc')
+def pdos_soc(calc, gpw):
+    return pdos(calc, gpw, soc=True)
+
+
 def pdos(calc, gpw, soc=True):
     """Main functionality to do a single pdos calculation"""
     # Do calculation
