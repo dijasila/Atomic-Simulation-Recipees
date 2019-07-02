@@ -1,3 +1,5 @@
+Warning: This project is under active development but you are welcome to try it out.
+
 Atomic Simulation Recipes
 =========================
 Recipes for Atomic Scale Materials Research.
@@ -6,6 +8,7 @@ Collection of python recipes for common (and not so common)
 tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
+
 
 Installation
 ------------
