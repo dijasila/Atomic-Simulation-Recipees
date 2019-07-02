@@ -2,20 +2,22 @@ import time
 
 import numpy as np
 import ase.optimize
-from ase.constraints import UnitCellFilter
+from ase.constraints import ExpCellFilter
 
 
 class BFGS:
-    def __init__(self, atoms, logfile=None, trajectory=None):
+    def __init__(self, atoms,
+                 fmax, smax, smask=None, emin=-np.inf,
+                 logfile=None, trajectory=None):
         self.atoms = atoms
         self._logfile = logfile
         self.trajectory = trajectory
 
-    def run(self, fmax, smax, smask=None, emin=-np.inf):
         self.smax = smax
         self.smask = smask
+        self.fmax = fmax
         self.emin = emin
-        uf = UnitCellFilter(self.atoms, mask=smask)
+        uf = ExpCellFilter(self.atoms, mask=smask)
 
         self.opt = ase.optimize.BFGS(uf,
                                      logfile=self._logfile,
@@ -25,7 +27,9 @@ class BFGS:
         self.force_consistent = self.opt.force_consistent
         self.step0 = self.opt.step
         self.opt.step = self.step
-        self.opt.run(fmax)
+
+    def run(self):
+        return self.opt.run(self.fmax)
 
     def step(self, f=None):
         m = self.atoms.get_magnetic_moments()
@@ -76,6 +80,3 @@ class BFGS:
                  {1: '*', 0: ''}[self.force_consistent],
                  fmax, smax, m, abs(ms).max()))
             self.logfile.flush()
-
-
-group = 'Utility'

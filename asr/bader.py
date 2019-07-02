@@ -1,9 +1,7 @@
-from functools import partial
-import click
-option = partial(click.option, show_default=True)
+from asr.utils import command
 
 
-@click.command()
+@command('asr.bader')
 def main():
     """Calculate bader charges"""
     from pathlib import Path
@@ -36,7 +34,6 @@ def main():
     err.close()
 
 
-@click.command()
 def print():
     """Print Bader charges"""
     import os.path as op
@@ -49,8 +46,8 @@ def print():
     print(dat)
 
 
-dependencies = ['asr.gs']
-group = 'Property'
+dependencies = ['asr.structureinfo', 'asr.gs']
+group = 'property'
 resources = '1:10m'
 
 

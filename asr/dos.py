@@ -1,21 +1,17 @@
-from asr.utils import update_defaults
-from functools import partial
-import click
-click.option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.dos')
-@click.option('--name', default='dos.gpw', type=str)
-@click.option('--filename', default='dos.json', type=str)
-@click.option('--density', default=12.0, help='K point density')
-def main(name, filename, density):
+@command('asr.dos')
+@option('--name', default='dos.gpw', type=str)
+@option('--filename', default='dos.json', type=str)
+@option('--kptdensity', default=12.0, help='K point kptdensity')
+def main(name, filename, kptdensity):
     """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
         calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': density},
+                    kpts={'density': kptdensity},
                     nbands='300%',
                     convergence={'bands': -10})
         calc.get_potential_energy()
@@ -78,7 +74,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     file = file or 'dos.json'
     if not dos:
         dos = json.load(open(file, 'r'))
-
+    plt.figure()
     plt.plot(dos['energies_e'],
              np.array(dos['dosspin0_e']) / dos['volume'])
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
@@ -91,7 +87,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
+    from asr.utils.custom import fig
 
     panel = ('Density of states (PBE)',
              [[fig('dos.png')], []])
@@ -101,8 +97,8 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
-dependencies = ['asr.gs']
+group = 'property'
+dependencies = ['asr.structureinfo', 'asr.gs']
 creates = ['dos.json']
 
 if __name__ == '__main__':

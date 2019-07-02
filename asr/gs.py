@@ -1,37 +1,37 @@
-from asr.utils import option, update_defaults, get_start_parameters
-import click
+from asr.utils import command, option
+from pathlib import Path
 
-# Get some parameters from start.json
-params = get_start_parameters()
+# Get some parameters from structure.json
 defaults = {}
-if 'ecut' in params.get('mode', {}):
-    defaults['ecut'] = params['mode']['ecut']
+if Path('gs_params.json').exists():
+    from asr.utils import read_json
+    dct = read_json('gs_params.json')
+    if 'ecut' in dct.get('mode', {}):
+        defaults['ecut'] = dct['mode']['ecut']
 
-if 'density' in params.get('kpts', {}):
-    defaults['kptdensity'] = params['kpts']['density']
+    if 'density' in dct.get('kpts', {}):
+        defaults['kptdensity'] = dct['kpts']['density']
 
 
-@click.command()
-@update_defaults('asr.gs', defaults)
+@command('asr.gs', defaults,
+         creates=['gs.gpw'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
-        default='start.json')
-@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
+        default='structure.json')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
-def main(atomfile, gpwfilename, ecut, xc, kptdensity):
-    """Calculate ground state density"""
-    from pathlib import Path
+@option('--width', default=0.05,
+        help='Fermi-Dirac smearing temperature')
+def main(atomfile, ecut, xc, kptdensity, width):
+    """Calculate ground state density.
+
+    By default, this recipe reads the structure in 'structure.json'
+    and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
-    from asr.utils.gpaw import GPAW
-    path = Path(atomfile)
-    if not path.is_file():
-        from asr.utils import get_start_atoms
-        atoms = get_start_atoms()
-    else:
-        atoms = read(atomfile)
+    from asr.calculators import get_calculator
+    atoms = read('structure.json')
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},
@@ -41,23 +41,52 @@ def main(atomfile, gpwfilename, ecut, xc, kptdensity):
             'density': kptdensity,
             'gamma': True
         },
-        occupations={'name': 'fermi-dirac', 'width': 0.05},
+        symmetry={'do_not_symmetrize_the_density': True},
+        occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
 
-    atoms.calc = GPAW(**params)
+    calc = get_calculator()(**params)
+
+    atoms.calc = calc
     atoms.get_forces()
     atoms.get_stress()
-    atoms.calc.write(gpwfilename)
+    atoms.get_potential_energy()
+    atoms.calc.write('gs.gpw')
+
+
+def postprocessing():
+    """Extract data from groundstate in gs.gpw.
+
+    This will be called after main by default."""
+    from gpaw import GPAW
+    calc = GPAW('gs.gpw', txt=None)
+    forces = calc.get_forces()
+    stresses = calc.get_stress()
+    etot = calc.get_potential_energy()
+    
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot,
+               '__key_descriptions__':
+               {'forces': 'Forces on atoms [eV/Angstrom]',
+                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'Total energy [eV]'},
+               '__setup_fingerprints__': fingerprint}
+    return results
 
 
 # The metadata is put it the bottom
-group = 'Property'
+group = 'property'
 description = ''
-dependencies = []  # What other recipes does this recipe depend on
-creates = ['gs.gpw']  # What files are created
-resources = '8:10h'  # How many resources are used
-diskspace = 0  # How much diskspace is used
-restart = 1  # Does it make sense to restart the script?
+dependencies = ['asr.structureinfo']
+creates = ['gs.gpw']
+resources = '8:10h'
+diskspace = 0
+restart = 1
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

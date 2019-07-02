@@ -1,21 +1,15 @@
+import json
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
-from ase.parallel import world, broadcast
+from ase.parallel import world
+from ase import Atoms
 
-from asr.utils import get_dimensionality, magnetic_atoms
-from asr.utils.bfgs import BFGS
-from asr.utils import update_defaults
-
-import click
-from functools import partial
-import json
-
-option = partial(click.option, show_default=True)
-
+from asr.utils import command, option
+from gpaw import KohnShamConvergenceError
 
 Uvalues = {}
 
@@ -30,51 +24,62 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def relax_done(fname, emin=-np.inf):
-    """Check if a relaxation is done"""
-    if world.rank == 0:
-        result = relax_done_master(fname, emin=emin)
-    else:
-        result = None
-    return broadcast(result)
+def is_relax_done(atoms, fmax=0.01, smax=0.002):
+    f = atoms.get_forces()
+    s = atoms.get_stress()
+    done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+
+    return done
 
 
-def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
-    if not Path(fname).is_file():
-        return None, False
+class SpgGroupAtoms(Atoms):
 
-    try:
-        slab = read(fname, parallel=False)
-    except (IOError, UnknownFileTypeError):
-        return None, False
+    @classmethod
+    def from_atoms(cls, atoms):
+        # Due to technicalities we cannot mess with the __init__ constructor
+        # -> therefore we make our own
+        return cls(atoms)
 
-    if slab.calc is None:
-        return slab, False
+    def set_symmetries(self, symmetries, translations, atomsmap):
+        self.op_scc = symmetries
+        self.t_sc = translations
+        self.op_svv = [np.linalg.inv(self.cell).dot(op_cc).dot(self.cell) for
+                       op_cc in symmetries]
+        self.nsym = len(symmetries)
+        self.a_sa = atomsmap
 
-    e = slab.get_potential_energy()
-    f = slab.get_forces()
-    s = slab.get_stress()
-    done = e < emin or (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+    def get_stress(self, voigt=True, *args, **kwargs):
+        sigma0_vv = Atoms.get_stress(self, voigt=False, *args, **kwargs)
 
-    return slab, done
+        sigma_vv = np.zeros((3, 3))
+        for op_vv in self.op_svv:
+            sigma_vv += np.dot(np.dot(op_vv, sigma0_vv), op_vv.T)
+        sigma_vv /= self.nsym
+
+        if voigt:
+            return sigma_vv.flat[[0, 4, 8, 5, 2, 1]]
+
+        return sigma_vv
+
+    def get_forces(self, *args, **kwargs):
+        f0_av = Atoms.get_forces(self, *args, **kwargs)
+        f_av = np.zeros_like(f0_av)
+        for map_a, op_vv in zip(self.a_sa, self.op_svv):
+            for a1, a2 in enumerate(map_a):
+                f_av[a2] += np.dot(f0_av[a1], op_vv)
+        f_av /= self.nsym
+        return f_av
 
 
-def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None):
-    name = f'relax-{tag}'
-    trajname = f'{name}.traj'
+def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
+          smask=None, xc='PBE', plusu=False, dftd3=True):
+    import spglib
 
-    # Are we done?
-    slab_relaxed, done = relax_done(trajname)
-
-    if slab_relaxed is not None:
-        slab = slab_relaxed
-
-    if done:
-        return slab
+    if dftd3:
+        from ase.calculators.dftd3 import DFTD3
 
     if smask is None:
-        nd = get_dimensionality()
+        nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
             smask = [1, 1, 1, 0, 0, 0]
         elif nd == 2:
@@ -84,16 +89,18 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             msg = 'Relax recipe not implemented for 1D structures'
             raise NotImplementedError(msg)
 
+    from ase.calculators.calculator import kpts2sizeandoffsets
+    size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
     kwargs = dict(txt=name + '.txt',
                   mode={'name': 'pw', 'ecut': ecut},
-                  xc='PBE',
+                  xc=xc,
                   basis='dzp',
-                  kpts={'density': kptdens, 'gamma': True},
-                  # This is the new default symmetry settings
-                  symmetry={'do_not_symmetrize_the_density': True},
+                  symmetry={'symmorphic': False},
+                  convergence={'forces': 1e-4},
+                  kpts={'size': size, 'gamma': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
 
-    if tag.endswith('+u'):
+    if plusu:
         # Try to get U values from previous image
         try:
             u = ulmopen(f'{name}.traj')
@@ -101,175 +108,142 @@ def relax(slab, tag, kptdens=6.0, ecut=800, width=0.05, emin=-np.inf,
             u.close()
         except (FileNotFoundError, KeyError, InvalidULMFileError):
             # Read from standard values
-            symbols = set(slab.get_chemical_symbols())
+            symbols = set(atoms.get_chemical_symbols())
             setups = {symbol: Uvalues[symbol] for symbol in symbols
                       if symbol in Uvalues}
         kwargs['setups'] = setups
         world.barrier()
 
-    from asr.utils.gpaw import GPAW, KohnShamConvergenceError
-    slab.calc = GPAW(**kwargs)
-    opt = BFGS(slab,
+    from asr.calculators import get_calculator
+    from gpaw.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms)
+    atoms = SpgGroupAtoms.from_atoms(atoms)
+    atoms.set_symmetries(symmetries=symmetry.op_scc,
+                         translations=symmetry.ft_sc,
+                         atomsmap=symmetry.a_sa)
+    dft = get_calculator()(**kwargs)
+    if dftd3:
+        calc = DFTD3(dft=dft)
+    else:
+        calc = dft
+    atoms.calc = calc
+
+    from asr.setup.symmetrize import atomstospgcell as ats
+    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json')),
+                                            symprec=1e-4,
+                                            angle_tolerance=0.1).split()
+
+    from ase.constraints import ExpCellFilter
+
+    smask = [1, 1, 1, 1, 1, 1]
+    filter = ExpCellFilter(atoms, mask=smask)
+    from ase.optimize.bfgs import BFGS
+    opt = BFGS(filter,
                logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', slab))
-    try:
-        opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
-    except KohnShamConvergenceError:
-        try:
-            kwargs.update(kpts={'density': 9.0, 'gamma': True},
-                          occupations={'name': 'fermi-dirac', 'width': 0.02},
-                          maxiter=999)
-            slab.calc = GPAW(**kwargs)
-            opt = BFGS(slab,
-                       logfile=name + '.log',
-                       trajectory=Trajectory(name + '.traj', 'a', slab))
-            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
-        except KohnShamConvergenceError:
-            kwargs.update(occupations={'name': 'fermi-dirac', 'width': 0.2})
-            slab.calc = GPAW(**kwargs)
-            opt = BFGS(slab,
-                       logfile=name + '.log',
-                       trajectory=Trajectory(name + '.traj', 'a', slab))
-            opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+               trajectory=Trajectory(name + '.traj', 'a', atoms))
 
-    return slab
+    # fmax=0 here because we have implemented our own convergence criteria
+    runner = opt.irun(fmax=0)
+    for _ in runner:
+        # Check that the symmetry has not been broken
+        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
+                                                  symprec=1e-4,
+                                                  angle_tolerance=0.1).split()
+
+        if not number == number2:
+            # Log the last step
+            opt.log()
+            opt.call_observers()
+            msg = ('The symmetry was broken during the relaxation! '
+                   f'The initial spacegroup was {spgname} {number} '
+                   f'but it changed to {spgname2} {number2} during '
+                   'the relaxation.')
+            raise AssertionError(msg)
+
+        if is_relax_done(atoms, fmax=0.01, smax=0.002):
+            break
+        
+    return atoms, calc, dft, kwargs
 
 
-@click.command()
-@update_defaults('asr.relax')
-@click.argument('states', nargs=-1)
+# Please note these are relative numbers that
+# are multiplied on the original ones
+known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                               'width': 0.5}}
+
+
+@command('asr.relax',
+         known_exceptions=known_exceptions)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
-@option('--kptdens', default=6.0,
+@option('--kptdensity', default=6.0,
         help='Kpoint density')
 @option('-U', '--plusu', help='Do +U calculation',
         is_flag=True)
-@option('--save-all-states',
-        help='Save all states and not only the most stable state(s)',
-        is_flag=True)
-@option('--references',
-        help='References database when calculating HOF')
-def main(plusu, states, ecut, kptdens, save_all_states, references):
+@option('--xc', default='PBE', help='XC-functional')
+@option('--d3/--nod3', default=True, help='Relax with vdW D3')
+@option('--width', default=0.05,
+        help='Fermi-Dirac smearing temperature')
+def main(plusu, ecut, kptdensity, xc, d3, width):
     """Relax atomic positions and unit cell.
 
-    STATES: list of nm (non-magnetic), fm (ferro-magnetic), afm
-    (anti-ferro-magnetic; only work with two magnetic
-    atoms in unit cell)
+    By default, this recipe takes the atomic structure in 'unrelaxed.json'
+    and relaxes the structure including the DFTD3 van der Waals
+    correction. The relaxed structure is saved to `structure.json` which can be
+    processed by other recipes.
+
+    \b
+    Examples:
+    Relax without using DFTD3
+        asr run relax --nod3
+    Relax using the LDA exchange-correlation functional
+        asr run relax --xc LDA
     """
-    U = plusu
-    nm = 'nm+u' if U else 'nm'
-    fm = 'fm+u' if U else 'fm'
-    afm = 'afm+u' if U else 'afm'
-    if not states:
-        states = [nm, fm, afm]
+    msg = ('You cannot already have a structure.json file '
+           'when you relax a structure, because this is '
+           'what the relax recipe is supposed to produce. You should '
+           'name your original/start structure "unrelaxed.json!"')
+    assert not Path('structure.json').is_file(), msg
+    try:
+        atoms = read('relax.traj')
+    except (IOError, UnknownFileTypeError):
+        atoms = read('unrelaxed.json')
 
-    output = []
-    for state in [nm, fm, afm]:
-        output.append(relax_done('relax-{}.traj'.format(state)))
+    # Relax the structure
+    atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
+                                     kptdensity=kptdensity, xc=xc,
+                                     plusu=plusu, dftd3=d3, width=width)
 
-    slab1, done1 = output[0]
-    slab2, done2 = output[1]
-    slab3, done3 = output[2]
+    edft = dft.get_potential_energy(atoms)
+    etot = atoms.get_potential_energy()
 
-    toten_nm = np.nan
-    toten_fm = np.nan
-    toten_afm = np.nan
+    # Save atomic structure
+    write('structure.json', atoms)
 
-    # Non-magnetic:
-    if nm in states:
-        if not done1:
-            if slab1 is None:
-                if U and Path('relax-nm.traj').exists():
-                    try:
-                        slab1 = read('relax-nm.traj')
-                    except UnknownFileTypeError:
-                        pass
-                if slab1 is None:
-                    fnames = list(Path('.').glob('start.*'))
-                    assert len(fnames) == 1, fnames
-                    slab1 = read(str(fnames[0]))
-            slab1.set_initial_magnetic_moments(None)
-            try:
-                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
-            except RuntimeError:
-                # The atoms might be too close together
-                # so enlarge unit cell
-                slab1.set_cell(slab1.get_cell() * 2, scale_atoms=True)
-                relax(slab1, nm, ecut=ecut, kptdens=kptdens)
+    from asr.utils import write_json
+    write_json('gs_params.json', kwargs)
 
-        toten_nm = slab1.get_potential_energy()
+    # Get setup fingerprints
+    fingerprint = {}
+    for setup in dft.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
 
-    # Ferro-magnetic:
-    if fm in states:
-        if slab2 is None:
-            slab2 = slab1.copy()
-            slab2.calc = None
-            slab2.set_initial_magnetic_moments([1] * len(slab2))
-
-        if not done2:
-            relax(slab2, fm, ecut=ecut, kptdens=kptdens)
-
-        magmom = slab2.get_magnetic_moment()
-        if abs(magmom) > 0.1:
-            # Create subfolder early so that fm-tasks can begin:
-            if world.rank == 0 and not Path(fm).is_dir():
-                Path(fm).mkdir()
-        toten_fm = slab2.get_potential_energy()
-
-    # Antiferro-magnetic:
-    if afm in states:
-        if slab3 is None:
-            if slab2 is None:
-                # Special case.  Only afm relaxation is done
-                fnames = list(Path('.').glob('start.*'))
-                assert len(fnames) == 1, fnames
-                slab3 = read(str(fnames[0]))
-            else:
-                slab3 = slab2.copy()
-                slab3.calc = None
-            magnetic = magnetic_atoms(slab3)
-            nmag = sum(magnetic)
-            if nmag == 2:
-                magmoms = np.zeros(len(slab3))
-                a1, a2 = np.where(magnetic)[0]
-                magmoms[a1] = 1.0
-                magmoms[a2] = -1.0
-                slab3.set_initial_magnetic_moments(magmoms)
-            else:
-                done3 = True
-                slab3 = None
-
-        if not done3:
-            relax(slab3, afm, ecut=ecut, kptdens=kptdens)
-
-        if slab3 is not None:
-            magmom = slab3.get_magnetic_moment()
-            magmoms = slab3.get_magnetic_moments()
-            toten_afm = slab3.get_potential_energy()
-
-    for state, slab in [(nm, slab1),
-                        (fm, slab2),
-                        (afm, slab3)]:
-        if slab is None:
-            continue
-        if world.rank == 0 and not Path(state).is_dir():
-            Path(state).mkdir()
-
-        name = state + '/start.json'
-        if not Path(name).is_file():
-            # Write start.traj file to folder
-            write(name, slab)
-
-    # Save to results-relax.json
-    data = {'toten_nm': toten_nm,
-            'toten_fm': toten_fm,
-            'toten_afm': toten_afm}
-    Path('results-relax.json').write_text(json.dumps(data))
+    # Save to results_relax.json
+    structure = json.loads(Path('structure.json').read_text())
+    results = {'etot': etot,
+               'edft': edft,
+               'relaxedstructure': structure,
+               '__key_descriptions__':
+               {'etot': 'Total energy [eV]',
+                'edft': 'DFT total energy [eV]',
+                'relaxedstructure': 'Relaxed atomic structure'},
+               '__setup_fingerprints__': fingerprint}
+    return results
 
 
-group = 'Structure'
-resources = '8:xeon8:10h'
-creates = ['results-relax.json']
+group = 'structure'
+resources = '24:10h'
+creates = ['results_relax.json']
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

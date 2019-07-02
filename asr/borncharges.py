@@ -1,7 +1,4 @@
-from asr.utils import update_defaults
-from functools import partial
-import click
-option = partial(click.option, show_default=True)
+from asr.utils import command, option
 
 
 def get_wavefunctions(atoms, name, params, density=6.0,
@@ -28,12 +25,11 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     return atoms.calc
 
 
-@click.command()
-@update_defaults('asr.borncharges')
+@command('asr.borncharges')
 @option('--displacement', default=0.01, help='Atomic displacement (Å)')
-@option('--kpointdensity', default=6.0)
+@option('--kptdensity', default=6.0)
 @option('--folder', default='data-borncharges')
-def main(displacement, kpointdensity, folder):
+def main(displacement, kptdensity, folder):
     """Calculate Born charges"""
     import json
     from os.path import exists, isfile
@@ -43,7 +39,7 @@ def main(displacement, kpointdensity, folder):
     import numpy as np
     from gpaw import GPAW
     from gpaw.mpi import world
-    from c2db.berryphase import get_polarization_phase
+    from asr.utils.berryphase import get_polarization_phase
 
     from ase.parallel import paropen
     from ase.units import Bohr
@@ -92,12 +88,12 @@ def main(displacement, kpointdensity, folder):
                     berryname = prefix + '-berryphases.json'
                     if not exists(name) and not exists(berryname):
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                     try:
                         phase_c = get_polarization_phase(name)
                     except ValueError:
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                         phase_c = get_polarization_phase(name)
 
                     phase_scv[s, :, v] = phase_c
@@ -169,7 +165,7 @@ def polvsatom(row, *filenames):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
+    from asr.utils.custom import fig
     polfilenames = []
     if 'Z_avv' in row.data:
         def matrixtable(M, digits=2):
@@ -194,7 +190,7 @@ def webpanel(row, key_descriptions):
             polname = 'polvsatom{}.png'.format(a)
             columns[1].append(fig(polname))
             polfilenames.append(polname)
-        panel = [('Born charges', columns)]
+        panel = ('Born charges', columns)
     else:
         panel = []
     things = ()
@@ -218,12 +214,6 @@ def collect_data(atoms):
 
     with open(fname) as fd:
         dct = jsonio.decode(json.load(fd))
-
-    if 'P_asvv' not in dct:
-        from c2db.borncharges import borncharges
-        borncharges(delta)
-        with open(fname) as fd:
-            dct = jsonio.decode(json.load(fd))
 
     P_davv.append(dct['P_asvv'][:, 0])
     P_davv.append(dct['P_asvv'][:, 1])
@@ -254,8 +244,8 @@ def print_results(filename='data-borncharges/borncharges-0.01.json'):
     print(-dct['Z_avv'])
 
 
-group = 'Property'
-dependencies = ['asr.gs']
+group = 'property'
+dependencies = ['asr.structureinfo', 'asr.gs']
 resources = '24:10h'
 
 

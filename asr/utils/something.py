@@ -1,12 +1,10 @@
 """Template recipe."""
 import json
 from pathlib import Path
-from asr.utils import option, update_defaults
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.template_recipe')
+@command('asr.something')
 @option('--number', default=5)
 def main(number):
     """Calculate something."""
@@ -14,6 +12,7 @@ def main(number):
     results = {'number': number,
                'something': something}
     Path('something.json').write_text(json.dumps(results))
+    return results
 
 
 def calculate_something(number):
@@ -36,7 +35,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
 
     if 'something' not in row.data:
         return None, []
@@ -61,7 +60,7 @@ def create_plot(row, fname):
     plt.savefig(fname)
 
 
-group = 'Property'
+group = 'property'
 creates = ['something.json']  # what files are created
 dependencies = []  # no dependencies
 resources = '1:10m'  # 1 core for 10 minutes
@@ -69,4 +68,4 @@ diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

@@ -1,26 +1,18 @@
-from asr.utils import option, update_defaults
-import click
+from asr.utils import command, option
 
 
-@click.command()
-@update_defaults('asr.bandstructure')
+@command('asr.bandstructure')
 @option('--kptpath', default=None, type=str)
 @option('--npoints', default=400)
 @option('--emptybands', default=20)
 def main(kptpath, npoints, emptybands):
     """Calculate electronic band structure"""
     import os
-    from pathlib import Path
-    from ase.io import jsonio
-
     from gpaw import GPAW
-    import gpaw.mpi as mpi
     from ase.io import read
     from ase.dft.band_structure import get_band_structure
 
-    if os.path.isfile('eigs_spinorbit.npz'):
-        return
-    assert os.path.isfile('gs.gpw')
+    assert os.path.isfile('gs.gpw'), 'No ground state file!'
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
@@ -47,20 +39,20 @@ def main(kptpath, npoints, emptybands):
     calc = GPAW('bs.gpw', txt=None)
     bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
 
-    if mpi.world.rank == 0:
-        Path('results-bs-nosoc.json').write_text(jsonio.encode(bs))
+    import copy
+    results = {}
+    results['bs_nosoc'] = copy.deepcopy(bs.todict())
 
     # stuff below could be moved to the collect script.
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
 
-    if mpi.world.rank == 0:
-        data = bs.todict()
-        data['energies'] = e_km.T
-        data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
+    data = bs.todict()
+    data['energies'] = e_km.T
+    data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
 
-        data = jsonio.encode(data)
-        Path('results-bs-soc.json').write_text(data)
+    results['bs_soc'] = data
+    return results
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
@@ -236,19 +228,20 @@ def collect_data(atoms):
     import os.path as op
     from pathlib import Path
     import json
-    from ase.io import jsonio
+    from asr.utils import read_json
     kvp = {}
     key_descriptions = {}
     data = {}
 
-    if not op.isfile('results-bs-soc.json'):
+    if not op.isfile('results_bandstructure.json'):
         return kvp, key_descriptions, data
 
     import numpy as np
     evac = kvp.get('evac')
-    soc = jsonio.decode(Path('results-bs-soc.json').read_text())
-    nosoc = jsonio.decode(Path('results-bs-nosoc.json').read_text())
-    eps_skn = nosoc.energies
+    bsdata = read_json('results_bandstructure.json')
+    soc = bsdata['bs_soc']
+    nosoc = bsdata['bs_nosoc']
+    eps_skn = nosoc['energies']
     path = soc['path']
     npoints = len(path.kpts)
     s_mvk = np.array(soc.get('spin_mvk'))
@@ -259,8 +252,8 @@ def collect_data(atoms):
 
     assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
 
-    efermi = np.load('gap_soc.npz')['efermi']
-    efermi_nosoc = np.load('gap.npz')['efermi']
+    efermi = json.loads(Path('gap_soc.json').read_text())['efermi']
+    efermi_nosoc = json.loads(Path('gap.json').read_text())['efermi']
 
     pbe = {
         'path': path,
@@ -278,7 +271,7 @@ def collect_data(atoms):
         op_scc = atoms2symmetry(atoms).op_scc
 
     from pathlib import Path
-    magstate = json.loads(Path('quickinfo.json').read_text())['magstate']
+    magstate = read_json('results_structureinfo.json')['magstate']
 
     for idx, kpt in enumerate(path.kpts):
         if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
@@ -536,13 +529,14 @@ def bs_pbe(row,
            fontsize=10,
            show_legend=True,
            s=0.5):
-    if 'bs_pbe' not in row.data or 'eps_so_mk' not in row.data.bs_pbe:
+
+    if 'results_bandstructure' not in row.data:
         return
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
     d = row.data.bs_pbe
     e_skn = d['eps_skn']
     nspins = e_skn.shape[0]
@@ -561,7 +555,8 @@ def bs_pbe(row,
         lw=1.0,
         zorder=0)
     ax = plt.figure(figsize=figsize).add_subplot(111)
-    bsp = bs.plot(
+    bsp = BandStructurePlot(bs)
+    bsp.plot(
         ax=ax,
         show=False,
         emin=emin,
@@ -610,8 +605,121 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
+def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
+    from ase.units import Bohr, Ha
+    from c2db.em import evalmodel
+    from ase.dft.kpoints import kpoint_convert
+    from matplotlib import pyplot as plt
+    import numpy as np
+    labels_from_kpts = None  # XXX: Fix pep8
+    sortcolors = True
+    erange = 0.05  # energy window
+    cb = row.get('data', {}).get('effectivemass', {}).get('cb', {})
+    vb = row.get('data', {}).get('effectivemass', {}).get('vb', {})
+
+    def getitsorted(keys, bt):
+        keys = [k for k in keys if 'spin' in k and 'band' in k]
+        return sorted(
+            keys, key=lambda x: int(x.split('_')[1][4:]), reverse=bt == 'vb')
+
+    def get_xkrange(row, erange):
+        xkrange = 0.0
+        for bt in ['cb', 'vb']:
+            xb = row.data.get('effectivemass', {}).get(bt)
+            if xb is None:
+                continue
+            xb0 = xb[getitsorted(xb.keys(), bt)[0]]
+            mass_u = abs(xb0['mass_u'])
+            xkr = max((2 * mass_u * erange / Ha)**0.5 / Bohr)
+            xkrange = max(xkrange, xkr)
+        return xkrange
+
+    for bt, xb, path in [('cb', cb, pathcb), ('vb', vb, pathvb)]:
+        b_u = xb.get('bzcut_u')
+        if b_u is None or b_u == []:
+            continue
+
+        xb0 = xb[getitsorted(xb.keys(), bt)[0]]
+        mass_u = xb0['mass_u']
+        coeff = xb0['c']
+        ke_v = xb0['ke_v']
+        fig, axes = plt.subplots(
+            nrows=1,
+            ncols=2,
+            figsize=figsize,
+            sharey=True,
+            gridspec_kw={'width_ratios': [1, 1.25]})
+        things = None
+        xkrange = get_xkrange(row, erange)
+        for u, b in enumerate(b_u):  # loop over directions
+            ut = u if bt == 'cb' else abs(u - 1)
+            ax = axes[ut]
+            e_mk = b['e_dft_km'].T - row.evac
+            sz_mk = b['sz_dft_km'].T
+            if row.get('has_invsymm', 0) == 1:
+                sz_mk[:] = 0.0
+            kpts_kc = b['kpts_kc']
+            xk, _, _ = labels_from_kpts(kpts=kpts_kc, cell=row.cell)
+            xk -= xk[-1] / 2
+            # fitted model
+            xkmodel = xk.copy()  # xk will be permutated
+            kpts_kv = kpoint_convert(row.cell, skpts_kc=kpts_kc)
+            kpts_kv *= Bohr
+            emodel_k = evalmodel(kpts_kv=kpts_kv, c_p=coeff) * Ha
+            emodel_k -= row.evac
+            # effective mass fit
+            emodel2_k = (xkmodel * Bohr)**2 / (2 * mass_u[u]) * Ha
+            ecbm = evalmodel(ke_v, coeff) * Ha
+            emodel2_k = emodel2_k + ecbm - row.evac
+            # dft plot
+            shape = e_mk.shape
+            x_mk = np.vstack([xk] * shape[0])
+            if sortcolors:
+                shape = e_mk.shape
+                perm = (-sz_mk).argsort(axis=None)
+                e_mk = e_mk.ravel()[perm].reshape(shape)
+                sz_mk = sz_mk.ravel()[perm].reshape(shape)
+                x_mk = x_mk.ravel()[perm].reshape(shape)
+            for i, (e_k, sz_k, x_k) in enumerate(zip(e_mk, sz_mk, x_mk)):
+                things = ax.scatter(x_k, e_k, c=sz_k, vmin=-1, vmax=1)
+            ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+            # ax.plot(xkmodel, emodel_k, c='b', ls='-', label='3rd order')
+            sign = np.sign(mass_u[u])
+            if (bt == 'cb' and sign > 0) or (bt == 'vb' and sign < 0):
+                ax.plot(xkmodel, emodel2_k, c='r', ls='--')
+            ax.set_title('Mass {}, direction {}'.format(bt.upper(), ut + 1))
+            if bt == 'vb':
+                y1 = ecbm - row.evac - erange * 0.75
+                y2 = ecbm - row.evac + erange * 0.25
+            elif bt == 'cb':
+                y1 = ecbm - row.evac - erange * 0.25
+                y2 = ecbm - row.evac + erange * 0.75
+
+            ax.set_ylim(y1, y2)
+            ax.set_xlim(-xkrange, xkrange)
+            ax.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
+        if things is not None:
+            cbar = fig.colorbar(things, ax=axes[1])
+            cbar.set_label(r'$\langle S_z \rangle$')
+            cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+            cbar.update_ticks()
+        fig.tight_layout()
+        plt.tight_layout()
+        plt.savefig(path)
+        plt.close()
+
+
+def bz_soc(row, fname):
+    from ase.geometry.cell import Cell
+    from matplotlib import pyplot as plt
+    cell = Cell(row.cell, pbc=row.pbc)
+    lat = cell.get_bravais_lattice()
+    lat.plot_bz()
+    plt.savefig(fname)
+
+
 def webpanel(row, key_descriptions):
-    from asr.custom import fig, table
+    from asr.utils.custom import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -668,13 +776,16 @@ def webpanel(row, key_descriptions):
              [[fig('pbe-bs.png', link='pbe-bs.html'),
                fig('bz.png')], [fig('pbe-pdos.png', link='empty'), pbe]])
 
-    things = [(bs_pbe, ['pbe-bs.png']), (bs_pbe_html, ['pbe-bs.html'])]
+    things = [(bz_soc, ['bz.png']),
+              (bs_pbe, ['pbe-bs.png']),
+              (bs_pbe_html, ['pbe-bs.html'])]
     return panel, things
 
 
-group = 'Property'
-creates = ['bs.gpw', 'results-bs-soc.json', 'results-bs-nosoc.json']
-dependencies = ['asr.gs']
+group = 'property'
+creates = ['bs.gpw']
+dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
+sort = 3
 
 if __name__ == '__main__':
-    main(standalone_mode=False)
+    main()

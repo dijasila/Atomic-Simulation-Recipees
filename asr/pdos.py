@@ -1,6 +1,5 @@
 from asr.utils import option, update_defaults
 import click
-from pathlib import Path
 
 from collections import defaultdict
 import json
@@ -26,7 +25,7 @@ from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
 
 
 from asr.utils import magnetic_atoms
-from asr.utils.gpw import gpw2eigs, get_spin_direction
+from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 
 
 # ---------- GPAW hacks ---------- #
@@ -391,9 +390,9 @@ def pdos_pbe(row,
 # ---------- ASR globals and main ---------- #
 
 
-group = 'Property'
+group = 'property'
 resources = '8:1h'  # How many resources are used
-dependencies = ['asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

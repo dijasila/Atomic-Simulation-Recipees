@@ -6,6 +6,7 @@ asr/tests/**/*.traj
 asr/tests/**/results-*.json
 asr/tests/**/*.log
 asr/tests/**/*.db
+asr/tests/test_auto_*.py
 *.egg-info
 **/.vscode/
 *.npz

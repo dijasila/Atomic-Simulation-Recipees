@@ -70,32 +70,32 @@ def table(row, title, keys, kd={}, digits=2):
 def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
            prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
-    import asr
+    from asr.utils import get_recipes
     page = []
     things = []
     exclude = set()
     sort = []
 
     # Locate all webpanels
-    from importlib import import_module
-    pathlist = Path(asr.__file__).parent.glob('*.py')
-    for path in pathlist:
-        name = path.with_suffix('').name
-        module = import_module('asr.' + name)
+    recipes = get_recipes()
+    for recipe in recipes:
+        if not recipe.webpanel:
+            continue
+        if not recipe.done():
+            continue
+        panel, newthings = recipe.webpanel(row, key_descriptions)
+        if panel:
+            assert len(panel) == 2, print(recipe.__name__)
+            page.append(panel)
+            if hasattr(recipe, 'sort'):
+                sort.append(recipe.sort)
+            else:
+                sort.append(99)
 
-        if hasattr(module, 'webpanel'):
-            panel, newthings = module.webpanel(row, key_descriptions)
-            if panel:
-                page.append(panel)
-                if hasattr(module, 'order'):
-                    sort.append(module.order)
-                else:
-                    sort.append(99)
+        if newthings:
+            things.extend(newthings)
 
-            if newthings:
-                things.extend(newthings)
-    page = [x for _, x in sorted(zip(sort, page))]
-    
+    page = [x for _, x in sorted(zip(sort, page), key=lambda x: x[0])]
     page += [miscellaneous_section(row, key_descriptions, exclude)]
 
     # List of functions and the figures they create:
@@ -134,6 +134,3 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
             final_page.append((title, columns))
 
     return final_page
-
-
-group = 'Utility'

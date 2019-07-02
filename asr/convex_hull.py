@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-import click
+from asr.utils import command, option
 
 from ase.db import connect
 from ase.io import read
@@ -12,11 +12,11 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
-@click.command()
-@click.option('-r', '--references', type=str,
-              help='Reference database.')
-@click.option('-d', '--database', type=str,
-              help='Database of systems to be included in the figure.')
+@command('asr.convex_hull')
+@option('-r', '--references', type=str,
+        help='Reference database.')
+@option('-d', '--database', type=str,
+        help='Database of systems to be included in the figure.')
 def main(references: str, database: str):
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
@@ -47,7 +47,7 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('quickinfo.json').read_text())
+        qi = json.loads(Path('results_structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
                       qi.get('prototype', ''),
@@ -56,7 +56,7 @@ def main(references: str, database: str):
 
     results['links'] = links
 
-    Path('convex_hull.json').write_text(json.dumps(results))
+    return results
 
 
 def get_hof(atoms, references):
@@ -123,7 +123,7 @@ def select_references(db, symbols):
 
 
 def collect_data(atoms):
-    path = Path('convex_hull.json')
+    path = Path('results_convex_hull.json')
     if not path.is_file():
         return {}, {}, {}
     dct = json.loads(path.read_text())
@@ -176,7 +176,7 @@ def plot(row, fname):
             else:
                 ax.plot([x], [y], 'v', color='C1', label=label)
             label = None
-            ax.text(x + 0.03, y, '{}-{}'.format(prot, magstate))
+            # ax.text(x + 0.03, y, '{}-{}'.format(prot, magstate))
             ymin = min(ymin, y)
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * dy)
     else:
@@ -241,8 +241,7 @@ def convex_hull_tables(row: AtomsRow,
 
 
 def webpanel(row, key_descriptions):
-    from asr.custom import fig
-    from asr.custom import table
+    from asr.utils.custom import fig, table
 
     if 'convex_hull' not in row.data:
         return (), ()
@@ -268,8 +267,9 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'Property'
-dependencies = ['asr.gs']
+group = 'property'
+dependencies = ['asr.structureinfo', 'asr.gs']
+sort = 2
 
 
 if __name__ == '__main__':
