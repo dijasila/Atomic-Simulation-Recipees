@@ -22,6 +22,12 @@ ASE has to be installed manually since we need the newest version:
 ```console
 $ python3 -m pip install git+https://gitlab.com/ase/ase.git
 ```
+
+Also if you don't already have GPAW installed you can get it with
+```console
+$ python3 -m pip install git+https://gitlab.com/gpaw/gpaw.git
+```
+
 Install a database of reference energies to calculate HOF and convex hull. Here 
 we use a database of one- and component-structures from OQMD
 ```
