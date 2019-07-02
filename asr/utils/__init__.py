@@ -98,6 +98,12 @@ class ASRCommand(click.Command):
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
+
+            # Clean up possible tmpresults files
+            tmppath = Path(f'tmpresults_{name}.json')
+            if tmppath.exists():
+                tmppath.unlink()
+
         return results
 
     def callback(self, *args, **kwargs):
