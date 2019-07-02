@@ -1,5 +1,4 @@
-from asr.utils import option, update_defaults
-import click
+from asr.utils import command, option
 
 from collections import defaultdict
 import json
@@ -73,8 +72,7 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
 # ---------- Main functionality ---------- #
 
 
-@click.command()
-@update_defaults('asr.pdos')
+@command('asr.pdos')
 @option('--kptdensity', default=36.0,
         help='k-point density')
 @option('--emptybands', default=20,
@@ -97,13 +95,7 @@ def main(kptdensity, emptybands):
     results['dos_at_ef_nosoc'] = calculate_dos_at_ef(calc, gpw, soc=False)
     results['dos_at_ef_soc'] = calculate_dos_at_ef(calc, gpw, soc=True)
 
-    # Write results file  # Yield instead XXX
-    write_results(results)
-
-
-def write_results(results):
-    with paropen('results_pdos.json', 'w') as fd:
-        json.dump(jsonio.encode(results), fd)
+    return results
 
 
 # ---------- Recipe methodology ---------- #
