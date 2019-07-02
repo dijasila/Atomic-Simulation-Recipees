@@ -198,11 +198,12 @@ def command(name, overwrite_params={},
     return decorator
 
 
-def subcommand(name, key, *args, **kwargs):
+def subcommand(name, *args, **kwargs):
     """Wrapper for subcommands"""
     def decorator(func):
         cc = click.command(cls=ASRSubCommand,
-                           asr_name=name, asr_key=key, *args, **kwargs)
+                           asr_name=name, asr_key=func.__name__,
+                           *args, **kwargs)
         return cc(func)
 
     return decorator

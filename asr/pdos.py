@@ -111,12 +111,12 @@ def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
 
 # ----- PDOS ----- #
 
-@subcommand('asr.pdos', 'pdos_nosoc')
+@subcommand('asr.pdos')
 def pdos_nosoc(calc, gpw):
     return pdos(calc, gpw, soc=False)
 
 
-@subcommand('asr.pdos', 'pdos_soc')
+@subcommand('asr.pdos')
 def pdos_soc(calc, gpw):
     return pdos(calc, gpw, soc=True)
 
