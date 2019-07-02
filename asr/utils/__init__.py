@@ -89,22 +89,12 @@ class ASRCommand(click.Command):
                              'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
             raise
+
         if not results:
             results = {}
-        results['__params__'] = ctx.params
-        from ase.utils import search_current_git_hash
-        modnames = ['asr', 'ase', 'gpaw']
-        versions = {}
-        for modname in modnames:
-            mod = import_module(modname)
-            githash = search_current_git_hash(mod)
-            version = mod.__version__
-            if githash:
-                versions[f'{modname}'] = f'{version}-{githash}'
-            else:
-                versions[f'{modname}'] = f'{version}'
-        results['__versions__'] = versions
 
+        results.update(get_excecution_info(ctx.params))
+        
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
@@ -171,6 +161,26 @@ def chdir(folder, create=False, empty=False):
 # We need to reduce this list to only contain collect
 excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
                'asr.bse', 'asr.gapsummary']
+
+
+def get_excecution_info(params):
+    """Get parameter and software version information as a dictionary"""
+    exceinfo = {'__params__': params}
+
+    from ase.utils import search_current_git_hash
+    modnames = ['asr', 'ase', 'gpaw']
+    versions = {}
+    for modname in modnames:
+        mod = import_module(modname)
+        githash = search_current_git_hash(mod)
+        version = mod.__version__
+        if githash:
+            versions[f'{modname}'] = f'{version}-{githash}'
+        else:
+            versions[f'{modname}'] = f'{version}'
+    exceinfo['__versions__'] = versions
+
+    return exceinfo
 
 
 def get_all_recipe_names():
