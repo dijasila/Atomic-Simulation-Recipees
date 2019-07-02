@@ -113,7 +113,7 @@ class ASRCommand(click.Command):
         return results
 
 
-def ASRSubCommand(click.Command):
+class ASRSubCommand(click.Command):
     def __init__(self, asr_name, asr_key, save_results_file=True,
                  callback=None, *args, **kwargs):
         self._asr_name = asr_name[4:]
