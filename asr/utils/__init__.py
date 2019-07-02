@@ -119,7 +119,7 @@ class ASRSubCommand(click.Command):
         self._asr_name = asr_name[4:]
         self._asr_key = asr_key
 
-        self.asr_tmpresults_file
+        self.asr_tmpresults_file = save_results_file
         if self.asr_tmpresults_file:
             self.allresults = {}
 
