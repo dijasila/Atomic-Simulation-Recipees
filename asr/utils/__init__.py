@@ -194,6 +194,16 @@ def command(name, overwrite_params={},
     return decorator
 
 
+def subcommand(name, key, *args, **kwargs):
+    """Wrapper for subcommands"""
+    def decorator(func):
+        cc = click.command(cls=ASRSubCommand,
+                           asr_name=name, asr_key=key, *args, **kwargs)
+        return cc(func)
+
+    return decorator
+
+
 @contextmanager
 def chdir(folder, create=False, empty=False):
     dir = os.getcwd()
