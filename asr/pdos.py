@@ -111,9 +111,9 @@ def write_results(results):
 
 def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
     from asr.utils.refinegs import refinegs
-    calc, gpw = refinegs(selfc=False, outf=True,
+    calc, gpw = refinegs(selfc=False,
                          kptdensity=kptdensity, emptybands=emptybands,
-                         txt='pdos.txt')  # Change name XXX
+                         gpw='default', txt='default')
     return calc, gpw
 
 

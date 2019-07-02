@@ -5,7 +5,7 @@ from gpaw import GPAW
 from asr.utils.kpts import get_kpts_size
 
 
-def nonselfc(kptdensity=12, emptybands=20, txt=None):
+def nonselfc(txt=None, kptdensity=12, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw"""
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
@@ -26,39 +26,51 @@ def nonselfc(kptdensity=12, emptybands=20, txt=None):
     return calc
 
 
-def write_refinedgs(calc, outf, parstr):
-    if isinstance(outf, str):
-        assert outf[-4:] == '.gpw'
+def get_filenames(gpw, txt, selfc=False, **kwargs):
+    """Get file names as specified by intput"""
+    parstr = get_parstr(selfc=selfc, **kwargs)
+
+    if isinstance(gpw, str):
+        if gpw == 'default':
+            gpw = f'refinedgs_{parstr}.gpw'
+        assert gpw[-4:] == '.gpw'
     else:
-        outf = 'refinedgs' + parstr + '.gpw'
-    calc.write(outf)
-    return outf
+        assert gpw is None
 
-
-def get_gpw(selfc, outf, **kwargs):
-    """Get filename corresponding to the wanted refinement"""
-    if isinstance(outf, str):
-        assert outf[-4:] == '.gpw'
-        gpw = outf
+    if isinstance(txt, str):
+        if txt == 'default':
+            txt = f'refinedgs_{parstr}.txt'
     else:
-        parstr = '_selfc«%s»' % str(selfc)
-        for kw in ['kptdensity', 'emptybands']:
-            parstr += '_%s«%s»' % (kw, str(kwargs[kw]))
-        gpw = 'refinedgs' + parstr + '.gpw'
-    return gpw
+        assert txt is None
+
+    return gpw, txt
 
 
-def refinegs(selfc=False, outf=False, *args, **kwargs):
+def get_parstr(selfc=False, **kwargs):
+    """Get parameter string, specifying how the ground state is refined."""
+    parstr = 'selfc«%s»' % str(selfc)
+
+    for kw in ['kptdensity', 'emptybands']:
+        parstr += '_%s«%s»' % (kw, str(kwargs[kw]))
+
+    return parstr
+
+
+def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
     """Refine the ground state calculation
 
     Parameters:
     -----------
     selfc : bool
         Perform new self-consistency cycle to refine also the density
-    outf : bool, str
-        Write the refined ground state as a GPAW calculator object.
-        If a string is specified, use that as file name, otherwise use the
-        ('refinedgs%s.gpw' % parstr) convention.
+    gpw : str
+        Write the refined ground state as a .gpw file.
+        If 'default' is specified, use f'refinedgs_{parstr}.gpw' as file name.
+        If another string is specified, use that as file name.
+    txt : str
+        Write the GPAW output to a .txt file.
+        If 'default' is specified, use f'refinedgs_{parstr}.txt' as file name.
+        If another string is specified, use that as file name.
 
     Returns:
     --------
@@ -67,17 +79,17 @@ def refinegs(selfc=False, outf=False, *args, **kwargs):
     gpw : str
         filename of written GPAW calculator object
     """
-    gpw = get_gpw(selfc, outf, **kwargs)
-    if Path(gpw).is_file():
+    gpw, txt = get_filenames(gpw, txt, selfc=selfc, **kwargs)
+    if gpw and Path(gpw).is_file():
         calc = GPAW(gpw, txt=None)
     else:
         if selfc:
             raise NotImplementedError('Someone should implement refinement '
                                       + 'with self-consistency')
         else:
-            calc = nonselfc(*args, **kwargs)
+            calc = nonselfc(txt=txt, **kwargs)
 
-        if outf:
+        if gpw:
             calc.write(gpw)
 
     return calc, gpw
