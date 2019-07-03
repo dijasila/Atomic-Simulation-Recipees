@@ -11,6 +11,7 @@ from asr.utils import command, option
 # ToDo: get information on Fermi energy for the different formation energies
 #############################################################################
 
+
 @command('asr.defectformation')
 @option('--pristine', type=str, default='../../pristine/gs.gpw', 
         help='Relative path to ground state .gpw file of pristine host system '
@@ -25,8 +26,6 @@ from asr.utils import command, option
 @option('--is2d/--is3d', default=True, help='Specify wheter you calculate '
                                             'the formation energy in 2D or '
                                             '3D.')
-
-
 def main(pristine, defect, chargestates, is2d):
     """
     Calculate formation energy of defects.
@@ -36,17 +35,16 @@ def main(pristine, defect, chargestates, is2d):
     a particular defect folder, i.e. all of the 'charge_x' folders need to be 
     below that folder.
     """
-    import numpy as np
-    from gpaw.defects import ElectrostaticCorrections
+    #from gpaw.defects import ElectrostaticCorrections
     from asr.utils import read_json
-    from ase.io import read
+    #from ase.io import read
     
     # ToDo: calculate sigma correctly for different systems
     # ToDo: get rid of hardcoded epsilon
 
     # TBD!!!
-    sigma = 1.0
-    epsilons = [1.9, 1.15]
+    #sigma = 1.0
+    #epsilons = [1.9, 1.15]
 
     # read out general parameters from generals_params.json
     gen_params = read_json('../../general_parameters.json')
@@ -67,7 +65,7 @@ def main(pristine, defect, chargestates, is2d):
 
     # first, loop over all charge states and access the right charge state
     # folder with the correct 'gs.gpw'
-    eform_array = []
+    #eform_array = []
     q_array = []
     for i in range((-1) * chargestates, chargestates + 1):
         folder = 'charge_{}'.format(i)

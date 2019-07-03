@@ -1,6 +1,7 @@
 from pathlib import Path
 from asr.utils import command, option
 
+
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.',
@@ -20,7 +21,6 @@ from asr.utils import command, option
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.',
         default=True)
-
 def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     """
     Sets up defect structures for a given host.                               
@@ -329,12 +329,12 @@ def create_folder_structure(structure, structure_dict, chargestates,
                 except FileExistsError:
                     print('WARNING: folder ("{0}") already exists in this '
                           f'directory. Skip creating it.'.format(defect_folder_name))
-                for i in range((-1)*chargestates, chargestates + 1):
+                for i in range((-1) * chargestates, chargestates + 1):
                     charge_name = 'charge_{}'.format(i)
                     charge_folder_name = defect_folder_name + '/' + charge_name
                     try:
                         Path(charge_folder_name).mkdir()
-                    except:
+                    except FileExistsError:
                         print('WARNING: folder ("{0}") already exists in this '
                               f'directory. Skip creating it.'.format(charge_folder_name))
                     struc = sub_dict[sub_element].get(charge_name).get('structure')
