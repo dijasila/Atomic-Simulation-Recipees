@@ -2,17 +2,10 @@ from asr.utils import command, subresult, option
 from click import pass_context
 
 from collections import defaultdict
-import json
 
 import numpy as np
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as path_effects
-
 from ase import Atoms
-from ase.io import jsonio
-from ase.parallel import paropen
 from ase.units import Ha
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
@@ -228,7 +221,7 @@ def get_l_a(zs):
 # ----- DOS at Fermi energy ----- #
 
 
-def calculate_dos_at_ef(calc, gpw, soc=False):
+def calculate_dos_at_ef(calc, gpw, soc=True):
     """Get dos at the Fermi energy"""
     if soc:
         dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
@@ -264,6 +257,7 @@ def collect_data(results):
 # ---------- Plotting ---------- #
 
 
+'''
 def plot_pdos():
     """only for testing
     """
@@ -293,76 +287,106 @@ def plot_pdos():
     plt.ylabel('energy relative to vacuum [eV]')
     plt.xlabel('pdos [states/eV]')
     plt.show()
+'''
 
 
-def pdos_pbe(row,
-             filename='pbe-pdos.png',
-             figsize=(6.4, 4.8),
-             fontsize=10,
-             lw=2,
-             loc='best'):
-    if 'pdos_pbe' not in row.data:
-        return
+def plot_pdos(row, filename, soc=True,
+              figsize=(6.4, 4.8), fontsize=10, lw=2, loc='best'):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
 
-    dct = row.data.pdos_pbe
-    e = dct['energies']
-    pdos_sal2 = dct['pdos_sal']
-    z_a = set(row.numbers)
-    symbols = Atoms(formula_metal(z_a)).get_chemical_symbols()
+    # Check if pdos data is stored in row
+    pdos = 'pdos_soc' if soc else 'pdos_nosoc'
+    if pdos not in row.data:
+        return
 
-    def cmp(k):
-        s, a, L = k.split(',')
-        si = symbols.index(k.split(',')[1])
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
+
+    # Extract raw data
+    data = row.data.pdos
+    pdos_sal = data['pdos_sal']
+    symbols = data['symbols']
+    e_e = data['energies']
+    ef = data['efermi']
+    # z_a = set(row.numbers)
+    # symbols = Atoms(formula_metal(z_a)).get_chemical_symbols()
+
+    # Setup ssili (spin, atomic symbol index, angular momentum index) key
+    # Can one use json.dump with OrderedDict? XXX
+    # Maybe one should use OrderedDict instead? XXX
+    def ssili(sal):  # How does this mapping work exactly? XXX
+        s, a, L = sal.split(',')
+        # Symbols can have multiple entries of the same symbol ex. ['Si', 'Si']? XXX
+        si = symbols.index(a)
         li = ['s', 'p', 'd', 'f'].index(L)
-        return ('{}{}{}'.format(s, si, li))
+        return (f'{s}{si}{li}')
 
-    pdos_sal = {}
-    for k in sorted(pdos_sal2.keys(), key=cmp):
-        pdos_sal[k] = pdos_sal2[k]
-    colors = {}
+    # Sort sal (spin, atomic symbol, angular momentum) keys to ssili
+    pdos_ssili = {}
+    for k in sorted(pdos_sal.keys(), key=ssili):
+        pdos_ssili[k] = pdos_sal[k]  # does this remove some data? XXX
+
+    # Define color scheme
+    colors_ssili = {}  # How does it work exactly with the keys here? XXX
     i = 0
-    for k in sorted(pdos_sal.keys(), key=cmp):
+    for k in sorted(pdos_ssili.keys(), key=ssili):
         if int(k[0]) == 0:
             colors[k[2:]] = 'C{}'.format(i % 10)
             i += 1
+
+    # Figure out if calculation is spin polarized
     spinpol = False
-    for k in pdos_sal.keys():
+    for k in pdos_ssili.keys():
         if int(k[0]) == 1:
             spinpol = True
             break
-    ef = dct['efermi']
+
+    # Set up plot
     mpl.rcParams['font.size'] = fontsize
     ax = plt.figure(figsize=figsize).add_subplot(111)
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
+    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())  # why enlarge? XXX
+
+    # Set up energy range to plot in
+    # Bandstructure is a dependency? XXX
     emin = row.get('vbm', ef) - 3
     emax = row.get('cbm', ef) + 3
-    i1, i2 = abs(e - emin).argmin(), abs(e - emax).argmin()
+    i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
+
+    # Plot pdos
     pdosint_s = defaultdict(float)
-    for key in sorted(pdos_sal.keys(), key=cmp):
-        pdos = pdos_sal[key]
+    for key in sorted(pdos_ssili.keys(), key=cmp):
+        pdos = pdos_ssili[key]
         spin, spec, lstr = key.split(',')
         spin = int(spin)
         sign = 1 if spin == 0 else -1
-        pdosint_s[spin] += np.trapz(y=pdos[i1:i2], x=e[i1:i2])
+
+        # Integrate pdos to find suiting pdos range
+        pdosint_s[spin] += np.trapz(y=pdos[i1:i2], x=e_e[i1:i2])
+
+        # Label atomic symbol and angular momentum
         if spin == 0:
             label = '{} ({})'.format(spec, lstr)
         else:
             label = None
-        ax.plot(
-            smooth(pdos) * sign, e, label=label, color=colors[key[2:]], lw=lw)
+
+        ax.plot(smooth(pdos) * sign, e_e,
+                label=label, color=colors[key[2:]], lw=lw)
 
     ax.legend(loc=loc)
     ax.axhline(ef, color='k', ls=':')
+
+    # Set up axis limits
     ax.set_ylim(emin, emax)
-    if spinpol:
+    if spinpol:  # Use symmetric limits
         xmax = max(pdosint_s.values())
         ax.set_xlim(-xmax * 0.5, xmax * 0.5)
     else:
         ax.set_xlim(0, pdosint_s[0] * 0.5)
 
+    # Annotate E_F
     xlim = ax.get_xlim()
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
     text = ax.annotate(
@@ -375,8 +399,10 @@ def pdos_pbe(row,
         path_effects.Stroke(linewidth=3, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
+
     ax.set_xlabel('projected dos [states / eV]')
     ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
 
