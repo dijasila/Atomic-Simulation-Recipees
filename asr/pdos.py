@@ -298,7 +298,7 @@ def collect_data(atoms):
 def webpanel(row, key_descriptions):
     # PDOS plot goes to Electronic band structure (PBE) panel
     panel = ()
-    things = [(plot_pdos, 'pbe-pdos.png')]
+    things = [(plot_pdos, ['pbe-pdos.png'])]
     return panel, things
 
 
