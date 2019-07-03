@@ -7,7 +7,7 @@ def generatetests():
     for material in ['Si.json', 'Fe.json',
                      'BN.json', 'VS2.json']:
         for recipe in recipes:
-            name = recipe.__name__.split('.')[1]
+            name = recipe.name.split('.')[1]
             text = (Path(__file__).parent / 'template.py').read_text()
             text = text.replace('# Material #', material)
             depsection = ''

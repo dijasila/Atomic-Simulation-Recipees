@@ -38,12 +38,13 @@ def main(state, name, copy_params):
     If you also want to copy the params.json file in the current directory into
     all newly created directories use the --copy-params switch.
 
+    \b
     Examples:
-
+    ---------
     Set up all known magnetic configurations (assuming existence of
     'unrelaxed.json')
         asr run setup.magnetize
-
+    \b
     Only set up ferromagnetic configuration
         asr run setup.magnetic --state fm
     """

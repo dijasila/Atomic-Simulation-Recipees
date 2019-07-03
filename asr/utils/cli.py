@@ -56,16 +56,33 @@ def cli():
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@click.argument('command', required=True, type=str)
-@click.argument('args', metavar='[ARGS] in [FOLDER] ...',
+@click.argument('args', metavar=('[shell] [dry] command '
+                                 '[ARGS] in [FOLDER] ...'),
                 nargs=-1)
 @click.pass_context
-def run(ctx, command, args):
-    """Run recipe or python command.
+def run(ctx, args):
+    """Run recipe or shell command in multiple folders.
 
-    Can run an ASR recipe or command. Arguments that follow after
-    'in' will be interpreted as folders in which the command should
-    be executed.
+    Can run an ASR recipe or a shell command. For example, the syntax
+    "asr run recipe" will run the relax recipe in the current folder.
+
+    To run a shell script use the syntax "asr run shell echo Hello!".
+    This example would run "echo Hello!" in the current folder.
+
+    Provide extra arguments to the recipe using "asr run recipe --arg1
+    --arg2".
+
+    Run command in multiple using "asr run recipe in folder1/ folder2/".
+    This is also compatible with input arguments to the current command
+    through "asr run recipe --arg1 in folder1/ folder2/". Here the
+    special keyword "in" serves as the divider between arguments and
+    folders.
+
+    If you dont actually wan't to run the command, i.e., if it is a
+    dangerous command, then use the "asr run dry ..." syntax where ...
+    could be any of the above commands. For example,
+    "asr run dry shell echo Hello! in */" would run "echo Hello!" in all
+    folders of the current directory.
 
     Examples:
 
@@ -76,16 +93,28 @@ def run(ctx, command, args):
         asr run relax --ecut 600
     Run relax recipe in two folders sequentially:
         asr run relax in folder1/ folder2/
-    Run a command in this folder:
-        asr run command ase convert gs.gpw structure.json
-    Run a python command in "folder1/":
-        asr run command ase convert gs.gpw structure.json in folder1/
+    Run a shell command in this folder:
+        asr run shell ase convert gs.gpw structure.json
+    Run a shell command in "folder1/":
+        asr run shell ase convert gs.gpw structure.json in folder1/
+    Don't actually do anything just show what would be done
+        asr run dry shell mv str1.json str2.json in folder1/ folder2/
 
-    Notice that the special "run command" is used to identify commands that
-    are not recipes.
     """
     import subprocess
     from pathlib import Path
+
+    shell = False
+    dryrun = False
+    # Consume known commands (limit to 10 tries)
+    for i, arg in enumerate(args):
+        if arg == 'shell':
+            shell = True
+        elif arg == 'dry':
+            dryrun = True
+        else:
+            break
+    args = args[i:]
 
     # Are there any folders?
     folders = None
@@ -94,26 +123,33 @@ def run(ctx, command, args):
         folders = args[ind + 1:]
         args = args[:ind]
 
-    if not command.startswith('command'):
-        # If command doesn't start with python then we assume that the
-        # command is a recipe
-        command = f'python3 -m asr.{command}'
+    if shell:
+        command = ' '.join(args)  # The arguments are actually the command
     else:
-        command = ''  # The arguments are actually the command
+        # If not shell then we assume that the command is a call
+        # to a recipe
+        command = 'python3 -m asr.' + ' '.join(args)
 
-    if args:
-        command += ' ' * (len(command) > 0) + ' '.join(args)
-        
     if folders:
         from asr.utils import chdir
 
         for folder in folders:
             with chdir(Path(folder)):
-                print(f'Running {command} in {folder}')
-                subprocess.run(command.split())
+                if dryrun:
+                    print(f'Would run "{command}" in {folder}')
+                else:
+                    print(f'Running {command} in {folder}')
+                    subprocess.run(command.split())
     else:
-        print(f'Running command: {command}')
-        subprocess.run(command.split())
+        if dryrun:
+            print(f'Would run "{command}"')
+        else:
+            print(f'Running command: {command}')
+            subprocess.run(command.split())
+
+    if dryrun and folders:
+        nfolders = len(folders)
+        print(f'Total number of folder: {nfolders}')
 
 
 @cli.command()
@@ -298,9 +334,9 @@ class ASRTestRunner(TestRunner):
                                'allow_extra_args': True})
 @argument('tests', nargs=-1, required=False)
 @option('-P', '--parallel',
+        metavar='NCORES',
         type=int,
-        help='Exclude tests (comma separated list of tests).',
-        metavar='test1.py,test2.py,...')
+        help='Run tests in parallel on NCORES')
 @option('-k', '--pattern', type=str, metavar='PATTERN',
         help='Select tests containing PATTERN.')
 @option('-j', '--jobs', type=int, metavar='JOBS', default=1,
@@ -335,8 +371,9 @@ def test(tests, parallel, pattern, jobs, show_output):
     if pattern:
         tests = [test for test in tests if pattern in test]
         
-    ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
-    
+    failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
+
+    assert not failed, 'Some tests failed!'
     if world.rank == 0:
         cleantests()
 

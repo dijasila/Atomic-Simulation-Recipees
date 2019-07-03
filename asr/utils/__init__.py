@@ -1,11 +1,18 @@
 import os
+import time
 from contextlib import contextmanager
 from functools import partial
+from importlib import import_module
+from pathlib import Path
+from typing import Union
+
 import click
 import numpy as np
-from importlib import import_module
 from ase.io import jsonio
 from ase.parallel import parprint
+import ase.parallel as parallel
+
+
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -15,35 +22,54 @@ class ASRCommand(click.Command):
 
     def __init__(self, asr_name=None, known_exceptions=None,
                  save_results_file=True,
-                 add_skip_opt=True, *args, **kwargs):
+                 add_skip_opt=True, callback=None,
+                 additional_callback='postprocessing',
+                 creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
         self.known_exceptions = known_exceptions or {}
         self.asr_results_file = save_results_file
         self.add_skip_opt = add_skip_opt
-        click.Command.__init__(self, *args, **kwargs)
+        self._callback = callback
+        self.creates = creates
+        self.module = import_module(asr_name)
+        self.additional_callback = additional_callback
+        click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
                                   *args, **kwargs)
 
+    def done(self):
+        if self.creates:
+            for file in self.creates:
+                if not Path(file).exists():
+                    return False
+            return True
+        return False
+
     def invoke(self, ctx):
+        """Invoke a recipe.
+
+        By default, invoking a recipe also means invoking its dependencies.
+        This can be avoided using the --skip-deps keyword."""
         # Pop the skip deps argument
         if self.add_skip_opt:
             skip_deps = ctx.params.pop('skip_deps')
         else:
             skip_deps = True
 
-        self.invoke_wrapped(ctx, skip_deps)
-
-    def invoke_wrapped(self, ctx, skip_deps=False, catch_exceptions=True):
         # Run all dependencies
-        recipes = get_dep_tree(self._asr_name)
         if not skip_deps:
-            for recipe in recipes[:-1]:  # Don't include itself
+            recipes = get_dep_tree(self._asr_name)
+            for recipe in recipes[:-1]:
                 if not recipe.done():
                     recipe.run(args=['--skip-deps'])
 
+        return self.invoke_myself(ctx)
+
+    def invoke_myself(self, ctx, catch_exceptions=True):
+        """Invoke my own callback."""
         try:
             parprint(f'Running {self._asr_name}')
             results = click.Command.invoke(self, ctx)
@@ -56,8 +82,7 @@ class ASRCommand(click.Command):
                              'Trying again.')
                     for key in parameters:
                         ctx.params[key] *= parameters[key]
-                    return self.invoke_wrapped(ctx, skip_deps=skip_deps,
-                                               catch_exceptions=False)
+                    return self.invoke_myself(ctx, catch_exceptions=False)
                 else:
                     # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '
@@ -83,6 +108,18 @@ class ASRCommand(click.Command):
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
+        return results
+
+    def callback(self, *args, **kwargs):
+        results = None
+        # Skip main callback?
+        if not self.done():
+            results = self._callback(*args, **kwargs)
+
+        if results is None and hasattr(self.module, self.additional_callback):
+            # Then the results are calculated by another callback function
+            func = getattr(self.module, self.additional_callback)
+            results = func()
         return results
 
 
@@ -114,7 +151,7 @@ def command(name, overwrite_params={},
             func = cc(func)
 
         return func
-    
+
     return decorator
 
 
@@ -198,6 +235,11 @@ def sort_recipes(recipes):
                f'Input recipes: {names}')
         raise AssertionError(msg)
     return sortedrecipes
+
+
+def get_recipe(name):
+    from asr.utils import Recipe
+    return Recipe.frompath(name)
 
 
 def get_dep_tree(name, reload=True):
@@ -373,3 +415,40 @@ def read_json(filename):
     from pathlib import Path
     dct = jsonio.decode(Path(filename).read_text())
     return dct
+
+
+@contextmanager
+def file_barrier(path: Union[str, Path], world=None):
+    """Context manager for writing a file.
+
+    After the with-block all cores will be able to read the file.
+
+    >>> with file_barrier('something.txt'):
+    ...     <write file>
+    ...
+
+    This will remove the file, write the file and wait for the file.
+    """
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    if world.rank == 0:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    else:
+        while path.is_file():
+            time.sleep(1.0)
+    world.barrier()
+
+    yield
+
+    # Wait for file:
+    while not path.is_file():
+        time.sleep(1.0)
+    world.barrier()
