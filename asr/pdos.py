@@ -255,8 +255,10 @@ def collect_data(results):
 
 
 def webpanel(row, key_descriptions):
+    # PDOS plot goes to Electronic band structure (PBE) panel
+    panel = ()
     things = [(plot_pdos, 'pbe-pdos.png')]
-    return (), things
+    return panel, things
 
 
 # ---------- Plotting ---------- #
