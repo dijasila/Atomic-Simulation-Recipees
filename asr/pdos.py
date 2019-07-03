@@ -354,7 +354,7 @@ def plot_pdos(row, filename, soc=True,
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
-    data = row.data.pdos
+    data = row.data[pdos]
     pdos_sal = data['pdos_sal']
     symbols = data['symbols']
     e_e = data['energies']
