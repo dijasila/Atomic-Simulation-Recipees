@@ -233,6 +233,7 @@ def calculate_dos_at_ef(calc, gpw, soc=True):
 # ---------- Database and webpanel ---------- #
 
 
+'''  # New format
 def collect_data(results):
     kd = {}
 
@@ -256,6 +257,38 @@ def collect_data(results):
     results.update({'__key_descriptions__': kd})
 
     return results
+'''
+
+
+# Old format
+def collect_data(atoms):
+    kd = {}
+
+    kd['pdos_nosoc'] = 'Projected density of states '\
+        + 'without spin-orbit coupling '\
+        + '(pdos without soc)'
+
+    kd['pdos_soc'] = 'Projected density of states '\
+        + 'with spin-orbit coupling '\
+        + '(pdos with soc)'
+
+    # Check unit XXX
+    kd['dos_at_ef_nosoc'] = 'Density of states at the Fermi energy '\
+        + 'without spin-orbit coupling '\
+        + '(dos at ef without soc) [states/eV] (KVP)'
+
+    kd['dos_at_ef_soc'] = 'Density of states at the Fermi energy '\
+        + 'with spin-orbit coupling '\
+        + '(dos at ef with soc) [states/eV] (KVP)'
+
+    from asr.utils import read_json
+    results = read_json('results_pdos.json')
+    kvp = {'dos_at_ef_nosoc': results['dos_at_ef_nosoc'],
+           'dos_at_ef_soc': results['dos_at_ef_soc']}
+    data = {'pdos_nosoc': results['pdos_nosoc'],
+            'pdos_soc': results['pdos_soc']}
+
+    return kvp, kd, data
 
 
 def webpanel(row, key_descriptions):
