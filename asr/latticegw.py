@@ -9,7 +9,7 @@ from asr.utils import command, option
         default=True)
 @option('--maxband', default=None, type=int,
         help='Maximum band index to calculate correction of')
-@option('--kptdensity', default=24, type=int,
+@option('--kptdensity', default=12, type=int,
         help='K Point density for ground state calculation')
 def main(eta, qcut, microvolume, maxband, kptdensity):
     """Calculate GW Lattice contribution. """
@@ -163,7 +163,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
             else:
                 pairrho2_nm = np.abs(pairrho_nmG[:, :, 0])**2 / q2abs
 
-            deps0_nm -= 1j * eta
+            deps0_nm = deps0_nm - 1j * eta
             with timer('calculate correction'):
                 if microvolume:
                     muVol_nm = (np.arctanh((deps0_nm - v_nm * dq) / freqLO) -
