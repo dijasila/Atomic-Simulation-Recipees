@@ -261,13 +261,6 @@ def collect_data(results):
     return results
 
 
-def webpanel(row, key_descriptions):
-    panel = []
-    things = [(pdos_pbe, ['pbe-pdos.png'])]
-
-    return panel, things
-
-
 # ---------- Plotting ---------- #
 
 
