@@ -102,7 +102,7 @@ class ASRCommand(click.Command):
             # Clean up possible tmpresults files
             tmppath = Path(f'tmpresults_{name}.json')
             if tmppath.exists():
-                tmppath.unlink()
+                unlink(tmppath)
 
         return results
 
@@ -482,6 +482,26 @@ def read_json(filename):
     return dct
 
 
+def unlink(path: Union[str, Path], world=None):
+    """Safely unlink path (delete file or symbolic link)."""
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    if world.rank == 0:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    else:
+        while path.is_file():
+            time.sleep(1.0)
+    world.barrier()
+
+
 @contextmanager
 def file_barrier(path: Union[str, Path], world=None):
     """Context manager for writing a file.
@@ -501,15 +521,7 @@ def file_barrier(path: Union[str, Path], world=None):
         world = parallel.world
 
     # Remove file:
-    if world.rank == 0:
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        while path.is_file():
-            time.sleep(1.0)
-    world.barrier()
+    unlink(path, world)
 
     yield
 
