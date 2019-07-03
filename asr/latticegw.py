@@ -159,9 +159,9 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
                                      axis=-1) / (3 * volume * nqtot)
                 pairrho2_nm[m_m, m_m] = 1 / (4 * np.pi**2) * \
                     ((48 * np.pi**2) / (volume * nqtot))**(1 / 3)
+                pairrho2_nm *= volume * nqtot
             else:
-                pairrho2_nm = (np.abs(pairrho_nmG[:, :, 0])**2 /
-                               (volume * nqtot * q2abs))
+                pairrho2_nm = np.abs(pairrho_nmG[:, :, 0])**2 / q2abs
 
             deps0_nm -= 1j * eta
             with timer('calculate correction'):
@@ -177,7 +177,8 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
 
     if microvolume:
         prefactor *= np.pi * qr**2 / freqLO
-    
+
+    prefactor /= volume * nqtot
     sigmalat_nk *= prefactor
     data = {'sigmalat_nk': sigmalat_nk}
     timer.write()
