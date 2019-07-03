@@ -159,11 +159,11 @@ class ASRSubResult:
 
         self.results = {}
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, ctx, *args, **kwargs):
         # Try to read sub-result from previous calculation
         subresult = self.read_subresult()
         if subresult is None:
-            subresult = self.calculate(*args, **kwargs)
+            subresult = self.calculate(ctx, *args, **kwargs)
 
         return subresult
 
@@ -179,12 +179,12 @@ class ASRSubResult:
 
         return subresult
 
-    def calculate(self, *args, **kwargs):
+    def calculate(self, ctx, *args, **kwargs):
         """Do the actual calculation"""
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_excecution_info({}))  # How do we get ctx.params? XXX
+        subresult.update(get_excecution_info(ctx.params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)

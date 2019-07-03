@@ -1,4 +1,5 @@
 from asr.utils import command, subresult, option
+from click import pass_context
 
 from collections import defaultdict
 import json
@@ -77,7 +78,8 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
         help='k-point density')
 @option('--emptybands', default=20,
         help='number of empty bands to include')
-def main(kptdensity, emptybands):
+@pass_context
+def main(ctx, kptdensity, emptybands):  # subresults need context to log params
     # Refine ground state with more k-points
     calc, gpw = refine_gs_for_pdos(kptdensity, emptybands)
 
@@ -85,8 +87,8 @@ def main(kptdensity, emptybands):
 
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos_nosoc(calc, gpw)
-    results['pdos_soc'] = pdos_soc(calc, gpw)
+    results['pdos_nosoc'] = pdos_nosoc(ctx, calc, gpw)  # subresults need
+    results['pdos_soc'] = pdos_soc(ctx, calc, gpw)      # context to log params
 
     # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
