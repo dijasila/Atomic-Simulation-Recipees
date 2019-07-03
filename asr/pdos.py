@@ -382,7 +382,7 @@ def plot_pdos(row, filename, soc=True,
     i = 0
     for k in sorted(pdos_ssili.keys(), key=ssili):
         if int(k[0]) == 0:
-            colors[k[2:]] = 'C{}'.format(i % 10)
+            colors_ssili[k[2:]] = 'C{}'.format(i % 10)
             i += 1
 
     # Figure out if calculation is spin polarized
@@ -405,7 +405,7 @@ def plot_pdos(row, filename, soc=True,
 
     # Plot pdos
     pdosint_s = defaultdict(float)
-    for key in sorted(pdos_ssili.keys(), key=cmp):
+    for key in sorted(pdos_ssili.keys(), key=ssili):
         pdos = pdos_ssili[key]
         spin, spec, lstr = key.split(',')
         spin = int(spin)
@@ -421,7 +421,7 @@ def plot_pdos(row, filename, soc=True,
             label = None
 
         ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=colors[key[2:]], lw=lw)
+                label=label, color=colors_ssili[key[2:]], lw=lw)
 
     ax.legend(loc=loc)
     ax.axhline(ef, color='k', ls=':')
