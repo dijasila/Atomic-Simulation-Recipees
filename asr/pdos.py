@@ -236,18 +236,22 @@ def calculate_dos_at_ef(calc, gpw, soc=True):
 def collect_data(results):
     kd = {}
 
-    kd['pdos_nosoc'] = 'Projected density of states '
-    + 'without spin-orbit coupling (pdos without soc)',
+    kd['pdos_nosoc'] = 'Projected density of states '\
+        + 'without spin-orbit coupling '\
+        + '(pdos without soc)'
 
-    kd['pdos_soc'] = 'Projected density of states '
-    + 'with spin-orbit coupling (pdos with soc)',
+    kd['pdos_soc'] = 'Projected density of states '\
+        + 'with spin-orbit coupling '\
+        + '(pdos with soc)'
 
     # Check unit XXX
-    kd['dos_at_ef_nosoc'] = 'Density of states at the Fermi energy '
-    + 'without spin-orbit coupling (dos at ef without soc) [states/eV] (KVP)',
+    kd['dos_at_ef_nosoc'] = 'Density of states at the Fermi energy '\
+        + 'without spin-orbit coupling '\
+        + '(dos at ef without soc) [states/eV] (KVP)'
 
-    kd['dos_at_ef_soc'] = 'Density of states at the Fermi energy '
-    + 'with spin-orbit coupling (dos at ef with soc) [states/eV] (KVP)'
+    kd['dos_at_ef_soc'] = 'Density of states at the Fermi energy '\
+        + 'with spin-orbit coupling '\
+        + '(dos at ef with soc) [states/eV] (KVP)'
 
     results.update({'__key_descriptions__': kd})
 
