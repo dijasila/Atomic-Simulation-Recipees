@@ -2,7 +2,7 @@ from asr.utils import command, option
 
 
 @command('asr.latticegw')
-@option('--eta', help='Broadening parameter', default=0.001,
+@option('--eta', help='Broadening parameter', default=0.01,
         type=float)
 @option('--qcut', help='Cutoff for q-integration', default=0.5)
 @option('--microvolume/--no-microvolume', help='Use microvolume integration',
