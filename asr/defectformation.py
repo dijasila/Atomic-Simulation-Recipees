@@ -1,7 +1,7 @@
-import json
-#from pathlib import Path
 from asr.utils import command, option
 
+#############################################################################
+#          This recipe is not finished and still under development          #
 #############################################################################
 # ToDo: include postprocessing functions
 # ToDo: get rid of hardcoded sigma, epsilons
@@ -9,8 +9,6 @@ from asr.utils import command, option
 #       of the defect setup
 # ToDo: add information on system and supercell size in output
 # ToDo: get information on Fermi energy for the different formation energies
-# ToDo: maybe read out chargestates from 'params.json' file inside the 
-#       'structure_defects_setup' folder in order to ensure compability
 #############################################################################
 
 @command('asr.defectformation')
@@ -20,11 +18,10 @@ from asr.utils import command, option
              'reference folder is the one with the defects and vacancies '
              'in it, as it was created from setup.defects.')
 @option('--defect', type=str, default='gs.gpw',
-        help='Ground state .gpw file of disturbed system on which formation energy '
-             'calculation is based.')
+        help='Ground state .gpw file of disturbed system on which formation '
+             'energy calculation is based.')
 @option('-q', '--chargestates', type=int, 
         help='Charge states included (-q, ..., +q).', default=3)
-
 @option('--is2d/--is3d', default=True, help='Specify wheter you calculate '
                                             'the formation energy in 2D or '
                                             '3D.')
@@ -46,7 +43,6 @@ def main(pristine, defect, chargestates, is2d):
     
     # ToDo: calculate sigma correctly for different systems
     # ToDo: get rid of hardcoded epsilon
-    # ToDo: get charge state not as an argument of main (easier to use)
 
     # TBD!!!
     sigma = 1.0
@@ -132,7 +128,8 @@ def postprocessing():
 
 group = 'property'
 creates = []  # what files are created
-dependencies = []  # no dependencies
+#dependencies = ['asr.setup.defects', 'asr.relax', 'asr.gs', 
+#                'asr.polarizability']
 resources = '1:10m'  # 1 core for 10 minutes
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart

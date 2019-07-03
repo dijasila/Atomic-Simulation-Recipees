@@ -1,14 +1,6 @@
 from pathlib import Path
 from asr.utils import command, option
 
-##################################################################
-# ToDo: incorporate extrinsic defects (optional)
-# ToDo: figure out how to pass on all of the different parameters
-#       from the 'params.json' files within each folder
-# ToDo: implement postprocessing 'collect_data' and 'webpanel'
-# ToDo: improve structure and naming of recipe options
-##################################################################
-
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.',
@@ -122,7 +114,9 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     
     # based on this dictionary, create a folder structure for all defects 
     # and respective charge states
-    create_folder_structure(structure, structure_dict, chargestates)
+    create_folder_structure(structure, structure_dict, chargestates, 
+                            intrinsic=intrinsic, vacancies=vacancies,
+                            max_lattice=maxsize, is_2D=is2d)
 
     return None 
 
@@ -271,7 +265,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     return structure_dict
 
 
-def create_folder_structure(structure, structure_dict, chargestates):
+def create_folder_structure(structure, structure_dict, chargestates, 
+                            intrinsic, vacancies, max_lattice, is_2D):
     """
     Creates a folder for every configuration of the defect supercell in 
     the following way:
@@ -296,8 +291,13 @@ def create_folder_structure(structure, structure_dict, chargestates):
     
     # create a json file for general parameters that are equivalent for all
     # the different defect systems 
+    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     gen_params = {}
     gen_params['chargestates'] = chargestates
+    gen_params['is_2D'] = is_2D
+    gen_params['supercell'] = [N_x, N_y, N_z]
+    gen_params['intrinsic'] = intrinsic
+    gen_params['vacancies'] = vacancies
     write_json(parent_folder + '/general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
