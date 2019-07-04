@@ -117,7 +117,7 @@ def pdos_soc(calc, gpw):
 def pdos(calc, gpw, soc=True):
     """Main functionality to do a single pdos calculation"""
     # Do calculation
-    energies, pdos_sal, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
+    energies, pdos_syl, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
 
     # Subtract the vacuum energy
     # get evac XXX
@@ -125,7 +125,7 @@ def pdos(calc, gpw, soc=True):
     e_e = energies - evac
     ef = efermi - evac
 
-    subresults = {'pdos_sal': pdos_sal, 'symbols': symbols,
+    subresults = {'pdos_syl': pdos_syl, 'symbols': symbols,
                   'energies': e_e, 'efermi': ef}
 
     return subresults
@@ -138,8 +138,8 @@ def calculate_pdos(calc, gpw, soc=True):
     --------
     energies : nd.array
         energies 10 eV under and above Fermi energy
-    pdos_sal : defaultdict
-        pdos for spin, atom and orbital angular momentum
+    pdos_syl : defaultdict
+        pdos for spin, symbol and orbital angular momentum
     symbols : list
         chemical symbols in Atoms object
     efermi : float
@@ -161,13 +161,17 @@ def calculate_pdos(calc, gpw, soc=True):
     else:
         ldos = raw_orbital_LDOS
 
-    e_e = np.linspace(-10 + efermi, 10 + efermi, 2000)
     ns = calc.get_number_of_spins()
     theta, phi = get_spin_direction()
-    pdos_sal = defaultdict(float)
+    # We want to extract the pdos +-10 eV from efermi
+    e_e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
+    # that is if there are multiple atoms in the unit cell of the same chemical
+    # species, their pdos are added together.
+    pdos_syl = defaultdict(float)
     for spin in range(ns):
         for a in l_a:
-            spec = chem_symbols[a]
+            symbol = chem_symbols[a]
             for l in l_a[a]:
                 if soc:
                     if world.rank == 0:  # GPAW soc is done in serial
@@ -178,18 +182,25 @@ def calculate_pdos(calc, gpw, soc=True):
                 else:
                     energies, weights = ldos(calc, a, spin, l)
 
+                # Reshape energies
                 energies.shape = (kd.nibzkpts, -1)
                 energies = energies[kd.bz2ibz_k]
                 energies.shape = tuple(kd.N_c) + (-1, )
+
+                # Get true weights and reshape
                 weights.shape = (kd.nibzkpts, -1)
                 weights /= kd.weight_k[:, np.newaxis]
                 w = weights[kd.bz2ibz_k]
                 w.shape = tuple(kd.N_c) + (-1, )
-                p = lti(calc.atoms.cell, energies * Ha, e_e, w)
-                key = ','.join([str(spin), str(spec), str(l)])
-                pdos_sal[key] += p
 
-    return e_e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
+                # Linear tetrahedron integration
+                p = lti(calc.atoms.cell, energies * Ha, e_e, w)
+
+                # Store in dictionary
+                key = ','.join([str(spin), str(symbol), str(l)])
+                pdos_syl[key] += p
+
+    return e_e, pdos_syl, calc.atoms.get_chemical_symbols(), efermi
 
 
 def get_l_a(zs):  # maybe we need more than d-electrons? XXX
@@ -313,7 +324,7 @@ def plot_pdos():
     with paropen('pdos.json', 'r') as fd:
         data = jsonio.decode(json.load(fd))
         e = np.asarray(data['energies'])
-        pdos_sal = data['pdos_sal']
+        pdos_syl = data['pdos_syl']
         symbols = data['symbols']
 
     with paropen('evac.txt', 'r') as fd:
@@ -321,7 +332,7 @@ def plot_pdos():
 
     e -= evac
     pmax = 0.0
-    for s, pdos_al in pdos_sal.items():
+    for s, pdos_al in pdos_syl.items():
         for a, pdos_l in sorted(pdos_al.items()):
             for l, pdos in sorted(pdos_l.items(), reverse=True):
                 pdos = np.asarray(pdos)
@@ -353,7 +364,7 @@ def plot_pdos(row, filename, soc=True,
 
     # Extract raw data
     data = row.data[pdos]
-    pdos_sal = data['pdos_sal']
+    pdos_syl = data['pdos_syl']
     symbols = data['symbols']
     e_e = data['energies']
     ef = data['efermi']
@@ -370,8 +381,8 @@ def plot_pdos(row, filename, soc=True,
 
     # Sort sal (spin, atomic symbol, angular momentum) keys to ssili
     pdos_ssili = {}
-    for k in sorted(pdos_sal.keys(), key=ssili):
-        pdos_ssili[k] = pdos_sal[k]  # does this remove some data? XXX
+    for k in sorted(pdos_syl.keys(), key=ssili):
+        pdos_ssili[k] = pdos_syl[k]  # does this remove some data? XXX
 
     # Define color scheme
     colors_ssili = {}  # How does it work exactly with the keys here? XXX
@@ -403,7 +414,7 @@ def plot_pdos(row, filename, soc=True,
     pdosint_s = defaultdict(float)
     for key in sorted(pdos_ssili.keys(), key=ssili):
         pdos = pdos_ssili[key]
-        spin, spec, lstr = key.split(',')
+        spin, symbol, lstr = key.split(',')
         spin = int(spin)
         sign = 1 if spin == 0 else -1
 
@@ -412,7 +423,7 @@ def plot_pdos(row, filename, soc=True,
 
         # Label atomic symbol and angular momentum
         if spin == 0:
-            label = '{} ({})'.format(spec, lstr)
+            label = '{} ({})'.format(symbol, lstr)
         else:
             label = None
 
