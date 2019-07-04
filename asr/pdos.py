@@ -203,7 +203,7 @@ def calculate_pdos(calc, gpw, soc=True):
     return e_e, pdos_syl, calc.atoms.get_chemical_symbols(), efermi
 
 
-def get_l_a(zs):  # maybe we need more than d-electrons? XXX
+def get_l_a(zs):
     """Defines which atoms and angular momentum to project onto.
 
     Parameters:
@@ -417,7 +417,6 @@ def plot_pdos(row, filename, soc=True,
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
 
     # Set up energy range to plot in
-    # Which recipe is a dependency for this? XXX
     emin = row.get('vbm', ef) - 3
     emax = row.get('cbm', ef) + 3
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
@@ -479,7 +478,7 @@ def plot_pdos(row, filename, soc=True,
 
 group = 'property'
 resources = '8:1h'  # How many resources are used
-dependencies = ['asr.structureinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
 
 if __name__ == '__main__':
     main()
