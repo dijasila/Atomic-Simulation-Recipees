@@ -5,17 +5,17 @@ from click import Choice
 @command('asr.polarizability')
 @option(
     '--gs', default='gs.gpw', help='Ground state on which response is based')
-@option('--density', default=20.0, help='K-point density')
+@option('--kptdensity', default=20.0, help='K-point density')
 @option('--ecut', default=50.0, help='Plane wave cutoff')
 @option('--xc', default='RPA', help='XC interaction',
         type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, density, ecut, xc, bandfactor):
+def main(gs, kptdensity, ecut, xc, bandfactor):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     import json
-    from ase.io import jsonio
+    from ase.io import jsonio, read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -23,8 +23,7 @@ def main(gs, density, ecut, xc, bandfactor):
     from pathlib import Path
     import numpy as np
 
-    from asr.utils import get_start_atoms
-    atoms = get_start_atoms()
+    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
 
     dfkwargs = {
@@ -36,8 +35,8 @@ def main(gs, density, ecut, xc, bandfactor):
     }
 
     ND = np.sum(pbc)
-    if ND == 3:
-        kpts = {'density': density, 'gamma': False, 'even': True}
+    if ND == 3 or ND == 1:
+        kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
 
         def get_kpts_size(atoms, density):
@@ -53,7 +52,7 @@ def main(gs, density, ecut, xc, bandfactor):
             kpts = {'size': size, 'gamma': True}
             return kpts
 
-        kpts = get_kpts_size(atoms=atoms, density=density)
+        kpts = get_kpts_size(atoms=atoms, density=kptdensity)
         volume = atoms.get_volume()
         if volume < 120:
             nblocks = world.size // 4
@@ -273,7 +272,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 creates = ['polarizability.json']
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

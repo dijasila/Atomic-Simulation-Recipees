@@ -34,7 +34,6 @@ def main():
     err.close()
 
 
-@command('asr.bader.print')
 def print():
     """Print Bader charges"""
     import os.path as op
@@ -47,7 +46,7 @@ def print():
     print(dat)
 
 
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 group = 'property'
 resources = '1:10m'
 

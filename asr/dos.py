@@ -4,14 +4,14 @@ from asr.utils import command, option
 @command('asr.dos')
 @option('--name', default='dos.gpw', type=str)
 @option('--filename', default='dos.json', type=str)
-@option('--density', default=12.0, help='K point density')
-def main(name, filename, density):
+@option('--kptdensity', default=12.0, help='K point kptdensity')
+def main(name, filename, kptdensity):
     """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
         calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': density},
+                    kpts={'density': kptdensity},
                     nbands='300%',
                     convergence={'bands': -10})
         calc.get_potential_energy()
@@ -98,7 +98,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 creates = ['dos.json']
 
 if __name__ == '__main__':

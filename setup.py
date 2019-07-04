@@ -17,8 +17,8 @@ setup(
     url='https://gitlab.com/mortengjerding/asr',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['Click', 'pytest', 'matplotlib',
-                      'spglib', 'ase', 'plotly'],
+    install_requires=['Click', 'matplotlib',
+                      'spglib', 'plotly'],
     entry_points='''
         [console_scripts]
         asr=asr.utils.cli:cli

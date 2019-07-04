@@ -27,9 +27,9 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
 @command('asr.borncharges')
 @option('--displacement', default=0.01, help='Atomic displacement (Å)')
-@option('--kpointdensity', default=6.0)
+@option('--kptdensity', default=6.0)
 @option('--folder', default='data-borncharges')
-def main(displacement, kpointdensity, folder):
+def main(displacement, kptdensity, folder):
     """Calculate Born charges"""
     import json
     from os.path import exists, isfile
@@ -39,7 +39,7 @@ def main(displacement, kpointdensity, folder):
     import numpy as np
     from gpaw import GPAW
     from gpaw.mpi import world
-    from c2db.berryphase import get_polarization_phase
+    from asr.utils.berryphase import get_polarization_phase
 
     from ase.parallel import paropen
     from ase.units import Bohr
@@ -88,12 +88,12 @@ def main(displacement, kpointdensity, folder):
                     berryname = prefix + '-berryphases.json'
                     if not exists(name) and not exists(berryname):
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                     try:
                         phase_c = get_polarization_phase(name)
                     except ValueError:
                         calc = get_wavefunctions(atoms, name, params,
-                                                 density=kpointdensity)
+                                                 density=kptdensity)
                         phase_c = get_polarization_phase(name)
 
                     phase_scv[s, :, v] = phase_c
@@ -215,12 +215,6 @@ def collect_data(atoms):
     with open(fname) as fd:
         dct = jsonio.decode(json.load(fd))
 
-    if 'P_asvv' not in dct:
-        from c2db.borncharges import borncharges
-        borncharges(delta)
-        with open(fname) as fd:
-            dct = jsonio.decode(json.load(fd))
-
     P_davv.append(dct['P_asvv'][:, 0])
     P_davv.append(dct['P_asvv'][:, 1])
     data['Z_avv'] = -dct['Z_avv']
@@ -251,7 +245,7 @@ def print_results(filename='data-borncharges/borncharges-0.01.json'):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 resources = '24:10h'
 
 

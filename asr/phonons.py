@@ -3,22 +3,47 @@ from pathlib import Path
 import numpy as np
 
 from ase.parallel import world
-from ase.geometry import crystal_structure_from_cell
-from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
-from ase.phonons import Phonons
+from ase.phonons import Phonons as ASEPhonons
 
 from asr.utils import command, option
+
+
+class Phonons(ASEPhonons):
+    def __init__(self, C_N=None, D_N=None, Z_avv=None, eps_vv=None,
+                 refcell=None, m_inv_x=None, *args, **kwargs):
+        ASEPhonons.__init__(self, refcell=refcell,
+                            *args, **kwargs)
+        self.C_N = C_N
+        self.D_N = D_N
+        self.Z_avv = Z_avv
+        self.eps_vv = eps_vv
+        self.refcell = refcell
+        self.m_inv_x = m_inv_x
+
+    def todict(self):
+        # It would be better to save the calculated forces
+        ASEPhonons.read(self)
+        dct = dict(atoms=np.arange(len(self.atoms)),  # Dummy atoms
+                   supercell=self.N_c,
+                   name=self.name,
+                   delta=self.delta,
+                   refcell=self.refcell,
+                   C_N=self.C_N,
+                   D_N=self.D_N,
+                   Z_avv=self.Z_avv,
+                   eps_vv=self.eps_vv,
+                   m_inv_x=self.m_inv_x)
+        return dct
 
 
 @command('asr.phonons')
 @option('-n', default=2, help='Supercell size')
 @option('--ecut', default=800, help='Energy cutoff')
-@option('--kptdens', default=6.0, help='Kpoint density')
-def main(n, ecut, kptdens):
+@option('--kptdensity', default=6.0, help='Kpoint density')
+def main(n, ecut, kptdensity):
     """Calculate Phonons"""
-    from asr.utils import get_start_atoms
-    from asr.utils.gpaw import GPAW
+    from asr.calculators import get_calculator
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -27,7 +52,7 @@ def main(n, ecut, kptdens):
     world.barrier()
 
     params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdens, 'gamma': True}}
+              'kpts': {'density': kptdensity, 'gamma': True}}
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False,
@@ -38,14 +63,14 @@ def main(n, ecut, kptdens):
     else:
         params['convergence'] = {'forces': 1e-4}
 
-    atoms = get_start_atoms()
-    fd = open('phonons-{}.txt'.format(n), 'a')
-    calc = GPAW(txt=fd, **params)
+    atoms = read('structure.json')
+    fd = open('phonons.txt'.format(n), 'a')
+    calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
     if is_magnetic():
-        gsold = GPAW('gs.gpw', txt=None)
+        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
@@ -58,35 +83,22 @@ def main(n, ecut, kptdens):
     elif nd == 1:
         supercell = (n, 1, 1)
 
-    p = Phonons(atoms, calc, supercell=supercell)
+    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    return p
+    results = {'phonons': p.todict()}
+    return results
 
 
-def analyse(atoms, name='phonon', points=300, modes=False, q_qc=None, n=2):
-    params = {}
-    params['symmetry'] = {'point_group': False,
-                          'do_not_symmetrize_the_density': True}
-
-    slab = read('start.json')
-    from gpaw import GPAW
-    calc = GPAW(txt='phonons.txt', **params)
-    from asr.utils import get_dimensionality
-    nd = get_dimensionality()
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
-    p = Phonons(slab, calc, supercell=supercell)
-    p.read(symmetrize=0, acoustic=False)
-    cell = atoms.get_cell()
-    cs = crystal_structure_from_cell(cell)
-    kptpath = special_paths[cs]
+def analyse(points=300, modes=False, q_qc=None):
+    from asr.utils import read_json
+    dct = read_json('results_phonons.json')
+    atoms = read('structure.json')
+    p = Phonons(**dct['phonons'])
+    p.atoms = atoms
     if q_qc is None:
-        q_qc = bandpath(kptpath, cell, points)[0]
+        # This is the list of exactly known q-points
+        q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
 
     out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
     if modes:
@@ -123,15 +135,15 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def collect_data(atoms, n=2):
+def collect_data(atoms):
     kvp = {}
     data = {}
     key_descriptions = {}
     try:
-        eigs2, freqs2, _ = analyse(atoms, n)
-        eigs3, freqs3, _ = analyse(atoms, n)
+        eigs2, freqs2, _ = analyse(atoms)
+        eigs3, freqs3, _ = analyse(atoms)
     except (FileNotFoundError, EOFError):
-        return
+        return {}, {}, {}
     kvp['minhessianeig'] = eigs3.min()
     data['phonon_frequencies_2d'] = freqs2
     data['phonon_frequencies_3d'] = freqs3
@@ -155,7 +167,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

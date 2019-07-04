@@ -1,19 +1,21 @@
 from asr.utils import command
-from asr.utils.prototype import get_symmetry_id
 
 
-@command('asr.quickinfo')
+@command('asr.structureinfo')
 def main():
-    """Get quick information about structure based on start.traj"""
+    """Get structural information of atomic structure.
+
+    This recipe produces information such as the space group and magnetic
+    state properties that requires only an atomic structure. This recipes read
+    the atomic structure in `structure.json`.
+    """
+
     from random import randint
-    from ase.io import read, jsonio
+    from ase.io import read
     from pathlib import Path
     from asr.utils import has_inversion, get_reduced_formula
-    import json
 
-    fnames = list(Path('.').glob('start.*'))
-    assert len(fnames) == 1, fnames
-    atoms = read(str(fnames[0]))
+    atoms = read('structure.json')
     info = {}
 
     folder = Path().cwd()
@@ -74,7 +76,6 @@ def main():
     symmetry = [(op_cc.tolist(), ft_c.tolist())
                 for op_cc, ft_c in zip(op_scc, ft_sc)]
     info['symmetries'] = symmetry
-
     try:
         import spglib
     except ImportError:
@@ -84,37 +85,27 @@ def main():
         number = int(number[1:-1])
         info['spacegroup'] = sg
 
-    # Find prototype
-    try:
-        info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
-    except (OSError, ModuleNotFoundError):
-        pass
-
     # Set temporary uid.
     # Will be changed later once we know the prototype.
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
-
-    json.dump(info, open('quickinfo.json', 'w'), cls=jsonio.MyEncoder)
-
     return info
 
 
 def collect_data(atoms):
     """Collect quick info to database"""
-    from pathlib import Path
-    p = Path('quickinfo.json')
-    if not p.is_file():
-        return {}, {}, {}
-
+    from asr.utils import read_json
     import numpy as np
-    import json
 
     data = {}
     kvp = {}
     key_descriptions = {}
 
-    info = json.loads(p.read_text())
+    info = {}
+    structureinfo = read_json('results_structureinfo.json')
+    for key in structureinfo:
+        if not key.startswith('__'):
+            info[key] = structureinfo[key]
 
     exclude = ['symmetries', 'formula']
     for key in info:

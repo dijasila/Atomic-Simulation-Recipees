@@ -15,7 +15,7 @@ from ase.units import Ha
 from ase.utils import formula_metal
 
 from asr.utils import magnetic_atoms
-from asr.gaps import get_spin_direction
+from asr.utils.gpw2eigs import get_spin_direction
 
 from asr.utils import command, option
 
@@ -335,7 +335,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.quickinfo', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()

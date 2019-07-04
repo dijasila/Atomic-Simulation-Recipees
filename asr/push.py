@@ -7,8 +7,7 @@ from asr.utils import command, option
 @option('-m', '--mode', default=0, type=int, help='Mode index')
 @option('-a', '--amplitude', default=0.1, type=float,
         help='Maximum distance an atom will be displaced')
-@option('-n', default=2, help='Supercell size')
-def main(momentum, mode, amplitude, n):
+def main(momentum, mode, amplitude):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
     import numpy as np
@@ -16,8 +15,8 @@ def main(momentum, mode, amplitude, n):
 
     # Get modes
     from ase.io import read
-    atoms = read('start.json')
-    omega_kl, u_klav, q_qc = analyse(atoms, modes=True, q_qc=[q_c], N=n)
+    atoms = read('structure.json')
+    omega_kl, u_klav, q_qc = analyse(modes=True, q_qc=[q_c])
 
     # Repeat atoms
     from fractions import Fraction
@@ -54,7 +53,7 @@ def main(momentum, mode, amplitude, n):
     write(f'{folder}/unrelaxed.json', newatoms)
 
 
-dependencies = ['asr.quickinfo', 'asr.phonons']
+dependencies = ['asr.structureinfo', 'asr.phonons']
 group = 'structure'
 
 if __name__ == '__main__':
