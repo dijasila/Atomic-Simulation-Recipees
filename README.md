@@ -1,3 +1,5 @@
+Warning: This project is under active development but you are welcome to try it out.
+
 Atomic Simulation Recipes
 =========================
 Recipes for Atomic Scale Materials Research.
@@ -6,6 +8,7 @@ Collection of python recipes for common (and not so common)
 tasks perfomed in atomic scale materials research. These tasks include
 relaxation of structures, calculating ground states, calculating band
 structures, calculating dielectric functions and so on.
+
 
 Installation
 ------------
@@ -19,6 +22,12 @@ ASE has to be installed manually since we need the newest version:
 ```console
 $ python3 -m pip install git+https://gitlab.com/ase/ase.git
 ```
+
+Also if you don't already have GPAW installed you can get it with
+```console
+$ python3 -m pip install git+https://gitlab.com/gpaw/gpaw.git
+```
+
 Install a database of reference energies to calculate HOF and convex hull. Here 
 we use a database of one- and component-structures from OQMD
 ```
