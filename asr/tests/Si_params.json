@@ -24,7 +24,7 @@
     },
     "asr.pdos": {
         "kptdensity": 3.0,
-	"emptybands": 8
+	"emptybands": 5
     },
     "asr.phonons": {
         "n": 1,
