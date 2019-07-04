@@ -218,12 +218,18 @@ def get_l_a(zs):  # maybe we need more than d-electrons? XXX
         that determines which angular momentum to project onto or a
         given atom
     """
+    lantha = range(58, 72)
+    acti = range(90, 104)
+
     zs = np.asarray(zs)
     l_a = {}
     atoms = Atoms(numbers=zs)
     mag_elements = magnetic_atoms(atoms)
     for a, (z, mag) in enumerate(zip(zs, mag_elements)):
-        l_a[a] = 'spd' if mag else 'sp'
+        if z in lantha or z in acti:
+            l_a[a] = 'spdf'
+        else:
+            l_a[a] = 'spd' if mag else 'sp'
     return l_a
 
 
