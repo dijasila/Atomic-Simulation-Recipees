@@ -305,46 +305,14 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    # PDOS plot goes to Electronic band structure (PBE) panel
+    # PDOS plot goes to Electronic band structure (PBE) panel, which is
+    # defined in the bandstructure recipe
     panel = ()
     things = [(plot_pdos, ['pbe-pdos.png'])]
     return panel, things
 
 
 # ---------- Plotting ---------- #
-
-
-'''
-def plot_pdos():
-    """only for testing
-    """
-    from gpaw import GPAW
-    efermi = GPAW('gs.gpw', txt=None).get_fermi_level()
-    import matplotlib.pyplot as plt
-    with paropen('pdos.json', 'r') as fd:
-        data = jsonio.decode(json.load(fd))
-        e = np.asarray(data['energies'])
-        pdos_syl = data['pdos_syl']
-        symbols = data['symbols']
-
-    with paropen('evac.txt', 'r') as fd:
-        evac = float(fd.read())
-
-    e -= evac
-    pmax = 0.0
-    for s, pdos_al in pdos_syl.items():
-        for a, pdos_l in sorted(pdos_al.items()):
-            for l, pdos in sorted(pdos_l.items(), reverse=True):
-                pdos = np.asarray(pdos)
-                pmax = max(pdos.max(), pmax)
-                plt.plot(pdos, e, label='{} ({})'.format(symbols[int(a)], l))
-    plt.xlim(0, pmax)
-    plt.ylim(efermi - evac - 2, efermi - evac + 2)
-    plt.legend()
-    plt.ylabel('energy relative to vacuum [eV]')
-    plt.xlabel('pdos [states/eV]')
-    plt.show()
-'''
 
 
 def get_ordered_syl_dict(dct_syl, symbols):
@@ -429,16 +397,8 @@ def plot_pdos(row, filename, soc=True,
     ef = data['efermi']
 
     color_yl = get_yl_colors(pdos_syl)
-    '''
-    colors_ssili = {}  # How does it work exactly with the keys here? XXX
-    i = 0
-    for k in sorted(pdos_ssili.keys(), key=ssili):
-        if int(k[0]) == 0:
-            colors_ssili[k[2:]] = 'C{}'.format(i % 10)
-            i += 1
-    '''
 
-    # Figure out if calculation is spin polarized
+    # Figure out if pdos has been calculated for more than one spin channel
     spinpol = False
     for k in pdos_syl.keys():
         if int(k[0]) == 1:
@@ -448,10 +408,10 @@ def plot_pdos(row, filename, soc=True,
     # Set up plot
     mpl.rcParams['font.size'] = fontsize
     ax = plt.figure(figsize=figsize).add_subplot(111)
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())  # why enlarge? XXX
+    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
 
     # Set up energy range to plot in
-    # Bandstructure is a dependency? XXX
+    # Which recipe is a dependency for this? XXX
     emin = row.get('vbm', ef) - 3
     emax = row.get('cbm', ef) + 3
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
