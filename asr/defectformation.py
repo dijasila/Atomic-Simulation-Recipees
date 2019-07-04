@@ -35,16 +35,16 @@ def main(pristine, defect, chargestates, is2d):
     a particular defect folder, i.e. all of the 'charge_x' folders need to be
     below that folder.
     """
-    #from gpaw.defects import ElectrostaticCorrections
+    # from gpaw.defects import ElectrostaticCorrections
     from asr.utils import read_json
-    #from ase.io import read
+    # from ase.io import read
 
     # ToDo: calculate sigma correctly for different systems
     # ToDo: get rid of hardcoded epsilon
 
     # TBD!!!
-    #sigma = 1.0
-    #epsilons = [1.9, 1.15]
+    # sigma = 1.0
+    # epsilons = [1.9, 1.15]
 
     # read out general parameters from generals_params.json
     gen_params = read_json('../../general_parameters.json')
@@ -52,12 +52,12 @@ def main(pristine, defect, chargestates, is2d):
     print('INFO: read out general parameters: {}'.format(chargestates_read))
 
     # get dimensionality of the system
-    if is2d:
-        dim = '2d'
-        #epsilons = [x, y]
-    elif is2d == False:
-        dim = '3d'
-        #epsilons = x
+    # if is2d:
+    #    dim = '2d'
+    #    # epsilons = [x, y]
+    # elif is2d == False:
+    #    dim = '3d'
+    #    # epsilons = x
 
     # get groundstate file name of the pristine system
     pristine_file = pristine
@@ -65,7 +65,7 @@ def main(pristine, defect, chargestates, is2d):
 
     # first, loop over all charge states and access the right charge state
     # folder with the correct 'gs.gpw'
-    #eform_array = []
+    # eform_array = []
     q_array = []
     for i in range((-1) * chargestates, chargestates + 1):
         folder = 'charge_{}'.format(i)
@@ -79,7 +79,7 @@ def main(pristine, defect, chargestates, is2d):
         #                               dimensionality=dim)
         print('INFO: using charged .gpw file "{}"'.format(chargefile))
         # elc.set_epsilons(epsilons)
-        #eform = elc.calculate_corrected_formation_energy()
+        # eform = elc.calculate_corrected_formation_energy()
         # eform_array.append(eform)
         q_array.append(q)
     print(q_array)
