@@ -213,7 +213,7 @@ def get_l_a(zs):  # maybe we need more than d-electrons? XXX
 
     Returns:
     --------
-    l_a : {int: str, ...}-dict  # why not a list? XXX
+    l_a : {int: str, ...}-dict
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a
         given atom
