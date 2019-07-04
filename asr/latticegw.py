@@ -4,7 +4,7 @@ from asr.utils import command, option
 @command('asr.latticegw')
 @option('--eta', help='Broadening parameter', default=0.01,
         type=float)
-@option('--qcut', help='Cutoff for q-integration', default=0.5)
+@option('--qcut', help='Cutoff for q-integration', default=1)
 @option('--microvolume/--no-microvolume', help='Use microvolume integration',
         default=True)
 @option('--maxband', default=None, type=int,
@@ -66,7 +66,9 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
                     txt='gwlatgs.txt')
 
         calc.get_potential_energy()
-        calc.write('gwlatgs.gpw', mode='all')
+        from asr.utils import file_barrier
+        with file_barrier('gwlatgs.gpw'):
+            calc.write('gwlatgs.gpw', mode='all')
     else:
         calc = GPAW('gwlatgs.gpw', txt=None)
 
@@ -156,7 +158,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
 
             if np.allclose(q_c, 0.0):
                 pairrho2_nm = np.sum(np.abs(pairrho_nmG[:, :, 0:3])**2,
-                                     axis=-1) / (3 * volume * nqtot)
+                                     axis=-1) / 3
                 pairrho2_nm[m_m, m_m] = 1 / (4 * np.pi**2) * \
                     ((48 * np.pi**2) / (volume * nqtot))**(1 / 3)
                 pairrho2_nm *= volume * nqtot
@@ -179,7 +181,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
         prefactor *= np.pi * qr**2 / freqLO
 
     prefactor /= volume * nqtot
-    sigmalat_nk *= prefactor
+    sigmalat_nk *= -prefactor
     data = {'sigmalat_nk': sigmalat_nk}
     timer.write()
     return data
@@ -289,17 +291,20 @@ def plotbs():
     from asr.utils import read_json
     from ase.units import Hartree
 
-    data = read_json('results_latticegw.json')
-    sigmalat_nk = data['sigmalat_nk']
-    eps_skn = sigmalat_nk.T[None].real * Hartree
     bs = atoms2bandstructure(read('gwlatgs.gpw'))
     ax = bs.plot(emin=-20, emax=20, show=False)
 
+    data = read_json('results_latticegw.json')
+    sigmalat_nk = data['sigmalat_nk']
+    eps_skn = sigmalat_nk.T[None].real * Hartree
     nbands = sigmalat_nk.shape[0]
     bs2 = atoms2bandstructure(read('gwlatgs.gpw'), eps_skn=eps_skn)
     bs2.energies += bs.energies[:, :, :nbands]
     bs2.plot(emin=-20, emax=20, ax=ax, colors='r')
 
+
+dependencies = ['asr.gs', 'asr.phonons']
+creates = ['results_latticegw.json']
 
 if __name__ == '__main__':
     main()
