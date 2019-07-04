@@ -225,7 +225,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                                                   'parameters': parameters}
                     temp_dict[string] = charge_dict
             finished_list.append(eq_pos[i])
-        #structure_dict['defects'] = temp_dict
 
     # incorporate anti-site defects
     finished_list = []
@@ -332,7 +331,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
                 except FileExistsError:
                     print(
                         'WARNING: folder ("{0}") already exists in this '
-                        f'directory. Skip creating it.'.format(defect_folder_name))
+                        f'directory. Skip creating '
+                        f'it.'.format(defect_folder_name))
                 for i in range((-1) * chargestates, chargestates + 1):
                     charge_name = 'charge_{}'.format(i)
                     charge_folder_name = defect_folder_name + '/' + charge_name
@@ -341,7 +341,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
                     except FileExistsError:
                         print(
                             'WARNING: folder ("{0}") already exists in this '
-                            f'directory. Skip creating it.'.format(charge_folder_name))
+                            f'directory. Skip creating '
+                            f'it.'.format(charge_folder_name))
                     struc = sub_dict[sub_element].get(
                         charge_name).get('structure')
                     params = sub_dict[sub_element].get(
