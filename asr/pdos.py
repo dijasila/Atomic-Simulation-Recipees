@@ -10,7 +10,6 @@ from ase.units import Ha
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
-from ase.utils.formula import formula_metal
 
 import gpaw.mpi as mpi
 from gpaw import GPAW
