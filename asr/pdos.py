@@ -122,11 +122,11 @@ def pdos(calc, gpw, soc=True):
     # Subtract the vacuum energy
     # get evac XXX
     evac = 0.
-    e = energies - evac
+    e_e = energies - evac
     ef = efermi - evac
 
     subresults = {'pdos_sal': pdos_sal, 'symbols': symbols,
-                  'energies': e, 'efermi': ef}
+                  'energies': e_e, 'efermi': ef}
 
     return subresults
 
@@ -161,17 +161,16 @@ def calculate_pdos(calc, gpw, soc=True):
     else:
         ldos = raw_orbital_LDOS
 
-    e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    e_e = np.linspace(-10 + efermi, 10 + efermi, 2000)
     ns = calc.get_number_of_spins()
+    theta, phi = get_spin_direction()
     pdos_sal = defaultdict(float)
-    e_s = {}
     for spin in range(ns):
         for a in l_a:
             spec = chem_symbols[a]
             for l in l_a[a]:
                 if soc:
                     if world.rank == 0:  # GPAW soc is done in serial
-                        theta, phi = get_spin_direction()
                         energies, weights = ldos(calc0, a, spin, l, theta, phi)
                         mpi.broadcast((energies, weights))
                     else:
@@ -186,15 +185,14 @@ def calculate_pdos(calc, gpw, soc=True):
                 weights /= kd.weight_k[:, np.newaxis]
                 w = weights[kd.bz2ibz_k]
                 w.shape = tuple(kd.N_c) + (-1, )
-                p = lti(calc.atoms.cell, energies * Ha, e, w)
+                p = lti(calc.atoms.cell, energies * Ha, e_e, w)
                 key = ','.join([str(spin), str(spec), str(l)])
                 pdos_sal[key] += p
-        e_s[spin] = e
 
-    return e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
+    return e_e, pdos_sal, calc.atoms.get_chemical_symbols(), efermi
 
 
-def get_l_a(zs):
+def get_l_a(zs):  # maybe we need more than d-electrons? XXX
     """Defines which atoms and angular momentum to project onto.
 
     Parameters:
@@ -204,7 +202,7 @@ def get_l_a(zs):
 
     Returns:
     --------
-    l_a : {int: str, ...}-dict
+    l_a : {int: str, ...}-dict  # why not a list? XXX
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a
         given atom
@@ -359,8 +357,6 @@ def plot_pdos(row, filename, soc=True,
     symbols = data['symbols']
     e_e = data['energies']
     ef = data['efermi']
-    # z_a = set(row.numbers)
-    # symbols = Atoms(formula_metal(z_a)).get_chemical_symbols()
 
     # Setup ssili (spin, atomic symbol index, angular momentum index) key
     # Can one use json.dump with OrderedDict? XXX
