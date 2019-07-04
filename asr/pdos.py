@@ -347,6 +347,65 @@ def plot_pdos():
 '''
 
 
+def get_ordered_syl_dict(dct_syl, symbols):
+    """Order a dictionary with syl keys
+
+    Parameters
+    ----------
+    dct_syl : dict
+        Dictionary with keys f'{s},{y},{l}'
+        (spin (s), chemical symbol (y), angular momentum (l))
+    symbols : list
+        Sort symbols after index in this list
+
+    Returns
+    -------
+    outdct_syl : OrderedDict
+        Sorted dct_syl
+    """
+    from collections import OrderedDict
+
+    # Setup ssili (spin, symbol index, angular momentum index) key
+    def ssili(syl):
+        s, a, L = syl.split(',')
+        # Symbols list can have multiple entries of the same symbol
+        # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
+        # 'Fe' will have index 1.
+        si = symbols.index(a)
+        li = ['s', 'p', 'd', 'f'].index(L)
+        return f'{s}{si}{li}'
+
+    return OrderedDict(sorted(dct_syl.items(), key=lambda t: ssili(t[0])))
+
+
+def get_yl_colors(dct_syl):
+    """Get the color indices corresponding for each symbol and angular momentum
+    
+    Parameters
+    ----------
+    dct_syl : OrderedDict
+        Ordered dictionary with keys f'{s},{y},{l}'
+        (spin (s), chemical symbol (y), angular momentum (l))
+
+    Returns
+    -------
+    color_yl : OrderedDict
+        Color strings for each symbol and angular momentum
+    """
+    from collections import OrderedDict
+
+    color_yl = OrderedDict()
+    c = 0
+    for key in dct_syl:
+        # Do not differentiate spin by color
+        if int(key[0]) == 0:  # if spin is 0
+            color_yl[key[2:]] = 'C{}'.format(c)
+            c += 1
+            c = c % 10  # only 10 colors available in cycler
+
+    return color_yl
+
+
 def plot_pdos(row, filename, soc=True,
               figsize=(6.4, 4.8), fontsize=10, lw=2, loc='best'):
 
@@ -364,37 +423,24 @@ def plot_pdos(row, filename, soc=True,
 
     # Extract raw data
     data = row.data[pdos]
-    pdos_syl = data['pdos_syl']
     symbols = data['symbols']
+    pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
     e_e = data['energies']
     ef = data['efermi']
 
-    # Setup ssili (spin, atomic symbol index, angular momentum index) key
-    # Can one use json.dump with OrderedDict? XXX
-    # Maybe one should use OrderedDict instead? XXX
-    def ssili(sal):  # How does this mapping work exactly? XXX
-        s, a, L = sal.split(',')
-        # Symbols can have multiple entries of the same symbol ex. ['Si', 'Si']? XXX
-        si = symbols.index(a)
-        li = ['s', 'p', 'd', 'f'].index(L)
-        return (f'{s}{si}{li}')
-
-    # Sort sal (spin, atomic symbol, angular momentum) keys to ssili
-    pdos_ssili = {}
-    for k in sorted(pdos_syl.keys(), key=ssili):
-        pdos_ssili[k] = pdos_syl[k]  # does this remove some data? XXX
-
-    # Define color scheme
+    color_yl = get_yl_colors(pdos_syl)
+    '''
     colors_ssili = {}  # How does it work exactly with the keys here? XXX
     i = 0
     for k in sorted(pdos_ssili.keys(), key=ssili):
         if int(k[0]) == 0:
             colors_ssili[k[2:]] = 'C{}'.format(i % 10)
             i += 1
+    '''
 
     # Figure out if calculation is spin polarized
     spinpol = False
-    for k in pdos_ssili.keys():
+    for k in pdos_syl.keys():
         if int(k[0]) == 1:
             spinpol = True
             break
@@ -412,8 +458,8 @@ def plot_pdos(row, filename, soc=True,
 
     # Plot pdos
     pdosint_s = defaultdict(float)
-    for key in sorted(pdos_ssili.keys(), key=ssili):
-        pdos = pdos_ssili[key]
+    for key in pdos_syl:
+        pdos = pdos_syl[key]
         spin, symbol, lstr = key.split(',')
         spin = int(spin)
         sign = 1 if spin == 0 else -1
@@ -428,7 +474,7 @@ def plot_pdos(row, filename, soc=True,
             label = None
 
         ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=colors_ssili[key[2:]], lw=lw)
+                label=label, color=color_yl[key[2:]], lw=lw)
 
     ax.legend(loc=loc)
     ax.axhline(ef, color='k', ls=':')
