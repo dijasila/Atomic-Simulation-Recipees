@@ -4,12 +4,12 @@ from asr.utils import command, option
 @command('asr.latticegw')
 @option('--eta', help='Broadening parameter', default=0.01,
         type=float)
-@option('--qcut', help='Cutoff for q-integration', default=1)
+@option('--qcut', help='Cutoff for q-integration', default=2, type=float)
 @option('--microvolume/--no-microvolume', help='Use microvolume integration',
         default=True)
 @option('--maxband', default=None, type=int,
         help='Maximum band index to calculate correction of')
-@option('--kptdensity', default=12, type=int,
+@option('--kptdensity', default=12, type=float,
         help='K Point density for ground state calculation')
 def main(eta, qcut, microvolume, maxband, kptdensity):
     """Calculate GW Lattice contribution. """
@@ -140,6 +140,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
         q_v = np.dot(q_c, pd.gd.icell_cv) * 2 * np.pi
         q2abs = np.sum(q_v**2)
 
+        timer.start('k loop')
         for k in np.arange(0, nikpts):
             k_c = ikpts[k]
             kptpair = pair.get_kpoint_pair(pd, s, k_c, 0, nall, m1, m2)
@@ -175,13 +176,10 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
                     corr_n = np.sum(pairrho2_nm / (deps0_nm**2 - freqLO2),
                                     axis=1)
             sigmalat_nk[:, k] += corr_n
+        timer.stop()
     timer.stop()
 
-    if microvolume:
-        prefactor *= np.pi * qr**2 / freqLO
-
-    prefactor /= volume * nqtot
-    sigmalat_nk *= -prefactor
+    sigmalat_nk *= prefactor
     data = {'sigmalat_nk': sigmalat_nk}
     timer.write()
     return data
