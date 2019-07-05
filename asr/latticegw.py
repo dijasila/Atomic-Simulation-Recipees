@@ -110,13 +110,8 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
     mask_q = qabs_q / 2 < qcut
     bzq_qc = bzq_qc[mask_q]
     nqtot = len(mask_q)
-    nq = len(bzq_qc)
  
     mybzq_qc = bzq_qc[world.rank::world.size]
-    myiqs = np.arange(nq)[world.rank::world.size]
-    
-    if microvolume:
-        prefactor *= nqtot / (2 * np.pi)**3 * volume
 
     B_cv = calc.wfs.gd.icell_cv * 2 * np.pi
     dq_c = 1 / N_c * [1, 0, 0]
@@ -127,8 +122,10 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
 
     timer.start('q loop')
     sigmalat_nk = np.zeros([nall, nikpts], dtype=complex)
-    for iq, q_c in zip(myiqs, mybzq_qc):
+    iq = 0
+    for q_c in mybzq_qc:
         print(iq)
+        iq += 1
         qd = KPointDescriptor([q_c])
         pd = PWDescriptor(ecut, calc.wfs.gd, complex, qd)
         if microvolume:
