@@ -181,6 +181,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
         timer.stop()
     timer.stop()
 
+    world.sum(sigmalat_nk)
     sigmalat_nk *= prefactor
     data = {'sigmalat_nk': sigmalat_nk}
     timer.write()
