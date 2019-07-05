@@ -95,7 +95,7 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
     eta = eta / Hartree
     eps = epsmac
     ZBM = (volume * eps * (0.00299**2 - 0.00139**2) / (4 * np.pi))**(1 / 2)
-    prefactor = (((4 * np.pi * ZBM) / eps)**2 * 1 / volume)
+
     freqTO = omega_kl[0, mode] / Hartree
     freqLO = (freqTO**2 + 4 * np.pi * ZBM**2 / (eps * volume))**(1 / 2)
     freqLO2 = freqLO**2
@@ -119,6 +119,11 @@ def main(eta, qcut, microvolume, maxband, kptdensity):
     dq = np.sum(dq_v**2)**0.5
     dqvol = (2 * np.pi)**3 / volume / nqtot
     qr = np.sqrt(dqvol / (dq * np.pi))
+
+    prefactor = -((4 * np.pi * ZBM) / eps)**2 / (volume**2 * nqtot)
+
+    if microvolume:
+        prefactor *= nqtot / (2 * np.pi)**3 * volume * np.pi * qr**2 / freqLO
 
     timer.start('q loop')
     sigmalat_nk = np.zeros([nall, nikpts], dtype=complex)
