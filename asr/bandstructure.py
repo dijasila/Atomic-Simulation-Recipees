@@ -759,7 +759,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dosef_soc', 'gap', 'dir_gap', 'vbm',
+                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
                     'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
@@ -767,7 +767,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dosef_soc', 'gap', 'dir_gap', 'vbm',
+                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
                     'cbm', 'D_vbm', 'D_cbm'
                 ],
                 kd=key_descriptions_noxc)

@@ -89,25 +89,21 @@ class ASRCommand(click.Command):
                              'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
             raise
+
         if not results:
             results = {}
-        results['__params__'] = ctx.params
-        from ase.utils import search_current_git_hash
-        modnames = ['asr', 'ase', 'gpaw']
-        versions = {}
-        for modname in modnames:
-            mod = import_module(modname)
-            githash = search_current_git_hash(mod)
-            version = mod.__version__
-            if githash:
-                versions[f'{modname}'] = f'{version}-{githash}'
-            else:
-                versions[f'{modname}'] = f'{version}'
-        results['__versions__'] = versions
 
+        results.update(get_excecution_info(ctx.params))
+        
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
+
+            # Clean up possible tmpresults files
+            tmppath = Path(f'tmpresults_{name}.json')
+            if tmppath.exists():
+                unlink(tmppath)
+
         return results
 
     def callback(self, *args, **kwargs):
@@ -155,6 +151,55 @@ def command(name, overwrite_params={},
     return decorator
 
 
+class ASRSubResult:
+    def __init__(self, asr_name, calculator):
+        self._asr_name = asr_name[4:]
+        self.calculator = calculator
+        self._asr_key = calculator.__name__
+
+        self.results = {}
+
+    def __call__(self, ctx, *args, **kwargs):
+        # Try to read sub-result from previous calculation
+        subresult = self.read_subresult()
+        if subresult is None:
+            subresult = self.calculate(ctx, *args, **kwargs)
+
+        return subresult
+
+    def read_subresult(self):
+        """Read sub-result from tmpresults file if possible"""
+        subresult = None
+        path = Path(f'tmpresults_{self._asr_name}.json')
+        if path.exists():
+            self.results = jsonio.decode(path.read_text())
+            # Get subcommand sub-result, if available
+            if self._asr_key in self.results.keys():
+                subresult = self.results[self._asr_key]
+
+        return subresult
+
+    def calculate(self, ctx, *args, **kwargs):
+        """Do the actual calculation"""
+        subresult = self.calculator.__call__(*args, **kwargs)
+        assert isinstance(subresult, dict)
+
+        subresult.update(get_excecution_info(ctx.params))
+        self.results[self._asr_key] = subresult
+
+        write_json(f'tmpresults_{self._asr_name}.json', self.results)
+
+        return subresult
+
+
+def subresult(name):
+    """Decorator pattern for sub-result"""
+    def decorator(calculator):
+        return ASRSubResult(name, calculator)
+
+    return decorator
+
+
 @contextmanager
 def chdir(folder, create=False, empty=False):
     dir = os.getcwd()
@@ -170,6 +215,26 @@ def chdir(folder, create=False, empty=False):
 
 # We need to reduce this list to only contain collect
 excludelist = ['asr.gapsummary']
+
+
+def get_excecution_info(params):
+    """Get parameter and software version information as a dictionary"""
+    exceinfo = {'__params__': params}
+
+    from ase.utils import search_current_git_hash
+    modnames = ['asr', 'ase', 'gpaw']
+    versions = {}
+    for modname in modnames:
+        mod = import_module(modname)
+        githash = search_current_git_hash(mod)
+        version = mod.__version__
+        if githash:
+            versions[f'{modname}'] = f'{version}-{githash}'
+        else:
+            versions[f'{modname}'] = f'{version}'
+    exceinfo['__versions__'] = versions
+
+    return exceinfo
 
 
 def get_all_recipe_names():
@@ -416,6 +481,26 @@ def read_json(filename):
     return dct
 
 
+def unlink(path: Union[str, Path], world=None):
+    """Safely unlink path (delete file or symbolic link)."""
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    if world.rank == 0:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    else:
+        while path.is_file():
+            time.sleep(1.0)
+    world.barrier()
+
+
 @contextmanager
 def file_barrier(path: Union[str, Path], world=None):
     """Context manager for writing a file.
@@ -435,15 +520,7 @@ def file_barrier(path: Union[str, Path], world=None):
         world = parallel.world
 
     # Remove file:
-    if world.rank == 0:
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        while path.is_file():
-            time.sleep(1.0)
-    world.barrier()
+    unlink(path, world)
 
     yield
 
