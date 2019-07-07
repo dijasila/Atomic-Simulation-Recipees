@@ -123,12 +123,19 @@ def run(ctx, args):
         folders = args[ind + 1:]
         args = args[:ind]
 
+    # Identify function that should be executed
     if shell:
         command = ' '.join(args)  # The arguments are actually the command
     else:
         # If not shell then we assume that the command is a call
         # to a recipe
-        command = 'python3 -m asr.' + ' '.join(args)
+        recipe, *args = args
+        if ':' in recipe:
+            recipe, function = recipe.split(':')
+            command = (f'python3 -c "from asr.{recipe} import {function}; '
+                       f'{function}()" ') + ' '.join(args)
+        else:
+            command = f'python3 -m asr.{recipe}' + ' '.join(args)
 
     if folders:
         from asr.utils import chdir
