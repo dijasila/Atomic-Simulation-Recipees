@@ -1,64 +1,84 @@
-# ##TODO min kpt dens?
 import json
 from asr.utils import command, option
 
 
-@command('asr.gaps')
-@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
-def main(gpwfilename):
-    from gpaw import GPAW
+# ---------- Main functionality ---------- #
+
+
+@command('asr.analysegs')
+@option('--gpw', type=str, help='filename.gpw', default='gs.gpw')
+def main(gpw):
+    from gpaw import restart
+
+    if not Path(gpw).is_file():
+        raise ValueError('Groundstate file not present')
+    atoms, calc = restart(gpw, txt=None)
+
+    results['gaps_nosoc'] = gaps(calc, soc=False)
+    results['gaps_soc'] = gaps(calc, soc=True)
+
+    results['vacuumlevels'] = vacuumlevels(atoms)
+
+    return results
+    
+
+# ---------- Recipe methodology ---------- #
+
+
+# ----- gaps ----- #
+
+
+def gaps(calc, soc=True):
+    """Could use some documentation!!! XXX
+    Who is in charge of this thing??
+    """
+    # ##TODO min kpt dens? XXX
+    # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from pathlib import Path
     from ase.parallel import paropen
     from asr.utils.gpw2eigs import gpw2eigs
-    # inputs: gpw groundstate file, soc?, direct gap?
-    if not Path(gpwfilename).is_file():
-        raise ValueError('Groundstate file not present')
-    calc = GPAW(gpwfilename, txt=None)
+
     ibzkpts = calc.get_ibz_k_points()
 
-    for soc in [True, False]:
-        evbm_ecbm_gap, skn_vbm, skn_cbm = get_gap_info(
-            soc=soc, direct=False, calc=calc, gpw=gpwfilename)
-        evbm_ecbm_direct_gap, direct_skn_vbm, direct_skn_cbm = get_gap_info(
-            soc=soc, direct=True, calc=calc, gpw=gpwfilename)
-        k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
-        direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
 
-        get_kc = partial(get_1bz_k, ibzkpts, calc)
+    evbm_ecbm_gap, skn_vbm, skn_cbm = get_gap_info(
+        soc=soc, direct=False, calc=calc, gpw=gpwfilename)
+    evbm_ecbm_direct_gap, direct_skn_vbm, direct_skn_cbm = get_gap_info(
+        soc=soc, direct=True, calc=calc, gpw=gpwfilename)
+    k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
+    direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
 
-        k_vbm_c = get_kc(k_vbm)
-        k_cbm_c = get_kc(k_cbm)
-        direct_k_vbm_c = get_kc(direct_k_vbm)
-        direct_k_cbm_c = get_kc(direct_k_cbm)
+    get_kc = partial(get_1bz_k, ibzkpts, calc)
 
-        if soc:
-            _, efermi = gpw2eigs(gpwfilename, soc=True,
-                                 optimal_spin_direction=True)
-        else:
-            efermi = calc.get_fermi_level()
+    k_vbm_c = get_kc(k_vbm)
+    k_cbm_c = get_kc(k_cbm)
+    direct_k_vbm_c = get_kc(direct_k_vbm)
+    direct_k_cbm_c = get_kc(direct_k_cbm)
 
-        data = {'gap': evbm_ecbm_gap[2],
-                'vbm': evbm_ecbm_gap[0],
-                'cbm': evbm_ecbm_gap[1],
-                'gap_dir': evbm_ecbm_direct_gap[2],
-                'vbm_dir': evbm_ecbm_direct_gap[0],
-                'cbm_dir': evbm_ecbm_direct_gap[1],
-                'k1_c': k_vbm_c,
-                'k2_c': k_cbm_c,
-                'k1_dir_c': direct_k_vbm_c,
-                'k2_dir_c': direct_k_cbm_c,
-                'skn1': skn_vbm,
-                'skn2': skn_cbm,
-                'skn1_dir': direct_skn_vbm,
-                'skn2_dir': direct_skn_cbm,
-                'efermi': efermi}
+    if soc:
+        _, efermi = gpw2eigs(gpwfilename, soc=True,
+                             optimal_spin_direction=True)
+    else:
+        efermi = calc.get_fermi_level()
 
-        with paropen('gap{}.json'.format('_soc' if soc else ''), 'w') as f:
-            from ase.io.jsonio import MyEncoder
-            f.write(MyEncoder(indent=4).encode(data))
+    subresults = {'gap': evbm_ecbm_gap[2],
+                  'vbm': evbm_ecbm_gap[0],
+                  'cbm': evbm_ecbm_gap[1],
+                  'gap_dir': evbm_ecbm_direct_gap[2],
+                  'vbm_dir': evbm_ecbm_direct_gap[0],
+                  'cbm_dir': evbm_ecbm_direct_gap[1],
+                  'k1_c': k_vbm_c,
+                  'k2_c': k_cbm_c,
+                  'k1_dir_c': direct_k_vbm_c,
+                  'k2_dir_c': direct_k_cbm_c,
+                  'skn1': skn_vbm,
+                  'skn2': skn_cbm,
+                  'skn1_dir': direct_skn_vbm,
+                  'skn2_dir': direct_skn_cbm,
+                  'efermi': efermi}
 
-    return data
+    return subresults
 
 
 def collect_data(atoms):
