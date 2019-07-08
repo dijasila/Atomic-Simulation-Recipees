@@ -1,4 +1,3 @@
-import json
 from asr.utils import command, option
 
 
@@ -8,18 +7,22 @@ from asr.utils import command, option
 @command('asr.analysegs')
 @option('--gpw', type=str, help='filename.gpw', default='gs.gpw')
 def main(gpw):
+    from pathlib import Path
+    import numpy as np
     from gpaw import restart
 
     if not Path(gpw).is_file():
         raise ValueError('Groundstate file not present')
     atoms, calc = restart(gpw, txt=None)
 
-    results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gaps_soc'] = gaps(calc, soc=True)
+    results = {}
+
+    results['gaps_nosoc'] = gaps(calc, gpw, soc=False)
+    results['gaps_soc'] = gaps(calc, gpw, soc=True)
 
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:  # dimensionality = 2
-        results['vacuumlevels'] = vacuumlevels(atoms)
+        results['vacuumlevels'] = vacuumlevels(atoms, calc, gpw=gpw)
 
     return results
     
@@ -30,7 +33,7 @@ def main(gpw):
 # ----- gaps ----- #
 
 
-def gaps(calc, soc=True):
+def gaps(calc, gpw, soc=True):
     """Could use some documentation!!! XXX
     Who is in charge of this thing??
     """
@@ -43,11 +46,13 @@ def gaps(calc, soc=True):
 
     ibzkpts = calc.get_ibz_k_points()
 
+    (evbm_ecbm_gap, 
+     skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False, 
+                                      calc=calc, gpw=gpw)
+    (evbm_ecbm_direct_gap, 
+     direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True, 
+                                                    calc=calc, gpw=gpw)
 
-    evbm_ecbm_gap, skn_vbm, skn_cbm = get_gap_info(
-        soc=soc, direct=False, calc=calc, gpw=gpwfilename)
-    evbm_ecbm_direct_gap, direct_skn_vbm, direct_skn_cbm = get_gap_info(
-        soc=soc, direct=True, calc=calc, gpw=gpwfilename)
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
 
@@ -59,7 +64,7 @@ def gaps(calc, soc=True):
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        _, efermi = gpw2eigs(gpwfilename, soc=True,
+        _, efermi = gpw2eigs(gpw, soc=True,
                              optimal_spin_direction=True)
     else:
         efermi = calc.get_fermi_level()
@@ -192,8 +197,8 @@ def calculate_evac(atoms, calc, n=8):
     from ase.parallel import world
 
     # Record electrostatic potential as a function of z
-    z_z = np.linspace(0, atoms.cell[2, 2], len(v), endpoint=False)
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
+    z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
 
     # Store data
     subresults = {'z_z': z_z, 'v_z': v_z,
