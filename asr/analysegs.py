@@ -17,7 +17,9 @@ def main(gpw):
     results['gaps_nosoc'] = gaps(calc, soc=False)
     results['gaps_soc'] = gaps(calc, soc=True)
 
-    results['vacuumlevels'] = vacuumlevels(atoms)
+    # Vacuum level is calculated for c2db backwards compability
+    if int(np.sum(atoms.get_pbc())) == 2:  # dimensionality = 2
+        results['vacuumlevels'] = vacuumlevels(atoms)
 
     return results
     
@@ -115,6 +117,97 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
+# ----- vacuumlevels ----- #
+
+
+def vacuumlevels(atoms, calc, gpw='gs.gpw', evacdiffmin=10e-3):
+    """Get the vacuumlevels on both sides of a 2D material. Will
+    do a dipole corrected dft calculation, if needed (Janus structures).
+    Assumes the 2D material periodic directions are x and y.
+    Assumes that the 2D material is centered in the z-direction of
+    the unit cell.
+
+    Dipole corrected dft calculation -> dipcorrgs.gpw
+
+    Parameters
+    ----------
+    gpw: str
+       name of gpw file to base the dipole corrected calc on
+    evacdiffmin: float
+        thresshold in eV for doing a dipole moment corrected
+        dft calculations if the predicted evac difference is less
+        than this value don't do it
+    """
+    p = calc.todict()
+    if p.get('poissonsolver', {}) == {'dipolelayer': 'xy'}\
+       or abs(evacdiff(atoms)) < evacdiffmin:
+        atoms, calc = dipolecorrectedgs(gpw)
+
+    return calculate_evac(atoms, calc)
+
+
+def evacdiff(atoms):
+    """Calculate vacuum energy level difference from the dipole moment of
+    a slab assumed to be in the xy plane
+
+    Returns
+    -------
+    out: float
+        vacuum level difference in eV
+    """
+    import numpy as np
+    from ase.units import Bohr, Hartree
+
+    A = np.linalg.det(atoms.cell[:2, :2] / Bohr)
+    dipz = atoms.get_dipole_moment()[2] / Bohr
+    evacsplit = 4 * np.pi * dipz / A * Hartree
+
+    return evacsplit
+
+
+def dipolecorrectedgs(gpw='gs.gpw'):
+    """Do dipole corrected ground state calculation."""
+    from gpaw import GPAW
+
+    calc = GPAW(gpw, txt='dipcorrgs.txt')
+    calc.set(poissonsolver={'dipolelayer': 'xy'})
+    atoms = calc.get_atoms()
+    atoms.get_potential_energy()
+    atoms.get_forces()
+    atoms.get_stress()
+    calc.write('dipcorrgs.gpw')
+
+    return atoms, calc
+
+
+def calculate_evac(atoms, calc, n=8):
+    """Calculate the vacuumlevels on both sides of the 2D material.
+
+    Parameters
+    ----------
+    n: int
+        number of gridpoints away from the edge to evaluate the vac levels
+    """
+    import numpy as np
+    from ase.parallel import world
+
+    # Record electrostatic potential as a function of z
+    z_z = np.linspace(0, atoms.cell[2, 2], len(v), endpoint=False)
+    v_z = calc.get_electrostatic_potential().mean(0).mean(0)
+
+    # Store data
+    subresults = {'z_z': z_z, 'v_z': v_z,
+                  'evacdiff': evacdiff(atoms),
+                  'dipz': atoms.get_dipole_moment()[2],
+                  # Extract vaccuum energy on both sides of the slab
+                  'evac1': v_z[n],
+                  'evac2': v_z[-n],
+                  # Ef might have changed in dipole corrected gs
+                  'efermi_nosoc': calc.get_fermi_level()}
+
+    return subresults
+
+
 # ---------- Database and webpanel ---------- #
 
 
@@ -146,8 +239,6 @@ def collect_data(atoms):
         socname = 'soc' if soc else 'nosoc'
         keyname = f'gaps_{keyname}'
         subresults = results[keyname]
-        # Ideally, only non kvp data should go here! This is stupid XXX
-        data[keyname] = subresults
 
         def namemod(n):
             return n + '_soc' if soc else n
@@ -160,17 +251,42 @@ def collect_data(atoms):
                 kvp[inc] = val
                 kd[inc] = descs[k]
 
-    return kvp, kd, data
+    # ----- vacuumlevels ----- #
+
+    if 'vacuumlevels' in results.keys():
+        subresults = results['vacuumlevels']
+        kvp['evac'] = (subresults['evac1'] + subresults['evac2']) / 2
+        kd['evac'] = ('Vaccum level (PBE)', '', 'eV')
+        kvp['evacdiff'] = subresults['evacdiff']
+        kd['evacdiff'] = ('Vacuum level difference (PBE)', '', 'eV')
+        kvp['dipz'] = subresults['dipz']
+        kd['dipz'] = ('Dipole moment', '', '|e|Ang')
+
+    # ------------------------ #
+
+    # Currently all kvp are returned both as kvp and data XXX
+    # Use results as data dict for now (change with new format) XXX
+    return kvp, kd, results
 
 
 def webpanel(row, key_descriptions):
     from asr.utils.custom import table
 
-    t = table(row, 'Postprocessing', [
-              'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
-              key_descriptions)
+    # What about metals? XXX - should dos_at_ef be here?
+    # There should be a metals check somewhere? XXX
+    if row.get('evacdiff', 0) < 0.02:
+        t = table(row, 'Postprocessing', 
+                  ['gap', 'vbm', 'cbm', 
+                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
+                  key_descriptions)
+    else:
+        t = table(row, 'Postprocessing', 
+                  ['gap', 'vbm', 'cbm', 
+                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi', 
+                   'dipz', 'evacdiff'],
+                  key_descriptions)
 
-    panel = ('Gap information', [[t]])
+    panel = ('PBE ground state', [[t]])
 
     return panel, []
 
