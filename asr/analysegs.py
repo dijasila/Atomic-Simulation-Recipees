@@ -81,62 +81,6 @@ def gaps(calc, soc=True):
     return subresults
 
 
-def collect_data(atoms):
-    from pathlib import Path
-
-    data = {}
-    kvp = {}
-    key_descriptions = {}
-
-    data_to_include = ['gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir',
-                       'efermi']
-    descs = [('Bandgap', 'Bandgap', 'eV'),
-             ('Valence Band Maximum', 'Maximum of valence band', 'eV'),
-             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'),
-             ('Direct Bandgap', 'Direct bandgap', 'eV'),
-             ('Valence Band Maximum - Direct',
-              'Valence Band Maximum - Direct', 'eV'),
-             ('Conduction Band Minimum - Direct',
-              'Conduction Band Minimum - Direct', 'eV'),
-             ('Fermi Level', "Fermi's level", 'eV')]
-
-    for soc in [True, False]:
-        path = Path('gap{}.json'.format('_soc' if soc else ''))
-
-        if not path.is_file():
-            continue
-
-        sdata = json.loads(path.read_text())
-
-        keyname = 'soc' if soc else 'nosoc'
-        data[keyname] = sdata
-
-        def namemod(n):
-            return n + '_soc' if soc else n
-
-        includes = [namemod(n) for n in data_to_include]
-
-        for k, inc in enumerate(includes):
-            val = sdata[data_to_include[k]]
-            if val is not None:
-                kvp[inc] = val
-                key_descriptions[inc] = descs[k]
-
-    return kvp, key_descriptions, data
-
-
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
-
-    t = table(row, 'Postprocessing', [
-              'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
-              key_descriptions)
-
-    panel = ('Gap information', [[t]])
-
-    return panel, None
-
-
 def get_1bz_k(ibzkpts, calc, k_index):
     from gpaw.kpt_descriptor import to1bz
     k_c = ibzkpts[k_index] if k_index is not None else None
@@ -169,6 +113,66 @@ def get_gap_info(soc, direct, calc, gpw):
             e1, e2 = None, None
         x = (e1, e2, g), skn1, skn2
     return x
+
+
+# ---------- Database and webpanel ---------- #
+
+
+# Old format
+def collect_data(atoms):
+    kvp = {}
+    kd = {}
+    data = {}
+
+    from asr.utils import read_json
+    results = read_json('results_analysegs.json')
+
+    # ----- gaps ----- #
+    
+    data_to_include = ['gap', 'vbm', 'cbm', 
+                       'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
+    # What about description of non kvp data? XXX
+    descs = [('Bandgap', 'Bandgap', 'eV'),
+             ('Valence Band Maximum', 'Maximum of valence band', 'eV'),
+             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'),
+             ('Direct Bandgap', 'Direct bandgap', 'eV'),
+             ('Valence Band Maximum - Direct',
+              'Valence Band Maximum - Direct', 'eV'),
+             ('Conduction Band Minimum - Direct',
+              'Conduction Band Minimum - Direct', 'eV'),
+             ('Fermi Level', "Fermi's level", 'eV')]
+
+    for soc in [True, False]:
+        socname = 'soc' if soc else 'nosoc'
+        keyname = f'gaps_{keyname}'
+        subresults = results[keyname]
+        # Ideally, only non kvp data should go here! This is stupid XXX
+        data[keyname] = subresults
+
+        def namemod(n):
+            return n + '_soc' if soc else n
+
+        includes = [namemod(n) for n in data_to_include]
+
+        for k, inc in enumerate(includes):
+            val = subresults[data_to_include[k]]
+            if val is not None:
+                kvp[inc] = val
+                kd[inc] = descs[k]
+
+    return kvp, kd, data
+
+
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import table
+
+    t = table(row, 'Postprocessing', [
+              'gap', 'vbm', 'cbm', 'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
+              key_descriptions)
+
+    panel = ('Gap information', [[t]])
+
+    return panel, []
 
 
 # ---------- ASR globals and main ---------- #
