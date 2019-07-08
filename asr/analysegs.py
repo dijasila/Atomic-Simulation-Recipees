@@ -242,7 +242,7 @@ def collect_data(atoms):
 
     for soc in [True, False]:
         socname = 'soc' if soc else 'nosoc'
-        keyname = f'gaps_{keyname}'
+        keyname = f'gaps_{socname}'
         subresults = results[keyname]
 
         def namemod(n):
