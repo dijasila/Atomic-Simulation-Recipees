@@ -171,30 +171,11 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
-def eigenvalues(calc):
-    import numpy as np
-    rs = range(calc.get_number_of_spins())
-    rk = range(len(calc.get_ibz_k_points()))
-    e = calc.get_eigenvalues
-    return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
-
-
-def get_spin_direction(fname="anisotropy_xy.npz"):
-    import os
-    import numpy as np
-    theta = 0
-    phi = 0
-    if os.path.isfile(fname):
-        data = np.load(fname)
-        DE = max(data["dE_zx"], data["dE_zy"])
-        if DE > 0:
-            theta = np.pi / 2
-            if data["dE_zy"] > data["dE_zx"]:
-                phi = np.pi / 2
-    return theta, phi
+# ---------- ASR globals and main ---------- #
 
 
 group = 'property'
+resources = '8:1h'  # How many resources are used? XXX
 dependencies = ['asr.structureinfo', 'asr.gs']
 
 
