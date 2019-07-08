@@ -214,6 +214,20 @@ def calculate_evac(atoms, calc, n=8):
     return subresults
 
 
+def get_evac():
+    """Get mean vacuum energy, if it has been calculated"""
+    from pathlib import Path
+    from asr.utils import read_json
+    
+    evac = None
+    if Path('results_analysegs.json').is_file():
+        results = read_json('results_analysegs.json')
+        if 'vacuumlevels' in results.keys():
+            evac = results['vacuumlevels']['evacmean']
+
+    return evac
+
+
 # ---------- Database and webpanel ---------- #
 
 
