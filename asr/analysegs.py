@@ -207,6 +207,7 @@ def calculate_evac(atoms, calc, n=8):
                   # Extract vaccuum energy on both sides of the slab
                   'evac1': v_z[n],
                   'evac2': v_z[-n],
+                  'evacmean': (v_z[n] + v_z[-n]) / 2,
                   # Ef might have changed in dipole corrected gs
                   'efermi_nosoc': calc.get_fermi_level()}
 
@@ -260,7 +261,7 @@ def collect_data(atoms):
 
     if 'vacuumlevels' in results.keys():
         subresults = results['vacuumlevels']
-        kvp['evac'] = (subresults['evac1'] + subresults['evac2']) / 2
+        kvp['evac'] = subresults['evacmean']
         kd['evac'] = ('Vaccum level (PBE)', '', 'eV')
         kvp['evacdiff'] = subresults['evacdiff']
         kd['evacdiff'] = ('Vacuum level difference (PBE)', '', 'eV')

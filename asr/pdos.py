@@ -119,8 +119,12 @@ def pdos(calc, gpw, soc=True):
     energies, pdos_syl, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
 
     # Subtract the vacuum energy
-    # get evac XXX
-    evac = 0.
+    from asr.utils import read_json
+    anagsresults = read_json('results_analysegs.json')
+    if 'vacuumlevels' in anagsresults.keys():
+        evac = anagsresults['vacuumlevels']['evacmean']
+    else:
+        evac = 0.
     e_e = energies - evac
     ef = efermi - evac
 
