@@ -784,7 +784,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 creates = ['bs.gpw']
-dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
+dependencies = ['asr.structureinfo', 'asr.gs', 'asr.analysegs']
 sort = 3
 
 if __name__ == '__main__':

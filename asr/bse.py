@@ -288,7 +288,7 @@ def webpanel(row, key_descriptions):
 
 
 group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
+dependencies = ['asr.structureinfo', 'asr.gs', 'asr.analysegs']
 
 if __name__ == '__main__':
     main()

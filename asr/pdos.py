@@ -475,7 +475,7 @@ def plot_pdos(row, filename, soc=True,
 
 group = 'property'
 resources = '8:1h'  # How many resources are used
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
+dependencies = ['asr.structureinfo', 'asr.gs', 'asr.analysegs']
 
 if __name__ == '__main__':
     main()
