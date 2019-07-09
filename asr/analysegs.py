@@ -46,11 +46,11 @@ def gaps(calc, gpw, soc=True):
 
     ibzkpts = calc.get_ibz_k_points()
 
-    (evbm_ecbm_gap, 
-     skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False, 
+    (evbm_ecbm_gap,
+     skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
                                       calc=calc, gpw=gpw)
-    (evbm_ecbm_direct_gap, 
-     direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True, 
+    (evbm_ecbm_direct_gap,
+     direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True,
                                                     calc=calc, gpw=gpw)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
@@ -242,7 +242,7 @@ def collect_data(atoms):
 
     # ----- gaps ----- #
     
-    data_to_include = ['gap', 'vbm', 'cbm', 
+    data_to_include = ['gap', 'vbm', 'cbm',
                        'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
     # What about description of non kvp data? XXX
     descs = [('Bandgap', 'Bandgap', 'eV'),
@@ -295,14 +295,14 @@ def webpanel(row, key_descriptions):
     # What about metals? XXX - should dos_at_ef be here?
     # There should be a metals check somewhere? XXX
     if row.get('evacdiff', 0) < 0.02:
-        t = table(row, 'Postprocessing', 
-                  ['gap', 'vbm', 'cbm', 
+        t = table(row, 'Postprocessing',
+                  ['gap', 'vbm', 'cbm',
                    'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
                   key_descriptions)
     else:
-        t = table(row, 'Postprocessing', 
-                  ['gap', 'vbm', 'cbm', 
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi', 
+        t = table(row, 'Postprocessing',
+                  ['gap', 'vbm', 'cbm',
+                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi',
                    'dipz', 'evacdiff'],
                   key_descriptions)
 
