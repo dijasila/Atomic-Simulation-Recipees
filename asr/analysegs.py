@@ -40,8 +40,6 @@ def gaps(calc, gpw, soc=True):
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
-    from pathlib import Path
-    from ase.parallel import paropen
     from asr.utils.gpw2eigs import gpw2eigs
 
     ibzkpts = calc.get_ibz_k_points()
@@ -194,7 +192,6 @@ def calculate_evac(atoms, calc, n=8):
         number of gridpoints away from the edge to evaluate the vac levels
     """
     import numpy as np
-    from ase.parallel import world
 
     # Record electrostatic potential as a function of z
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
@@ -235,7 +232,6 @@ def get_evac():
 def collect_data(atoms):
     kvp = {}
     kd = {}
-    data = {}
 
     from asr.utils import read_json
     results = read_json('results_analysegs.json')
