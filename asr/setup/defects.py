@@ -29,13 +29,13 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     well as the respective pristine system for a given input structure.
     Defects include: vacancies, anti-site defects. For a given primitive input
     structure this recipe will create a directory tree in the following way:
-    For the example of MoS2:
+    For the example of MoS2:\n
       - There has to be a 'unrelaxed.json' file with the primitive structure
         of the desired system in the folder you run setup.defects. Let this
         folder be called 'MoS2_setup'. The tree structure will then look like
         this:
 
-    .
+    .\n
     ├── MoS2_defects_setup
     │   ├── bulk
     │   │   ├── params.json
@@ -188,7 +188,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
 
     # set up bulk system
     parameters = {}
-    string = 'bulk'
+    string = 'pristine'
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': structure, 'parameters': parameters}
@@ -196,7 +196,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # first, find the desired supercell
     pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
     parameters = {}
-    string = 'pristine'
+    string = 'pristine_sc'
     # try to make naming compatible with defectformation recipe
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
@@ -205,6 +205,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
+    wyckoffs = dataset.get('wyckoffs')
 
     finished_list = []
     if vacancies:
@@ -213,8 +214,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
                 vacancy.pop(i)
-                string = '{0}_{1}{2}{3}.HX_at_{4}'.format(
-                         formula, N_x, N_y, N_z, i)
+                string = '{0}_{1}{2}{3}.HX_at_{4}{5}'.format(
+                         formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
@@ -240,8 +241,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
                         defect[i].symbol = element
-                        string = '{0}_{1}{2}{3}.{4}_at_{5}'.format(
-                                 formula, N_x, N_y, N_z, element, i)
+                        string = '{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                                 formula, N_x, N_y, N_z, element,
+                                 wyckoffs[i], i)
                         charge_dict = {}
                         for q in range(
                             (-1) * charge_states,
@@ -283,13 +285,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
     from asr.utils import write_json
 
     # first, create parent folder for the parent structure
-    try:
-        parent_folder = str(structure.symbols) + '_defects_setup'
-        Path(parent_folder).mkdir()
-    except FileExistsError:
-        print('WARNING: parent folder ("{0}") for this structure already '
-              f'exists in the directory. Skip creating parent folder '
-              f'and continue with sub-directories.'.format(parent_folder))
+#    try:
+#        parent_folder = str(structure.symbols) + '_defects_setup'
+#        Path(parent_folder).mkdir()
+#    except FileExistsError:
+#        print('WARNING: parent folder ("{0}") for this structure already '
+#              f'exists in the directory. Skip creating parent folder '
+#              f'and continue with sub-directories.'.format(parent_folder))
 
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
@@ -300,14 +302,19 @@ def create_folder_structure(structure, structure_dict, chargestates,
     gen_params['supercell'] = [N_x, N_y, N_z]
     gen_params['intrinsic'] = intrinsic
     gen_params['vacancies'] = vacancies
-    write_json(parent_folder + '/general_parameters.json', gen_params)
+#    write_json(parent_folder + '/general_parameters.json', gen_params)
+    write_json('general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder
     for element in structure_dict:
-        folder_name = parent_folder + '/' + element
+#        folder_name = parent_folder + '/' + element
+        folder_name = element
         try:
-            Path(folder_name).mkdir()
+            if not folder_name == 'defects':
+                Path(folder_name).mkdir()
+                folder_name = folder_name + '/neutral'
+                Path(folder_name).mkdir()
         except FileExistsError:
             print('WARNING: folder ("{0}") already exists in this '
                   f'directory. Skip creating it.'.format(folder_name))
@@ -324,7 +331,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
             j = 0
             for sub_element in sub_dict:
                 defect_name = [key for key in sub_dict.keys()]
-                defect_folder_name = folder_name + '/' + defect_name[j]
+#                defect_folder_name = folder_name + '/' + defect_name[j]
+                defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
                     Path(defect_folder_name).mkdir()
