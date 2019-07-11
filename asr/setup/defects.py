@@ -302,13 +302,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
     gen_params['supercell'] = [N_x, N_y, N_z]
     gen_params['intrinsic'] = intrinsic
     gen_params['vacancies'] = vacancies
-#    write_json(parent_folder + '/general_parameters.json', gen_params)
+    # write_json(parent_folder + '/general_parameters.json', gen_params)
     write_json('general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder
     for element in structure_dict:
-#        folder_name = parent_folder + '/' + element
+        # folder_name = parent_folder + '/' + element
         folder_name = element
         try:
             if not folder_name == 'defects':
@@ -331,7 +331,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             j = 0
             for sub_element in sub_dict:
                 defect_name = [key for key in sub_dict.keys()]
-#                defect_folder_name = folder_name + '/' + defect_name[j]
+                # defect_folder_name = folder_name + '/' + defect_name[j]
                 defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
