@@ -22,20 +22,18 @@ from asr.utils import command, option
         help='Specify whether you want to incorporate vacancies.',
         default=True)
 def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
-    """
-    Sets up defect structures for a given host.
+    """Sets up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
     well as the respective pristine system for a given input structure.
     Defects include: vacancies, anti-site defects. For a given primitive input
     structure this recipe will create a directory tree in the following way:
     For the example of MoS2:\n
-      - There has to be a 'unrelaxed.json' file with the primitive structure
-        of the desired system in the folder you run setup.defects. Let this
-        folder be called 'MoS2_setup'. The tree structure will then look like
-        this:
-
-    .\n
+    - There has to be a 'unrelaxed.json' file with the primitive structure
+      of the desired system in the folder you run setup.defects. Let this
+      folder be called 'MoS2_setup'. The tree structure will then look like
+      this:\n
+    .
     ├── MoS2_defects_setup
     │   ├── bulk
     │   │   ├── params.json
@@ -89,14 +87,13 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     │       ├── params.json
     │       └── unrelaxed.json
     ├── results_setup.defects.json
-    └── unrelaxed.json
-
-      - Here, the notation for the defects is the following:
-        'formula_supercellsize.defect_at_substitutionposition' where 'HX'
-        denotes a vacancy
-      - In the resulting folders you can find the unrelaxed structures, as
-        well as a 'params.json' file which contains the charge states of the
-        different defect structures.
+    └── unrelaxed.json\n
+    - Here, the notation for the defects is the following:
+      'formula_supercellsize.defect_at_substitutionposition' where 'HX'
+      denotes a vacancy
+    - In the resulting folders you can find the unrelaxed structures, as
+      well as a 'params.json' file which contains the charge states of the
+      different defect structures.
     """
     from ase.io import read
 
