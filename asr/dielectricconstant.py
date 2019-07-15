@@ -11,12 +11,11 @@ from click import Choice
         type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-@option('--low_freq/--high_freq', default=True, 
+@option('--low_freq/--high_freq', default=True,
         help='Specify which frequency limit to apply')
 def main(gs, kptdensity, ecut, xc, bandfactor, low_freq):
     """Calculate static dielectric constant."""
-    import json
-    from ase.io import jsonio, read
+    from ase.io import read
     from asr.utils import write_json
     from gpaw import GPAW
     from gpaw.mpi import world
@@ -24,7 +23,6 @@ def main(gs, kptdensity, ecut, xc, bandfactor, low_freq):
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from math import pi
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -143,7 +141,7 @@ def webpanel():
 
 group = 'property'
 creates = ['dielectricconstant.json']
-#dependencies = ['asr.structureinfo', 'asr.gs']
+# dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()
