@@ -36,58 +36,59 @@ def main(pristine, defect, chargestates, is2d):
     below that folder.
     """
     # from gpaw.defects import ElectrostaticCorrections
-    from asr.utils import read_json
+    # from asr.utils import read_json
+    # import numpy as np
     # from ase.io import read
 
-    # ToDo: calculate sigma correctly for different systems
-    # ToDo: get rid of hardcoded epsilon
+    return None
 
-    # TBD!!!
-    # sigma = 1.0
-    # epsilons = [1.9, 1.15]
 
-    # read out general parameters from generals_params.json
-    gen_params = read_json('../../general_parameters.json')
-    chargestates_read = gen_params.get('chargestates')
-    print('INFO: read out general parameters: {}'.format(chargestates_read))
+def check_input():
+    """Checks if all necessary input files and input parameters for this
+    recipe are acessible"""
 
-    # get dimensionality of the system
-    # if is2d:
-    #    dim = '2d'
-    #    # epsilons = [x, y]
-    # elif is2d == False:
-    #    dim = '3d'
-    #    # epsilons = x
-
-    # get groundstate file name of the pristine system
-    pristine_file = pristine
-    print('INFO: use pristine gs file "{}"'.format(pristine_file))
-
-    # first, loop over all charge states and access the right charge state
-    # folder with the correct 'gs.gpw'
-    # eform_array = []
-    q_array = []
-    for i in range((-1) * chargestates, chargestates + 1):
-        folder = 'charge_{}'.format(i)
-        chargefile = folder + '/' + defect
-        params = read_json(folder + '/params.json')
-        q = params.get('charge')
-        # elc = ElectrostaticCorrections(pristine=pristine_file,
-        #                               charged=chargefile,
-        #                               q=q,
-        #                               sigma=sigma,
-        #                               dimensionality=dim)
-        print('INFO: using charged .gpw file "{}"'.format(chargefile))
-        # elc.set_epsilons(epsilons)
-        # eform = elc.calculate_corrected_formation_energy()
-        # eform_array.append(eform)
-        q_array.append(q)
-    print(q_array)
-
-    # ToDo: generate file with the results for eform and q_array which can
-    #       can afterwards be read using 'postprocessing'
+    # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
+    # 'dielectricconstant.json' of the pristine system
+    path_epsilon = find_file_in_folder('dielectricconstant.json', 'pristine')
+    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc')
 
     return None
+
+
+def find_file_in_folder(filename, foldername):
+    """Finds a specific file within a folder starting from your current
+    position in the directory tree.
+    """
+    from pathlib import Path
+
+    p = Path('.')
+    tmp_list = list(p.glob('**/' + foldername))
+
+    find_success = False
+    if len(tmp_list) == 1:
+        file_list = list(p.glob(tmp_list[0].name + '/**/' + filename))
+        if len(file_list) == 1:
+            file_path = file_list[0]
+            print('INFO: found {0} of the {1} system: {2}'.format(
+                filename, foldername, file_path.absolute()))
+            find_success = True
+        elif len(file_list) == 0:
+           print('ERROR: no {} found in this directory'.format(
+               filename))
+        else:
+           print('ERROR: several {0} files in directory tree: {1}'.format(
+               filename, tmp_list[0].absolute()))
+    elif len(tmp_list) == 0:
+        print('ERROR: no {0} found in this directory tree'.format(
+            foldername))
+    else:
+        print('ERROR: several {0} folders in directory tree: {1}'.format(
+            foldername, p.absolute()))
+
+    if not find_success:
+        file_path = None
+
+    return file_path
 
 
 def collect_data():
