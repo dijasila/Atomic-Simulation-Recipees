@@ -107,15 +107,13 @@ def main(gs, kptdensity, ecut, xc, bandfactor):
 def collect_data(atoms):
     from pathlib import Path
     from ase.io import jsonio
-    from math import pi
     if not Path('dielectricconstant.json').is_file():
         return {}, {}, {}
 
     kvp = {}
-    data = {}
     key_descriptions = {}
     dct = jsonio.decode(Path('dielectricconstant.json').read_text())
-    
+
     # Update key-value-pairs
     kvp['epsilon_LF_x'] = dct['local_field'][0]
     kvp['epsilon_LF_y'] = dct['local_field'][1]
@@ -148,10 +146,10 @@ def postprocessing():
     from asr.utils import read_json
     results = read_json('dielectricconstant.json')
     results['__key_descriptions__'] = {
-             'local_field': 'Static dielectric constant with local field '
-                            f'correction [x, y, z]-direction',
-             'no_local_field': 'Static dielectric constant without local '
-                               f'field correction [x, y, z]-direction'}
+        'local_field': 'Static dielectric constant with local field '
+        f'correction [x, y, z]-direction',
+        'no_local_field': 'Static dielectric constant without local '
+        f'field correction [x, y, z]-direction'}
 
     return results
 
