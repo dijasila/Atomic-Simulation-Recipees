@@ -11,10 +11,16 @@ from click import Choice
         type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', default=5, type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-@option('--low_freq/--high_freq', default=True,
-        help='Specify which frequency limit to apply')
-def main(gs, kptdensity, ecut, xc, bandfactor, low_freq):
-    """Calculate static dielectric constant."""
+# @option('--low_freq/--high_freq', default=True,
+#         help='Specify which frequency limit to apply')
+def main(gs, kptdensity, ecut, xc, bandfactor):
+    """Calculate static dielectric constant.
+
+    This recipe calculates to low-frequency (relaxed-ion) dielectric constant
+    (frequency=0), e.g. used for defect calculations when the defect geometry
+    is allowed to relax (H.-P. Komsa, T. T. Rantala and A. Pasquarello Phys.
+    Rev. B 86, 045112 (2012)).
+    """
     from ase.io import read
     from asr.utils import write_json
     from gpaw import GPAW
@@ -98,45 +104,56 @@ def main(gs, kptdensity, ecut, xc, bandfactor, low_freq):
     write_json(filename_eps, epsilon)
 
 
-def postprocessing():
-    return None
-
-
 def collect_data(atoms):
     from pathlib import Path
     from ase.io import jsonio
     from math import pi
-    if not Path('polarizability.json').is_file():
+    if not Path('dielectricconstant.json').is_file():
         return {}, {}, {}
 
     kvp = {}
     data = {}
     key_descriptions = {}
-    dct = jsonio.decode(Path('polarizability.json').read_text())
+    dct = jsonio.decode(Path('dielectricconstant.json').read_text())
     
     # Update key-value-pairs
-    kvp['epsilonx'] = (1 + 4 * pi) * dct['alphax_w'][0].real
-    kvp['epsilony'] = (1 + 4 * pi) * dct['alphay_w'][0].real
-    kvp['epsilonz'] = (1 + 4 * pi) * dct['alphaz_w'][0].real
+    kvp['epsilon_LF_x'] = dct['local_field'][0]
+    kvp['epsilon_LF_y'] = dct['local_field'][1]
+    kvp['epsilon_LF_z'] = dct['local_field'][2]
+    kvp['epsilon_NLF_x'] = dct['no_local_field'][0]
+    kvp['epsilon_NLF_y'] = dct['no_local_field'][1]
+    kvp['epsilon_NLF_z'] = dct['no_local_field'][2]
 
     # Update key_descriptions
     kd = {
-        'epsilonx': ('Static dielectric constant (x-direction)',
-                     'Static dielectric constant (x-direction)', 'Ang'),
-        'epsilony': ('Static dielectric constant (y-direction)',
-                     'Static dielectric constant (y-direction)', 'Ang'),
-        'epsilonz': ('Static dielectric constant (z-direction)',
-                     'Static dielectric constant (z-direction)', 'Ang')
+        'epsilon_LF': ('Static dielectric constant (with local field '
+                       f'correction [x, y, z]-direction'),
+        'epsilon_NLF': ('Static dielectric constant (without local field '
+                        f'correction [x, y, z]-direction')
     }
     key_descriptions.update(kd)
 
     # Save data
-    data['absorptionspectrum'] = dct
-    return kvp, key_descriptions, data
+    return kvp, key_descriptions, dct
 
 
 def webpanel():
     return None
+
+
+def postprocessing():
+    """Extract data from dielectricconstant.json.
+
+    This will be called after main by default."""
+    from asr.utils import read_json
+    results = read_json('dielectricconstant.json')
+    results['__key_descriptions__'] = {
+             'local_field': 'Static dielectric constant with local field '
+                            f'correction [x, y, z]-direction',
+             'no_local_field': 'Static dielectric constant without local '
+                               f'field correction [x, y, z]-direction'}
+
+    return results
 
 
 group = 'property'
