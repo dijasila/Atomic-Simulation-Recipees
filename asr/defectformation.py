@@ -39,13 +39,13 @@ def main(pristine, defect, chargestates, is2d):
     # from asr.utils import read_json
     # import numpy as np
     # from ase.io import read
-    q, epsilons, path_gs = check_general_inputs()
+    q, epsilons, path_gs = check_and_get_general_inputs()
     print(q, epsilons, path_gs)
 
     return None
 
 
-def check_general_inputs():
+def check_and_get_general_inputs():
     """Checks if all necessary input files and input parameters for this
     recipe are acessible"""
     from asr.utils import read_json
@@ -53,7 +53,7 @@ def check_general_inputs():
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
     # 'dielectricconstant.json' of the pristine system
     path_epsilon = find_file_in_folder('dielectricconstant.json', 'pristine')
-    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc')
+    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc/neutral')
     path_q = find_file_in_folder('general_parameters.json', None)
 
     # if paths were found correctly, extract epsilon and q
@@ -86,13 +86,13 @@ def find_file_in_folder(filename, foldername):
     find_success = False
 
     # check in current folder directly if no folder specified
-    if foldername == None:
+    if foldername is None:
         check_empty = True
         tmp_list = list(p.glob(filename))
         if len(tmp_list) == 1:
             file_path = tmp_list[0]
             print('INFO: found {0}: {1}'.format(filename,
-                file_path.absolute()))
+                                                file_path.absolute()))
             find_success = True
         else:
             print('ERROR: no unique {} found in this directory'.format(
@@ -102,18 +102,18 @@ def find_file_in_folder(filename, foldername):
         check_empty = False
     # check sub_folders
     if len(tmp_list) == 1 and not check_empty:
-        file_list = list(p.glob(tmp_list[0].name + '/**/' + filename))
+        file_list = list(p.glob(foldername + '/**/' + filename))
         if len(file_list) == 1:
             file_path = file_list[0]
-            print('INFO: found {0} of the {1} system: {2}'.format(
+            print('INFO: found {0} in {1}: {2}'.format(
                 filename, foldername, file_path.absolute()))
             find_success = True
         elif len(file_list) == 0:
-           print('ERROR: no {} found in this directory'.format(
-               filename))
+            print('ERROR: no {} found in this directory'.format(
+                filename))
         else:
-           print('ERROR: several {0} files in directory tree: {1}'.format(
-               filename, tmp_list[0].absolute()))
+            print('ERROR: several {0} files in directory tree: {1}'.format(
+                filename, tmp_list[0].absolute()))
     elif len(tmp_list) == 0 and not check_empty:
         print('ERROR: no {0} found in this directory tree'.format(
             foldername))
