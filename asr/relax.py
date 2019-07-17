@@ -78,7 +78,7 @@ class myBFGS(BFGS):
 
     def log(self, forces=None, stress=None):
         if forces is None:
-            forces = self.atoms.get_forces()
+            forces = self.atoms.atoms.get_forces()
         if stress is None:
             stress = self.atoms.atoms.get_stress()
         fmax = sqrt((forces**2).sum(axis=1).max())
@@ -94,7 +94,7 @@ class myBFGS(BFGS):
                                                                   'Time',
                                                                   'Energy') +
                                    '{:<10} {:<10}\n'.format('fmax',
-                                                          'smax'))
+                                                            'smax'))
                 if self.force_consistent:
                     self.logfile.write(
                         '*Force-consistent energies used in optimization.\n')
