@@ -7,9 +7,12 @@ from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world
 from ase import Atoms
+from ase.optimize.bfgs import BFGS
 
 from asr.utils import command, option
 from gpaw import KohnShamConvergenceError
+from math import sqrt
+import time
 
 Uvalues = {}
 
@@ -71,6 +74,37 @@ class SpgGroupAtoms(Atoms):
         return f_av
 
 
+class myBFGS(BFGS):
+
+    def log(self, forces=None, stress=None):
+        if forces is None:
+            forces = self.atoms.get_forces()
+        if stress is None:
+            stress = self.atoms.atoms.get_stress()
+        fmax = sqrt((forces**2).sum(axis=1).max())
+        smax = abs(stress).max()
+        e = self.atoms.get_potential_energy(
+            force_consistent=self.force_consistent)
+        T = time.localtime()
+        if self.logfile is not None:
+            name = self.__class__.__name__
+            if self.nsteps == 0:
+                self.logfile.write(' ' * len(name) +
+                                   '  {:<4} {:<8} {:<10} '.format('Step',
+                                                                  'Time',
+                                                                  'Energy') +
+                                   '{:<10} {:<10}\n'.format('fmax',
+                                                          'smax'))
+                if self.force_consistent:
+                    self.logfile.write(
+                        '*Force-consistent energies used in optimization.\n')
+            fc = '*' if self.force_consistent else ''
+            self.logfile.write(f'{name}: {self.nsteps:<4} '
+                               f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
+                               f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
+            self.logfile.flush()
+
+
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True):
     import spglib
@@ -81,7 +115,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
-            smask = [1, 1, 1, 0, 0, 0]
+            smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 0]
         else:
@@ -135,12 +169,10 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     from ase.constraints import ExpCellFilter
 
-    smask = [1, 1, 1, 1, 1, 1]
     filter = ExpCellFilter(atoms, mask=smask)
-    from ase.optimize.bfgs import BFGS
-    opt = BFGS(filter,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
+    opt = myBFGS(filter,
+                 logfile=name + '.log',
+                 trajectory=Trajectory(name + '.traj', 'a', atoms))
 
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
@@ -161,6 +193,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
             raise AssertionError(msg)
 
         if is_relax_done(atoms, fmax=0.01, smax=0.002):
+            opt.log()
+            opt.call_observers()
             break
         
     return atoms, calc, dft, kwargs
