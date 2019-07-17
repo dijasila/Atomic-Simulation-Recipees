@@ -39,20 +39,41 @@ def main(pristine, defect, chargestates, is2d):
     # from asr.utils import read_json
     # import numpy as np
     # from ase.io import read
+    q, epsilons, path_gs = check_general_inputs()
+    print(q, epsilons, path_gs)
 
     return None
 
 
-def check_input():
+def check_general_inputs():
     """Checks if all necessary input files and input parameters for this
     recipe are acessible"""
+    from asr.utils import read_json
 
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
     # 'dielectricconstant.json' of the pristine system
     path_epsilon = find_file_in_folder('dielectricconstant.json', 'pristine')
     path_gs = find_file_in_folder('gs.gpw', 'pristine_sc')
+    path_q = find_file_in_folder('general_parameters.json', None)
 
-    return None
+    # if paths were found correctly, extract epsilon and q
+    gen_params = read_json(path_q)
+    params_eps = read_json(path_epsilon)
+    q = gen_params.get('chargestates')
+    epsilons = params_eps.get('local_field')
+    if q is not None and epsilons is not None:
+        msg = 'INFO: number of chargestates and dielectric constant '
+        msg += 'extracted: q = {}, eps = {}'.format(q, epsilons)
+        print(msg)
+    else:
+        msg = 'either number of chargestates and/or dielectric '
+        msg += 'constant of the host material could not be extracted'
+        raise ValueError(msg)
+
+    if path_gs is not None:
+        print('INFO: check of general inputs successful')
+
+    return q, epsilons, path_gs
 
 
 def find_file_in_folder(filename, foldername):
@@ -62,10 +83,25 @@ def find_file_in_folder(filename, foldername):
     from pathlib import Path
 
     p = Path('.')
-    tmp_list = list(p.glob('**/' + foldername))
-
     find_success = False
-    if len(tmp_list) == 1:
+
+    # check in current folder directly if no folder specified
+    if foldername == None:
+        check_empty = True
+        tmp_list = list(p.glob(filename))
+        if len(tmp_list) == 1:
+            file_path = tmp_list[0]
+            print('INFO: found {0}: {1}'.format(filename,
+                file_path.absolute()))
+            find_success = True
+        else:
+            print('ERROR: no unique {} found in this directory'.format(
+                filename))
+    else:
+        tmp_list = list(p.glob('**/' + foldername))
+        check_empty = False
+    # check sub_folders
+    if len(tmp_list) == 1 and not check_empty:
         file_list = list(p.glob(tmp_list[0].name + '/**/' + filename))
         if len(file_list) == 1:
             file_path = file_list[0]
@@ -78,10 +114,10 @@ def find_file_in_folder(filename, foldername):
         else:
            print('ERROR: several {0} files in directory tree: {1}'.format(
                filename, tmp_list[0].absolute()))
-    elif len(tmp_list) == 0:
+    elif len(tmp_list) == 0 and not check_empty:
         print('ERROR: no {0} found in this directory tree'.format(
             foldername))
-    else:
+    elif not check_empty:
         print('ERROR: several {0} folders in directory tree: {1}'.format(
             foldername, p.absolute()))
 
