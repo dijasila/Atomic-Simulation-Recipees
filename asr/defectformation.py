@@ -4,43 +4,82 @@ from asr.utils import command, option
 #          This recipe is not finished and still under development          #
 #############################################################################
 # ToDo: include postprocessing functions
-# ToDo: get rid of hardcoded sigma, epsilons
-# ToDo: read out epsilons from params.json file that is in the bulk folder
-#       of the defect setup
+# ToDo: sigma
 # ToDo: add information on system and supercell size in output
-# ToDo: get information on Fermi energy for the different formation energies
+# ToDo: testing
 #############################################################################
 
 
 @command('asr.defectformation')
-@option('--pristine', type=str, default='../../pristine/gs.gpw',
-        help='Relative path to ground state .gpw file of pristine host system '
-             'on which formation energy calculation is based. Here, the '
-             'reference folder is the one with the defects and vacancies '
-             'in it, as it was created from setup.defects.')
+@option('--pristine', type=str, default='gs.gpw',
+        help='Name of the groundstate .gpw file of the pristine system. It '
+             'always has to be somewhere within a folder that is called '
+             '"pristine" in order to work correctly.')
 @option('--defect', type=str, default='gs.gpw',
-        help='Ground state .gpw file of disturbed system on which formation '
-             'energy calculation is based.')
-@option('-q', '--chargestates', type=int,
-        help='Charge states included (-q, ..., +q).', default=3)
-@option('--is2d/--is3d', default=True, help='Specify wheter you calculate '
-                                            'the formation energy in 2D or '
-                                            '3D.')
-def main(pristine, defect, chargestates, is2d):
+        help='Name of the groundstate .gpw file of the defect systems. They '
+             'always have to be within a folder for the specific defect with '
+             'a subfolder calles "charge_q" for the respective chargestate q '
+             'in order to work correctly.')
+@option('--defect_name', default=None,
+        help='Runs recipe for all defect folder within your directory when '
+             'set to None. Set this option to the name of a desired defect '
+             'folder in order for it to run only for this particular defect.')
+def main(pristine, defect, defect_name):
     """
     Calculate formation energy of defects.
 
     This recipe needs the directory structure that was created with
-    setup.defects in order to run properly and needs to be launched within
-    a particular defect folder, i.e. all of the 'charge_x' folders need to be
-    below that folder.
+    setup.defects in order to run properly. It has to be launched within the
+    folder of the initial structure, i.e. the folder where setup.defects was
+    also executed.
     """
-    # from gpaw.defects import ElectrostaticCorrections
-    # from asr.utils import read_json
-    # import numpy as np
-    # from ase.io import read
+    from ase.io import read
+    from asr.utils import write_json
+    from gpaw import GPAW
+    from gpaw.defects import ElectrostaticCorrections
+    from pathlib import Path
+    import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
-    print(q, epsilons, path_gs)
+    atoms = read('unrelaxed.json')
+    nd = int(np.sum(atoms.get_pbc()))
+
+    sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+
+    if nd == 3:
+        epsilon = epsilons[0]
+        dim = '3d'
+    elif nd == 2:
+        epsilon = [epsilons[0], epsilons[2]]  # 1st in-plane, 2nd out-of-plane
+        dim = '2d'
+
+    folder_list = []
+    p = Path('.')
+    [folder_list.append(x) for x in p.iterdir() if x.is_dir()
+        and not x.name == 'pristine' and not x.name == 'pristine_sc']
+
+    defectformation_dict = {}
+    for folder in folder_list:
+        e_form_name = 'e_form_' + folder.name
+        e_form = []
+        e_fermi = []
+        charges = []
+        for charge in range(-q, q + 1):
+            tmp_folder_name = folder.name + '/charge_' + str(charge)
+            charged_file = find_file_in_folder('unrelaxed.json',
+                                               tmp_folder_name)
+            # elc = ElectrostaticCorrections(pristine=path_gs,
+            #                                charged=charged_file,
+            #                                q=charge, sigma=sigma,
+            #                                dimensionality=dim)
+            # elc.set_epsilons(epsilon)
+            # e_form.append(elc.calculate_corrected_formation_energy())
+            # calc = GPAW(find_file_in_folder('gs.gpw', tmp_folder_name))
+            # e_fermi.append(calc.get_fermi_level())
+            charges.append(charge)
+        defectformation_dict[folder.name] = {'formation_energies': e_form,
+                                             'fermi_energies': e_fermi,
+                                             'chargestates': charges}
+    write_json('defectformation.json', defectformation_dict)
 
     return None
 

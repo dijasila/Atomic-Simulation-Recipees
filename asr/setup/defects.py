@@ -30,64 +30,34 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     structure this recipe will create a directory tree in the following way:
     For the example of MoS2:\n
     - There has to be a 'unrelaxed.json' file with the primitive structure
-      of the desired system in the folder you run setup.defects. Let this
-      folder be called 'MoS2_setup'. The tree structure will then look like
-      this:\n
-    .
-    ├── MoS2_defects_setup
-    │   ├── bulk
-    │   │   ├── params.json
-    │   │   └── unrelaxed.json
-    │   ├── defects
-    │   │   ├── MoS2_231.HX_at_0
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_-1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_2
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_-2
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   ├── MoS2_231.HX_at_1
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   ├── MoS2_231.Mo_at_1
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   └── MoS2_231.S_at_0
-    │   │       ├── charge_0
-    .   .       .
-    .   .
-    .   .
-    │   └── pristine
-    │       ├── params.json
-    │       └── unrelaxed.json
-    ├── results_setup.defects.json
-    └── unrelaxed.json\n
+      of the desired system in the folder you run setup.defects. The tree
+      structure will then look like this:\n
+    .                                                                        '
+    ├── general_parameters.json                                              '
+    ├── MoS2_231.HX_at_b0                                                    '
+    │   ├── charge_0                                                         '
+    │   │   ├── params.json                                                  '
+    │   │   └── unrelaxed.json                                               '
+    │   ├── charge_1                                                         '
+    │   │   ├── ...                                                          '
+    │   │   .                                                                '
+    │   .                                                                    '
+    │                                                                        '
+    ├── MoS2_231.Mo_at_i1                                                    '
+    │   ├── charge_0                                                         '
+    .   .                                                                    '
+    .                                                                        '
+    ├── pristine                                                             '
+    │   └── neutral                                                          '
+    │       ├── params.json                                                  '
+    │       └── unrelaxed.json                                               '
+    ├── pristine_sc                                                          '
+    │   └── neutral                                                          '
+    │       ├── params.json                                                  '
+    │       └── unrelaxed.json                                               '
+    ├── results_setup.defects.json                                           '
+    └── unrelaxed.json                                                       '
+
     - Here, the notation for the defects is the following:
       'formula_supercellsize.defect_at_substitutionposition' where 'HX'
       denotes a vacancy
