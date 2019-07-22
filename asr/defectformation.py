@@ -4,7 +4,6 @@ from asr.utils import command, option
 #          This recipe is not finished and still under development          #
 #############################################################################
 # ToDo: include postprocessing functions
-# ToDo: sigma
 # ToDo: add information on system and supercell size in output
 # ToDo: testing
 #############################################################################
@@ -54,8 +53,12 @@ def main(pristine, defect, defect_name):
 
     folder_list = []
     p = Path('.')
-    [folder_list.append(x) for x in p.iterdir() if x.is_dir()
-        and not x.name == 'pristine' and not x.name == 'pristine_sc']
+    if defect_name is None:
+        [folder_list.append(x) for x in p.iterdir() if x.is_dir()
+            and not x.name == 'pristine' and not x.name == 'pristine_sc']
+    else:
+        [folder_list.append(x) for x in p.iterdir() if x.is_dir()
+            and x.name == defect_name]
 
     defectformation_dict = {}
     for folder in folder_list:
@@ -167,11 +170,27 @@ def find_file_in_folder(filename, foldername):
 
 
 def collect_data():
+    from ase.io import jsonio
+    from pathlib import Path
+    if not Path('defectformation.json').is_file():
+        return {}, {}, {}
+
+    kvp = {}
+    data = {}
+    key_descriptions = {}
+    dct = jsonio.decode(Path('defectformation.json').read_text())
+
+    # Update key-value-pairs
+
     return None
 
 
 def postprocessing():
-    return None
+    from asr.utils import read_json
+
+    formation_dict = read_json('defectformation.json')
+
+    return formation_dict
 
 
 # def webpanel(row, key_descriptions):
