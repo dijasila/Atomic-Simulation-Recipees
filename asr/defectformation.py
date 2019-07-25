@@ -45,14 +45,16 @@ def main(pristine, defect, defect_name):
     sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
     if nd == 3:
-        epsilon = epsilons[0]
+        epsilon = (epsilons[0] + epsilons[1] + epsilons[2])/3.
         dim = '3d'
     elif nd == 2:
-        epsilon = [epsilons[0], epsilons[2]]  # 1st in-plane, 2nd out-of-plane
+        epsilon = [(epsilons[0] + epsilons[1])/2., epsilons[2]]
         dim = '2d'
 
     folder_list = []
     p = Path('.')
+
+    # Either run for all defect folders or just a specific one
     if defect_name is None:
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
             and not x.name == 'pristine' and not x.name == 'pristine_sc']
