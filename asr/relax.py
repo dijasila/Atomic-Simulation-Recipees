@@ -172,9 +172,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     from ase.constraints import ExpCellFilter
 
     filter = ExpCellFilter(atoms, mask=smask)
-    opt = BFGS(filter,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
+    opt = myBFGS(filter,
+                 logfile=name + '.log',
+                 trajectory=Trajectory(name + '.traj', 'a', atoms))
 
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
