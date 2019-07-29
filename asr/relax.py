@@ -177,7 +177,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                trajectory=Trajectory(name + '.traj', 'a', atoms))
 
     # fmax=0 here because we have implemented our own convergence criteria
-    runner = opt.irun(fmax=0.0001)
+    runner = opt.irun(fmax=0)
     for _ in runner:
         # Check that the symmetry has not been broken
         spgname2, number2 = spglib.get_spacegroup(ats(atoms),
