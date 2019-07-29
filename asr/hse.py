@@ -40,9 +40,10 @@ from ase.io import read
 from ase.dft.kpoints import get_cellinfo
 from contextlib import contextmanager
 
-
-def main():
-    hse()
+@command('asr.hse')
+@option('--kptdensity', default=12, help='K-point density')
+def main(kptdensity):
+    hse(kptdensity=kptdensity)
     mpi.world.barrier()
     hse_spinorbit()
     #mpi.world.barrier()
