@@ -71,13 +71,14 @@ def hse(kptdensity=12, emptybands=20):
         return
 
     convbands = int(emptybands / 2)
-
+    parprint('------------- 00) start')
     if not os.path.isfile('hse.gpw'):
+        parprint('------------- 01) no hse.gpw')
         calc = GPAW('gs.gpw', txt=None)
         atoms = calc.get_atoms()
         pbc = atoms.pbc.tolist()
         ND = np.sum(pbc)
-        if ND == 3:
+        if ND == 3 or ND == 1:
             kpts = {'density': kptdensity, 'gamma': False, 'even': True}
         elif ND == 2:
 
@@ -505,6 +506,9 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         indices = [a for b in indices for a in b]
         kptsreal_kc = kpts[indices]
         x = [a for b in x for a in b]
+        parprint('path\n', path.labelseq)
+        parprint('flattened indices\n', indices)
+        parprint('flattened x\n', x)
         # loop over spin and bands and interpolate
         ns, nk, nb = e_skn.shape
         e2_skn = np.zeros((ns, len(x2), nb), float)
@@ -518,15 +522,28 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 for i in [0, -1]:
                     if path.labelseq[i] == 'G':
                         bc_type[i] = [1, 0.0]
-                sp = CubicSpline(x=x, y=y, bc_type=bc_type)
-                #sp = InterpolatedUnivariateSpline(x, y)
-                e2_skn[s, :, n] = sp(x2)
-        list_kptsreal_kc.append(kptsreal_kc)
-        list_epsreal_skn.append(epsreal_skn)
-        list_xreal.append(x)
+                if len(x) > 1:
+                    parprint('ok')
+                    sp = CubicSpline(x=x, y=y, bc_type=bc_type)
+                    #sp = InterpolatedUnivariateSpline(x, y)
+                    e2_skn[s, :, n] = sp(x2)
+                else:
+                    # XXX: what do we do if len(x)<2?
+                    parprint('!! len(x) =', len(x))
+                    e2_skn[s, :, n] = np.zeros(len(x2)) 
+                    parprint('len(x2) =', len(x2))
+                    parprint('len(e2_skn[s, :, n]) =', len(e2_skn[s, :, n]))
         list_e2_skn.append(e2_skn)
         list_x2.append(x2) # XXX: to check. Remove afterwards
         list_X2.append(X2) # XXX: to check. Remove afterwards
+        list_kptsreal_kc.append(kptsreal_kc)
+        list_epsreal_skn.append(epsreal_skn)
+        list_xreal.append(np.array(x))
+        # append the following only if len(x) > 1
+        #if len(x) > 1:
+        #    list_kptsreal_kc.append(kptsreal_kc)
+        #    list_epsreal_skn.append(epsreal_skn)
+        #    list_xreal.append(x)
         
     tot_kptsreal_kc = list_kptsreal_kc[0]
     tot_epsreal_skn = list_epsreal_skn[0]
@@ -535,6 +552,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     tot_x2 = list_x2[0] # XXX: to check. Remove afterwards
     tot_X2 = list_X2[0] # XXX: to check. Remove afterwards
     
+    """
     for i in range(1, len(partial_paths)):
         tot_kptsreal_kc = np.concatenate([tot_kptsreal_kc, kptsreal_kc])
         tot_epsreal_skn = np.concatenate([tot_epsreal_skn, epsreal_skn])
@@ -542,7 +560,28 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         tot_e2_skn = np.concatenate([tot_e2_skn, e2_skn])
         tot_x2 = np.concatenate([tot_x2, x2 + tot_x2[-1]]) # XXX: to check. Remove afterwards
         tot_X2 = np.concatenate([tot_X2, X2 + tot_X2[-1]]) # XXX: to check. Remove afterwards
-    
+    """
+    parprint('list_xreal', list_xreal)
+    parprint('list_kptsreal_kc', list_kptsreal_kc)
+
+    for i in range(0, len(partial_paths)):
+        parprint('i:', i, 'list_e2_skn[i].shape:', list_e2_skn[i].shape)
+        parprint('i:', i, 'list_x2[i].shape:', list_x2[i].shape)
+        parprint('i:', i, 'list_X2[i].shape:', list_X2[i].shape)
+        parprint('i:', i, 'list_kptsreal_kc[i].shape:', list_kptsreal_kc[i].shape)
+        parprint('i:', i, 'list_epsreal_skn[i].shape:', list_epsreal_skn[i].shape)
+        parprint('i:', i, 'list_xreal[i].shape:', list_xreal[i].shape)
+
+    for i in range(1, len(list_xreal)):
+        tot_kptsreal_kc = np.concatenate((tot_kptsreal_kc, list_kptsreal_kc[i]), axis=0)
+        tot_epsreal_skn = np.concatenate((tot_epsreal_skn, list_epsreal_skn[i]), axis=1)
+        tot_xreal = np.concatenate((tot_xreal, list_xreal[i] + tot_xreal[-1]))
+
+    for i in range(1, len(partial_paths)):
+        tot_e2_skn = np.concatenate((tot_e2_skn, list_e2_skn[i]), axis=1)
+        tot_x2 = np.concatenate((tot_x2, list_x2[i] + tot_x2[-1])) # XXX: to check. Remove afterwards
+        tot_X2 = np.concatenate((tot_X2, list_X2[i] + tot_X2[-1])) # XXX: to check. Remove afterwards
+
     tot_kpts = total_path.kpts
     tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
     results = {'kpts': tot_kpts,    # kpts_kc on bandpath
