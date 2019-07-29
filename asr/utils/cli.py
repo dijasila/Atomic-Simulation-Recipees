@@ -135,7 +135,7 @@ def run(ctx, args):
             command = (f'python3 -c "from asr.{recipe} import {function}; '
                        f'{function}()" ') + ' '.join(args)
         else:
-            command = f'python3 -m asr.{recipe}' + ' '.join(args)
+            command = f'python3 -m asr.{recipe} ' + ' '.join(args)
 
     if folders:
         from asr.utils import chdir
