@@ -27,15 +27,16 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def is_relax_done(atoms, fmax=0.01, smax=0.002):
+def is_relax_done(atoms, fmax=0.01, smax=0.002,
+                  smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    s = atoms.get_stress()
+    s = atoms.get_stress() * smask
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
 
 
-class SpgGroupAtoms(Atoms):
+class SpgAtoms(Atoms):
 
     @classmethod
     def from_atoms(cls, atoms):
@@ -117,7 +118,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         if nd == 3:
             smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
-            smask = [1, 1, 0, 0, 0, 0]
+            smask = [1, 1, 0, 0, 0, 1]
         else:
             # nd == 1
             msg = 'Relax recipe not implemented for 1D structures'
@@ -126,7 +127,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     from ase.calculators.calculator import kpts2sizeandoffsets
     size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
     kwargs = dict(txt=name + '.txt',
-                  mode={'name': 'pw', 'ecut': ecut},
+                  mode={'name': 'pw', 'ecut': ecut, 'dedecut': 'estimate'},
                   xc=xc,
                   basis='dzp',
                   symmetry={'symmorphic': False},
@@ -151,7 +152,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     from asr.calculators import get_calculator
     from gpaw.symmetry import atoms2symmetry
     symmetry = atoms2symmetry(atoms)
-    atoms = SpgGroupAtoms.from_atoms(atoms)
+    atoms = SpgAtoms.from_atoms(atoms)
     atoms.set_symmetries(symmetries=symmetry.op_scc,
                          translations=symmetry.ft_sc,
                          atomsmap=symmetry.a_sa)
@@ -163,19 +164,20 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     atoms.calc = calc
 
     from asr.setup.symmetrize import atomstospgcell as ats
-    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json')),
+    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
+                                                     parallel=False)),
                                             symprec=1e-4,
                                             angle_tolerance=0.1).split()
 
     from ase.constraints import ExpCellFilter
 
     filter = ExpCellFilter(atoms, mask=smask)
-    opt = myBFGS(filter,
-                 logfile=name + '.log',
-                 trajectory=Trajectory(name + '.traj', 'a', atoms))
+    opt = BFGS(filter,
+               logfile=name + '.log',
+               trajectory=Trajectory(name + '.traj', 'a', atoms))
 
     # fmax=0 here because we have implemented our own convergence criteria
-    runner = opt.irun(fmax=0)
+    runner = opt.irun(fmax=0.0001)
     for _ in runner:
         # Check that the symmetry has not been broken
         spgname2, number2 = spglib.get_spacegroup(ats(atoms),
@@ -192,7 +194,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=0.01, smax=0.002):
+        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
             opt.log()
             opt.call_observers()
             break
@@ -241,7 +243,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
-        atoms = read('unrelaxed.json')
+        atoms = read('unrelaxed.json', parallel=False)
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
