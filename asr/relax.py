@@ -281,5 +281,39 @@ group = 'structure'
 resources = '24:10h'
 creates = ['results_relax.json']
 
+
+def test_BN():
+    # Make BN
+    from asr.setup.build import main
+    main(['build', 'BN'])
+
+    from asr.relax import main
+    results = main(['--nod3'])
+    assert np.allclose(results['relaxedstructure']['cell'][2, 2], 6.62, 0.1)
+
+
+def clitest():
+    from asr.cli import run
+    run(['build', 'BN'])
+    run(['relax', '--nod3'])
+    run(['collect'])
+    run(['browser', '--no-figures'])
+
+
+def clicheck():
+    from asr.utils import read_json
+    import numpy as np
+    results = read_json('results_relax.json')
+    assert np.allclose(results['relaxedstructure']['cell'][2, 2], 6.62, 0.1)
+
+
+tests = []
+tests.append(test_BN)
+tests.append({'name': 'test_cli_BN',
+              'cli': ['asr run build BN',
+                      'asr run relax --nod3'],
+              'test': clicheck})
+
+
 if __name__ == '__main__':
     main()

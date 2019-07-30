@@ -380,9 +380,10 @@ def test(tests, parallel, pattern, jobs, show_output):
         
     failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
 
-    assert not failed, 'Some tests failed!'
     if world.rank == 0:
         cleantests()
+
+    assert not failed, 'Some tests failed!'
 
 
 @cli.command()

@@ -1,23 +1,63 @@
 def generatetests():
     from pathlib import Path
-    from asr.utils import get_recipes, get_dep_tree
+    from asr.utils import get_recipes
+    import inspect
 
-    recipes = get_recipes(group='property')
+    recipes = get_recipes()
 
-    for material in ['Si.json', 'Fe.json',
-                     'BN.json', 'VS2.json']:
-        for recipe in recipes:
-            name = recipe.name.split('.')[1]
-            text = (Path(__file__).parent / 'template.py').read_text()
-            text = text.replace('# Material #', material)
-            depsection = ''
-            for dep in get_dep_tree(f'{recipe.name}'):
-                line = f"Recipe.frompath('{dep.name}', reload=True).run()\n"
-                depsection += line
+    for recipe in recipes:
+        if not hasattr(recipe.main, 'tests'):
+            continue
+        tests = recipe.main.tests
+        if not tests:
+            continue
+        testnames = []
+        for test in tests:
+            name = None
+            cli = None
+            testfunction = None
 
-            formula = material.split('.')[0]
-            text = text.replace('# DepSection #', depsection)
-            testname = f'test_auto_{formula}_{name}.py'
+            if callable(test):
+                testfunction = test
+                name = test.__name__
+
+            else:
+                assert isinstance(test, dict), ('Unknown Test type in '
+                                                f'{recipe.name}: {test}')
+                name = test.get('name', None)
+                cli = test.get('cli', None)
+                testfunction = test.get('test', None)
+
+            assert name, ('You must give your test a name! '
+                          f'{recipe.name}: {test}')
+            testname = f'{name}.py'
+            text = ''
+
+            if cli:
+                assert isinstance(test['cli'], list), \
+                    'Type: clitest. Should be a list commands.'
+                text += 'import subprocess\n\n'
+                commands = []
+                for command in test['cli']:
+                    parts = command.split()
+                    string = ', '.join([f"'{part}'" for part in parts])
+                    commands.append(string)
+
+                for command in commands:
+                    text += f'subprocess.run([{command}])\n'
+
+            if testfunction:
+                assert callable(testfunction), \
+                    'Function test type should be callable.'
+                text += '\n' * 2 + inspect.getsource(testfunction) + '\n' * 2
+                text += testfunction.__name__ + '()\n'
+
+            msg = (f'Invalid test name: "{name}". Please name your '
+                   'tests as "test_{name}".')
+            assert name.startswith('test_'), msg
+
+            assert testname not in testnames, \
+                f'Duplicate test name:{name}!'
             print(f'Writing {testname}')
             (Path(__file__).parent / testname).write_text(text)
 
@@ -29,3 +69,7 @@ def cleantests():
 
     for p in paths:
         p.unlink()
+
+
+if __name__ == '__main__':
+    generatetests()

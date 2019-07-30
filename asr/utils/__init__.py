@@ -24,6 +24,7 @@ class ASRCommand(click.Command):
                  save_results_file=True,
                  add_skip_opt=True, callback=None,
                  additional_callback='postprocessing',
+                 tests=None,
                  creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
@@ -34,6 +35,10 @@ class ASRCommand(click.Command):
         self.creates = creates
         self.module = import_module(asr_name)
         self.additional_callback = additional_callback
+        if tests is None and hasattr(self.module, 'tests'):
+            self.tests = self.module.tests
+        else:
+            self.tests = None
         click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
