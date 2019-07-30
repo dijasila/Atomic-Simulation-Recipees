@@ -471,7 +471,7 @@ def write_json(filename, data):
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
     if world.rank == 0:
-        Path(filename).write_text(MyEncoder(indent=4).encode(data))
+        Path(filename).write_text(MyEncoder(indent=1).encode(data))
     world.barrier()
 
 
