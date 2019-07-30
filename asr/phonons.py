@@ -66,7 +66,9 @@ class Phonons(ASEPhonons):
 @option('-n', default=2, help='Supercell size')
 @option('--ecut', default=800, help='Energy cutoff')
 @option('--kptdensity', default=6.0, help='Kpoint density')
-def main(n, ecut, kptdensity):
+@option('--fconverge', default=1e-4,
+        help='Force convergence criterium')
+def main(n, ecut, kptdensity, fconverge):
     """Calculate Phonons"""
     from asr.calculators import get_calculator
     # Remove empty files:
@@ -83,10 +85,7 @@ def main(n, ecut, kptdensity):
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True}
     # Make sure to converge forces! Can be important
-    if 'convergence' in params:
-        params['convergence']['forces'] = 1e-4
-    else:
-        params['convergence'] = {'forces': 1e-4}
+    params['convergence'] = {'forces': fconverge}
 
     atoms = read('structure.json')
     fd = open('phonons.txt'.format(n), 'a')
