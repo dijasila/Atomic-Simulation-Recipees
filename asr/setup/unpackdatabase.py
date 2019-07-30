@@ -172,6 +172,8 @@ def main(database, run, selection, tree_structure,
             if data:
                 for key, results in row.data.items():
                     write_json(f'{key}.json', results)
+                    if not isinstance(results, dict):
+                        continue
                     kd = results.get('__key_descriptions__', {})
                     for rkey in results:
                         if rkey in kd and kd[rkey].startswith('File:'):

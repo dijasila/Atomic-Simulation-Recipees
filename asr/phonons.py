@@ -10,30 +10,55 @@ from asr.utils import command, option
 
 
 class Phonons(ASEPhonons):
-    def __init__(self, C_N=None, D_N=None, Z_avv=None, eps_vv=None,
+    def __init__(self, forces=None, Z_avv=None, eps_vv=None,
                  refcell=None, m_inv_x=None, *args, **kwargs):
+        from ase.utils import opencew
+        import pickle
         ASEPhonons.__init__(self, refcell=refcell,
                             *args, **kwargs)
-        self.C_N = C_N
-        self.D_N = D_N
+        if forces:
+            for fbasename, f_av in forces.items():
+                fname = f'{fbasename}.pckl'
+                if not Path(fname).exists():
+                    fd = opencew(fname)
+                    if world.rank == 0:
+                        pickle.dump(f_av, fd, protocol=2)
+                        fd.close()
         self.Z_avv = Z_avv
         self.eps_vv = eps_vv
         self.refcell = refcell
         self.m_inv_x = m_inv_x
+        self.N_c = tuple(self.N_c)
 
     def todict(self):
+        from ase.utils import pickleload
         # It would be better to save the calculated forces
         ASEPhonons.read(self)
+
         dct = dict(atoms=np.arange(len(self.atoms)),  # Dummy atoms
-                   supercell=self.N_c,
+                   supercell=tuple(self.N_c),
                    name=self.name,
                    delta=self.delta,
                    refcell=self.refcell,
-                   C_N=self.C_N,
-                   D_N=self.D_N,
                    Z_avv=self.Z_avv,
                    eps_vv=self.eps_vv,
                    m_inv_x=self.m_inv_x)
+        forces = {}
+        for i, a in enumerate(self.indices):
+            for j, v in enumerate('xyz'):
+                # Atomic forces for a displacement of atom a in direction v
+                basename = '%s.%d%s' % (self.name, a, v)
+                fmname = basename + '-'
+                fpname = basename + '+'
+                fminus_av = pickleload(open(f'{fmname}.pckl', 'rb'))
+                fplus_av = pickleload(open(f'{fpname}.pckl', 'rb'))
+                forces[fmname] = fminus_av
+                forces[fpname] = fplus_av
+
+        feqname = f'{self.name}.eq'
+        feq_av = pickleload(open(f'{feqname}.pckl', 'rb'))
+        forces[feqname] = feq_av
+        dct['forces'] = forces
         return dct
 
 
@@ -83,9 +108,14 @@ def main(n, ecut, kptdensity):
     elif nd == 1:
         supercell = (n, 1, 1)
 
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+    # Read existing forces from old calc
+    if Path('results_phonons.json').exists():
+        from asr.utils import read_json
+        forces = read_json('results_phonons.json')['phonons']['forces']
+    else:
+        forces = None
+    p = Phonons(atoms=atoms, calc=calc, supercell=supercell, forces=forces)
     p.run()
-
     results = {'phonons': p.todict()}
     return results
 
@@ -96,8 +126,8 @@ def analyse(points=300, modes=False, q_qc=None):
     atoms = read('structure.json')
     p = Phonons(**dct['phonons'])
     p.atoms = atoms
+    p.read()
     if q_qc is None:
-        # This is the list of exactly known q-points
         q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
 
     out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
