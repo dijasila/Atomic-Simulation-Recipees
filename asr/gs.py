@@ -20,7 +20,7 @@ if Path('gs_params.json').exists():
         default='structure.json')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
-    '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
+    '-k', '--kptdensity', type=float, help='K-point density', default=12.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
@@ -59,9 +59,10 @@ def postprocessing():
 
     This will be called after main by default."""
     from asr.calculators import get_calculator
+
     calc = get_calculator()('gs.gpw', txt=None)
-    forces = calc.get_forces()
-    stresses = calc.get_stress()
+    forces = calc.get_property('forces', allow_calculation=False)
+    stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
     
     fingerprint = {}
@@ -71,10 +72,12 @@ def postprocessing():
     results = {'forces': forces,
                'stresses': stresses,
                'etot': etot,
+               'gs.gpw': str(Path('gs.gpw').absolute()),
                '__key_descriptions__':
-               {'forces': 'Forces on atoms [eV/Angstrom]',
-                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'Total energy [eV]'},
+               {'gs.gpw': 'File: Ground state file',
+                'forces': 'Array: Forces on atoms [eV/Angstrom]',
+                'stresses': 'Array: Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'KVP: Total energy [eV]'},
                '__setup_fingerprints__': fingerprint}
     return results
 
