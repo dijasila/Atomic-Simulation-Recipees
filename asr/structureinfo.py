@@ -10,6 +10,7 @@ def main():
     the atomic structure in `structure.json`.
     """
 
+    import numpy as np
     from random import randint
     from ase.io import read
     from pathlib import Path
@@ -38,7 +39,8 @@ def main():
         magstate = get_magstate(atoms)
     except RuntimeError:
         magstate = 'nm'
-    info['magstate'] = magstate
+    info['magstate'] = magstate.upper()
+    info['is_magnetic'] = info['magstate'] != 'NM'
 
     # Are forces/stresses known?
     try:
@@ -89,50 +91,20 @@ def main():
     # Will be changed later once we know the prototype.
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
-    return info
-
-
-def collect_data(atoms):
-    """Collect quick info to database"""
-    from asr.utils import read_json
-    import numpy as np
-
-    data = {}
-    kvp = {}
-    key_descriptions = {}
-
-    info = {}
-    structureinfo = read_json('results_structureinfo.json')
-    for key in structureinfo:
-        if not key.startswith('__'):
-            info[key] = structureinfo[key]
-
-    exclude = ['symmetries', 'formula']
-    for key in info:
-        if key in exclude:
-            continue
-        kvp[key] = info[key]
-
-    # Key-value-pairs:
-    data['info'] = info
-    if 'magstate' in kvp:
-        kvp['magstate'] = kvp['magstate'].upper()
-        kvp['is_magnetic'] = kvp['magstate'] != 'NM'
+    info['__key_descriptions__'] = {
+        'magstate': 'KVP: Magnetic state',
+        'is_magnetic': 'KVP: Magnetic (Material is magnetic)',
+        'cell_area': 'KVP: X-Y Area of unit-cell [Ang^2]',
+        'has_invsymm': 'KVP: Inversion symmetry',
+        'uid': 'KVP: Identifier',
+        'stoichiometry': 'KVP: Stoichiometry',
+        'spacegroup': 'KVP: Space group',
+        'prototype': 'KVP: Prototype'}
 
     if (atoms.pbc == [True, True, False]).all():
-        kvp['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
+        info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
-    key_descriptions = {
-        'magstate': ('Magnetic state', 'Magnetic state', ''),
-        'is_magnetic': ('Magnetic', 'Material is magnetic', ''),
-        'cell_area': ('Area of unit-cell', '', 'Ang^2'),
-        'has_invsymm': ('Inversion symmetry', '', ''),
-        'uid': ('Identifier', '', ''),
-        'stoichiometry': ('Stoichiometry', '', ''),
-        'spacegroup': ('Space group', 'Space group', ''),
-        'prototype': ('Prototype', '', '')}
-
-    return kvp, key_descriptions, data
+    return info
 
 
 def webpanel(row, key_descriptions):
