@@ -17,8 +17,10 @@ from asr.utils import command, argument, option
         help='Filename to unpack atomic structure to')
 @option('-c', '--chunks', default=1, metavar='N',
         help='Divide the tree into N chunks')
+@option('--copy', is_flag=True, default=False,
+        help='Copy pointer tagged files')
 def main(database, run, selection, tree_structure,
-         sort, kvp, data, atomsname, chunks):
+         sort, kvp, data, atomsname, chunks, copy):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -167,9 +169,18 @@ def main(database, run, selection, tree_structure,
             write(atomsname, row.toatoms())
             if kvp:
                 write_json('key-value-pairs.json', row.key_value_pairs)
-            if kvp:
-                for key in row.data:
-                    write_json(f'{key}.json', row.data[key])
+            if data:
+                for key, results in row.data.items():
+                    write_json(f'{key}.json', results)
+                    kd = results.get('__key_descriptions__', {})
+                    for rkey in results:
+                        if rkey in kd and kd[rkey].startswith('File:'):
+                            srcfile = Path(results[rkey])
+                            destfile = Path(rkey)
+                            if copy:
+                                destfile.write_bytes(srcfile.read_bytes())
+                            else:
+                                destfile.symlink_to(srcfile)
 
 
 if __name__ == '__main__':
