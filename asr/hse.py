@@ -10,14 +10,13 @@ to do:
 - USE RESULTS FROM MONKHORST_PACK_INTERPOLATE INSTEAD OF INTERPOLATE_BANDSTRUCTURE
 - better interpolation scheme?
 - should kptpath be customizable?  --> hseinterpol
-- substitute .npz with .json
 - create plot  --> hseinterpol
 - create web panel  --> hseinterpol
 - move stuff to utils
 """
 import json
 from pathlib import Path
-from asr.utils import command, option
+from asr.utils import command, option, read_json
 
 import time
 
@@ -42,17 +41,18 @@ from contextlib import contextmanager
 @command('asr.hse')
 @option('--kptdensity', default=12, help='K-point density')
 def main(kptdensity):
-    hse(kptdensity=kptdensity)
+    results = {}
+    results['hse_eigenvalues'] = hse(kptdensity=kptdensity)
     mpi.world.barrier()
-    hse_spinorbit()
+    results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
     #mpi.world.barrier()
     # Move these to separate step as in c2db?
     #bs_interpolate()
     #mpi.world.barrier()
 
+    return results
+
 def hse(kptdensity=12, emptybands=20):
-    if os.path.isfile('hse_eigenvalues.npz'):
-        return
 
     convbands = int(emptybands / 2)
     if not os.path.isfile('hse.gpw'):
@@ -109,17 +109,15 @@ def hse(kptdensity=12, emptybands=20):
 
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
+    dct = {}
     if mpi.world.rank == 0:
         dct = dict(vxc_hse_skn=vxc_hse_skn,
                    e_pbe_skn=e_pbe_skn,
                    vxc_pbe_skn=vxc_pbe_skn,
                    e_hse_skn=e_hse_skn)
-        with open('hse_eigenvalues.npz', 'wb') as f:
-            np.savez(f, **dct)
+    return dct
 
-def hse_spinorbit():
-    if not os.path.isfile('hse_eigenvalues.npz'):
-        return
+def hse_spinorbit(dct):
     if not os.path.isfile('hse_nowfs.gpw'):
         return
 
@@ -127,20 +125,16 @@ def hse_spinorbit():
     comm = mpi.world.new_communicator(ranks)
     if mpi.world.rank in ranks:
         calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
-        with open('hse_eigenvalues.npz', 'rb') as fd:
-            dct = dict(np.load(fd))
-
         e_skn = dct.get('e_hse_skn')
-        dct = {}
+        dct_soc = {}
         theta, phi = get_spin_direction()
         e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
                                    bands=np.arange(e_skn.shape[2]),
                                    theta=theta, phi=phi)
-        dct['e_hse_mk'] = e_mk
-        dct['s_hse_mk'] = s_kvm[:, spin_axis(), :].transpose()
-        with open('hse_eigenvalues_soc.npz', 'wb') as fd:
-            np.savez(fd, **dct)
+        dct_soc['e_hse_mk'] = e_mk
+        dct_soc['s_hse_mk'] = s_kvm[:, spin_axis(), :].transpose()
 
+        return dct_soc
 
 def bs_interpolate(npoints=400, show=False):
     """inpolate the eigenvalues on a monkhorst pack grid to
@@ -149,19 +143,18 @@ def bs_interpolate(npoints=400, show=False):
     """
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
-    with paropen('hse_eigenvalues.npz', 'rb') as f:
-        data = np.load(f)
-        e_skn = data['e_hse_skn']
-        e_skn.sort(axis=2)
+    results_hse = read_json('results_hse.json')
+    data = results_hse['hse_eigenvalues']
+    e_skn = data['e_hse_skn']
+    e_skn.sort(axis=2)
     try:
-        with paropen('hse_eigenvalues_soc.npz', 'rb') as f:
-            data = np.load(f)
-            e_mk = data['e_hse_mk']
-            s_mk = data['s_hse_mk']
-            perm_mk = e_mk.argsort(axis=0)
-            for s_m, e_m, perm_m in zip(s_mk.T, e_mk.T, perm_mk.T):
-                e_m[:] = e_m[perm_m]
-                s_m[:] = s_m[perm_m]
+        data = results_hse['hse_eigenvalues_soc']
+        e_mk = data['e_hse_mk']
+        s_mk = data['s_hse_mk']
+        perm_mk = e_mk.argsort(axis=0)
+        for s_m, e_m, perm_m in zip(s_mk.T, e_mk.T, perm_mk.T):
+            e_m[:] = e_m[perm_m]
+            s_m[:] = s_m[perm_m]
     except IOError:
         e_mk = None
 
@@ -184,26 +177,27 @@ def bs_interpolate(npoints=400, show=False):
         dct.update(e_mk=e_mk, s_mk=s_mk)
     x, X, _ = labels_from_kpts(path.kpts, atoms.cell) # save also x-axis coordinates for plot
     dct.update(x=x, X=X)
-    if mpi.world.rank in [0]:
-        with paropen('hse_bandstructure.npz', 'wb') as f:
-            np.savez(f, **dct)
+
+    results = {}
+    results['hse_bandstructure'] = dct
 
     # XXX: do we really need the following??
     # XXX: interpolate_bandstructure does NOT work well for 3D structures
-    # third time is a charm
-    eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
+    hse_eigenvalues = results_hse['hse_eigenvalues']
+    eps_skn = hse_eigenvalues['e_hse_skn']
     kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, e_skn=e_skn, npoints=npoints)
     dct = dict(eps_skn=e_skn, path=kpts, x=x, X=X)
-
-    eps_smk = np.load('hse_eigenvalues_soc.npz')['e_hse_mk']
+    hse_eigenvalues_soc = results_hse['hse_eigenvalues_soc']
+    eps_smk = hse_eigenvalues_soc['e_hse_mk']
     eps_smk = eps_smk[np.newaxis]
     kpts, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, e_skn=eps_smk.transpose(0, 2, 1),
                                     npoints=npoints)
     dct.update(e_mk=e_skn[0].transpose(), path=kpts, xreal=xr,
                epsreal_skn=yr_skn)
-    if mpi.world.rank in [0]:
-        with open('hse_bandstructure3.npz', 'wb') as fd:
-            np.savez(fd, **dct)
+    results['hse_bandstructure3'] = dct
+
+    return results
+
 
 # move to utils?
 def ontheline(p1, p2, p3s, eps=1.0e-5):
@@ -520,12 +514,7 @@ if __name__ == '__main__':
 
 group = 'property'
 resources = '24:10h'
-creates = ['hse_nowfs.gpw',
-           'hse_eigenvalues.npz',
-           'hse_eigenvalues_soc.npz',
-           'hse_bandstructure.npz',
-           'hse_bandstructure3.npz',
-           'hse-restart.json']
+creates = ['hse_nowfs.gpw', 'hse-restart.json']
 dependencies = ['asr.structureinfo', 'asr.gs']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
