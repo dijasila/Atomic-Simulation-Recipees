@@ -5,7 +5,7 @@ from asr.utils import command, option
 @option('--npoints', default=400)
 def main(kptpath, npoints):
     from asr.hse import bs_interpolate
-    results = bs_interpolate(npoints)
+    results = bs_interpolate(kptpath, npoints)
     return results
 
 if __name__ == '__main__':

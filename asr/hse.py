@@ -1,10 +1,4 @@
 """
-HSE band structure
-
-Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, hse_bandstructure.npz, hse_bandstructure3.npz
-"""
-
-"""
 to do:
 
 - USE RESULTS FROM MONKHORST_PACK_INTERPOLATE INSTEAD OF INTERPOLATE_BANDSTRUCTURE
@@ -13,6 +7,7 @@ to do:
 - create plot  --> hseinterpol
 - create web panel  --> hseinterpol
 - move stuff to utils
+- ASE 3.0.19 -> BandPath.labelseq renamed to BandPath.path !!
 """
 import json
 from pathlib import Path
@@ -45,11 +40,6 @@ def main(kptdensity):
     results['hse_eigenvalues'] = hse(kptdensity=kptdensity)
     mpi.world.barrier()
     results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
-    #mpi.world.barrier()
-    # Move these to separate step as in c2db?
-    #bs_interpolate()
-    #mpi.world.barrier()
-
     return results
 
 def hse(kptdensity=12, emptybands=20):
@@ -136,7 +126,7 @@ def hse_spinorbit(dct):
 
         return dct_soc
 
-def bs_interpolate(npoints=400, show=False):
+def bs_interpolate(kptpath, npoints=400, show=False):
     """inpolate the eigenvalues on a monkhorst pack grid to
     a path in the bz between high-symmetry points.
     The soc is added before interpolation.
@@ -160,7 +150,11 @@ def bs_interpolate(npoints=400, show=False):
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
-    path = atoms.cell.bandpath(npoints=npoints)
+    if kptpath == None:
+        path = atoms.cell.bandpath(npoints=npoints)
+    else:
+        path = bandpath(kptpath, atoms.cell, npoints=npoints)
+        path.labelseq = kptpath
     str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
@@ -185,13 +179,12 @@ def bs_interpolate(npoints=400, show=False):
     # XXX: interpolate_bandstructure does NOT work well for 3D structures
     hse_eigenvalues = results_hse['hse_eigenvalues']
     eps_skn = hse_eigenvalues['e_hse_skn']
-    kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, e_skn=e_skn, npoints=npoints)
+    kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, path, e_skn=e_skn)
     dct = dict(eps_skn=e_skn, path=kpts, x=x, X=X)
     hse_eigenvalues_soc = results_hse['hse_eigenvalues_soc']
     eps_smk = hse_eigenvalues_soc['e_hse_mk']
     eps_smk = eps_smk[np.newaxis]
-    kpts, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, e_skn=eps_smk.transpose(0, 2, 1),
-                                    npoints=npoints)
+    kpts, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, path, e_skn=eps_smk.transpose(0, 2, 1))
     dct.update(e_mk=e_skn[0].transpose(), path=kpts, xreal=xr,
                epsreal_skn=yr_skn)
     results['hse_bandstructure3'] = dct
@@ -276,21 +269,20 @@ def segment_indices_and_x(cell, path, kpts):
     return segments_indices, segments_xs
 
 # move to utils?
-def interpolate_bandstructure(calc, e_skn=None, npoints=400):
+def interpolate_bandstructure(calc, path, e_skn=None):
     """simple wrapper for interpolate_bandlines2
     Returns:
         out: kpts, e_skn, xreal, epsreal_skn
     """
-    r = interpolate_bandlines2(calc=calc, e_skn=e_skn, npoints=npoints)
+    r = interpolate_bandlines2(calc=calc, path=path, e_skn=e_skn)
     return r['kpts'], r['x'], r['X'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
 # move to utils?
-def interpolate_bandlines2(calc, e_skn=None, npoints=400):
+def interpolate_bandlines2(calc, path, e_skn=None):
     """Interpolate bandstructure
     Parameters:
         calc: ASE calculator
-        path: str
-            something like GMKG
+        path: a BandPath object
         e_skn: (ns, nk, nb) shape ndarray, optional
             if not given it uses eigenvalues from calc
         npoints: int
@@ -314,11 +306,9 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     bz2ibz = calc.get_bz_to_ibz_map()
     cell = calc.atoms.cell
 
-
-    total_path = cell.bandpath(npoints=npoints)
-    labelseq = total_path.labelseq
-    special_points = total_path.special_points
-    x, X, labels = labels_from_kpts(total_path.kpts, cell)
+    labelseq = path.labelseq
+    special_points = path.special_points
+    x, X, labels = labels_from_kpts(path.kpts, cell)
         
     """
     Now split disconnected segments into separate paths (if there are any)
@@ -338,12 +328,12 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         n0 = list_n[i]
         n1 = list_n[i+1]
         # select a portion of total kpts between n0 and n1
-        partial_kpts = total_path.kpts[n0:n1,:]
+        partial_kpts = path.kpts[n0:n1,:]
         partial_n=partial_kpts.shape[0]
         # create partial path from partial_kpts
         partial_path = bandpath(path=partial_kpts, cell=cell, npoints=partial_n)
         # note: you have to assign labels to the new partial_path manually!
-        _, _, partial_labels = labels_from_kpts(partial_kpts, total_path.cell, special_points=total_path.special_points)
+        _, _, partial_labels = labels_from_kpts(partial_kpts, path.cell, special_points=path.special_points)
         partial_path.labelseq = ''.join(partial_labels)
         partial_path.special_points = special_points
         partial_paths.append(partial_path)
@@ -355,9 +345,9 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     list_xreal = []
     list_e2_skn = []
  
-    for path in partial_paths:
-        x2, _, _ = labels_from_kpts(path.kpts, cell, special_points=path.special_points)
-        indices, x = segment_indices_and_x(cell=cell, path=path, kpts=kpts)
+    for partial_path in partial_paths:
+        x2, _, _ = labels_from_kpts(partial_path.kpts, cell, special_points=partial_path.special_points)
+        indices, x = segment_indices_and_x(cell=cell, path=partial_path, kpts=kpts)
         # remove double points
         for n in range(len(indices) - 1):
             if indices[n][-1] == indices[n + 1][0]:
@@ -378,7 +368,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                 epsreal_skn[s, :, n] = y
                 bc_type = ['not-a-knot', 'not-a-knot']
                 for i in [0, -1]:
-                    if path.labelseq[i] == 'G':
+                    if partial_path.labelseq[i] == 'G':
                         bc_type[i] = [1, 0.0]
                 if len(x) > 1:
                     sp = CubicSpline(x=x, y=y, bc_type=bc_type)
@@ -403,7 +393,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         tot_xreal = np.concatenate((tot_xreal, list_xreal[i] + tot_xreal[-1]))
         tot_e2_skn = np.concatenate((tot_e2_skn, list_e2_skn[i]), axis=1)
 
-    tot_kpts = total_path.kpts
+    tot_kpts = path.kpts
     tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
     results = {'kpts': tot_kpts,    # kpts_kc on bandpath
                'e_skn': tot_e2_skn,  # eigenvalues on bandpath
