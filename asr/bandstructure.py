@@ -237,7 +237,7 @@ def collect_data(atoms):
         return kvp, key_descriptions, data
 
     import numpy as np
-    from asr.analysegs import get_evac
+    from asr.gs import get_evac
     evac = get_evac()
 
     bsdata = read_json('results_bandstructure.json')
@@ -789,7 +789,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 creates = ['bs.gpw']
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.analysegs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 sort = 3
 
 if __name__ == '__main__':

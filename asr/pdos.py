@@ -119,7 +119,7 @@ def pdos(calc, gpw, soc=True):
     e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
 
     # Subtract the vacuum energy
-    from asr.analysegs import get_evac
+    from asr.gs import get_evac
     evac = get_evac()
     if evac is not None:
         e_e -= evac
@@ -479,7 +479,7 @@ def plot_pdos(row, filename, soc=True,
 
 group = 'property'
 resources = '8:1h'  # How many resources are used? XXX
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.analysegs']
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()
