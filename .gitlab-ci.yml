@@ -7,6 +7,5 @@ tests:
     - pip install -e .
     - pip install git+https://gitlab.com/ase/ase.git
     - pip install gpaw
-    - python3 -m pytest asr/tests/test_fast.py --tb=short
-    - python3 -m pytest asr/tests/emt.py --tb=short
+    - asr test -k test_fast.py
     - flake8 asr

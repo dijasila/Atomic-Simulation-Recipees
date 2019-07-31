@@ -5,11 +5,14 @@ from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
 from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
-from ase.parallel import world, broadcast
+from ase.parallel import world
+from ase import Atoms
+from ase.optimize.bfgs import BFGS
 
 from asr.utils import command, option
-from asr.utils.bfgs import BFGS
-from asr.calculators.gpaw import KohnShamConvergenceError
+from gpaw import KohnShamConvergenceError
+from math import sqrt
+import time
 
 Uvalues = {}
 
@@ -24,64 +27,112 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def relax_done(fname, emin=-np.inf):
-    """Check if a relaxation is done"""
-    if world.rank == 0:
-        result = relax_done_master(fname, emin=emin)
-    else:
-        result = None
-    return broadcast(result)
+def is_relax_done(atoms, fmax=0.01, smax=0.002,
+                  smask=np.array([1, 1, 1, 1, 1, 1])):
+    f = atoms.get_forces()
+    s = atoms.get_stress() * smask
+    done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+
+    return done
 
 
-def relax_done_master(fname, fmax=0.01, smax=0.002, emin=-np.inf):
-    if not Path(fname).is_file():
-        return None, False
+class SpgAtoms(Atoms):
 
-    try:
-        slab = read(fname, parallel=False)
-    except (IOError, UnknownFileTypeError):
-        return None, False
+    @classmethod
+    def from_atoms(cls, atoms):
+        # Due to technicalities we cannot mess with the __init__ constructor
+        # -> therefore we make our own
+        return cls(atoms)
 
-    if slab.calc is None:
-        return slab, False
+    def set_symmetries(self, symmetries, translations, atomsmap):
+        self.op_scc = symmetries
+        self.t_sc = translations
+        self.op_svv = [np.linalg.inv(self.cell).dot(op_cc).dot(self.cell) for
+                       op_cc in symmetries]
+        self.nsym = len(symmetries)
+        self.a_sa = atomsmap
 
-    e = slab.get_potential_energy()
-    f = slab.get_forces()
-    s = slab.get_stress()
-    done = e < emin or (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+    def get_stress(self, voigt=True, *args, **kwargs):
+        sigma0_vv = Atoms.get_stress(self, voigt=False, *args, **kwargs)
 
-    return slab, done
+        sigma_vv = np.zeros((3, 3))
+        for op_vv in self.op_svv:
+            sigma_vv += np.dot(np.dot(op_vv, sigma0_vv), op_vv.T)
+        sigma_vv /= self.nsym
+
+        if voigt:
+            return sigma_vv.flat[[0, 4, 8, 5, 2, 1]]
+
+        return sigma_vv
+
+    def get_forces(self, *args, **kwargs):
+        f0_av = Atoms.get_forces(self, *args, **kwargs)
+        f_av = np.zeros_like(f0_av)
+        for map_a, op_vv in zip(self.a_sa, self.op_svv):
+            for a1, a2 in enumerate(map_a):
+                f_av[a2] += np.dot(f0_av[a1], op_vv)
+        f_av /= self.nsym
+        return f_av
+
+
+class myBFGS(BFGS):
+
+    def log(self, forces=None, stress=None):
+        if forces is None:
+            forces = self.atoms.atoms.get_forces()
+        if stress is None:
+            stress = self.atoms.atoms.get_stress()
+        fmax = sqrt((forces**2).sum(axis=1).max())
+        smax = abs(stress).max()
+        e = self.atoms.get_potential_energy(
+            force_consistent=self.force_consistent)
+        T = time.localtime()
+        if self.logfile is not None:
+            name = self.__class__.__name__
+            if self.nsteps == 0:
+                self.logfile.write(' ' * len(name) +
+                                   '  {:<4} {:<8} {:<10} '.format('Step',
+                                                                  'Time',
+                                                                  'Energy') +
+                                   '{:<10} {:<10}\n'.format('fmax',
+                                                            'smax'))
+                if self.force_consistent:
+                    self.logfile.write(
+                        '*Force-consistent energies used in optimization.\n')
+            fc = '*' if self.force_consistent else ''
+            self.logfile.write(f'{name}: {self.nsteps:<4} '
+                               f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
+                               f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
+            self.logfile.flush()
 
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True):
+    import spglib
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
 
-    trajname = f'{name}.traj'
-
-    # Are we done?
-    atoms_relaxed, done = relax_done(trajname)
-
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
-            smask = [1, 1, 1, 0, 0, 0]
+            smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
-            smask = [1, 1, 0, 0, 0, 0]
+            smask = [1, 1, 0, 0, 0, 1]
         else:
             # nd == 1
             msg = 'Relax recipe not implemented for 1D structures'
             raise NotImplementedError(msg)
 
+    from ase.calculators.calculator import kpts2sizeandoffsets
+    size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
     kwargs = dict(txt=name + '.txt',
-                  mode={'name': 'pw', 'ecut': ecut},
+                  mode={'name': 'pw', 'ecut': ecut, 'dedecut': 'estimate'},
                   xc=xc,
                   basis='dzp',
-                  kpts={'density': kptdensity, 'gamma': True},
-                  # This is the new default symmetry settings
-                  symmetry={'do_not_symmetrize_the_density': True},
+                  symmetry={'symmorphic': False},
+                  convergence={'forces': 1e-4},
+                  kpts={'size': size, 'gamma': True},
                   occupations={'name': 'fermi-dirac', 'width': width})
 
     if plusu:
@@ -98,18 +149,56 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         kwargs['setups'] = setups
         world.barrier()
 
-    from asr.calculators.gpaw import GPAW
-    dft = GPAW(**kwargs)
+    from asr.calculators import get_calculator
+    from gpaw.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms)
+    atoms = SpgAtoms.from_atoms(atoms)
+    atoms.set_symmetries(symmetries=symmetry.op_scc,
+                         translations=symmetry.ft_sc,
+                         atomsmap=symmetry.a_sa)
+    dft = get_calculator()(**kwargs)
     if dftd3:
         calc = DFTD3(dft=dft)
     else:
         calc = dft
     atoms.calc = calc
 
-    opt = BFGS(atoms,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
-    opt.run(fmax=0.01, smax=0.002, smask=smask, emin=emin)
+    from asr.setup.symmetrize import atomstospgcell as ats
+    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
+                                                     parallel=False)),
+                                            symprec=1e-4,
+                                            angle_tolerance=0.1).split()
+
+    from ase.constraints import ExpCellFilter
+
+    filter = ExpCellFilter(atoms, mask=smask)
+    opt = myBFGS(filter,
+                 logfile=name + '.log',
+                 trajectory=Trajectory(name + '.traj', 'a', atoms))
+
+    # fmax=0 here because we have implemented our own convergence criteria
+    runner = opt.irun(fmax=0)
+    for _ in runner:
+        # Check that the symmetry has not been broken
+        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
+                                                  symprec=1e-4,
+                                                  angle_tolerance=0.1).split()
+
+        if not number == number2:
+            # Log the last step
+            opt.log()
+            opt.call_observers()
+            msg = ('The symmetry was broken during the relaxation! '
+                   f'The initial spacegroup was {spgname} {number} '
+                   f'but it changed to {spgname2} {number2} during '
+                   'the relaxation.')
+            raise AssertionError(msg)
+
+        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
+            opt.log()
+            opt.call_observers()
+            break
+        
     return atoms, calc, dft, kwargs
 
 
@@ -132,22 +221,29 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
 def main(plusu, ecut, kptdensity, xc, d3, width):
-    """Relax atomic positions and unit cell."""
-    msg = ('You cannot have a structure.json file '
-           'if you relax the structure because this is '
-           'what the relax recipe produces. You should '
-           'call your original/start file "unrelaxed.json!"')
-    assert not Path('structure.json').is_file(), msg
-    atoms, done = relax_done('relax.traj')
+    """Relax atomic positions and unit cell.
 
-    if atoms is None:
-        if Path('relax.traj').exists():
-            try:
-                atoms = read('relax.traj')
-            except UnknownFileTypeError:
-                pass
-        if atoms is None:
-            atoms = read('unrelaxed.json')
+    By default, this recipe takes the atomic structure in 'unrelaxed.json'
+    and relaxes the structure including the DFTD3 van der Waals
+    correction. The relaxed structure is saved to `structure.json` which can be
+    processed by other recipes.
+
+    \b
+    Examples:
+    Relax without using DFTD3
+        asr run relax --nod3
+    Relax using the LDA exchange-correlation functional
+        asr run relax --xc LDA
+    """
+    msg = ('You cannot already have a structure.json file '
+           'when you relax a structure, because this is '
+           'what the relax recipe is supposed to produce. You should '
+           'name your original/start structure "unrelaxed.json!"')
+    assert not Path('structure.json').is_file(), msg
+    try:
+        atoms = read('relax.traj')
+    except (IOError, UnknownFileTypeError):
+        atoms = read('unrelaxed.json', parallel=False)
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
@@ -161,19 +257,28 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     write('structure.json', atoms)
 
     from asr.utils import write_json
-    kwargs.pop('txt')
     write_json('gs_params.json', kwargs)
+
+    # Get setup fingerprints
+    fingerprint = {}
+    for setup in dft.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
 
     # Save to results_relax.json
     structure = json.loads(Path('structure.json').read_text())
     results = {'etot': etot,
                'edft': edft,
-               'relaxedstructure': structure}
+               'relaxedstructure': structure,
+               '__key_descriptions__':
+               {'etot': 'Total energy [eV]',
+                'edft': 'DFT total energy [eV]',
+                'relaxedstructure': 'Relaxed atomic structure'},
+               '__setup_fingerprints__': fingerprint}
     return results
 
 
 group = 'structure'
-resources = '8:xeon8:10h'
+resources = '24:10h'
 creates = ['results_relax.json']
 
 if __name__ == '__main__':

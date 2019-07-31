@@ -1,10 +1,10 @@
 {
     "asr.relax": {
-        "ecut": 100,
+        "ecut": 350,
         "kptdensity": 2.0
     },
     "asr.gs": {
-        "ecut": 100,
+        "ecut": 350,
         "kptdensity": 2.0
     },
     "asr.dos": {
@@ -23,7 +23,8 @@
         "bandfactor": 2
     },
     "asr.pdos": {
-        "kptdensity": 6.0
+        "kptdensity": 3.0,
+	"emptybands": 5
     },
     "asr.phonons": {
         "n": 1,

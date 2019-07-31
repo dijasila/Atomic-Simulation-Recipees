@@ -13,49 +13,69 @@ if Path('gs_params.json').exists():
         defaults['kptdensity'] = dct['kpts']['density']
 
 
-@command('asr.gs', defaults)
+@command('asr.gs', defaults,
+         creates=['gs.gpw'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure',
         default='structure.json')
-@option('--gpwfilename', type=str, help='filename.gpw', default='gs.gpw')
 @option('--ecut', type=float, help='Plane-wave cutoff', default=800)
 @option(
     '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
 @option('--xc', type=str, help='XC-functional', default='PBE')
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
-def main(atomfile, gpwfilename, ecut, xc, kptdensity, width):
-    """Calculate ground state density"""
+def main(atomfile, ecut, xc, kptdensity, width):
+    """Calculate ground state density.
+
+    By default, this recipe reads the structure in 'structure.json'
+    and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
-    from asr.calculators.gpaw import GPAW
-    atoms = read(atomfile)
+    from asr.calculators import get_calculator
+    atoms = read('structure.json')
 
-    if Path('gs.gpw').is_file():
-        calc = GPAW('gs.gpw', txt=None)
-    else:
-        params = dict(
-            mode={'name': 'pw', 'ecut': ecut},
-            xc=xc,
-            basis='dzp',
-            kpts={
-                'density': kptdensity,
-                'gamma': True
-            },
-            symmetry={'do_not_symmetrize_the_density': True},
-            occupations={'name': 'fermi-dirac', 'width': width},
-            txt='gs.txt')
+    params = dict(
+        mode={'name': 'pw', 'ecut': ecut},
+        xc=xc,
+        basis='dzp',
+        kpts={
+            'density': kptdensity,
+            'gamma': True
+        },
+        symmetry={'do_not_symmetrize_the_density': True},
+        occupations={'name': 'fermi-dirac', 'width': width},
+        txt='gs.txt')
 
-        calc = GPAW(**params)
+    calc = get_calculator()(**params)
 
     atoms.calc = calc
-    forces = atoms.get_forces()
-    stresses = atoms.get_stress()
-    atoms.calc.write(gpwfilename)
-    etot = atoms.get_potential_energy()
+    atoms.get_forces()
+    atoms.get_stress()
+    atoms.get_potential_energy()
+    atoms.calc.write('gs.gpw')
+
+
+def postprocessing():
+    """Extract data from groundstate in gs.gpw.
+
+    This will be called after main by default."""
+    from asr.calculators import get_calculator
+    calc = get_calculator()('gs.gpw', txt=None)
+    forces = calc.get_forces()
+    stresses = calc.get_stress()
+    etot = calc.get_potential_energy()
+    
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
 
     results = {'forces': forces,
                'stresses': stresses,
-               'etot': etot}
+               'etot': etot,
+               '__key_descriptions__':
+               {'forces': 'Forces on atoms [eV/Angstrom]',
+                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'Total energy [eV]'},
+               '__setup_fingerprints__': fingerprint}
     return results
 
 

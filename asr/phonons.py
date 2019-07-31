@@ -3,8 +3,6 @@ from pathlib import Path
 import numpy as np
 
 from ase.parallel import world
-from ase.geometry import crystal_structure_from_cell
-from ase.dft.kpoints import special_paths, bandpath
 from ase.io import read
 from ase.phonons import Phonons as ASEPhonons
 
@@ -45,7 +43,7 @@ class Phonons(ASEPhonons):
 @option('--kptdensity', default=6.0, help='Kpoint density')
 def main(n, ecut, kptdensity):
     """Calculate Phonons"""
-    from asr.calculators.gpaw import GPAW
+    from asr.calculators import get_calculator
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -67,12 +65,12 @@ def main(n, ecut, kptdensity):
 
     atoms = read('structure.json')
     fd = open('phonons.txt'.format(n), 'a')
-    calc = GPAW(txt=fd, **params)
+    calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
     if is_magnetic():
-        gsold = GPAW('gs.gpw', txt=None)
+        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
@@ -98,11 +96,9 @@ def analyse(points=300, modes=False, q_qc=None):
     atoms = read('structure.json')
     p = Phonons(**dct['phonons'])
     p.atoms = atoms
-    cell = atoms.get_cell()
-    cs = crystal_structure_from_cell(cell)
-    kptpath = special_paths[cs]
     if q_qc is None:
-        q_qc = bandpath(kptpath, cell, points)[0]
+        # This is the list of exactly known q-points
+        q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
 
     out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
     if modes:
@@ -139,13 +135,13 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def collect_data(atoms, n=2):
+def collect_data(atoms):
     kvp = {}
     data = {}
     key_descriptions = {}
     try:
-        eigs2, freqs2, _ = analyse(atoms, n)
-        eigs3, freqs3, _ = analyse(atoms, n)
+        eigs2, freqs2, _ = analyse(atoms)
+        eigs3, freqs3, _ = analyse(atoms)
     except (FileNotFoundError, EOFError):
         return {}, {}, {}
     kvp['minhessianeig'] = eigs3.min()

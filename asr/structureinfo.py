@@ -1,10 +1,15 @@
 from asr.utils import command
-from asr.utils.prototype import get_symmetry_id
 
 
 @command('asr.structureinfo')
 def main():
-    """Get quick information about structure based on structure.json"""
+    """Get structural information of atomic structure.
+
+    This recipe produces information such as the space group and magnetic
+    state properties that requires only an atomic structure. This recipes read
+    the atomic structure in `structure.json`.
+    """
+
     from random import randint
     from ase.io import read
     from pathlib import Path
@@ -71,7 +76,6 @@ def main():
     symmetry = [(op_cc.tolist(), ft_c.tolist())
                 for op_cc, ft_c in zip(op_scc, ft_sc)]
     info['symmetries'] = symmetry
-
     try:
         import spglib
     except ImportError:
@@ -80,12 +84,6 @@ def main():
         sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
         number = int(number[1:-1])
         info['spacegroup'] = sg
-
-    # Find prototype
-    try:
-        info['prototype'] = get_symmetry_id(atoms, symprec=0.5)
-    except (OSError, ModuleNotFoundError):
-        pass
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.

@@ -12,6 +12,7 @@ def main(number):
     results = {'number': number,
                'something': something}
     Path('something.json').write_text(json.dumps(results))
+    return results
 
 
 def calculate_something(number):

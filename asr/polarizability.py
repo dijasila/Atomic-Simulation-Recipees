@@ -35,16 +35,16 @@ def main(gs, kptdensity, ecut, xc, bandfactor):
     }
 
     ND = np.sum(pbc)
-    if ND == 3:
+    if ND == 3 or ND == 1:
         kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
 
-        def get_kpts_size(atoms, kptdensity):
+        def get_kpts_size(atoms, density):
             """trying to get a reasonable monkhorst size which hits high
             symmetry points
             """
             from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=kptdensity)
+            size, offset = k2so(atoms=atoms, density=density)
             size[2] = 1
             for i in range(2):
                 if size[i] % 6 != 0:

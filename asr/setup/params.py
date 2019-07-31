@@ -5,10 +5,17 @@ from asr.utils import command
 @command('asr.setup.params',
          save_results_file=False)
 def main():
-    """Make a new params file"""
+    """Compile a params.json file with all options and defaults.
+
+    This recipe compiles a list of all options and their default
+    values for all recipes to be used for manually changing values
+    for specific options."""
     import json
     from pathlib import Path
     from asr.utils import get_recipes, ASRCommand
+
+    p = Path('params.json')
+    assert not p.exists(), 'params.json already exists!'
 
     paramdict = {}
     
@@ -26,9 +33,9 @@ def main():
 
         paramdict[recipe.name] = params
 
-    p = Path('params.json')
-    assert not p.exists(), 'params.json already exists!'
     p.write_text(json.dumps(paramdict, indent=4))
+
+    return paramdict
 
 
 group = 'setup'
