@@ -9,10 +9,10 @@ to do:
 
 - USE RESULTS FROM MONKHORST_PACK_INTERPOLATE INSTEAD OF INTERPOLATE_BANDSTRUCTURE
 - better interpolation scheme?
-- should kptpath be customizable?
+- should kptpath be customizable?  --> hseinterpol
 - substitute .npz with .json
-- create plot
-- create web panel
+- create plot  --> hseinterpol
+- create web panel  --> hseinterpol
 - move stuff to utils
 """
 import json
