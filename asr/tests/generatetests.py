@@ -1,7 +1,6 @@
 def generatetests():
     from pathlib import Path
     from asr.utils import get_recipes
-    import inspect
 
     recipes = get_recipes()
 
@@ -13,30 +12,41 @@ def generatetests():
             continue
         testnames = []
         for test in tests:
-            name = None
+            testname = None
             cli = None
             testfunction = None
+            fail = False
 
             if callable(test):
                 testfunction = test
-                name = test.__name__
-
+                testname = test.__name__ + '_gen.py'
             else:
                 assert isinstance(test, dict), ('Unknown Test type in '
                                                 f'{recipe.name}: {test}')
                 name = test.get('name', None)
+                if name:
+                    testname = name + '_gen.py'
+                else:
+                    testname = None
                 cli = test.get('cli', None)
                 testfunction = test.get('test', None)
+                fail = test.get('fail', False)
 
-            assert name, ('You must give your test a name! '
-                          f'{recipe.name}: {test}')
-            testname = f'{name}.py'
+            if not testname:
+                id = 0
+                while True:
+                    testname = f'test_{recipe.name}_{id}_gen.py'
+                    if testname not in testnames:
+                        break
+                    id += 1
+
             text = ''
 
             if cli:
                 assert isinstance(test['cli'], list), \
                     'Type: clitest. Should be a list commands.'
-                text += 'import subprocess\n\n'
+                text += 'import subprocess\n\n\n'
+                text += 'def clitest():\n'
                 commands = []
                 for command in test['cli']:
                     parts = command.split()
@@ -44,20 +54,33 @@ def generatetests():
                     commands.append(string)
 
                 for command in commands:
-                    text += f'subprocess.run([{command}])\n'
+                    text += f'    subprocess.run([{command}])\n\n\n'
+
+                if fail:
+                    indent = 4
+                    text += 'try:\n'
+                else:
+                    indent = 0
+
+                text += ' ' * indent + 'clitest()\n'
 
             if testfunction:
                 assert callable(testfunction), \
                     'Function test type should be callable.'
-                text += '\n' * 2 + inspect.getsource(testfunction) + '\n' * 2
-                text += testfunction.__name__ + '()\n'
+                testfunctionname = {testfunction.__name__}
+                text = f'from module import {testfunctionname}\n' + text
+                text += ' ' * indent + f'{testfunctionname}()\n'
 
+            if fail:
+                text += ('except Exception:\n'
+                         '    exit()\n'
+                         'assert False')
             msg = (f'Invalid test name: "{name}". Please name your '
                    'tests as "test_{name}".')
-            assert name.startswith('test_'), msg
-
+            assert testname.startswith('test_'), msg
             assert testname not in testnames, \
                 f'Duplicate test name:{name}!'
+            testnames.append(testname)
             print(f'Writing {testname}')
             (Path(__file__).parent / testname).write_text(text)
 
@@ -65,7 +88,7 @@ def generatetests():
 def cleantests():
     from pathlib import Path
 
-    paths = Path(__file__).parent.glob('test_auto_*.py')
+    paths = Path(__file__).parent.glob('test_*_gen.py')
 
     for p in paths:
         p.unlink()
