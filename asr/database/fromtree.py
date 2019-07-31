@@ -38,7 +38,7 @@ def collect(db, verbose=False, skip_forces=False, references=None):
     return errors
 
 
-@command('asr.collect',
+@command('asr.database.fromtree',
          add_skip_opt=False)
 @argument('folders', nargs=-1)
 @option('--references', default=None, type=str, help='Reference phases')
@@ -46,7 +46,7 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 @option('--skipforces', default=False)
 @option('--raiseexc', is_flag=True, default=False)
 def main(folders, references, verbose, skipforces, raiseexc):
-    """Collect data in ase database"""
+    """Collect data from folder tree into database."""
     import os
     import traceback
     from pathlib import Path
