@@ -7,14 +7,13 @@ Creates: hse.gpw, hse_nowfs.gpw, hse_eigenvalues.npz, hse_eigenvalues_soc.npz, h
 """
 to do:
 
-- what to do with piecewise path? [eg. GXWKGLUWLK,UX for fcc]
-   -> modify segment_indices_and_x so that it works with piecewise path
-   -> modify interpolation accordingly (interpolate separate segments one by one)
+- USE RESULTS FROM MONKHORST_PACK_INTERPOLATE INSTEAD OF INTERPOLATE_BANDSTRUCTURE
+- better interpolation scheme?
 - should kptpath be customizable?
-- solve issue with segment_indices_and_x [some segments are empty!]
 - substitute .npz with .json
 - create plot
 - create web panel
+- move stuff to utils
 """
 import json
 from pathlib import Path
@@ -51,30 +50,12 @@ def main(kptdensity):
     #bs_interpolate()
     #mpi.world.barrier()
 
-
-# move to utils? [also in asr.polarizability]
-# def get_kpts_size(atoms, density):
-#     """trying to get a reasonable monkhorst size which hits high
-#     symmetry points
-#     """
-#     from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-#     size, offset = k2so(atoms=atoms, density=density)
-#     size[2] = 1
-#     for i in range(2):
-#         if size[i] % 6 != 0:
-#             size[i] = 6 * (size[i] // 6 + 1)
-#     kpts = {'size': size, 'gamma': True}
-#     return kpts
-
-
 def hse(kptdensity=12, emptybands=20):
     if os.path.isfile('hse_eigenvalues.npz'):
         return
 
     convbands = int(emptybands / 2)
-    parprint('------------- 00) start')
     if not os.path.isfile('hse.gpw'):
-        parprint('------------- 01) no hse.gpw')
         calc = GPAW('gs.gpw', txt=None)
         atoms = calc.get_atoms()
         pbc = atoms.pbc.tolist()
@@ -107,7 +88,6 @@ def hse(kptdensity=12, emptybands=20):
         calc.get_potential_energy()
         calc.write('hse.gpw', 'all')
         calc.write('hse_nowfs.gpw')
-        parprint('------------- 1) created hse.gpw, hse_nowfs.gpw')
     mpi.world.barrier()
     time.sleep(10)  # is this needed?
 
@@ -117,22 +97,17 @@ def hse(kptdensity=12, emptybands=20):
     nb = calc.get_number_of_bands()
 
     hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
-    parprint('------------- 2) start EXX calc')
     hse_calc.calculate(restart='hse-restart.json')
     vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
-    parprint('------------- 3) end EXX calc')
 
     vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
-    parprint('------------- 4) got vxc PBE')
     e_pbe_skn = np.zeros((ns, nk, nb))
     for s in range(ns):
         for k in range(nk):
             e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
     e_pbe_skn = e_pbe_skn[:, :, :-convbands]
-    parprint('------------- 5) got e_pbe_skn')
 
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
-    parprint('------------- 6) got e_hse_skn')
 
     if mpi.world.rank == 0:
         dct = dict(vxc_hse_skn=vxc_hse_skn,
@@ -141,7 +116,6 @@ def hse(kptdensity=12, emptybands=20):
                    e_hse_skn=e_hse_skn)
         with open('hse_eigenvalues.npz', 'wb') as f:
             np.savez(f, **dct)
-    parprint('------------- 7) saved hse_eigenvalues.npz')
 
 def hse_spinorbit():
     if not os.path.isfile('hse_eigenvalues.npz'):
@@ -171,8 +145,7 @@ def hse_spinorbit():
 def bs_interpolate(npoints=400, show=False):
     """inpolate the eigenvalues on a monkhorst pack grid to
     a path in the bz between high-symmetry points.
-    The soc is added before interpolation in constrast to
-    interpolate_bandstructure where the soc is added after interpolation.
+    The soc is added before interpolation.
     """
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
@@ -194,11 +167,11 @@ def bs_interpolate(npoints=400, show=False):
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
-    path = atoms.cell.bandpath(npoints=npoints) # is it the correct usage
+    path = atoms.cell.bandpath(npoints=npoints)
     str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) array
+                                     icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
     eps_skn = eps.transpose(1, 0, 2)
     dct = dict(eps_skn=eps_skn, path=path.kpts, kptpath=str_path)
     if e_mk is not None:
@@ -209,19 +182,14 @@ def bs_interpolate(npoints=400, show=False):
         e_mk = eps_soc.transpose(1, 0)
         s_mk = s_soc.transpose(1, 0)
         dct.update(e_mk=e_mk, s_mk=s_mk)
+    x, X, _ = labels_from_kpts(path.kpts, atoms.cell) # save also x-axis coordinates for plot
+    dct.update(x=x, X=X)
     if mpi.world.rank in [0]:
         with paropen('hse_bandstructure.npz', 'wb') as f:
             np.savez(f, **dct)
-    # use spline
-    # get edge points
-    #cell = read('gs.gpw').cell
-    #kptpath = path.labelseq
-    #special_points = path.special_points # a dictionary of special points
-    #kpoints = []
-    #for k in parse_path_string(kptpath)[0]:
-    #    kpoints.append(special_points[k])
-    #kpoints = np.array(kpoints) # an array with special points coordinates
 
+    # XXX: do we really need the following??
+    # XXX: interpolate_bandstructure does NOT work well for 3D structures
     # third time is a charm
     eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
     kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, e_skn=e_skn, npoints=npoints)
@@ -271,49 +239,6 @@ def ontheline(p1, p2, p3s, eps=1.0e-5):
     its = sorted(its, key=lambda x: x[1])
     return its
 
-# REMOVE THIS FUNCTION
-# def segment_indices_and_x(cell, kpts):
-#     """finds indices of bz k-points that is located on segments of a bandpath
-#     Parameters:
-#         cell: ndarray (3, 3)-shape
-#             unit cell
-#         kpts: ndarray (nk, 3)-shape
-#     Returns:
-#         out: ([[int,] * Np,] * Ns, [[float,] * Np, ] * Ns)
-#             list of indices and list of x
-#     """
-#     from ase.dft.kpoints import parse_path_string, bandpath
-#     path_special = cell.bandpath()
-#     special_points = path_special.special_points
-#     _, X, _ = labels_from_kpts(path_special.kpts, cell, eps=1e-5, special_points=special_points)
-#     segments_length = np.diff(X)  # length of band segments
-#     path = parse_path_string(path_special.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
-#     segments_points = []
-#     # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
-#     for i in range(len(path) - 1):
-#         kstr1, kstr2 = path[i:i + 2]
-#         s1, s2 = special_points[kstr1], special_points[kstr2]
-#         segments_points.append((s1, s2))
-
-#     # find indices where kpts is on the segments
-#     segments_indices = []
-#     segments_xs = []
-#     for (k1, k2), d, x0 in zip(segments_points, segments_length, X):
-#         its = ontheline(k1, k2, kpts)
-#         """
-#         Warning: the list returned by ontheline may be empty!
-#         This may happen if there is no BZ kpoint close enough to the bandpath for one segment
-#         In such a case we should't append anything to segments_xs and segments_indices
-#         """
-#         if len(its)!=0:
-#             indices = [i for i, t in its]
-#             ts = np.asarray([t for i, t in its])
-#             xs = ts * d  # positions on the line of length d
-#             segments_xs.append(xs + x0)
-#             segments_indices.append(indices)
-
-#     return segments_indices, segments_xs
-
 # move to utils?
 def segment_indices_and_x(cell, path, kpts):
     """finds indices of bz k-points that is located on segments of a bandpath
@@ -362,9 +287,6 @@ def interpolate_bandstructure(calc, e_skn=None, npoints=400):
     Returns:
         out: kpts, e_skn, xreal, epsreal_skn
     """
-    # no need for path = ...
-    # you can get from calc.atoms.cell.bandpath(npoints=npoints)
-    #path = get_special_2d_path(cell=calc.atoms.cell)
     r = interpolate_bandlines2(calc=calc, e_skn=e_skn, npoints=npoints)
     return r['kpts'], r['x'], r['X'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
@@ -403,14 +325,7 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     labelseq = total_path.labelseq
     special_points = total_path.special_points
     x, X, labels = labels_from_kpts(total_path.kpts, cell)
-    
-    """
-    # XXX
-    segments = labelseq.split(',')
-    for n, segment in enumerate(segments):
-        print(n, segment)
-    """
-
+        
     """
     Now split disconnected segments into separate paths (if there are any)
     Example: 3D fcc path GXWKGLUWLK,UX -> separate GXWKGLUWLK and UX """
@@ -421,68 +336,23 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         # find indices for which x[n]==x[n+1]
         # they are the values of x where bandpath is disconnected
         if x[n]==x[n+1]:
-            #print(n, x[n], total_path.kpts[n,:])
             list_n.append(n+1)
     list_n.append(len(x-1))
 
-    #print(list_n)
-
-    #print('----- Create list of disconnected paths -----')
     partial_paths = [] # list of disconnected paths
     for i in range(len(list_n)-1):
         n0 = list_n[i]
         n1 = list_n[i+1]
-        #print('n0, n1', n0, n1)
         # select a portion of total kpts between n0 and n1
         partial_kpts = total_path.kpts[n0:n1,:]
-        #print(partial_kpts)
         partial_n=partial_kpts.shape[0]
-        #print(partial_n)
         # create partial path from partial_kpts
         partial_path = bandpath(path=partial_kpts, cell=cell, npoints=partial_n)
         # note: you have to assign labels to the new partial_path manually!
         _, _, partial_labels = labels_from_kpts(partial_kpts, total_path.cell, special_points=total_path.special_points)
-        #print(partial_labels)
         partial_path.labelseq = ''.join(partial_labels)
         partial_path.special_points = special_points
-        # some checks
-        #print(partial_n)
-        #print('labels', partial_path.labelseq)
-        #print('shape', partial_path.kpts.shape[0])
-        #print('special_points', partial_path.special_points)
-        #print(partial_kpts-partial_path.kpts)
         partial_paths.append(partial_path)
-
-
-    """
-    ###
-    path_interpol = cell.bandpath(npoints=npoints)
-    str_path = path_interpol.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
-    x_interpol, X_interpol, _ = labels_from_kpts(path_interpol.kpts, cell) # x coord. of high symmetry points
-    L = X_interpol[-1] # total lengths of x axis
-    
-    segments = str_path.split(',')
-    # get length of each segment on x axis
-    lengths = []
-    index = 0
-    for segment in segments:
-        index+=len(segment)
-        lengths.append(X_interpol[index-1])
-    lengths = np.diff(lengths, prepend=0) # prepend a '0' (need numpy 1.16 or later!)
-    # create list of disconnected paths
-    paths = [] # a list of BandPath objects
-    for n, segment in enumerate(segments):
-        path = cell.bandpath(path=segment, npoints=npoints*lengths[n]/L) # a fraction lengths[n]/L of npoints!
-        paths.append(path)
-    ###
-    """
-
-    """ DO I STILL NEED THIS?? XXX
-    # kpoints and positions to interpolate onto
-    new_path = path.interpolate(npoints=400)
-    kpts2 = new_path.kpts
-    x2, X2, _ = labels_from_kpts(kpts2, cell, special_points=new_path.special_points)
-    """
 
     # get results for all paths and concatenate
 
@@ -490,13 +360,9 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
     list_epsreal_skn = []
     list_xreal = []
     list_e2_skn = []
-
-    list_x2 = [] # XXX: to check. Remove afterwards
-    list_X2 = [] # XXX: to check. Remove afterwards
  
     for path in partial_paths:
-        x2, X2, _ = labels_from_kpts(path.kpts, cell, special_points=path.special_points)
-
+        x2, _, _ = labels_from_kpts(path.kpts, cell, special_points=path.special_points)
         indices, x = segment_indices_and_x(cell=cell, path=path, kpts=kpts)
         # remove double points
         for n in range(len(indices) - 1):
@@ -507,9 +373,6 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
         indices = [a for b in indices for a in b]
         kptsreal_kc = kpts[indices]
         x = [a for b in x for a in b]
-        parprint('path\n', path.labelseq)
-        parprint('flattened indices\n', indices)
-        parprint('flattened x\n', x)
         # loop over spin and bands and interpolate
         ns, nk, nb = e_skn.shape
         e2_skn = np.zeros((ns, len(x2), nb), float)
@@ -524,64 +387,27 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                     if path.labelseq[i] == 'G':
                         bc_type[i] = [1, 0.0]
                 if len(x) > 1:
-                    parprint('ok')
                     sp = CubicSpline(x=x, y=y, bc_type=bc_type)
                     #sp = InterpolatedUnivariateSpline(x, y)
                     e2_skn[s, :, n] = sp(x2)
                 else:
-                    # XXX: what do we do if len(x)<2?
-                    parprint('!! len(x) =', len(x))
+                    # XXX: what do we do if len(x)<2? For the moment, create array of zeros
                     e2_skn[s, :, n] = np.zeros(len(x2)) 
-                    parprint('len(x2) =', len(x2))
-                    parprint('len(e2_skn[s, :, n]) =', len(e2_skn[s, :, n]))
         list_e2_skn.append(e2_skn)
-        list_x2.append(x2) # XXX: to check. Remove afterwards
-        list_X2.append(X2) # XXX: to check. Remove afterwards
         list_kptsreal_kc.append(kptsreal_kc)
         list_epsreal_skn.append(epsreal_skn)
         list_xreal.append(np.array(x))
-        # append the following only if len(x) > 1
-        #if len(x) > 1:
-        #    list_kptsreal_kc.append(kptsreal_kc)
-        #    list_epsreal_skn.append(epsreal_skn)
-        #    list_xreal.append(x)
         
     tot_kptsreal_kc = list_kptsreal_kc[0]
     tot_epsreal_skn = list_epsreal_skn[0]
     tot_xreal = list_xreal[0]
     tot_e2_skn = list_e2_skn[0]
-    tot_x2 = list_x2[0] # XXX: to check. Remove afterwards
-    tot_X2 = list_X2[0] # XXX: to check. Remove afterwards
-    
-    """
+      
     for i in range(1, len(partial_paths)):
-        tot_kptsreal_kc = np.concatenate([tot_kptsreal_kc, kptsreal_kc])
-        tot_epsreal_skn = np.concatenate([tot_epsreal_skn, epsreal_skn])
-        tot_xreal = np.concatenate([tot_xreal, x + tot_xreal[-1]])
-        tot_e2_skn = np.concatenate([tot_e2_skn, e2_skn])
-        tot_x2 = np.concatenate([tot_x2, x2 + tot_x2[-1]]) # XXX: to check. Remove afterwards
-        tot_X2 = np.concatenate([tot_X2, X2 + tot_X2[-1]]) # XXX: to check. Remove afterwards
-    """
-    parprint('list_xreal', list_xreal)
-    parprint('list_kptsreal_kc', list_kptsreal_kc)
-
-    for i in range(0, len(partial_paths)):
-        parprint('i:', i, 'list_e2_skn[i].shape:', list_e2_skn[i].shape)
-        parprint('i:', i, 'list_x2[i].shape:', list_x2[i].shape)
-        parprint('i:', i, 'list_X2[i].shape:', list_X2[i].shape)
-        parprint('i:', i, 'list_kptsreal_kc[i].shape:', list_kptsreal_kc[i].shape)
-        parprint('i:', i, 'list_epsreal_skn[i].shape:', list_epsreal_skn[i].shape)
-        parprint('i:', i, 'list_xreal[i].shape:', list_xreal[i].shape)
-
-    for i in range(1, len(list_xreal)):
         tot_kptsreal_kc = np.concatenate((tot_kptsreal_kc, list_kptsreal_kc[i]), axis=0)
         tot_epsreal_skn = np.concatenate((tot_epsreal_skn, list_epsreal_skn[i]), axis=1)
         tot_xreal = np.concatenate((tot_xreal, list_xreal[i] + tot_xreal[-1]))
-
-    for i in range(1, len(partial_paths)):
         tot_e2_skn = np.concatenate((tot_e2_skn, list_e2_skn[i]), axis=1)
-        tot_x2 = np.concatenate((tot_x2, list_x2[i] + tot_x2[-1])) # XXX: to check. Remove afterwards
-        tot_X2 = np.concatenate((tot_X2, list_X2[i] + tot_X2[-1])) # XXX: to check. Remove afterwards
 
     tot_kpts = total_path.kpts
     tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
@@ -589,8 +415,6 @@ def interpolate_bandlines2(calc, e_skn=None, npoints=400):
                'e_skn': tot_e2_skn,  # eigenvalues on bandpath
                'x': tot_x,     # distance along bandpath
                'X': tot_X,     # positons of vertices on bandpath
-               'x2': tot_x2,     # XXX: to check. Remove afterwards
-               'X2': tot_X2,     # XXX: to check. Remove afterwards
                'xreal': tot_xreal,       # distance along path (at MonkhorstPack kpts)
                'epsreal_skn': tot_epsreal_skn,  # path eigenvalues at MP kpts
                'kptsreal_kc': tot_kptsreal_kc   # path k-points at MP kpts
