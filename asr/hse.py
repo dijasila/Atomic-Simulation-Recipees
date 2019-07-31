@@ -1,13 +1,10 @@
 """
 to do:
-
-- USE RESULTS FROM MONKHORST_PACK_INTERPOLATE INSTEAD OF INTERPOLATE_BANDSTRUCTURE
 - better interpolation scheme?
-- should kptpath be customizable?  --> hseinterpol
 - create plot  --> hseinterpol
 - create web panel  --> hseinterpol
 - move stuff to utils
-- ASE 3.0.19 -> BandPath.labelseq renamed to BandPath.path !!
+- Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
 """
 import json
 from pathlib import Path
@@ -160,7 +157,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
     eps_skn = eps.transpose(1, 0, 2)
-    dct = dict(eps_skn=eps_skn, path=path.kpts, kptpath=str_path)
+    dct = dict(eps_skn=eps_skn, path=path)
     if e_mk is not None:
         eps_soc = monkhorst_pack_interpolate(path.kpts, e_mk.transpose(1, 0),
                                              icell, bz2ibz, size, offset)
@@ -169,8 +166,6 @@ def bs_interpolate(kptpath, npoints=400, show=False):
         e_mk = eps_soc.transpose(1, 0)
         s_mk = s_soc.transpose(1, 0)
         dct.update(e_mk=e_mk, s_mk=s_mk)
-    x, X, _ = labels_from_kpts(path.kpts, atoms.cell) # save also x-axis coordinates for plot
-    dct.update(x=x, X=X)
 
     results = {}
     results['hse_bandstructure'] = dct
@@ -179,14 +174,13 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     # XXX: interpolate_bandstructure does NOT work well for 3D structures
     hse_eigenvalues = results_hse['hse_eigenvalues']
     eps_skn = hse_eigenvalues['e_hse_skn']
-    kpts, x, X, e_skn, _, _ = interpolate_bandstructure(calc, path, e_skn=e_skn)
-    dct = dict(eps_skn=e_skn, path=kpts, x=x, X=X)
+    _, _, _, e_skn, _, _ = interpolate_bandstructure(calc, path, e_skn=e_skn)
+    dct = dict(eps_skn=e_skn, path=path)
     hse_eigenvalues_soc = results_hse['hse_eigenvalues_soc']
     eps_smk = hse_eigenvalues_soc['e_hse_mk']
     eps_smk = eps_smk[np.newaxis]
-    kpts, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, path, e_skn=eps_smk.transpose(0, 2, 1))
-    dct.update(e_mk=e_skn[0].transpose(), path=kpts, xreal=xr,
-               epsreal_skn=yr_skn)
+    _, _, _, e_skn, xr, yr_skn = interpolate_bandstructure(calc, path, e_skn=eps_smk.transpose(0, 2, 1))
+    dct.update(e_mk=e_skn[0].transpose(), xreal=xr, epsreal_skn=yr_skn)
     results['hse_bandstructure3'] = dct
 
     return results
@@ -272,7 +266,9 @@ def segment_indices_and_x(cell, path, kpts):
 def interpolate_bandstructure(calc, path, e_skn=None):
     """simple wrapper for interpolate_bandlines2
     Returns:
-        out: kpts, e_skn, xreal, epsreal_skn
+        out: kpts, x, X, e_skn, xreal, epsreal_skn
+
+    XXX: you don't really need to return kpts, x, X
     """
     r = interpolate_bandlines2(calc=calc, path=path, e_skn=e_skn)
     return r['kpts'], r['x'], r['X'], r['e_skn'], r['xreal'], r['epsreal_skn']
@@ -285,8 +281,6 @@ def interpolate_bandlines2(calc, path, e_skn=None):
         path: a BandPath object
         e_skn: (ns, nk, nb) shape ndarray, optional
             if not given it uses eigenvalues from calc
-        npoints: int
-            numper of point on the path
     Returns:
         out: dict
             with keys e_skn, kpts, x, X
