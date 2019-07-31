@@ -1,11 +1,11 @@
 from asr.utils import command, option, argument, chdir
 
 
-def collect(db, verbose=False, skip_forces=False, references=None):
+def collect(db, level, only_include=None):
     import traceback
     from pathlib import Path
     from ase.io import read
-    from asr.utils import get_recipes
+    from asr.utils import get_recipes, get_dep_tree
 
     kvp = {}
     data = {}
@@ -14,7 +14,10 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 
     atoms = read('structure.json')
     folder = str(Path().cwd())
-    recipes = get_recipes(sort=True)
+    if only_include:
+        recipes = get_dep_tree(only_include)
+    else:
+        recipes = get_recipes(sort=True)
 
     for recipe in recipes:
         try:
@@ -31,7 +34,12 @@ def collect(db, verbose=False, skip_forces=False, references=None):
             tb = traceback.format_exc()
             errors.append((folder, error, tb))
     if db is not None:
-        db.write(atoms, data=data, **kvp)
+        if level > 1:
+            db.write(atoms, data=data, **kvp)
+        elif level > 0:
+            db.write(atoms, **kvp)
+        else:
+            db.write(atoms)
         metadata = db.metadata
         metadata.update({'key_descriptions': key_descriptions})
         db.metadata = metadata
@@ -41,15 +49,19 @@ def collect(db, verbose=False, skip_forces=False, references=None):
 @command('asr.database.fromtree',
          add_skip_opt=False)
 @argument('folders', nargs=-1)
-@option('--references', default=None, type=str, help='Reference phases')
-@option('--verbose', default=False)
-@option('--skipforces', default=False)
+@option('--recipe', default=None,
+        help='Only collect data relevant for this recipe')
+@option('--level', type=int, default=2,
+        help=('0: Collect only atoms. '
+              '1: Collect atoms+KVP. '
+              '2: Collect atoms+kvp+data'))
+@option('--data/--nodata', default=True,
+        help='Also add data objects to database')
 @option('--raiseexc', is_flag=True, default=False)
-def main(folders, references, verbose, skipforces, raiseexc):
+def main(folders, recipe, level, raiseexc):
     """Collect data from folder tree into database."""
     import os
     import traceback
-    from pathlib import Path
     from ase.db import connect
     # We use absolute path because of chdir below!
     dbname = os.path.join(os.getcwd(), 'database.db')
@@ -65,13 +77,8 @@ def main(folders, references, verbose, skipforces, raiseexc):
         with chdir(folder):
             print(folder, end=':\n')
             try:
-                if references:
-                    references = Path(references).resolve()
-                errors2 = collect(
-                    db,
-                    verbose=verbose,
-                    skip_forces=skipforces,
-                    references=references)
+                errors2 = collect(db, level=level,
+                                  only_include=recipe)
             except KeyboardInterrupt:
                 break
             except Exception as x:
@@ -88,8 +95,6 @@ def main(folders, references, verbose, skipforces, raiseexc):
         for error in errors:
             print('{}\n{}: {}\n{}'.format('=' * 77, *error))
 
-
-group = 'postprocessing'
 
 if __name__ == '__main__':
     main()
