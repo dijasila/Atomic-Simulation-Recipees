@@ -25,25 +25,105 @@ class ASRCommand(click.Command):
                  add_skip_opt=True, callback=None,
                  additional_callback='postprocessing',
                  tests=None,
-                 creates=None, *args, **kwargs):
-        assert asr_name, 'You have to give a name to your ASR command!'
-        self._asr_name = asr_name
+                 creates=None,
+                 dependencies=None,
+                 diskspace=None,
+                 restart=None,
+                 group=None,
+                 resources=None,
+                 postprocessing=None,
+                 collect=None,
+                 webpanel=None,
+                 *args, **kwargs):
+
         self.known_exceptions = known_exceptions or {}
         self.asr_results_file = save_results_file
         self.add_skip_opt = add_skip_opt
         self._callback = callback
-        self.creates = creates
+
         self.module = import_module(asr_name)
-        self.additional_callback = additional_callback
-        if tests is None and hasattr(self.module, 'tests'):
-            self.tests = self.module.tests
-        else:
-            self.tests = None
+
+        # Metadata for our ASR recipes
+        assert asr_name, 'You have to give a name to your ASR command!'
+        self._asr_name = asr_name
+        self.creates = creates or self._creates
+        self.dependencies = dependencies or self._dependencies
+        self.diskspace = diskspace or self._diskspace
+        self.restart = restart or self._restart
+        self.group = group or self._group
+        self.resources = resources or self._resources
+        self.tests = tests or self._tests
+
+        # Extra functionality for our ASR functionality
+        self.postprocessing = postprocessing or self._postprocessing
+        self.collect = collect or self._collect
+        self.webpanel = webpanel or self._webpanel
+
         click.Command.__init__(self, callback=self.callback, *args, **kwargs)
+
+    @property
+    def _creates(self):
+        creates = [f'results_{self._asr_name}.json']
+        if hasattr(self.module, 'creates'):
+            creates += self.module.creates
+        return creates
+
+    @property
+    def _dependencies(self):
+        dependencies = []
+        if hasattr(self.module, 'dependencies'):
+            dependencies += self.module.dependencies
+        return dependencies
+
+    @property
+    def _resources(self):
+        resources = '1:10m'
+        if hasattr(self.module, 'resources'):
+            resources = self.module.resources
+        return resources
+
+    @property
+    def _diskspace(self):
+        diskspace = 0
+        if hasattr(self.module, 'diskspace'):
+            diskspace = self.module.diskspace
+        return diskspace
+
+    @property
+    def _restart(self):
+        restart = 0
+        if hasattr(self.module, 'restkart'):
+            restart = self.module.restart
+        return restart
 
     def main(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
                                   *args, **kwargs)
+
+    def postprocessing(self):
+        pass
+
+    def webpanel(self):
+        pass
+
+    def collect(self):
+        kvp = {}
+        key_descriptions = {}
+        data = {}
+        if self.done():
+            if self.module.collect_data:
+                kvp, key_descriptions, data = self.collect_data(atoms)
+
+            name = self.name[4:]
+            resultfile = Path(f'results_{name}.json')
+            from ase.io import jsonio
+            results = jsonio.decode(resultfile.read_text())
+            key = f'results_{name}'
+            msg = f'{self.name}: You cannot put a {key} in data'
+            assert key not in data, msg
+            data[key] = results
+
+        return kvp, key_descriptions, data
 
     def done(self):
         if self.creates:

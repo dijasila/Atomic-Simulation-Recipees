@@ -6,91 +6,121 @@ class Recipe:
 
     all_recipes = []
 
-    known_attributes = ['main', 'postprocessing',
-                        'collect_data', 'webpanel', 'group', 'creates',
-                        'dependencies', 'resources', 'diskspace',
-                        'restart']
-
-    def __init__(self, module):
-        self.name = module.__name__
-        self.module = module
-
-        for attr in Recipe.known_attributes:
-            if hasattr(module, attr):
-                setattr(self, attr, getattr(module, attr))
-
-    def __contains__(self, item):
-        if hasattr(self.module, item):
-            return True
-        return False
+    def __init__(self,
+                 name,
+                 main=None,
+                 postprocessing=None,
+                 collect=None,
+                 webpanel=None,
+                 group=None,
+                 creates=None,
+                 dependencies=None,
+                 resources=None,
+                 diskspace=None,
+                 restart=None):
+        self._name = name
+        self._main = main
+        self._postprocessing = postprocessing
+        self._collect = collect
+        self._webpanel = webpanel
+        self._group = group
+        self._creates = creates
+        self._dependencies = dependencies
+        self._resources = resources
+        self._diskspace = diskspace
+        self._restart = restart
 
     @classmethod
-    def frompath(cls, name, reload=True):
+    def frommodule(cls, name, reload=True):
         """Use like: Recipe.frompath('asr.relax')"""
         module = importlib.import_module(f'{name}')
+
         if reload:
             module = importlib.reload(module)
-        return cls(module)
 
-    # def main(self, *args, **kwargs):
-    #     if hasattr(self.module, 'main'):
-    #         print(args, kwargs, self.name, self.module,
-    #               self.module.main)
-    #         print(dir(self.module.main))
-    #         return self.module.main(*args, **kwargs)
-    #     return NotImplemented
+        kwargs = {}
+        if hasattr(module, 'main'):
+            kwargs['main'] = module.main
+        if hasattr(module, 'postprocessing'):
+            kwargs['postprocessing'] = module.postprocessing
+        if hasattr(module, 'collect'):
+            kwargs['collect'] = module.collect
+        if hasattr(module, 'webpanel'):
+            kwargs['webpanel'] = module.webpanel
+        if hasattr(module, 'group'):
+            kwargs['group'] = module.group
+        if hasattr(module, 'creates'):
+            kwargs['creates'] = module.creates
+        if hasattr(module, 'dependencies'):
+            kwargs['dependencies'] = module.dependencies
+        if hasattr(module, 'resources'):
+            kwargs['resources'] = module.resources
+        if hasattr(module, 'diskspace'):
+            kwargs['diskspace'] = module.diskspace
+        if hasattr(module, 'restart'):
+            kwargs['restart'] = module.restart
 
-    # def postprocessing(self, *args, **kwargs):
-    #     if hasattr(self.module, 'postprocessing'):
-    #         return self.module.main(*args, **kwargs)
-    #     return NotImplemented
+        return cls(**kwargs)
 
-    # def collect_data(self, *args, **kwargs):
-    #     if hasattr(self.module, 'collect_data'):
-    #         return self.module.collect_data(*args, **kwargs)
-    #     return NotImplemented
-        
-    # def webpanel(self, *args, **kwargs):
-    #     if hasattr(self.module, 'webpanel'):
-    #         return self.module.main(*args, **kwargs)
-    #     return NotImplemented
+    def main(self, *args, **kwargs):
+        if self._main:
+            results = self._main(*args, **kwargs)
 
-    # def creates(self, *args, **kwargs):
-    #     if hasattr(self.module, 'creates'):
-    #         if callable(self.module.creates):
-    #             return self.module.creates(*args, **kwargs)
-    #         return self.module.creates
-    #     return NotImplemented
+        if self._postprocessing:
+            results.update(self.postprocessing)
 
-    # def resources(self, *args, **kwargs):
-    #     if hasattr(self.module, 'resources'):
-    #         if callable(self.module.resources):
-    #             return self.module.resources(*args, **kwargs)
-    #         return self.module.resources
-    #     return NotImplemented
+        results.update(get_excecution_info(ctx.params))
+            
+        return results
 
-    # def restart(self, *args, **kwargs):
-    #     if hasattr(self.module, 'restart'):
-    #         if callable(self.module.restart):
-    #             return self.module.restart(*args, **kwargs)
-    #         return self.module.restart
-    #     return NotImplemented
+    def postprocessing(self, *args, **kwargs):
+        if hasattr(self.module, 'postprocessing'):
+            return self.module.main(*args, **kwargs)
+        return NotImplemented
 
-    # def diskspace(self, *args, **kwargs):
-    #     if hasattr(self.module, 'diskspace'):
-    #         if callable(self.module.diskspace):
-    #             return self.module.diskspace(*args, **kwargs)
-    #         return self.module.diskspace
-    #     return NotImplemented
+    def collect_data(self, *args, **kwargs):
+        if hasattr(self.module, 'collect_data'):
+            return self.module.collect_data(*args, **kwargs)
+        return NotImplemented
+
+    def webpanel(self, *args, **kwargs):
+        if hasattr(self.module, 'webpanel'):
+            return self.module.main(*args, **kwargs)
+        return NotImplemented
+
+    def creates(self, *args, **kwargs):
+        if hasattr(self.module, 'creates'):
+            if callable(self.module.creates):
+                return self.module.creates(*args, **kwargs)
+            return self.module.creates
+        return NotImplemented
+
+    def resources(self, *args, **kwargs):
+        if hasattr(self.module, 'resources'):
+            if callable(self.module.resources):
+                return self.module.resources(*args, **kwargs)
+            return self.module.resources
+        return NotImplemented
+
+    def restart(self, *args, **kwargs):
+        if hasattr(self.module, 'restart'):
+            if callable(self.module.restart):
+                return self.module.restart(*args, **kwargs)
+            return self.module.restart
+        return NotImplemented
+
+    def diskspace(self, *args, **kwargs):
+        if hasattr(self.module, 'diskspace'):
+            if callable(self.module.diskspace):
+                return self.module.diskspace(*args, **kwargs)
+            return self.module.diskspace
+        return NotImplemented
 
     def done(self):
         name = self.name[4:]
         creates = [f'results_{name}.json']
         if self.creates:
             creates += self.creates
-        # modulecreates = self.creates()
-        # if modulecreates is not NotImplemented:
-        #     creates += self.creates()
 
         for file in creates:
             if not Path(file).exists():
