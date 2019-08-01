@@ -220,7 +220,7 @@ def status():
         metavar='NCORES',
         type=int,
         help='Run tests in parallel on NCORES')
-@option('-k', '--pattern', type=str, metavar='PATTERN',
+@option('-k', '--patterns', type=str, metavar='PATTERN,PATTERN,...',
         help='Select tests containing PATTERN.')
 @option('-j', '--jobs', type=int, metavar='JOBS', default=1,
         help='Run JOBS threads.  Each test will be executed '
@@ -228,7 +228,7 @@ def status():
         'for parallelization together with MPI.')
 @option('-s', '--show-output', is_flag=True,
         help='Show standard output from tests.')
-def test(tests, parallel, pattern, jobs, show_output):
+def test(tests, parallel, patterns, jobs, show_output):
     from asr.utils.testrunner import ASRTestRunner
     import os
     import sys
@@ -250,9 +250,12 @@ def test(tests, parallel, pattern, jobs, show_output):
             folder = Path(__file__).parent.parent / 'tests'
             tests = [str(path) for path in folder.glob('test_*.py')]
 
-        if pattern:
-            tests = [test for test in tests if pattern in test]
-
+        if patterns:
+            patterns = patterns.split(',')
+            tmptests = []
+            for pattern in patterns:
+                tmptests += [test for test in tests if pattern in test]
+            tests = tmptests
         failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
     finally:
         if world.rank == 0:
