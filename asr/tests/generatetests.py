@@ -68,12 +68,55 @@ def run_test(test):
             raise AssertionError('This test should fail but it doesn\'t.')
 
 
-def generatetests():
+def make_test_files(identifier, tests):
+    from asr.utils import file_barrier
     from pathlib import Path
-    from asr.utils import get_recipes, file_barrier
     from ase.parallel import world
 
+    for it, test in enumerate(tests):
+        testname = None
+
+        if callable(test):
+            testname = test.__name__ + '_gen.py'
+        else:
+            assert isinstance(test, dict), f'Unknown Test type {test}'
+            name = test.get('name', None)
+            if name:
+                testname = name + '_gen.py'
+            else:
+                testname = None
+
+        if not testname:
+            id = 0
+            while True:
+                testname = f'test_{identifier}_{id}_gen.py'
+                if not Path(Path(__file__).parent / testname).exists():
+                    break
+                id += 1
+
+        text = 'from asr.tests.generatetests import run_test\n\n\n'
+        text += f'test = {tests[it]}\n'
+        text += f'run_test(test)'
+
+        msg = (f'Invalid test name: "{name}". Please name your '
+               'tests as "test_{name}".')
+        assert testname.startswith('test_'), msg
+        filename = Path(__file__).parent / testname
+        assert not filename.exists(), \
+            f'This file already exists: {filename}'
+        with file_barrier(filename):
+            if world.rank == 0:
+                filename.write_text(text)
+
+
+def generatetests():
+    # from pathlib import Path
+    from asr.utils import get_recipes
+    # from ase.parallel import world
+    from asr.utils.cli import tests as clitests
+
     recipes = get_recipes()
+    make_test_files('clitests', clitests)
 
     for recipe in recipes:
         if not hasattr(recipe.main, 'tests'):
@@ -81,43 +124,6 @@ def generatetests():
         tests = recipe.main.tests
         if not tests:
             continue
-        testnames = []
-        for it, test in enumerate(tests):
-            testname = None
-
-            if callable(test):
-                testname = test.__name__ + '_gen.py'
-            else:
-                assert isinstance(test, dict), ('Unknown Test type in '
-                                                f'{recipe.name}: {test}')
-                name = test.get('name', None)
-                if name:
-                    testname = name + '_gen.py'
-                else:
-                    testname = None
-
-            if not testname:
-                id = 0
-                while True:
-                    testname = f'test_{recipe.name}_{id}_gen.py'
-                    if testname not in testnames:
-                        break
-                    id += 1
-
-            text = 'from asr.tests.generatetests import run_test\n'
-            text += f'from {recipe.name} import tests\n\n\n'
-            text += f'run_test(tests[{it}])'
-
-            msg = (f'Invalid test name: "{name}". Please name your '
-                   'tests as "test_{name}".')
-            assert testname.startswith('test_'), msg
-            assert testname not in testnames, \
-                f'Duplicate test name:{name}!'
-            testnames.append(testname)
-            filename = Path(__file__).parent / testname
-            with file_barrier(filename):
-                if world.rank == 0:
-                    filename.write_text(text)
 
 
 def cleantests():
