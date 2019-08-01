@@ -45,10 +45,10 @@ def main(pristine, defect, defect_name):
     sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
     if nd == 3:
-        epsilon = (epsilons[0] + epsilons[1] + epsilons[2])/3.
+        epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
         dim = '3d'
     elif nd == 2:
-        epsilon = [(epsilons[0] + epsilons[1])/2., epsilons[2]]
+        epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
         dim = '2d'
 
     folder_list = []
@@ -193,6 +193,170 @@ def postprocessing():
     formation_dict = read_json('defectformation.json')
 
     return formation_dict
+
+
+def line_intersection(line1, line2):
+    """Helper function to calculate intersection of two given lines"""
+    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    div = det(xdiff, ydiff)
+    if div == 0:
+        raise Exception('lines do not intersect')
+
+    d = (det(*line1), det(*line2))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return x, y
+
+
+def line(p1, p2):
+    """Helper function to define a line"""
+    A = (p1[1] - p2[1])
+    B = (p2[0] - p1[0])
+    C = (p1[0] * p2[1] - p2[0] * p1[1])
+    return A, B, -C
+
+
+def intersection(L1, L2):
+    """Helper function to calculate intersection of two given lines that were
+    defined with the upper 'line' function
+    """
+    D = L1[0] * L2[1] - L1[1] * L2[0]
+    Dx = L1[2] * L2[1] - L1[1] * L2[2]
+    Dy = L1[0] * L2[2] - L1[2] * L2[0]
+    if D != 0:
+        x = Dx / D
+        y = Dy / D
+        return x, y
+    else:
+        return False
+
+
+def plot_formation(defect_dict, defectname):
+    """Function to plot formation energies versus the Fermi energy and to
+    obtain transition points between most stable charge states of a given
+    defect
+    """
+    from asr.utils import write_json
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # initalize and read formation energies and charge states
+    x = []
+    y = []
+    q = []
+    x = np.array(defect_dict['fermi_energy'])
+    y = np.array(defect_dict['formation_energy'])
+    q = np.array(defect_dict['charges'])
+
+    # set general parameters
+    x_range = np.array([0, 1.5])
+    x_diff = np.array([[-x[0], x_range[1] - x[0]]])
+    y_edges = np.array(
+        [[y[0] + x_diff[0][0] * q[0], y[0] + x_diff[0][1] * q[0]]])
+
+    # set general plotting parameters
+    lw = 1
+    linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
+    colorlist = ['black', 'C0', 'C1']
+    plt.ylim(0, max(y_edges[:, 0]))
+    plt.xlim(x_range[0] - 0.2, x_range[1])
+
+    # initialise np array containing all lines
+    linearray = np.array([[line([x_range[0], y_edges[0][0]],
+                                [x_range[1], y_edges[0][1]]), q[0]]])
+
+    # initialise plot
+    plt.plot(x_range, y_edges[0], color=colorlist[np.sign(q[0])], lw=lw,
+             linestyle=linestylelist[abs(q[0])], label='q = {}'.format(q[0]))
+    plt.text((2 * x_range[0] - 0.2) / 2.,
+             max(y_edges[:, 0]) / 2., 'valence band', rotation=90)
+
+    # append other lines in a loop
+    for i in range(1, len(q)):
+        x_diff = np.append(x_diff, [[-x[i], x_range[1] - x[i]]], axis=0)
+        y_edges = np.append(y_edges, [[y[i] + x_diff[i][0] * q[i],
+                                       y[i] + x_diff[i][1] * q[i]]], axis=0)
+        linearray = np.append(linearray, [[line([x_range[0], y_edges[i][0]], [
+                              x_range[1], y_edges[i][1]]), q[i]]], axis=0)
+        plt.plot(x_range,
+                 y_edges[i],
+                 color=colorlist[np.sign(q[i])],
+                 lw=lw,
+                 linestyle=linestylelist[abs(q[i])],
+                 label='q = {}'.format(q[i]))
+
+    # flip arrays in order for them to start with positive slope
+    linearray_up = np.flip(linearray, axis=0)
+    x_diff = np.flip(x_diff, axis=0)
+    y_edges = np.flip(y_edges, axis=0)
+    q_copy = np.flip(q)
+
+    # IMPORTANT: all of the important arrays have now been reversed!
+    # find minimum line at zero energy and create temporary array with lines
+    for i in range(len(y_edges)):
+        if y_edges[i][0] == min(y_edges[:, 0]):
+            start_index = i
+            linearray_up = np.delete(linearray_up, np.s_[0:i], 0)
+            q_copy = np.delete(q_copy, np.s_[0:i])
+            trans_array = np.array(
+                [[(0, y_edges[i][0]), q_copy[i], q_copy[i]]])
+
+    # loop over all lines in linearray_up and calculate intersection points
+    while len(linearray_up) > 1:
+        linedists = np.array([[intersection(linearray_up[0][0],
+                                            linearray_up[1][0]), q_copy[0],
+                                            q_copy[1]]])
+        if len(linearray_up) > 2:
+            for j in range(2, len(linearray_up)):
+                linedists = np.append(linedists, [[intersection(
+                    linearray_up[0][0], linearray_up[j][0]), q_copy[0],
+                    q_copy[j]]], axis=0)
+        linearray_up = np.delete(linearray_up, 0, 0)
+        q_copy = np.delete(q_copy, 0)
+        x_list = []
+        n = 0
+        for element in linedists:
+            x_list.append(element[0][0])
+            if element[0][0] >= 0 and len(x_list) == 1:
+                if element[0][0] == min(x_list):
+                    trans_array = np.append(trans_array, [element], axis=0)
+                    dropout = n
+            elif (element[0][0] >= 0 and element[0][0] == min(x_list)
+                  and element[0][0] < trans_array[-1][0][0]):
+                trans_array = np.append(trans_array, [element], axis=0)
+                trans_array = np.delete(trans_array, -2, 0)
+                dropout = n
+            n = n + 1
+        for i in range(dropout):
+            linearray_up = np.delete(linearray_up, np.s_[0:i], 0)
+    for i in range(len(y_edges)):
+        if y_edges[i][1] == min(y_edges[:, 1]):
+            trans_array = np.append(trans_array, [[(x_range[1], y_edges[i][1]),
+                                                   trans_array[-1][2],
+                                                   trans_array[-1][2]]],
+                                                   axis=0)
+
+    # plot the results and save the figure
+    for element in trans_array:
+        ratio = element[0][1] / max(y_edges[:, 0])
+        plt.axvline(x=element[0][0], ymax=ratio, color='C3',
+                    linestyle=(0, (5, 10)))
+    plt.axvspan(x_range[0] - 0.2, x_range[0], color='lightgrey')
+    x_val = [x[0] for x in trans_array[:, 0]]
+    y_val = [x[1] for x in trans_array[:, 0]]
+    plt.plot(x_val, y_val, marker='D', linestyle='-', color='C3')
+    plt.xlabel(r'$E_{F}$ in eV')
+    plt.ylabel(r'$E_{formation}$ in eV')
+    plotname = 'plot_{}.png'.format(defectname)
+    plt.legend()
+    plt.savefig(plotname)
+
+    return trans_array
 
 
 # def webpanel(row, key_descriptions):
