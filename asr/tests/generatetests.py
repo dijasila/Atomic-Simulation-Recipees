@@ -60,9 +60,9 @@ def run_test(test):
         if results:
             for filename, item in results.items():
                 check_results(filename, item)
-    except Exception:
+    except Exception as e:
         if not fail:
-            raise
+            raise AssertionError(e.stderr.decode('ascii'))
     else:
         if fail:
             raise AssertionError('This test should fail but it doesn\'t.')
