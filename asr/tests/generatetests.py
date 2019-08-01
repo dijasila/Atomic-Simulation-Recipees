@@ -1,6 +1,45 @@
+
+def run_test(test):
+    import subprocess
+
+    cli = []
+    testfunction = None
+    fail = False
+
+    if 'cli' in test:
+        assert isinstance(test['cli'], list), \
+            'Type: clitest. Should be a list commands.'
+        cli = test['cli']
+
+    if 'test' in test:
+        assert callable(testfunction), \
+            'Function test type should be callable.'
+        testfunction = test['test']
+
+    if 'fail' in test:
+        fail = test['fail']
+
+    try:
+        for command in cli:
+            subprocess.run(command, shell=True,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE,
+                           check=True)
+
+        if testfunction:
+            testfunction()
+    except Exception:
+        if not fail:
+            raise
+    else:
+        if fail:
+            raise AssertionError('This test should fail but it doesn\'t.')
+
+
 def generatetests():
     from pathlib import Path
-    from asr.utils import get_recipes
+    from asr.utils import get_recipes, file_barrier
+    from ase.parallel import world
 
     recipes = get_recipes()
 
@@ -11,14 +50,10 @@ def generatetests():
         if not tests:
             continue
         testnames = []
-        for test in tests:
+        for it, test in enumerate(tests):
             testname = None
-            cli = None
-            testfunction = None
-            fail = False
 
             if callable(test):
-                testfunction = test
                 testname = test.__name__ + '_gen.py'
             else:
                 assert isinstance(test, dict), ('Unknown Test type in '
@@ -28,9 +63,6 @@ def generatetests():
                     testname = name + '_gen.py'
                 else:
                     testname = None
-                cli = test.get('cli', None)
-                testfunction = test.get('test', None)
-                fail = test.get('fail', False)
 
             if not testname:
                 id = 0
@@ -40,49 +72,20 @@ def generatetests():
                         break
                     id += 1
 
-            text = ''
+            text = 'from asr.tests.generatetests import run_test\n'
+            text += f'from {recipe.name} import tests\n\n\n'
+            text += f'run_test(tests[{it}])'
 
-            if cli:
-                assert isinstance(test['cli'], list), \
-                    'Type: clitest. Should be a list commands.'
-                text += 'import subprocess\n\n\n'
-                text += 'def clitest():\n'
-                commands = []
-                for command in test['cli']:
-                    parts = command.split()
-                    string = ', '.join([f"'{part}'" for part in parts])
-                    commands.append(string)
-
-                for command in commands:
-                    text += f'    subprocess.run([{command}])\n\n\n'
-
-                if fail:
-                    indent = 4
-                    text += 'try:\n'
-                else:
-                    indent = 0
-
-                text += ' ' * indent + 'clitest()\n'
-
-            if testfunction:
-                assert callable(testfunction), \
-                    'Function test type should be callable.'
-                testfunctionname = {testfunction.__name__}
-                text = f'from module import {testfunctionname}\n' + text
-                text += ' ' * indent + f'{testfunctionname}()\n'
-
-            if fail:
-                text += ('except Exception:\n'
-                         '    exit()\n'
-                         'assert False')
             msg = (f'Invalid test name: "{name}". Please name your '
                    'tests as "test_{name}".')
             assert testname.startswith('test_'), msg
             assert testname not in testnames, \
                 f'Duplicate test name:{name}!'
             testnames.append(testname)
-            print(f'Writing {testname}')
-            (Path(__file__).parent / testname).write_text(text)
+            filename = Path(__file__).parent / testname
+            with file_barrier(filename):
+                if world.rank == 0:
+                    filename.write_text(text)
 
 
 def cleantests():

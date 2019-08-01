@@ -152,7 +152,8 @@ def run(ctx, args):
             print(f'Would run "{command}"')
         else:
             print(f'Running command: {command}')
-            subprocess.run(command.split())
+            subprocess.run(command.split(), check=True)
+            # We only raise errors when check=True
 
     if dryrun and folders:
         nfolders = len(folders)
@@ -365,23 +366,21 @@ def test(tests, parallel, pattern, jobs, show_output):
             # Start again using gpaw-python in parallel:
             arguments = ['mpiexec', '-np', str(parallel),
                          'gpaw-python', '-m', 'asr', 'test'] + sys.argv[2:]
-            # arguments += ['-m', 'gpaw'] +
             os.execvp('mpiexec', arguments)
 
-    if world.rank == 0:
+    try:
         generatetests()
-    world.barrier()
-    if not tests:
-        folder = Path(__file__).parent.parent / 'tests'
-        tests = [str(path) for path in folder.glob('test_*.py')]
+        if not tests:
+            folder = Path(__file__).parent.parent / 'tests'
+            tests = [str(path) for path in folder.glob('test_*.py')]
 
-    if pattern:
-        tests = [test for test in tests if pattern in test]
-        
-    failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
+        if pattern:
+            tests = [test for test in tests if pattern in test]
 
-    if world.rank == 0:
-        cleantests()
+        failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
+    finally:
+        if world.rank == 0:
+            cleantests()
 
     assert not failed, 'Some tests failed!'
 
