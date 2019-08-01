@@ -8,9 +8,40 @@ def main(kptpath, npoints):
     results = bs_interpolate(kptpath, npoints)
     return results
 
-if __name__ == '__main__':
-    main()
+# collect data
+"""
+def collect_data(atoms):
+    # ...
+    return kvp, key_descriptions, data 
+"""
 
+# from c2db.collect
+def hse(kvp, data, atoms, verbose):
+    if not op.isfile('hse_bandstructure.npz'):
+        return
+    if op.isfile('hse_bandstructure3.npz'):
+        fname = 'hse_bandstructure3.npz'
+    else:
+        fname = 'hse_bandstructure.npz'
+    dct = dict(np.load(fname))
+    if 'epsreal_skn' not in dct:
+        warnings.warn('epsreal_skn missing, try and run hseinterpol again')
+        return
+    print('Collecting HSE bands-structure data')
+    evac = kvp.get('evac')
+    dct = dict(np.load(fname))
+    # without soc first
+    data['bs_hse'] = {
+        'path': dct['path'],
+        'eps_skn': dct['eps_skn'] - evac,
+        # 'efermi_nosoc': efermi_nosoc - evac,
+        'epsreal_skn': dct['epsreal_skn'] - evac,
+        'xkreal': dct['xreal']}
+
+    # then with soc if available
+    if 'e_mk' in dct and op.isfile('hse_eigenvalues_soc.npz'):
+        e_mk = dct['e_mk']  # band structure
+        data['bs_hse'].update(eps_mk=e_mk - evac)
 
 ########################################################
 
@@ -39,3 +70,6 @@ creates = []
 dependencies = ['asr.hse']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
+
+if __name__ == '__main__':
+    main()

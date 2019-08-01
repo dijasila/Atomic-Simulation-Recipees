@@ -472,11 +472,47 @@ def cleanup(*files):
                 if os.path.isfile(f):
                     os.remove(f)
 
-if __name__ == '__main__':
-    with cleanup('hse.gpw'):
-        main()
+# collect data
+# from c2db.collect
+def hse_gap(kvp, data, atoms, verbose):
+    evac = kvp.get('evac')
+    if not op.isfile('hse_eigenvalues.npz'):
+        return
+    eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
+    calc = GPAW('hse_nowfs.gpw', txt=None)
+    ibzkpts = calc.get_ibz_k_points()
+    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
+    gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
+                          output=None)
+    gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
+                             direct=True, output=None)
+    if 'bs_hse' not in data:
+        data['bs_hse'] = {}
+    if gap:
+        data['bs_hse']['kvbm_nosoc'] = ibzkpts[p1[1]]
+        data['bs_hse']['kcbm_nosoc'] = ibzkpts[p2[1]]
+        vbm = eps_skn[p1] - evac
+        cbm = eps_skn[p2] - evac
+        kvp.update(vbm_hse_nosoc=vbm, cbm_hse_nosoc=cbm,
+                   dir_gap_hse_nosoc=gapd, gap_hse_nosoc=gap)
 
-
+    eps = np.load('hse_eigenvalues_soc.npz')['e_hse_mk']
+    eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
+    efermi = fermi_level(calc, eps_skn=eps,
+                         nelectrons=calc.get_number_of_electrons() * 2)
+    gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi,
+                          output=None)
+    gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi,
+                             direct=True, output=None)
+    if gap:
+        data['bs_hse']['kvbm'] = ibzkpts[p1[1]]
+        data['bs_hse']['kcbm'] = ibzkpts[p2[1]]
+        vbm = eps[p1] - evac
+        cbm = eps[p2] - evac
+        kvp.update(vbm_hse=vbm, cbm_hse=cbm,
+                   dir_gap_hse=gapd, gap_hse=gap)
+    kvp.update(efermi_hse=efermi - evac,
+               efermi_hse_nosoc=efermi_nosoc - evac)
 
 
 
@@ -507,3 +543,8 @@ creates = ['hse_nowfs.gpw', 'hse-restart.json']
 dependencies = ['asr.structureinfo', 'asr.gs']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
+
+
+if __name__ == '__main__':
+    with cleanup('hse.gpw'):
+        main()
