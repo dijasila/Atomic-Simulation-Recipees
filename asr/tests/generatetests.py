@@ -10,13 +10,13 @@ def flatten(d, parent_key='', sep=':'):
     return dict(items)
 
 
-def check_results(filename, reference):
+def check_results(item):
     from asr.utils import read_json
     import numpy as np
-
+    filename = item['file']
     results = flatten(read_json(filename))
-
-    for key, value in reference.items():
+    item.pop('file')
+    for key, value in item.items():
         ref = value[0]
         precision = value[1]
         assert np.allclose(results[key], ref, atol=precision), \
@@ -28,7 +28,7 @@ def run_test(test):
 
     cli = []
     testfunction = None
-    fail = False
+    fails = False
     results = None
 
     if 'cli' in test:
@@ -41,8 +41,8 @@ def run_test(test):
         assert callable(testfunction), \
             'Function test type should be callable.'
 
-    if 'fail' in test:
-        fail = test['fail']
+    if 'fails' in test:
+        fails = test['fails']
 
     if 'results' in test:
         results = test['results']
@@ -58,13 +58,13 @@ def run_test(test):
             testfunction()
 
         if results:
-            for filename, item in results.items():
-                check_results(filename, item)
+            for item in results:
+                check_results(item)
     except Exception as e:
-        if not fail:
+        if not fails:
             raise AssertionError(e.stderr.decode('ascii'))
     else:
-        if fail:
+        if fails:
             raise AssertionError('This test should fail but it doesn\'t.')
 
 
@@ -74,17 +74,12 @@ def make_test_files(module, tests):
     from ase.parallel import world
 
     for it, test in enumerate(tests):
-        testname = None
-
-        if callable(test):
-            testname = test.__name__ + '_gen.py'
+        assert isinstance(test, dict), f'Unknown Test type {test}'
+        name = test.get('name', None)
+        if name:
+            testname = name + '_gen.py'
         else:
-            assert isinstance(test, dict), f'Unknown Test type {test}'
-            name = test.get('name', None)
-            if name:
-                testname = name + '_gen.py'
-            else:
-                testname = None
+            testname = None
 
         if not testname:
             id = 0
