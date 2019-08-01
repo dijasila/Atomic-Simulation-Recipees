@@ -1,8 +1,10 @@
 """
 to do:
 - better interpolation scheme?
+- find reasonable default values for params
 - create plot  --> hseinterpol
 - create web panel  --> hseinterpol
+- collect data [kvp, key_descriptors, data]  --> hseinterpol
 - move stuff to utils
 - Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
 """
@@ -32,14 +34,17 @@ from contextlib import contextmanager
 
 @command('asr.hse')
 @option('--kptdensity', default=12, help='K-point density')
-def main(kptdensity):
+@option('--emptybands', default=20, help='number of empty bands to include')
+#@option('--ecut', default=100, help='Plane-wave cutoff') # XXX: reasonable default value??
+# XXX: should I use the same cutoff as gs.gpw?
+def main(kptdensity, emptybands):
     results = {}
-    results['hse_eigenvalues'] = hse(kptdensity=kptdensity)
+    results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
     mpi.world.barrier()
     results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
     return results
 
-def hse(kptdensity=12, emptybands=20):
+def hse(kptdensity, emptybands):
 
     convbands = int(emptybands / 2)
     if not os.path.isfile('hse.gpw'):
