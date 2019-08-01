@@ -282,18 +282,22 @@ resources = '24:10h'
 creates = ['results_relax.json']
 
 
-def clicheck():
+def BN_check():
+    # Check that 2D-BN doesn't relax to its 3D form
     from asr.utils import read_json
-    import numpy as np
     results = read_json('results_relax.json')
-    assert np.allclose(results['relaxedstructure']['cell'][2, 2], 6.62, 0.1)
+    assert results['relaxedstructure'][1]['cell'][2, 2] > 5
 
 
 tests = []
-tests.append({'name': 'test_cli_BN',
-              'cli': ['asr run build BN',
+tests.append({'description': 'Check for bug where 2D-BN relaxes to 3D.',
+              'name': 'test_2DBN_relax',
+              'cli': ['asr run setup.materials -s BN,natoms=2',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2',
                       'asr run relax --nod3'],
-              'test': clicheck})
+              'test': BN_check})
 
 
 if __name__ == '__main__':

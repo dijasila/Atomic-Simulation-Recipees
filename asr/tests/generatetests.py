@@ -37,9 +37,9 @@ def run_test(test):
         cli = test['cli']
 
     if 'test' in test:
+        testfunction = test['test']
         assert callable(testfunction), \
             'Function test type should be callable.'
-        testfunction = test['test']
 
     if 'fail' in test:
         fail = test['fail']
@@ -68,7 +68,7 @@ def run_test(test):
             raise AssertionError('This test should fail but it doesn\'t.')
 
 
-def make_test_files(identifier, tests):
+def make_test_files(module, tests):
     from asr.utils import file_barrier
     from pathlib import Path
     from ase.parallel import world
@@ -89,14 +89,14 @@ def make_test_files(identifier, tests):
         if not testname:
             id = 0
             while True:
-                testname = f'test_{identifier}_{id}_gen.py'
+                testname = f'test_{module}_{id}_gen.py'
                 if not Path(Path(__file__).parent / testname).exists():
                     break
                 id += 1
 
-        text = 'from asr.tests.generatetests import run_test\n\n\n'
-        text += f'test = {tests[it]}\n'
-        text += f'run_test(test)'
+        text = 'from asr.tests.generatetests import run_test\n'
+        text += f'from {module} import tests\n\n\n'
+        text += f'run_test(tests[{it}])\n'
 
         msg = (f'Invalid test name: "{name}". Please name your '
                'tests as "test_{name}".')
@@ -106,6 +106,7 @@ def make_test_files(identifier, tests):
             f'This file already exists: {filename}'
         with file_barrier(filename):
             if world.rank == 0:
+                print(filename)
                 filename.write_text(text)
 
 
@@ -115,15 +116,16 @@ def generatetests():
     # from ase.parallel import world
     from asr.utils.cli import tests as clitests
 
-    recipes = get_recipes()
-    make_test_files('clitests', clitests)
+    make_test_files('asr.utils.cli', clitests)
 
+    recipes = get_recipes()
     for recipe in recipes:
-        if not hasattr(recipe.main, 'tests'):
+        if not recipe.main:
             continue
         tests = recipe.main.tests
         if not tests:
             continue
+        make_test_files(recipe.name, tests)
 
 
 def cleantests():
