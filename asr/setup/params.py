@@ -68,7 +68,8 @@ def main(params):
 
 tests = [
     {'cli': ['asr run setup.params']},
-    {'cli': ['asr run setup.params asr.relax:ecut 300']},
+    {'cli': ['asr run setup.params asr.relax:ecut 300'],
+     'results': {'params.json': {'asr.relax:ecut': (300, 0.1)}}},
     {'cli': ['asr run setup.params :ecut 300'], 'fail': True},
     {'cli': ['asr run setup.params asr.relax: 300'], 'fail': True},
     {'cli': ['asr run setup.params asr.relax:ecut asr.gs:ecut 300'],

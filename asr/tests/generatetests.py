@@ -1,3 +1,27 @@
+def flatten(d, parent_key='', sep=':'):
+    import collections
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+def check_results(filename, reference):
+    from asr.utils import read_json
+    import numpy as np
+
+    results = flatten(read_json(filename))
+
+    for key, value in reference.items():
+        ref = value[0]
+        precision = value[1]
+        assert np.allclose(results[key], ref, atol=precision), \
+            f'{filename}[{key}] != {ref} ± {precision}'
+
 
 def run_test(test):
     import subprocess
@@ -5,6 +29,7 @@ def run_test(test):
     cli = []
     testfunction = None
     fail = False
+    results = None
 
     if 'cli' in test:
         assert isinstance(test['cli'], list), \
@@ -19,6 +44,9 @@ def run_test(test):
     if 'fail' in test:
         fail = test['fail']
 
+    if 'results' in test:
+        results = test['results']
+
     try:
         for command in cli:
             subprocess.run(command, shell=True,
@@ -28,6 +56,10 @@ def run_test(test):
 
         if testfunction:
             testfunction()
+
+        if results:
+            for filename, item in results.items():
+                check_results(filename, item)
     except Exception:
         if not fail:
             raise
