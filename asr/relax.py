@@ -312,7 +312,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run collect',
                       'asr run browser --only-figures'],
              'results': {'results_relax.json': {'c': (3.1, 0.1)}}})
-tests.append({'description': 'Check for bug where 2D-BN relaxes to 3D.',
+tests.append({'description': 'Test relaxation of 2D-BN.',
               'name': 'test_2DBN_relax',
               'cli': ['asr run setup.materials -s BN,natoms=2',
                       'ase convert materials.json unrelaxed.json',
