@@ -16,7 +16,7 @@ def collect_data(atoms):
 """
 
 # from c2db.collect
-def hse(kvp, data, atoms, verbose):
+def collect_data(kvp, data, atoms, verbose):
     if not op.isfile('hse_bandstructure.npz'):
         return
     if op.isfile('hse_bandstructure3.npz'):

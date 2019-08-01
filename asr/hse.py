@@ -473,15 +473,59 @@ def cleanup(*files):
                     os.remove(f)
 
 # collect data
+"""
+def collect_data(atoms):
+    # ...
+    return kvp, key_descriptions, data 
+"""
+
 # from c2db.collect
-def hse_gap(kvp, data, atoms, verbose):
-    evac = kvp.get('evac')
-    if not op.isfile('hse_eigenvalues.npz'):
-        return
-    eps_skn = np.load('hse_eigenvalues.npz')['e_hse_skn']
+def collect_data(atoms):
+    from ase.dft.bandgap import bandgap
+    kvp = {}
+    key_descriptions = {}
+    data = {}
+
+    evac = 0.0 # XXX where do I find evac?
+    
+    if not os.path.isfile('results_hse.json'):
+        return kvp, key_descriptions, data
+
+    results_hse = json.load(open('results_hse.json'))
+    
+    eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
+
+
+    def fermi_level(calc, eps_skn=None, nelectrons=None):
+        """
+        Parameters:
+            calc: GPAW
+                GPAW calculator
+            eps_skn: ndarray, shape=(ns, nk, nb), optional
+                eigenvalues (taken from calc if None)
+            nelectrons: float, optional
+                number of electrons (taken from calc if None)
+        Returns:
+            out: float
+                fermi level
+        """
+        if nelectrons is None:
+            nelectrons = calc.get_number_of_electrons()
+        if eps_skn is None:
+            eps_skn = eigenvalues(calc)
+        eps_skn.sort(axis=-1)
+        occ = calc.occupations.todict()
+        weight_k = calc.get_k_point_weights()
+        return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
+
+
+    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn) ## XXX this comes from c2db.utils!!
+
+    """ XXX is that the same as
+    efermi_nosoc = calc.get_fermi_level()
+    """
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -496,7 +540,7 @@ def hse_gap(kvp, data, atoms, verbose):
         kvp.update(vbm_hse_nosoc=vbm, cbm_hse_nosoc=cbm,
                    dir_gap_hse_nosoc=gapd, gap_hse_nosoc=gap)
 
-    eps = np.load('hse_eigenvalues_soc.npz')['e_hse_mk']
+    eps = results_hse['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi = fermi_level(calc, eps_skn=eps,
                          nelectrons=calc.get_number_of_electrons() * 2)
@@ -513,6 +557,10 @@ def hse_gap(kvp, data, atoms, verbose):
                    dir_gap_hse=gapd, gap_hse=gap)
     kvp.update(efermi_hse=efermi - evac,
                efermi_hse_nosoc=efermi_nosoc - evac)
+    
+    # XXX need a key_description!
+
+    return kvp, key_descriptions, data
 
 
 
