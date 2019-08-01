@@ -60,9 +60,12 @@ def run_test(test):
         if results:
             for item in results:
                 check_results(item)
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         if not fails:
             raise AssertionError(e.stderr.decode('ascii'))
+    except Exception:
+        if not fails:
+            raise
     else:
         if fails:
             raise AssertionError('This test should fail but it doesn\'t.')

@@ -310,7 +310,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run relax --nod3',
                       'asr run collect',
                       'asr run browser --only-figures'],
-             'results': {'results_relax.json': {'c': (3.1, 0.1)}}})
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
               'name': 'test_2DBN_relax',
               'cli': ['asr run setup.materials -s BN,natoms=2',
