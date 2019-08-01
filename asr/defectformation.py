@@ -65,11 +65,19 @@ def main(pristine, defect, defect_name):
     defectformation_dict = {}
     for folder in folder_list:
         e_form_name = 'e_form_' + folder.name
-        e_form = []
-        e_fermi = []
-        charges = []
-        for charge in range(-q, q + 1):
+        # e_form = []
+        # e_fermi = []
+        # charges = []
+        # TODO: change this part later. For now, only dummy values!
+        e_form = [5.18, 5.23, 3.56, 3.01, 3.74]
+        e_fermi = [0, 0, 0, 0, 0]
+        charges = [-3, -2, -1, 0, 1]
+        # TODO: also change that again later!
+        # for charge in range(-2, 3):
+        # for charge in range(-q, q + 1):
+        for charge in charges:
             tmp_folder_name = folder.name + '/charge_' + str(charge)
+            # TODO: chagne that to proper .gpw file later
             charged_file = find_file_in_folder('unrelaxed.json',
                                                tmp_folder_name)
             # elc = ElectrostaticCorrections(pristine=path_gs,
@@ -80,7 +88,8 @@ def main(pristine, defect, defect_name):
             # e_form.append(elc.calculate_corrected_formation_energy())
             # calc = GPAW(find_file_in_folder('gs.gpw', tmp_folder_name))
             # e_fermi.append(calc.get_fermi_level())
-            charges.append(charge)
+            # TODO: include next line later without dummies
+            # charges.append(charge)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'fermi_energies': e_fermi,
                                              'chargestates': charges}
@@ -191,8 +200,15 @@ def postprocessing():
     from asr.utils import read_json
 
     formation_dict = read_json('defectformation.json')
+    transitions_dict = {}
+    for element in formation_dict:
+        plotname = element
+        defect_dict = formation_dict[element]
+        transitions_dict[plotname] = plot_formation_and_transitions(
+            defect_dict, plotname)
 
-    return formation_dict
+    return transitions_dict
+        
 
 
 def line_intersection(line1, line2):
@@ -236,7 +252,7 @@ def intersection(L1, L2):
         return False
 
 
-def plot_formation(defect_dict, defectname):
+def plot_formation_and_transitions(defect_dict, defectname):
     """Function to plot formation energies versus the Fermi energy and to
     obtain transition points between most stable charge states of a given
     defect
@@ -249,9 +265,9 @@ def plot_formation(defect_dict, defectname):
     x = []
     y = []
     q = []
-    x = np.array(defect_dict['fermi_energy'])
-    y = np.array(defect_dict['formation_energy'])
-    q = np.array(defect_dict['charges'])
+    x = np.array(defect_dict['fermi_energies'])
+    y = np.array(defect_dict['formation_energies'])
+    q = np.array(defect_dict['chargestates'])
 
     # set general parameters
     x_range = np.array([0, 1.5])
@@ -260,6 +276,7 @@ def plot_formation(defect_dict, defectname):
         [[y[0] + x_diff[0][0] * q[0], y[0] + x_diff[0][1] * q[0]]])
 
     # set general plotting parameters
+    plt.figure()
     lw = 1
     linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
     colorlist = ['black', 'C0', 'C1']
@@ -309,8 +326,7 @@ def plot_formation(defect_dict, defectname):
     # loop over all lines in linearray_up and calculate intersection points
     while len(linearray_up) > 1:
         linedists = np.array([[intersection(linearray_up[0][0],
-                                            linearray_up[1][0]), q_copy[0],
-                                            q_copy[1]]])
+            linearray_up[1][0]), q_copy[0], q_copy[1]]])
         if len(linearray_up) > 2:
             for j in range(2, len(linearray_up)):
                 linedists = np.append(linedists, [[intersection(
@@ -337,9 +353,7 @@ def plot_formation(defect_dict, defectname):
     for i in range(len(y_edges)):
         if y_edges[i][1] == min(y_edges[:, 1]):
             trans_array = np.append(trans_array, [[(x_range[1], y_edges[i][1]),
-                                                   trans_array[-1][2],
-                                                   trans_array[-1][2]]],
-                                                   axis=0)
+                trans_array[-1][2], trans_array[-1][2]]], axis=0)
 
     # plot the results and save the figure
     for element in trans_array:
