@@ -134,7 +134,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     a path in the bz between high-symmetry points.
     The soc is added before interpolation.
     """
-   calc = GPAW('hse_nowfs.gpw', txt=None)
+    calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
     results_hse = read_json('results_hse.json')
     data = results_hse['hse_eigenvalues']
