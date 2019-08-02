@@ -61,6 +61,8 @@ def run(ctx, args, parallel):
     Provide extra arguments to the recipe using "asr run recipe --arg1
     --arg2".
 
+    Run a recipe in parallel using "asr run -p NCORES recipe --arg1".
+
     Run command in multiple using "asr run recipe in folder1/ folder2/".
     This is also compatible with input arguments to the current command
     through "asr run recipe --arg1 in folder1/ folder2/". Here the
@@ -80,6 +82,8 @@ def run(ctx, args, parallel):
         asr run relax
     Specify an argument:
         asr run relax --ecut 600
+    Run a recipe in parallel with an argument:
+        asr run -p 2 relax --ecut 600
     Run relax recipe in two folders sequentially:
         asr run relax in folder1/ folder2/
     Run a shell command in this folder:
