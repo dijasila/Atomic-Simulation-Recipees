@@ -34,22 +34,24 @@ def main(pristine, defect, defect_name):
     """
     from ase.io import read
     from asr.utils import write_json
-    from gpaw import GPAW
-    from gpaw.defects import ElectrostaticCorrections
+    # from gpaw import GPAW
+    # from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
 
-    sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    # ###################################################################### #
+    # sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
-    if nd == 3:
-        epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
-        dim = '3d'
-    elif nd == 2:
-        epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
-        dim = '2d'
+    # if nd == 3:
+    #     epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
+    #     dim = '3d'
+    # elif nd == 2:
+    #     epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
+    #     dim = '2d'
+    # ###################################################################### #
 
     folder_list = []
     p = Path('.')
@@ -64,7 +66,7 @@ def main(pristine, defect, defect_name):
 
     defectformation_dict = {}
     for folder in folder_list:
-        e_form_name = 'e_form_' + folder.name
+        # e_form_name = 'e_form_' + folder.name
         # e_form = []
         # e_fermi = []
         # charges = []
@@ -78,8 +80,8 @@ def main(pristine, defect, defect_name):
         for charge in charges:
             tmp_folder_name = folder.name + '/charge_' + str(charge)
             # TODO: chagne that to proper .gpw file later
-            charged_file = find_file_in_folder('unrelaxed.json',
-                                               tmp_folder_name)
+            # charged_file = find_file_in_folder('unrelaxed.json',
+            #                                    tmp_folder_name)
             # elc = ElectrostaticCorrections(pristine=path_gs,
             #                                charged=charged_file,
             #                                q=charge, sigma=sigma,
@@ -181,17 +183,15 @@ def find_file_in_folder(filename, foldername):
 
 
 def collect_data():
-    from ase.io import jsonio
-    from pathlib import Path
-    if not Path('defectformation.json').is_file():
-        return {}, {}, {}
+    # from ase.io import jsonio
+    # from pathlib import Path
+    # if not Path('results_defectformation.json').is_file():
+    #     return {}, {}, {}
 
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    dct = jsonio.decode(Path('defectformation.json').read_text())
-
-    # Update key-value-pairs
+    # kvp = {}
+    # data = {}
+    # key_descriptions = {}
+    # dct = jsonio.decode(Path('results_defectformation.json').read_text())
 
     return None
 
@@ -208,7 +208,6 @@ def postprocessing():
             defect_dict, plotname)
 
     return transitions_dict
-        
 
 
 def line_intersection(line1, line2):
@@ -257,7 +256,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     obtain transition points between most stable charge states of a given
     defect
     """
-    from asr.utils import write_json
+    # from asr.utils import write_json
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -282,6 +281,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     colorlist = ['black', 'C0', 'C1']
     plt.ylim(0, max(y_edges[:, 0]))
     plt.xlim(x_range[0] - 0.2, x_range[1])
+    #bbox = {'fc': '0.8', 'pad': 0}
 
     # initialise np array containing all lines
     linearray = np.array([[line([x_range[0], y_edges[0][0]],
@@ -291,7 +291,8 @@ def plot_formation_and_transitions(defect_dict, defectname):
     plt.plot(x_range, y_edges[0], color=colorlist[np.sign(q[0])], lw=lw,
              linestyle=linestylelist[abs(q[0])], label='q = {}'.format(q[0]))
     plt.text((2 * x_range[0] - 0.2) / 2.,
-             max(y_edges[:, 0]) / 2., 'valence band', rotation=90)
+             max(y_edges[:, 0]) / 2., 'valence band',
+             {'ha': 'center', 'va': 'center'}, rotation=90)
 
     # append other lines in a loop
     for i in range(1, len(q)):
@@ -317,7 +318,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     # find minimum line at zero energy and create temporary array with lines
     for i in range(len(y_edges)):
         if y_edges[i][0] == min(y_edges[:, 0]):
-            start_index = i
+            # start_index = i
             linearray_up = np.delete(linearray_up, np.s_[0:i], 0)
             q_copy = np.delete(q_copy, np.s_[0:i])
             trans_array = np.array(
@@ -326,7 +327,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     # loop over all lines in linearray_up and calculate intersection points
     while len(linearray_up) > 1:
         linedists = np.array([[intersection(linearray_up[0][0],
-            linearray_up[1][0]), q_copy[0], q_copy[1]]])
+                             linearray_up[1][0]), q_copy[0], q_copy[1]]])
         if len(linearray_up) > 2:
             for j in range(2, len(linearray_up)):
                 linedists = np.append(linedists, [[intersection(
@@ -353,7 +354,8 @@ def plot_formation_and_transitions(defect_dict, defectname):
     for i in range(len(y_edges)):
         if y_edges[i][1] == min(y_edges[:, 1]):
             trans_array = np.append(trans_array, [[(x_range[1], y_edges[i][1]),
-                trans_array[-1][2], trans_array[-1][2]]], axis=0)
+                                    trans_array[-1][2], trans_array[-1][2]]],
+                                    axis=0)
 
     # plot the results and save the figure
     for element in trans_array:
