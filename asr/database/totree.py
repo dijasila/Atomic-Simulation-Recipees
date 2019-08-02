@@ -91,6 +91,8 @@ def main(database, run, selection, tree_structure,
     if sort:
         print(f'Sorting after {sort}')
 
+    assert Path(database).exists(), f'file: {database} doesn\'t exist'
+
     db = connect(database)
     rows = list(db.select(selection, sort=sort))
 
@@ -167,10 +169,21 @@ def main(database, run, selection, tree_structure,
             write(atomsname, row.toatoms())
             if kvp:
                 write_json('key-value-pairs.json', row.key_value_pairs)
-            if kvp:
+            if data:
                 for key in row.data:
                     write_json(f'{key}.json', row.data[key])
 
+
+def folderexists():
+    from pathlib import Path
+    assert Path('tree').is_dir()
+
+
+tests = [
+    {'cli': ['asr run setup.materials',
+             'asr run database.totree materials.json --run'],
+     'test': folderexists}
+]
 
 if __name__ == '__main__':
     main()

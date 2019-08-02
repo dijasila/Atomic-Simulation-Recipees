@@ -58,7 +58,7 @@ def collect(db, level, only_include=None):
 @option('--data/--nodata', default=True,
         help='Also add data objects to database')
 @option('--raiseexc', is_flag=True, default=False)
-def main(folders, recipe, level, raiseexc):
+def main(folders, recipe, level, data, raiseexc):
     """Collect data from folder tree into database."""
     import os
     import traceback
@@ -94,6 +94,26 @@ def main(folders, recipe, level, raiseexc):
         print('Errors:')
         for error in errors:
             print('{}\n{}: {}\n{}'.format('=' * 77, *error))
+
+
+tests = [
+    {'cli': ['asr run setup.materials',
+             'asr run database.totree materials.json --run'
+             ' --atomsname structure.json',
+             'asr run database.fromtree tree/*/*/*/',
+             'asr run database.totree database.db '
+             '-t newtree/{formula} --run'],
+     'results': [{'file': 'newtree/Ag/unrelaxed.json'}]},
+    {'cli': ['asr run setup.materials',
+             'asr run database.totree materials.json -s "natoms\\<2" --run'
+             ' -t tree/{formula} --atomsname structure.json',
+             'asr run structureinfo in tree/*/',
+             'asr run database.fromtree tree/*/',
+             'asr run database.totree database.db '
+             '-t newtree/{formula} --run --data'],
+     'results': [{'file': 'newtree/Ag/unrelaxed.json'},
+                 {'file': 'newtree/Ag/results_structureinfo.json'}]}
+]
 
 
 if __name__ == '__main__':
