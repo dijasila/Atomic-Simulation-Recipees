@@ -308,7 +308,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run setup.params asr.relax:ecut 300 '
                       'asr.relax:kptdensity 2',
                       'asr run relax --nod3',
-                      'asr run collect',
+                      'asr run database.fromtree',
                       'asr run browser --only-figures'],
               'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
@@ -317,7 +317,7 @@ tests.append({'description': 'Test relaxation of Si (cores=2).',
                       'asr run setup.params asr.relax:ecut 300 '
                       'asr.relax:kptdensity 2',
                       'asr run -p 2 relax --nod3',
-                      'asr run collect',
+                      'asr run database.fromtree',
                       'asr run browser --only-figures'],
               'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
@@ -327,7 +327,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
                       'asr run setup.params asr.relax:ecut 300 '
                       'asr.relax:kptdensity 2',
                       'asr run relax --nod3',
-                      'asr run collect',
+                      'asr run database.fromtree',
                       'asr run browser --only-figures'],
               'test': BN_check})
 
