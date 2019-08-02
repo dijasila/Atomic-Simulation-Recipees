@@ -245,10 +245,11 @@ def get_excecution_info(params):
 def get_all_recipe_names():
     from pathlib import Path
     folder = Path(__file__).parent.parent
-    files = list(folder.glob('[a-zA-Z]*.py'))
-    files += list(folder.glob('setup/[a-zA-Z]*.py'))
+    files = list(folder.glob('**/[a-zA-Z]*.py'))
     modulenames = []
     for file in files:
+        if 'utils' in str(file) or 'tests' in str(file):
+            continue
         name = str(file.with_suffix(''))[len(str(folder)):]
         modulename = 'asr' + name.replace('/', '.')
         modulenames.append(modulename)

@@ -11,11 +11,17 @@ def flatten(d, parent_key='', sep=':'):
 
 
 def check_results(item):
+    from pathlib import Path
     from asr.utils import read_json
     import numpy as np
+
     filename = item['file']
-    results = flatten(read_json(filename))
     item.pop('file')
+    if not item:
+        # Then we just have to check for existence of file:
+        assert Path(filename).exists(), f'{filename} doesn\'t exist'
+        return
+    results = flatten(read_json(filename))
     for key, value in item.items():
         ref = value[0]
         precision = value[1]

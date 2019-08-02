@@ -1,7 +1,7 @@
 from asr.utils import command, argument, option
 
 
-@command('asr.setup.unpackdatabase',
+@command('asr.database.totree',
          save_results_file=False)
 @argument('database', nargs=1)
 @option('--run/--dry-run', default=False)
@@ -57,25 +57,25 @@ def main(database, run, selection, tree_structure,
 
     \b
     Unpack database using default parameters:
-      asr run setup.unpackdatabase database.db --run
+      asr run database.totree database.db --run
     \b
     Don't actually unpack the database but do a dry-run:
-      asr run setup.unpackdatabase database.db
+      asr run database.totree database.db
     \b
     Only select a part of the database to unpack:
-      asr run setup.unpackdatabase database.db --selection "natoms<3" --run
+      asr run database.totree database.db --selection "natoms<3" --run
     \b
     Set custom folder tree-structure:
-      asr run setup.unpackdatabase database.db --tree-structure
+      asr run database.totree database.db --tree-structure
           tree/{stoi}/{spg}/{formula:metal} --run
     \b
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-      asr run setup.unpackdatabase database.db --sort natoms --chunks 2 --run
+      asr run database.totree database.db --sort natoms --chunks 2 --run
     \b
     Unpack key-value-pairs and data keys of the ASE database as well:
-      asr run setup.unpackdatabase database.db --kvp --data --run
+      asr run database.totree database.db --kvp --data --run
     """
     from os import makedirs
     from pathlib import Path
@@ -90,6 +90,8 @@ def main(database, run, selection, tree_structure,
 
     if sort:
         print(f'Sorting after {sort}')
+
+    assert Path(database).exists(), f'file: {database} doesn\'t exist'
 
     db = connect(database)
     rows = list(db.select(selection, sort=sort))
@@ -167,10 +169,21 @@ def main(database, run, selection, tree_structure,
             write(atomsname, row.toatoms())
             if kvp:
                 write_json('key-value-pairs.json', row.key_value_pairs)
-            if kvp:
+            if data:
                 for key in row.data:
                     write_json(f'{key}.json', row.data[key])
 
+
+def folderexists():
+    from pathlib import Path
+    assert Path('tree').is_dir()
+
+
+tests = [
+    {'cli': ['asr run setup.materials',
+             'asr run database.totree materials.json --run'],
+     'test': folderexists}
+]
 
 if __name__ == '__main__':
     main()
