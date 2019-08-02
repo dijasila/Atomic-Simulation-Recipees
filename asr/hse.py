@@ -6,6 +6,7 @@ to do:
 - create web panel  --> hseinterpol
 - collect data [kvp, key_descriptors, data]  --> hseinterpol
 - move stuff to utils
+- get evac
 - Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
 """
 import json
@@ -472,14 +473,6 @@ def cleanup(*files):
                 if os.path.isfile(f):
                     os.remove(f)
 
-# collect data
-"""
-def collect_data(atoms):
-    # ...
-    return kvp, key_descriptions, data 
-"""
-
-# from c2db.collect
 def collect_data(atoms):
     from ase.dft.bandgap import bandgap
     kvp = {}
@@ -491,7 +484,7 @@ def collect_data(atoms):
     if not os.path.isfile('results_hse.json'):
         return kvp, key_descriptions, data
 
-    results_hse = json.load(open('results_hse.json'))
+    results_hse = read_json('results_hse.json')
     
     eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
@@ -518,23 +511,21 @@ def collect_data(atoms):
         eps_skn.sort(axis=-1)
         occ = calc.occupations.todict()
         weight_k = calc.get_k_point_weights()
+        from gpaw.occupations import occupation_numbers
+        from ase.units import Ha
         return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
 
 
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn) ## XXX this comes from c2db.utils!!
-
-    """ XXX is that the same as
-    efermi_nosoc = calc.get_fermi_level()
-    """
+    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                              direct=True, output=None)
-    if 'bs_hse' not in data:
-        data['bs_hse'] = {}
+    if 'hse' not in data:
+        data['hse'] = {}
     if gap:
-        data['bs_hse']['kvbm_nosoc'] = ibzkpts[p1[1]]
-        data['bs_hse']['kcbm_nosoc'] = ibzkpts[p2[1]]
+        data['hse']['kvbm_nosoc'] = ibzkpts[p1[1]] # k coordinates of vbm
+        data['hse']['kcbm_nosoc'] = ibzkpts[p2[1]] # k coordinates of cbm
         vbm = eps_skn[p1] - evac
         cbm = eps_skn[p2] - evac
         kvp.update(vbm_hse_nosoc=vbm, cbm_hse_nosoc=cbm,
@@ -542,28 +533,57 @@ def collect_data(atoms):
 
     eps = results_hse['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
-    efermi = fermi_level(calc, eps_skn=eps,
+    efermi_soc = fermi_level(calc, eps_skn=eps,
                          nelectrons=calc.get_number_of_electrons() * 2)
-    gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi,
+    gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
-    gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi,
+    gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        data['bs_hse']['kvbm'] = ibzkpts[p1[1]]
-        data['bs_hse']['kcbm'] = ibzkpts[p2[1]]
+        data['hse']['kvbm'] = ibzkpts[p1[1]]
+        data['hse']['kcbm'] = ibzkpts[p2[1]]
         vbm = eps[p1] - evac
         cbm = eps[p2] - evac
         kvp.update(vbm_hse=vbm, cbm_hse=cbm,
                    dir_gap_hse=gapd, gap_hse=gap)
-    kvp.update(efermi_hse=efermi - evac,
-               efermi_hse_nosoc=efermi_nosoc - evac)
-    
-    # XXX need a key_description!
+    kvp.update(efermi_hse_nosoc=efermi_nosoc - evac,
+               efermi_hse_soc=efermi_soc - evac)
+      
+    kd = {
+        'vbm_hse_nosoc': ('HSE Valence Band Max - no soc',
+                          'HSE Valence Band Maximum without spin-orbit coupling',
+                          'eV'),
+        'cbm_hse_nosoc': ('HSE Conduction Band Min - no soc',
+                          'HSE Valence Band Maximum without spin-orbit coupling',
+                          'eV'),
+        'dir_gap_hse_nosoc': ('HSE direct gap - no soc',
+                              'HSE direct gap without spin-orbit coupling',
+                              'eV'),
+        'gap_hse_nosoc': ('HSE gap - no soc',
+                          'HSE gap without spin-orbit coupling',
+                          'eV'),
+        'vbm_hse': ('HSE Valence Band Max - soc',
+                    'HSE Valence Band Maximum with spin-orbit coupling',
+                    'eV'),
+        'cbm_hse': ('HSE Conduction Band Min - soc',
+                    'HSE Valence Band Maximum with spin-orbit coupling',
+                    'eV'),
+        'dir_gap_hse': ('HSE direct gap - soc',
+                        'HSE direct gap with spin-orbit coupling',
+                        'eV'),
+        'gap_hse': ('HSE gap - soc',
+                    'HSE gap with spin-orbit coupling',
+                    'eV'),
+        'efermi_hse_nosoc': ('HSE Fermi energy - no soc',
+                             'HSE Fermi energy without spin-orbit coupling',
+                             'eV'),
+        'efermi_hse_soc': ('HSE Fermi energy - soc',
+                           'HSE Fermi energy with spin-orbit coupling',
+                           'eV'),
+    }
+    key_descriptions.update(kd)
 
     return kvp, key_descriptions, data
-
-
-
 
 ########################################################
 
