@@ -40,7 +40,7 @@ def main(pristine, defect, defect_name):
     import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
-    nd = int(np.sum(atoms.get_pbc()))
+    # nd = int(np.sum(atoms.get_pbc()))
 
     # ###################################################################### #
     # sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
@@ -78,7 +78,7 @@ def main(pristine, defect, defect_name):
         # for charge in range(-2, 3):
         # for charge in range(-q, q + 1):
         for charge in charges:
-            tmp_folder_name = folder.name + '/charge_' + str(charge)
+            # tmp_folder_name = folder.name + '/charge_' + str(charge)
             # TODO: chagne that to proper .gpw file later
             # charged_file = find_file_in_folder('unrelaxed.json',
             #                                    tmp_folder_name)
@@ -281,7 +281,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     colorlist = ['black', 'C0', 'C1']
     plt.ylim(0, max(y_edges[:, 0]))
     plt.xlim(x_range[0] - 0.2, x_range[1])
-    #bbox = {'fc': '0.8', 'pad': 0}
+    # bbox = {'fc': '0.8', 'pad': 0}
 
     # initialise np array containing all lines
     linearray = np.array([[line([x_range[0], y_edges[0][0]],
