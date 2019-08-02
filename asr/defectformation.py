@@ -77,7 +77,7 @@ def main(pristine, defect, defect_name):
         # TODO: also change that again later!
         # for charge in range(-2, 3):
         # for charge in range(-q, q + 1):
-        for charge in charges:
+        # for charge in charges:
             # tmp_folder_name = folder.name + '/charge_' + str(charge)
             # TODO: chagne that to proper .gpw file later
             # charged_file = find_file_in_folder('unrelaxed.json',
