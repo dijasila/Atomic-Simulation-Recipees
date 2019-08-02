@@ -47,8 +47,9 @@ def cli():
 @click.argument('args', metavar=('[shell] [dry] command '
                                  '[ARGS] in [FOLDER] ...'),
                 nargs=-1)
+@click.option('-p', '--parallel', type=int, help='Run on NCORES')
 @click.pass_context
-def run(ctx, args):
+def run(ctx, args, parallel):
     """Run recipe or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
@@ -59,6 +60,8 @@ def run(ctx, args):
 
     Provide extra arguments to the recipe using "asr run recipe --arg1
     --arg2".
+
+    Run a recipe in parallel using "asr run -p NCORES recipe --arg1".
 
     Run command in multiple using "asr run recipe in folder1/ folder2/".
     This is also compatible with input arguments to the current command
@@ -79,6 +82,8 @@ def run(ctx, args):
         asr run relax
     Specify an argument:
         asr run relax --ecut 600
+    Run a recipe in parallel with an argument:
+        asr run -p 2 relax --ecut 600
     Run relax recipe in two folders sequentially:
         asr run relax in folder1/ folder2/
     Run a shell command in this folder:
@@ -111,6 +116,13 @@ def run(ctx, args):
         folders = args[ind + 1:]
         args = args[:ind]
 
+    python = 'python3'
+    if parallel:
+        assert not shell, \
+            ('You cannot execute a shell command in parallel. '
+             'Only supported for python modules.')
+        python = f'mpiexec -np {parallel} gpaw-python'
+
     # Identify function that should be executed
     if shell:
         command = ' '.join(args)  # The arguments are actually the command
@@ -120,10 +132,10 @@ def run(ctx, args):
         recipe, *args = args
         if ':' in recipe:
             recipe, function = recipe.split(':')
-            command = (f'python3 -c "from asr.{recipe} import {function}; '
+            command = (f'{python} -c "from asr.{recipe} import {function}; '
                        f'{function}()" ') + ' '.join(args)
         else:
-            command = f'python3 -m asr.{recipe} ' + ' '.join(args)
+            command = f'{python} -m asr.{recipe} ' + ' '.join(args)
 
     if folders:
         from asr.utils import chdir
@@ -134,13 +146,13 @@ def run(ctx, args):
                     print(f'Would run "{command}" in {folder}')
                 else:
                     print(f'Running {command} in {folder}')
-                    subprocess.run(command.split())
+                    subprocess.run(command, shell=True)
     else:
         if dryrun:
             print(f'Would run "{command}"')
         else:
             print(f'Running command: {command}')
-            subprocess.run(command.split(), check=True)
+            subprocess.run(command, shell=True, check=True)
             # We only raise errors when check=True
 
     if dryrun and folders:

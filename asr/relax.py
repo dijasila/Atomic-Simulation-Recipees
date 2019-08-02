@@ -311,8 +311,17 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run collect',
                       'asr run browser --only-figures'],
               'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+tests.append({'description': 'Test relaxation of Si (cores=2).',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2',
+                      'asr run -p 2 relax --nod3',
+                      'asr run collect',
+                      'asr run browser --only-figures'],
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
-              'name': 'test_2DBN_relax',
+              'name': 'test_asr.relax_2DBN',
               'cli': ['asr run setup.materials -s BN,natoms=2',
                       'ase convert materials.json unrelaxed.json',
                       'asr run setup.params asr.relax:ecut 300 '
