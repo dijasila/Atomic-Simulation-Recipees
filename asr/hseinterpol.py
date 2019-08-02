@@ -1,4 +1,5 @@
-from asr.utils import command, option
+from asr.utils import command, option, read_json
+import os
 
 @command('asr.hseinterpol')
 @option('--kptpath', default=None, type=str)
@@ -8,40 +9,64 @@ def main(kptpath, npoints):
     results = bs_interpolate(kptpath, npoints)
     return results
 
-# collect data
-"""
 def collect_data(atoms):
-    # ...
-    return kvp, key_descriptions, data 
-"""
+    """
+    Collect results obtained with 2 methods:
+    1) ase.dft.kpoints.monkhorst_pack_interpolate
+    2) interpolation scheme interpolate_bandlines2(calc, path, e_skn=None)
 
-# from c2db.collect
-def collect_data(kvp, data, atoms, verbose):
-    if not op.isfile('hse_bandstructure.npz'):
-        return
-    if op.isfile('hse_bandstructure3.npz'):
-        fname = 'hse_bandstructure3.npz'
-    else:
-        fname = 'hse_bandstructure.npz'
-    dct = dict(np.load(fname))
+    XXX
+    WARNING: the latter should be ok for 2D, but don't work well for 3D
+    we need a better interpolation scheme to work with 3D structures
+    """
+
+    kvp = {}
+    key_descriptions = {}
+    data = {}
+
+    evac = 0.0 # XXX where do I find evac?
+    #evac = kvp.get('evac')
+
+    if not os.path.isfile('results_hseinterpol.json'):
+        return kvp, key_descriptions, data
+
+    results = read_json('results_hseinterpol.json')
+
+    """
+    1) Results obtained with ase.dft.kpoints.monkhorst_pack_interpolate
+    """
+    dct = results['hse_bandstructure']
+     # without soc first
+    data['hse_interpol'] = {
+        'path': dct['path'],
+        'eps_skn': dct['eps_skn'] - evac}
+    # then with soc if available
+    if 'e_mk' in dct:
+        e_mk = dct['e_mk']  # band structure
+        s_mk = dct['s_mk']
+        data['hse_interpol'].update(eps_mk=e_mk - evac, s_mk=s_mk)
+
+    """
+    2) Results from interpolate_bandlines2(calc, path, e_skn=None)
+    XXX Warning: not suitable for 3D structures!
+    """
+    dct = results['hse_bandstructure3']
     if 'epsreal_skn' not in dct:
         warnings.warn('epsreal_skn missing, try and run hseinterpol again')
-        return
-    print('Collecting HSE bands-structure data')
-    evac = kvp.get('evac')
-    dct = dict(np.load(fname))
+        return kvp, key_descriptions, data
+ 
     # without soc first
-    data['bs_hse'] = {
+    data['hse_interpol3'] = {
         'path': dct['path'],
         'eps_skn': dct['eps_skn'] - evac,
-        # 'efermi_nosoc': efermi_nosoc - evac,
         'epsreal_skn': dct['epsreal_skn'] - evac,
         'xkreal': dct['xreal']}
-
     # then with soc if available
-    if 'e_mk' in dct and op.isfile('hse_eigenvalues_soc.npz'):
+    if 'e_mk' in dct:
         e_mk = dct['e_mk']  # band structure
-        data['bs_hse'].update(eps_mk=e_mk - evac)
+        data['hse_interpol3'].update(eps_mk=e_mk - evac)
+
+    return kvp, key_descriptions, data
 
 ########################################################
 
