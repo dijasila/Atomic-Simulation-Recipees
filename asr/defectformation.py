@@ -32,7 +32,7 @@ def main(pristine, defect, defect_name):
     folder of the initial structure, i.e. the folder where setup.defects was
     also executed.
     """
-    from ase.io import read
+    # from ase.io import read
     from asr.utils import write_json
     # from gpaw import GPAW
     # from gpaw.defects import ElectrostaticCorrections
