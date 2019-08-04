@@ -16,10 +16,7 @@ def main(kptpath, npoints, emptybands):
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
-    if kptpath is None:
-        atoms = read('gs.gpw')
-        kptpath = atoms.cell.bandpath(npoints=npoints)
-
+    kptpath = None
     if not os.path.isfile('bs.gpw'):
         convbands = emptybands // 2
         parms = {
@@ -31,13 +28,14 @@ def main(kptpath, npoints, emptybands):
             'convergence': {
                 'bands': -convbands},
             'symmetry': 'off'}
-
+        atoms = read('gs.gpw')
+        kptpath = atoms.cell.bandpath(npoints=npoints)
         calc = GPAW('gs.gpw', **parms)
         calc.get_potential_energy()
         calc.write('bs.gpw')
 
     calc = GPAW('bs.gpw', txt=None)
-    bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
+    bs = get_band_structure(calc=calc, path=kptpath, reference=ref)
 
     import copy
     results = {}
