@@ -585,25 +585,16 @@ def collect_data(atoms):
 
     return kvp, key_descriptions, data
 
-########################################################
+"""
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import fig, table 
+    hse = table(row, 'Property',
+                ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
+                 key_descriptions=key_descriptions)
+    panel = ('Electronic band structure (HSE)', [[hse]])
 
-#def bs_hse(row, path):
-#    from asr.gw import bs_xc
-#    bs_xc(row, path, xc='hse', label='HSE')
-
-
-# def webpanel(row, key_descriptions):
-#     from asr.utils.custom import fig, table
-#     hse = table('Property',
-#                 ['work_function_hse', 'dos_hse', 'gap_hse', 'dir_gap_hse',
-#                  'vbm_hse', 'cbm_hse'],
-#                  key_descriptions=key_descriptions_noxc)
-
-#     panel = ('Electronic band structure (HSE)',
-#              [[fig('hse-bs.png')],
-#               [hse]])
-
-#     return panel
+    return panel, None
+"""
 
 group = 'property'
 resources = '24:10h'
