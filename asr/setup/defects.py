@@ -34,7 +34,7 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
       structure will then look like this:\n
     .                                                                        '
     ├── general_parameters.json                                              '
-    ├── MoS2_231.HX_at_b0                                                    '
+    ├── MoS2_231.v_at_b0                                                    '
     │   ├── charge_0                                                         '
     │   │   ├── params.json                                                  '
     │   │   └── unrelaxed.json                                               '
@@ -59,7 +59,7 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
     └── unrelaxed.json                                                       '
 
     - Here, the notation for the defects is the following:
-      'formula_supercellsize.defect_at_substitutionposition' where 'HX'
+      'formula_supercellsize.defect_at_substitutionposition' where 'v'
       denotes a vacancy
     - In the resulting folders you can find the unrelaxed structures, as
       well as a 'params.json' file which contains the charge states of the
@@ -181,7 +181,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
                 vacancy.pop(i)
-                string = '{0}_{1}{2}{3}.HX_at_{4}{5}'.format(
+                string = '{0}_{1}{2}{3}.v_at_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
