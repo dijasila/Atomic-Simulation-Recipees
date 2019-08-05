@@ -178,7 +178,7 @@ class ASRCommand(click.Command):
         if not results:
             results = {}
 
-        results.update(get_excecution_info(ctx.params))
+        results.update(get_execution_info(ctx.params))
         
         if self.asr_results_file:
             name = self._asr_name[4:]
@@ -269,7 +269,7 @@ class ASRSubResult:
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_excecution_info(ctx.params))
+        subresult.update(get_execution_info(ctx.params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)
@@ -302,7 +302,7 @@ def chdir(folder, create=False, empty=False):
 excludelist = ['asr.gapsummary']
 
 
-def get_excecution_info(params):
+def get_execution_info(params):
     """Get parameter and software version information as a dictionary"""
     exceinfo = {'__params__': params}
 

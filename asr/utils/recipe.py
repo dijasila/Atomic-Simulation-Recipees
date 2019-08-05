@@ -1,5 +1,10 @@
 import importlib
+import click
 from pathlib import Path
+from asr.utils import get_execution_info
+
+def recipe(*args, **kwargs):
+    pass
 
 
 class Recipe:
@@ -18,7 +23,7 @@ class Recipe:
                  resources=None,
                  diskspace=None,
                  restart=None):
-        self._name = name
+        self.name = name
         self._main = main
         self._postprocessing = postprocessing
         self._collect = collect
@@ -62,21 +67,43 @@ class Recipe:
 
         return cls(**kwargs)
 
+    def __call__(self, *args, **kwargs):
+        # When we call a recipe we will assume that you mean to
+        # execute the recipes main function
+        return self.main(*args, **kwargs)
+
+    @property
+    def creates(self):
+        creates = [f'results_{self.name}.json']
+        if self._creates:
+            creates += self._creates
+        return creates
+
+    @property
+    def dependencies(self):
+        return self._dependencies or []
+
+    @property
+    def resources(self):
+        return self._resources or '1:10m'
+
     def main(self, *args, **kwargs):
+        results = {}
         if self._main:
-            results = self._main(*args, **kwargs)
+            mainresults = self._main(*args, **kwargs)
+            results['__params__'] = kwargs
+            return results
+
+            if mainresults:
+                results.update(mainresults)
 
         if self._postprocessing:
-            results.update(self.postprocessing)
+            postresults = self._postprocessing()
+            if postresults:
+                results.update(postresults)
 
-        results.update(get_excecution_info(ctx.params))
-            
+        # results.update(get_execution_info(ctx.params))
         return results
-
-    def postprocessing(self, *args, **kwargs):
-        if hasattr(self.module, 'postprocessing'):
-            return self.module.main(*args, **kwargs)
-        return NotImplemented
 
     def collect_data(self, *args, **kwargs):
         if hasattr(self.module, 'collect_data'):
@@ -86,20 +113,6 @@ class Recipe:
     def webpanel(self, *args, **kwargs):
         if hasattr(self.module, 'webpanel'):
             return self.module.main(*args, **kwargs)
-        return NotImplemented
-
-    def creates(self, *args, **kwargs):
-        if hasattr(self.module, 'creates'):
-            if callable(self.module.creates):
-                return self.module.creates(*args, **kwargs)
-            return self.module.creates
-        return NotImplemented
-
-    def resources(self, *args, **kwargs):
-        if hasattr(self.module, 'resources'):
-            if callable(self.module.resources):
-                return self.module.resources(*args, **kwargs)
-            return self.module.resources
         return NotImplemented
 
     def restart(self, *args, **kwargs):
@@ -151,6 +164,53 @@ class Recipe:
 
         return kvp, key_descriptions, data
 
+    def __str__(self):
+        info = []
+        info.append(f'Name: {self.name}')
+        info.append(f'Creates: {self.creates}')
+        info = '\n'.join(info)
+        return info
+    
 
-for attr in Recipe.known_attributes:
-    setattr(Recipe, attr, None)
+if __name__ == '__main__':
+    def save_params(func):
+
+        def wrapper(*args, **kwargs):
+            from sys import argv
+            results = func(*args, **kwargs)
+            results['__params__'] = kwargs
+            return results
+
+        return wrapper
+
+    # @save_params
+    def main(a=1, b=3):
+        addb = a + b
+        result = {'addb': addb}
+        return result
+        
+    def postprocessing():
+        print('Executed post processing!')
+        return {'postprocessing': 'Failed :-(!'}
+
+    def webpanel():
+        pass
+
+    def collect():
+        pass
+
+    import inspect
+    params = inspect.signature(main).parameters
+    print(dict(params))
+    print(dir(params['a']))
+    print(params['a'].annotation, params['a'].default, params['a'].empty,
+          params['a'].kind, params['a'].name, params['a'].replace)
+    print(type(params['a'].default))
+    print(dir(inspect.signature(main)))
+    
+    testrecipe = Recipe('testrecipe',
+                        main=main,
+                        postprocessing=postprocessing)
+    print(testrecipe)
+    results = testrecipe(a=5)
+    print(results)
