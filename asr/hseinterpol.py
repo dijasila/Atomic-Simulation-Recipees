@@ -172,7 +172,7 @@ def webpanel(row, key_descriptions):
     
     hse = table(row, 'Property',
                 ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
-                 key_descriptions=key_descriptions)
+                 kd=key_descriptions)
 
     panel = ('Electronic band structure (HSE)', [[hse]])
 
@@ -183,7 +183,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 resources = '1:10m'
-creates = []
+creates = ['results_hseinterpol.json']
 dependencies = ['asr.hse']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
