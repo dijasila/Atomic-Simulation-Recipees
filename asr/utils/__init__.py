@@ -1,13 +1,18 @@
 import os
+import time
 from contextlib import contextmanager
 from functools import partial
+from importlib import import_module
 from pathlib import Path
+from typing import Union
 
 import click
 import numpy as np
-from importlib import import_module
 from ase.io import jsonio
 from ase.parallel import parprint
+import ase.parallel as parallel
+
+
 option = partial(click.option, show_default=True)
 argument = click.argument
 
@@ -19,6 +24,7 @@ class ASRCommand(click.Command):
                  save_results_file=True,
                  add_skip_opt=True, callback=None,
                  additional_callback='postprocessing',
+                 tests=None,
                  creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
@@ -29,6 +35,10 @@ class ASRCommand(click.Command):
         self.creates = creates
         self.module = import_module(asr_name)
         self.additional_callback = additional_callback
+        if tests is None and hasattr(self.module, 'tests'):
+            self.tests = self.module.tests
+        else:
+            self.tests = None
         click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
@@ -42,10 +52,10 @@ class ASRCommand(click.Command):
                     return False
             return True
         return False
-    
+
     def invoke(self, ctx):
         """Invoke a recipe.
-        
+
         By default, invoking a recipe also means invoking its dependencies.
         This can be avoided using the --skip-deps keyword."""
         # Pop the skip deps argument
@@ -59,7 +69,7 @@ class ASRCommand(click.Command):
             recipes = get_dep_tree(self._asr_name)
             for recipe in recipes[:-1]:
                 if not recipe.done():
-                    recipe.run(args=['--skip_deps'])
+                    recipe.run(args=['--skip-deps'])
 
         return self.invoke_myself(ctx)
 
@@ -84,25 +94,21 @@ class ASRCommand(click.Command):
                              'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
             raise
+
         if not results:
             results = {}
-        results['__params__'] = ctx.params
-        from ase.utils import search_current_git_hash
-        modnames = ['asr', 'ase', 'gpaw']
-        versions = {}
-        for modname in modnames:
-            mod = import_module(modname)
-            githash = search_current_git_hash(mod)
-            version = mod.__version__
-            if githash:
-                versions[f'{modname}'] = f'{version}-{githash}'
-            else:
-                versions[f'{modname}'] = f'{version}'
-        results['__versions__'] = versions
 
+        results.update(get_excecution_info(ctx.params))
+        
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
+
+            # Clean up possible tmpresults files
+            tmppath = Path(f'tmpresults_{name}.json')
+            if tmppath.exists():
+                unlink(tmppath)
+
         return results
 
     def callback(self, *args, **kwargs):
@@ -111,11 +117,8 @@ class ASRCommand(click.Command):
         if not self.done():
             results = self._callback(*args, **kwargs)
 
-        if results is None:
+        if results is None and hasattr(self.module, self.additional_callback):
             # Then the results are calculated by another callback function
-            assert hasattr(self.module, self.additional_callback), \
-                (f'{self._asr_name} recipe should have a function named: '
-                 f'{self.additional_callback}')
             func = getattr(self.module, self.additional_callback)
             results = func()
         return results
@@ -149,7 +152,56 @@ def command(name, overwrite_params={},
             func = cc(func)
 
         return func
-    
+
+    return decorator
+
+
+class ASRSubResult:
+    def __init__(self, asr_name, calculator):
+        self._asr_name = asr_name[4:]
+        self.calculator = calculator
+        self._asr_key = calculator.__name__
+
+        self.results = {}
+
+    def __call__(self, ctx, *args, **kwargs):
+        # Try to read sub-result from previous calculation
+        subresult = self.read_subresult()
+        if subresult is None:
+            subresult = self.calculate(ctx, *args, **kwargs)
+
+        return subresult
+
+    def read_subresult(self):
+        """Read sub-result from tmpresults file if possible"""
+        subresult = None
+        path = Path(f'tmpresults_{self._asr_name}.json')
+        if path.exists():
+            self.results = jsonio.decode(path.read_text())
+            # Get subcommand sub-result, if available
+            if self._asr_key in self.results.keys():
+                subresult = self.results[self._asr_key]
+
+        return subresult
+
+    def calculate(self, ctx, *args, **kwargs):
+        """Do the actual calculation"""
+        subresult = self.calculator.__call__(*args, **kwargs)
+        assert isinstance(subresult, dict)
+
+        subresult.update(get_excecution_info(ctx.params))
+        self.results[self._asr_key] = subresult
+
+        write_json(f'tmpresults_{self._asr_name}.json', self.results)
+
+        return subresult
+
+
+def subresult(name):
+    """Decorator pattern for sub-result"""
+    def decorator(calculator):
+        return ASRSubResult(name, calculator)
+
     return decorator
 
 
@@ -167,17 +219,37 @@ def chdir(folder, create=False, empty=False):
 
 
 # We need to reduce this list to only contain collect
-excludelist = ['asr.gw', 'asr.hse', 'asr.piezoelectrictensor',
-               'asr.bse', 'asr.gapsummary']
+excludelist = ['asr.gapsummary']
+
+
+def get_excecution_info(params):
+    """Get parameter and software version information as a dictionary"""
+    exceinfo = {'__params__': params}
+
+    from ase.utils import search_current_git_hash
+    modnames = ['asr', 'ase', 'gpaw']
+    versions = {}
+    for modname in modnames:
+        mod = import_module(modname)
+        githash = search_current_git_hash(mod)
+        version = mod.__version__
+        if githash:
+            versions[f'{modname}'] = f'{version}-{githash}'
+        else:
+            versions[f'{modname}'] = f'{version}'
+    exceinfo['__versions__'] = versions
+
+    return exceinfo
 
 
 def get_all_recipe_names():
     from pathlib import Path
     folder = Path(__file__).parent.parent
-    files = list(folder.glob('[a-zA-Z]*.py'))
-    files += list(folder.glob('setup/[a-zA-Z]*.py'))
+    files = list(folder.glob('**/[a-zA-Z]*.py'))
     modulenames = []
     for file in files:
+        if 'utils' in str(file) or 'tests' in str(file):
+            continue
         name = str(file.with_suffix(''))[len(str(folder)):]
         modulename = 'asr' + name.replace('/', '.')
         modulenames.append(modulename)
@@ -413,3 +485,52 @@ def read_json(filename):
     from pathlib import Path
     dct = jsonio.decode(Path(filename).read_text())
     return dct
+
+
+def unlink(path: Union[str, Path], world=None):
+    """Safely unlink path (delete file or symbolic link)."""
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    if world.rank == 0:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    else:
+        while path.is_file():
+            time.sleep(1.0)
+    world.barrier()
+
+
+@contextmanager
+def file_barrier(path: Union[str, Path], world=None):
+    """Context manager for writing a file.
+
+    After the with-block all cores will be able to read the file.
+
+    >>> with file_barrier('something.txt'):
+    ...     <write file>
+    ...
+
+    This will remove the file, write the file and wait for the file.
+    """
+
+    if isinstance(path, str):
+        path = Path(path)
+    if world is None:
+        world = parallel.world
+
+    # Remove file:
+    unlink(path, world)
+
+    yield
+
+    # Wait for file:
+    while not path.is_file():
+        time.sleep(1.0)
+    world.barrier()

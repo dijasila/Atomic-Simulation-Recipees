@@ -1,18 +1,6 @@
-import os
 import click
-import sys
-import traceback
-from pathlib import Path
-import numpy as np
 from asr.utils import get_recipes
 from asr.utils import argument, option
-from gpaw import setup_paths
-from gpaw.test import TestRunner
-from asr.utils import chdir
-import tempfile
-from gpaw import mpi
-from gpaw.cli.info import info
-import time
 
 
 stdlist = list
@@ -56,16 +44,36 @@ def cli():
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@click.argument('command', required=True, type=str)
-@click.argument('args', metavar='[ARGS] in [FOLDER] ...',
+@click.argument('args', metavar=('[shell] [dry] command '
+                                 '[ARGS] in [FOLDER] ...'),
                 nargs=-1)
+@click.option('-p', '--parallel', type=int, help='Run on NCORES')
 @click.pass_context
-def run(ctx, command, args):
-    """Run recipe or python command.
+def run(ctx, args, parallel):
+    """Run recipe or shell command in multiple folders.
 
-    Can run an ASR recipe or command. Arguments that follow after
-    'in' will be interpreted as folders in which the command should
-    be executed.
+    Can run an ASR recipe or a shell command. For example, the syntax
+    "asr run recipe" will run the relax recipe in the current folder.
+
+    To run a shell script use the syntax "asr run shell echo Hello!".
+    This example would run "echo Hello!" in the current folder.
+
+    Provide extra arguments to the recipe using "asr run recipe --arg1
+    --arg2".
+
+    Run a recipe in parallel using "asr run -p NCORES recipe --arg1".
+
+    Run command in multiple using "asr run recipe in folder1/ folder2/".
+    This is also compatible with input arguments to the current command
+    through "asr run recipe --arg1 in folder1/ folder2/". Here the
+    special keyword "in" serves as the divider between arguments and
+    folders.
+
+    If you dont actually wan't to run the command, i.e., if it is a
+    dangerous command, then use the "asr run dry ..." syntax where ...
+    could be any of the above commands. For example,
+    "asr run dry shell echo Hello! in */" would run "echo Hello!" in all
+    folders of the current directory.
 
     Examples:
 
@@ -74,18 +82,32 @@ def run(ctx, command, args):
         asr run relax
     Specify an argument:
         asr run relax --ecut 600
+    Run a recipe in parallel with an argument:
+        asr run -p 2 relax --ecut 600
     Run relax recipe in two folders sequentially:
         asr run relax in folder1/ folder2/
-    Run a command in this folder:
-        asr run command ase convert gs.gpw structure.json
-    Run a python command in "folder1/":
-        asr run command ase convert gs.gpw structure.json in folder1/
+    Run a shell command in this folder:
+        asr run shell ase convert gs.gpw structure.json
+    Run a shell command in "folder1/":
+        asr run shell ase convert gs.gpw structure.json in folder1/
+    Don't actually do anything just show what would be done
+        asr run dry shell mv str1.json str2.json in folder1/ folder2/
 
-    Notice that the special "run command" is used to identify commands that
-    are not recipes.
     """
     import subprocess
     from pathlib import Path
+
+    shell = False
+    dryrun = False
+    # Consume known commands (limit to 10 tries)
+    for i, arg in enumerate(args):
+        if arg == 'shell':
+            shell = True
+        elif arg == 'dry':
+            dryrun = True
+        else:
+            break
+    args = args[i:]
 
     # Are there any folders?
     folders = None
@@ -94,26 +116,48 @@ def run(ctx, command, args):
         folders = args[ind + 1:]
         args = args[:ind]
 
-    if not command.startswith('command'):
-        # If command doesn't start with python then we assume that the
-        # command is a recipe
-        command = f'python3 -m asr.{command}'
-    else:
-        command = ''  # The arguments are actually the command
+    python = 'python3'
+    if parallel:
+        assert not shell, \
+            ('You cannot execute a shell command in parallel. '
+             'Only supported for python modules.')
+        python = f'mpiexec -np {parallel} gpaw-python'
 
-    if args:
-        command += ' ' * (len(command) > 0) + ' '.join(args)
-        
+    # Identify function that should be executed
+    if shell:
+        command = ' '.join(args)  # The arguments are actually the command
+    else:
+        # If not shell then we assume that the command is a call
+        # to a recipe
+        recipe, *args = args
+        if ':' in recipe:
+            recipe, function = recipe.split(':')
+            command = (f'{python} -c "from asr.{recipe} import {function}; '
+                       f'{function}()" ') + ' '.join(args)
+        else:
+            command = f'{python} -m asr.{recipe} ' + ' '.join(args)
+
     if folders:
         from asr.utils import chdir
 
         for folder in folders:
             with chdir(Path(folder)):
-                print(f'Running {command} in {folder}')
-                subprocess.run(command.split())
+                if dryrun:
+                    print(f'Would run "{command}" in {folder}')
+                else:
+                    print(f'Running {command} in {folder}')
+                    subprocess.run(command, shell=True)
     else:
-        print(f'Running command: {command}')
-        subprocess.run(command.split())
+        if dryrun:
+            print(f'Would run "{command}"')
+        else:
+            print(f'Running command: {command}')
+            subprocess.run(command, shell=True, check=True)
+            # We only raise errors when check=True
+
+    if dryrun and folders:
+        nfolders = len(folders)
+        print(f'Total number of folder: {nfolders}')
 
 
 @cli.command()
@@ -181,127 +225,14 @@ def status():
     print(format(missing_files))
 
 
-exclude = []
-
-
-class ASRTestRunner(TestRunner):
-    def __init__(self, *args, **kwargs):
-        TestRunner.__init__(self, *args, **kwargs)
-
-    def run(self, *args, **kwargs):
-        # Make temporary directory
-        if mpi.rank == 0:
-            tmpdir = tempfile.mkdtemp(prefix='asr-test-')
-        else:
-            tmpdir = None
-        tmpdir = mpi.broadcast_string(tmpdir)
-        if mpi.rank == 0:
-            info()
-            print('Running tests in', tmpdir)
-            print('Jobs: {}, Cores: {}'
-                  .format(self.jobs, mpi.size))
-
-        with chdir(tmpdir):
-            failed = TestRunner.run(self, *args, **kwargs)
-        
-        return failed
-
-    def run_one(self, test):
-        exitcode_ok = 0
-        exitcode_skip = 1
-        exitcode_fail = 2
-
-        if self.jobs == 1:
-            self.log.write('%*s' % (-self.n, test))
-            self.log.flush()
-
-        t0 = time.time()
-        filename = str(test)
-
-        tb = ''
-        skip = False
-
-        if test in exclude:
-            self.register_skipped(test, t0)
-            return exitcode_skip
-        
-        assert test.endswith('.py')
-        dirname = Path(test).with_suffix('').name
-        if os.path.isabs(dirname):
-            mydir = os.path.split(__file__)[0]
-            dirname = os.path.relpath(dirname, mydir)
-
-        # We don't want files anywhere outside the tempdir.
-        assert not dirname.startswith('../')  # test file outside sourcedir
-
-        if mpi.rank == 0:
-            os.makedirs(dirname)
-            (Path(dirname) / Path(filename).name).write_text(
-                Path(filename).read_text())
-        mpi.world.barrier()
-        cwd = os.getcwd()
-        os.chdir(dirname)
-
-        try:
-            setup_paths[:] = self.setup_paths
-            loc = {}
-            with open(filename) as fd:
-                exec(compile(fd.read(), filename, 'exec'), loc)
-            loc.clear()
-            del loc
-            self.check_garbage()
-        except KeyboardInterrupt:
-            self.write_result(test, 'STOPPED', t0)
-            raise
-        except ImportError as ex:
-            if sys.version_info[0] >= 3:
-                module = ex.name
-            else:
-                module = ex.args[0].split()[-1].split('.')[0]
-            if module == 'scipy':
-                skip = True
-            else:
-                tb = traceback.format_exc()
-        except AttributeError as ex:
-            if (ex.args[0] ==
-                "'module' object has no attribute 'new_blacs_context'"):
-                skip = True
-            else:
-                tb = traceback.format_exc()
-        except Exception:
-            tb = traceback.format_exc()
-        finally:
-            os.chdir(cwd)
-
-        mpi.ibarrier(timeout=60.0)  # guard against parallel hangs
-
-        me = np.array(tb != '')
-        everybody = np.empty(mpi.size, bool)
-        mpi.world.all_gather(me, everybody)
-        failed = everybody.any()
-        skip = mpi.world.sum(int(skip))
-
-        if failed:
-            self.fail(test, np.argwhere(everybody).ravel(), tb, t0)
-            exitcode = exitcode_fail
-        elif skip:
-            self.register_skipped(test, t0)
-            exitcode = exitcode_skip
-        else:
-            self.write_result(test, 'OK', t0)
-            exitcode = exitcode_ok
-
-        return exitcode
-
-
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
 @argument('tests', nargs=-1, required=False)
 @option('-P', '--parallel',
+        metavar='NCORES',
         type=int,
-        help='Exclude tests (comma separated list of tests).',
-        metavar='test1.py,test2.py,...')
-@option('-k', '--pattern', type=str, metavar='PATTERN',
+        help='Run tests in parallel on NCORES')
+@option('-k', '--patterns', type=str, metavar='PATTERN,PATTERN,...',
         help='Select tests containing PATTERN.')
 @option('-j', '--jobs', type=int, metavar='JOBS', default=1,
         help='Run JOBS threads.  Each test will be executed '
@@ -309,7 +240,8 @@ class ASRTestRunner(TestRunner):
         'for parallelization together with MPI.')
 @option('-s', '--show-output', is_flag=True,
         help='Show standard output from tests.')
-def test(tests, parallel, pattern, jobs, show_output):
+def test(tests, parallel, patterns, jobs, show_output):
+    from asr.utils.testrunner import ASRTestRunner
     import os
     import sys
     from pathlib import Path
@@ -322,23 +254,26 @@ def test(tests, parallel, pattern, jobs, show_output):
             # Start again using gpaw-python in parallel:
             arguments = ['mpiexec', '-np', str(parallel),
                          'gpaw-python', '-m', 'asr', 'test'] + sys.argv[2:]
-            # arguments += ['-m', 'gpaw'] +
             os.execvp('mpiexec', arguments)
 
-    if world.rank == 0:
+    try:
         generatetests()
-    world.barrier()
-    if not tests:
-        folder = Path(__file__).parent.parent / 'tests'
-        tests = [str(path) for path in folder.glob('test_*.py')]
+        if not tests:
+            folder = Path(__file__).parent.parent / 'tests'
+            tests = [str(path) for path in folder.glob('test_*.py')]
 
-    if pattern:
-        tests = [test for test in tests if pattern in test]
-        
-    ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
-    
-    if world.rank == 0:
-        cleantests()
+        if patterns:
+            patterns = patterns.split(',')
+            tmptests = []
+            for pattern in patterns:
+                tmptests += [test for test in tests if pattern in test]
+            tests = tmptests
+        failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
+    finally:
+        if world.rank == 0:
+            cleantests()
+
+    assert not failed, 'Some tests failed!'
 
 
 @cli.command()
@@ -410,3 +345,14 @@ def workflow(tasks, doforstable):
     print(body)
 
     print('    return tasks')
+
+
+tests = [{'cli': ['asr run -h']},
+         {'cli': ['asr run setup.params asr.relax:ecut 300']},
+         {'cli': ['asr run dry setup.params asr.relax:ecut 300']},
+         {'cli': ['mkdir folder1',
+                  'mkdir folder2',
+                  'asr run setup.params asr.relax:ecut'
+                  ' 300 in folder1 folder2']},
+         {'cli': ['touch str1.json',
+                  'asr run shell mv str1.json str2.json']}]

@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import ase.optimize
-from ase.constraints import UnitCellFilter
+from ase.constraints import ExpCellFilter
 
 
 class BFGS:
@@ -17,7 +17,7 @@ class BFGS:
         self.smask = smask
         self.fmax = fmax
         self.emin = emin
-        uf = UnitCellFilter(self.atoms, mask=smask)
+        uf = ExpCellFilter(self.atoms, mask=smask)
 
         self.opt = ase.optimize.BFGS(uf,
                                      logfile=self._logfile,

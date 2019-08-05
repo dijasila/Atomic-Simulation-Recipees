@@ -97,7 +97,7 @@ class Recipe:
                 return False
         return True
 
-    def run(self, args):
+    def run(self, args=None):
         if args is None:
             args = []
         return self.main(args=args)
