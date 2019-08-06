@@ -25,6 +25,7 @@ class ASRCommand(click.Command):
                  add_skip_opt=True, callback=None,
                  additional_callback='postprocessing',
                  tests=None,
+                 resources=None,
                  creates=None, *args, **kwargs):
         assert asr_name, 'You have to give a name to your ASR command!'
         self._asr_name = asr_name
@@ -33,6 +34,7 @@ class ASRCommand(click.Command):
         self.add_skip_opt = add_skip_opt
         self._callback = callback
         self.creates = creates
+        self.resources = resources
         self.module = import_module(asr_name)
         self.additional_callback = additional_callback
         if tests is None and hasattr(self.module, 'tests'):
@@ -42,6 +44,21 @@ class ASRCommand(click.Command):
         click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
     def main(self, *args, **kwargs):
+        # This function is executed when a recipe is called
+
+        if args or kwargs:
+            # Then we skip the arguments on the command line
+            # since the user is providing them directly
+            cliargs = [str(arg) for arg in args]
+            for key, value in kwargs.items():
+                cliargs.extend(f'--{key} {value}'.split())
+            return self.cli(args=cliargs)
+
+        # Otherwise the arguments come from the command
+        # line and are parsed within Click
+        return self.cli(*args, **kwargs)
+
+    def cli(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
                                   *args, **kwargs)
 
