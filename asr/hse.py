@@ -156,8 +156,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     if kptpath == None:
         path = atoms.cell.bandpath(npoints=npoints)
     else:
-        path = bandpath(kptpath, atoms.cell, npoints=npoints)
-        path.labelseq = kptpath
+        path = atoms.cell.bandpath(kptpath, npoints=npoints)
     str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
