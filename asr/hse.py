@@ -2,9 +2,6 @@
 to do:
 - better interpolation scheme?
 - find reasonable default values for params
-- create plot  --> hseinterpol
-- create web panel  --> hseinterpol
-- collect data [kvp, key_descriptors, data]  --> hseinterpol
 - move stuff to utils
 - get evac
 - Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
@@ -36,8 +33,6 @@ from contextlib import contextmanager
 @command('asr.hse')
 @option('--kptdensity', default=12, help='K-point density')
 @option('--emptybands', default=20, help='number of empty bands to include')
-#@option('--ecut', default=100, help='Plane-wave cutoff') # XXX: reasonable default value??
-# XXX: should I use the same cutoff as gs.gpw?
 def main(kptdensity, emptybands):
     results = {}
     results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
@@ -479,7 +474,8 @@ def collect_data(atoms):
     data = {}
 
     evac = 0.0 # XXX where do I find evac?
-    
+    #evac = kvp.get('evac')
+
     if not os.path.isfile('results_hse.json'):
         return kvp, key_descriptions, data
 
@@ -584,16 +580,6 @@ def collect_data(atoms):
 
     return kvp, key_descriptions, data
 
-"""
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table 
-    hse = table(row, 'Property',
-                ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
-                 key_descriptions=key_descriptions)
-    panel = ('Electronic band structure (HSE)', [[hse]])
-
-    return panel, None
-"""
 
 group = 'property'
 resources = '24:10h'
