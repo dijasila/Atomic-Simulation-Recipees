@@ -1,3 +1,7 @@
+# to do
+# add pbe with add_bs_pbe
+# check slope at high-symmetry points [see c2db.bsfitfig.bsfitfig -> force_zero_slope]
+
 from asr.utils import command, option, read_json
 import os
 
@@ -68,13 +72,14 @@ def collect_data(atoms):
 
     return kvp, key_descriptions, data
 
-########################################################
 
 #def bs_hse(row, path):
 #    from asr.gw import bs_xc
 #    bs_xc(row, path, xc='hse', label='HSE')
 
+
 """
+# HSE nosoc and HSE soc
 def bs_hse(row,
            filename='hse-bs.png',
            figsize=(6.4, 4.8),
@@ -82,27 +87,27 @@ def bs_hse(row,
            show_legend=True,
            s=0.5):
 
-    if 'results_hse' not in row.data:
+    if 'hse_interpol' not in row.data:
         return
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
-    d = row.data.bs_pbe
+    d = row.data.hse_interpol
     e_skn = d['eps_skn']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
     path = d['path']
-    ef = d['efermi']
+    ef = row.efermi_hse_nosoc
     emin = row.get('vbm_hse', ef) - 3 - ef
     emax = row.get('cbm_hse', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
     bs = BandStructure(path, e_kn, ef)
-    # pbe without soc
+    # hse without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='PBE no SOC',
+        label='HSE no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -115,16 +120,17 @@ def bs_hse(row,
         emax=emax,
         ylabel=r'$E$ [eV]',
         **nosoc_style)
-    # pbe with soc
-    e_mk = d['eps_so_mk']
-    sz_mk = d['sz_mk']
+    # hse with soc
+    e_mk = d['eps_mk']
+    s_mk = d['s_mk']
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     sdir = row.get('spin_orientation', 'z')
+    from asr.bandstructure import plot_with_colors
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
         energies=e_mk,
-        colors=sz_mk,
+        colors=s_mk,
         filename=filename,
         show=False,
         emin=emin,
@@ -148,24 +154,83 @@ def bs_hse(row,
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
+    
+    if not show_legend:
+        ax.legend_.remove()
+    plt.savefig(filename, bbox_inches='tight')
+"""
+
+# HSE soc and PBE soc
+def bs_hse(row,
+           filename='hse-bs.png',
+           figsize=(6.4, 4.8),
+           fontsize=10,
+           show_legend=True,
+           s=0.5):
+
+    if 'hse_interpol' not in row.data:
+        return
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
+    import numpy as np
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.dft.kpoints import labels_from_kpts
+
+    d = row.data.hse_interpol
+    path = d['path']
+    ef = row.efermi_hse_soc
+    emin = row.get('vbm_hse', ef) - 3 - ef
+    emax = row.get('cbm_hse', ef) + 3 - ef
+    mpl.rcParams['font.size'] = fontsize
+
+    e_mk = d['eps_mk']
+    s_mk = d['s_mk']
+    x, X, labels = labels_from_kpts(path.kpts, row.cell)
+    # hse with soc
+    hse_style = dict(
+        color='k',
+        #label='HSE',
+        ls='-',
+        lw=1.0,
+        zorder=0)
+    ax = plt.figure(figsize=figsize).add_subplot(111)
+    for e_m in e_mk:
+        ax.plot(x, e_m, **hse_style)
+    ax.set_ylim([emin, emax])
+    ax.set_xlim([x[0], x[-1]])
+    ax.set_ylabel(r'$E-E_{\mathrm{vac}}$ [eV]')
+    ax.set_xlabel('$k$-points')
+    ax.set_xticks(X)
+    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
+    plt.legend(loc='upper right')
+    xlim = ax.get_xlim()
+    x0 = xlim[1] * 0.01
+    ax.axhline(ef, c='k', ls=':')
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef),
+        ha='left',
+        va='bottom',
+        fontsize=fontsize * 1.3)
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
+
+    # add PBE band structure with soc
+    from asr.bandstructure import add_bs_pbe
+    if 'bs_pbe' in row.data and 'path' in row.data.bs_pbe:
+        ax = add_bs_pbe(row, ax)
+
+    for Xi in X:
+        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
+    
     if not show_legend:
         ax.legend_.remove()
     plt.savefig(filename, bbox_inches='tight')
 
-"""
-
-# def webpanel(row, key_descriptions):
-#     from asr.utils.custom import fig, table
-#     hse = table('Property',
-#                 ['work_function_hse', 'dos_hse', 'gap_hse', 'dir_gap_hse',
-#                  'vbm_hse', 'cbm_hse'],
-#                  key_descriptions=key_descriptions_noxc)
-
-#     panel = ('Electronic band structure (HSE)',
-#              [[fig('hse-bs.png')],
-#               [hse]])
-
-#     return panel
 
 def webpanel(row, key_descriptions):
     from asr.utils.custom import fig, table
@@ -174,12 +239,14 @@ def webpanel(row, key_descriptions):
                 ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
                  kd=key_descriptions)
 
-    panel = ('Electronic band structure (HSE)', [[hse]])
+    panel = ('Electronic band structure (HSE)',
+             [[fig('hse-bs.png')],
+              [hse]])
 
-    #things = ()
+    things = [(bs_hse, ['hse-bs.png'])]
 
-    return panel, None
-    #return panel, things
+    return panel, things
+
 
 group = 'property'
 resources = '1:10m'
