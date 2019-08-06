@@ -16,9 +16,11 @@ def main(kptpath, npoints, emptybands):
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
+    atoms = read('gs.gpw')
     if kptpath is None:
-        atoms = read('gs.gpw')
-        kptpath = atoms.cell.bandpath(npoints=npoints)
+        path = atoms.cell.bandpath(npoints=npoints)
+    else:
+        path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
 
     if not os.path.isfile('bs.gpw'):
         convbands = emptybands // 2
@@ -27,7 +29,7 @@ def main(kptpath, npoints, emptybands):
             'nbands': -emptybands,
             'txt': 'bs.txt',
             'fixdensity': True,
-            'kpts': kptpath,
+            'kpts': path,
             'convergence': {
                 'bands': -convbands},
             'symmetry': 'off'}
@@ -37,7 +39,7 @@ def main(kptpath, npoints, emptybands):
         calc.write('bs.gpw')
 
     calc = GPAW('bs.gpw', txt=None)
-    bs = get_band_structure(calc=calc, _bandpath=kptpath, _reference=ref)
+    bs = get_band_structure(calc=calc, _bandpath=path, _reference=ref)
 
     import copy
     results = {}
