@@ -1,7 +1,3 @@
-# to do
-# add pbe with add_bs_pbe
-# check slope at high-symmetry points [see c2db.bsfitfig.bsfitfig -> force_zero_slope]
-
 from asr.utils import command, option, read_json
 import os
 
@@ -188,6 +184,7 @@ def bs_hse(row,
     e_mk = d['eps_mk']
     s_mk = d['s_mk']
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
+       
     # hse with soc
     hse_style = dict(
         color='k',
@@ -204,7 +201,7 @@ def bs_hse(row,
     ax.set_xlabel('$k$-points')
     ax.set_xticks(X)
     ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
-    plt.legend(loc='upper right')
+
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
     ax.axhline(ef, c='k', ls=':')
@@ -223,10 +220,13 @@ def bs_hse(row,
     from asr.bandstructure import add_bs_pbe
     if 'bs_pbe' in row.data and 'path' in row.data.bs_pbe:
         ax = add_bs_pbe(row, ax)
-
+    
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
-    
+
+    line_hse = ax.plot([], [], **hse_style, label='HSE')
+    plt.legend(loc='upper right')
+   
     if not show_legend:
         ax.legend_.remove()
     plt.savefig(filename, bbox_inches='tight')
