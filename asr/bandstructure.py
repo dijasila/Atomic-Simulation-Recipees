@@ -464,9 +464,9 @@ def add_bs_pbe(row, ax, **kwargs):
     ls = '-'
     lw = kwargs.get('lw', 1.0)
     d = row.data.bs_pbe
-    kpts = d['path']
+    path = d['path']
     e_mk = d['eps_so_mk']
-    xcoords, label_xcoords, labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k, color=c, ls=ls, lw=lw, zorder=-2)
     ax.lines[-1].set_label('PBE')
