@@ -7,6 +7,9 @@ def recipe(*args, **kwargs):
     pass
 
 
+def option(f, *args, default=None, help=None):
+    pass
+
 class Recipe:
 
     all_recipes = []
@@ -85,14 +88,29 @@ class Recipe:
 
     @property
     def resources(self):
-        return self._resources or '1:10m'
+        resources = '1:10m'
+        if self._resources:
+            if callable(self._resources):
+                resources = self._resources()
+            else:
+                resources = self._resources
+        return resources
+
+    def cli(self, *args, **kwargs):
+        if self._cli:
+            return self._cli(*args, **kwargs)
 
     def main(self, *args, **kwargs):
         results = {}
         if self._main:
+            import inspect
+            sig = inspect.signature(self._main)
+            storedargs = {key: value.default for key, value
+                          in sig.parameters.items() if value.default
+                          is not inspect.Parameter.empty}
+            storedargs.update(dict(sig.bind(*args, **kwargs).arguments))
             mainresults = self._main(*args, **kwargs)
-            results['__params__'] = kwargs
-            return results
+            results['__params__'] = storedargs
 
             if mainresults:
                 results.update(mainresults)
@@ -102,7 +120,6 @@ class Recipe:
             if postresults:
                 results.update(postresults)
 
-        # results.update(get_execution_info(ctx.params))
         return results
 
     def collect_data(self, *args, **kwargs):
@@ -184,7 +201,7 @@ if __name__ == '__main__':
         return wrapper
 
     # @save_params
-    def main(a=1, b=3):
+    def main(a, b=3):
         addb = a + b
         result = {'addb': addb}
         return result
@@ -199,18 +216,11 @@ if __name__ == '__main__':
     def collect():
         pass
 
-    import inspect
-    params = inspect.signature(main).parameters
-    print(dict(params))
-    print(dir(params['a']))
-    print(params['a'].annotation, params['a'].default, params['a'].empty,
-          params['a'].kind, params['a'].name, params['a'].replace)
-    print(type(params['a'].default))
-    print(dir(inspect.signature(main)))
-    
     testrecipe = Recipe('testrecipe',
                         main=main,
                         postprocessing=postprocessing)
+    relax = Recipe.frommodule('asr.relax')
+
     print(testrecipe)
-    results = testrecipe(a=5)
+    results = testrecipe(6)
     print(results)

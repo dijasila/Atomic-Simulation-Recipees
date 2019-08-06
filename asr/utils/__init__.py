@@ -50,7 +50,7 @@ class ASRCommand(click.Command):
         self.dependencies = dependencies or self._dependencies
         self.diskspace = diskspace or self._diskspace
         self.restart = restart or self._restart
-        self.group = group or self._group
+        # self.group = group or self._group
         self.resources = resources or self._resources
         self.tests = tests or self._tests
 

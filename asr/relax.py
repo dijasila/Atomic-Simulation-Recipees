@@ -9,7 +9,7 @@ from ase.parallel import world
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.utils import command, option
+from asr.utils.recipe import recipe, option
 from gpaw import KohnShamConvergenceError
 from math import sqrt
 import time
@@ -207,9 +207,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
                                                'width': 0.5}}
 
-
-@command('asr.relax',
-         known_exceptions=known_exceptions)
+@recipe('asr.relax',
+        known_exceptions=known_exceptions)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdensity', default=6.0,
