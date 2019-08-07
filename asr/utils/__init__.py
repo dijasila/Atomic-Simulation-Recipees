@@ -51,6 +51,7 @@ class ASRCommand(click.Command):
             # since the user is providing them directly
             cliargs = [str(arg) for arg in args]
             for key, value in kwargs.items():
+                value = value.replace('_', '-')
                 cliargs.extend(f'--{key} {value}'.split())
             return self.cli(args=cliargs)
 
