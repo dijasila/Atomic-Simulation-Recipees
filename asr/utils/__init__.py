@@ -53,8 +53,9 @@ class ASRCommand(click.Command):
             # since the user is providing them directly
             cliargs = [str(arg) for arg in args]
             for key, value in kwargs.items():
-                value = value.replace('_', '-')
+                value = key.replace('_', '-')
                 cliargs.extend(f'--{key} {value}'.split())
+            print(args, kwargs, cliargs)
             return self.cli(args=cliargs)
 
         # Otherwise the arguments come from the command
@@ -151,7 +152,7 @@ class ASRCommand(click.Command):
             recipes = get_dep_tree(self._asr_name)
             for recipe in recipes[:-1]:
                 if not recipe.done():
-                    recipe.run(args=['--skip-deps'])
+                    recipe.main(skip_deps=True)
 
         return self.invoke_myself(ctx)
 
