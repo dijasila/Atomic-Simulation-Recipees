@@ -62,14 +62,60 @@ class ASRCommand(click.Command):
         return self.cli(*args, **kwargs)
 
     def collect(self):
+        import re
         kvp = {}
         key_descriptions = {}
         data = {}
         if self.done():
             name = self.name[4:]
-            resultfile = Path(f'results_{name}.json')
-            from ase.io import jsonio
-            results = jsonio.decode(resultfile.read_text())
+            resultfile = f'results_{self._asr_name}.json'
+            results = read_json(resultfile)
+            if '__key_descriptions__' in results:
+                tmpkd = {}
+                for key, desc in key_descriptions.items():
+                    descdict = {'type': None,
+                                'iskvp': False,
+                                'shortdesc': '',
+                                'longdesc': '',
+                                'units': ''}
+                    if isinstance(desc, dict):
+                        descdict.update(desc)
+                        tmpkd[key] = desc
+                        continue
+
+                    assert isinstance(desc, str), \
+                        'Key description has to be dict or str.'
+                    # Get key type
+                    desc, keytype = desc.split('->')
+                    if keytype:
+                        descdict['type'] = keytype
+
+                    # Is this a kvp?
+                    iskvp = '<KVP>' in desc
+                    descdict['iskvp'] = iskvp
+                    desc = desc.replace('<KVP>', '')
+
+                    # Find units
+                    m = re.search(r"\[(\w+)\]", desc)
+                    unit = m.group(1) if m else ''
+                    if unit:
+                        descdict['units'] = unit
+                    desc = desc.replace(unit, '')
+
+                    # Find short description
+                    m = re.search(r"\((\w+)\)", desc)
+                    shortdesc = m.group(1) if m else ''
+
+                    # The results is the long description
+                    longdesc = desc.replace(shortdesc, '').strip()
+                    if longdesc:
+                        descdict['longdesc'] = longdesc
+                    tmpkd[key] = descdict
+
+                for key, desc in descdict.items():
+                    key_descriptions[key] = \
+                        (desc['shortdesc'], desc['longdesc'], desc['units'])
+
             key = f'results_{name}'
             msg = f'{self.name}: You cannot put a {key} in data'
             assert key not in data, msg
