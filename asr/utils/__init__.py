@@ -152,7 +152,7 @@ class ASRCommand(click.Command):
             recipes = get_dep_tree(self._asr_name)
             for recipe in recipes[:-1]:
                 if not recipe.done():
-                    recipe.main(skip_deps=True)
+                    recipe.main.cli(['--skip-deps'])
 
         return self.invoke_myself(ctx)
 
