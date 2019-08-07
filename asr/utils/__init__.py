@@ -17,50 +17,190 @@ option = partial(click.option, show_default=True)
 argument = click.argument
 
 
-class ASRCommand(click.Command):
+def add_param(func, param):
+    if not hasattr(func, '__asr_params__'):
+        func.__asr_params__ = {}
+
+    name = param['name']
+    assert name not in func.__asr_params__, \
+        f'Double assignment of {name}'
+
+    import inspect
+    sig = inspect.signature(func)
+    assert name in sig.parameters, f'Unkown parameter {name}'
+
+    func.__asr_params__[name] = param
+
+
+def option(help=None, type=None, default=None, *args):
+
+    def decorator(func):
+        assert args, 'You have to give a name to this parameter'
+
+        for arg in args:
+            if arg.startswith('--'):
+                name = arg[2:].replace('-', '_')
+                break
+        else:
+            raise AssertionError('You must give exactly one alias that starts '
+                                 'with -- and matches a function argument')
+        param = {'argtype': 'option',
+                 'help': help,
+                 'type': type,
+                 'default': default,
+                 'alias': args,
+                 'name': name}
+
+        add_param(func, param)
+
+    return decorator
+
+
+def argument(name, help=None, type=None, nargs=1, default=None):
+
+    def decorator(func):
+        assert not default, 'Arguments do not support defaults!'
+        param = {'argtype': 'argument',
+                 'help': help,
+                 'type': type,
+                 'default': default,
+                 'alias': name,
+                 'name': name,
+                 'nargs': nargs}
+
+        add_param(func, param)
+
+    return decorator
+
+
+class Recipe:
+    def __init__(self, main=None, webpanel=None):
+
+        if main:
+            assert isinstance(main, ASRCommand), \
+                'main function is not ASR command'
+
+        self.main = main
+        self.webpanel = webpanel
+
+    @classmethod
+    def frompath(cls, name, reload=True):
+        """Use like: Recipe.frompath('asr.relax')"""
+        import importlib
+        module = importlib.import_module(f'{name}')
+        if reload:
+            module = importlib.reload(module)
+
+        main = None
+        webpanel = None
+        if hasattr(module, 'main'):
+            main = module.main
+
+        if hasattr(module, 'webpanel'):
+            webpanel = module.webpanel
+
+        return cls(main=main, webpanel=webpanel)
+
+
+class ASRCommand:
     _asr_command = True
 
-    def __init__(self, asr_name=None, known_exceptions=None,
+    def __init__(self, callback,
+                 asr_name=None,
+                 known_exceptions=None,
                  save_results_file=True,
-                 add_skip_opt=True, callback=None,
+                 add_skip_opt=True,
                  additional_callback='postprocessing',
                  tests=None,
                  resources=None,
-                 creates=None, *args, **kwargs):
+                 creates=None):
         assert asr_name, 'You have to give a name to your ASR command!'
-        self._asr_name = asr_name
-        self.known_exceptions = known_exceptions or {}
-        self.asr_results_file = save_results_file
-        self.add_skip_opt = add_skip_opt
+        assert callable(callback), 'The wrapped object should be callable'
+
+        # Function to be executed
         self._callback = callback
-        if creates is None:
-            creates = ['results_{asr_name}.json']
-        self.creates = creates
-        self.resources = resources
-        self.module = import_module(asr_name)
-        self.additional_callback = additional_callback
-        if tests is None and hasattr(self.module, 'tests'):
-            self.tests = self.module.tests
-        else:
-            self.tests = None
-        click.Command.__init__(self, callback=self.callback, *args, **kwargs)
+        self.name = asr_name
 
-    def main(self, *args, **kwargs):
-        # This function is executed when a recipe is called
+        # We can handle these exceptions
+        self.known_exceptions = known_exceptions or {}
 
-        if args or kwargs:
-            # Then we skip the arguments on the command line
-            # since the user is providing them directly
-            cliargs = [str(arg) for arg in args]
-            for key, value in kwargs.items():
-                value = key.replace('_', '-')
-                cliargs.extend(f'--{key} {value}'.split())
-            print(args, kwargs, cliargs)
-            return self.cli(args=cliargs)
+        # Does the wrapped function want to save results files?
+        self.asr_results_file = save_results_file
 
-        # Otherwise the arguments come from the command
-        # line and are parsed within Click
-        return self.cli(*args, **kwargs)
+        # Do we want to add a skip deps option
+        self.add_skip_opt = add_skip_opt
+
+        # What files are created?
+        self._creates = creates
+
+        # What about resources?
+        self._resources = resources
+
+        # We can also have a postprocessing function to
+        # run after the main function
+        self.postprocessing = None
+
+        # Our function can also have tests
+        self.tests = tests
+
+        # Figure out the parameters for this function
+        if not hasattr(self._callback, '__asr_params__'):
+            self._callback.__asr_params__ = {}
+
+        self.params = self._callback.__asr_params__
+        import inspect
+        sig = inspect.signature(self._callback)
+        self.signature = sig
+
+        for key, value in sig.parameters.items():
+            assert key in self.params, \
+                f'You havent provided a description for {key}'
+            assert value.default is inspect.Parameter.empty, \
+                (f'Don\'t give default parameters in function definition. '
+                 'Please use the @option and @argument ASR decorators')
+
+        defparams = [k for k, v in sig.parameters.items()]
+        for key in self.params:
+            assert key in defparams, f'Param: {key} is unknown'
+
+    def cli(self):
+        CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+        command = click.command(callback=self.callback,
+                                context_settings=CONTEXT_SETTINGS)
+        return command(standalone_mode=False)
+
+    def __call__(self, *args, **kwargs):
+        return self.main(*args, **kwargs)
+
+    def main(self, skip_deps=False, catch_exceptions=True,
+             *args, **kwargs):
+        # Run all dependencies
+        if not skip_deps:
+            commands = get_dep_tree(self.name)
+            for command in commands[:-1]:
+                if not command.done():
+                    command(skip_deps=False)
+
+        # Try to run this command
+        try:
+            parprint(f'Running {self.name}')
+            return self.callback(*args, **kwargs)
+        except Exception as e:
+            if type(e) in self.known_exceptions:
+                parameters = self.known_exceptions[type(e)]
+                # Update context
+                if catch_exceptions:
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'Trying again.')
+                    for key in parameters:
+                        kwargs[key] *= parameters[key]
+                    return self.main(*args, **kwargs, catch_exceptions=False)
+                else:
+                    # We only allow the capture of one exception
+                    parprint(f'Caught known exception: {type(e)}. '
+                             'ERROR: I already caught one exception, '
+                             'and I can at most catch one.')
+                    raise
 
     def collect(self):
         import re
@@ -124,65 +264,38 @@ class ASRCommand(click.Command):
 
         return kvp, key_descriptions, data
 
-    def cli(self, *args, **kwargs):
-        return click.Command.main(self, standalone_mode=False,
-                                  *args, **kwargs)
+    @property
+    def creates(self):
+        creates = []
+        if self._creates:
+            if callable(self._creates):
+                creates += self._creates()
+            else:
+                creates += self._creates
+        return creates
 
     def done(self):
-        if self.creates:
-            for file in self.creates:
-                if not Path(file).exists():
-                    return False
-            return True
-        return False
+        for file in self.creates:
+            if not Path(file).exists():
+                return False
+        return True
 
-    def invoke(self, ctx):
-        """Invoke a recipe.
+    def callback(self, *args, **kwargs):
+        # This is the actual function that is executed
+        results = None
 
-        By default, invoking a recipe also means invoking its dependencies.
-        This can be avoided using the --skip-deps keyword."""
-        # Pop the skip deps argument
-        if self.add_skip_opt:
-            skip_deps = ctx.params.pop('skip_deps')
-        else:
-            skip_deps = True
+        # Skip main callback?
+        if not self.done():
+            # Figure out which parameters the function takes
+            results = self._callback(*args, **kwargs)
 
-        # Run all dependencies
-        if not skip_deps:
-            recipes = get_dep_tree(self._asr_name)
-            for recipe in recipes[:-1]:
-                if not recipe.done():
-                    recipe.main.cli(['--skip-deps'])
+        if results is None and self.postprocessing:
+            # Then the results are calculated
+            # by another callback function
+            func = getattr(self.module, self.additional_callback)
+            results = func()
+            results['__params__'] = kwargs
 
-        return self.invoke_myself(ctx)
-
-    def invoke_myself(self, ctx, catch_exceptions=True):
-        """Invoke my own callback."""
-        try:
-            parprint(f'Running {self._asr_name}')
-            results = click.Command.invoke(self, ctx)
-        except Exception as e:
-            if type(e) in self.known_exceptions:
-                parameters = self.known_exceptions[type(e)]
-                # Update context
-                if catch_exceptions:
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'Trying again.')
-                    for key in parameters:
-                        ctx.params[key] *= parameters[key]
-                    return self.invoke_myself(ctx, catch_exceptions=False)
-                else:
-                    # We only allow the capture of one exception
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'ERROR: I already caught one exception, '
-                             'and I can at most catch one.')
-            raise
-
-        if not results:
-            results = {}
-
-        results.update(get_excecution_info(ctx.params))
-        
         if self.asr_results_file:
             name = self._asr_name[4:]
             write_json(f'results_{name}.json', results)
@@ -194,21 +307,17 @@ class ASRCommand(click.Command):
 
         return results
 
-    def callback(self, *args, **kwargs):
-        results = None
-        # Skip main callback?
-        if not self.done():
-            results = self._callback(*args, **kwargs)
 
-        if results is None and hasattr(self.module, self.additional_callback):
-            # Then the results are calculated by another callback function
-            func = getattr(self.module, self.additional_callback)
-            results = func()
-        return results
+def command(name, add_skip_opt, *args, **kwargs):
+
+    def decorator(func):
+        return ASRCommand(func, name, *args, **kwargs)
+
+    return decorator
 
 
-def command(name, overwrite_params={},
-            add_skip_opt=True, *args, **kwargs):
+def old_command(name, overwrite_params={},
+                add_skip_opt=True, *args, **kwargs):
     params = get_parameters(name)
     params.update(overwrite_params)
 
@@ -272,7 +381,7 @@ class ASRSubResult:
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_excecution_info(ctx.params))
+        subresult.update(get_execution_info(ctx.params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)
@@ -305,7 +414,7 @@ def chdir(folder, create=False, empty=False):
 excludelist = ['asr.gapsummary']
 
 
-def get_excecution_info(params):
+def get_execution_info(params):
     """Get parameter and software version information as a dictionary"""
     exceinfo = {'__params__': params}
 
@@ -340,7 +449,6 @@ def get_all_recipe_names():
 
 
 def get_recipes(sort=True, exclude=True, group=None):
-    from asr.utils.recipe import Recipe
     names = get_all_recipe_names()
     recipes = []
     for modulename in names:
@@ -362,7 +470,7 @@ def sort_recipes(recipes):
 
     # Add the recipes with no dependencies (these must exist)
     for recipe in recipes:
-        if not recipe.dependencies:
+        if not recipe.main.dependencies:
             if recipe.group in ['postprocessing', 'property']:
                 sortedrecipes.append(recipe)
             else:
@@ -391,12 +499,10 @@ def sort_recipes(recipes):
 
 
 def get_recipe(name):
-    from asr.utils import Recipe
     return Recipe.frompath(name)
 
 
 def get_dep_tree(name, reload=True):
-    from asr.utils.recipe import Recipe
     names = get_all_recipe_names()
     indices = [names.index(name)]
     for j in range(100):
@@ -617,3 +723,13 @@ def file_barrier(path: Union[str, Path], world=None):
     while not path.is_file():
         time.sleep(1.0)
     world.barrier()
+
+
+if __name__ == '__main__':
+
+    def function(a, b=2):
+        return {'add': a + b}
+
+    wrap = ASRCommand(function, 'function')
+
+    print(wrap)
