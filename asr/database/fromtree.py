@@ -21,7 +21,7 @@ def collect(db, level, only_include=None):
 
     for recipe in recipes:
         try:
-            tmpkvp, tmpkd, tmpdata = recipe.collect(atoms=atoms)
+            tmpkvp, tmpkd, tmpdata = recipe.main.collect(atoms=atoms)
             if tmpkvp or tmpkd or tmpdata:
                 print(f'Collecting {recipe.name}')
                 kvp.update(tmpkvp)

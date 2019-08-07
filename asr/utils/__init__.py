@@ -33,6 +33,8 @@ class ASRCommand(click.Command):
         self.asr_results_file = save_results_file
         self.add_skip_opt = add_skip_opt
         self._callback = callback
+        if creates is None:
+            creates = ['results_{asr_name}.json']
         self.creates = creates
         self.resources = resources
         self.module = import_module(asr_name)
@@ -58,6 +60,22 @@ class ASRCommand(click.Command):
         # Otherwise the arguments come from the command
         # line and are parsed within Click
         return self.cli(*args, **kwargs)
+
+    def collect(self):
+        kvp = {}
+        key_descriptions = {}
+        data = {}
+        if self.done():
+            name = self.name[4:]
+            resultfile = Path(f'results_{name}.json')
+            from ase.io import jsonio
+            results = jsonio.decode(resultfile.read_text())
+            key = f'results_{name}'
+            msg = f'{self.name}: You cannot put a {key} in data'
+            assert key not in data, msg
+            data[key] = results
+
+        return kvp, key_descriptions, data
 
     def cli(self, *args, **kwargs):
         return click.Command.main(self, standalone_mode=False,
