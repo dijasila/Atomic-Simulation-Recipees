@@ -792,5 +792,27 @@ creates = ['bs.gpw']
 dependencies = ['asr.structureinfo', 'asr.gs']
 sort = 3
 
+tests = []
+tests.append({'description': 'Test band structure of Si.',
+              'name': 'test_asr.bandstructure_Si',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test band structure of 2D-BN.',
+              'name': 'test_asr.bandstructure_2DBN',
+              'cli': ['asr run setup.materials -s BN,natoms=2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 300 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run browser --only-figures']})
+
 if __name__ == '__main__':
     main()
