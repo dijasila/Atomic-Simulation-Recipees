@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
@@ -7,9 +6,12 @@ from ase.io.ulm import open as ulmopen
 from ase.io.ulm import InvalidULMFileError
 from ase.parallel import world
 from ase import Atoms
+from ase.optimize.bfgs import BFGS
 
 from asr.utils import command, option
 from gpaw import KohnShamConvergenceError
+from math import sqrt
+import time
 
 Uvalues = {}
 
@@ -24,15 +26,16 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def is_relax_done(atoms, fmax=0.01, smax=0.002):
+def is_relax_done(atoms, fmax=0.01, smax=0.002,
+                  smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    s = atoms.get_stress()
+    s = atoms.get_stress() * smask
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
 
 
-class SpgGroupAtoms(Atoms):
+class SpgAtoms(Atoms):
 
     @classmethod
     def from_atoms(cls, atoms):
@@ -71,6 +74,37 @@ class SpgGroupAtoms(Atoms):
         return f_av
 
 
+class myBFGS(BFGS):
+
+    def log(self, forces=None, stress=None):
+        if forces is None:
+            forces = self.atoms.atoms.get_forces()
+        if stress is None:
+            stress = self.atoms.atoms.get_stress()
+        fmax = sqrt((forces**2).sum(axis=1).max())
+        smax = abs(stress).max()
+        e = self.atoms.get_potential_energy(
+            force_consistent=self.force_consistent)
+        T = time.localtime()
+        if self.logfile is not None:
+            name = self.__class__.__name__
+            if self.nsteps == 0:
+                self.logfile.write(' ' * len(name) +
+                                   '  {:<4} {:<8} {:<10} '.format('Step',
+                                                                  'Time',
+                                                                  'Energy') +
+                                   '{:<10} {:<10}\n'.format('fmax',
+                                                            'smax'))
+                if self.force_consistent:
+                    self.logfile.write(
+                        '*Force-consistent energies used in optimization.\n')
+            fc = '*' if self.force_consistent else ''
+            self.logfile.write(f'{name}: {self.nsteps:<4} '
+                               f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
+                               f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
+            self.logfile.flush()
+
+
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True):
     import spglib
@@ -81,9 +115,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     if smask is None:
         nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
-            smask = [1, 1, 1, 0, 0, 0]
+            smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
-            smask = [1, 1, 0, 0, 0, 0]
+            smask = [1, 1, 0, 0, 0, 1]
         else:
             # nd == 1
             msg = 'Relax recipe not implemented for 1D structures'
@@ -92,7 +126,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     from ase.calculators.calculator import kpts2sizeandoffsets
     size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
     kwargs = dict(txt=name + '.txt',
-                  mode={'name': 'pw', 'ecut': ecut},
+                  mode={'name': 'pw', 'ecut': ecut, 'dedecut': 'estimate'},
                   xc=xc,
                   basis='dzp',
                   symmetry={'symmorphic': False},
@@ -117,7 +151,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     from asr.calculators import get_calculator
     from gpaw.symmetry import atoms2symmetry
     symmetry = atoms2symmetry(atoms)
-    atoms = SpgGroupAtoms.from_atoms(atoms)
+    atoms = SpgAtoms.from_atoms(atoms)
     atoms.set_symmetries(symmetries=symmetry.op_scc,
                          translations=symmetry.ft_sc,
                          atomsmap=symmetry.a_sa)
@@ -129,18 +163,17 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     atoms.calc = calc
 
     from asr.setup.symmetrize import atomstospgcell as ats
-    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json')),
+    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
+                                                     parallel=False)),
                                             symprec=1e-4,
                                             angle_tolerance=0.1).split()
 
     from ase.constraints import ExpCellFilter
 
-    smask = [1, 1, 1, 1, 1, 1]
     filter = ExpCellFilter(atoms, mask=smask)
-    from ase.optimize.bfgs import BFGS
-    opt = BFGS(filter,
-               logfile=name + '.log',
-               trajectory=Trajectory(name + '.traj', 'a', atoms))
+    opt = myBFGS(filter,
+                 logfile=name + '.log',
+                 trajectory=Trajectory(name + '.traj', 'a', atoms))
 
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
@@ -160,7 +193,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=0.01, smax=0.002):
+        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
+            opt.log()
+            opt.call_observers()
             break
         
     return atoms, calc, dft, kwargs
@@ -207,7 +242,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
-        atoms = read('unrelaxed.json')
+        atoms = read('unrelaxed.json', parallel=False)
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
@@ -228,15 +263,28 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
     for setup in dft.setups:
         fingerprint[setup.symbol] = setup.fingerprint
 
-    # Save to results_relax.json
-    structure = json.loads(Path('structure.json').read_text())
+    cellpar = atoms.cell.cellpar()
     results = {'etot': etot,
                'edft': edft,
-               'relaxedstructure': structure,
+               'a': cellpar[0],
+               'b': cellpar[1],
+               'c': cellpar[2],
+               'alpha': cellpar[3],
+               'beta': cellpar[4],
+               'gamma': cellpar[5],
+               'spos': atoms.get_scaled_positions(),
+               'symbols': atoms.get_chemical_symbols(),
                '__key_descriptions__':
                {'etot': 'Total energy [eV]',
                 'edft': 'DFT total energy [eV]',
-                'relaxedstructure': 'Relaxed atomic structure'},
+                'spos': 'Array: Scaled positions',
+                'symbols': 'Array: Chemical symbols',
+                'a': 'Cell parameter "a" [Å]',
+                'b': 'Cell parameter "b" [Å]',
+                'c': 'Cell parameter "c" [Å]',
+                'alpha': 'Cell parameter "alpha" [deg]',
+                'beta': 'Cell parameter "beta" [deg]',
+                'gamma': 'Cell parameter "gamma" [deg]'},
                '__setup_fingerprints__': fingerprint}
     return results
 
@@ -244,6 +292,45 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
 group = 'structure'
 resources = '24:10h'
 creates = ['results_relax.json']
+
+
+def BN_check():
+    # Check that 2D-BN doesn't relax to its 3D form
+    from asr.utils import read_json
+    results = read_json('results_relax.json')
+    assert results['c'] > 5
+
+
+tests = []
+tests.append({'description': 'Test relaxation of Si.',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2',
+                      'asr run relax --nod3',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures'],
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+tests.append({'description': 'Test relaxation of Si (cores=2).',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2',
+                      'asr run -p 2 relax --nod3',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures'],
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+tests.append({'description': 'Test relaxation of 2D-BN.',
+              'name': 'test_asr.relax_2DBN',
+              'cli': ['asr run setup.materials -s BN,natoms=2',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2',
+                      'asr run relax --nod3',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures'],
+              'test': BN_check})
+
 
 if __name__ == '__main__':
     main()
