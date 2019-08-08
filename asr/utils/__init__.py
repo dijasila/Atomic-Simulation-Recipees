@@ -1,7 +1,6 @@
 import os
 import time
 from contextlib import contextmanager
-from functools import partial
 from importlib import import_module
 from pathlib import Path
 from typing import Union
@@ -11,10 +10,6 @@ import numpy as np
 from ase.io import jsonio
 from ase.parallel import parprint
 import ase.parallel as parallel
-
-
-option = partial(click.option, show_default=True)
-argument = click.argument
 
 
 def add_param(func, param):
@@ -33,54 +28,48 @@ def add_param(func, param):
         'You have to specify the parameter type: option or argument'
 
     if param['argtype'] == 'option':
-        assert param['nargs'] == 1, 'Options only allow one argument'
+        assert 'nargs' not in param, 'Options only allow one argument'
     elif param['argtype'] == 'argument':
-        assert param['default'] is None, 'Argument don\'t allow defaults'
+        assert 'default' not in param, 'Argument don\'t allow defaults'
     else:
         raise AssertionError(f'Unknown argument type {param["argtype"]}')
 
     func.__asr_params__[name] = param
 
 
-def option(help=None, type=None, default=None, *args):
+def option(*args, **kwargs):
 
     def decorator(func):
         assert args, 'You have to give a name to this parameter'
 
         for arg in args:
             if arg.startswith('--'):
-                name = arg[2:].replace('-', '_')
+                name = arg[2:].split('/')[0].replace('-', '_')
                 break
         else:
             raise AssertionError('You must give exactly one alias that starts '
                                  'with -- and matches a function argument')
         param = {'argtype': 'option',
-                 'help': help,
-                 'type': type,
-                 'default': default,
                  'alias': args,
-                 'name': name,
-                 'nargs': 1}
-
+                 'name': name}
+        param.update(kwargs)
         add_param(func, param)
+        return func
 
     return decorator
 
 
-def argument(name, help=None, type=None, nargs=1, default=None):
+def argument(name, **kwargs):
 
     def decorator(func):
-        assert not default, 'Arguments do not support defaults!'
+        assert 'default' not in kwargs, 'Arguments do not support defaults!'
         param = {'argtype': 'argument',
-                 'help': help,
-                 'type': type,
-                 'default': default,
                  'alias': (name, ),
-                 'name': name,
-                 'nargs': nargs}
-
+                 'name': name}
+        param.update(kwargs)
         add_param(func, param)
-
+        return func
+        
     return decorator
 
 
@@ -116,21 +105,22 @@ class Recipe:
 class ASRCommand:
     _asr_command = True
 
-    def __init__(self, callback,
-                 asr_name=None,
+    def __init__(self, callback, name,
+                 overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
                  add_skip_opt=True,
                  additional_callback='postprocessing',
                  tests=None,
                  resources=None,
+                 dependencies=None,
                  creates=None):
-        assert asr_name, 'You have to give a name to your ASR command!'
+        assert name, 'You have to give a name to your ASR command!'
         assert callable(callback), 'The wrapped object should be callable'
 
         # Function to be executed
         self._callback = callback
-        self.name = asr_name
+        self.name = name
 
         # We can handle these exceptions
         self.known_exceptions = known_exceptions or {}
@@ -142,10 +132,17 @@ class ASRCommand:
         self.add_skip_opt = add_skip_opt
 
         # What files are created?
+        if creates is None:
+            creates = f'results_{self.name}.json'
         self._creates = creates
 
         # What about resources?
         self._resources = resources
+
+        # Commands can have dependencies. This is just a list of
+        # pack.module.module:function that points to other function
+        if dependencies is None:
+            self.dependencies = []
 
         # We can also have a postprocessing function to
         # run after the main function
@@ -158,33 +155,67 @@ class ASRCommand:
         if not hasattr(self._callback, '__asr_params__'):
             self._callback.__asr_params__ = {}
 
-        self.params = self._callback.__asr_params__
+        import copy
+        self.params = copy.deepcopy(self._callback.__asr_params__)
+
         import inspect
         sig = inspect.signature(self._callback)
         self.signature = sig
 
+        myparams = []
+        defparams = {}
         for key, value in sig.parameters.items():
             assert key in self.params, \
                 f'You havent provided a description for {key}'
-            assert value.default is inspect.Parameter.empty, \
-                (f'Don\'t give default parameters in function definition. '
-                 'Please use the @option and @argument ASR decorators')
+            if value.default:
+                defparams[key] = value.default
+            myparams.append(key)
 
-        defparams = [k for k, v in sig.parameters.items()]
+        myparams = [k for k, v in sig.parameters.items()]
         for key in self.params:
-            assert key in defparams, f'Param: {key} is unknown'
+            assert key in myparams, f'Param: {key} is unknown'
+        self.defparams = defparams
+
+        # Overwrite defaults can be used to overwrite the
+        # defaults that is described in self.params
+        if overwrite_defaults:
+            assert isinstance(overwrite_defaults, dict), \
+                f'overwrite_defaults has to be dict {overwrite_defaults}'
+            for key in overwrite_defaults:
+                assert key in self.params, f'Unknown key: {key}'
+            self.defparams.update(overwrite_defaults)
+
+        if Path('params.json').is_file():
+            paramsettings = read_json('params.json')
+            pardefaults = paramsettings.get(self.name, {})
+            for key in pardefaults:
+                assert key in self.params, f'Unknown key: {key}'
+            self.defparams.update(pardefaults)
 
     def cli(self):
+        # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-        func = self.callback
+
+        cc = click.command
+        command = cc(context_settings=CONTEXT_SETTINGS)(self.callback)
+
+        # Convert out parameters into CLI Parameters!
         for name, param in self.params.items():
             param = param.copy()
             alias = param.pop('alias')
-            param.pop('name')
-            func = click.option(*alias, **param)(func)
+            argtype = param.pop('argtype')
+            name2 = param.pop('name')
+            assert name == name2
+            assert name in self.params
+            default = self.defparams.get(name, None)
 
-        command = click.command(callback=self.callback,
-                                context_settings=CONTEXT_SETTINGS)
+            if argtype == 'option':
+                command = click.option(show_default=True, default=default,
+                                       *alias, **param)(command)
+            else:
+                assert argtype == 'argument'
+                command = click.argument(show_default=True,
+                                         *alias, **param)(command)
         return command(standalone_mode=False)
 
     def __call__(self, *args, **kwargs):
@@ -227,7 +258,7 @@ class ASRCommand:
         data = {}
         if self.done():
             name = self.name[4:]
-            resultfile = f'results_{self._asr_name}.json'
+            resultfile = f'results_{self.name}.json'
             results = read_json(resultfile)
             if '__key_descriptions__' in results:
                 tmpkd = {}
@@ -312,10 +343,13 @@ class ASRCommand:
             # by another callback function
             func = getattr(self.module, self.additional_callback)
             results = func()
-            results['__params__'] = kwargs
+
+        # Make dictionary of *args, and **kwargs
+        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        results.update(get_execution_info(params))
 
         if self.asr_results_file:
-            name = self._asr_name[4:]
+            name = self.name[4:]
             write_json(f'results_{name}.json', results)
 
             # Clean up possible tmpresults files
@@ -326,10 +360,10 @@ class ASRCommand:
         return results
 
 
-def command(name, add_skip_opt, *args, **kwargs):
+def command(*args, **kwargs):
 
     def decorator(func):
-        return ASRCommand(func, name, *args, **kwargs)
+        return ASRCommand(func, *args, **kwargs)
 
     return decorator
 
@@ -745,9 +779,15 @@ def file_barrier(path: Union[str, Path], world=None):
 
 if __name__ == '__main__':
 
-    def function(a, b=2):
+    def function(a, b, c, d, e=5, f=4):
         return {'add': a + b}
 
-    wrap = ASRCommand(function, 'function')
+    # wrap = ASRCommand(function, 'function')
 
-    print(wrap)
+    import inspect
+
+    args = (2,)
+    sig = inspect.signature(function)
+    print(dict(sig.bind(2, 3, 4, 5).arguments))
+
+    # print(wrap())

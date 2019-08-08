@@ -3,28 +3,22 @@ from pathlib import Path
 
 # Get some parameters from structure.json
 defaults = {}
-if Path('gs_params.json').exists():
+if Path('results_relax.json').exists():
     from asr.utils import read_json
-    dct = read_json('gs_params.json')
-    if 'ecut' in dct.get('mode', {}):
-        defaults['ecut'] = dct['mode']['ecut']
-
-    if 'density' in dct.get('kpts', {}):
-        defaults['kptdensity'] = dct['kpts']['density']
+    dct = read_json('results_relax.json')['__params__']
+    if 'ecut' in dct:
+        defaults['ecut'] = dct['ecut']
 
 
-@command('asr.gs', defaults,
+@command('asr.gs', overwrite_defaults=defaults,
          creates=['gs.gpw'])
-@option('-a', '--atomfile', type=str,
-        help='Atomic structure',
-        default='structure.json')
-@option('--ecut', type=float, help='Plane-wave cutoff', default=800)
-@option(
-    '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
-@option('--xc', type=str, help='XC-functional', default='PBE')
-@option('--width', default=0.05,
-        help='Fermi-Dirac smearing temperature')
-def main(atomfile, ecut, xc, kptdensity, width):
+@option('-a', '--atomfile', type=str, help='Atomic structure')
+@option('--ecut', type=float, help='Plane-wave cutoff')
+@option('-k', '--kptdensity', type=float, help='K-point density')
+@option('--xc', type=str, help='XC-functional')
+@option('--width', help='Fermi-Dirac smearing temperature')
+def main(atomfile='structure.json', ecut=800, xc='PBE',
+         kptdensity=6.0, width=0.05):
     """Calculate ground state density.
 
     By default, this recipe reads the structure in 'structure.json'
@@ -100,4 +94,4 @@ tests.append({'description': 'Test ground state of Si.',
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

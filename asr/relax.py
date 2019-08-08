@@ -333,4 +333,4 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

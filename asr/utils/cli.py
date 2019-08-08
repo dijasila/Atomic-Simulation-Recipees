@@ -1,6 +1,6 @@
 import click
 from asr.utils import get_recipes
-from asr.utils import argument, option
+from click import argument, option
 
 
 stdlist = list
