@@ -116,13 +116,14 @@ def pdos_soc(calc, gpw):
 def pdos(calc, gpw, soc=True):
     """Main functionality to do a single pdos calculation"""
     # Do calculation
-    energies, pdos_syl, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
 
     # Subtract the vacuum energy
-    # get evac XXX
-    evac = 0.
-    e_e = energies - evac
-    ef = efermi - evac
+    from asr.gs import get_evac
+    evac = get_evac()
+    if evac is not None:
+        e_e -= evac
+        ef -= evac
 
     subresults = {'pdos_syl': pdos_syl, 'symbols': symbols,
                   'energies': e_e, 'efermi': ef}
@@ -464,7 +465,10 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('projected dos [states / eV]')
-    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+    if row.get('evac') is not None:
+        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+    else:
+        ax.set_ylabel(r'$E$ [eV]')
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
@@ -474,8 +478,8 @@ def plot_pdos(row, filename, soc=True,
 
 
 group = 'property'
-resources = '8:1h'  # How many resources are used
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
+resources = '8:1h'  # How many resources are used? XXX
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main()
