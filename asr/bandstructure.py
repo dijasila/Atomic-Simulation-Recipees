@@ -39,7 +39,7 @@ def main(kptpath, npoints, emptybands):
         calc.write('bs.gpw')
 
     calc = GPAW('bs.gpw', txt=None)
-    bs = get_band_structure(calc=calc, _bandpath=path, _reference=ref)
+    bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     import copy
     results = {}
@@ -804,6 +804,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr.bandstructure:npoints 50 '
                       'asr.bandstructure:emptybands 5',
                       'asr run bandstructure',
+                      'asr run database.fromtree',
                       'asr run browser --only-figures']})
 tests.append({'description': 'Test band structure of 2D-BN.',
               'name': 'test_asr.bandstructure_2DBN',
@@ -814,6 +815,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr.bandstructure:npoints 50 '
                       'asr.bandstructure:emptybands 5',
                       'asr run bandstructure',
+                      'asr run database.fromtree',
                       'asr run browser --only-figures']})
 
 if __name__ == '__main__':
