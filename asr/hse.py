@@ -4,6 +4,7 @@ to do:
 - find reasonable default values for params
 - move stuff to utils
 - get evac
+- create tests
 - Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
 """
 import json
