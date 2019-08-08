@@ -29,6 +29,16 @@ def add_param(func, param):
     sig = inspect.signature(func)
     assert name in sig.parameters, f'Unkown parameter {name}'
 
+    assert 'argtype' in param, \
+        'You have to specify the parameter type: option or argument'
+
+    if param['argtype'] == 'option':
+        assert param['nargs'] == 1, 'Options only allow one argument'
+    elif param['argtype'] == 'argument':
+        assert param['default'] is None, 'Argument don\'t allow defaults'
+    else:
+        raise AssertionError(f'Unknown argument type {param["argtype"]}')
+
     func.__asr_params__[name] = param
 
 
@@ -49,7 +59,8 @@ def option(help=None, type=None, default=None, *args):
                  'type': type,
                  'default': default,
                  'alias': args,
-                 'name': name}
+                 'name': name,
+                 'nargs': 1}
 
         add_param(func, param)
 
@@ -64,7 +75,7 @@ def argument(name, help=None, type=None, nargs=1, default=None):
                  'help': help,
                  'type': type,
                  'default': default,
-                 'alias': name,
+                 'alias': (name, ),
                  'name': name,
                  'nargs': nargs}
 
@@ -165,6 +176,13 @@ class ASRCommand:
 
     def cli(self):
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+        func = self.callback
+        for name, param in self.params.items():
+            param = param.copy()
+            alias = param.pop('alias')
+            param.pop('name')
+            func = click.option(*alias, **param)(func)
+
         command = click.command(callback=self.callback,
                                 context_settings=CONTEXT_SETTINGS)
         return command(standalone_mode=False)
