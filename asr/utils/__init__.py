@@ -109,8 +109,7 @@ class ASRCommand:
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
-                 add_skip_opt=True,
-                 additional_callback='postprocessing',
+                 postprocessing=None,
                  tests=None,
                  resources=None,
                  dependencies=None,
@@ -126,10 +125,7 @@ class ASRCommand:
         self.known_exceptions = known_exceptions or {}
 
         # Does the wrapped function want to save results files?
-        self.asr_results_file = save_results_file
-
-        # Do we want to add a skip deps option
-        self.add_skip_opt = add_skip_opt
+        self.save_results_file = save_results_file
 
         # What files are created?
         if creates is None:
@@ -348,7 +344,7 @@ class ASRCommand:
         params = dict(self.signature.bind(*args, **kwargs).arguments)
         results.update(get_execution_info(params))
 
-        if self.asr_results_file:
+        if self.save_results_file:
             name = self.name[4:]
             write_json(f'results_{name}.json', results)
 
@@ -364,38 +360,6 @@ def command(*args, **kwargs):
 
     def decorator(func):
         return ASRCommand(func, *args, **kwargs)
-
-    return decorator
-
-
-def old_command(name, overwrite_params={},
-                add_skip_opt=True, *args, **kwargs):
-    params = get_parameters(name)
-    params.update(overwrite_params)
-
-    ud = update_defaults
-
-    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-    def decorator(func):
-
-        cc = click.command(cls=ASRCommand,
-                           context_settings=CONTEXT_SETTINGS,
-                           asr_name=name,
-                           add_skip_opt=add_skip_opt,
-                           *args, **kwargs)
-
-        if add_skip_opt:
-            func = option('--skip-deps/--run-deps', is_flag=True,
-                          default=False,
-                          help="Skip execution of dependencies?")(func)
-
-        if hasattr(func, '__click_params__'):
-            func = cc(ud(name, params)(func))
-        else:
-            func = cc(func)
-
-        return func
 
     return decorator
 
@@ -619,23 +583,6 @@ def magnetic_atoms(atoms):
     return np.array([symbol in mag_elements
                      for symbol in atoms.get_chemical_symbols()],
                     dtype=bool)
-
-
-def update_defaults(key, params={}):
-    params.update(get_parameters(key))
-
-    def update_defaults_dec(func):
-        fparams = func.__click_params__
-        for externaldefault in params:
-            for param in fparams:
-                if externaldefault == param.name:
-                    param.default = params[param.name]
-                    break
-            else:
-                msg = f'{key}: {externaldefault} is unknown'
-                raise AssertionError(msg)
-        return func
-    return update_defaults_dec
 
 
 def get_start_parameters():
