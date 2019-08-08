@@ -788,4 +788,4 @@ dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
 sort = 3
 
 if __name__ == '__main__':
-    main()
+    main.cli()

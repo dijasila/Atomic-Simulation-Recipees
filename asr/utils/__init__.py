@@ -73,52 +73,25 @@ def argument(name, **kwargs):
     return decorator
 
 
-class Recipe:
-    def __init__(self, main=None, webpanel=None):
-
-        if main:
-            assert isinstance(main, ASRCommand), \
-                'main function is not ASR command'
-
-        self.main = main
-        self.webpanel = webpanel
-
-    @classmethod
-    def frompath(cls, name, reload=True):
-        """Use like: Recipe.frompath('asr.relax')"""
-        import importlib
-        module = importlib.import_module(f'{name}')
-        if reload:
-            module = importlib.reload(module)
-
-        main = None
-        webpanel = None
-        if hasattr(module, 'main'):
-            main = module.main
-
-        if hasattr(module, 'webpanel'):
-            webpanel = module.webpanel
-
-        return cls(main=main, webpanel=webpanel)
-
-
 class ASRCommand:
-    _asr_command = True
 
-    def __init__(self, callback, name,
+    def __init__(self, main, name,
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
+                 add_skip_opt=True,
                  postprocessing=None,
-                 tests=None,
-                 resources=None,
+                 creates=None,
                  dependencies=None,
-                 creates=None):
+                 resources='1:10m',
+                 diskspace=0,
+                 tests=None,
+                 restart=0):
         assert name, 'You have to give a name to your ASR command!'
-        assert callable(callback), 'The wrapped object should be callable'
+        assert callable(main), 'The wrapped object should be callable'
 
         # Function to be executed
-        self._callback = callback
+        self._main = main
         self.name = name
 
         # We can handle these exceptions
@@ -132,13 +105,19 @@ class ASRCommand:
             creates = f'results_{self.name}.json'
         self._creates = creates
 
-        # What about resources?
+        # Properties of this function
         self._resources = resources
+        self._diskspace = diskspace
+        self.restart = restart
+
+        # Add skip dependencies option to control this?
+        self.add_skip_opt = add_skip_opt
 
         # Commands can have dependencies. This is just a list of
         # pack.module.module:function that points to other function
         if dependencies is None:
-            self.dependencies = []
+            dependencies = []
+        self.dependencies = dependencies
 
         # We can also have a postprocessing function to
         # run after the main function
@@ -148,14 +127,14 @@ class ASRCommand:
         self.tests = tests
 
         # Figure out the parameters for this function
-        if not hasattr(self._callback, '__asr_params__'):
-            self._callback.__asr_params__ = {}
+        if not hasattr(self._main, '__asr_params__'):
+            self._main.__asr_params__ = {}
 
         import copy
-        self.params = copy.deepcopy(self._callback.__asr_params__)
+        self.params = copy.deepcopy(self._main.__asr_params__)
 
         import inspect
-        sig = inspect.signature(self._callback)
+        sig = inspect.signature(self._main)
         self.signature = sig
 
         myparams = []
@@ -188,12 +167,29 @@ class ASRCommand:
                 assert key in self.params, f'Unknown key: {key}'
             self.defparams.update(pardefaults)
 
+    @property
+    def creates(self):
+        creates = []
+        if self._creates:
+            if callable(self._creates):
+                creates += self._creates()
+            else:
+                creates += self._creates
+        return creates
+
+    def done(self):
+        for file in self.creates:
+            if not Path(file).exists():
+                return False
+        return True
+
     def cli(self):
         # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
         cc = click.command
-        command = cc(context_settings=CONTEXT_SETTINGS)(self.callback)
+        co = click.option
+        command = cc(context_settings=CONTEXT_SETTINGS)(self.main)
 
         # Convert out parameters into CLI Parameters!
         for name, param in self.params.items():
@@ -206,12 +202,17 @@ class ASRCommand:
             default = self.defparams.get(name, None)
 
             if argtype == 'option':
-                command = click.option(show_default=True, default=default,
-                                       *alias, **param)(command)
+                command = co(show_default=True, default=default,
+                             *alias, **param)(command)
             else:
                 assert argtype == 'argument'
                 command = click.argument(show_default=True,
                                          *alias, **param)(command)
+
+        if self.add_skip_opt:
+            command = co('--skip-deps', is_flag=True, default=False,
+                         help='Skip execution of dependencies')(command)
+
         return command(standalone_mode=False)
 
     def __call__(self, *args, **kwargs):
@@ -221,10 +222,11 @@ class ASRCommand:
              *args, **kwargs):
         # Run all dependencies
         if not skip_deps:
-            commands = get_dep_tree(self.name)
-            for command in commands[:-1]:
-                if not command.done():
-                    command(skip_deps=False)
+            deps = get_dep_tree(self.name)
+            for name in deps[:-1]:
+                function = get_function_from_name(name)
+                if not function.done():
+                    function(skip_deps=True)
 
         # Try to run this command
         try:
@@ -246,6 +248,36 @@ class ASRCommand:
                              'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
                     raise
+
+    def callback(self, *args, **kwargs):
+        # This is the actual function that is executed
+        results = None
+
+        # Skip main callback?
+        if not self.done():
+            # Figure out which parameters the function takes
+            results = self._main(*args, **kwargs)
+
+        if results is None and self.postprocessing:
+            # Then the results are calculated
+            # by another callback function
+            func = getattr(self.module, self.additional_callback)
+            results = func()
+
+        # Make dictionary of *args, and **kwargs
+        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        results.update(get_execution_info(params))
+
+        if self.save_results_file:
+            name = self.name[4:]
+            write_json(f'results_{name}.json', results)
+
+            # Clean up possible tmpresults files
+            tmppath = Path(f'tmpresults_{name}.json')
+            if tmppath.exists():
+                unlink(tmppath)
+
+        return results
 
     def collect(self):
         import re
@@ -308,52 +340,6 @@ class ASRCommand:
             data[key] = results
 
         return kvp, key_descriptions, data
-
-    @property
-    def creates(self):
-        creates = []
-        if self._creates:
-            if callable(self._creates):
-                creates += self._creates()
-            else:
-                creates += self._creates
-        return creates
-
-    def done(self):
-        for file in self.creates:
-            if not Path(file).exists():
-                return False
-        return True
-
-    def callback(self, *args, **kwargs):
-        # This is the actual function that is executed
-        results = None
-
-        # Skip main callback?
-        if not self.done():
-            # Figure out which parameters the function takes
-            results = self._callback(*args, **kwargs)
-
-        if results is None and self.postprocessing:
-            # Then the results are calculated
-            # by another callback function
-            func = getattr(self.module, self.additional_callback)
-            results = func()
-
-        # Make dictionary of *args, and **kwargs
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
-        results.update(get_execution_info(params))
-
-        if self.save_results_file:
-            name = self.name[4:]
-            write_json(f'results_{name}.json', results)
-
-            # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults_{name}.json')
-            if tmppath.exists():
-                unlink(tmppath)
-
-        return results
 
 
 def command(*args, **kwargs):
@@ -464,82 +450,55 @@ def get_all_recipe_names():
     return modulenames
 
 
-def get_recipes(sort=True, exclude=True, group=None):
-    names = get_all_recipe_names()
-    recipes = []
-    for modulename in names:
-        if modulename in excludelist:
-            continue
-        recipe = Recipe.frompath(modulename)
-        if group and not recipe.group == group:
-            continue
-        recipes.append(recipe)
+def parse_mod_func(name):
+    # Split a module function reference like
+    # asr.relax:main into asr.relax and main.
+    mod, *func = name.split(':')
+    if not func:
+        func = ['main']
 
-    if sort:
-        recipes = sort_recipes(recipes)
+    assert len(func) == 1, \
+        'You cannot have multiple : in your function description'
 
-    return recipes
-
-
-def sort_recipes(recipes):
-    sortedrecipes = []
-
-    # Add the recipes with no dependencies (these must exist)
-    for recipe in recipes:
-        if not recipe.main.dependencies:
-            if recipe.group in ['postprocessing', 'property']:
-                sortedrecipes.append(recipe)
-            else:
-                sortedrecipes = [recipe] + sortedrecipes
-
-    assert len(sortedrecipes), 'No recipes without deps!'
-    for i in range(1000):
-        for recipe in recipes:
-            names = [recipe.name for recipe in sortedrecipes]
-            if recipe.name in names:
-                continue
-            for dep in recipe.dependencies:
-                if dep not in names:
-                    break
-            else:
-                sortedrecipes.append(recipe)
-
-        if len(recipes) == len(sortedrecipes):
-            break
-    else:
-        names = [recipe.name for recipe in recipes]
-        msg = ('Something went wrong when parsing dependencies! '
-               f'Input recipes: {names}')
-        raise AssertionError(msg)
-    return sortedrecipes
-
-
-def get_recipe(name):
-    return Recipe.frompath(name)
+    return mod, func[0]
 
 
 def get_dep_tree(name, reload=True):
-    names = get_all_recipe_names()
-    indices = [names.index(name)]
-    for j in range(100):
-        if not indices[j:]:
+    import importlib
+
+    tmpdeplist = [':'.join(parse_mod_func(name))]
+
+    for i in range(100):
+        if i == len(tmpdeplist):
             break
-        for ind in indices[j:]:
-            recipe = Recipe.frompath(names[ind])
-            if not hasattr(recipe, 'dependencies'):
-                continue
-            deps = recipe.dependencies
-            if not deps:
-                continue
-            for dep in deps:
-                index = names.index(dep)
-                if index not in indices:
-                    indices.append(index)
-    else:
-        raise RuntimeError('Dependencies are weird!')
-    recipes = [Recipe.frompath(names[ind], reload=reload) for ind in indices]
-    recipes = sort_recipes(recipes)
-    return recipes
+        dep = tmpdeplist[i]
+        mod, func = parse_mod_func(dep)
+        module = importlib.import_module(mod)
+
+        assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
+        function = getattr(module, func)
+        dependencies = function.dependencies
+        if not dependencies and hasattr(module, 'dependencies'):
+            dependencies = module.dependencies
+
+        for dependency in dependencies:
+            depname = ':'.join(parse_mod_func(dependency))
+            tmpdeplist.append(depname)
+
+    tmpdeplist.reverse()
+    deplist = []
+    for dep in tmpdeplist:
+        if dep not in deplist:
+            deplist.append(dep)
+
+    return deplist
+
+
+def get_function_from_name(name):
+    import importlib
+    mod, func = parse_mod_func(name)
+    module = importlib.import_module(mod)
+    return getattr(module, func)
 
 
 def get_parameters(key):

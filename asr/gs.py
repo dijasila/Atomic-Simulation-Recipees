@@ -9,9 +9,49 @@ if Path('results_relax.json').exists():
     if 'ecut' in dct:
         defaults['ecut'] = dct['ecut']
 
+tests = []
+tests.append({'description': 'Test ground state of Si.',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params asr.gs:ecut 300 '
+                      'asr.gs:kptdensity 2',
+                      'asr run gs',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
 
-@command('asr.gs', overwrite_defaults=defaults,
-         creates=['gs.gpw'])
+
+def postprocessing():
+    """Extract data from groundstate in gs.gpw.
+
+    This will be called after main by default."""
+    from asr.calculators import get_calculator
+    calc = get_calculator()('gs.gpw', txt=None)
+    forces = calc.get_forces()
+    stresses = calc.get_stress()
+    etot = calc.get_potential_energy()
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot,
+               '__key_descriptions__':
+               {'forces': 'Forces on atoms [eV/Angstrom]',
+                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'Total energy [eV]'},
+               '__setup_fingerprints__': fingerprint}
+    return results
+
+
+@command('asr.gs',
+         overwrite_defaults=defaults,
+         creates=['gs.gpw'],
+         tests=tests,
+         dependencies=['asr.structureinfo'],
+         resources='8:10h',
+         restart=1,
+         postprocessing=postprocessing)
 @option('-a', '--atomfile', type=str, help='Atomic structure')
 @option('--ecut', type=float, help='Plane-wave cutoff')
 @option('-k', '--kptdensity', type=float, help='K-point density')
@@ -35,7 +75,6 @@ def main(atomfile='structure.json', ecut=800, xc='PBE',
             'density': kptdensity,
             'gamma': True
         },
-        symmetry={'do_not_symmetrize_the_density': True},
         occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
 
@@ -46,51 +85,6 @@ def main(atomfile='structure.json', ecut=800, xc='PBE',
     atoms.get_stress()
     atoms.get_potential_energy()
     atoms.calc.write('gs.gpw')
-
-
-def postprocessing():
-    """Extract data from groundstate in gs.gpw.
-
-    This will be called after main by default."""
-    from asr.calculators import get_calculator
-    calc = get_calculator()('gs.gpw', txt=None)
-    forces = calc.get_forces()
-    stresses = calc.get_stress()
-    etot = calc.get_potential_energy()
-    
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-
-    results = {'forces': forces,
-               'stresses': stresses,
-               'etot': etot,
-               '__key_descriptions__':
-               {'forces': 'Forces on atoms [eV/Angstrom]',
-                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'Total energy [eV]'},
-               '__setup_fingerprints__': fingerprint}
-    return results
-
-
-# The metadata is put it the bottom
-group = 'property'
-description = ''
-dependencies = ['asr.structureinfo']
-creates = ['gs.gpw']
-resources = '8:10h'
-diskspace = 0
-restart = 1
-
-tests = []
-tests.append({'description': 'Test ground state of Si.',
-              'cli': ['asr run setup.materials -s Si2',
-                      'ase convert materials.json structure.json',
-                      'asr run setup.params asr.gs:ecut 300 '
-                      'asr.gs:kptdensity 2',
-                      'asr run gs',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures']})
 
 
 if __name__ == '__main__':
