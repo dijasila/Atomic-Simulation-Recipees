@@ -23,7 +23,7 @@ from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 # ---------- GPAW hacks ---------- #
 
 
-class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
+class SOCDOS(DOS):
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
         """
@@ -33,33 +33,26 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
         """
-        self.gpw = gpw
+        # Initiate DOS with serial communicator instead
+        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        DOS.__init__(self, calc, **kwargs)
 
-        if mpi.world.rank == 0:
-            self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            self.dos = DOS(self.calc, **kwargs)
-        else:
-            self.calc = None
-            self.dos = None
+        # Hack the number of spins
+        self.nspins = 1
+
+        # Hack the eigenvalues
+        e_skm, ef = gpw2eigs(gpw, optimal_spin_direction=True)
+        if e_skm.ndim == 2:
+            e_skm = e_skm[np.newaxis]
+        e_skn = e_skm - ef
+        bzkpts = calc.get_bz_k_points()
+        size, offset = k2so(bzkpts)
+        bz2ibz = calc.get_bz_to_ibz_map()
+        shape = (self.nspins, ) + tuple(size) + (-1, )
+        self.e_skn = e_skn[:, bz2ibz].reshape(shape)
 
     def get_dos(self):
-        if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
-            # hack dos
-            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
-            if e_skm.ndim == 2:
-                e_skm = e_skm[np.newaxis]
-            self.dos.nspins = 1
-            self.dos.e_skn = e_skm - ef
-            bzkpts = self.calc.get_bz_k_points()
-            size, offset = k2so(bzkpts)
-            bz2ibz = self.calc.get_bz_to_ibz_map()
-            shape = (self.dos.nspins, ) + tuple(size) + (-1, )
-            self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
-            dos = self.dos.get_dos() / 2
-            mpi.broadcast(dos)
-        else:
-            dos = mpi.broadcast(None)
-        return dos
+        return DOS.get_dos(self) / 2
 
 
 # ---------- Main functionality ---------- #
@@ -480,6 +473,28 @@ def plot_pdos(row, filename, soc=True,
 group = 'property'
 resources = '8:1h'  # How many resources are used? XXX
 dependencies = ['asr.structureinfo', 'asr.gs']
+
+tests = []
+tests.append({'description': 'Test the pdos of Si (cores=1)',
+              'name': 'test_asr.pdos_Si_serial',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test the pdos of Si (cores=2)',
+              'name': 'test_asr.pdos_Si_parallel',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run -p 2 pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
 
 if __name__ == '__main__':
     main()
