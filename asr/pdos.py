@@ -25,7 +25,7 @@ from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 
 class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
     """Hack to make DOS class work with spin orbit coupling"""
-    def __init__(self, gpw, **kwargs):
+    def __init__(self, gpw, npts, **kwargs):
         """
         Parameters:
         -----------
@@ -37,15 +37,17 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
 
         if mpi.world.rank == 0:
             self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            self.dos = DOS(self.calc, **kwargs)
+            self.dos = DOS(self.calc, npts=npts, **kwargs)
         else:
             self.calc = None
             self.dos = None
 
+        self.npts = npts
+
     def get_dos(self):
+        # hack dos
+        e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
         if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
-            # hack dos
-            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             self.dos.nspins = 1
@@ -56,9 +58,11 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
             shape = (self.dos.nspins, ) + tuple(size) + (-1, )
             self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
             dos = self.dos.get_dos() / 2
-            mpi.broadcast(dos)
+            mpi.world.broadcast(np.ascontiguousarray(dos), 0)
         else:
-            dos = mpi.broadcast(None)
+            dos = np.empty(self.npts, dtype=float)
+            mpi.world.broadcast(dos, 0)
+
         return dos
 
 
