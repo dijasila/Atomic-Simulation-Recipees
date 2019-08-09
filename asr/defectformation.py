@@ -76,7 +76,8 @@ def main(pristine, defect, defect_name):
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
             chargestate = setup_params.get('charge')
-            # print('INFO: chargestate {} in {}'.format(chargestate, sub_folder.name))
+            # print('INFO: chargestate {} in {}'.format(chargestate,
+            #                                           sub_folder.name))
             charged_file = find_file_in_folder('gs.gpw',
                                                sub_folder_path)
             elc = ElectrostaticCorrections(pristine=path_gs,
@@ -327,7 +328,8 @@ def plot_formation_and_transitions(defect_dict, defectname):
     # loop over all lines in linearray_up and calculate intersection points
     while len(linearray_up) > 1:
         linedists = np.array([[intersection(linearray_up[0][0],
-                             linearray_up[1][0]), q_copy[0], q_copy[1]]])
+                                            linearray_up[1][0]),
+                              q_copy[0], q_copy[1]]])
         if len(linearray_up) > 2:
             for j in range(2, len(linearray_up)):
                 linedists = np.append(linedists, [[intersection(
@@ -354,7 +356,8 @@ def plot_formation_and_transitions(defect_dict, defectname):
     for i in range(len(y_edges)):
         if y_edges[i][1] == min(y_edges[:, 1]):
             trans_array = np.append(trans_array, [[(x_range[1], y_edges[i][1]),
-                                    trans_array[-1][2], trans_array[-1][2]]],
+                                                   trans_array[-1][2],
+                                                   trans_array[-1][2]]],
                                     axis=0)
 
     # plot the results and save the figure

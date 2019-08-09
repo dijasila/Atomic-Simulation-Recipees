@@ -198,7 +198,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
             opt.log()
             opt.call_observers()
             break
-        
+
     return atoms, calc, dft, kwargs
 
 
@@ -255,7 +255,7 @@ def main(plusu, ecut, kptdensity, xc, d3, width, readout_charge):
         chargestate = setup_params.get('charge')
         print('INFO: chargestate {}'.format(chargestate))
     else:
-        chargestate = 0 
+        chargestate = 0
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,

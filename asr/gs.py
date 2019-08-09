@@ -44,7 +44,7 @@ def main(atomfile, ecut, xc, kptdensity, width, readoutcharge):
         chargestate = setup_params.get('charge')
         print('INFO: chargestate {}'.format(chargestate))
     else:
-        chargestate = 0 
+        chargestate = 0
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},
@@ -77,7 +77,7 @@ def postprocessing():
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()
-    
+
     fingerprint = {}
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint

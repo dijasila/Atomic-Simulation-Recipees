@@ -82,7 +82,7 @@ def main(atomfile, chargestates, supercell, maxsize, intrinsic, vacancies):
         is2d = True
     elif nd == 1:
         raise NotImplementedError('Setup defects not implemented for 1D '
-            f'structures')
+                                  f'structures')
     # set up the different defect systems and store their properties
     # in a dictionary
     structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
@@ -173,7 +173,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
 
     # first, find the desired supercell
     if sc == [0, 0, 0]:
-        pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+        pristine, N_x, N_y, N_z = setup_supercell(
+            structure, max_lattice, is_2D)
     else:
         N_x = sc[0]
         N_y = sc[1]
@@ -280,12 +281,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
     if sc == [0, 0, 0]:
-        pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+        pristine, N_x, N_y, N_z = setup_supercell(
+            structure, max_lattice, is_2D)
     else:
         N_x = sc[0]
         N_y = sc[1]
         N_z = sc[2]
-        pristine = structure.repeat((N_x, N_y, N_z))
+        # pristine = structure.repeat((N_x, N_y, N_z))
     gen_params = {}
     gen_params['chargestates'] = chargestates
     gen_params['is_2D'] = is_2D
