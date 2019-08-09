@@ -474,5 +474,27 @@ group = 'property'
 resources = '8:1h'  # How many resources are used? XXX
 dependencies = ['asr.structureinfo', 'asr.gs']
 
+tests = []
+tests.append({'description': 'Test the pdos of Si (cores=1)',
+              'name': 'test_asr.pdos_Si_serial',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test the pdos of Si (cores=2)',
+              'name': 'test_asr.pdos_Si_parallel',
+              'cli': ['asr run setup.materials -s Si',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run -p 2 pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+
 if __name__ == '__main__':
     main()
