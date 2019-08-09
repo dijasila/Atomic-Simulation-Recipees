@@ -32,26 +32,24 @@ def main(pristine, defect, defect_name):
     folder of the initial structure, i.e. the folder where setup.defects was
     also executed.
     """
-    # from ase.io import read
-    from asr.utils import write_json
+    from ase.io import read
+    from asr.utils import write_json, read_json
     # from gpaw import GPAW
-    # from gpaw.defects import ElectrostaticCorrections
+    from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
-    # import numpy as np
+    import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
-    # atoms = read('unrelaxed.json')
-    # nd = int(np.sum(atoms.get_pbc()))
+    print(path_gs)
+    atoms = read('unrelaxed.json')
+    nd = int(np.sum(atoms.get_pbc()))
 
-    # ###################################################################### #
-    # sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-
-    # if nd == 3:
-    #     epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
-    #     dim = '3d'
-    # elif nd == 2:
-    #     epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
-    #     dim = '2d'
-    # ###################################################################### #
+    sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    if nd == 3:
+        epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
+        dim = '3d'
+    elif nd == 2:
+        epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
+        dim = '2d'
 
     folder_list = []
     p = Path('.')
@@ -66,32 +64,34 @@ def main(pristine, defect, defect_name):
 
     defectformation_dict = {}
     for folder in folder_list:
+        s = Path(folder.name)
+        # print(s)
+        sub_folder_list = []
+        [sub_folder_list.append(x) for x in s.iterdir() if x.is_dir()]
         # e_form_name = 'e_form_' + folder.name
-        # e_form = []
-        # e_fermi = []
-        # charges = []
-        # TODO: change this part later. For now, only dummy values!
-        e_form = [5.18, 5.23, 3.56, 3.01, 3.74]
-        e_fermi = [0, 0, 0, 0, 0]
-        charges = [-3, -2, -1, 0, 1]
-        # TODO: also change that again later!
-        # for charge in range(-2, 3):
-        # for charge in range(-q, q + 1):
-        # for charge in charges:
-        #    # tmp_folder_name = folder.name + '/charge_' + str(charge)
-        #    # TODO: chagne that to proper .gpw file later
-        #    # charged_file = find_file_in_folder('unrelaxed.json',
-        #    #                                    tmp_folder_name)
-        #    # elc = ElectrostaticCorrections(pristine=path_gs,
-        #    #                                charged=charged_file,
-        #    #                                q=charge, sigma=sigma,
-        #    #                                dimensionality=dim)
-        #    # elc.set_epsilons(epsilon)
-        #    # e_form.append(elc.calculate_corrected_formation_energy())
-        #    # calc = GPAW(find_file_in_folder('gs.gpw', tmp_folder_name))
-        #    # e_fermi.append(calc.get_fermi_level())
-        #    # TODO: include next line later without dummies
-        #    # charges.append(charge)
+        e_form = []
+        e_fermi = []
+        charges = []
+        for sub_folder in sub_folder_list:
+            sub_folder_path = folder.name + '/' + sub_folder.name
+            setup_params = read_json(sub_folder_path + '/params.json')
+            chargestate = setup_params.get('charge')
+            # print('INFO: chargestate {} in {}'.format(chargestate, sub_folder.name))
+            charged_file = find_file_in_folder('gs.gpw',
+                                               sub_folder_path)
+            elc = ElectrostaticCorrections(pristine=path_gs,
+                                           charged=charged_file,
+                                           q=chargestate, sigma=sigma,
+                                           dimensionality=dim)
+            elc.set_epsilons(epsilon)
+            if chargestate == 0:
+                e_form.append(elc.calculate_uncorrected_formation_energy())
+            else:
+                e_form.append(elc.calculate_corrected_formation_energy())
+            charges.append(chargestate)
+            # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
+            # e_fermi.append(calc.get_fermi_level())
+            e_fermi.append(0)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'fermi_energies': e_fermi,
                                              'chargestates': charges}
@@ -179,7 +179,7 @@ def find_file_in_folder(filename, foldername):
     if not find_success:
         file_path = None
 
-    return file_path
+    return str(file_path.absolute())
 
 
 def collect_data():

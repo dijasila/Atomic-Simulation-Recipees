@@ -1,5 +1,6 @@
 from pathlib import Path
 from asr.utils import command, option
+import click
 
 
 @command('asr.setup.defects')
@@ -9,19 +10,19 @@ from asr.utils import command, option
 @option('-q', '--chargestates', type=int,
         help='Charge states included (-q, ..., +q).',
         default=3)
+@option('--supercell', nargs=3, type=click.Tuple([int, int, int]),
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]',
+        default=[0, 0, 0])
 @option('--maxsize', type=float,
         help='Maximum supercell size in Å.',
         default=8.)
-@option('--is2d/--is3d',
-        help='Specifies if input structure in atomfile is 2D or 3D.',
-        default=True)
 @option('--intrinsic', type=bool,
         help='Specify whether you want to incorporate anti-site defects.',
         default=True)
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.',
         default=True)
-def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
+def main(atomfile, chargestates, supercell, maxsize, intrinsic, vacancies):
     """Sets up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
@@ -66,24 +67,34 @@ def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
       different defect structures.
     """
     from ase.io import read
+    import numpy as np
 
     # first, read input atomic structure and store it in ase's atoms object
     structure = read(atomfile)
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
 
+    # check dimensionality of initial parent structure
+    nd = int(np.sum(structure.get_pbc()))
+    if nd == 3:
+        is2d = False
+    elif nd == 2:
+        is2d = True
+    elif nd == 1:
+        raise NotImplementedError('Setup defects not implemented for 1D '
+            f'structures')
     # set up the different defect systems and store their properties
     # in a dictionary
     structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                    charge_states=chargestates,
-                                   vacancies=vacancies,
+                                   vacancies=vacancies, sc=supercell,
                                    max_lattice=maxsize, is_2D=is2d)
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
     create_folder_structure(structure, structure_dict, chargestates,
                             intrinsic=intrinsic, vacancies=vacancies,
-                            max_lattice=maxsize, is_2D=is2d)
+                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return None
 
@@ -128,7 +139,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def setup_defects(structure, intrinsic, charge_states, vacancies,
+def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                   max_lattice, is_2D):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
@@ -161,7 +172,13 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     structure_dict[string] = {'structure': structure, 'parameters': parameters}
 
     # first, find the desired supercell
-    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    if sc == [0, 0, 0]:
+        pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    else:
+        N_x = sc[0]
+        N_y = sc[1]
+        N_z = sc[2]
+        pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
     string = 'pristine_sc'
     # try to make naming compatible with defectformation recipe
@@ -237,7 +254,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
 
 
 def create_folder_structure(structure, structure_dict, chargestates,
-                            intrinsic, vacancies, max_lattice, is_2D):
+                            intrinsic, vacancies, sc, max_lattice, is_2D):
     """
     Creates a folder for every configuration of the defect supercell in
     the following way:
@@ -262,7 +279,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
 
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
-    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    if sc == [0, 0, 0]:
+        pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    else:
+        N_x = sc[0]
+        N_y = sc[1]
+        N_z = sc[2]
+        pristine = structure.repeat((N_x, N_y, N_z))
     gen_params = {}
     gen_params['chargestates'] = chargestates
     gen_params['is_2D'] = is_2D
