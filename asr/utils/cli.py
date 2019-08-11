@@ -130,8 +130,8 @@ def run(ctx, args, parallel):
         # If not shell then we assume that the command is a call
         # to a recipe
         recipe, *args = args
-        if ':' in recipe:
-            recipe, function = recipe.split(':')
+        if '@' in recipe:
+            recipe, function = recipe.split('@')
             command = (f'{python} -c "from asr.{recipe} import {function}; '
                        f'{function}()" ') + ' '.join(args)
         else:

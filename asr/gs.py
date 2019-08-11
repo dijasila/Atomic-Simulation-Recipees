@@ -20,38 +20,13 @@ tests.append({'description': 'Test ground state of Si.',
                       'asr run browser --only-figures']})
 
 
-def postprocessing():
-    """Extract data from groundstate in gs.gpw.
-
-    This will be called after main by default."""
-    from asr.calculators import get_calculator
-    calc = get_calculator()('gs.gpw', txt=None)
-    forces = calc.get_forces()
-    stresses = calc.get_stress()
-    etot = calc.get_potential_energy()
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-
-    results = {'forces': forces,
-               'stresses': stresses,
-               'etot': etot,
-               '__key_descriptions__':
-               {'forces': 'Forces on atoms [eV/Angstrom]',
-                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'Total energy [eV]'},
-               '__setup_fingerprints__': fingerprint}
-    return results
-
-
-@command('asr.gs',
+@command(module='asr.gs',
          overwrite_defaults=defaults,
          creates=['gs.gpw'],
          tests=tests,
          dependencies=['asr.structureinfo'],
          resources='8:10h',
-         restart=1,
-         postprocessing=postprocessing)
+         restart=1)
 @option('-a', '--atomfile', type=str, help='Atomic structure')
 @option('--ecut', type=float, help='Plane-wave cutoff')
 @option('-k', '--kptdensity', type=float, help='K-point density')
@@ -87,5 +62,31 @@ def main(atomfile='structure.json', ecut=800, xc='PBE',
     atoms.calc.write('gs.gpw')
 
 
+@command(module='asr.gs',
+         dependencies=['asr.gs@main'])
+def postprocessing():
+    """Extract data from groundstate in gs.gpw.
+
+    This will be called after main by default."""
+    from asr.calculators import get_calculator
+    calc = get_calculator()('gs.gpw', txt=None)
+    forces = calc.get_forces()
+    stresses = calc.get_stress()
+    etot = calc.get_potential_energy()
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot,
+               '__key_descriptions__':
+               {'forces': 'Forces on atoms [eV/Angstrom]',
+                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+                'etot': 'Total energy [eV]'},
+               '__setup_fingerprints__': fingerprint}
+    return results
+
+
 if __name__ == '__main__':
-    main.cli()
+    postprocessing.cli()

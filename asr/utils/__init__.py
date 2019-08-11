@@ -12,6 +12,15 @@ from ase.parallel import parprint
 import ase.parallel as parallel
 
 
+def md5sum(filename):
+    from hashlib import md5
+    hash = md5()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(128 * hash.block_size), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
 def add_param(func, param):
     if not hasattr(func, '__asr_params__'):
         func.__asr_params__ = {}
@@ -75,20 +84,24 @@ def argument(name, **kwargs):
 
 class ASRCommand:
 
-    def __init__(self, main, name,
+    def __init__(self, main,
+                 module=None,
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
                  add_skip_opt=True,
-                 postprocessing=None,
                  creates=None,
                  dependencies=None,
                  resources='1:10m',
                  diskspace=0,
                  tests=None,
                  restart=0):
-        assert name, 'You have to give a name to your ASR command!'
         assert callable(main), 'The wrapped object should be callable'
+
+        if module is None:
+            module = main.__module__
+
+        name = f'{module}@{main.__name__}'
 
         # Function to be executed
         self._main = main
@@ -101,8 +114,6 @@ class ASRCommand:
         self.save_results_file = save_results_file
 
         # What files are created?
-        if creates is None:
-            creates = f'results_{self.name}.json'
         self._creates = creates
 
         # Properties of this function
@@ -114,14 +125,14 @@ class ASRCommand:
         self.add_skip_opt = add_skip_opt
 
         # Commands can have dependencies. This is just a list of
-        # pack.module.module:function that points to other function
-        if dependencies is None:
-            dependencies = []
-        self.dependencies = dependencies
-
-        # We can also have a postprocessing function to
-        # run after the main function
-        self.postprocessing = None
+        # pack.module.module@function that points to other function.
+        # If no @function then we assume function=main
+        self.dependencies = []
+        if dependencies:
+            for dep in dependencies:
+                if '@' not in dep:
+                    dep = dep + '@main'
+                self.dependencies.append(dep)
 
         # Our function can also have tests
         self.tests = tests
@@ -151,22 +162,6 @@ class ASRCommand:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
 
-        # Overwrite defaults can be used to overwrite the
-        # defaults that is described in self.params
-        if overwrite_defaults:
-            assert isinstance(overwrite_defaults, dict), \
-                f'overwrite_defaults has to be dict {overwrite_defaults}'
-            for key in overwrite_defaults:
-                assert key in self.params, f'Unknown key: {key}'
-            self.defparams.update(overwrite_defaults)
-
-        if Path('params.json').is_file():
-            paramsettings = read_json('params.json')
-            pardefaults = paramsettings.get(self.name, {})
-            for key in pardefaults:
-                assert key in self.params, f'Unknown key: {key}'
-            self.defparams.update(pardefaults)
-
     @property
     def creates(self):
         creates = []
@@ -178,7 +173,12 @@ class ASRCommand:
         return creates
 
     def done(self):
-        for file in self.creates:
+        creates = []
+        creates += self.creates
+        if self.save_results_file:
+            creates += ['results-{self.name}.json']
+
+        for file in creates:
             if not Path(file).exists():
                 return False
         return True
@@ -227,10 +227,10 @@ class ASRCommand:
                 function = get_function_from_name(name)
                 if not function.done():
                     function(skip_deps=True)
-
+                else:
+                    print(f'Dependency {name} already done!')
         # Try to run this command
         try:
-            parprint(f'Running {self.name}')
             return self.callback(*args, **kwargs)
         except Exception as e:
             if type(e) in self.known_exceptions:
@@ -247,33 +247,57 @@ class ASRCommand:
                     parprint(f'Caught known exception: {type(e)}. '
                              'ERROR: I already caught one exception, '
                              'and I can at most catch one.')
-                    raise
+            raise
 
     def callback(self, *args, **kwargs):
-        # This is the actual function that is executed
-        results = None
+        # This is the main function of an ASRCommand. It takes care of
+        # reading parameters can creating metadata, checksums.
+        # If you to understand what happens when you execute an ASRCommand
+        # this is a good place to start
 
-        # Skip main callback?
-        if not self.done():
-            # Figure out which parameters the function takes
-            results = self._main(*args, **kwargs)
+        print(f'Running {self.name}')
 
-        if results is None and self.postprocessing:
-            # Then the results are calculated
-            # by another callback function
-            func = getattr(self.module, self.additional_callback)
-            results = func()
-
-        # Make dictionary of *args, and **kwargs
+        # Use the wrapped functions signature to create dictionary of
+        # parameters
         params = dict(self.signature.bind(*args, **kwargs).arguments)
+
+        # Read arguments from params.json
+        if Path('params.json').is_file():
+            paramsettings = read_json('params.json')
+            pardefaults = paramsettings.get(self.name, {})
+            for key, value in pardefaults.items():
+                assert key in self.params, f'Unknown key: {key} {params}'
+
+                # If any parameters have been given directly to the function
+                # we don't use the ones from the param.json file
+                if key not in params:
+                    params[key] = value
+
+        # Execute the wrapped function
+        results = self._main(**params)
+
+        if not results:
+            results = {}
+
+        results['__md5_digest__'] = {}
+        for filename in self.creates:
+            hexdigest = md5sum(filename)
+            results['__md5_digest__'][filename] = hexdigest
+
+        # Also make hexdigests of resuls-files for dependencies
+        for dep in self.dependencies:
+            filename = f'results-{dep}.json'
+            hexdigest = md5sum(filename)
+            results['__md5_digest__'][dep] = hexdigest
+
         results.update(get_execution_info(params))
 
         if self.save_results_file:
-            name = self.name[4:]
-            write_json(f'results_{name}.json', results)
+            name = self.name
+            write_json(f'results-{name}.json', results)
 
             # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults_{name}.json')
+            tmppath = Path(f'tmpresults-{name}.json')
             if tmppath.exists():
                 unlink(tmppath)
 
@@ -452,8 +476,8 @@ def get_all_recipe_names():
 
 def parse_mod_func(name):
     # Split a module function reference like
-    # asr.relax:main into asr.relax and main.
-    mod, *func = name.split(':')
+    # asr.relax@main into asr.relax and main.
+    mod, *func = name.split('@')
     if not func:
         func = ['main']
 
@@ -466,7 +490,7 @@ def parse_mod_func(name):
 def get_dep_tree(name, reload=True):
     import importlib
 
-    tmpdeplist = [':'.join(parse_mod_func(name))]
+    tmpdeplist = ['@'.join(parse_mod_func(name))]
 
     for i in range(100):
         if i == len(tmpdeplist):
@@ -482,7 +506,7 @@ def get_dep_tree(name, reload=True):
             dependencies = module.dependencies
 
         for dependency in dependencies:
-            depname = ':'.join(parse_mod_func(dependency))
+            depname = '@'.join(parse_mod_func(dependency))
             tmpdeplist.append(depname)
 
     tmpdeplist.reverse()
