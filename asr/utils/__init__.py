@@ -89,6 +89,7 @@ class ASRCommand:
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
+                 pass_params=False,
                  add_skip_opt=True,
                  creates=None,
                  dependencies=None,
@@ -112,6 +113,10 @@ class ASRCommand:
 
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
+
+        # Pass a dictionary with all params to the function force
+        # convenience?
+        self.pass_params = pass_params
 
         # What files are created?
         self._creates = creates
@@ -274,7 +279,10 @@ class ASRCommand:
         print(f'Running {self.name} {params}')
 
         # Execute the wrapped function
-        results = self._main(**params) or {}
+        if self.pass_params:
+            results = self._main(params, **params) or {}
+        else:
+            results = self._main(**params) or {}
 
         if self.creates or self.dependencies:
             results['__md5_digest__'] = {}
