@@ -255,17 +255,15 @@ class ASRCommand:
         # If you to understand what happens when you execute an ASRCommand
         # this is a good place to start
 
-        print(f'Running {self.name}')
-
         # Use the wrapped functions signature to create dictionary of
         # parameters
         params = dict(self.signature.bind(*args, **kwargs).arguments)
 
-        # Read arguments from params.json
+        # Read arguments from params.json if not already in params
+        paramsettings = {}
         if Path('params.json').is_file():
-            paramsettings = read_json('params.json')
-            pardefaults = paramsettings.get(self.name, {})
-            for key, value in pardefaults.items():
+            paramsettings = read_json('params.json').get(self.name, {})
+            for key, value in paramsettings.items():
                 assert key in self.params, f'Unknown key: {key} {params}'
 
                 # If any parameters have been given directly to the function
@@ -273,13 +271,14 @@ class ASRCommand:
                 if key not in params:
                     params[key] = value
 
+        print(f'Running {self.name} {params}')
+
         # Execute the wrapped function
-        results = self._main(**params)
+        results = self._main(**params) or {}
 
-        if not results:
-            results = {}
+        if self.creates or self.dependencies:
+            results['__md5_digest__'] = {}
 
-        results['__md5_digest__'] = {}
         for filename in self.creates:
             hexdigest = md5sum(filename)
             results['__md5_digest__'][filename] = hexdigest
