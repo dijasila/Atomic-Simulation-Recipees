@@ -1,5 +1,5 @@
 import click
-from asr.utils import get_recipes
+from asr.utils import get_all_recipe_names
 from click import argument, option
 
 
@@ -133,7 +133,7 @@ def run(ctx, args, parallel):
         if '@' in recipe:
             recipe, function = recipe.split('@')
             command = (f'{python} -c "from asr.{recipe} import {function}; '
-                       f'{function}()" ') + ' '.join(args)
+                       f'{function}.cli()" ') + ' '.join(args)
         else:
             command = f'{python} -m asr.{recipe} ' + ' '.join(args)
 
@@ -161,23 +161,10 @@ def run(ctx, args, parallel):
 
 
 @cli.command()
-@click.argument('recipe', type=str)
-def help(recipe):
-    """See help for recipe"""
-    from asr.utils.recipe import Recipe
-    command = f'asr.{recipe}'
-    recipename = recipe
-    recipe = Recipe.frompath(command, reload=True)
-
-    with click.Context(recipe.main, info_name=f'asr run {recipename}') as ctx:
-        print(recipe.main.get_help(ctx))
-
-
-@cli.command()
 @click.argument('search', required=False)
 def list(search):
     """Show a list of all recipes"""
-    recipes = get_recipes(sort=True)
+    recipes = get_all_recipe_names()
     panel = [['Recipe', 'Description'],
              ['------', '-----------']]
 
@@ -202,7 +189,7 @@ def list(search):
 def status():
     """Show the status of the current folder for all ASR recipes"""
     from pathlib import Path
-    recipes = get_recipes()
+    recipes = get_all_recipe_names()
     panel = []
     missing_files = []
     for recipe in recipes:
