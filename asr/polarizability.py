@@ -4,14 +4,13 @@ from click import Choice
 
 @command('asr.polarizability')
 @option(
-    '--gs', default='gs.gpw', help='Ground state on which response is based')
-@option('--kptdensity', default=20.0, help='K-point density')
-@option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--xc', default='RPA', help='XC interaction',
-        type=Choice(['RPA', 'ALDA']))
-@option('--bandfactor', default=5, type=int,
+    '--gs', help='Ground state on which response is based')
+@option('--kptdensity', help='K-point density')
+@option('--ecut', help='Plane wave cutoff')
+@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+@option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, kptdensity, ecut, xc, bandfactor):
+def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
     import json
@@ -109,10 +108,7 @@ def main(gs, kptdensity, ecut, xc, bandfactor):
         'frequencies': frequencies
     }
 
-    filename = 'polarizability.json'
-
-    if world.rank == 0:
-        Path(filename).write_text(json.dumps(data, cls=jsonio.MyEncoder))
+    return data
 
 
 def collect_data(atoms):

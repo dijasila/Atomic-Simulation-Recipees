@@ -12,7 +12,8 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
-@command('asr.convex_hull')
+@command('asr.convex_hull',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 @option('-r', '--references', type=str,
         help='Reference database.')
 @option('-d', '--database', type=str,
@@ -265,11 +266,6 @@ def webpanel(row, key_descriptions):
     things = [(plot, ['convex-hull.png'])]
 
     return panel, things
-
-
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
-sort = 2
 
 
 if __name__ == '__main__':

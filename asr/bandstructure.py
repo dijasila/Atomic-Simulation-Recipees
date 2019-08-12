@@ -1,11 +1,13 @@
 from asr.utils import command, option
 
 
-@command('asr.bandstructure')
-@option('--kptpath', default=None, type=str)
-@option('--npoints', default=400)
-@option('--emptybands', default=20)
-def main(kptpath, npoints, emptybands):
+@command('asr.bandstructure',
+         creates=['bs.gpw'],
+         dependencies=['asr.structureinfo', 'asr.gaps', 'asr.gs'])
+@option('--kptpath', type=str)
+@option('--npoints')
+@option('--emptybands')
+def main(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     import os
     from gpaw import GPAW
@@ -781,11 +783,6 @@ def webpanel(row, key_descriptions):
               (bs_pbe_html, ['pbe-bs.html'])]
     return panel, things
 
-
-group = 'property'
-creates = ['bs.gpw']
-dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
-sort = 3
 
 if __name__ == '__main__':
     main.cli()

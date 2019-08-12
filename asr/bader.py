@@ -1,7 +1,8 @@
 from asr.utils import command
 
 
-@command('asr.bader')
+@command('asr.bader',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 def main():
     """Calculate bader charges"""
     from pathlib import Path
@@ -44,11 +45,6 @@ def print():
     with open(fname) as f:
         dat = f.read()
     print(dat)
-
-
-dependencies = ['asr.structureinfo', 'asr.gs']
-group = 'property'
-resources = '1:10m'
 
 
 if __name__ == '__main__':
