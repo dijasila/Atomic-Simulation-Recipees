@@ -168,6 +168,18 @@ class ASRCommand:
         self.defparams = defparams
 
     @property
+    def resources(self):
+        if callable(self._resources):
+            return self._resources()
+        return self._resources
+
+    @property
+    def diskspace(self):
+        if callable(self._diskspace):
+            return self._diskspace()
+        return self._diskspace
+
+    @property
     def creates(self):
         creates = []
         if self._creates:
@@ -177,6 +189,7 @@ class ASRCommand:
                 creates += self._creates
         return creates
 
+    @property
     def done(self):
         creates = []
         creates += self.creates
@@ -194,7 +207,38 @@ class ASRCommand:
 
         cc = click.command
         co = click.option
-        command = cc(context_settings=CONTEXT_SETTINGS)(self.main)
+
+        help = self._main.__doc__
+
+        add_info = ''
+
+        if self.save_results_file:
+            add_info += ('Results stored in: '
+                         f'results-{self.name}.json\n')
+
+        if self.creates:
+            add_info += f'Creates additional files: {self.creates}\n'
+
+        if self.dependencies:
+            add_info += f'Dependencies: {self.dependencies}\n'
+
+        if self.resources:
+            add_info += f'Resources: {self.resources}\n'
+
+        if self.diskspace:
+            add_info += f'Diskspace: {self.diskspace}\n'
+
+        if self.diskspace:
+            add_info += f'Diskspace: {self.diskspace}\n'
+
+        if self.restart:
+            add_info += f'Number restarts allowed: {self.restart}\n'
+
+        if add_info:
+            help += '\n\nASR metadata:\n\n\b\n' + add_info
+            
+        command = cc(context_settings=CONTEXT_SETTINGS,
+                     help=help)(self.main)
 
         # Convert out parameters into CLI Parameters!
         for name, param in self.params.items():
@@ -213,12 +257,13 @@ class ASRCommand:
                 assert argtype == 'argument'
                 command = click.argument(show_default=True,
                                          *alias, **param)(command)
-
+                
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
                          help='Skip execution of dependencies')(command)
 
-        return command(standalone_mode=False)
+        return command(standalone_mode=False,
+                       prog_name=f'asr run {self.name}')
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
@@ -230,7 +275,7 @@ class ASRCommand:
             deps = get_dep_tree(self.name)
             for name in deps[:-1]:
                 function = get_function_from_name(name)
-                if not function.done():
+                if not function.done:
                     function(skip_deps=True)
                 else:
                     print(f'Dependency {name} already done!')
@@ -284,6 +329,7 @@ class ASRCommand:
         else:
             results = self._main(**params) or {}
 
+        # Do we have to store some digests of previous calculations?
         if self.creates or self.dependencies:
             results['__md5_digest__'] = {}
 
@@ -291,7 +337,7 @@ class ASRCommand:
             hexdigest = md5sum(filename)
             results['__md5_digest__'][filename] = hexdigest
 
-        # Also make hexdigests of resuls-files for dependencies
+        # Also make hexdigests of results-files for dependencies
         for dep in self.dependencies:
             filename = f'results-{dep}.json'
             hexdigest = md5sum(filename)
@@ -315,7 +361,7 @@ class ASRCommand:
         kvp = {}
         key_descriptions = {}
         data = {}
-        if self.done():
+        if self.done:
             name = self.name[4:]
             resultfile = f'results_{self.name}.json'
             results = read_json(resultfile)

@@ -34,10 +34,12 @@ tests.append({'description': 'Test ground state of Si.',
 @option('--width', help='Fermi-Dirac smearing temperature')
 def main(atomfile='structure.json', ecut=800, xc='PBE',
          kptdensity=6.0, width=0.05):
-    """Calculate ground state density.
+    """Calculate ground state.
 
-    By default, this recipe reads the structure in 'structure.json'
-    and saves a gs.gpw file containing the ground state density."""
+    This recipe saves the ground state to a file gs.gpw based on the structure
+    in 'structure.json'. This can then be processed by asr.gs@postprocessing
+    for storing any derived quantities. See asr.gs@postprocessing for more
+    information."""
     from ase.io import read
     from asr.calculators import get_calculator
     atoms = read('structure.json')
@@ -65,9 +67,7 @@ def main(atomfile='structure.json', ecut=800, xc='PBE',
 @command(module='asr.gs',
          dependencies=['asr.gs@main'])
 def postprocessing():
-    """Extract data from groundstate in gs.gpw.
-
-    This will be called after main by default."""
+    """Extract derived quantities from groundstate in gs.gpw."""
     from asr.calculators import get_calculator
     calc = get_calculator()('gs.gpw', txt=None)
     forces = calc.get_forces()
