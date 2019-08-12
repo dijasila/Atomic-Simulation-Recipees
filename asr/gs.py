@@ -31,14 +31,27 @@ if Path('gs_params.json').exists():
 @option('--xc', type=str, help='XC-functional', default='PBE')
 @option('--width', default=0.05,
         help='Fermi-Dirac smearing temperature')
-def main(atomfile, ecut, xc, kptdensity, width):
+@option('-r', '--readoutcharge', help='Read out chargestate from params.json',
+        default=False, type=bool)
+def main(atomfile, ecut, xc, kptdensity, width, readoutcharge):
     """Calculate ground state density.
 
     By default, this recipe reads the structure in 'structure.json'
     and saves a gs.gpw file containing the ground state density."""
     from ase.io import read
     from asr.calculators import get_calculator
-    atoms = read('structure.json')
+    from asr.utils import read_json
+
+    # atoms = read('structure.json')
+    atoms = read(atomfile)
+
+    # Read out chargestate from params.json if specified as option
+    if readoutcharge:
+        setup_params = read_json('params.json')
+        chargestate = setup_params.get('charge')
+        print('INFO: chargestate {}'.format(chargestate))
+    else:
+        chargestate = 0
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},
@@ -50,7 +63,8 @@ def main(atomfile, ecut, xc, kptdensity, width):
         },
         symmetry={'do_not_symmetrize_the_density': True},
         occupations={'name': 'fermi-dirac', 'width': width},
-        txt='gs.txt')
+        txt='gs.txt',
+        charge=chargestate)
 
     calc = get_calculator()(**params)
 
@@ -70,7 +84,7 @@ def postprocessing():
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()
-    
+
     fingerprint = {}
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
@@ -403,7 +417,8 @@ def webpanel(row, key_descriptions):
 # The metadata is put it the bottom
 group = 'property'
 description = ''
-dependencies = ['asr.structureinfo']
+# dependencies = ['asr.structureinfo']
+dependencies = []
 creates = ['gs.gpw']
 resources = '8:10h'
 diskspace = 0
