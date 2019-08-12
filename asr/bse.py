@@ -291,4 +291,4 @@ group = 'property'
 dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
 
 if __name__ == '__main__':
-    main()
+    main.cli()

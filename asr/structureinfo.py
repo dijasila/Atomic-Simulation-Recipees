@@ -260,4 +260,4 @@ group = 'property'
 sort = 1
 
 if __name__ == '__main__':
-    main()
+    main.cli()

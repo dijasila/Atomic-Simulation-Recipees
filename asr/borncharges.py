@@ -250,4 +250,4 @@ resources = '24:10h'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

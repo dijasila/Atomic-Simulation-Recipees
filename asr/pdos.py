@@ -476,4 +476,4 @@ resources = '8:1h'  # How many resources are used
 dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
 
 if __name__ == '__main__':
-    main()
+    main.cli()

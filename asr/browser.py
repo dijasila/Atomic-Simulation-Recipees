@@ -28,4 +28,4 @@ def main(database, custom, only_figures):
 group = 'postprocessing'
 
 if __name__ == '__main__':
-    main()
+    main.cli()

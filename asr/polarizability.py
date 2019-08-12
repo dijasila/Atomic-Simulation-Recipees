@@ -275,4 +275,4 @@ creates = ['polarizability.json']
 dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
-    main()
+    main.cli()
