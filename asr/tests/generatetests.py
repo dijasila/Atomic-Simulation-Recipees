@@ -117,20 +117,14 @@ def make_test_files(functionname, tests):
 
 
 def generatetests():
-    import importlib
-    from asr.utils import get_all_recipe_names, ASRCommand
+    from asr.utils import get_recipes
     from asr.utils.cli import tests as clitests
 
     make_test_files('asr.utils.cli', clitests)
-    modules = get_all_recipe_names()
-    for module in modules:
-        mod = importlib.import_module(module)
-
-        for attr in mod.__dict__:
-            attr = getattr(mod, attr)
-            if isinstance(attr, ASRCommand):
-                if attr.tests:
-                    make_test_files(attr.name, attr.tests)
+    recipes = get_recipes()
+    for recipe in recipes:
+        if recipe.tests:
+            make_test_files(recipe.name, recipe.tests)
 
 
 def cleantests():
