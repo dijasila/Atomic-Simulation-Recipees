@@ -1,6 +1,73 @@
 from asr.utils import command
 
 
+def get_reduced_formula(formula, stoichiometry=False):
+    """
+    Returns the reduced formula corresponding to a chemical formula,
+    in the same order as the original formula
+    E.g. Cu2S4 -> CuS2
+
+    Parameters:
+        formula (str)
+        stoichiometry (bool): if True, return the stoichiometry ignoring the
+          elements appearing in the formula, so for example "AB2" rather than
+          "MoS2"
+    Returns:
+        A string containing the reduced formula
+    """
+    from functools import reduce
+    from fractions import gcd
+    import string
+    import re
+    split = re.findall('[A-Z][^A-Z]*', formula)
+    matches = [re.match('([^0-9]*)([0-9]+)', x)
+               for x in split]
+    numbers = [int(x.group(2)) if x else 1 for x in matches]
+    symbols = [matches[i].group(1) if matches[i] else split[i]
+               for i in range(len(matches))]
+    divisor = reduce(gcd, numbers)
+    result = ''
+    numbers = [x // divisor for x in numbers]
+    numbers = [str(x) if x != 1 else '' for x in numbers]
+    if stoichiometry:
+        numbers = sorted(numbers)
+        symbols = string.ascii_uppercase
+    for symbol, number in zip(symbols, numbers):
+        result += symbol + number
+    return result
+
+
+def has_inversion(atoms, use_spglib=True):
+    """
+    Parameters:
+        atoms: Atoms object
+            atoms
+        use_spglib: bool
+            use spglib
+    Returns:
+        out: bool
+    """
+    import numpy as np
+    try:
+        import spglib
+    except ImportError as x:
+        import warnings
+        warnings.warn('using gpaw symmetry for inversion instead: {}'
+                      .format(x))
+        use_spglib = False
+
+    atoms2 = atoms.copy()
+    atoms2.pbc[:] = True
+    atoms2.center(axis=2)
+    if use_spglib:
+        R = -np.identity(3, dtype=int)
+        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
+        return np.any([np.all(r == R) for r in r_n])
+    else:
+        from gpaw.symmetry import atoms2symmetry
+        return atoms2symmetry(atoms2).has_inversion
+
+
 @command('asr.structureinfo')
 def main():
     """Get structural information of atomic structure.
@@ -13,7 +80,6 @@ def main():
     from random import randint
     from ase.io import read
     from pathlib import Path
-    from asr.utils import has_inversion, get_reduced_formula
 
     atoms = read('structure.json')
     info = {}

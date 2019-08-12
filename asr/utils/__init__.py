@@ -271,8 +271,7 @@ class ASRCommand:
                              *alias, **param)(command)
             else:
                 assert argtype == 'argument'
-                command = click.argument(show_default=True,
-                                         *alias, **param)(command)
+                command = click.argument(*alias, **param)(command)
                 
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
@@ -290,8 +289,8 @@ class ASRCommand:
         if not skip_deps:
             deps = get_dep_tree(self.name)
             for name in deps[:-1]:
-                function = get_function_from_name(name)
-                if not function.done:
+                recipe = get_recipe_from_name(name)
+                if not recipe.done:
                     function(skip_deps=True)
                 else:
                     print(f'Dependency {name} already done!')
@@ -323,6 +322,7 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
+        print(self.name)
         params = dict(self.signature.bind(*args, **kwargs).arguments)
 
         # Read arguments from params.json if not already in params
@@ -505,10 +505,6 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-# We need to reduce this list to only contain collect
-excludelist = ['asr.gapsummary']
-
-
 def get_execution_info(params):
     """Get parameter and software version information as a dictionary"""
     exceinfo = {'__params__': params}
@@ -529,7 +525,8 @@ def get_execution_info(params):
     return exceinfo
 
 
-def get_all_recipe_names():
+def get_all_recipe_modules():
+    # Find all modules containing recipes
     from pathlib import Path
     folder = Path(__file__).parent.parent
     files = list(folder.glob('**/[a-zA-Z]*.py'))
@@ -557,11 +554,13 @@ def parse_mod_func(name):
 
 
 def get_dep_tree(name, reload=True):
+    # Get the tree of dependencies from recipe of "name"
+    # by following dependencies of dependencies
     import importlib
 
     tmpdeplist = ['@'.join(parse_mod_func(name))]
 
-    for i in range(100):
+    for i in range(1000):
         if i == len(tmpdeplist):
             break
         dep = tmpdeplist[i]
@@ -577,6 +576,8 @@ def get_dep_tree(name, reload=True):
         for dependency in dependencies:
             depname = '@'.join(parse_mod_func(dependency))
             tmpdeplist.append(depname)
+    else:
+        raise AssertionError('Unreasonably many dependencies')
 
     tmpdeplist.reverse()
     deplist = []
@@ -587,22 +588,28 @@ def get_dep_tree(name, reload=True):
     return deplist
 
 
-def get_function_from_name(name):
+def get_recipes():
+    # Get all recipes in all modules
+    import importlib
+    modules = get_all_recipe_modules()
+
+    functions = []
+    for module in modules:
+        mod = importlib.import_module(module)
+        # Loop through all attributes and look for ASRCommands
+        for attr in mod.__dict__:
+            attr = getattr(mod, attr)
+            if isinstance(attr, ASRCommand):
+                functions.append(attr)
+    return functions
+
+
+def get_recipe_from_name(name):
+    # Get a recipe from a name like asr.gs@postprocessing
     import importlib
     mod, func = parse_mod_func(name)
     module = importlib.import_module(mod)
     return getattr(module, func)
-
-
-def get_parameters(key):
-    from pathlib import Path
-    if Path('params.json').is_file():
-        params = read_json('params.json')
-    else:
-        params = {}
-
-    params = params.get(key, {})
-    return params
 
 
 def is_magnetic():
@@ -618,7 +625,6 @@ def is_magnetic():
 
 
 def get_dimensionality():
-    import numpy as np
     from ase.io import read
     atoms = read('structure.json')
     nd = int(np.sum(atoms.get_pbc()))
@@ -631,85 +637,9 @@ mag_elements = {'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
 
 
 def magnetic_atoms(atoms):
-    import numpy as np
     return np.array([symbol in mag_elements
                      for symbol in atoms.get_chemical_symbols()],
                     dtype=bool)
-
-
-def get_start_parameters():
-    import json
-    with open('structure.json', 'r') as fd:
-        asejsondb = json.load(fd)
-    params = asejsondb.get('1').get('calculator_parameters', {})
-
-    return params
-
-
-def get_reduced_formula(formula, stoichiometry=False):
-    """
-    Returns the reduced formula corresponding to a chemical formula,
-    in the same order as the original formula
-    E.g. Cu2S4 -> CuS2
-
-    Parameters:
-        formula (str)
-        stoichiometry (bool): if True, return the stoichiometry ignoring the
-          elements appearing in the formula, so for example "AB2" rather than
-          "MoS2"
-    Returns:
-        A string containing the reduced formula
-    """
-    from functools import reduce
-    from fractions import gcd
-    import string
-    import re
-    split = re.findall('[A-Z][^A-Z]*', formula)
-    matches = [re.match('([^0-9]*)([0-9]+)', x)
-               for x in split]
-    numbers = [int(x.group(2)) if x else 1 for x in matches]
-    symbols = [matches[i].group(1) if matches[i] else split[i]
-               for i in range(len(matches))]
-    divisor = reduce(gcd, numbers)
-    result = ''
-    numbers = [x // divisor for x in numbers]
-    numbers = [str(x) if x != 1 else '' for x in numbers]
-    if stoichiometry:
-        numbers = sorted(numbers)
-        symbols = string.ascii_uppercase
-    for symbol, number in zip(symbols, numbers):
-        result += symbol + number
-    return result
-
-
-def has_inversion(atoms, use_spglib=True):
-    """
-    Parameters:
-        atoms: Atoms object
-            atoms
-        use_spglib: bool
-            use spglib
-    Returns:
-        out: bool
-    """
-    try:
-        import spglib
-    except ImportError as x:
-        import warnings
-        warnings.warn('using gpaw symmetry for inversion instead: {}'
-                      .format(x))
-        use_spglib = False
-
-    atoms2 = atoms.copy()
-    atoms2.pbc[:] = True
-    atoms2.center(axis=2)
-    if use_spglib:
-        R = -np.identity(3, dtype=int)
-        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
-        return np.any([np.all(r == R) for r in r_n])
-    else:
-        from gpaw.symmetry import atoms2symmetry
-        return atoms2symmetry(atoms2).has_inversion
 
 
 def write_json(filename, data):

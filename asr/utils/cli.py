@@ -1,5 +1,5 @@
 import click
-from asr.utils import get_all_recipe_names
+from asr.utils import get_all_recipe_modules
 from click import argument, option
 
 
@@ -157,7 +157,7 @@ def run(shell, dry_run, parallel, command, folders):
 @click.argument('search', required=False)
 def list(search):
     """Show a list of all recipes"""
-    recipes = get_all_recipe_names()
+    recipes = get_all_recipe_modules()
     panel = [['Recipe', 'Description'],
              ['------', '-----------']]
 
@@ -182,7 +182,7 @@ def list(search):
 def status():
     """Show the status of the current folder for all ASR recipes"""
     from pathlib import Path
-    recipes = get_all_recipe_names()
+    recipes = get_all_recipe_modules()
     panel = []
     missing_files = []
     for recipe in recipes:
