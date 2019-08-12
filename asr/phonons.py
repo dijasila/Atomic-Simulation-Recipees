@@ -55,8 +55,7 @@ def main(n, ecut, kptdensity):
               'kpts': {'density': kptdensity, 'gamma': True}}
 
     # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False,
-                          'do_not_symmetrize_the_density': True}
+    params['symmetry'] = {'point_group': False}
     # Make sure to converge forces! Can be important
     if 'convergence' in params:
         params['convergence']['forces'] = 1e-4

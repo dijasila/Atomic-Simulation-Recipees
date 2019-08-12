@@ -48,7 +48,6 @@ def main(atomfile, ecut, xc, kptdensity, width):
             'density': kptdensity,
             'gamma': True
         },
-        symmetry={'do_not_symmetrize_the_density': True},
         occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
 
@@ -70,7 +69,7 @@ def postprocessing():
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()
-    
+
     fingerprint = {}
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
