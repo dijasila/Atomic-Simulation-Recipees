@@ -291,7 +291,7 @@ class ASRCommand:
             for name in deps[:-1]:
                 recipe = get_recipe_from_name(name)
                 if not recipe.done:
-                    function(skip_deps=True)
+                    recipe(skip_deps=True)
                 else:
                     print(f'Dependency {name} already done!')
         # Try to run this command
@@ -322,7 +322,6 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        print(self.name)
         params = dict(self.signature.bind(*args, **kwargs).arguments)
 
         # Read arguments from params.json if not already in params
@@ -337,7 +336,7 @@ class ASRCommand:
                 if key not in params:
                     params[key] = value
 
-        print(f'Running {self.name} {params}')
+        print(f'Running {self.name}')
 
         # Execute the wrapped function
         if self.pass_params:
