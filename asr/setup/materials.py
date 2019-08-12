@@ -5,7 +5,7 @@ from asr.utils import command, option
          save_results_file=False)
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection):
+def main(selection=None):
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and

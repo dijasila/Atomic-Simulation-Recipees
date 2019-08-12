@@ -2,26 +2,22 @@ from pathlib import Path
 from asr.utils import command, option
 
 
-@command('asr.setup.defects')
+@command('asr.setup.defects',
+         creates=['unrelaxed.json', 'params.json'])
 @option('-a', '--atomfile', type=str,
-        help='Atomic structure.',
-        default='unrelaxed.json')
+        help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
-        help='Charge states included (-q, ..., +q).',
-        default=3)
+        help='Charge states included (-q, ..., +q).')
 @option('--maxsize', type=float,
-        help='Maximum supercell size in Å.',
-        default=8.)
+        help='Maximum supercell size in Å.')
 @option('--is2d/--is3d',
-        help='Specifies if input structure in atomfile is 2D or 3D.',
-        default=True)
+        help='Specifies if input structure in atomfile is 2D or 3D.')
 @option('--intrinsic', type=bool,
-        help='Specify whether you want to incorporate anti-site defects.',
-        default=True)
+        help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
-        help='Specify whether you want to incorporate vacancies.',
-        default=True)
-def main(atomfile, chargestates, maxsize, is2d, intrinsic, vacancies):
+        help='Specify whether you want to incorporate vacancies.')
+def main(atomfile='unrelaxed.json', chargestates=3, maxsize=8, is2d=True,
+         intrinsic=True, vacancies=True):
     """
     Sets up defect structures for a given host.
 
@@ -389,13 +385,6 @@ def postprocessing():
 #    ax.plot(data.things)
 #    plt.savefig(fname)
 
-
-group = 'setup'
-creates = ['unrelaxed.json', 'params.json']  # what files are created
-dependencies = []  # no dependencies
-resources = '1:10m'  # 1 core for 10 minutes
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     main.cli()

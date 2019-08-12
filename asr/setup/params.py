@@ -18,7 +18,7 @@ tests = [
          tests=tests)
 @argument('params', nargs=-1,
           metavar='recipe:option arg recipe:option arg')
-def main(params):
+def main(params=None):
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default

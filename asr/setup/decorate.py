@@ -74,13 +74,13 @@ def get_p_ab():
     return np.sqrt(tmp)
 
 
-help = 'Threshold of likelyhood of two atomic species to subsititute'
 @command('asr.setup.decorate',
          save_results_file=False)
 @argument('atoms', type=str)
-@option('--threshold', default=0.08, help=help)
-@option('--database', default='decorated.db')
-def main(atoms, threshold, database):
+@option('--threshold',
+        help='Threshold of likelyhood of two atomic species to subsititute')
+@option('--database')
+def main(atoms, threshold=0.08, database='decorated.db'):
     """Create similar atomic structures.
 
     This recipe can substitute atoms in an atomic structure with other similar

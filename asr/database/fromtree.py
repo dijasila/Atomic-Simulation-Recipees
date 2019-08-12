@@ -49,16 +49,15 @@ def collect(db, level, only_include=None):
 @command('asr.database.fromtree',
          add_skip_opt=False)
 @argument('folders', nargs=-1)
-@option('--recipe', default=None,
-        help='Only collect data relevant for this recipe')
-@option('--level', type=int, default=2,
+@option('--recipe', help='Only collect data relevant for this recipe')
+@option('--level', type=int,
         help=('0: Collect only atoms. '
               '1: Collect atoms+KVP. '
               '2: Collect atoms+kvp+data'))
-@option('--data/--nodata', default=True,
+@option('--data/--nodata',
         help='Also add data objects to database')
-@option('--raiseexc', is_flag=True, default=False)
-def main(folders, recipe, level, data, raiseexc):
+@option('--raiseexc', is_flag=True)
+def main(folders, recipe=None, level=2, data=True, raiseexc=False):
     """Collect data from folder tree into database."""
     import os
     import traceback

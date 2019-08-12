@@ -6,10 +6,10 @@ from asr.utils import command, argument, option
          save_results_file=False)
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg recipe:option arg arg arg')
-@option('--symlink/--no-symlink', default=True,
+@option('--symlink/--no-symlink',
         help='Make symbolic link to everything '
         'in this folder (except params.json)')
-def main(scanparams, symlink):
+def main(scanparams, symlink=True):
     """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax
@@ -146,9 +146,6 @@ def main(scanparams, symlink):
                     continue
                 (folder / p.name).resolve().symlink_to(p.resolve())
         write_json(str(folder / 'params.json'), params)
-
-
-group = 'setup'
 
 
 if __name__ == '__main__':
