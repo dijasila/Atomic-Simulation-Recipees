@@ -1,5 +1,4 @@
 from asr.utils import command, subresult, option
-from click import pass_context
 
 from collections import defaultdict
 
@@ -66,12 +65,11 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
 
 
 @command('asr.pdos')
-@option('--kptdensity', default=36.0,
-        help='k-point density')
-@option('--emptybands', default=20,
-        help='number of empty bands to include')
-@pass_context
-def main(ctx, kptdensity, emptybands):  # subresults need context to log params
+@option('--kptdensity', help='k-point density')
+@option('--emptybands', help='number of empty bands to include')
+def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
+    params = dict(kptdensity=kptdensity,
+                  emptybands=emptybands)
     # Refine ground state with more k-points
     calc, gpw = refine_gs_for_pdos(kptdensity, emptybands)
 
@@ -79,8 +77,8 @@ def main(ctx, kptdensity, emptybands):  # subresults need context to log params
 
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos_nosoc(ctx, calc, gpw)  # subresults need
-    results['pdos_soc'] = pdos_soc(ctx, calc, gpw)      # context to log params
+    results['pdos_nosoc'] = pdos_nosoc(params, calc, gpw)  # subresults need
+    results['pdos_soc'] = pdos_soc(params, calc, gpw)  # context to log params
 
     # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
