@@ -156,22 +156,23 @@ def run(shell, dry_run, parallel, command, folders):
 @cli.command()
 @click.argument('search', required=False)
 def list(search):
-    """Show a list of all recipes"""
-    recipes = get_all_recipe_modules()
+    """Search for recipes.
+
+    If SEARCH is specified then only list recipes containing SEARCH."""
+    from asr.utils import get_recipes
+    recipes = get_recipes()
     panel = [['Recipe', 'Description'],
              ['------', '-----------']]
 
     for recipe in recipes:
-        if recipe.main:
-            with click.Context(recipe.main,
-                               info_name=f'asr run {recipe.name}') as ctx:
-                longhelp = recipe.main.get_help(ctx)
-                shorthelp = recipe.main.get_short_help_str()
-        else:
+        longhelp = recipe._main.__doc__
+        if not longhelp:
             longhelp = ''
-            shorthelp = ''
 
-        if search and search not in longhelp:
+        shorthelp, *_ = longhelp.split('\n')
+
+        if search and (search not in longhelp and
+                       search not in recipe.name):
             continue
         status = [recipe.name[4:], shorthelp]
         panel += [status]
@@ -181,25 +182,24 @@ def list(search):
 @cli.command()
 def status():
     """Show the status of the current folder for all ASR recipes"""
-    from pathlib import Path
-    recipes = get_all_recipe_modules()
+    from asr.utils import get_recipes
+    recipes = get_recipes()
     panel = []
     missing_files = []
     for recipe in recipes:
         status = [recipe.name]
-        done = True
-        if recipe.creates:
-            for create in recipe.creates:
-                if not Path(create).exists():
-                    done = False
-            if done:
+        done = recipe.done
+        if done:
+            if recipe.creates:
                 status.append(f'Done -> {recipe.creates}')
             else:
-                status.append(f'Todo')
-            if done:
-                panel.insert(0, status)
-            else:
-                panel.append(status)
+                status.append(f'Done.')
+        else:
+            status.append(f'Todo')
+        if done:
+            panel.insert(0, status)
+        else:
+            panel.append(status)
     
     print(format(panel))
     print(format(missing_files))
