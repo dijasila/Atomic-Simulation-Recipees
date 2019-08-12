@@ -130,7 +130,7 @@ class ASRCommand:
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
 
-        # Pass a dictionary with all params to the function force
+        # Pass a dictionary with all params to the function for
         # convenience?
         self.pass_params = pass_params
 
@@ -146,7 +146,7 @@ class ASRCommand:
         self.add_skip_opt = add_skip_opt
 
         # Commands can have dependencies. This is just a list of
-        # pack.module.module@function that points to other function.
+        # pack.module.module@function that points to other functions.
         # If no @function then we assume function=main
         self.dependencies = []
         if dependencies:
