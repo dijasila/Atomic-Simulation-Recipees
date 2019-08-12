@@ -10,6 +10,7 @@ import numpy as np
 from ase.io import jsonio
 from ase.parallel import parprint
 import ase.parallel as parallel
+import inspect
 
 
 def md5sum(filename):
@@ -21,27 +22,38 @@ def md5sum(filename):
     return hash.hexdigest()
 
 
+def paramerrormsg(func, msg):
+    return f'Problem in {func.__module__}@{func.__name__}. {msg}'
+
+
 def add_param(func, param):
     if not hasattr(func, '__asr_params__'):
         func.__asr_params__ = {}
 
     name = param['name']
     assert name not in func.__asr_params__, \
-        f'Double assignment of {name}'
+        paramerrormsg(func, f'Double assignment of {name}')
 
     import inspect
     sig = inspect.signature(func)
-    assert name in sig.parameters, f'Unkown parameter {name}'
+    assert name in sig.parameters, \
+        paramerrormsg(func, f'Unkown parameter {name}')
 
     assert 'argtype' in param, \
-        'You have to specify the parameter type: option or argument'
+        paramerrormsg(func, 'You have to specify the parameter '
+                      'type: option or argument')
 
     if param['argtype'] == 'option':
-        assert 'nargs' not in param, 'Options only allow one argument'
+        if 'nargs' in param:
+            assert param['nargs'] > 0, \
+                paramerrormsg(func, 'Options only allow one argument')
     elif param['argtype'] == 'argument':
-        assert 'default' not in param, 'Argument don\'t allow defaults'
+        assert 'default' not in param, \
+            paramerrormsg(func, 'Argument don\'t allow defaults')
     else:
-        raise AssertionError(f'Unknown argument type {param["argtype"]}')
+        raise AssertionError(
+            paramerrormsg(func,
+                          f'Unknown argument type {param["argtype"]}'))
 
     func.__asr_params__[name] = param
 
@@ -52,12 +64,16 @@ def option(*args, **kwargs):
         assert args, 'You have to give a name to this parameter'
 
         for arg in args:
-            if arg.startswith('--'):
-                name = arg[2:].split('/')[0].replace('-', '_')
+            params = inspect.signature(func).parameters
+            name = arg.lstrip('-').split('/')[0].replace('-', '_')
+            if name in params:
                 break
         else:
-            raise AssertionError('You must give exactly one alias that starts '
-                                 'with -- and matches a function argument')
+            print(args)
+            raise AssertionError(
+                paramerrormsg(func,
+                              'You must give exactly one alias that starts '
+                              'with -- and matches a function argument.'))
         param = {'argtype': 'option',
                  'alias': args,
                  'name': name}
@@ -435,11 +451,11 @@ class ASRSubResult:
 
         self.results = {}
 
-    def __call__(self, ctx, *args, **kwargs):
+    def __call__(self, params, *args, **kwargs):
         # Try to read sub-result from previous calculation
         subresult = self.read_subresult()
         if subresult is None:
-            subresult = self.calculate(ctx, *args, **kwargs)
+            subresult = self.calculate(params, *args, **kwargs)
 
         return subresult
 
@@ -455,12 +471,12 @@ class ASRSubResult:
 
         return subresult
 
-    def calculate(self, ctx, *args, **kwargs):
+    def calculate(self, params, *args, **kwargs):
         """Do the actual calculation"""
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_execution_info(ctx.params))
+        subresult.update(get_execution_info(params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)
