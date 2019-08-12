@@ -2,8 +2,7 @@ from click import Choice
 from asr.utils import command, option
 
 
-@command('asr.setup.magnetize',
-         save_results_file=False)
+@command('asr.setup.magnetize')
 @option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
         help='Magnetic states to create.')
 @option('--name', help='Atomic structure')

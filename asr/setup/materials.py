@@ -2,7 +2,7 @@ from asr.utils import command, option
 
 
 @command('asr.setup.materials',
-         save_results_file=False)
+         creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
 def main(selection=None):

@@ -74,8 +74,7 @@ def get_p_ab():
     return np.sqrt(tmp)
 
 
-@command('asr.setup.decorate',
-         save_results_file=False)
+@command('asr.setup.decorate')
 @argument('atoms', type=str)
 @option('--threshold',
         help='Threshold of likelyhood of two atomic species to subsititute')

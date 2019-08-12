@@ -209,8 +209,9 @@ class ASRCommand:
     def done(self):
         creates = []
         creates += self.creates
-        if self.save_results_file:
-            creates += ['results-{self.name}.json']
+        if not self.save_results_file:
+            return False
+        creates += [f'results-{self.name}.json']
 
         for file in creates:
             if not Path(file).exists():
@@ -378,11 +379,12 @@ class ASRCommand:
         data = {}
         if self.done:
             name = self.name[4:]
-            resultfile = f'results_{self.name}.json'
+            resultfile = f'results-{self.name}.json'
             results = read_json(resultfile)
             if '__key_descriptions__' in results:
                 tmpkd = {}
-                for key, desc in key_descriptions.items():
+
+                for key, desc in results['__key_descriptions__'].items():
                     descdict = {'type': None,
                                 'iskvp': False,
                                 'shortdesc': '',
@@ -396,35 +398,38 @@ class ASRCommand:
                     assert isinstance(desc, str), \
                         'Key description has to be dict or str.'
                     # Get key type
-                    desc, keytype = desc.split('->')
+                    desc, *keytype = desc.split('->')
                     if keytype:
                         descdict['type'] = keytype
 
                     # Is this a kvp?
                     iskvp = '<KVP>' in desc
                     descdict['iskvp'] = iskvp
-                    desc = desc.replace('<KVP>', '')
+                    desc = desc.replace('<KVP>', '').strip()
 
                     # Find units
                     m = re.search(r"\[(\w+)\]", desc)
                     unit = m.group(1) if m else ''
                     if unit:
                         descdict['units'] = unit
-                    desc = desc.replace(unit, '')
+                    desc = desc.replace(f'[{unit}]', '').strip()
 
                     # Find short description
                     m = re.search(r"\((\w+)\)", desc)
                     shortdesc = m.group(1) if m else ''
 
                     # The results is the long description
-                    longdesc = desc.replace(shortdesc, '').strip()
+                    longdesc = desc.replace(f'({shortdesc})', '').strip()
                     if longdesc:
                         descdict['longdesc'] = longdesc
                     tmpkd[key] = descdict
 
-                for key, desc in descdict.items():
+                for key, desc in tmpkd.items():
                     key_descriptions[key] = \
                         (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+                    if desc['iskvp']:
+                        kvp[key] = results[key]
 
             key = f'results_{name}'
             msg = f'{self.name}: You cannot put a {key} in data'

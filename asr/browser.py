@@ -7,7 +7,7 @@ from asr.utils import command, option
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
 def main(database='database.db', custom='asr.utils.custom',
-         only_figures=True):
+         only_figures=False):
     """Open results in web browser"""
     import subprocess
     from pathlib import Path

@@ -17,13 +17,17 @@ def collect(db, level, only_include=None):
     if only_include:
         recipes = get_dep_tree(only_include)
     else:
-        recipes = get_recipes(sort=True)
+        recipes = get_recipes()
 
     for recipe in recipes:
+
+        if not recipe.done:
+            continue
+        print(f'Collecting {recipe.name}')
         try:
-            tmpkvp, tmpkd, tmpdata = recipe.main.collect(atoms=atoms)
+            tmpkvp, tmpkd, tmpdata = recipe.collect()
             if tmpkvp or tmpkd or tmpdata:
-                print(f'Collecting {recipe.name}')
+
                 kvp.update(tmpkvp)
                 data.update(tmpdata)
                 key_descriptions.update(tmpkd)
@@ -111,7 +115,7 @@ tests = [
              'asr run database.totree database.db '
              '-t newtree/{formula} --run --data'],
      'results': [{'file': 'newtree/Ag/unrelaxed.json'},
-                 {'file': 'newtree/Ag/results_structureinfo.json'}]}
+                 {'file': 'newtree/Ag/results-asr-structureinfo@main.json'}]}
 ]
 
 

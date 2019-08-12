@@ -138,8 +138,7 @@ def symmetrize_atoms(atoms, tolerance=None,
     return idealized, origin_c
     
 
-@command('asr.setup.symmetrize',
-         save_results_file=False)
+@command('asr.setup.symmetrize')
 @option('--tolerance', type=float,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float,
