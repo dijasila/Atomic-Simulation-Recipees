@@ -11,13 +11,13 @@ if Path('results_relax.json').exists():
 
 tests = []
 tests.append({'description': 'Test ground state of Si.',
-              'cli': ['asr run setup.materials -s Si2',
+              'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
-                      'asr run setup.params asr.gs:ecut 300 '
-                      'asr.gs:kptdensity 2',
+                      'asr run "setup.params asr.gs:ecut 300 '
+                      'asr.gs:kptdensity 2"',
                       'asr run gs',
                       'asr run database.fromtree',
-                      'asr run browser --only-figures']})
+                      'asr run "browser --only-figures"']})
 
 
 @command(module='asr.gs',
