@@ -2,7 +2,8 @@ from asr.utils import command, option
 from click import Choice
 
 
-@command('asr.polarizability')
+@command('asr.polarizability',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 @option(
     '--gs', help='Ground state on which response is based')
 @option('--kptdensity', help='K-point density')
@@ -13,8 +14,7 @@ from click import Choice
 def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
-    import json
-    from ase.io import jsonio, read
+    from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -256,19 +256,18 @@ def webpanel(row, key_descriptions):
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
     ], key_descriptions)
 
-    panel = ('Polarizability (RPA)',
-             [[fig('rpa-pol-x.png'),
-               fig('rpa-pol-z.png')], [fig('rpa-pol-y.png'), opt]])
+    panel = {'title': 'Polarizability (RPA)',
+             'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
+                         [fig('rpa-pol-y.png'), opt]],
+             'plot_descriptions':
+                 [{'function': polarizability,
+                   'filenames': ['rpa-pol-x.png',
+                                 'rpa-pol-y.png',
+                                 'rpa-pol-z.png']}]
+             }
+    
+    return [panel]
 
-    things = [(polarizability,
-               ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])]
-
-    return panel, things
-
-
-group = 'property'
-creates = ['polarizability.json']
-dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main.cli()
