@@ -11,11 +11,9 @@ def get_wavefunctions(atoms, name, params, density=6.0,
                       'even': True}
     if no_symmetries:
         params['symmetry'] = {'point_group': False,
-                              'do_not_symmetrize_the_density': False,
                               'time_reversal': False}
     else:
         params['symmetry'] = {'point_group': True,
-                              'do_not_symmetrize_the_density': False,
                               'time_reversal': True}
     params['convergence']['eigenstates'] = 1e-11
     tmp = Path(name).with_suffix('').name
