@@ -201,6 +201,44 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     return atoms, calc, dft, kwargs
 
 
+def BN_check():
+    # Check that 2D-BN doesn't relax to its 3D form
+    from asr.utils import read_json
+    results = read_json('results_relax.json')
+    assert results['c'] > 5
+
+
+tests = []
+tests.append({'description': 'Test relaxation of Si.',
+              'cli': ['asr run "setup.materials -s Si"',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run "setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2"',
+                      'asr run "relax --nod3"',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"'],
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+tests.append({'description': 'Test relaxation of Si (cores=2).',
+              'cli': ['asr run "setup.materials -s Si"',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run "setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2"',
+                      'asr run -p 2 "relax --nod3"',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"'],
+              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+tests.append({'description': 'Test relaxation of 2D-BN.',
+              'name': 'test_asr.relax_2DBN',
+              'cli': ['asr run "setup.materials -s BN,natoms=2"',
+                      'ase convert materials.json unrelaxed.json',
+                      'asr run "setup.params asr.relax:ecut 300 '
+                      'asr.relax:kptdensity 2"',
+                      'asr run "relax --nod3"',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"'],
+              'test': BN_check})
+
+
 # Please note these are relative numbers that
 # are multiplied on the original ones
 known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
@@ -208,7 +246,8 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 
 
 @command('asr.relax',
-         known_exceptions=known_exceptions)
+         known_exceptions=known_exceptions,
+         tests=tests)
 @option('--ecut', default=800,
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdensity', default=6.0,
@@ -294,42 +333,8 @@ resources = '24:10h'
 creates = ['results_relax.json']
 
 
-def BN_check():
-    # Check that 2D-BN doesn't relax to its 3D form
-    from asr.utils import read_json
-    results = read_json('results_relax.json')
-    assert results['c'] > 5
 
 
-tests = []
-tests.append({'description': 'Test relaxation of Si.',
-              'cli': ['asr run setup.materials -s Si',
-                      'ase convert materials.json unrelaxed.json',
-                      'asr run setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2',
-                      'asr run relax --nod3',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures'],
-              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
-tests.append({'description': 'Test relaxation of Si (cores=2).',
-              'cli': ['asr run setup.materials -s Si',
-                      'ase convert materials.json unrelaxed.json',
-                      'asr run setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2',
-                      'asr run -p 2 relax --nod3',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures'],
-              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
-tests.append({'description': 'Test relaxation of 2D-BN.',
-              'name': 'test_asr.relax_2DBN',
-              'cli': ['asr run setup.materials -s BN,natoms=2',
-                      'ase convert materials.json unrelaxed.json',
-                      'asr run setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2',
-                      'asr run relax --nod3',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures'],
-              'test': BN_check})
 
 
 if __name__ == '__main__':
