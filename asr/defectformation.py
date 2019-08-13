@@ -34,14 +34,17 @@ def main(pristine, defect, defect_name):
     """
     from ase.io import read
     from asr.utils import write_json, read_json
-    # from gpaw import GPAW
+    from gpaw import GPAW
     from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
-    print(path_gs)
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
+    gs_dict = read_json('results_gs.json')
+    defectformation_dict = {}
+    defectformation_dict['gaps_nosoc'] = gs_dict.get('gaps_nosoc')
+    defectformation_dict['gaps_soc'] = gs_dict.get('gaps_soc')
 
     sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
     if nd == 3:
@@ -57,27 +60,23 @@ def main(pristine, defect, defect_name):
     # Either run for all defect folders or just a specific one
     if defect_name is None:
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
-            and not x.name == 'pristine' and not x.name == 'pristine_sc']
+            and not x.name == 'pristine_sc']
     else:
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
             and x.name == defect_name]
 
-    defectformation_dict = {}
     for folder in folder_list:
         s = Path(folder.name)
-        # print(s)
         sub_folder_list = []
         [sub_folder_list.append(x) for x in s.iterdir() if x.is_dir()]
-        # e_form_name = 'e_form_' + folder.name
         e_form = []
         e_fermi = []
         charges = []
+        e_fermi_calc = []
         for sub_folder in sub_folder_list:
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
             chargestate = setup_params.get('charge')
-            # print('INFO: chargestate {} in {}'.format(chargestate,
-            #                                           sub_folder.name))
             charged_file = find_file_in_folder('gs.gpw',
                                                sub_folder_path)
             elc = ElectrostaticCorrections(pristine=path_gs,
@@ -90,12 +89,13 @@ def main(pristine, defect, defect_name):
             else:
                 e_form.append(elc.calculate_corrected_formation_energy())
             charges.append(chargestate)
-            # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
-            # e_fermi.append(calc.get_fermi_level())
+            calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
+            e_fermi_calc.append(calc.get_fermi_level())
             e_fermi.append(0)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'fermi_energies': e_fermi,
-                                             'chargestates': charges}
+                                             'chargestates': charges,
+                                             'fermi_energies_c': e_fermi_calc}
     write_json('defectformation.json', defectformation_dict)
 
     return None
@@ -108,8 +108,8 @@ def check_and_get_general_inputs():
 
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
     # 'dielectricconstant.json' of the pristine system
-    path_epsilon = find_file_in_folder('dielectricconstant.json', 'pristine')
-    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc/neutral')
+    path_epsilon = find_file_in_folder('dielectricconstant.json', None)
+    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc')
     path_q = find_file_in_folder('general_parameters.json', None)
 
     # if paths were found correctly, extract epsilon and q

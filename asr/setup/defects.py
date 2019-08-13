@@ -164,13 +164,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     structure_dict = {}
     formula = structure.symbols
 
-    # set up bulk system
-    parameters = {}
-    string = 'pristine'
-    parameters['txt'] = '{0}.txt'.format(string)
-    parameters['charge'] = 0
-    structure_dict[string] = {'structure': structure, 'parameters': parameters}
-
     # first, find the desired supercell
     if sc == [0, 0, 0]:
         pristine, N_x, N_y, N_z = setup_supercell(
@@ -182,7 +175,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
     string = 'pristine_sc'
-    # try to make naming compatible with defectformation recipe
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
@@ -246,7 +238,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     # put together structure dict
     structure_dict['defects'] = temp_dict
 
-    # TBD!!!
     print('INFO: setting up {0} different defect supercell systems in '
           'charge states -{1}, ..., +{1}, as well as the pristine and bulk '
           'systems.'.format(len(structure_dict['defects']), charge_states))
@@ -269,15 +260,6 @@ def create_folder_structure(structure, structure_dict, chargestates,
     from ase.io import write
     from asr.utils import write_json
 
-    # first, create parent folder for the parent structure
-#    try:
-#        parent_folder = str(structure.symbols) + '_defects_setup'
-#        Path(parent_folder).mkdir()
-#    except FileExistsError:
-#        print('WARNING: parent folder ("{0}") for this structure already '
-#              f'exists in the directory. Skip creating parent folder '
-#              f'and continue with sub-directories.'.format(parent_folder))
-
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
     if sc == [0, 0, 0]:
@@ -287,25 +269,21 @@ def create_folder_structure(structure, structure_dict, chargestates,
         N_x = sc[0]
         N_y = sc[1]
         N_z = sc[2]
-        # pristine = structure.repeat((N_x, N_y, N_z))
     gen_params = {}
     gen_params['chargestates'] = chargestates
     gen_params['is_2D'] = is_2D
     gen_params['supercell'] = [N_x, N_y, N_z]
     gen_params['intrinsic'] = intrinsic
     gen_params['vacancies'] = vacancies
-    # write_json(parent_folder + '/general_parameters.json', gen_params)
     write_json('general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
-    # configuration of this parent folder
+    # configuration of this parent folder, as well as the pristine
+    # supercell system
     for element in structure_dict:
-        # folder_name = parent_folder + '/' + element
         folder_name = element
         try:
             if not folder_name == 'defects':
-                Path(folder_name).mkdir()
-                folder_name = folder_name + '/neutral'
                 Path(folder_name).mkdir()
         except FileExistsError:
             print('WARNING: folder ("{0}") already exists in this '
@@ -323,7 +301,6 @@ def create_folder_structure(structure, structure_dict, chargestates,
             j = 0
             for sub_element in sub_dict:
                 defect_name = [key for key in sub_dict.keys()]
-                # defect_folder_name = folder_name + '/' + defect_name[j]
                 defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
