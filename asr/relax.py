@@ -249,7 +249,8 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 
 @command('asr.relax',
          known_exceptions=known_exceptions,
-         tests=tests)
+         tests=tests,
+         resources='24:10h')
 @option('--ecut',
         help='Energy cutoff in electronic structure calculation')
 @option('--kptdensity', help='Kpoint density')
@@ -325,15 +326,6 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05):
                 'gamma': 'Cell parameter gamma [deg]'},
                '__setup_fingerprints__': fingerprint}
     return results
-
-
-group = 'structure'
-resources = '24:10h'
-creates = ['results_relax.json']
-
-
-
-
 
 
 if __name__ == '__main__':
