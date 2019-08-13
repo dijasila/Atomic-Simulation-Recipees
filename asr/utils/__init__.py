@@ -121,6 +121,10 @@ class ASRCommand:
 
         name = f'{module}@{main.__name__}'
 
+        # By default we omit @main if function is called main
+        if name.endswith('@main'):
+            name = name.replace('@main', '')
+
         # Function to be executed
         self._main = main
         self.name = name
@@ -150,14 +154,9 @@ class ASRCommand:
         self.webpanel = webpanel
 
         # Commands can have dependencies. This is just a list of
-        # pack.module.module@function that points to other functions.
-        # If no @function then we assume function=main
-        self.dependencies = []
-        if dependencies:
-            for dep in dependencies:
-                if '@' not in dep:
-                    dep = dep + '@main'
-                self.dependencies.append(dep)
+        # pack.module.module@function that points to other functions
+        # dot name like "recipe.name".
+        self.dependencies = dependencies or []
 
         # Our function can also have tests
         self.tests = tests
@@ -178,7 +177,8 @@ class ASRCommand:
         for key, value in sig.parameters.items():
             assert key in self.params, \
                 f'You havent provided a description for {key}'
-            if value.default:
+            if value.default and \
+               value.default is not inspect.Parameter.empty:
                 defparams[key] = value.default
             myparams.append(key)
 
@@ -338,8 +338,7 @@ class ASRCommand:
 
                 # If any parameters have been given directly to the function
                 # we don't use the ones from the param.json file
-                if key not in params:
-                    params[key] = value
+                params[key] = value
 
         print(f'Running {self.name}')
 

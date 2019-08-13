@@ -17,8 +17,8 @@ tests = []
 tests.append({'description': 'Test ground state of Si.',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
-                      'asr run "setup.params asr.gs@main:ecut 300 '
-                      'asr.gs@main:kptdensity 2"',
+                      'asr run "setup.params asr.gs@calculate:ecut 300 '
+                      'asr.gs@calculate:kptdensity 2"',
                       'asr run gs',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
@@ -86,7 +86,7 @@ def main():
                '__key_descriptions__':
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'Total energy [eV]'}}
+                'etot': 'KVP: Total energy (En.) [eV]'}}
 
     analysegs('gs.gpw', results)
 

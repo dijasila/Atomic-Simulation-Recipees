@@ -3,12 +3,12 @@ from asr.utils import command, argument
 
 tests = [
     {'cli': ['asr run setup.params']},
-    {'cli': ['asr run setup.params asr.relax:ecut 300'],
+    {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
      'results': [{'file': 'params.json',
                   'asr.relax:ecut': (250, 0.1)}], 'fails': True},
-    {'cli': ['asr run setup.params :ecut 300'], 'fails': True},
-    {'cli': ['asr run setup.params asr.relax: 300'], 'fails': True},
-    {'cli': ['asr run setup.params asr.relax:ecut asr.gs:ecut 300'],
+    {'cli': ['asr run "setup.params :ecut 300"'], 'fails': True},
+    {'cli': ['asr run "setup.params asr.relax: 300"'], 'fails': True},
+    {'cli': ['asr run "setup.params asr.relax:ecut asr.gs:ecut 300"'],
      'fails': True},
 ]
 

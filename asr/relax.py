@@ -204,7 +204,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 def BN_check():
     # Check that 2D-BN doesn't relax to its 3D form
     from asr.utils import read_json
-    results = read_json('results_relax.json')
+    results = read_json('results-asr.relax.json')
     assert results['c'] > 5
 
 
@@ -217,7 +217,8 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run "relax --nod3"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
-              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+              'results': [{'file': 'results-asr.relax.json',
+                           'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
               'cli': ['asr run "setup.materials -s Si"',
                       'ase convert materials.json unrelaxed.json',
@@ -226,7 +227,8 @@ tests.append({'description': 'Test relaxation of Si (cores=2).',
                       'asr run -p 2 "relax --nod3"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
-              'results': [{'file': 'results_relax.json', 'c': (3.1, 0.1)}]})
+              'results': [{'file': 'results-asr.relax.json',
+                           'c': (3.1, 0.1)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
               'name': 'test_asr.relax_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
@@ -248,17 +250,14 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @command('asr.relax',
          known_exceptions=known_exceptions,
          tests=tests)
-@option('--ecut', default=800,
+@option('--ecut',
         help='Energy cutoff in electronic structure calculation')
-@option('--kptdensity', default=6.0,
-        help='Kpoint density')
-@option('-U', '--plusu', help='Do +U calculation',
-        is_flag=True)
-@option('--xc', default='PBE', help='XC-functional')
-@option('--d3/--nod3', default=True, help='Relax with vdW D3')
-@option('--width', default=0.05,
-        help='Fermi-Dirac smearing temperature')
-def main(plusu, ecut, kptdensity, xc, d3, width):
+@option('--kptdensity', help='Kpoint density')
+@option('-U', '--plusu', help='Do +U calculation', is_flag=True)
+@option('--xc', help='XC-functional')
+@option('--d3/--nod3', help='Relax with vdW D3')
+@option('--width', help='Fermi-Dirac smearing temperature')
+def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
@@ -318,12 +317,12 @@ def main(plusu, ecut, kptdensity, xc, d3, width):
                 'edft': 'DFT total energy [eV]',
                 'spos': 'Array: Scaled positions',
                 'symbols': 'Array: Chemical symbols',
-                'a': 'Cell parameter "a" [Å]',
-                'b': 'Cell parameter "b" [Å]',
-                'c': 'Cell parameter "c" [Å]',
-                'alpha': 'Cell parameter "alpha" [deg]',
-                'beta': 'Cell parameter "beta" [deg]',
-                'gamma': 'Cell parameter "gamma" [deg]'},
+                'a': 'Cell parameter a [Ang]',
+                'b': 'Cell parameter b [Ang]',
+                'c': 'Cell parameter c [Ang]',
+                'alpha': 'Cell parameter alpha [deg]',
+                'beta': 'Cell parameter beta [deg]',
+                'gamma': 'Cell parameter gamma [deg]'},
                '__setup_fingerprints__': fingerprint}
     return results
 
