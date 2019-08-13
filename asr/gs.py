@@ -36,9 +36,9 @@ tests.append({'description': 'Test ground state of Si.',
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--xc', type=str, help='XC-functional')
 @option('--width', help='Fermi-Dirac smearing temperature')
-def main(atomfile='structure.json', ecut=800, xc='PBE',
-         kptdensity=6.0, width=0.05):
-    """Calculate ground state.
+def calculate(atomfile='structure.json', ecut=800, xc='PBE',
+              kptdensity=6.0, width=0.05):
+    """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
     for storing any derived quantities. See asr.gs@postprocessing for more
@@ -68,8 +68,8 @@ def main(atomfile='structure.json', ecut=800, xc='PBE',
 
 
 @command(module='asr.gs',
-         dependencies=['asr.gs@main'])
-def postprocessing():
+         dependencies=['asr.gs@calculate'])
+def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     from asr.calculators import get_calculator
     calc = get_calculator()('gs.gpw', txt=None)
@@ -404,4 +404,4 @@ def webpanel(row, key_descriptions):
 
 
 if __name__ == '__main__':
-    postprocessing.cli()
+    main.cli()
