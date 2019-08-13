@@ -3,7 +3,7 @@ from asr.utils import command, option
 tests = []
 tests.append({'description': 'Test band structure of Si.',
               'name': 'test_asr.bandstructure_Si',
-              'cli': ['asr run setup.materials -s Si',
+              'cli': ['asr run setup.materials -s Si2',
                       'ase convert materials.json structure.json',
                       'asr run setup.params '
                       'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '

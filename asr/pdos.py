@@ -475,7 +475,7 @@ dependencies = ['asr.structureinfo', 'asr.gs']
 tests = []
 tests.append({'description': 'Test the pdos of Si (cores=1)',
               'name': 'test_asr.pdos_Si_serial',
-              'cli': ['asr run setup.materials -s Si',
+              'cli': ['asr run setup.materials -s Si2',
                       'ase convert materials.json structure.json',
                       'asr run setup.params '
                       'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
@@ -485,7 +485,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
                       'asr run browser --only-figures']})
 tests.append({'description': 'Test the pdos of Si (cores=2)',
               'name': 'test_asr.pdos_Si_parallel',
-              'cli': ['asr run setup.materials -s Si',
+              'cli': ['asr run setup.materials -s Si2',
                       'ase convert materials.json structure.json',
                       'asr run setup.params '
                       'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
