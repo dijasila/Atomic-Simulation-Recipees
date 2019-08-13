@@ -3,7 +3,7 @@ from click import Choice
 
 
 @command('asr.bse',
-         dependencies=['asr.structureinfo', 'asr.gs', 'asr.gaps'])
+         dependencies=['asr.structureinfo', 'asr.gs'])
 @option('--gs', help='Ground state on which BSE is based')
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
@@ -24,6 +24,7 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
+    from asr.utils import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -71,7 +72,8 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
         calc.get_potential_energy()
-        calc.write('gs_bse.gpw', mode='all')
+        with file_barrier('gs_bse.gpw'):
+            calc.write('gs_bse.gpw', mode='all')
 
     if spin:
         f0 = calc.get_occupation_numbers(spin=0)
@@ -99,26 +101,29 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
 
     w_w = np.linspace(0.0, 5.0, 5001)
 
-    w_w, alphax_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=0,
-                                           write_eig='eig_x.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_x.dat'):
+        w_w, alphax_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=0,
+                                               write_eig='eig_x.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
-    w_w, alphay_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=1,
-                                           write_eig='eig_y.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_y.dat'):
+        w_w, alphay_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=1,
+                                               write_eig='eig_y.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
-    w_w, alphaz_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=2,
-                                           write_eig='eig_z.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_z.dat'):
+        w_w, alphaz_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=2,
+                                               write_eig='eig_z.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
     eigx = np.loadtxt('eig_x.dat')
     eigy = np.loadtxt('eig_y.dat')

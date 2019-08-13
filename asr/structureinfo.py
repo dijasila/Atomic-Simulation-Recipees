@@ -163,17 +163,6 @@ def main():
         magstate = 'nm'
     info['magstate'] = magstate.upper()
 
-    # Are forces/stresses known?
-    try:
-        f = atoms.get_forces()
-        s = atoms.get_stress()[:2]
-        fmax = ((f**2).sum(1).max())**0.5
-        smax = abs(s).max()
-        info['fmax'] = fmax
-        info['smax'] = smax
-    except RuntimeError:
-        pass
-
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
     info['formula'] = formula

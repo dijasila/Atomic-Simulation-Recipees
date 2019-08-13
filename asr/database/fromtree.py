@@ -72,7 +72,7 @@ def main(folders, recipe=None, level=2, data=True, raiseexc=False):
 
     if not folders:
         folders = ['.']
-    
+
     errors = []
     for i, folder in enumerate(folders):
         if not os.path.isdir(folder):

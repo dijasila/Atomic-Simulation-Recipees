@@ -662,9 +662,9 @@ def write_json(filename, data):
     from pathlib import Path
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
-    if world.rank == 0:
-        Path(filename).write_text(MyEncoder(indent=4).encode(data))
-    world.barrier()
+    with file_barrier(filename):
+        if world.rank == 0:
+            Path(filename).write_text(MyEncoder(indent=4).encode(data))
 
 
 def read_json(filename):
@@ -681,6 +681,7 @@ def unlink(path: Union[str, Path], world=None):
     if world is None:
         world = parallel.world
 
+    world.barrier()
     # Remove file:
     if world.rank == 0:
         try:
