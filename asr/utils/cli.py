@@ -117,11 +117,12 @@ def run(shell, dry_run, parallel, command, folders):
 
         import importlib
         try:
-            importlib.import_module(module)
-        except ModuleNotFoundError:
-            # If we cannot import the module then we assume that
-            # this is a recipe
-            module = f'asr.{module}'
+            m = importlib.find_spec(module)
+        except (AttributeError, ImportError, ValueError):
+            m = None
+        finally:
+            if m is None:
+                module = f'asr.{module}'
 
         if function:
             command = (f'{python} -c "from {module} import {function}; '
