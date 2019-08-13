@@ -208,14 +208,14 @@ def main():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
     info['__key_descriptions__'] = {
-        'magstate': '<KVP> Magnetic state -> str',
-        'is_magnetic': '<KVP> Material is magnetic (Magnetic) -> bool',
-        'cell_area': '<KVP> Area of unit-cell [Ang^2] -> float',
-        'has_invsymm': '<KVP> Inversion symmetry -> bool',
-        'uid': '<KVP> Identifier',
-        'stoichiometry': '<KVP> Stoichiometry',
-        'spacegroup': '<KVP> Space group',
-        'prototype': '<KVP> Prototype'}
+        'magstate': 'KVP: Magnetic state -> str',
+        'is_magnetic': 'KVP: Material is magnetic (Magnetic) -> bool',
+        'cell_area': 'KVP: Area of unit-cell [Ang^2] -> float',
+        'has_invsymm': 'KVP: Inversion symmetry -> bool',
+        'uid': 'KVP: Identifier',
+        'stoichiometry': 'KVP: Stoichiometry',
+        'spacegroup': 'KVP: Space group',
+        'prototype': 'KVP: Prototype'}
 
     return info
 

@@ -407,9 +407,9 @@ class ASRCommand:
                         descdict['type'] = keytype
 
                     # Is this a kvp?
-                    iskvp = '<KVP>' in desc
+                    iskvp = desc.startswith('KVP:')
                     descdict['iskvp'] = iskvp
-                    desc = desc.replace('<KVP>', '').strip()
+                    desc = desc.replace('KVP:', '').strip()
 
                     # Find units
                     m = re.search(r"\[(\w+)\]", desc)
