@@ -81,7 +81,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        if not recipe.done():
+        if not recipe.done:
             continue
         panel, newthings = recipe.webpanel(row, key_descriptions)
         if panel:

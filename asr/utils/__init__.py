@@ -112,7 +112,8 @@ class ASRCommand:
                  resources='1:10m',
                  diskspace=0,
                  tests=None,
-                 restart=0):
+                 restart=0,
+                 webpanel=None):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -144,6 +145,9 @@ class ASRCommand:
 
         # Add skip dependencies option to control this?
         self.add_skip_opt = add_skip_opt
+
+        # Tell ASR how to present the data in a webpanel
+        self.webpanel = webpanel
 
         # Commands can have dependencies. This is just a list of
         # pack.module.module@function that points to other functions.
@@ -428,14 +432,13 @@ class ASRCommand:
                     key_descriptions[key] = \
                         (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-                    if desc['iskvp']:
+                    if key in results and desc['iskvp']:
                         kvp[key] = results[key]
 
             key = f'results_{name}'
             msg = f'{self.name}: You cannot put a {key} in data'
             assert key not in data, msg
             data[key] = results
-
         return kvp, key_descriptions, data
 
 
@@ -529,7 +532,7 @@ def get_execution_info(params):
     return exceinfo
 
 
-def get_all_recipe_modules():
+def get_recipe_module_names():
     # Find all modules containing recipes
     from pathlib import Path
     folder = Path(__file__).parent.parent
@@ -592,17 +595,26 @@ def get_dep_tree(name, reload=True):
     return deplist
 
 
+def get_recipe_modules():
+    # Get recipe modules
+    import importlib
+    modules = get_recipe_module_names()
+
+    mods = []
+    for module in modules:
+        mod = importlib.import_module(module)
+        mods.append(mod)
+    return mods
+
+
 def get_recipes():
     # Get all recipes in all modules
-    import importlib
-    modules = get_all_recipe_modules()
+    modules = get_recipe_modules()
 
     functions = []
     for module in modules:
-        mod = importlib.import_module(module)
-        # Loop through all attributes and look for ASRCommands
-        for attr in mod.__dict__:
-            attr = getattr(mod, attr)
+        for attr in module.__dict__:
+            attr = getattr(module, attr)
             if isinstance(attr, ASRCommand):
                 functions.append(attr)
     return functions
@@ -708,19 +720,3 @@ def file_barrier(path: Union[str, Path], world=None):
     while not path.is_file():
         time.sleep(1.0)
     world.barrier()
-
-
-if __name__ == '__main__':
-
-    def function(a, b, c, d, e=5, f=4):
-        return {'add': a + b}
-
-    # wrap = ASRCommand(function, 'function')
-
-    import inspect
-
-    args = (2,)
-    sig = inspect.signature(function)
-    print(dict(sig.bind(2, 3, 4, 5).arguments))
-
-    # print(wrap())
