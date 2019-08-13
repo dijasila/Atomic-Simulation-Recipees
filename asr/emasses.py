@@ -1,10 +1,11 @@
 from asr.utils import command, option
 
 
-@command('asr.emasses')
+@command('asr.emasses',
+         dependencies=['asr.gs', 'asr.structureinfo'])
 @option('--gpwfilename', type=str,
-        help='GS Filename', default='gs.gpw')
-def main(gpwfilename):
+        help='GS Filename')
+def main(gpwfilename='gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     import os.path
@@ -411,8 +412,6 @@ def webpanel(row, key_descriptions):
 
 #     return panel
 
-group = 'property'
-dependencies = ['asr.gs', 'asr.structureinfo']
 
 if __name__ == '__main__':
-    main()
+    main.cli()

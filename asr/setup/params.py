@@ -1,12 +1,24 @@
-import click
 from asr.utils import command, argument
 
 
+tests = [
+    {'cli': ['asr run setup.params']},
+    {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
+     'results': [{'file': 'params.json',
+                  'asr.relax:ecut': (250, 0.1)}], 'fails': True},
+    {'cli': ['asr run "setup.params :ecut 300"'], 'fails': True},
+    {'cli': ['asr run "setup.params asr.relax: 300"'], 'fails': True},
+    {'cli': ['asr run "setup.params asr.relax:ecut asr.gs:ecut 300"'],
+     'fails': True},
+]
+
+
 @command('asr.setup.params',
-         save_results_file=False)
+         save_results_file=False,
+         tests=tests)
 @argument('params', nargs=-1,
           metavar='recipe:option arg recipe:option arg')
-def main(params):
+def main(params=None):
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default
@@ -14,25 +26,16 @@ def main(params):
     for specific options."""
     import json
     from pathlib import Path
-    from asr.utils import get_recipes, ASRCommand
+    from asr.utils import get_recipes
 
     p = Path('params.json')
     assert not p.exists(), 'params.json already exists!'
 
     defparamdict = {}
     
-    recipes = get_recipes(sort=True)
+    recipes = get_recipes()
     for recipe in recipes:
-        if not recipe.main:
-            continue
-        defparams = {}
-        ctx = click.Context(ASRCommand)
-        opts = recipe.main.get_params(ctx)
-        for opt in opts:
-            if opt.name == 'help':
-                continue
-            defparams[opt.name] = opt.get_default(ctx)
-
+        defparams = recipe.defparams
         defparamdict[recipe.name] = defparams
 
     paramdict = {}
@@ -66,19 +69,5 @@ def main(params):
     return paramdict
 
 
-tests = [
-    {'cli': ['asr run setup.params']},
-    {'cli': ['asr run setup.params asr.relax:ecut 300'],
-     'results': [{'file': 'params.json',
-                  'asr.relax:ecut': (250, 0.1)}], 'fails': True},
-    {'cli': ['asr run setup.params :ecut 300'], 'fails': True},
-    {'cli': ['asr run setup.params asr.relax: 300'], 'fails': True},
-    {'cli': ['asr run setup.params asr.relax:ecut asr.gs:ecut 300'],
-     'fails': True},
-]
-
-group = 'setup'
-
-
 if __name__ == '__main__':
-    main()
+    main.cli()
