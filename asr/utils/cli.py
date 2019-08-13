@@ -327,11 +327,11 @@ def workflow(tasks, doforstable):
 
 
 tests = [{'cli': ['asr run -h']},
-         {'cli': ['asr run setup.params asr.relax:ecut 300']},
-         {'cli': ['asr run dry setup.params asr.relax:ecut 300']},
+         {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
+         {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
          {'cli': ['mkdir folder1',
                   'mkdir folder2',
-                  'asr run setup.params asr.relax:ecut'
-                  ' 300 in folder1 folder2']},
+                  'asr run "setup.params asr.relax:ecut'
+                  ' 300" folder1 folder2']},
          {'cli': ['touch str1.json',
-                  'asr run shell mv str1.json str2.json']}]
+                  'asr run --shell "mv str1.json str2.json"']}]

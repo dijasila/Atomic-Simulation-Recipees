@@ -98,11 +98,15 @@ def make_test_files(functionname, tests):
                     break
                 id += 1
 
-        mod, func = parse_mod_func(functionname)
         text = 'from asr.tests.generatetests import run_test\n'
-        text += f'from {mod} import {func}\n\n\n'
-        text += f'tests = {func}.tests\n'
-        text += f'run_test(tests[{it}])\n'
+        if not functionname == 'asr.utils.cli':
+            mod, func = parse_mod_func(functionname)
+            text += f'from {mod} import {func}\n\n\n'
+            text += f'tests = {func}.tests\n'
+            text += f'run_test(tests[{it}])\n'
+        else:
+            text += 'from asr.utils.cli import tests\n'
+            text += f'run_test(tests[{it}])\n'
 
         msg = (f'Invalid test name: "{name}". Please name your '
                'tests as "test_{name}".')
