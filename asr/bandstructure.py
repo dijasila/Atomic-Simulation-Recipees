@@ -1,11 +1,37 @@
 from asr.utils import command, option
 
+tests = []
+tests.append({'description': 'Test band structure of Si.',
+              'name': 'test_asr.bandstructure_Si',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test band structure of 2D-BN.',
+              'name': 'test_asr.bandstructure_2DBN',
+              'cli': ['asr run setup.materials -s BN,natoms=2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 300 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
 
-@command('asr.bandstructure')
-@option('--kptpath', default=None, type=str)
-@option('--npoints', default=400)
-@option('--emptybands', default=20)
-def main(kptpath, npoints, emptybands):
+
+@command('asr.bandstructure',
+         dependencies=['asr.structureinfo', 'asr.gaps', 'asr.gs'],
+         tests=tests)
+@option('--kptpath', type=str)
+@option('--npoints')
+@option('--emptybands')
+def main(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     import os
     from gpaw import GPAW
@@ -16,7 +42,12 @@ def main(kptpath, npoints, emptybands):
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
 
-    kptpath = None
+    atoms = read('gs.gpw')
+    if kptpath is None:
+        path = atoms.cell.bandpath(npoints=npoints)
+    else:
+        path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
+
     if not os.path.isfile('bs.gpw'):
         convbands = emptybands // 2
         parms = {
@@ -24,7 +55,7 @@ def main(kptpath, npoints, emptybands):
             'nbands': -emptybands,
             'txt': 'bs.txt',
             'fixdensity': True,
-            'kpts': kptpath,
+            'kpts': path,
             'convergence': {
                 'bands': -convbands},
             'symmetry': 'off'}
@@ -35,7 +66,7 @@ def main(kptpath, npoints, emptybands):
         calc.write('bs.gpw')
 
     calc = GPAW('bs.gpw', txt=None)
-    bs = get_band_structure(calc=calc, path=kptpath, reference=ref)
+    bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     import copy
     results = {}
@@ -235,7 +266,9 @@ def collect_data(atoms):
         return kvp, key_descriptions, data
 
     import numpy as np
-    evac = kvp.get('evac')
+    from asr.gs import get_evac
+    evac = get_evac()
+
     bsdata = read_json('results_bandstructure.json')
     soc = bsdata['bs_soc']
     nosoc = bsdata['bs_nosoc']
@@ -460,9 +493,9 @@ def add_bs_pbe(row, ax, **kwargs):
     ls = '-'
     lw = kwargs.get('lw', 1.0)
     d = row.data.bs_pbe
-    kpts = d['path']
+    path = d['path']
     e_mk = d['eps_so_mk']
-    xcoords, label_xcoords, labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k, color=c, ls=ls, lw=lw, zorder=-2)
     ax.lines[-1].set_label('PBE')
@@ -652,7 +685,7 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
         for u, b in enumerate(b_u):  # loop over directions
             ut = u if bt == 'cb' else abs(u - 1)
             ax = axes[ut]
-            e_mk = b['e_dft_km'].T - row.evac
+            e_mk = b['e_dft_km'].T - row.get('evac', 0)
             sz_mk = b['sz_dft_km'].T
             if row.get('has_invsymm', 0) == 1:
                 sz_mk[:] = 0.0
@@ -664,11 +697,11 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
             kpts_kv = kpoint_convert(row.cell, skpts_kc=kpts_kc)
             kpts_kv *= Bohr
             emodel_k = evalmodel(kpts_kv=kpts_kv, c_p=coeff) * Ha
-            emodel_k -= row.evac
+            emodel_k -= row.get('evac', 0)
             # effective mass fit
             emodel2_k = (xkmodel * Bohr)**2 / (2 * mass_u[u]) * Ha
             ecbm = evalmodel(ke_v, coeff) * Ha
-            emodel2_k = emodel2_k + ecbm - row.evac
+            emodel2_k = emodel2_k + ecbm - row.get('evac', 0)
             # dft plot
             shape = e_mk.shape
             x_mk = np.vstack([xk] * shape[0])
@@ -680,18 +713,21 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
                 x_mk = x_mk.ravel()[perm].reshape(shape)
             for i, (e_k, sz_k, x_k) in enumerate(zip(e_mk, sz_mk, x_mk)):
                 things = ax.scatter(x_k, e_k, c=sz_k, vmin=-1, vmax=1)
-            ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+            if row.get('evac') is not None:
+                ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+            else:
+                ax.set_ylabel(r'$E$ [eV]')
             # ax.plot(xkmodel, emodel_k, c='b', ls='-', label='3rd order')
             sign = np.sign(mass_u[u])
             if (bt == 'cb' and sign > 0) or (bt == 'vb' and sign < 0):
                 ax.plot(xkmodel, emodel2_k, c='r', ls='--')
             ax.set_title('Mass {}, direction {}'.format(bt.upper(), ut + 1))
             if bt == 'vb':
-                y1 = ecbm - row.evac - erange * 0.75
-                y2 = ecbm - row.evac + erange * 0.25
+                y1 = ecbm - row.get('evac', 0) - erange * 0.75
+                y2 = ecbm - row.get('evac', 0) + erange * 0.25
             elif bt == 'cb':
-                y1 = ecbm - row.evac - erange * 0.25
-                y2 = ecbm - row.evac + erange * 0.75
+                y1 = ecbm - row.get('evac', 0) - erange * 0.25
+                y2 = ecbm - row.get('evac', 0) + erange * 0.75
 
             ax.set_ylim(y1, y2)
             ax.set_xlim(-xkrange, xkrange)
@@ -780,10 +816,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'property'
-creates = ['bs.gpw']
-dependencies = ['asr.structureinfo', 'asr.gaps', 'asr.gs']
-sort = 3
-
 if __name__ == '__main__':
-    main()
+    main.cli()

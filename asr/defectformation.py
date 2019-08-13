@@ -133,4 +133,4 @@ diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart
 
 if __name__ == '__main__':
-    main()
+    main.cli()

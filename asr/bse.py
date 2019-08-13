@@ -2,18 +2,19 @@ from asr.utils import command, option, read_json
 from click import Choice
 
 
-@command('asr.bse')
-@option(
-    '--gs', default='gs.gpw', help='Ground state on which BSE is based')
-@option('--kptdensity', default=6.0, help='K-point density')
-@option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--nv', default=4, help='Valence bands included')
-@option('--nc', default=4, help='Conduction bands included')
-@option('--mode', default='BSE', help='Irreducible response',
+@command('asr.bse',
+         dependencies=['asr.structureinfo', 'asr.gs'])
+@option('--gs', help='Ground state on which BSE is based')
+@option('--kptdensity', help='K-point density')
+@option('--ecut', help='Plane wave cutoff')
+@option('--nv', help='Valence bands included')
+@option('--nc', help='Conduction bands included')
+@option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
-@option('--bandfactor', default=6, type=int,
+@option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, kptdensity, ecut, mode, bandfactor, nv, nc):
+def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
+         nv=4, nc=4):
     """Calculate BSE polarizability"""
     import os
     from ase.io import read
@@ -23,6 +24,7 @@ def main(gs, kptdensity, ecut, mode, bandfactor, nv, nc):
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
+    from asr.utils import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -70,7 +72,8 @@ def main(gs, kptdensity, ecut, mode, bandfactor, nv, nc):
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
         calc.get_potential_energy()
-        calc.write('gs_bse.gpw', mode='all')
+        with file_barrier('gs_bse.gpw'):
+            calc.write('gs_bse.gpw', mode='all')
 
     if spin:
         f0 = calc.get_occupation_numbers(spin=0)
@@ -98,26 +101,29 @@ def main(gs, kptdensity, ecut, mode, bandfactor, nv, nc):
 
     w_w = np.linspace(0.0, 5.0, 5001)
 
-    w_w, alphax_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=0,
-                                           write_eig='eig_x.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_x.dat'):
+        w_w, alphax_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=0,
+                                               write_eig='eig_x.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
-    w_w, alphay_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=1,
-                                           write_eig='eig_y.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_y.dat'):
+        w_w, alphay_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=1,
+                                               write_eig='eig_y.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
-    w_w, alphaz_w = bse.get_polarizability(eta=eta,
-                                           filename=None,
-                                           direction=2,
-                                           write_eig='eig_z.dat',
-                                           pbc=pbc,
-                                           w_w=w_w)
+    with file_barrier('eig_z.dat'):
+        w_w, alphaz_w = bse.get_polarizability(eta=eta,
+                                               filename=None,
+                                               direction=2,
+                                               write_eig='eig_z.dat',
+                                               pbc=pbc,
+                                               w_w=w_w)
 
     eigx = np.loadtxt('eig_x.dat')
     eigy = np.loadtxt('eig_y.dat')
@@ -287,8 +293,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
-
 if __name__ == '__main__':
-    main()
+    main.cli()

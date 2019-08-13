@@ -6,21 +6,19 @@ from asr.utils import command, argument, option
 @argument('database', nargs=1)
 @option('--run/--dry-run', default=False)
 @option('-s', '--selection', help='ASE-DB selection')
-@option('-t', '--tree-structure',
-        default=('tree/{stoi}/{spg}/{formula:metal}-{stoi}'
-                 '-{spg}-{wyck}-{uid}'))
+@option('-t', '--tree-structure')
 @option('--sort', help='Sort the generated materials '
         '(only useful when dividing chunking tree)')
 @option('--kvp', is_flag=True, help='Unpack key-value-pairs')
 @option('--data', is_flag=True, help='Unpack data')
-@option('--atomsname', default='unrelaxed.json',
-        help='Filename to unpack atomic structure to')
-@option('-c', '--chunks', default=1, metavar='N',
-        help='Divide the tree into N chunks')
-@option('--copy', is_flag=True, default=False,
-        help='Copy pointer tagged files')
-def main(database, run, selection, tree_structure,
-         sort, kvp, data, atomsname, chunks, copy):
+@option('--copy', is_flag=True, help='Copy pointer tagged files')
+@option('--atomsname', help='Filename to unpack atomic structure to')
+@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
+def main(database, run=False, selection=None,
+         tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
+                         '{spg}-{wyck}-{uid}'),
+         sort=None, kvp=False, data=False, atomsname='unrelaxed.json',
+         chunks=1, copy=False):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -199,4 +197,4 @@ tests = [
 ]
 
 if __name__ == '__main__':
-    main()
+    main.cli()

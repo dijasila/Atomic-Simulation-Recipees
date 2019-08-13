@@ -1,7 +1,6 @@
 import os
 import time
 from contextlib import contextmanager
-from functools import partial
 from importlib import import_module
 from pathlib import Path
 from typing import Union
@@ -11,73 +10,298 @@ import numpy as np
 from ase.io import jsonio
 from ase.parallel import parprint
 import ase.parallel as parallel
+import inspect
 
 
-option = partial(click.option, show_default=True)
-argument = click.argument
+def md5sum(filename):
+    from hashlib import md5
+    hash = md5()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(128 * hash.block_size), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
 
 
-class ASRCommand(click.Command):
-    _asr_command = True
+def paramerrormsg(func, msg):
+    return f'Problem in {func.__module__}@{func.__name__}. {msg}'
 
-    def __init__(self, asr_name=None, known_exceptions=None,
+
+def add_param(func, param):
+    if not hasattr(func, '__asr_params__'):
+        func.__asr_params__ = {}
+
+    name = param['name']
+    assert name not in func.__asr_params__, \
+        paramerrormsg(func, f'Double assignment of {name}')
+
+    import inspect
+    sig = inspect.signature(func)
+    assert name in sig.parameters, \
+        paramerrormsg(func, f'Unkown parameter {name}')
+
+    assert 'argtype' in param, \
+        paramerrormsg(func, 'You have to specify the parameter '
+                      'type: option or argument')
+
+    if param['argtype'] == 'option':
+        if 'nargs' in param:
+            assert param['nargs'] > 0, \
+                paramerrormsg(func, 'Options only allow one argument')
+    elif param['argtype'] == 'argument':
+        assert 'default' not in param, \
+            paramerrormsg(func, 'Argument don\'t allow defaults')
+    else:
+        raise AssertionError(
+            paramerrormsg(func,
+                          f'Unknown argument type {param["argtype"]}'))
+
+    func.__asr_params__[name] = param
+
+
+def option(*args, **kwargs):
+
+    def decorator(func):
+        assert args, 'You have to give a name to this parameter'
+
+        for arg in args:
+            params = inspect.signature(func).parameters
+            name = arg.lstrip('-').split('/')[0].replace('-', '_')
+            if name in params:
+                break
+        else:
+            print(args)
+            raise AssertionError(
+                paramerrormsg(func,
+                              'You must give exactly one alias that starts '
+                              'with -- and matches a function argument.'))
+        param = {'argtype': 'option',
+                 'alias': args,
+                 'name': name}
+        param.update(kwargs)
+        add_param(func, param)
+        return func
+
+    return decorator
+
+
+def argument(name, **kwargs):
+
+    def decorator(func):
+        assert 'default' not in kwargs, 'Arguments do not support defaults!'
+        param = {'argtype': 'argument',
+                 'alias': (name, ),
+                 'name': name}
+        param.update(kwargs)
+        add_param(func, param)
+        return func
+        
+    return decorator
+
+
+class ASRCommand:
+
+    def __init__(self, main,
+                 module=None,
+                 overwrite_defaults=None,
+                 known_exceptions=None,
                  save_results_file=True,
-                 add_skip_opt=True, callback=None,
-                 additional_callback='postprocessing',
+                 pass_params=False,
+                 add_skip_opt=True,
+                 creates=None,
+                 dependencies=None,
+                 resources='1:10m',
+                 diskspace=0,
                  tests=None,
-                 creates=None, *args, **kwargs):
-        assert asr_name, 'You have to give a name to your ASR command!'
-        self._asr_name = asr_name
+                 restart=0,
+                 webpanel=None):
+        assert callable(main), 'The wrapped object should be callable'
+
+        if module is None:
+            module = main.__module__
+
+        name = f'{module}@{main.__name__}'
+
+        # By default we omit @main if function is called main
+        if name.endswith('@main'):
+            name = name.replace('@main', '')
+
+        # Function to be executed
+        self._main = main
+        self.name = name
+
+        # We can handle these exceptions
         self.known_exceptions = known_exceptions or {}
-        self.asr_results_file = save_results_file
+
+        # Does the wrapped function want to save results files?
+        self.save_results_file = save_results_file
+
+        # Pass a dictionary with all params to the function for
+        # convenience?
+        self.pass_params = pass_params
+
+        # What files are created?
+        self._creates = creates
+
+        # Properties of this function
+        self._resources = resources
+        self._diskspace = diskspace
+        self.restart = restart
+
+        # Add skip dependencies option to control this?
         self.add_skip_opt = add_skip_opt
-        self._callback = callback
-        self.creates = creates
-        self.module = import_module(asr_name)
-        self.additional_callback = additional_callback
-        if tests is None and hasattr(self.module, 'tests'):
-            self.tests = self.module.tests
-        else:
-            self.tests = None
-        click.Command.__init__(self, callback=self.callback, *args, **kwargs)
 
-    def main(self, *args, **kwargs):
-        return click.Command.main(self, standalone_mode=False,
-                                  *args, **kwargs)
+        # Tell ASR how to present the data in a webpanel
+        self.webpanel = webpanel
 
+        # Commands can have dependencies. This is just a list of
+        # pack.module.module@function that points to other functions
+        # dot name like "recipe.name".
+        self.dependencies = dependencies or []
+
+        # Our function can also have tests
+        self.tests = tests
+
+        # Figure out the parameters for this function
+        if not hasattr(self._main, '__asr_params__'):
+            self._main.__asr_params__ = {}
+
+        import copy
+        self.params = copy.deepcopy(self._main.__asr_params__)
+
+        import inspect
+        sig = inspect.signature(self._main)
+        self.signature = sig
+
+        myparams = []
+        defparams = {}
+        for key, value in sig.parameters.items():
+            assert key in self.params, \
+                f'You havent provided a description for {key}'
+            if value.default and \
+               value.default is not inspect.Parameter.empty:
+                defparams[key] = value.default
+            myparams.append(key)
+
+        myparams = [k for k, v in sig.parameters.items()]
+        for key in self.params:
+            assert key in myparams, f'Param: {key} is unknown'
+        self.defparams = defparams
+
+    @property
+    def resources(self):
+        if callable(self._resources):
+            return self._resources()
+        return self._resources
+
+    @property
+    def diskspace(self):
+        if callable(self._diskspace):
+            return self._diskspace()
+        return self._diskspace
+
+    @property
+    def creates(self):
+        creates = []
+        if self._creates:
+            if callable(self._creates):
+                creates += self._creates()
+            else:
+                creates += self._creates
+        return creates
+
+    @property
     def done(self):
+        creates = []
+        creates += self.creates
+        if not self.save_results_file:
+            return False
+        creates += [f'results-{self.name}.json']
+
+        for file in creates:
+            if not Path(file).exists():
+                return False
+        return True
+
+    def cli(self):
+        # Click CLI Interface
+        CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+        cc = click.command
+        co = click.option
+
+        help = self._main.__doc__
+
+        add_info = ''
+
+        if self.save_results_file:
+            add_info += ('Results stored in: '
+                         f'results-{self.name}.json\n')
+
         if self.creates:
-            for file in self.creates:
-                if not Path(file).exists():
-                    return False
-            return True
-        return False
+            add_info += f'Creates additional files: {self.creates}\n'
 
-    def invoke(self, ctx):
-        """Invoke a recipe.
+        if self.dependencies:
+            add_info += f'Dependencies: {self.dependencies}\n'
 
-        By default, invoking a recipe also means invoking its dependencies.
-        This can be avoided using the --skip-deps keyword."""
-        # Pop the skip deps argument
+        if self.resources:
+            add_info += f'Resources: {self.resources}\n'
+
+        if self.diskspace:
+            add_info += f'Diskspace: {self.diskspace}\n'
+
+        if self.diskspace:
+            add_info += f'Diskspace: {self.diskspace}\n'
+
+        if self.restart:
+            add_info += f'Number restarts allowed: {self.restart}\n'
+
+        if add_info:
+            help += '\n\nASR metadata:\n\n\b\n' + add_info
+            
+        command = cc(context_settings=CONTEXT_SETTINGS,
+                     help=help)(self.main)
+
+        # Convert out parameters into CLI Parameters!
+        for name, param in self.params.items():
+            param = param.copy()
+            alias = param.pop('alias')
+            argtype = param.pop('argtype')
+            name2 = param.pop('name')
+            assert name == name2
+            assert name in self.params
+            default = self.defparams.get(name, None)
+
+            if argtype == 'option':
+                command = co(show_default=True, default=default,
+                             *alias, **param)(command)
+            else:
+                assert argtype == 'argument'
+                command = click.argument(*alias, **param)(command)
+                
         if self.add_skip_opt:
-            skip_deps = ctx.params.pop('skip_deps')
-        else:
-            skip_deps = True
+            command = co('--skip-deps', is_flag=True, default=False,
+                         help='Skip execution of dependencies')(command)
 
+        return command(standalone_mode=False,
+                       prog_name=f'asr run {self.name}')
+
+    def __call__(self, *args, **kwargs):
+        return self.main(*args, **kwargs)
+
+    def main(self, skip_deps=False, catch_exceptions=True,
+             *args, **kwargs):
         # Run all dependencies
         if not skip_deps:
-            recipes = get_dep_tree(self._asr_name)
-            for recipe in recipes[:-1]:
-                if not recipe.done():
-                    recipe.run(args=['--skip-deps'])
-
-        return self.invoke_myself(ctx)
-
-    def invoke_myself(self, ctx, catch_exceptions=True):
-        """Invoke my own callback."""
+            deps = get_dep_tree(self.name)
+            for name in deps[:-1]:
+                recipe = get_recipe_from_name(name)
+                if not recipe.done:
+                    recipe(skip_deps=True)
+                else:
+                    print(f'Dependency {name} already done!')
+        # Try to run this command
         try:
-            parprint(f'Running {self._asr_name}')
-            results = click.Command.invoke(self, ctx)
+            return self.callback(*args, **kwargs)
         except Exception as e:
             if type(e) in self.known_exceptions:
                 parameters = self.known_exceptions[type(e)]
@@ -86,8 +310,8 @@ class ASRCommand(click.Command):
                     parprint(f'Caught known exception: {type(e)}. '
                              'Trying again.')
                     for key in parameters:
-                        ctx.params[key] *= parameters[key]
-                    return self.invoke_myself(ctx, catch_exceptions=False)
+                        kwargs[key] *= parameters[key]
+                    return self.main(*args, **kwargs, catch_exceptions=False)
                 else:
                     # We only allow the capture of one exception
                     parprint(f'Caught known exception: {type(e)}. '
@@ -95,63 +319,132 @@ class ASRCommand(click.Command):
                              'and I can at most catch one.')
             raise
 
-        if not results:
-            results = {}
+    def callback(self, *args, **kwargs):
+        # This is the main function of an ASRCommand. It takes care of
+        # reading parameters can creating metadata, checksums.
+        # If you to understand what happens when you execute an ASRCommand
+        # this is a good place to start
 
-        results.update(get_excecution_info(ctx.params))
-        
-        if self.asr_results_file:
-            name = self._asr_name[4:]
-            write_json(f'results_{name}.json', results)
+        # Use the wrapped functions signature to create dictionary of
+        # parameters
+        params = dict(self.signature.bind(*args, **kwargs).arguments)
+
+        # Read arguments from params.json if not already in params
+        paramsettings = {}
+        if Path('params.json').is_file():
+            paramsettings = read_json('params.json').get(self.name, {})
+            for key, value in paramsettings.items():
+                assert key in self.params, f'Unknown key: {key} {params}'
+
+                # If any parameters have been given directly to the function
+                # we don't use the ones from the param.json file
+                params[key] = value
+
+        print(f'Running {self.name}')
+
+        # Execute the wrapped function
+        if self.pass_params:
+            results = self._main(params, **params) or {}
+        else:
+            results = self._main(**params) or {}
+
+        # Do we have to store some digests of previous calculations?
+        if self.creates or self.dependencies:
+            results['__md5_digest__'] = {}
+
+        for filename in self.creates:
+            hexdigest = md5sum(filename)
+            results['__md5_digest__'][filename] = hexdigest
+
+        # Also make hexdigests of results-files for dependencies
+        for dep in self.dependencies:
+            filename = f'results-{dep}.json'
+            hexdigest = md5sum(filename)
+            results['__md5_digest__'][dep] = hexdigest
+
+        results.update(get_execution_info(params))
+
+        if self.save_results_file:
+            name = self.name
+            write_json(f'results-{name}.json', results)
 
             # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults_{name}.json')
+            tmppath = Path(f'tmpresults-{name}.json')
             if tmppath.exists():
                 unlink(tmppath)
 
         return results
 
-    def callback(self, *args, **kwargs):
-        results = None
-        # Skip main callback?
-        if not self.done():
-            results = self._callback(*args, **kwargs)
+    def collect(self):
+        import re
+        kvp = {}
+        key_descriptions = {}
+        data = {}
+        if self.done:
+            name = self.name[4:]
+            resultfile = f'results-{self.name}.json'
+            results = read_json(resultfile)
+            if '__key_descriptions__' in results:
+                tmpkd = {}
 
-        if results is None and hasattr(self.module, self.additional_callback):
-            # Then the results are calculated by another callback function
-            func = getattr(self.module, self.additional_callback)
-            results = func()
-        return results
+                for key, desc in results['__key_descriptions__'].items():
+                    descdict = {'type': None,
+                                'iskvp': False,
+                                'shortdesc': '',
+                                'longdesc': '',
+                                'units': ''}
+                    if isinstance(desc, dict):
+                        descdict.update(desc)
+                        tmpkd[key] = desc
+                        continue
+
+                    assert isinstance(desc, str), \
+                        'Key description has to be dict or str.'
+                    # Get key type
+                    desc, *keytype = desc.split('->')
+                    if keytype:
+                        descdict['type'] = keytype
+
+                    # Is this a kvp?
+                    iskvp = desc.startswith('KVP:')
+                    descdict['iskvp'] = iskvp
+                    desc = desc.replace('KVP:', '').strip()
+
+                    # Find units
+                    m = re.search(r"\[(\w+)\]", desc)
+                    unit = m.group(1) if m else ''
+                    if unit:
+                        descdict['units'] = unit
+                    desc = desc.replace(f'[{unit}]', '').strip()
+
+                    # Find short description
+                    m = re.search(r"\((\w+)\)", desc)
+                    shortdesc = m.group(1) if m else ''
+
+                    # The results is the long description
+                    longdesc = desc.replace(f'({shortdesc})', '').strip()
+                    if longdesc:
+                        descdict['longdesc'] = longdesc
+                    tmpkd[key] = descdict
+
+                for key, desc in tmpkd.items():
+                    key_descriptions[key] = \
+                        (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+                    if key in results and desc['iskvp']:
+                        kvp[key] = results[key]
+
+            key = f'results_{name}'
+            msg = f'{self.name}: You cannot put a {key} in data'
+            assert key not in data, msg
+            data[key] = results
+        return kvp, key_descriptions, data
 
 
-def command(name, overwrite_params={},
-            add_skip_opt=True, *args, **kwargs):
-    params = get_parameters(name)
-    params.update(overwrite_params)
-
-    ud = update_defaults
-
-    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+def command(*args, **kwargs):
 
     def decorator(func):
-
-        cc = click.command(cls=ASRCommand,
-                           context_settings=CONTEXT_SETTINGS,
-                           asr_name=name,
-                           add_skip_opt=add_skip_opt,
-                           *args, **kwargs)
-
-        if add_skip_opt:
-            func = option('--skip-deps/--run-deps', is_flag=True,
-                          default=False,
-                          help="Skip execution of dependencies?")(func)
-
-        if hasattr(func, '__click_params__'):
-            func = cc(ud(name, params)(func))
-        else:
-            func = cc(func)
-
-        return func
+        return ASRCommand(func, *args, **kwargs)
 
     return decorator
 
@@ -164,11 +457,11 @@ class ASRSubResult:
 
         self.results = {}
 
-    def __call__(self, ctx, *args, **kwargs):
+    def __call__(self, params, *args, **kwargs):
         # Try to read sub-result from previous calculation
         subresult = self.read_subresult()
         if subresult is None:
-            subresult = self.calculate(ctx, *args, **kwargs)
+            subresult = self.calculate(params, *args, **kwargs)
 
         return subresult
 
@@ -184,12 +477,12 @@ class ASRSubResult:
 
         return subresult
 
-    def calculate(self, ctx, *args, **kwargs):
+    def calculate(self, params, *args, **kwargs):
         """Do the actual calculation"""
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_excecution_info(ctx.params))
+        subresult.update(get_execution_info(params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)
@@ -218,11 +511,7 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-# We need to reduce this list to only contain collect
-excludelist = ['asr.gapsummary']
-
-
-def get_excecution_info(params):
+def get_execution_info(params):
     """Get parameter and software version information as a dictionary"""
     exceinfo = {'__params__': params}
 
@@ -242,7 +531,8 @@ def get_excecution_info(params):
     return exceinfo
 
 
-def get_all_recipe_names():
+def get_recipe_module_names():
+    # Find all modules containing recipes
     from pathlib import Path
     folder = Path(__file__).parent.parent
     files = list(folder.glob('**/[a-zA-Z]*.py'))
@@ -256,96 +546,84 @@ def get_all_recipe_names():
     return modulenames
 
 
-def get_recipes(sort=True, exclude=True, group=None):
-    from asr.utils.recipe import Recipe
-    names = get_all_recipe_names()
-    recipes = []
-    for modulename in names:
-        if modulename in excludelist:
-            continue
-        recipe = Recipe.frompath(modulename)
-        if group and not recipe.group == group:
-            continue
-        recipes.append(recipe)
+def parse_mod_func(name):
+    # Split a module function reference like
+    # asr.relax@main into asr.relax and main.
+    mod, *func = name.split('@')
+    if not func:
+        func = ['main']
 
-    if sort:
-        recipes = sort_recipes(recipes)
+    assert len(func) == 1, \
+        'You cannot have multiple : in your function description'
 
-    return recipes
-
-
-def sort_recipes(recipes):
-    sortedrecipes = []
-
-    # Add the recipes with no dependencies (these must exist)
-    for recipe in recipes:
-        if not recipe.dependencies:
-            if recipe.group in ['postprocessing', 'property']:
-                sortedrecipes.append(recipe)
-            else:
-                sortedrecipes = [recipe] + sortedrecipes
-
-    assert len(sortedrecipes), 'No recipes without deps!'
-    for i in range(1000):
-        for recipe in recipes:
-            names = [recipe.name for recipe in sortedrecipes]
-            if recipe.name in names:
-                continue
-            for dep in recipe.dependencies:
-                if dep not in names:
-                    break
-            else:
-                sortedrecipes.append(recipe)
-
-        if len(recipes) == len(sortedrecipes):
-            break
-    else:
-        names = [recipe.name for recipe in recipes]
-        msg = ('Something went wrong when parsing dependencies! '
-               f'Input recipes: {names}')
-        raise AssertionError(msg)
-    return sortedrecipes
-
-
-def get_recipe(name):
-    from asr.utils import Recipe
-    return Recipe.frompath(name)
+    return mod, func[0]
 
 
 def get_dep_tree(name, reload=True):
-    from asr.utils.recipe import Recipe
-    names = get_all_recipe_names()
-    indices = [names.index(name)]
-    for j in range(100):
-        if not indices[j:]:
+    # Get the tree of dependencies from recipe of "name"
+    # by following dependencies of dependencies
+    import importlib
+
+    tmpdeplist = [name]
+
+    for i in range(1000):
+        if i == len(tmpdeplist):
             break
-        for ind in indices[j:]:
-            recipe = Recipe.frompath(names[ind])
-            if not hasattr(recipe, 'dependencies'):
-                continue
-            deps = recipe.dependencies
-            if not deps:
-                continue
-            for dep in deps:
-                index = names.index(dep)
-                if index not in indices:
-                    indices.append(index)
+        dep = tmpdeplist[i]
+        mod, func = parse_mod_func(dep)
+        module = importlib.import_module(mod)
+
+        assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
+        function = getattr(module, func)
+        dependencies = function.dependencies
+        if not dependencies and hasattr(module, 'dependencies'):
+            dependencies = module.dependencies
+
+        for dependency in dependencies:
+            tmpdeplist.append(dependency)
     else:
-        raise RuntimeError('Dependencies are weird!')
-    recipes = [Recipe.frompath(names[ind], reload=reload) for ind in indices]
-    recipes = sort_recipes(recipes)
-    return recipes
+        raise AssertionError('Unreasonably many dependencies')
+
+    tmpdeplist.reverse()
+    deplist = []
+    for dep in tmpdeplist:
+        if dep not in deplist:
+            deplist.append(dep)
+
+    return deplist
 
 
-def get_parameters(key):
-    from pathlib import Path
-    if Path('params.json').is_file():
-        params = read_json('params.json')
-    else:
-        params = {}
+def get_recipe_modules():
+    # Get recipe modules
+    import importlib
+    modules = get_recipe_module_names()
 
-    params = params.get(key, {})
-    return params
+    mods = []
+    for module in modules:
+        mod = importlib.import_module(module)
+        mods.append(mod)
+    return mods
+
+
+def get_recipes():
+    # Get all recipes in all modules
+    modules = get_recipe_modules()
+
+    functions = []
+    for module in modules:
+        for attr in module.__dict__:
+            attr = getattr(module, attr)
+            if isinstance(attr, ASRCommand):
+                functions.append(attr)
+    return functions
+
+
+def get_recipe_from_name(name):
+    # Get a recipe from a name like asr.gs@postprocessing
+    import importlib
+    mod, func = parse_mod_func(name)
+    module = importlib.import_module(mod)
+    return getattr(module, func)
 
 
 def is_magnetic():
@@ -361,7 +639,6 @@ def is_magnetic():
 
 
 def get_dimensionality():
-    import numpy as np
     from ase.io import read
     atoms = read('structure.json')
     nd = int(np.sum(atoms.get_pbc()))
@@ -374,111 +651,19 @@ mag_elements = {'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
 
 
 def magnetic_atoms(atoms):
-    import numpy as np
     return np.array([symbol in mag_elements
                      for symbol in atoms.get_chemical_symbols()],
                     dtype=bool)
-
-
-def update_defaults(key, params={}):
-    params.update(get_parameters(key))
-
-    def update_defaults_dec(func):
-        fparams = func.__click_params__
-        for externaldefault in params:
-            for param in fparams:
-                if externaldefault == param.name:
-                    param.default = params[param.name]
-                    break
-            else:
-                msg = f'{key}: {externaldefault} is unknown'
-                raise AssertionError(msg)
-        return func
-    return update_defaults_dec
-
-
-def get_start_parameters():
-    import json
-    with open('structure.json', 'r') as fd:
-        asejsondb = json.load(fd)
-    params = asejsondb.get('1').get('calculator_parameters', {})
-
-    return params
-
-
-def get_reduced_formula(formula, stoichiometry=False):
-    """
-    Returns the reduced formula corresponding to a chemical formula,
-    in the same order as the original formula
-    E.g. Cu2S4 -> CuS2
-
-    Parameters:
-        formula (str)
-        stoichiometry (bool): if True, return the stoichiometry ignoring the
-          elements appearing in the formula, so for example "AB2" rather than
-          "MoS2"
-    Returns:
-        A string containing the reduced formula
-    """
-    from functools import reduce
-    from fractions import gcd
-    import string
-    import re
-    split = re.findall('[A-Z][^A-Z]*', formula)
-    matches = [re.match('([^0-9]*)([0-9]+)', x)
-               for x in split]
-    numbers = [int(x.group(2)) if x else 1 for x in matches]
-    symbols = [matches[i].group(1) if matches[i] else split[i]
-               for i in range(len(matches))]
-    divisor = reduce(gcd, numbers)
-    result = ''
-    numbers = [x // divisor for x in numbers]
-    numbers = [str(x) if x != 1 else '' for x in numbers]
-    if stoichiometry:
-        numbers = sorted(numbers)
-        symbols = string.ascii_uppercase
-    for symbol, number in zip(symbols, numbers):
-        result += symbol + number
-    return result
-
-
-def has_inversion(atoms, use_spglib=True):
-    """
-    Parameters:
-        atoms: Atoms object
-            atoms
-        use_spglib: bool
-            use spglib
-    Returns:
-        out: bool
-    """
-    try:
-        import spglib
-    except ImportError as x:
-        import warnings
-        warnings.warn('using gpaw symmetry for inversion instead: {}'
-                      .format(x))
-        use_spglib = False
-
-    atoms2 = atoms.copy()
-    atoms2.pbc[:] = True
-    atoms2.center(axis=2)
-    if use_spglib:
-        R = -np.identity(3, dtype=int)
-        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
-        return np.any([np.all(r == R) for r in r_n])
-    else:
-        from gpaw.symmetry import atoms2symmetry
-        return atoms2symmetry(atoms2).has_inversion
 
 
 def write_json(filename, data):
     from pathlib import Path
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
-    if world.rank == 0:
-        Path(filename).write_text(MyEncoder(indent=1).encode(data))
-    world.barrier()
+
+    with file_barrier(filename):
+        if world.rank == 0:
+            Path(filename).write_text(MyEncoder(indent=1).encode(data))
 
 
 def read_json(filename):
@@ -495,6 +680,7 @@ def unlink(path: Union[str, Path], world=None):
     if world is None:
         world = parallel.world
 
+    world.barrier()
     # Remove file:
     if world.rank == 0:
         try:

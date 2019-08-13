@@ -1,5 +1,4 @@
 from asr.utils import command, subresult, option
-from click import pass_context
 
 from collections import defaultdict
 
@@ -23,7 +22,7 @@ from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 # ---------- GPAW hacks ---------- #
 
 
-class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
+class SOCDOS(DOS):
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
         """
@@ -33,45 +32,37 @@ class SOCDOS():  # At some point, the GPAW DOS class should handle soc XXX
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
         """
-        self.gpw = gpw
+        # Initiate DOS with serial communicator instead
+        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        DOS.__init__(self, calc, **kwargs)
 
-        if mpi.world.rank == 0:
-            self.calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            self.dos = DOS(self.calc, **kwargs)
-        else:
-            self.calc = None
-            self.dos = None
+        # Hack the number of spins
+        self.nspins = 1
+
+        # Hack the eigenvalues
+        e_skm, ef = gpw2eigs(gpw, optimal_spin_direction=True)
+        if e_skm.ndim == 2:
+            e_skm = e_skm[np.newaxis]
+        e_skn = e_skm - ef
+        bzkpts = calc.get_bz_k_points()
+        size, offset = k2so(bzkpts)
+        bz2ibz = calc.get_bz_to_ibz_map()
+        shape = (self.nspins, ) + tuple(size) + (-1, )
+        self.e_skn = e_skn[:, bz2ibz].reshape(shape)
 
     def get_dos(self):
-        if mpi.world.rank == 0:  # GPAW spin-orbit correction is done in serial
-            # hack dos
-            e_skm, ef = gpw2eigs(self.gpw, optimal_spin_direction=True)
-            if e_skm.ndim == 2:
-                e_skm = e_skm[np.newaxis]
-            self.dos.nspins = 1
-            self.dos.e_skn = e_skm - ef
-            bzkpts = self.calc.get_bz_k_points()
-            size, offset = k2so(bzkpts)
-            bz2ibz = self.calc.get_bz_to_ibz_map()
-            shape = (self.dos.nspins, ) + tuple(size) + (-1, )
-            self.dos.e_skn = self.dos.e_skn[:, bz2ibz].reshape(shape)
-            dos = self.dos.get_dos() / 2
-            mpi.broadcast(dos)
-        else:
-            dos = mpi.broadcast(None)
-        return dos
+        return DOS.get_dos(self) / 2
 
 
 # ---------- Main functionality ---------- #
 
 
 @command('asr.pdos')
-@option('--kptdensity', default=36.0,
-        help='k-point density')
-@option('--emptybands', default=20,
-        help='number of empty bands to include')
-@pass_context
-def main(ctx, kptdensity, emptybands):  # subresults need context to log params
+@option('--kptdensity', help='k-point density')
+@option('--emptybands', help='number of empty bands to include')
+def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
+    params = dict(kptdensity=kptdensity,
+                  emptybands=emptybands)
     # Refine ground state with more k-points
     calc, gpw = refine_gs_for_pdos(kptdensity, emptybands)
 
@@ -79,8 +70,8 @@ def main(ctx, kptdensity, emptybands):  # subresults need context to log params
 
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos_nosoc(ctx, calc, gpw)  # subresults need
-    results['pdos_soc'] = pdos_soc(ctx, calc, gpw)      # context to log params
+    results['pdos_nosoc'] = pdos_nosoc(params, calc, gpw)  # subresults need
+    results['pdos_soc'] = pdos_soc(params, calc, gpw)  # context to log params
 
     # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
@@ -116,13 +107,14 @@ def pdos_soc(calc, gpw):
 def pdos(calc, gpw, soc=True):
     """Main functionality to do a single pdos calculation"""
     # Do calculation
-    energies, pdos_syl, symbols, efermi = calculate_pdos(calc, gpw, soc=soc)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
 
     # Subtract the vacuum energy
-    # get evac XXX
-    evac = 0.
-    e_e = energies - evac
-    ef = efermi - evac
+    from asr.gs import get_evac
+    evac = get_evac()
+    if evac is not None:
+        e_e -= evac
+        ef -= evac
 
     subresults = {'pdos_syl': pdos_syl, 'symbols': symbols,
                   'energies': e_e, 'efermi': ef}
@@ -464,7 +456,10 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('projected dos [states / eV]')
-    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+    if row.get('evac') is not None:
+        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+    else:
+        ax.set_ylabel(r'$E$ [eV]')
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
@@ -474,8 +469,30 @@ def plot_pdos(row, filename, soc=True,
 
 
 group = 'property'
-resources = '8:1h'  # How many resources are used
-dependencies = ['asr.structureinfo', 'asr.gs', 'asr.gaps']
+resources = '8:1h'  # How many resources are used? XXX
+dependencies = ['asr.structureinfo', 'asr.gs']
+
+tests = []
+tests.append({'description': 'Test the pdos of Si (cores=1)',
+              'name': 'test_asr.pdos_Si_serial',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test the pdos of Si (cores=2)',
+              'name': 'test_asr.pdos_Si_parallel',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run -p 2 pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
 
 if __name__ == '__main__':
-    main()
+    main.cli()

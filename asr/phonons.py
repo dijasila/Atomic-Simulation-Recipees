@@ -63,12 +63,11 @@ class Phonons(ASEPhonons):
 
 
 @command('asr.phonons')
-@option('-n', default=2, help='Supercell size')
-@option('--ecut', default=800, help='Energy cutoff')
-@option('--kptdensity', default=6.0, help='Kpoint density')
-@option('--fconverge', default=1e-4,
-        help='Force convergence criterium')
-def main(n, ecut, kptdensity, fconverge):
+@option('-n', help='Supercell size')
+@option('--ecut', help='Energy cutoff')
+@option('--kptdensity', help='Kpoint density')
+@option('--fconverge', help='Force convergence criterium')
+def main(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     """Calculate Phonons"""
     from asr.calculators import get_calculator
     # Remove empty files:
@@ -82,8 +81,7 @@ def main(n, ecut, kptdensity, fconverge):
               'kpts': {'density': kptdensity, 'gamma': True}}
 
     # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False,
-                          'do_not_symmetrize_the_density': True}
+    params['symmetry'] = {'point_group': False}
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
@@ -199,4 +197,4 @@ group = 'property'
 dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
-    main()
+    main.cli()
