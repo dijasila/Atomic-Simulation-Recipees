@@ -1,57 +1,8 @@
 from asr.utils import command, option, argument, chdir
 
 
-def collect(db, level, only_include=None):
-    import traceback
-    from pathlib import Path
-    from ase.io import read
-    from asr.utils import get_recipes, get_dep_tree
-
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    errors = []
-
-    atoms = read('structure.json')
-    folder = str(Path().cwd())
-    if only_include:
-        recipes = get_dep_tree(only_include)
-    else:
-        recipes = get_recipes()
-
-    for recipe in recipes:
-
-        if not recipe.done:
-            continue
-        print(f'Collecting {recipe.name}')
-        try:
-            tmpkvp, tmpkd, tmpdata = recipe.collect()
-            if tmpkvp or tmpkd or tmpdata:
-
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
-                key_descriptions.update(tmpkd)
-        except KeyboardInterrupt:
-            raise
-        except Exception as x:
-            error = '{}: {}'.format(recipe.name, x)
-            tb = traceback.format_exc()
-            errors.append((folder, error, tb))
-    if db is not None:
-        if level > 1:
-            db.write(atoms, data=data, **kvp)
-        elif level > 0:
-            db.write(atoms, **kvp)
-        else:
-            db.write(atoms)
-        metadata = db.metadata
-        metadata.update({'key_descriptions': key_descriptions})
-        db.metadata = metadata
-    return errors
-
-
 @command('asr.database.fromtree',
-         add_skip_opt=False)
+         dependencies=['asr.structureinfo'])
 @argument('folders', nargs=-1)
 @option('--recipe', help='Only collect data relevant for this recipe')
 @option('--level', type=int,
@@ -60,12 +11,13 @@ def collect(db, level, only_include=None):
               '2: Collect atoms+kvp+data'))
 @option('--data/--nodata',
         help='Also add data objects to database')
-@option('--raiseexc', is_flag=True)
-def main(folders, recipe=None, level=2, data=True, raiseexc=False):
+def main(folders, recipe=None, level=2, data=True):
     """Collect data from folder tree into database."""
     import os
-    import traceback
     from ase.db import connect
+    from ase.io import read
+    from asr.utils import get_recipes, get_dep_tree
+
     # We use absolute path because of chdir below!
     dbname = os.path.join(os.getcwd(), 'database.db')
     db = connect(dbname)
@@ -73,30 +25,38 @@ def main(folders, recipe=None, level=2, data=True, raiseexc=False):
     if not folders:
         folders = ['.']
 
-    errors = []
     for i, folder in enumerate(folders):
-        if not os.path.isdir(folder):
-            continue
         with chdir(folder):
             print(folder, end=':\n')
-            try:
-                errors2 = collect(db, level=level,
-                                  only_include=recipe)
-            except KeyboardInterrupt:
-                break
-            except Exception as x:
-                error = '{}: {}'.format(x.__class__.__name__, x)
-                tb = traceback.format_exc()
-                errors.append((folder, error, tb))
-                if raiseexc:
-                    raise x
-            else:
-                errors.extend(errors2)
+            kvp = {}
+            data = {}
+            key_descriptions = {}
 
-    if errors:
-        print('Errors:')
-        for error in errors:
-            print('{}\n{}: {}\n{}'.format('=' * 77, *error))
+            atoms = read('structure.json')
+            if recipe:
+                recipes = get_dep_tree(recipe)
+            else:
+                recipes = get_recipes()
+
+            for recipe in recipes:
+                if not recipe.done:
+                    continue
+                print(f'Collecting {recipe.name}')
+                tmpkvp, tmpkd, tmpdata = recipe.collect()
+                if tmpkvp or tmpkd or tmpdata:
+                    kvp.update(tmpkvp)
+                    data.update(tmpdata)
+                    key_descriptions.update(tmpkd)
+
+            if level > 1:
+                db.write(atoms, data=data, **kvp)
+            elif level > 0:
+                db.write(atoms, **kvp)
+            else:
+                db.write(atoms)
+            metadata = db.metadata
+            metadata.update({'key_descriptions': key_descriptions})
+            db.metadata = metadata
 
 
 tests = [

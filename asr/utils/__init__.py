@@ -564,7 +564,7 @@ def get_dep_tree(name, reload=True):
     # by following dependencies of dependencies
     import importlib
 
-    tmpdeplist = ['@'.join(parse_mod_func(name))]
+    tmpdeplist = [name]
 
     for i in range(1000):
         if i == len(tmpdeplist):
@@ -580,8 +580,7 @@ def get_dep_tree(name, reload=True):
             dependencies = module.dependencies
 
         for dependency in dependencies:
-            depname = '@'.join(parse_mod_func(dependency))
-            tmpdeplist.append(depname)
+            tmpdeplist.append(dependency)
     else:
         raise AssertionError('Unreasonably many dependencies')
 
