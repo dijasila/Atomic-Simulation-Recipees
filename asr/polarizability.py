@@ -2,20 +2,19 @@ from asr.utils import command, option
 from click import Choice
 
 
-@command('asr.polarizability')
+@command('asr.polarizability',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 @option(
-    '--gs', default='gs.gpw', help='Ground state on which response is based')
-@option('--kptdensity', default=20.0, help='K-point density')
-@option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--xc', default='RPA', help='XC interaction',
-        type=Choice(['RPA', 'ALDA']))
-@option('--bandfactor', default=5, type=int,
+    '--gs', help='Ground state on which response is based')
+@option('--kptdensity', help='K-point density')
+@option('--ecut', help='Plane wave cutoff')
+@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+@option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, kptdensity, ecut, xc, bandfactor):
+def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     """Calculate linear response polarizability or dielectricfunction
     (only in 3D)"""
-    import json
-    from ase.io import jsonio, read
+    from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -109,10 +108,7 @@ def main(gs, kptdensity, ecut, xc, bandfactor):
         'frequencies': frequencies
     }
 
-    filename = 'polarizability.json'
-
-    if world.rank == 0:
-        Path(filename).write_text(json.dumps(data, cls=jsonio.MyEncoder))
+    return data
 
 
 def collect_data(atoms):
@@ -260,19 +256,18 @@ def webpanel(row, key_descriptions):
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
     ], key_descriptions)
 
-    panel = ('Polarizability (RPA)',
-             [[fig('rpa-pol-x.png'),
-               fig('rpa-pol-z.png')], [fig('rpa-pol-y.png'), opt]])
+    panel = {'title': 'Polarizability (RPA)',
+             'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
+                         [fig('rpa-pol-y.png'), opt]],
+             'plot_descriptions':
+                 [{'function': polarizability,
+                   'filenames': ['rpa-pol-x.png',
+                                 'rpa-pol-y.png',
+                                 'rpa-pol-z.png']}]
+             }
+    
+    return [panel]
 
-    things = [(polarizability,
-               ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])]
-
-    return panel, things
-
-
-group = 'property'
-creates = ['polarizability.json']
-dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
-    main()
+    main.cli()

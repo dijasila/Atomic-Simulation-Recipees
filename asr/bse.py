@@ -2,18 +2,19 @@ from asr.utils import command, option, read_json
 from click import Choice
 
 
-@command('asr.bse')
-@option(
-    '--gs', default='gs.gpw', help='Ground state on which BSE is based')
-@option('--kptdensity', default=6.0, help='K-point density')
-@option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--nv', default=4, help='Valence bands included')
-@option('--nc', default=4, help='Conduction bands included')
-@option('--mode', default='BSE', help='Irreducible response',
+@command('asr.bse',
+         dependencies=['asr.structureinfo', 'asr.gs'])
+@option('--gs', help='Ground state on which BSE is based')
+@option('--kptdensity', help='K-point density')
+@option('--ecut', help='Plane wave cutoff')
+@option('--nv', help='Valence bands included')
+@option('--nc', help='Conduction bands included')
+@option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
-@option('--bandfactor', default=6, type=int,
+@option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs, kptdensity, ecut, mode, bandfactor, nv, nc):
+def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
+         nv=4, nc=4):
     """Calculate BSE polarizability"""
     import os
     from ase.io import read
@@ -292,8 +293,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
-
 if __name__ == '__main__':
-    main()
+    main.cli()

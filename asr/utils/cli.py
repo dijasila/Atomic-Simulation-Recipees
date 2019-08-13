@@ -1,6 +1,5 @@
 import click
-from asr.utils import get_recipes
-from asr.utils import argument, option
+from click import argument, option
 
 
 stdlist = list
@@ -42,15 +41,17 @@ def cli():
     ...
 
 
-@cli.command(context_settings={'ignore_unknown_options': True,
-                               'allow_extra_args': True})
-@click.argument('args', metavar=('[shell] [dry] command '
-                                 '[ARGS] in [FOLDER] ...'),
-                nargs=-1)
-@click.option('-p', '--parallel', type=int, help='Run on NCORES')
-@click.pass_context
-def run(ctx, args, parallel):
-    """Run recipe or shell command in multiple folders.
+@cli.command()
+@click.option('-c', '--shell', is_flag=True,
+              help='Interpret COMMAND as shell command.')
+@click.option('-z', '--dry-run', is_flag=True,
+              help='Show what would happen without doing anything.')
+@click.option('-p', '--parallel', type=int, help='Run on NCORES.',
+              metavar='NCORES')
+@click.argument('command', nargs=1)
+@click.argument('folders', nargs=-1)
+def run(shell, dry_run, parallel, command, folders):
+    """Run recipe, python module or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
@@ -97,25 +98,6 @@ def run(ctx, args, parallel):
     import subprocess
     from pathlib import Path
 
-    shell = False
-    dryrun = False
-    # Consume known commands (limit to 10 tries)
-    for i, arg in enumerate(args):
-        if arg == 'shell':
-            shell = True
-        elif arg == 'dry':
-            dryrun = True
-        else:
-            break
-    args = args[i:]
-
-    # Are there any folders?
-    folders = None
-    if 'in' in args:
-        ind = args.index('in')
-        folders = args[ind + 1:]
-        args = args[:ind]
-
     python = 'python3'
     if parallel:
         assert not shell, \
@@ -124,74 +106,73 @@ def run(ctx, args, parallel):
         python = f'mpiexec -np {parallel} gpaw-python'
 
     # Identify function that should be executed
-    if shell:
-        command = ' '.join(args)  # The arguments are actually the command
-    else:
+    if not shell:
         # If not shell then we assume that the command is a call
-        # to a recipe
-        recipe, *args = args
-        if ':' in recipe:
-            recipe, function = recipe.split(':')
-            command = (f'{python} -c "from asr.{recipe} import {function}; '
-                       f'{function}()" ') + ' '.join(args)
+        # to a python module or a recipe
+        module, *args = command.split()
+
+        function = None
+        if '@' in module:
+            module, function = module.split('@')
+
+        import importlib
+        try:
+            m = importlib.find_spec(module)
+        except (AttributeError, ImportError, ValueError):
+            m = None
+        finally:
+            if m is None:
+                module = f'asr.{module}'
+
+        if function:
+            command = (f'{python} -c "from {module} import {function}; '
+                       f'{function}.cli()" ') + ' '.join(args)
         else:
-            command = f'{python} -m asr.{recipe} ' + ' '.join(args)
+            command = f'{python} -m {module} ' + ' '.join(args)
 
     if folders:
         from asr.utils import chdir
 
         for folder in folders:
             with chdir(Path(folder)):
-                if dryrun:
+                if dry_run:
                     print(f'Would run "{command}" in {folder}')
                 else:
                     print(f'Running {command} in {folder}')
                     subprocess.run(command, shell=True)
     else:
-        if dryrun:
+        if dry_run:
             print(f'Would run "{command}"')
         else:
             print(f'Running command: {command}')
             subprocess.run(command, shell=True, check=True)
             # We only raise errors when check=True
 
-    if dryrun and folders:
+    if dry_run and folders:
         nfolders = len(folders)
         print(f'Total number of folder: {nfolders}')
 
 
 @cli.command()
-@click.argument('recipe', type=str)
-def help(recipe):
-    """See help for recipe"""
-    from asr.utils.recipe import Recipe
-    command = f'asr.{recipe}'
-    recipename = recipe
-    recipe = Recipe.frompath(command, reload=True)
-
-    with click.Context(recipe.main, info_name=f'asr run {recipename}') as ctx:
-        print(recipe.main.get_help(ctx))
-
-
-@cli.command()
 @click.argument('search', required=False)
 def list(search):
-    """Show a list of all recipes"""
-    recipes = get_recipes(sort=True)
+    """Search for recipes.
+
+    If SEARCH is specified then only list recipes containing SEARCH."""
+    from asr.utils import get_recipes
+    recipes = get_recipes()
     panel = [['Recipe', 'Description'],
              ['------', '-----------']]
 
     for recipe in recipes:
-        if recipe.main:
-            with click.Context(recipe.main,
-                               info_name=f'asr run {recipe.name}') as ctx:
-                longhelp = recipe.main.get_help(ctx)
-                shorthelp = recipe.main.get_short_help_str()
-        else:
+        longhelp = recipe._main.__doc__
+        if not longhelp:
             longhelp = ''
-            shorthelp = ''
 
-        if search and search not in longhelp:
+        shorthelp, *_ = longhelp.split('\n')
+
+        if search and (search not in longhelp and
+                       search not in recipe.name):
             continue
         status = [recipe.name[4:], shorthelp]
         panel += [status]
@@ -201,25 +182,24 @@ def list(search):
 @cli.command()
 def status():
     """Show the status of the current folder for all ASR recipes"""
-    from pathlib import Path
+    from asr.utils import get_recipes
     recipes = get_recipes()
     panel = []
     missing_files = []
     for recipe in recipes:
         status = [recipe.name]
-        done = True
-        if recipe.creates:
-            for create in recipe.creates:
-                if not Path(create).exists():
-                    done = False
-            if done:
+        done = recipe.done
+        if done:
+            if recipe.creates:
                 status.append(f'Done -> {recipe.creates}')
             else:
-                status.append(f'Todo')
-            if done:
-                panel.insert(0, status)
-            else:
-                panel.append(status)
+                status.append(f'Done.')
+        else:
+            status.append(f'Todo')
+        if done:
+            panel.insert(0, status)
+        else:
+            panel.append(status)
     
     print(format(panel))
     print(format(missing_files))
@@ -348,11 +328,11 @@ def workflow(tasks, doforstable):
 
 
 tests = [{'cli': ['asr run -h']},
-         {'cli': ['asr run setup.params asr.relax:ecut 300']},
-         {'cli': ['asr run dry setup.params asr.relax:ecut 300']},
+         {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
+         {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
          {'cli': ['mkdir folder1',
                   'mkdir folder2',
-                  'asr run setup.params asr.relax:ecut'
-                  ' 300 in folder1 folder2']},
+                  'asr run "setup.params asr.relax:ecut'
+                  ' 300" folder1 folder2']},
          {'cli': ['touch str1.json',
-                  'asr run shell mv str1.json str2.json']}]
+                  'asr run --shell "mv str1.json str2.json"']}]

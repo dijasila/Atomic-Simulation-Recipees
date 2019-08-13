@@ -3,27 +3,24 @@ from asr.utils import command, option
 import click
 
 
-@command('asr.setup.defects')
+@command('asr.setup.defects',
+         creates=['unrelaxed.json', 'params.json'])
 @option('-a', '--atomfile', type=str,
-        help='Atomic structure.',
-        default='unrelaxed.json')
+        help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
-        help='Charge states included (-q, ..., +q).',
-        default=3)
+        help='Charge states included (-q, ..., +q).')
 @option('--supercell', nargs=3, type=click.Tuple([int, int, int]),
-        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]',
-        default=[0, 0, 0])
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('--maxsize', type=float,
-        help='Maximum supercell size in Å.',
-        default=8.)
+        help='Maximum supercell size in Å.')
 @option('--intrinsic', type=bool,
-        help='Specify whether you want to incorporate anti-site defects.',
-        default=True)
+        help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
-        help='Specify whether you want to incorporate vacancies.',
-        default=True)
-def main(atomfile, chargestates, supercell, maxsize, intrinsic, vacancies):
-    """Sets up defect structures for a given host.
+        help='Specify whether you want to incorporate vacancies.')
+def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
+         maxsize=8, intrinsic=True, vacancies=True):
+    """
+    Sets up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
     well as the respective pristine system for a given input structure.
@@ -367,12 +364,5 @@ def postprocessing():
 #    plt.savefig(fname)
 
 
-group = 'setup'
-creates = ['unrelaxed.json', 'params.json']  # what files are created
-dependencies = []  # no dependencies
-resources = '1:10m'  # 1 core for 10 minutes
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
-
 if __name__ == '__main__':
-    main()
+    main.cli()

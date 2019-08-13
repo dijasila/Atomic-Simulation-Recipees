@@ -72,40 +72,44 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     """Page layout."""
     from asr.utils import get_recipes
     page = []
-    things = []
     exclude = set()
-    sort = []
 
     # Locate all webpanels
     recipes = get_recipes()
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        if not recipe.done():
+        if not recipe.done:
             continue
-        panel, newthings = recipe.webpanel(row, key_descriptions)
-        if panel:
-            assert len(panel) == 2, print(recipe.__name__)
-            page.append(panel)
-            if hasattr(recipe, 'sort'):
-                sort.append(recipe.sort)
-            else:
-                sort.append(99)
+        print(recipe.name)
+        panels = recipe.webpanel(row, key_descriptions)
+        page.extend(panels)
 
-        if newthings:
-            things.extend(newthings)
+    # Sort sections if they have a sort key
+    page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
-    page = [x for _, x in sorted(zip(sort, page), key=lambda x: x[0])]
-    page += [miscellaneous_section(row, key_descriptions, exclude)]
+    misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
+                                                     exclude)
+    misc_panel = {'title': misc_title,
+                  'columns': misc_columns}
+    page.append(misc_panel)
+
+    # Get descriptions of figures that are created by all webpanels
+    plot_descriptions = []
+    for panel in page:
+        plot_descriptions = panel.get('plot_descriptions', [])
+        plot_descriptions.extend(plot_descriptions)
 
     # List of functions and the figures they create:
     missing = set()  # missing figures
-    for func, filenames in things:
+    for desc in plot_descriptions:
+        function = desc['function']
+        filenames = desc['filenames']
         paths = [Path(prefix + filename) for filename in filenames]
         for path in paths:
             if not path.is_file():
                 # Create figure(s) only once:
-                func(row, *(str(path) for path in paths))
+                function(row, *(str(path) for path in paths))
                 for path in paths:
                     if not path.is_file():
                         path.write_text('')  # mark as missing
@@ -113,6 +117,11 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
         for path in paths:
             if path.stat().st_size == 0:
                 missing.add(path)
+
+    # We convert the page into ASE format
+    asepage = []
+    for panel in page:
+        asepage.append((panel['title'], panel['columns']))
 
     def ok(block):
         if block is None:
@@ -127,7 +136,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
 
     # Remove missing figures from layout:
     final_page = []
-    for title, columns in page:
+    for title, columns in asepage:
         columns = [[block for block in column if ok(block)]
                    for column in columns]
         if any(columns):

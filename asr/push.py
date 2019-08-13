@@ -1,13 +1,14 @@
 from asr.utils import command, option
 
 
-@command('asr.push')
-@option('-q', '--momentum', default=[0, 0, 0], nargs=3, type=float,
+@command('asr.push',
+         dependencies=['asr.structureinfo', 'asr.phonons'])
+@option('-q', '--momentum', nargs=3, type=float,
         help='Phonon momentum')
-@option('-m', '--mode', default=0, type=int, help='Mode index')
-@option('-a', '--amplitude', default=0.1, type=float,
+@option('-m', '--mode', type=int, help='Mode index')
+@option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
-def main(momentum, mode, amplitude):
+def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
     """Push structure along some phonon mode and relax structure"""
     from asr.phonons import analyse
     import numpy as np
@@ -53,8 +54,5 @@ def main(momentum, mode, amplitude):
     write(f'{folder}/unrelaxed.json', newatoms)
 
 
-dependencies = ['asr.structureinfo', 'asr.phonons']
-group = 'structure'
-
 if __name__ == '__main__':
-    main()
+    main.cli()

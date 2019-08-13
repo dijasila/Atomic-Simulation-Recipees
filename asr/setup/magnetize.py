@@ -1,14 +1,14 @@
+from click import Choice
 from asr.utils import command, option
 
 
-@command('asr.setup.magnetize',
-         save_results_file=False)
-@option('--state', type=str, default='all', help='Choices: all, nm, fm, afm')
-@option('--name', default='unrelaxed.json',
-        help='Atomic structure')
-@option('--copy-params', default=False, is_flag=True,
+@command('asr.setup.magnetize')
+@option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
+        help='Magnetic states to create.')
+@option('--name', help='Atomic structure')
+@option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).')
-def main(state, name, copy_params):
+def main(state='all', name='unrelaxed.json', copy_params=False):
     """Set up folders with magnetic moments.
 
     This recipe can be used to test different magnetic configurations
@@ -120,4 +120,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()
