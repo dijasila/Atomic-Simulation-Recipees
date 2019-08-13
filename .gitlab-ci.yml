@@ -7,6 +7,7 @@ tests:
     - pip install -e .
     - pip install git+https://gitlab.com/ase/ase.git
     - pip install gpaw
+    - mkdir testrun && cd testrun
     - gpaw install-data paw-datasets --register
     - asr test -k asr.utils.cli,asr.setup.params,asr.relax_0
     - flake8 asr
