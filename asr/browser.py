@@ -2,11 +2,12 @@ from asr.utils import command, option
 
 
 @command('asr.browser')
-@option('--database', default='database.db')
-@option('--custom', default='asr.utils.custom')
-@option('--only-figures', is_flag=True, default=False,
+@option('--database')
+@option('--custom')
+@option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database, custom, only_figures):
+def main(database='database.db', custom='asr.utils.custom',
+         only_figures=False):
     """Open results in web browser"""
     import subprocess
     from pathlib import Path
@@ -25,7 +26,5 @@ def main(database, custom, only_figures):
         exit(1)
 
 
-group = 'postprocessing'
-
 if __name__ == '__main__':
-    main()
+    main.cli()

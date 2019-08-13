@@ -7,35 +7,42 @@ from pathlib import Path
 
 # Get some parameters from structure.json
 defaults = {}
-if Path('gs_params.json').exists():
+if Path('results_relax.json').exists():
     from asr.utils import read_json
-    dct = read_json('gs_params.json')
-    if 'ecut' in dct.get('mode', {}):
-        defaults['ecut'] = dct['mode']['ecut']
+    dct = read_json('results_relax.json')['__params__']
+    if 'ecut' in dct:
+        defaults['ecut'] = dct['ecut']
 
-    if 'density' in dct.get('kpts', {}):
-        defaults['kptdensity'] = dct['kpts']['density']
+tests = []
+tests.append({'description': 'Test ground state of Si.',
+              'cli': ['asr run "setup.materials -s Si2"',
+                      'ase convert materials.json structure.json',
+                      'asr run "setup.params asr.gs@calculate:ecut 300 '
+                      'asr.gs@calculate:kptdensity 2"',
+                      'asr run gs',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"']})
 
 
-# ---------- Main functionality ---------- #
-
-
-@command('asr.gs', defaults,
-         creates=['gs.gpw'])
-@option('-a', '--atomfile', type=str,
-        help='Atomic structure',
-        default='structure.json')
-@option('--ecut', type=float, help='Plane-wave cutoff', default=800)
-@option(
-    '-k', '--kptdensity', type=float, help='K-point density', default=6.0)
-@option('--xc', type=str, help='XC-functional', default='PBE')
-@option('--width', default=0.05,
-        help='Fermi-Dirac smearing temperature')
-def main(atomfile, ecut, xc, kptdensity, width):
-    """Calculate ground state density.
-
-    By default, this recipe reads the structure in 'structure.json'
-    and saves a gs.gpw file containing the ground state density."""
+@command(module='asr.gs',
+         overwrite_defaults=defaults,
+         creates=['gs.gpw'],
+         tests=tests,
+         dependencies=['asr.structureinfo'],
+         resources='8:10h',
+         restart=1)
+@option('-a', '--atomfile', type=str, help='Atomic structure')
+@option('--ecut', type=float, help='Plane-wave cutoff')
+@option('-k', '--kptdensity', type=float, help='K-point density')
+@option('--xc', type=str, help='XC-functional')
+@option('--width', help='Fermi-Dirac smearing temperature')
+def calculate(atomfile='structure.json', ecut=800, xc='PBE',
+              kptdensity=6.0, width=0.05):
+    """Calculate ground state file.
+    This recipe saves the ground state to a file gs.gpw based on the structure
+    in 'structure.json'. This can then be processed by asr.gs@postprocessing
+    for storing any derived quantities. See asr.gs@postprocessing for more
+    information."""
     from ase.io import read
     from asr.calculators import get_calculator
     atoms = read('structure.json')
@@ -48,7 +55,6 @@ def main(atomfile, ecut, xc, kptdensity, width):
             'density': kptdensity,
             'gamma': True
         },
-        symmetry={'do_not_symmetrize_the_density': True},
         occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
 
@@ -61,16 +67,15 @@ def main(atomfile, ecut, xc, kptdensity, width):
     atoms.calc.write('gs.gpw')
 
 
-def postprocessing():
-    """Extract data from groundstate in gs.gpw.
-
-    This will be called after main by default."""
+@command(module='asr.gs',
+         dependencies=['asr.gs@calculate'])
+def main():
+    """Extract derived quantities from groundstate in gs.gpw."""
     from asr.calculators import get_calculator
     calc = get_calculator()('gs.gpw', txt=None)
     forces = calc.get_forces()
     stresses = calc.get_stress()
     etot = calc.get_potential_energy()
-    
     fingerprint = {}
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
@@ -81,7 +86,7 @@ def postprocessing():
                '__key_descriptions__':
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'Total energy [eV]'}}
+                'etot': 'KVP: Total energy (En.) [eV]'}}
 
     analysegs('gs.gpw', results)
 
@@ -392,22 +397,11 @@ def webpanel(row, key_descriptions):
                    'dipz', 'evacdiff'],
                   key_descriptions)
 
-    panel = ('PBE ground state', [[t]])
+    panel = {'title': 'PBE ground state',
+             'columns': [[t]]}
 
-    return panel, []
+    return [panel]
 
-
-# ---------- ASR globals and main ---------- #
-
-
-# The metadata is put it the bottom
-group = 'property'
-description = ''
-dependencies = ['asr.structureinfo']
-creates = ['gs.gpw']
-resources = '8:10h'
-diskspace = 0
-restart = 1
 
 if __name__ == '__main__':
-    main()
+    main.cli()

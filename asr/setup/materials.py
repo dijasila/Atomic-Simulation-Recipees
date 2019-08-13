@@ -2,10 +2,10 @@ from asr.utils import command, option
 
 
 @command('asr.setup.materials',
-         save_results_file=False)
+         creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection):
+def main(selection=None):
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and
@@ -44,4 +44,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

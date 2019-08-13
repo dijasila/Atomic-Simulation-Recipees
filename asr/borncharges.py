@@ -25,11 +25,13 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     return atoms.calc
 
 
-@command('asr.borncharges')
-@option('--displacement', default=0.01, help='Atomic displacement (Å)')
-@option('--kptdensity', default=6.0)
-@option('--folder', default='data-borncharges')
-def main(displacement, kptdensity, folder):
+@command('asr.borncharges',
+         dependencies=['asr.structureinfo', 'asr.gs'],
+         resources='24:10h')
+@option('--displacement', help='Atomic displacement (Å)')
+@option('--kptdensity')
+@option('--folder')
+def main(displacement=0.01, kptdensity=6.0, folder='data-borncharges'):
     """Calculate Born charges"""
     import json
     from os.path import exists, isfile
@@ -244,10 +246,5 @@ def print_results(filename='data-borncharges/borncharges-0.01.json'):
     print(-dct['Z_avv'])
 
 
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
-resources = '24:10h'
-
-
 if __name__ == '__main__':
-    main()
+    main.cli()

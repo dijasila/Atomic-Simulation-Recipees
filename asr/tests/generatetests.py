@@ -77,8 +77,8 @@ def run_test(test):
             raise AssertionError('This test should fail but it doesn\'t.')
 
 
-def make_test_files(module, tests):
-    from asr.utils import file_barrier
+def make_test_files(functionname, tests):
+    from asr.utils import file_barrier, parse_mod_func
     from pathlib import Path
     from ase.parallel import world
 
@@ -93,14 +93,20 @@ def make_test_files(module, tests):
         if not testname:
             id = 0
             while True:
-                testname = f'test_{module}_{id}_gen.py'
+                testname = f'test_{functionname}_{id}_gen.py'
                 if not Path(Path(__file__).parent / testname).exists():
                     break
                 id += 1
 
         text = 'from asr.tests.generatetests import run_test\n'
-        text += f'from {module} import tests\n\n\n'
-        text += f'run_test(tests[{it}])\n'
+        if not functionname == 'asr.utils.cli':
+            mod, func = parse_mod_func(functionname)
+            text += f'from {mod} import {func}\n\n\n'
+            text += f'tests = {func}.tests\n'
+            text += f'run_test(tests[{it}])\n'
+        else:
+            text += 'from asr.utils.cli import tests\n'
+            text += f'run_test(tests[{it}])\n'
 
         msg = (f'Invalid test name: "{name}". Please name your '
                'tests as "test_{name}".')
@@ -115,21 +121,14 @@ def make_test_files(module, tests):
 
 
 def generatetests():
-    # from pathlib import Path
     from asr.utils import get_recipes
-    # from ase.parallel import world
     from asr.utils.cli import tests as clitests
 
     make_test_files('asr.utils.cli', clitests)
-
     recipes = get_recipes()
     for recipe in recipes:
-        if not recipe.main:
-            continue
-        tests = recipe.main.tests
-        if not tests:
-            continue
-        make_test_files(recipe.name, tests)
+        if recipe.tests:
+            make_test_files(recipe.name, recipe.tests)
 
 
 def cleantests():
