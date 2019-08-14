@@ -1,10 +1,22 @@
 from asr.utils import command, argument, option
 
 
+def folderexists():
+    from pathlib import Path
+    assert Path('tree').is_dir()
+
+
+tests = [
+    {'cli': ['asr run setup.materials',
+             'asr run database.totree materials.json --run'],
+     'test': folderexists}
+]
+
+
 @command('asr.database.totree',
-         save_results_file=False)
+         tests=tests)
 @argument('database', nargs=1)
-@option('--run/--dry-run', default=False)
+@option('--run/--dry-run')
 @option('-s', '--selection', help='ASE-DB selection')
 @option('-t', '--tree-structure')
 @option('--sort', help='Sort the generated materials '
@@ -83,8 +95,9 @@ def main(database, run=False, selection=None,
     from ase.io import write
     import spglib
     from asr.utils import chdir, write_json
+    import importlib
+    from asr.utils import md5sum
 
-    # from ase import Atoms
     if selection:
         print(f'Selecting {selection}')
 
@@ -170,31 +183,38 @@ def main(database, run=False, selection=None,
             if kvp:
                 write_json('key-value-pairs.json', row.key_value_pairs)
             if data:
-                for key, results in row.data.items():
-                    write_json(f'{key}.json', results)
-                    if not isinstance(results, dict):
-                        continue
-                    kd = results.get('__key_descriptions__', {})
-                    for rkey in results:
-                        if rkey in kd and kd[rkey].startswith('File:'):
-                            srcfile = Path(results[rkey])
-                            destfile = Path(rkey)
+                for filename, results in row.data.items():
+                    if filename.endswith('.json'):
+                        write_json(filename, results)
+                    elif filename == '__pointers__':
+                        for filename, dct in results.items():
+                            path = dct.get('path')
+                            md5 = dct.get('__md5__')
+                            srcfile = Path(path)
+                            if not srcfile.is_file():
+                                print(f'Cannot locate source file: {path}')
+                                continue
+                            destfile = Path(filename)
                             if copy:
                                 destfile.write_bytes(srcfile.read_bytes())
                             else:
                                 destfile.symlink_to(srcfile)
+                            if not md5sum(filename) == md5:
+                                print('Warning: File {filename} does not match'
+                                      ' original file. (Difference in '
+                                      'checksums)')
+                    else:
+                        contents = results.get('contents')
+                        md5 = results.get('__md5__')
+                        mod, func = results.get('write').split('@')
 
+                        write = getattr(importlib.import_module(mod), func)
+                        write(filename, contents)
+                        if not md5sum(filename) == md5:
+                            print('Warning: File {filename} does not match'
+                                  ' original file. (Difference in '
+                                  'checksums)')
 
-def folderexists():
-    from pathlib import Path
-    assert Path('tree').is_dir()
-
-
-tests = [
-    {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'],
-     'test': folderexists}
-]
 
 if __name__ == '__main__':
     main.cli()

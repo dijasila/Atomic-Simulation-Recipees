@@ -14,7 +14,6 @@ tests = [
 
 
 @command('asr.setup.params',
-         save_results_file=False,
          tests=tests)
 @argument('params', nargs=-1,
           metavar='recipe:option arg recipe:option arg')
