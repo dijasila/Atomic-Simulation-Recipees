@@ -28,7 +28,7 @@ tests.append({'description': 'Test ground state of Si.',
          overwrite_defaults=defaults,
          creates=['gs.gpw'],
          tests=tests,
-         dependencies=['asr.structureinfo'],
+         requires=['structure.json'],
          resources='8:10h',
          restart=1)
 @option('-a', '--atomfile', type=str, help='Atomic structure')
@@ -68,6 +68,7 @@ def calculate(atomfile='structure.json', ecut=800, xc='PBE',
 
 
 @command(module='asr.gs',
+         requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""

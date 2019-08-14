@@ -100,20 +100,23 @@ def argument(name, **kwargs):
 
 class ASRCommand:
 
+    package_dependencies = ('asr', 'ase', 'gpaw')
+
     def __init__(self, main,
                  module=None,
+                 requires=None,
+                 dependencies=None,
+                 creates=None,
+                 tests=None,
+                 resources='1:10m',
+                 diskspace=0,
+                 restart=0,
+                 webpanel=None,
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
                  pass_params=False,
-                 add_skip_opt=True,
-                 creates=None,
-                 dependencies=None,
-                 resources='1:10m',
-                 diskspace=0,
-                 tests=None,
-                 restart=0,
-                 webpanel=None):
+                 add_skip_opt=True):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -145,6 +148,7 @@ class ASRCommand:
         # Properties of this function
         self._resources = resources
         self._diskspace = diskspace
+        self._requires = requires
         self.restart = restart
 
         # Add skip dependencies option to control this?
@@ -186,6 +190,21 @@ class ASRCommand:
         for key in self.params:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
+
+    @property
+    def requires(self):
+        if self._requires:
+            if callable(self._requires):
+                return self._requires()
+            else:
+                return self._requires
+        return []
+
+    def is_requirements_met(self):
+        for filename in self.requires:
+            if not Path(filename).is_file():
+                return False
+        return True
 
     @property
     def resources(self):
@@ -290,7 +309,11 @@ class ASRCommand:
 
     def main(self, skip_deps=False, catch_exceptions=True,
              *args, **kwargs):
-        # Run all dependencies
+
+        if self.is_requirements_met():
+            # All requirements are met and we shouldn't run dependencies
+            skip_deps = True
+
         if not skip_deps:
             deps = get_dep_tree(self.name)
             for name in deps[:-1]:
@@ -299,6 +322,7 @@ class ASRCommand:
                     recipe(skip_deps=True)
                 else:
                     print(f'Dependency {name} already done!')
+
         # Try to run this command
         try:
             return self.callback(*args, **kwargs)
@@ -325,6 +349,9 @@ class ASRCommand:
         # If you to understand what happens when you execute an ASRCommand
         # this is a good place to start
 
+        assert self.is_requirements_met(), \
+            f'Some required files are missing: {self.requires}'
+
         # Use the wrapped functions signature to create dictionary of
         # parameters
         params = dict(self.signature.bind(*args, **kwargs).arguments)
@@ -349,20 +376,25 @@ class ASRCommand:
             results = self._main(**params) or {}
 
         # Do we have to store some digests of previous calculations?
-        if self.creates or self.dependencies:
-            results['__md5_digest__'] = {}
-
-        for filename in self.creates:
-            hexdigest = md5sum(filename)
-            results['__md5_digest__'][filename] = hexdigest
+        if self.creates:
+            results['__creates__'] = {}
+            for filename in self.creates:
+                hexdigest = md5sum(filename)
+                results['__creates__'][filename] = hexdigest
 
         # Also make hexdigests of results-files for dependencies
-        for dep in self.dependencies:
-            filename = f'results-{dep}.json'
-            hexdigest = md5sum(filename)
-            results['__md5_digest__'][dep] = hexdigest
+        if self.requires:
+            results['__requires__'] = {}
+            for filename in self.requires:
+                hexdigest = md5sum(filename)
+                results['__requires__'][filename] = hexdigest
 
-        results.update(get_execution_info(params))
+        # Save parameters
+        if params:
+            results.update({'__params__': params})
+
+        # Update with hashes for packages dependencies
+        results.update(self.get_execution_info())
 
         if self.save_results_file:
             name = self.name
@@ -374,6 +406,24 @@ class ASRCommand:
                 unlink(tmppath)
 
         return results
+
+    def get_execution_info(self):
+        """Get parameter and software version information as a dictionary"""
+        from ase.utils import search_current_git_hash
+        exeinfo = {}
+        modnames = self.package_dependencies
+        versions = {}
+        for modname in modnames:
+            mod = import_module(modname)
+            githash = search_current_git_hash(mod)
+            version = mod.__version__
+            if githash:
+                versions[f'{modname}'] = f'{version}-{githash}'
+            else:
+                versions[f'{modname}'] = f'{version}'
+        exeinfo['__versions__'] = versions
+
+        return exeinfo
 
     def collect(self):
         import re
@@ -511,24 +561,7 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-def get_execution_info(params):
-    """Get parameter and software version information as a dictionary"""
-    exceinfo = {'__params__': params}
 
-    from ase.utils import search_current_git_hash
-    modnames = ['asr', 'ase', 'gpaw']
-    versions = {}
-    for modname in modnames:
-        mod = import_module(modname)
-        githash = search_current_git_hash(mod)
-        version = mod.__version__
-        if githash:
-            versions[f'{modname}'] = f'{version}-{githash}'
-        else:
-            versions[f'{modname}'] = f'{version}'
-    exceinfo['__versions__'] = versions
-
-    return exceinfo
 
 
 def get_recipe_module_names():
