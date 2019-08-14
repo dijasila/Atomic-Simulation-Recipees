@@ -26,62 +26,36 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 
 
 @command('asr.bandstructure',
-         dependencies=['asr.structureinfo', 'asr.gaps', 'asr.gs'],
+         requires=['gs.gpw'],
+         dependencies=['asr.gs'],
          tests=tests)
-@option('--kptpath', type=str)
+@option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints')
 @option('--emptybands')
-def main(kptpath=None, npoints=400, emptybands=20):
+def calculate(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
-    import os
     from gpaw import GPAW
     from ase.io import read
-    from ase.dft.band_structure import get_band_structure
-
-    assert os.path.isfile('gs.gpw'), 'No ground state file!'
-
-    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
-
     atoms = read('gs.gpw')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints)
     else:
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
 
-    if not os.path.isfile('bs.gpw'):
-        convbands = emptybands // 2
-        parms = {
-            'basis': 'dzp',
-            'nbands': -emptybands,
-            'txt': 'bs.txt',
-            'fixdensity': True,
-            'kpts': path,
-            'convergence': {
-                'bands': -convbands},
-            'symmetry': 'off'}
-        atoms = read('gs.gpw')
-        kptpath = atoms.cell.bandpath(npoints=npoints)
-        calc = GPAW('gs.gpw', **parms)
-        calc.get_potential_energy()
-        calc.write('bs.gpw')
-
-    calc = GPAW('bs.gpw', txt=None)
-    bs = get_band_structure(calc=calc, path=path, reference=ref)
-
-    import copy
-    results = {}
-    results['bs_nosoc'] = copy.deepcopy(bs.todict())
-
-    # stuff below could be moved to the collect script.
-    e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
-
-    data = bs.todict()
-    data['energies'] = e_km.T
-    data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
-
-    results['bs_soc'] = data
-    return results
+    convbands = emptybands // 2
+    parms = {
+        'basis': 'dzp',
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'kpts': path,
+        'convergence': {
+            'bands': -convbands},
+        'symmetry': 'off'}
+    atoms = read('gs.gpw')
+    calc = GPAW('gs.gpw', **parms)
+    calc.get_potential_energy()
+    calc.write('bs.gpw')
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
@@ -319,9 +293,6 @@ def bs_pbe_html(row,
                 fontsize=10,
                 show_legend=True,
                 s=2):
-    if 'bs_pbe' not in row.data or 'eps_so_mk' not in row.data.bs_pbe:
-        return
-
     import plotly
     import plotly.graph_objs as go
     import numpy as np
@@ -561,7 +532,7 @@ def bs_pbe(row,
            show_legend=True,
            s=0.5):
 
-    if 'results_bandstructure' not in row.data:
+    if 'results-asr.bandstructure' not in row.data:
         return
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -806,14 +777,49 @@ def webpanel(row, key_descriptions):
                 ],
                 kd=key_descriptions_noxc)
 
-    panel = ('Electronic band structure (PBE)',
-             [[fig('pbe-bs.png', link='pbe-bs.html'),
-               fig('bz.png')], [fig('pbe-pdos.png', link='empty'), pbe]])
+    panel = {'title': 'Electronic band structure (PBE)',
+             'columns': [[fig('pbe-bs.png', link='pbe-bs.html'),
+                          fig('bz.png')],
+                         [fig('pbe-pdos.png', link='empty'), pbe]],
+             'plot_descriptions': [{'function': bz_soc,
+                                    'filenames': ['bz.png']},
+                                   {'function': bs_pbe,
+                                    'filenames': ['pbe-bs.png']},
+                                   {'function': bs_pbe_html,
+                                    'filenames': ['pbe-bs.html']}]}
+    return [panel]
 
-    things = [(bz_soc, ['bz.png']),
-              (bs_pbe, ['pbe-bs.png']),
-              (bs_pbe_html, ['pbe-bs.html'])]
-    return panel, things
+
+@command('asr.bandstructure',
+         requires=['gs.gpw', 'bs.gpw'],
+         dependencies=['asr.bandstructure@calculate'],
+         webpanel=webpanel)
+def main():
+    from gpaw import GPAW
+    from ase.dft.band_structure import get_band_structure
+    from ase.dft.kpoints import BandPath
+    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
+    calc = GPAW('bs.gpw', txt=None)
+    path = calc.parameters.kpts
+    path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                    special_points=path['special_points'],
+                    path=path['labelseq'])
+    bs = get_band_structure(calc=calc, path=path, reference=ref)
+
+    import copy
+    results = {}
+    results['bs_nosoc'] = copy.deepcopy(bs.todict())
+
+    # stuff below could be moved to the collect script.
+    e_km, _, s_kvm = gpw2eigs(
+        'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+
+    data = bs.todict()
+    data['energies'] = e_km.T
+    data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
+
+    results['bs_soc'] = data
+    return results
 
 
 if __name__ == '__main__':

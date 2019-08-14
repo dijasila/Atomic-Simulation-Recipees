@@ -116,7 +116,8 @@ class ASRCommand:
                  known_exceptions=None,
                  save_results_file=True,
                  pass_params=False,
-                 add_skip_opt=True):
+                 add_skip_opt=True,
+                 todict=None):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -168,6 +169,8 @@ class ASRCommand:
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
             self._main.__asr_params__ = {}
+
+        self.todict = todict
 
         import copy
         self.params = copy.deepcopy(self._main.__asr_params__)
@@ -221,6 +224,8 @@ class ASRCommand:
     @property
     def creates(self):
         creates = []
+        if self.save_results_file:
+            creates += [f'results-{self.name}.json']
         if self._creates:
             if callable(self._creates):
                 creates += self._creates()
@@ -230,13 +235,7 @@ class ASRCommand:
 
     @property
     def done(self):
-        creates = []
-        creates += self.creates
-        if not self.save_results_file:
-            return False
-        creates += [f'results-{self.name}.json']
-
-        for file in creates:
+        for file in self.creates:
             if not Path(file).exists():
                 return False
         return True
@@ -248,7 +247,7 @@ class ASRCommand:
         cc = click.command
         co = click.option
 
-        help = self._main.__doc__
+        help = self._main.__doc__ or ''
 
         add_info = ''
 
@@ -257,7 +256,7 @@ class ASRCommand:
                          f'results-{self.name}.json\n')
 
         if self.creates:
-            add_info += f'Creates additional files: {self.creates}\n'
+            add_info += f'Creates files: {self.creates}\n'
 
         if self.dependencies:
             add_info += f'Dependencies: {self.dependencies}\n'
@@ -310,7 +309,7 @@ class ASRCommand:
     def main(self, skip_deps=False, catch_exceptions=True,
              *args, **kwargs):
 
-        if self.is_requirements_met():
+        if self.requires and self.is_requirements_met():
             # All requirements are met and we shouldn't run dependencies
             skip_deps = True
 
@@ -379,6 +378,9 @@ class ASRCommand:
         if self.creates:
             results['__creates__'] = {}
             for filename in self.creates:
+                if filename.startswith('results-'):
+                    # Don't log own results file
+                    continue
                 hexdigest = md5sum(filename)
                 results['__creates__'][filename] = hexdigest
 
@@ -430,64 +432,95 @@ class ASRCommand:
         kvp = {}
         key_descriptions = {}
         data = {}
-        if self.done:
-            name = self.name[4:]
-            resultfile = f'results-{self.name}.json'
-            results = read_json(resultfile)
-            if '__key_descriptions__' in results:
-                tmpkd = {}
 
-                for key, desc in results['__key_descriptions__'].items():
-                    descdict = {'type': None,
-                                'iskvp': False,
-                                'shortdesc': '',
-                                'longdesc': '',
-                                'units': ''}
-                    if isinstance(desc, dict):
-                        descdict.update(desc)
-                        tmpkd[key] = desc
-                        continue
+        resultfile = f'results-{self.name}.json'
+        results = read_json(resultfile)
+        msg = f'{self.name}: You cannot put a {resultfile} in data'
+        assert resultfile not in data, msg
+        data[resultfile] = results
 
-                    assert isinstance(desc, str), \
-                        'Key description has to be dict or str.'
-                    # Get key type
-                    desc, *keytype = desc.split('->')
-                    if keytype:
-                        descdict['type'] = keytype
+        extra_files = results.get('__requires__', {})
+        extra_files.update(results.get('__creates__', {}))
+        if extra_files:
+            for filename, checksum in extra_files.items():
+                if filename in data or \
+                   ('__pointers__' in data and
+                    filename in data['__pointers__']):
+                    continue
+                file = Path(filename)
+                if not file.is_file():
+                    print(f'Warning: Required file {filename}'
+                          ' doesn\'t exist')
 
-                    # Is this a kvp?
-                    iskvp = desc.startswith('KVP:')
-                    descdict['iskvp'] = iskvp
-                    desc = desc.replace('KVP:', '').strip()
+                filetype = file.suffix
+                if filetype == '.json':
+                    data[filename] = read_json(filename)
+                elif self.todict:
+                    dct = self.todict(filename)
+                    dct['__md5__'] = md5sum(filename)
+                    data[filename] = dct
+                else:
+                    if '__pointers__' not in data:
+                        data['__pointers__'] = {}
+                    # print(f'Warning: {file} of type {filetype} cannot'
+                    #       ' be stored into database. Making pointer'
+                    #       ' to file.')
+                    data['__pointers__'][filename] = \
+                        {'path': str(file.absolute()),
+                         '__md5__': md5sum(filename)}
 
-                    # Find units
-                    m = re.search(r"\[(\w+)\]", desc)
-                    unit = m.group(1) if m else ''
-                    if unit:
-                        descdict['units'] = unit
-                    desc = desc.replace(f'[{unit}]', '').strip()
+        # Parse key descriptions to get long,
+        # short, units and key value pairs
+        if '__key_descriptions__' in results:
+            tmpkd = {}
 
-                    # Find short description
-                    m = re.search(r"\((\w+)\)", desc)
-                    shortdesc = m.group(1) if m else ''
+            for key, desc in results['__key_descriptions__'].items():
+                descdict = {'type': None,
+                            'iskvp': False,
+                            'shortdesc': '',
+                            'longdesc': '',
+                            'units': ''}
+                if isinstance(desc, dict):
+                    descdict.update(desc)
+                    tmpkd[key] = desc
+                    continue
 
-                    # The results is the long description
-                    longdesc = desc.replace(f'({shortdesc})', '').strip()
-                    if longdesc:
-                        descdict['longdesc'] = longdesc
-                    tmpkd[key] = descdict
+                assert isinstance(desc, str), \
+                    'Key description has to be dict or str.'
+                # Get key type
+                desc, *keytype = desc.split('->')
+                if keytype:
+                    descdict['type'] = keytype
 
-                for key, desc in tmpkd.items():
-                    key_descriptions[key] = \
-                        (desc['shortdesc'], desc['longdesc'], desc['units'])
+                # Is this a kvp?
+                iskvp = desc.startswith('KVP:')
+                descdict['iskvp'] = iskvp
+                desc = desc.replace('KVP:', '').strip()
 
-                    if key in results and desc['iskvp']:
-                        kvp[key] = results[key]
+                # Find units
+                m = re.search(r"\[(\w+)\]", desc)
+                unit = m.group(1) if m else ''
+                if unit:
+                    descdict['units'] = unit
+                desc = desc.replace(f'[{unit}]', '').strip()
 
-            key = f'results_{name}'
-            msg = f'{self.name}: You cannot put a {key} in data'
-            assert key not in data, msg
-            data[key] = results
+                # Find short description
+                m = re.search(r"\((\w+)\)", desc)
+                shortdesc = m.group(1) if m else ''
+
+                # The results is the long description
+                longdesc = desc.replace(f'({shortdesc})', '').strip()
+                if longdesc:
+                    descdict['longdesc'] = longdesc
+                tmpkd[key] = descdict
+
+            for key, desc in tmpkd.items():
+                key_descriptions[key] = \
+                    (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+                if key in results and desc['iskvp']:
+                    kvp[key] = results[key]
+
         return kvp, key_descriptions, data
 
 
@@ -532,7 +565,7 @@ class ASRSubResult:
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_execution_info(params))
+        subresult.update(self.get_execution_info(params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)

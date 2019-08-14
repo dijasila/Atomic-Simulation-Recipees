@@ -62,7 +62,36 @@ class Phonons(ASEPhonons):
         return dct
 
 
-@command('asr.phonons')
+def creates():
+    atoms = read('structure.json')
+    natoms = len(atoms)
+    filenames = []
+    for a in range(natoms):
+        for v in 'xyz':
+            for pm in '+-':
+                # Atomic forces for a displacement of atom a in direction v
+                filenames.append(f'phonon.{a}{v}{pm}.pckl')
+    return filenames
+
+
+def todict(filename):
+    from ase.utils import pickleload
+    return {'contents': pickleload(open(filename, 'rb')),
+            'write': 'asr.phonons@tofile'}
+
+
+def tofile(filename, contents):
+    from ase.utils import opencew
+    import pickle
+    fd = opencew(filename)
+    if world.rank == 0:
+        pickle.dump(contents, fd, protocol=2)
+        fd.close()
+
+
+@command('asr.phonons',
+         creates=creates,
+         todict=todict)
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
 @option('--kptdensity', help='Kpoint density')
