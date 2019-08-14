@@ -5,6 +5,8 @@ import os
 @option('--kptpath', default=None, type=str)
 @option('--npoints', default=400)
 def main(kptpath, npoints):
+    """Interpolate HSE band structure along a given path"""
+
     from asr.hse import bs_interpolate
     results = bs_interpolate(kptpath, npoints)
     return results

@@ -5,6 +5,7 @@ to do:
 - move stuff to utils
 - get evac
 - create tests
+- move relevant functions to hseinterpolate? or merge into one single recipe?
 """
 import json
 from pathlib import Path
@@ -34,6 +35,8 @@ from contextlib import contextmanager
 @option('--kptdensity', default=12, help='K-point density')
 @option('--emptybands', default=20, help='number of empty bands to include')
 def main(kptdensity, emptybands):
+    """Calculate HSE band structure"""
+
     results = {}
     results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
     mpi.world.barrier()
