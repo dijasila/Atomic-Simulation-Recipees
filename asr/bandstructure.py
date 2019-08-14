@@ -1,11 +1,37 @@
 from asr.utils import command, option
 
+tests = []
+tests.append({'description': 'Test band structure of Si.',
+              'name': 'test_asr.bandstructure_Si',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test band structure of 2D-BN.',
+              'name': 'test_asr.bandstructure_2DBN',
+              'cli': ['asr run setup.materials -s BN,natoms=2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 300 asr.gs:kptdensity 2.0 '
+                      'asr.bandstructure:npoints 50 '
+                      'asr.bandstructure:emptybands 5',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
 
-@command('asr.bandstructure')
-@option('--kptpath', default=None, type=str)
-@option('--npoints', default=400)
-@option('--emptybands', default=20)
-def main(kptpath, npoints, emptybands):
+
+@command('asr.bandstructure',
+         dependencies=['asr.structureinfo', 'asr.gaps', 'asr.gs'],
+         tests=tests)
+@option('--kptpath', type=str)
+@option('--npoints')
+@option('--emptybands')
+def main(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     import os
     from gpaw import GPAW
@@ -789,34 +815,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'property'
-creates = ['bs.gpw']
-dependencies = ['asr.structureinfo', 'asr.gs']
-sort = 3
-
-tests = []
-tests.append({'description': 'Test band structure of Si.',
-              'name': 'test_asr.bandstructure_Si',
-              'cli': ['asr run setup.materials -s Si',
-                      'ase convert materials.json structure.json',
-                      'asr run setup.params '
-                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
-                      'asr.bandstructure:npoints 50 '
-                      'asr.bandstructure:emptybands 5',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures']})
-tests.append({'description': 'Test band structure of 2D-BN.',
-              'name': 'test_asr.bandstructure_2DBN',
-              'cli': ['asr run setup.materials -s BN,natoms=2',
-                      'ase convert materials.json structure.json',
-                      'asr run setup.params '
-                      'asr.gs:ecut 300 asr.gs:kptdensity 2.0 '
-                      'asr.bandstructure:npoints 50 '
-                      'asr.bandstructure:emptybands 5',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures']})
-
 if __name__ == '__main__':
-    main()
+    main.cli()

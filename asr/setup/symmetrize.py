@@ -138,18 +138,17 @@ def symmetrize_atoms(atoms, tolerance=None,
     return idealized, origin_c
     
 
-@command('asr.setup.symmetrize',
-         save_results_file=False)
-@option('--tolerance', type=float, default=1e-3,
+@command('asr.setup.symmetrize')
+@option('--tolerance', type=float,
         help='Tolerance when evaluating symmetries')
-@option('--angle-tolerance', type=float, default=0.1,
+@option('--angle-tolerance', type=float,
         help='Tolerance one angles when evaluating symmetries')
-def main(tolerance, angle_tolerance):
+def main(tolerance=1e-3, angle_tolerance=0.1):
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell
-    of an approximately symmetrical structure into an exactly
-    symmetrical structure.
+    of an approximately symmetric structure into an exactly
+    symmetric structure.
 
     In practice, the spacegroup of the structure located in 'original.json'
     is evaluated using a not-very-strict tolerance, which can be adjusted using
@@ -270,4 +269,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()
