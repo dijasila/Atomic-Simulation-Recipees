@@ -2,11 +2,10 @@ from asr.utils import command, option, read_json
 import os
 
 @command('asr.hseinterpol')
-@option('--kptpath', default=None, type=str)
-@option('--npoints', default=400)
-def main(kptpath, npoints):
+@option('--kptpath', type=str)
+@option('--npoints')
+def main(kptpath=None, npoints=400):
     """Interpolate HSE band structure along a given path"""
-
     from asr.hse import bs_interpolate
     results = bs_interpolate(kptpath, npoints)
     return results
@@ -29,10 +28,10 @@ def collect_data(atoms):
     evac = 0.0 # XXX where do I find evac?
     #evac = kvp.get('evac')
 
-    if not os.path.isfile('results_hseinterpol.json'):
+    if not os.path.isfile('results-asr.hseinterpol.json'):
         return kvp, key_descriptions, data
 
-    results = read_json('results_hseinterpol.json')
+    results = read_json('results-asr.hseinterpol.json')
 
     """
     1) Results obtained with ase.dft.kpoints.monkhorst_pack_interpolate
@@ -252,7 +251,7 @@ def webpanel(row, key_descriptions):
 
 group = 'property'
 resources = '1:10m'
-creates = ['results_hseinterpol.json']
+creates = []
 dependencies = ['asr.hse']
 diskspace = 0  # how much diskspace is used
 restart = 0  # how many times to restart

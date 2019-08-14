@@ -32,11 +32,10 @@ from ase.dft.kpoints import get_cellinfo
 from contextlib import contextmanager
 
 @command('asr.hse')
-@option('--kptdensity', default=12, help='K-point density')
-@option('--emptybands', default=20, help='number of empty bands to include')
-def main(kptdensity, emptybands):
+@option('--kptdensity', help='K-point density')
+@option('--emptybands', help='number of empty bands to include')
+def main(kptdensity=12, emptybands=20):
     """Calculate HSE band structure"""
-
     results = {}
     results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
     mpi.world.barrier()
@@ -488,10 +487,10 @@ def collect_data(atoms):
     evac = 0.0 # XXX where do I find evac?
     #evac = kvp.get('evac')
 
-    if not os.path.isfile('results_hse.json'):
+    if not os.path.isfile('results-asr.hse.json'):
         return kvp, key_descriptions, data
 
-    results_hse = read_json('results_hse.json')
+    results_hse = read_json('results-asr.hse.json')
     
     eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
