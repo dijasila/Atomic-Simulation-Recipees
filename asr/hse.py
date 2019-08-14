@@ -5,7 +5,6 @@ to do:
 - move stuff to utils
 - get evac
 - create tests
-- Warning: ASE 3.19.0b1 -> BandPath.labelseq renamed to BandPath.path !!
 """
 import json
 from pathlib import Path
@@ -153,7 +152,6 @@ def bs_interpolate(kptpath, npoints=400, show=False):
         path = atoms.cell.bandpath(npoints=npoints)
     else:
         path = atoms.cell.bandpath(kptpath, npoints=npoints)
-    str_path = path.labelseq # this returns a sequence of labels (eg 'GMKG' for 2D hexagonal lattice)
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, e_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
@@ -236,7 +234,7 @@ def segment_indices_and_x(cell, path, kpts):
     special_points = path.special_points
     _, X, _ = labels_from_kpts(path.kpts, cell, eps=1e-5, special_points=special_points)
     segments_length = np.diff(X)  # length of band segments
-    list_str_path = parse_path_string(path.labelseq)[0]  # list str, i.e. ['G', 'M', 'K','G']
+    list_str_path = parse_path_string(path.path)[0]  # list str, i.e. ['G', 'M', 'K','G']
     segments_points = []
     # make segments [G,M,K,G] -> [(G,M), (M,K), (K.G)]
     for i in range(len(list_str_path) - 1):
@@ -301,7 +299,6 @@ def interpolate_bandlines2(calc, path, e_skn=None):
     bz2ibz = calc.get_bz_to_ibz_map()
     cell = calc.atoms.cell
 
-    labelseq = path.labelseq
     special_points = path.special_points
     x, X, labels = labels_from_kpts(path.kpts, cell)
         
@@ -329,7 +326,7 @@ def interpolate_bandlines2(calc, path, e_skn=None):
         partial_path = bandpath(path=partial_kpts, cell=cell, npoints=partial_n)
         # note: you have to assign labels to the new partial_path manually!
         _, _, partial_labels = labels_from_kpts(partial_kpts, path.cell, special_points=path.special_points)
-        partial_path.labelseq = ''.join(partial_labels)
+        partial_path.path = ''.join(partial_labels)
         partial_path.special_points = special_points
         partial_paths.append(partial_path)
 
@@ -363,7 +360,7 @@ def interpolate_bandlines2(calc, path, e_skn=None):
                 epsreal_skn[s, :, n] = y
                 bc_type = ['not-a-knot', 'not-a-knot']
                 for i in [0, -1]:
-                    if partial_path.labelseq[i] == 'G':
+                    if partial_path.path[i] == 'G':
                         bc_type[i] = [1, 0.0]
                 if len(x) > 1:
                     sp = CubicSpline(x=x, y=y, bc_type=bc_type)
