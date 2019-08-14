@@ -128,6 +128,15 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     """inpolate the eigenvalues on a monkhorst pack grid to
     a path in the bz between high-symmetry points.
     The soc is added before interpolation.
+
+    Parameters:
+        kptpath: a string such as 'GMKG' (optional)
+        npoints: num. of desired points along the bandpath
+    Returns:
+        out: 2 dictionaries results['hse_bandstructure'] and results['hse_bandstructure3']
+            results['hse_bandstructure']: dict with keys eps_skn, path, e_mk, s_mk
+            results['hse_bandstructure3']: dict with keys eps_skn, path, e_mk, xreal, epsreal_skn
+
     """
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
@@ -281,8 +290,7 @@ def interpolate_bandlines2(calc, path, e_skn=None):
         e_skn: (ns, nk, nb) shape ndarray, optional
             if not given it uses eigenvalues from calc
     Returns:
-        out: dict
-            with keys e_skn, kpts, x, X
+        out: dict with keys kpts, e_skn, x, X, xreal, epsreal_skn, kptsreal_kc
             e_skn: (ns, npoints, nb) shape ndarray
                 interpolated eigenvalues,
             kpts:  (npoints, 3) shape ndarray
@@ -291,6 +299,9 @@ def interpolate_bandlines2(calc, path, e_skn=None):
                 x axis
             X: (nkspecial, ) shape ndarrary
                 position of special points (G, M, K, G) on x axis
+            xreal: position of real MonkhorstPack kpts on x axis
+            epsreal_skn: real eigenvalues at MP kpts, from which the interpolation is constructed
+            kptsreal_kc: real MP kpts
 
     """
     if e_skn is None:
