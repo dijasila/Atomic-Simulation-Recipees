@@ -1,14 +1,5 @@
 from asr.utils import command, option
 
-#############################################################################
-#          This recipe is not finished and still under development          #
-#############################################################################
-# ToDo: include postprocessing functions
-# ToDo: add information on system and supercell size in output
-# ToDo: testing
-#############################################################################
-
-
 @command('asr.defectformation')
 @option('--pristine', type=str, default='gs.gpw',
         help='Name of the groundstate .gpw file of the pristine system. It '
@@ -202,11 +193,14 @@ def postprocessing():
 
     formation_dict = read_json('defectformation.json')
     transitions_dict = {}
+    gap = formation_dict.get('gaps_nosoc').get('gap')
     for element in formation_dict:
-        plotname = element
-        defect_dict = formation_dict[element]
-        transitions_dict[plotname] = plot_formation_and_transitions(
-            defect_dict, plotname)
+        if element != 'gaps_soc' and element != 'gaps_nosoc':
+            print(element)
+            plotname = element
+            defect_dict = formation_dict[element]
+            transitions_dict[plotname] = plot_formation_and_transitions(
+                defect_dict, plotname, gap)
 
     return transitions_dict
 
@@ -252,7 +246,7 @@ def intersection(L1, L2):
         return False
 
 
-def plot_formation_and_transitions(defect_dict, defectname):
+def plot_formation_and_transitions(defect_dict, defectname, gap):
     """Function to plot formation energies versus the Fermi energy and to
     obtain transition points between most stable charge states of a given
     defect
@@ -270,7 +264,7 @@ def plot_formation_and_transitions(defect_dict, defectname):
     q = np.array(defect_dict['chargestates'])
 
     # set general parameters
-    x_range = np.array([0, 1.5])
+    x_range = np.array([0, gap])
     x_diff = np.array([[-x[0], x_range[1] - x[0]]])
     y_edges = np.array(
         [[y[0] + x_diff[0][0] * q[0], y[0] + x_diff[0][1] * q[0]]])
@@ -280,8 +274,8 @@ def plot_formation_and_transitions(defect_dict, defectname):
     lw = 1
     linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
     colorlist = ['black', 'C0', 'C1']
-    plt.ylim(0, max(y_edges[:, 0]))
-    plt.xlim(x_range[0] - 0.2, x_range[1])
+    plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    plt.xlim(x_range[0] - 0.1 * gap, x_range[1] + 0.1 * gap)
     # bbox = {'fc': '0.8', 'pad': 0}
 
     # initialise np array containing all lines
@@ -291,8 +285,11 @@ def plot_formation_and_transitions(defect_dict, defectname):
     # initialise plot
     plt.plot(x_range, y_edges[0], color=colorlist[np.sign(q[0])], lw=lw,
              linestyle=linestylelist[abs(q[0])], label='q = {}'.format(q[0]))
-    plt.text((2 * x_range[0] - 0.2) / 2.,
-             max(y_edges[:, 0]) / 2., 'valence band',
+    plt.text((2 * x_range[0] - 0.1 * gap) / 2.,
+             max(y_edges[:, 0]) * 1.1 / 2., 'valence band',
+             {'ha': 'center', 'va': 'center'}, rotation=90)
+    plt.text((2 * x_range[1] + 0.1 * gap) / 2.,
+             max(y_edges[:, 0]) * 1.1 / 2., 'conduction band',
              {'ha': 'center', 'va': 'center'}, rotation=90)
 
     # append other lines in a loop
@@ -365,10 +362,12 @@ def plot_formation_and_transitions(defect_dict, defectname):
         ratio = element[0][1] / max(y_edges[:, 0])
         plt.axvline(x=element[0][0], ymax=ratio, color='C3',
                     linestyle=(0, (5, 10)))
-    plt.axvspan(x_range[0] - 0.2, x_range[0], color='lightgrey')
+    plt.axvspan(x_range[0] - 0.1 * gap, x_range[0], color='lightgrey')
+    plt.axvspan(x_range[1] + 0.1 * gap, x_range[1], color='lightgrey')
     x_val = [x[0] for x in trans_array[:, 0]]
     y_val = [x[1] for x in trans_array[:, 0]]
-    plt.plot(x_val, y_val, marker='D', linestyle='-', color='C3')
+    # plt.plot(x_val, y_val, marker='D', linestyle='-', color='C3')
+    plt.plot(x_val, y_val, marker='D', linestyle='', color='C3')
     plt.xlabel(r'$E_{F}$ in eV')
     plt.ylabel(r'$E_{formation}$ in eV')
     plotname = 'plot_{}.png'.format(defectname)
