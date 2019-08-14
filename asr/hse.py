@@ -603,4 +603,4 @@ restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     with cleanup('hse.gpw'):
-        main()
+        main.cli()
