@@ -39,7 +39,7 @@ def tofile(filename, contents):
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
          creates=creates,
-         todict=todict)
+         todict={'.pckl': todict})
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
 @option('--kptdensity', help='Kpoint density')

@@ -21,7 +21,6 @@ tests = [
 @option('-t', '--tree-structure')
 @option('--sort', help='Sort the generated materials '
         '(only useful when dividing chunking tree)')
-@option('--kvp', is_flag=True, help='Unpack key-value-pairs')
 @option('--data', is_flag=True, help='Unpack data')
 @option('--copy', is_flag=True, help='Copy pointer tagged files')
 @option('--atomsname', help='Filename to unpack atomic structure to')
@@ -29,7 +28,7 @@ tests = [
 def main(database, run=False, selection=None,
          tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
                          '{spg}-{wyck}-{uid}'),
-         sort=None, kvp=False, data=False, atomsname='unrelaxed.json',
+         sort=None, data=False, atomsname='unrelaxed.json',
          chunks=1, copy=False):
     """Unpack an ASE database to a tree of folders.
 
@@ -57,11 +56,6 @@ def main(database, run=False, selection=None,
     file which is be ready to be relaxed. This filename can be changed with
     the --atomsname switch.
 
-    If the database contains some interesting data and key-value-pairs
-    these can also be unpacked with the --kvp and --data switches,
-    respectively. The key-value-pairs will be saved to key-value-pairs.json
-    and each key in data will be saved to "key.json"
-
     \b
     Examples:
     ---------
@@ -85,9 +79,6 @@ def main(database, run=False, selection=None,
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
       asr run database.totree database.db --sort natoms --chunks 2 --run
-    \b
-    Unpack key-value-pairs and data keys of the ASE database as well:
-      asr run database.totree database.db --kvp --data --run
     """
     from os import makedirs
     from pathlib import Path
@@ -180,30 +171,30 @@ def main(database, run=False, selection=None,
         folder = Path(folder)
         with chdir(folder):
             write(atomsname, row.toatoms())
-            if kvp:
-                write_json('key-value-pairs.json', row.key_value_pairs)
             if data:
                 for filename, results in row.data.items():
+                    # We treat json differently
                     if filename.endswith('.json'):
                         write_json(filename, results)
-                    elif filename == '__pointers__':
-                        for filename, dct in results.items():
-                            path = dct.get('path')
-                            md5 = dct.get('__md5__')
-                            srcfile = Path(path)
-                            if not srcfile.is_file():
-                                print(f'Cannot locate source file: {path}')
-                                continue
-                            destfile = Path(filename)
-                            if copy:
-                                destfile.write_bytes(srcfile.read_bytes())
-                            else:
-                                destfile.symlink_to(srcfile)
-                            if not md5sum(filename) == md5:
-                                print('Warning: File {filename} does not match'
-                                      ' original file. (Difference in '
-                                      'checksums)')
+                    elif results.get('pointer'):
+                        path = results.get('pointer')
+                        md5 = results.get('__md5__')
+                        srcfile = Path(path)
+                        if not srcfile.is_file():
+                            print(f'Cannot locate source file: {path}')
+                            continue
+                        destfile = Path(filename)
+                        if copy:
+                            destfile.write_bytes(srcfile.read_bytes())
+                        else:
+                            destfile.symlink_to(srcfile)
+                        if not md5sum(filename) == md5:
+                            print('Warning: File {filename} does not match'
+                                  ' original file. (Difference in '
+                                  'checksums).')
                     else:
+                        assert 'contents' in results, \
+                            f'Unknown data entry {results}.'
                         contents = results.get('contents')
                         md5 = results.get('__md5__')
                         mod, func = results.get('write').split('@')

@@ -443,9 +443,7 @@ class ASRCommand:
         extra_files.update(results.get('__creates__', {}))
         if extra_files:
             for filename, checksum in extra_files.items():
-                if filename in data or \
-                   ('__pointers__' in data and
-                    filename in data['__pointers__']):
+                if filename in data:
                     continue
                 file = Path(filename)
                 if not file.is_file():
@@ -454,20 +452,14 @@ class ASRCommand:
 
                 filetype = file.suffix
                 if filetype == '.json':
-                    data[filename] = read_json(filename)
-                elif self.todict:
-                    dct = self.todict(filename)
+                    dct = read_json(filename)
+                elif self.todict and filetype in self.todict:
+                    dct = self.todict[filetype](filename)
                     dct['__md5__'] = md5sum(filename)
-                    data[filename] = dct
                 else:
-                    if '__pointers__' not in data:
-                        data['__pointers__'] = {}
-                    # print(f'Warning: {file} of type {filetype} cannot'
-                    #       ' be stored into database. Making pointer'
-                    #       ' to file.')
-                    data['__pointers__'][filename] = \
-                        {'path': str(file.absolute()),
-                         '__md5__': md5sum(filename)}
+                    dct = {'pointer': str(file.absolute()),
+                           '__md5__': md5sum(filename)}
+                data[filename] = dct
 
         # Parse key descriptions to get long,
         # short, units and key value pairs
