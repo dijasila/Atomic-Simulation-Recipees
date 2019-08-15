@@ -1,20 +1,29 @@
 from asr.utils import command, option
 
-@command('asr.defectformation')
-@option('--pristine', type=str, default='gs.gpw',
+group = 'property'
+creates = []  # what files are created
+
+
+@command('asr.defectformation',
+         resources='1:2h',
+         dependencies=['asr.setup.defects', 'asr.gs'],
+         creates=[])
+# later include 'asr.dielectricconstant' and 'asr.relax')
+# and also the files that this recipe creates
+@option('--pristine', type=str,
         help='Name of the groundstate .gpw file of the pristine system. It '
              'always has to be somewhere within a folder that is called '
              '"pristine" in order to work correctly.')
-@option('--defect', type=str, default='gs.gpw',
+@option('--defect', type=str,
         help='Name of the groundstate .gpw file of the defect systems. They '
              'always have to be within a folder for the specific defect with '
              'a subfolder calles "charge_q" for the respective chargestate q '
              'in order to work correctly.')
-@option('--defect_name', default=None,
+@option('--defect_name',
         help='Runs recipe for all defect folder within your directory when '
              'set to None. Set this option to the name of a desired defect '
              'folder in order for it to run only for this particular defect.')
-def main(pristine, defect, defect_name):
+def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     """
     Calculate formation energy of defects.
 
@@ -188,6 +197,10 @@ def collect_data():
     return None
 
 
+# ========================================================================== #
+# This function doesn't exist in the new asr version anymore and has to be   #
+# changed at a later stage, as well as the way the plots are created (db)    #
+# ========================================================================== #
 def postprocessing():
     from asr.utils import read_json
 
@@ -402,14 +415,6 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
 #    ax.plot(data.things)
 #    plt.savefig(fname)
 
-
-group = 'property'
-creates = []  # what files are created
-# dependencies = ['asr.setup.defects', 'asr.relax', 'asr.gs',
-#                'asr.polarizability']
-resources = '1:10m'  # 1 core for 10 minutes
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
 
 if __name__ == '__main__':
     main.cli()
