@@ -33,8 +33,8 @@ def main(folders, selectrecipe=None, level=2, data=True):
             key_descriptions = {}
 
             atoms = read('structure.json')
-            if recipe:
-                recipes = get_dep_tree(recipe)
+            if selectrecipe:
+                recipes = get_dep_tree(selectrecipe)
             else:
                 recipes = get_recipes()
 
