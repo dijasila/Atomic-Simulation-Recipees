@@ -36,7 +36,7 @@ tests.append({'description': 'Test ground state of Si.',
 @option('--xc', type=str, help='XC-functional')
 @option('--width', help='Fermi-Dirac smearing temperature')
 def calculate(ecut=800, xc='PBE',
-              kptdensity=6.0, width=0.05):
+              kptdensity=12.0, width=0.05):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
