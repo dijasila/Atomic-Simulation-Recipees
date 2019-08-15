@@ -4,14 +4,14 @@ from asr.utils import command, option, argument, chdir
 @command('asr.database.fromtree',
          dependencies=['asr.structureinfo'])
 @argument('folders', nargs=-1)
-@option('--recipe', help='Only collect data relevant for this recipe')
+@option('--selectrecipe', help='Only collect data relevant for this recipe')
 @option('--level', type=int,
         help=('0: Collect only atoms. '
               '1: Collect atoms+KVP. '
               '2: Collect atoms+kvp+data'))
 @option('--data/--nodata',
         help='Also add data objects to database')
-def main(folders, recipe=None, level=2, data=True):
+def main(folders, selectrecipe=None, level=2, data=True):
     """Collect data from folder tree into database."""
     import os
     from ase.db import connect
