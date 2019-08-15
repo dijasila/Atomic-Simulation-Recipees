@@ -4,7 +4,7 @@ import click
 
 
 @command('asr.setup.defects',
-         creates=['unrelaxed.json', 'params.json'])
+         creates=['general_parameters.json'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
@@ -236,8 +236,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     structure_dict['defects'] = temp_dict
 
     print('INFO: setting up {0} different defect supercell systems in '
-          'charge states -{1}, ..., +{1}, as well as the pristine and bulk '
-          'systems.'.format(len(structure_dict['defects']), charge_states))
+          'charge states -{1}, ..., +{1}, as well as the pristine supercell '
+          'system.'.format(len(structure_dict['defects']), charge_states))
 
     return structure_dict
 
@@ -330,13 +330,6 @@ def create_folder_structure(structure, structure_dict, chargestates,
 def collect_data():
     return None
 
-
-def postprocessing():
-    """
-    Extract data after running setup.defects recipe.
-    """
-
-    return None
 
 # def webpanel(row, key_descriptions):
 #    from asr.utils.custom import fig, table
