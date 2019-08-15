@@ -594,9 +594,6 @@ def chdir(folder, create=False, empty=False):
     os.chdir(dir)
 
 
-
-
-
 def get_recipe_module_names():
     # Find all modules containing recipes
     from pathlib import Path
