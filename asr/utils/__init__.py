@@ -11,6 +11,7 @@ from ase.io import jsonio
 from ase.parallel import parprint
 import ase.parallel as parallel
 import inspect
+import copy
 
 
 def md5sum(filename):
@@ -69,7 +70,6 @@ def option(*args, **kwargs):
             if name in params:
                 break
         else:
-            print(args)
             raise AssertionError(
                 paramerrormsg(func,
                               'You must give exactly one alias that starts '
@@ -317,10 +317,10 @@ class ASRCommand:
             deps = get_dep_tree(self.name)
             for name in deps[:-1]:
                 recipe = get_recipe_from_name(name)
-                if not recipe.done:
-                    recipe(skip_deps=True)
-                else:
-                    print(f'Dependency {name} already done!')
+                for filename in recipe.creates:
+                    if not Path(filename).is_file() and \
+                       filename in self.requires:
+                        recipe(skip_deps=True)
 
         # Try to run this command
         try:
@@ -353,7 +353,8 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        params = copy.deepcopy(self.defparams)
+        params.update(dict(self.signature.bind(*args, **kwargs).arguments))
 
         # Read arguments from params.json if not already in params
         paramsettings = {}

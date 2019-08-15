@@ -38,6 +38,7 @@ def tofile(filename, contents):
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
+         dependencies=['asr.gs'],
          creates=creates,
          todict={'.pckl': todict})
 @option('-n', help='Supercell size')
@@ -87,17 +88,16 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
 
 
 def requires():
-    return creates() + ['results-asr.phonons.json']
+    return creates() + ['results-asr.phonons@calculate.json']
 
 
 @command('asr.phonons',
          requires=requires,
          dependencies=['asr.phonons@calculate'])
-@option('--modes', help='Return phonon modes')
-def main(modes=False):
+def main():
     from asr.utils import read_json
     from asr.utils import get_dimensionality
-    dct = read_json('results-asr.phonons.json')
+    dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
     nd = get_dimensionality()
@@ -110,13 +110,12 @@ def main(modes=False):
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read()
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
-    out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
-    if modes:
-        omega_kl, u_kl = out
-        return np.array(omega_kl), u_kl, q_qc
-    else:
-        omega_kl = out
-        return np.array(omega_kl), np.array(omega_kl), q_qc
+    out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
+    omega_kl, u_kl = out
+    results = {'omega_kl': omega_kl,
+               'u_kl': u_kl}
+
+    return results
 
 
 def plot_phonons(row, fname):

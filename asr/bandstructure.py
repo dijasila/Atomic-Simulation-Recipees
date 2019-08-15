@@ -745,9 +745,14 @@ def main():
     calc = GPAW('bs.gpw', txt=None)
     atoms = calc.atoms
     path = calc.parameters.kpts
-    path = BandPath(kpts=path['kpts'], cell=path['cell'],
-                    special_points=path['special_points'],
-                    path=path['labelseq'])
+    if 'kpts' in path:
+        # In this case path comes from a bandpath object
+        path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                        special_points=path['special_points'],
+                        path=path['labelseq'])
+    else:
+        path = calc.atoms.cell.bandpath(path=path['path'],
+                                        npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
     evac = get_evac()
 

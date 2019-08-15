@@ -79,10 +79,9 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        if not recipe.done:
-            continue
         panels = recipe.webpanel(row, key_descriptions)
-        page.extend(panels)
+        if panels:
+            page.extend(panels)
 
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]

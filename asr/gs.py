@@ -31,12 +31,11 @@ tests.append({'description': 'Test ground state of Si.',
          requires=['structure.json'],
          resources='8:10h',
          restart=1)
-@option('-a', '--atomfile', type=str, help='Atomic structure')
 @option('--ecut', type=float, help='Plane-wave cutoff')
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--xc', type=str, help='XC-functional')
 @option('--width', help='Fermi-Dirac smearing temperature')
-def calculate(atomfile='structure.json', ecut=800, xc='PBE',
+def calculate(ecut=800, xc='PBE',
               kptdensity=6.0, width=0.05):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
