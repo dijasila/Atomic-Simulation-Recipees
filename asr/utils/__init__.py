@@ -367,7 +367,7 @@ class ASRCommand:
                 # we don't use the ones from the param.json file
                 params[key] = value
 
-        print(f'Running {self.name}')
+        parprint(f'Running {self.name}')
 
         # Execute the wrapped function
         if self.pass_params:

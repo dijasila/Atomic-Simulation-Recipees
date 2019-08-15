@@ -130,6 +130,7 @@ def run(shell, dry_run, parallel, command, folders):
         else:
             command = f'{python} -m {module} ' + ' '.join(args)
 
+    command = command.strip()
     if folders:
         from asr.utils import chdir
 
