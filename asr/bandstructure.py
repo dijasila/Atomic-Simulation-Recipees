@@ -226,67 +226,6 @@ def spin_axis(fname='anisotropy_xy.npz') -> int:
         return 0
 
 
-def collect_data(atoms):
-    """Band structure PBE and GW +- SOC."""
-    import os.path as op
-    from pathlib import Path
-    import json
-    from asr.utils import read_json
-    kvp = {}
-    key_descriptions = {}
-    data = {}
-
-    if not op.isfile('results_bandstructure.json'):
-        return kvp, key_descriptions, data
-
-    import numpy as np
-    from asr.gs import get_evac
-    evac = get_evac()
-
-    bsdata = read_json('results_bandstructure.json')
-    soc = bsdata['bs_soc']
-    nosoc = bsdata['bs_nosoc']
-    eps_skn = nosoc['energies']
-    path = soc['path']
-    npoints = len(path.kpts)
-    s_mvk = np.array(soc.get('spin_mvk'))
-    if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
-    else:
-        sz_mk = s_mvk
-
-    assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
-
-    efermi = json.loads(Path('gap_soc.json').read_text())['efermi']
-    efermi_nosoc = json.loads(Path('gap.json').read_text())['efermi']
-
-    pbe = {
-        'path': path,
-        'eps_skn': eps_skn,
-        'efermi_nosoc': efermi_nosoc,
-        'efermi': efermi,
-        'eps_so_mk': soc['energies'],
-        'sz_mk': sz_mk,
-        'evac': evac or np.nan
-    }
-    try:
-        op_scc = data['op_scc']
-    except KeyError:
-        from gpaw.symmetry import atoms2symmetry
-        op_scc = atoms2symmetry(atoms).op_scc
-
-    from pathlib import Path
-    magstate = read_json('results_structureinfo.json')['magstate']
-
-    for idx, kpt in enumerate(path.kpts):
-        if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
-                or magstate == 'AFM'):
-            pbe['sz_mk'][:, idx] = 0.0
-
-    data['bs_pbe'] = pbe
-    return kvp, key_descriptions, data
-
-
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 4.8),
@@ -298,11 +237,11 @@ def bs_pbe_html(row,
     import numpy as np
 
     traces = []
-    d = row.data.bs_pbe
-    e_skn = d['eps_skn']
-    path = d['path']
+    d = row.data.get('results-asr.bandstructure.json')
+    e_skn = d['bs_nosoc']['energies']
+    path = d['bs_nosoc']['path']
     kpts = path.kpts
-    ef = d['efermi']
+    ef = d['bs_nosoc']['efermi']
     emin = row.get('vbm', ef) - 5
     emax = row.get('cbm', ef) + 5
     shape = e_skn.shape
@@ -321,12 +260,11 @@ def bs_pbe_html(row,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
 
-    d = row.data.bs_pbe
-    e_mk = d['eps_so_mk']
-    path = d['path']
+    e_mk = d['bs_soc']['energies']
+    path = d['bs_soc']['path']
     kpts = path.kpts
-    ef = d['efermi']
-    sz_mk = d['sz_mk']
+    ef = d['bs_soc']['efermi']
+    sz_mk = d['bs_soc']['sz_mk']
     emin = row.get('vbm', ef) - 5
     emax = row.get('cbm', ef) + 5
 
@@ -463,14 +401,14 @@ def add_bs_pbe(row, ax, **kwargs):
     c = '0.8'  # light grey for pbe with soc plot
     ls = '-'
     lw = kwargs.get('lw', 1.0)
-    d = row.data.bs_pbe
-    path = d['path']
-    e_mk = d['eps_so_mk']
+    d = row.data.get('results-asr.bandstructure.json')
+    path = d['bs_soc']['path']
+    e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k, color=c, ls=ls, lw=lw, zorder=-2)
     ax.lines[-1].set_label('PBE')
-    ef = d['efermi']
+    ef = d['bs_soc']['efermi']
     ax.axhline(ef, ls=':', zorder=0, color=c, lw=lw)
     return ax
 
@@ -532,19 +470,17 @@ def bs_pbe(row,
            show_legend=True,
            s=0.5):
 
-    if 'results-asr.bandstructure' not in row.data:
-        return
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
-    d = row.data.bs_pbe
-    e_skn = d['eps_skn']
+    d = row.data.get('results-asr.bandstructure.json')
+    e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-    path = d['path']
-    ef = d['efermi']
+    path = d['bs_nosoc']['path']
+    ef = d['bs_nosoc']['efermi']
     emin = row.get('vbm', ef) - 3 - ef
     emax = row.get('cbm', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
@@ -566,8 +502,8 @@ def bs_pbe(row,
         ylabel=r'$E$ [eV]',
         **nosoc_style)
     # pbe with soc
-    e_mk = d['eps_so_mk']
-    sz_mk = d['sz_mk']
+    e_mk = d['bs_soc']['energies']
+    sz_mk = d['bs_soc']['sz_mk']
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     sdir = row.get('spin_orientation', 'z')
     ax, cbar = plot_with_colors(
@@ -791,34 +727,74 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.bandstructure',
-         requires=['gs.gpw', 'bs.gpw'],
-         dependencies=['asr.bandstructure@calculate'],
+         requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
+                   'results-asr.structureinfo.json'],
+         dependencies=['asr.bandstructure@calculate', 'asr.gs',
+                       'asr.structureinfo'],
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
     from ase.dft.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
+    from asr.utils import read_json
+    import copy
+    import numpy as np
+    from asr.gs import get_evac
+
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
     calc = GPAW('bs.gpw', txt=None)
+    atoms = calc.atoms
     path = calc.parameters.kpts
     path = BandPath(kpts=path['kpts'], cell=path['cell'],
                     special_points=path['special_points'],
                     path=path['labelseq'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
+    evac = get_evac()
 
-    import copy
     results = {}
-    results['bs_nosoc'] = copy.deepcopy(bs.todict())
+    bsresults = bs.todict()
 
-    # stuff below could be moved to the collect script.
+    # Save vacuum level if it can be calculated
+    bsresults['evac'] = evac or None
+
+    # Save Fermi levels
+    gsresults = read_json('results-asr.gs.json')
+    efermi_nosoc = gsresults['gaps_nosoc']['efermi']
+    bsresults['efermi'] = efermi_nosoc
+
+    # We copy the bsresults dict because next we will add SOC
+    results['bs_nosoc'] = copy.deepcopy(bsresults)  # BS with no SOC
+
+    # Add spin orbit correction
+    bsresults = bs.todict()
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+    bsresults['energies'] = e_km.T
+    efermi = gsresults['gaps_soc']['efermi']
+    bsresults['efermi'] = efermi
 
-    data = bs.todict()
-    data['energies'] = e_km.T
-    data['spin_mvk'] = s_kvm.transpose(2, 1, 0)
+    # Get spin projections for coloring of bandstructure
+    path = bsresults['path']
+    npoints = len(path.kpts)
+    s_mvk = np.array(s_kvm.transpose(2, 1, 0))
+    if s_mvk.ndim == 3:
+        sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
+    else:
+        sz_mk = s_mvk
 
-    results['bs_soc'] = data
+    assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
+
+    from gpaw.symmetry import atoms2symmetry
+    op_scc = atoms2symmetry(atoms).op_scc
+
+    magstate = read_json('results-asr.structureinfo.json')['magstate']
+    for idx, kpt in enumerate(path.kpts):
+        if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
+                or magstate == 'AFM'):
+            sz_mk[:, idx] = 0.0
+
+    bsresults['sz_mk'] = sz_mk
+    results['bs_soc'] = bsresults
     return results
 
 

@@ -4,62 +4,9 @@ import numpy as np
 
 from ase.parallel import world
 from ase.io import read
-from ase.phonons import Phonons as ASEPhonons
+from ase.phonons import Phonons
 
 from asr.utils import command, option
-
-
-class Phonons(ASEPhonons):
-    def __init__(self, forces=None, Z_avv=None, eps_vv=None,
-                 refcell=None, m_inv_x=None, *args, **kwargs):
-        from ase.utils import opencew
-        import pickle
-        ASEPhonons.__init__(self, refcell=refcell,
-                            *args, **kwargs)
-        if forces:
-            for fbasename, f_av in forces.items():
-                fname = f'{fbasename}.pckl'
-                if not Path(fname).exists():
-                    fd = opencew(fname)
-                    if world.rank == 0:
-                        pickle.dump(f_av, fd, protocol=2)
-                        fd.close()
-        self.Z_avv = Z_avv
-        self.eps_vv = eps_vv
-        self.refcell = refcell
-        self.m_inv_x = m_inv_x
-        self.N_c = tuple(self.N_c)
-
-    def todict(self):
-        from ase.utils import pickleload
-        # It would be better to save the calculated forces
-        ASEPhonons.read(self)
-
-        dct = dict(atoms=np.arange(len(self.atoms)),  # Dummy atoms
-                   supercell=tuple(self.N_c),
-                   name=self.name,
-                   delta=self.delta,
-                   refcell=self.refcell,
-                   Z_avv=self.Z_avv,
-                   eps_vv=self.eps_vv,
-                   m_inv_x=self.m_inv_x)
-        forces = {}
-        for i, a in enumerate(self.indices):
-            for j, v in enumerate('xyz'):
-                # Atomic forces for a displacement of atom a in direction v
-                basename = '%s.%d%s' % (self.name, a, v)
-                fmname = basename + '-'
-                fpname = basename + '+'
-                fminus_av = pickleload(open(f'{fmname}.pckl', 'rb'))
-                fplus_av = pickleload(open(f'{fpname}.pckl', 'rb'))
-                forces[fmname] = fminus_av
-                forces[fpname] = fplus_av
-
-        feqname = f'{self.name}.eq'
-        feq_av = pickleload(open(f'{feqname}.pckl', 'rb'))
-        forces[feqname] = feq_av
-        dct['forces'] = forces
-        return dct
 
 
 def creates():
@@ -90,14 +37,15 @@ def tofile(filename, contents):
 
 
 @command('asr.phonons',
+         requires=['structure.json', 'gs.gpw'],
          creates=creates,
          todict=todict)
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
 @option('--kptdensity', help='Kpoint density')
 @option('--fconverge', help='Force convergence criterium')
-def main(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
-    """Calculate Phonons"""
+def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
+    """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
     # Remove empty files:
     if world.rank == 0:
@@ -134,28 +82,34 @@ def main(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     elif nd == 1:
         supercell = (n, 1, 1)
 
-    # Read existing forces from old calc
-    if Path('results_phonons.json').exists():
-        from asr.utils import read_json
-        forces = read_json('results_phonons.json')['phonons']['forces']
-    else:
-        forces = None
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell, forces=forces)
+    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
-    results = {'phonons': p.todict()}
-    return results
 
 
-def analyse(points=300, modes=False, q_qc=None):
+def requires():
+    return creates() + ['results-asr.phonons.json']
+
+
+@command('asr.phonons',
+         requires=requires,
+         dependencies=['asr.phonons@calculate'])
+@option('--modes', help='Return phonon modes')
+def main(modes=False):
     from asr.utils import read_json
-    dct = read_json('results_phonons.json')
+    from asr.utils import get_dimensionality
+    dct = read_json('results-asr.phonons.json')
     atoms = read('structure.json')
-    p = Phonons(**dct['phonons'])
-    p.atoms = atoms
+    n = dct['__params__']['n']
+    nd = get_dimensionality()
+    if nd == 3:
+        supercell = (n, n, n)
+    elif nd == 2:
+        supercell = (n, n, 1)
+    elif nd == 1:
+        supercell = (n, 1, 1)
+    p = Phonons(atoms=atoms, supercell=supercell)
     p.read()
-    if q_qc is None:
-        q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
-
+    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
     if modes:
         omega_kl, u_kl = out
