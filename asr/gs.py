@@ -42,8 +42,10 @@ def calculate(ecut=800, xc='PBE',
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
     for storing any derived quantities. See asr.gs@postprocessing for more
     information."""
+    import numpy as np
     from ase.io import read
     from asr.calculators import get_calculator
+
     atoms = read('structure.json')
 
     params = dict(
@@ -56,6 +58,12 @@ def calculate(ecut=800, xc='PBE',
         },
         occupations={'name': 'fermi-dirac', 'width': width},
         txt='gs.txt')
+
+    nd = np.sum(atoms.pbc)
+    if nd == 2:
+        assert not atoms.pbc[2], \
+            'The third unit cell axis should be aperiodic for a 2D material!'
+        params['poissonsolver'] = {'dipolelayer': 'xy'}
 
     calc = get_calculator()(**params)
 
@@ -71,15 +79,34 @@ def calculate(ecut=800, xc='PBE',
          dependencies=['asr.gs@calculate'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
+    import numpy as np
     from asr.calculators import get_calculator
 
+    # Just some quality control before we start
     calc = get_calculator()('gs.gpw', txt=None)
+    pbc = calc.atoms.pbc
+    ndim = np.sum(pbc)
+
+    if ndim == 2:
+        assert not pbc[2], \
+            'The third unit cell axis should be aperiodic for a 2D material!'
+        # For 2D materials we check that the calculater used a dipole
+        # correction if the material has an out-of-plane dipole
+
+        # Small hack
+        atoms = calc.atoms
+        atoms.calc = calc
+        evacdiffmin = 10e-3
+        if evacdiff(calc.atoms) > evacdiffmin:
+            assert calc.todict().get('poissonsolver', {}) == \
+                {'dipolelayer': 'xy'}, \
+                ('The ground state has a finite dipole moment along aperiodic '
+                 'axis but calculation was without dipole correction.')
+
+    # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
 
     results = {'forces': forces,
                'stresses': stresses,
@@ -92,6 +119,9 @@ def main():
 
     analysegs('gs.gpw', results)
 
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
     results['__setup_fingerprints__'] = fingerprint
 
     return results
@@ -117,8 +147,8 @@ def analysegs(gpw, results):
     results['gaps_soc'] = gaps(calc, gpw, soc=True)
 
     # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:  # dimensionality = 2
-        results['vacuumlevels'] = vacuumlevels(atoms, calc, gpw=gpw)
+    if int(np.sum(atoms.get_pbc())) == 2:
+        results['vacuumlevels'] = vacuumlevels(atoms, calc)
 
 
 # ----- gaps ----- #
@@ -214,7 +244,7 @@ def get_gap_info(soc, direct, calc, gpw):
 # ----- vacuumlevels ----- #
 
 
-def vacuumlevels(atoms, calc, gpw='gs.gpw', evacdiffmin=10e-3):
+def vacuumlevels(atoms, calc, n=8):
     """Get the vacuumlevels on both sides of a 2D material. Will
     do a dipole corrected dft calculation, if needed (Janus structures).
     Assumes the 2D material periodic directions are x and y.
@@ -231,54 +261,6 @@ def vacuumlevels(atoms, calc, gpw='gs.gpw', evacdiffmin=10e-3):
         thresshold in eV for doing a dipole moment corrected
         dft calculations if the predicted evac difference is less
         than this value don't do it
-    """
-    p = calc.todict()
-    if p.get('poissonsolver', {}) == {'dipolelayer': 'xy'}\
-       or abs(evacdiff(atoms)) < evacdiffmin:
-        atoms, calc = dipolecorrectedgs(gpw)
-
-    return calculate_evac(atoms, calc)
-
-
-def evacdiff(atoms):
-    """Calculate vacuum energy level difference from the dipole moment of
-    a slab assumed to be in the xy plane
-
-    Returns
-    -------
-    out: float
-        vacuum level difference in eV
-    """
-    import numpy as np
-    from ase.units import Bohr, Hartree
-
-    A = np.linalg.det(atoms.cell[:2, :2] / Bohr)
-    dipz = atoms.get_dipole_moment()[2] / Bohr
-    evacsplit = 4 * np.pi * dipz / A * Hartree
-
-    return evacsplit
-
-
-def dipolecorrectedgs(gpw='gs.gpw'):
-    """Do dipole corrected ground state calculation."""
-    from gpaw import GPAW
-
-    calc = GPAW(gpw, txt='dipcorrgs.txt')
-    calc.set(poissonsolver={'dipolelayer': 'xy'})
-    atoms = calc.get_atoms()
-    atoms.get_potential_energy()
-    atoms.get_forces()
-    atoms.get_stress()
-    calc.write('dipcorrgs.gpw')
-
-    return atoms, calc
-
-
-def calculate_evac(atoms, calc, n=8):
-    """Calculate the vacuumlevels on both sides of the 2D material.
-
-    Parameters
-    ----------
     n: int
         number of gridpoints away from the edge to evaluate the vac levels
     """
@@ -302,6 +284,25 @@ def calculate_evac(atoms, calc, n=8):
     return subresults
 
 
+def evacdiff(atoms):
+    """Calculate vacuum energy level difference from the dipole moment of
+    a slab assumed to be in the xy plane
+
+    Returns
+    -------
+    out: float
+        vacuum level difference in eV
+    """
+    import numpy as np
+    from ase.units import Bohr, Hartree
+
+    A = np.linalg.det(atoms.cell[:2, :2] / Bohr)
+    dipz = atoms.get_dipole_moment()[2] / Bohr
+    evacsplit = 4 * np.pi * dipz / A * Hartree
+
+    return evacsplit
+
+
 # ---------- Read/write ---------- #
 
 
@@ -309,7 +310,7 @@ def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
     from pathlib import Path
     from asr.utils import read_json
-    
+
     evac = None
     if Path('results_gs.json').is_file():
         results = read_json('results_gs.json')
@@ -336,7 +337,7 @@ def collect_data(atoms):
     kd['evac'] = ('Total energy (PBE)', '', 'eV')
 
     # ----- gaps ----- #
-    
+
     data_to_include = ['gap', 'vbm', 'cbm',
                        'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
     # What about description of non kvp data? XXX
