@@ -97,61 +97,82 @@ def run(shell, dry_run, parallel, command, folders):
     """
     import subprocess
     from pathlib import Path
+    from ase.parallel import parprint
 
-    python = 'python3'
     if parallel:
         assert not shell, \
             ('You cannot execute a shell command in parallel. '
              'Only supported for python modules.')
-        python = f'mpiexec -np {parallel} gpaw-python'
+        from gpaw.mpi import have_mpi
+        if not have_mpi:
+            cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
+            if dry_run:
+                cmd += ' --dry-run'
+            cmd += f' {command}'
+            if folders:
+                cmd += ' '.join(folders)
+
+            subprocess.run(cmd, shell=True, check=True)
 
     # Identify function that should be executed
-    if not shell:
-        # If not shell then we assume that the command is a call
-        # to a python module or a recipe
-        module, *args = command.split()
+    if shell:
+        command = command.strip()
+        if folders:
+            from asr.utils import chdir
 
-        function = None
-        if '@' in module:
-            module, function = module.split('@')
-
-        import importlib
-        try:
-            m = importlib.find_spec(module)
-        except (AttributeError, ImportError, ValueError):
-            m = None
-        finally:
-            if m is None:
-                module = f'asr.{module}'
-
-        if function:
-            command = (f'{python} -c "from {module} import {function}; '
-                       f'{function}.cli()" ') + ' '.join(args)
+            for folder in folders:
+                with chdir(Path(folder)):
+                    if dry_run:
+                        parprint(f'Would run "{command}" in {folder}')
+                    else:
+                        subprocess.run(command, shell=True)
         else:
-            command = f'{python} -m {module} ' + ' '.join(args)
+            if dry_run:
+                parprint(f'Would run "{command}"')
+            else:
+                subprocess.run(command, shell=True, check=True)
+        return
 
-    command = command.strip()
+    # If not shell then we assume that the command is a call
+    # to a python module or a recipe
+
+    module, *args = command.split()
+
+    function = None
+    if '@' in module:
+        module, function = module.split('@')
+
+    # Which kind of thing are we calling?
+    import importlib
+    try:
+        m = importlib.find_spec(module)
+    except (AttributeError, ImportError, ValueError):
+        m = None
+    finally:
+        if m is None:
+            module = f'asr.{module}'
+
+    mod = importlib.import_module(module)
+
+    if not function:
+        function = 'main'
+    assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
+
+    func = getattr(mod, function)
+
     if folders:
         from asr.utils import chdir
-
         for folder in folders:
             with chdir(Path(folder)):
                 if dry_run:
-                    print(f'Would run "{command}" in {folder}')
+                    parprint(f'Would run {module}@{function} in {folder}')
                 else:
-                    print(f'Running {command} in {folder}')
-                    subprocess.run(command, shell=True)
+                    func.cli(args=args)
     else:
         if dry_run:
-            print(f'Would run "{command}"')
+            parprint(f'Would run {module}@{function}')
         else:
-            print(f'Running command: {command}')
-            subprocess.run(command, shell=True, check=True)
-            # We only raise errors when check=True
-
-    if dry_run and folders:
-        nfolders = len(folders)
-        print(f'Total number of folder: {nfolders}')
+            func.cli(args=args)
 
 
 @cli.command()

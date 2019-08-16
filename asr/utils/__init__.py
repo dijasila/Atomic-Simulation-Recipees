@@ -194,6 +194,9 @@ class ASRCommand:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
 
+        # Setup the CLI
+        self.setup_cli()
+
     @property
     def requires(self):
         if self._requires:
@@ -240,7 +243,7 @@ class ASRCommand:
                 return False
         return True
 
-    def cli(self):
+    def setup_cli(self):
         # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -300,8 +303,11 @@ class ASRCommand:
             command = co('--skip-deps', is_flag=True, default=False,
                          help='Skip execution of dependencies')(command)
 
-        return command(standalone_mode=False,
-                       prog_name=f'asr run {self.name}')
+        self._cli = command
+
+    def cli(self, *args, **kwargs):
+        return self._cli(standalone_mode=False,
+                         prog_name=f'asr run {self.name}', *args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
@@ -367,7 +373,7 @@ class ASRCommand:
                 # we don't use the ones from the param.json file
                 params[key] = value
 
-        parprint(f'Running {self.name}')
+        parprint(f'Running {self.name} {params}')
 
         # Execute the wrapped function
         if self.pass_params:
