@@ -2,9 +2,6 @@ from asr.utils import command, option
 from pathlib import Path
 
 
-# ---------- Parameters ---------- #
-
-
 # Get some parameters from structure.json
 defaults = {}
 if Path('results_relax.json').exists():
@@ -57,6 +54,7 @@ def calculate(ecut=800, xc='PBE',
             'gamma': True
         },
         occupations={'name': 'fermi-dirac', 'width': width},
+        convergence={'bands': -3},
         txt='gs.txt')
 
     nd = np.sum(atoms.pbc)
@@ -127,9 +125,6 @@ def main():
     return results
 
 
-# ---------- Recipe methodology ---------- #
-
-
 def analysegs(gpw, results):
     """Analyse the computed ground state according to the class of materials,
     it belongs to."""
@@ -149,9 +144,6 @@ def analysegs(gpw, results):
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:
         results['vacuumlevels'] = vacuumlevels(atoms, calc)
-
-
-# ----- gaps ----- #
 
 
 def gaps(calc, gpw, soc=True):
@@ -241,9 +233,6 @@ def get_gap_info(soc, direct, calc, gpw):
     return x
 
 
-# ----- vacuumlevels ----- #
-
-
 def vacuumlevels(atoms, calc, n=8):
     """Get the vacuumlevels on both sides of a 2D material. Will
     do a dipole corrected dft calculation, if needed (Janus structures).
@@ -303,9 +292,6 @@ def evacdiff(atoms):
     return evacsplit
 
 
-# ---------- Read/write ---------- #
-
-
 def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
     from pathlib import Path
@@ -318,71 +304,6 @@ def get_evac():
             evac = results['vacuumlevels']['evacmean']
 
     return evac
-
-
-# ---------- Database and webpanel ---------- #
-
-
-# Old format
-def collect_data(atoms):
-    kvp = {}
-    kd = {}
-
-    from asr.utils import read_json
-    results = read_json('results_gs.json')
-
-    # ----- main ----- #
-
-    kvp['etot'] = results['etot']
-    kd['evac'] = ('Total energy (PBE)', '', 'eV')
-
-    # ----- gaps ----- #
-
-    data_to_include = ['gap', 'vbm', 'cbm',
-                       'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi']
-    # What about description of non kvp data? XXX
-    descs = [('Bandgap', 'Bandgap', 'eV'),
-             ('Valence Band Maximum', 'Maximum of valence band', 'eV'),
-             ('Conduction Band Minimum', 'Minimum of conduction band', 'eV'),
-             ('Direct Bandgap', 'Direct bandgap', 'eV'),
-             ('Valence Band Maximum - Direct',
-              'Valence Band Maximum - Direct', 'eV'),
-             ('Conduction Band Minimum - Direct',
-              'Conduction Band Minimum - Direct', 'eV'),
-             ('Fermi Level', "Fermi's level", 'eV')]
-
-    for soc in [True, False]:
-        socname = 'soc' if soc else 'nosoc'
-        keyname = f'gaps_{socname}'
-        subresults = results[keyname]
-
-        def namemod(n):
-            return n + '_soc' if soc else n
-
-        includes = [namemod(n) for n in data_to_include]
-
-        for k, inc in enumerate(includes):
-            val = subresults[data_to_include[k]]
-            if val is not None:
-                kvp[inc] = val
-                kd[inc] = descs[k]
-
-    # ----- vacuumlevels ----- #
-
-    if 'vacuumlevels' in results.keys():
-        subresults = results['vacuumlevels']
-        kvp['evac'] = subresults['evacmean']
-        kd['evac'] = ('Vaccum level (PBE)', '', 'eV')
-        kvp['evacdiff'] = subresults['evacdiff']
-        kd['evacdiff'] = ('Vacuum level difference (PBE)', '', 'eV')
-        kvp['dipz'] = subresults['dipz']
-        kd['dipz'] = ('Dipole moment', '', '|e|Ang')
-
-    # ------------------------ #
-
-    # Currently all kvp are returned both as kvp and data XXX
-    # Use results as data dict for now (change with new format) XXX
-    return kvp, kd, results
 
 
 def webpanel(row, key_descriptions):
