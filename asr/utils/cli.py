@@ -112,7 +112,7 @@ def run(shell, dry_run, parallel, command, folders):
             if folders:
                 cmd += ' '.join(folders)
 
-            subprocess.run(cmd, shell=True, check=True)
+            return subprocess.run(cmd, shell=True, check=True)
 
     # Identify function that should be executed
     if shell:
