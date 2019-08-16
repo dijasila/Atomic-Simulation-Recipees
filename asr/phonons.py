@@ -144,24 +144,6 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def collect_data(atoms):
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    try:
-        eigs2, freqs2, _ = analyse(atoms)
-        eigs3, freqs3, _ = analyse(atoms)
-    except (FileNotFoundError, EOFError):
-        return {}, {}, {}
-    kvp['minhessianeig'] = eigs3.min()
-    data['phonon_frequencies_2d'] = freqs2
-    data['phonon_frequencies_3d'] = freqs3
-    data['phonon_energies_2d'] = eigs2
-    data['phonon_energies_3d'] = eigs3
-
-    return kvp, key_descriptions, data
-
-
 def webpanel(row, key_descriptions):
     from asr.utils.custom import table, fig
     phonontable = table(row, 'Property',
