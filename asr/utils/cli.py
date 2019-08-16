@@ -157,7 +157,6 @@ def run(shell, dry_run, parallel, command, folders):
     if not function:
         function = 'main'
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
-
     func = getattr(mod, function)
 
     if folders:
@@ -167,12 +166,19 @@ def run(shell, dry_run, parallel, command, folders):
                 if dry_run:
                     parprint(f'Would run {module}@{function} in {folder}')
                 else:
-                    func.cli(args=args)
+                    try:
+                        parprint(f'In folder: {folder}')
+                        func.cli(args=args)
+                    except Exception as e:
+                        print(e)
     else:
         if dry_run:
             parprint(f'Would run {module}@{function}')
         else:
-            func.cli(args=args)
+            try:
+                func.cli(args=args)
+            except Exception as e:
+                print(e)
 
 
 @cli.command()
