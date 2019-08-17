@@ -17,13 +17,19 @@ def main(folders, selectrecipe=None, level=2, data=True):
     from ase.db import connect
     from ase.io import read
     from asr.utils import get_recipes, get_dep_tree
+    import glob
+
+    if not folders:
+        folders = ['.']
+    else:
+        tmpfolders = []
+        for folder in folders:
+            tmpfolders.extend(glob.glob(folder))
+        folders = tmpfolders
 
     # We use absolute path because of chdir below!
     dbname = os.path.join(os.getcwd(), 'database.db')
     db = connect(dbname)
-
-    if not folders:
-        folders = ['.']
 
     for i, folder in enumerate(folders):
         with chdir(folder):
