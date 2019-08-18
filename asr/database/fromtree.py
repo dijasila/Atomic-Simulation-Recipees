@@ -34,43 +34,46 @@ def main(folders, selectrecipe=None, level=2, data=True,
     dbname = os.path.join(os.getcwd(), 'database.db')
     db = connect(dbname)
 
-    for i, folder in enumerate(folders):
-        with chdir(folder):
-            print(folder, end=':\n')
-            kvp = {}
-            data = {}
-            key_descriptions = {}
+    from click import progressbar
 
-            if not Path(atomsname).is_file():
-                print(f'{folder} doesn\'t contain '
-                      f'{atomsname}. Skipping.')
-                continue
+    with progressbar(folders, label='Collecting to database.db') as bar:
+        for folder in bar:
+            with chdir(folder):
+                # print(folder, end=':\n')
+                kvp = {}
+                data = {}
+                key_descriptions = {}
 
-            atoms = read(atomsname)
-            if selectrecipe:
-                recipes = get_dep_tree(selectrecipe)
-            else:
-                recipes = get_recipes()
-
-            for recipe in recipes:
-                if not recipe.done:
+                if not Path(atomsname).is_file():
+                    # print(f'{folder} doesn\'t contain '
+                    #       f'{atomsname}. Skipping.')
                     continue
-                print(f'Collecting {recipe.name}')
-                tmpkvp, tmpkd, tmpdata = recipe.collect()
-                if tmpkvp or tmpkd or tmpdata:
-                    kvp.update(tmpkvp)
-                    data.update(tmpdata)
-                    key_descriptions.update(tmpkd)
 
-            if level > 1:
-                db.write(atoms, data=data, **kvp)
-            elif level > 0:
-                db.write(atoms, **kvp)
-            else:
-                db.write(atoms)
-            metadata = db.metadata
-            metadata.update({'key_descriptions': key_descriptions})
-            db.metadata = metadata
+                atoms = read(atomsname)
+                if selectrecipe:
+                    recipes = get_dep_tree(selectrecipe)
+                else:
+                    recipes = get_recipes()
+
+                for recipe in recipes:
+                    if not recipe.done:
+                        continue
+                    # print(f'Collecting {recipe.name}')
+                    tmpkvp, tmpkd, tmpdata = recipe.collect()
+                    if tmpkvp or tmpkd or tmpdata:
+                        kvp.update(tmpkvp)
+                        data.update(tmpdata)
+                        key_descriptions.update(tmpkd)
+
+                if level > 1:
+                    db.write(atoms, data=data, **kvp)
+                elif level > 0:
+                    db.write(atoms, **kvp)
+                else:
+                    db.write(atoms)
+                metadata = db.metadata
+                metadata.update({'key_descriptions': key_descriptions})
+                db.metadata = metadata
 
 
 tests = [
