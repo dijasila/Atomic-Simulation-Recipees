@@ -11,13 +11,16 @@ from asr.utils import command, option, argument, chdir
               '2: Collect atoms+kvp+data'))
 @option('--data/--nodata',
         help='Also add data objects to database')
-def main(folders, selectrecipe=None, level=2, data=True):
-    """Collect data from folder tree into database."""
+@option('--atomsname', help='File containing atomic structure.')
+def main(folders, selectrecipe=None, level=2, data=True,
+         atomsname='structure.json'):
+    """Collect ASR data from folder tree into an ASE database."""
     import os
     from ase.db import connect
     from ase.io import read
     from asr.utils import get_recipes, get_dep_tree
     import glob
+    from pathlib import Path
 
     if not folders:
         folders = ['.']
@@ -38,7 +41,12 @@ def main(folders, selectrecipe=None, level=2, data=True):
             data = {}
             key_descriptions = {}
 
-            atoms = read('structure.json')
+            if not Path(atomsname).is_file():
+                print(f'{folder} doesn\'t contain '
+                      f'{atomsname}. Skipping.')
+                continue
+
+            atoms = read(atomsname)
             if selectrecipe:
                 recipes = get_dep_tree(selectrecipe)
             else:
