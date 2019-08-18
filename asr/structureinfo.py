@@ -124,6 +124,7 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.structureinfo',
+         requires=['structure.json'],
          webpanel=webpanel)
 def main():
     """Get structural information of atomic structure.
