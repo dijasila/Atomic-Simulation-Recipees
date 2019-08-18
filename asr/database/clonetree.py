@@ -35,8 +35,13 @@ def main(source, destination, patterns, run=False, verbose=False,
     log: List[Tuple[Path, Path]] = []
     mkdir: List[Path] = []
     errors = []
-    srcdirs = list(source.glob('**/'))
-    with progressbar(srcdirs, label='Finding files and directories') as bar:
+
+    def item_show_func(item):
+        return str(item)
+
+    with progressbar(source.glob('**/'),
+                     label='Searching for files and folders',
+                     item_show_func=item_show_func) as bar:
         for srcdir in bar:
             destdir = destination / srcdir.relative_to(source)
             if not destdir.is_dir():
