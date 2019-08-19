@@ -48,9 +48,11 @@ def cli():
               help='Show what would happen without doing anything.')
 @click.option('-p', '--parallel', type=int, help='Run on NCORES.',
               metavar='NCORES')
+@click.option('-j', '--jobs', type=int,
+              help='Run COMMAND in serial on JOBS processes.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
-def run(shell, dry_run, parallel, command, folders):
+def run(shell, dry_run, parallel, command, folders, jobs):
     """Run recipe, python module or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
@@ -102,21 +104,23 @@ def run(shell, dry_run, parallel, command, folders):
     from ase.parallel import parprint
     from asr.utils import chdir
 
+    assert not parallel and jobs, '--parallel is incompatible with --jobs'
+
     if parallel:
         assert not shell, \
             ('You cannot execute a shell command in parallel. '
              'Only supported for python modules.')
+
+    if jobs or parallel:
+        ncores = jobs or parallel
         from gpaw.mpi import have_mpi
         if not have_mpi:
-            cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
+            cmd = f'mpiexec -np {ncores} gpaw-python -m asr run'
             if dry_run:
                 cmd += ' --dry-run'
             cmd += f' {command} '
             if folders:
                 cmd += ' '.join(folders)
-
-            print(cmd)
-            exit()
             return subprocess.run(cmd, shell=True, check=True)
 
     if not folders:
