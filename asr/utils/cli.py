@@ -107,6 +107,8 @@ def run(shell, dry_run, parallel, command, folders):
     else:
         parprint(f'Number of folders: {len(folders)}')
 
+    nfolders = len(folders)
+
     if parallel:
         assert not shell, \
             ('You cannot execute a shell command in parallel. '
@@ -127,7 +129,7 @@ def run(shell, dry_run, parallel, command, folders):
         command = command.strip()
         if dry_run:
             parprint(f'Would run shell command "{command}" '
-                     f'in {len(folders)} folders.')
+                     f'in {nfolders} folders.')
             return
 
         for folder in folders:
@@ -163,14 +165,16 @@ def run(shell, dry_run, parallel, command, folders):
 
     if dry_run:
         parprint(f'Would run {module}@{function} '
-                 f'in {len(folders)} folders.')
+                 f'in {nfolders} folders.')
         return
 
-    for folder in folders:
+    for i, folder in enumerate(folders):
         with chdir(Path(folder)):
             try:
-                parprint(f'In folder: {folder}')
+                parprint(f'In folder: {folder} ({i}/{nfolders})')
                 func.cli(args=args)
+            except click.Abort:
+                break
             except Exception as e:
                 print(e)
 
