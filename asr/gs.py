@@ -2,14 +2,6 @@ from asr.utils import command, option
 from pathlib import Path
 
 
-# Get some parameters from structure.json
-defaults = {}
-if Path('results_relax.json').exists():
-    from asr.utils import read_json
-    dct = read_json('results_relax.json')['__params__']
-    if 'ecut' in dct:
-        defaults['ecut'] = dct['ecut']
-
 tests = []
 tests.append({'description': 'Test ground state of Si.',
               'cli': ['asr run "setup.materials -s Si2"',
@@ -22,7 +14,6 @@ tests.append({'description': 'Test ground state of Si.',
 
 
 @command(module='asr.gs',
-         overwrite_defaults=defaults,
          creates=['gs.gpw'],
          tests=tests,
          requires=['structure.json'],
