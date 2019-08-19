@@ -23,7 +23,7 @@ def main(source, destination, patterns, run=False, verbose=False,
 
     print(f'Clone {source} to {destination}')
     if patterns:
-        string = ' ,'.join(patterns)
+        string = ', '.join(patterns)
         print(f'Patterns: {string}')
     
     source = Path(source)
