@@ -130,6 +130,13 @@ def run(shell, dry_run, parallel, command, folders, jobs):
 
     nfolders = len(folders)
 
+    if jobs:
+        from ase.parallel import world
+        rank = world.rank
+        myfolders = folders[rank::world.size]
+    else:
+        myfolders = folders
+
     # Identify function that should be executed
     if shell:
         command = command.strip()
@@ -138,7 +145,7 @@ def run(shell, dry_run, parallel, command, folders, jobs):
                      f'in {nfolders} folders.')
             return
 
-        for i, folder in enumerate(folders):
+        for i, folder in enumerate(myfolders):
             with chdir(Path(folder)):
                 parprint(f'Running {command} in {folder} ({i + 1}/{nfolders})')
                 subprocess.run(command, shell=True)
@@ -172,7 +179,7 @@ def run(shell, dry_run, parallel, command, folders, jobs):
                  f'in {nfolders} folders.')
         return
 
-    for i, folder in enumerate(folders):
+    for i, folder in enumerate(myfolders):
         with chdir(Path(folder)):
             try:
                 parprint(f'In folder: {folder} ({i + 1}/{nfolders})')
