@@ -102,13 +102,6 @@ def run(shell, dry_run, parallel, command, folders):
     from ase.parallel import parprint
     from asr.utils import chdir
 
-    if not folders:
-        folders = ['.']
-    else:
-        parprint(f'Number of folders: {len(folders)}')
-
-    nfolders = len(folders)
-
     if parallel:
         assert not shell, \
             ('You cannot execute a shell command in parallel. '
@@ -118,11 +111,20 @@ def run(shell, dry_run, parallel, command, folders):
             cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
             if dry_run:
                 cmd += ' --dry-run'
-            cmd += f' {command}'
+            cmd += f' {command} '
             if folders:
                 cmd += ' '.join(folders)
 
+            print(cmd)
+            exit()
             return subprocess.run(cmd, shell=True, check=True)
+
+    if not folders:
+        folders = ['.']
+    else:
+        parprint(f'Number of folders: {len(folders)}')
+
+    nfolders = len(folders)
 
     # Identify function that should be executed
     if shell:
@@ -132,16 +134,15 @@ def run(shell, dry_run, parallel, command, folders):
                      f'in {nfolders} folders.')
             return
 
-        for folder in folders:
+        for i, folder in enumerate(folders):
             with chdir(Path(folder)):
+                parprint(f'Running {command} in {folder} ({i + 1}/{nfolders})')
                 subprocess.run(command, shell=True)
         return
 
     # If not shell then we assume that the command is a call
     # to a python module or a recipe
-
     module, *args = command.split()
-
     function = None
     if '@' in module:
         module, function = module.split('@')
@@ -157,7 +158,6 @@ def run(shell, dry_run, parallel, command, folders):
             module = f'asr.{module}'
 
     mod = importlib.import_module(module)
-
     if not function:
         function = 'main'
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
@@ -171,7 +171,7 @@ def run(shell, dry_run, parallel, command, folders):
     for i, folder in enumerate(folders):
         with chdir(Path(folder)):
             try:
-                parprint(f'In folder: {folder} ({i}/{nfolders})')
+                parprint(f'In folder: {folder} ({i + 1}/{nfolders})')
                 func.cli(args=args)
             except click.Abort:
                 break
