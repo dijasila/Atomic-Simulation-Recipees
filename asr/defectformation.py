@@ -13,20 +13,21 @@ from asr.utils import command, option
 
 
 @command('asr.defectformation')
-@option('--pristine', type=str, default='../../pristine/gs.gpw',
+@option('--pristine', type=str,
         help='Relative path to ground state .gpw file of pristine host system '
              'on which formation energy calculation is based. Here, the '
              'reference folder is the one with the defects and vacancies '
              'in it, as it was created from setup.defects.')
-@option('--defect', type=str, default='gs.gpw',
+@option('--defect', type=str,
         help='Ground state .gpw file of disturbed system on which formation '
              'energy calculation is based.')
 @option('-q', '--chargestates', type=int,
-        help='Charge states included (-q, ..., +q).', default=3)
-@option('--is2d/--is3d', default=True, help='Specify wheter you calculate '
-                                            'the formation energy in 2D or '
-                                            '3D.')
-def main(pristine, defect, chargestates, is2d):
+        help='Charge states included (-q, ..., +q).')
+@option('--is2d/--is3d', help='Specify wheter you calculate '
+        'the formation energy in 2D or '
+        '3D.')
+def main(pristine='../../pristine/gs.gpw', defect='gs.gpw',
+         chargestates=3, is2d=True):
     """
     Calculate formation energy of defects.
 
