@@ -21,6 +21,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
     from asr.utils import get_recipes, get_dep_tree
     import glob
     from pathlib import Path
+    from asr.utils import md5sum
 
     if not folders:
         folders = ['.']
@@ -49,6 +50,8 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     #       f'{atomsname}. Skipping.')
                     continue
 
+                # The atomic structure uniquely defines the folder
+                kvp['asr_id'] = md5sum(atomsname)
                 atoms = read(atomsname)
                 if selectrecipe:
                     recipes = get_dep_tree(selectrecipe)
