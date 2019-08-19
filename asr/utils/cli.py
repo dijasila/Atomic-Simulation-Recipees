@@ -100,6 +100,12 @@ def run(shell, dry_run, parallel, command, folders):
     import subprocess
     from pathlib import Path
     from ase.parallel import parprint
+    from asr.utils import chdir
+
+    if not folders:
+        folders = ['.']
+    else:
+        parprint(f'Number of folders: {len(folders)}')
 
     if parallel:
         assert not shell, \
@@ -119,20 +125,14 @@ def run(shell, dry_run, parallel, command, folders):
     # Identify function that should be executed
     if shell:
         command = command.strip()
-        if folders:
-            from asr.utils import chdir
+        if dry_run:
+            parprint(f'Would run shell command "{command}" '
+                     f'in {len(folders)} folders.')
+            return
 
-            for folder in folders:
-                with chdir(Path(folder)):
-                    if dry_run:
-                        parprint(f'Would run "{command}" in {folder}')
-                    else:
-                        subprocess.run(command, shell=True)
-        else:
-            if dry_run:
-                parprint(f'Would run "{command}"')
-            else:
-                subprocess.run(command, shell=True, check=True)
+        for folder in folders:
+            with chdir(Path(folder)):
+                subprocess.run(command, shell=True)
         return
 
     # If not shell then we assume that the command is a call
@@ -161,23 +161,15 @@ def run(shell, dry_run, parallel, command, folders):
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
     func = getattr(mod, function)
 
-    if folders:
-        from asr.utils import chdir
-        for folder in folders:
-            with chdir(Path(folder)):
-                if dry_run:
-                    parprint(f'Would run {module}@{function} in {folder}')
-                else:
-                    try:
-                        parprint(f'In folder: {folder}')
-                        func.cli(args=args)
-                    except Exception as e:
-                        print(e)
-    else:
-        if dry_run:
-            parprint(f'Would run {module}@{function}')
-        else:
+    if dry_run:
+        parprint(f'Would run {module}@{function} '
+                 f'in {len(folders)} folders.')
+        return
+
+    for folder in folders:
+        with chdir(Path(folder)):
             try:
+                parprint(f'In folder: {folder}')
                 func.cli(args=args)
             except Exception as e:
                 print(e)
