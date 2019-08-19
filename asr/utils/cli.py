@@ -56,43 +56,43 @@ def run(shell, dry_run, parallel, command, folders):
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
 
-    To run a shell script use the syntax "asr run shell echo Hello!".
+    To run a shell script use the syntax 'asr run --shell "echo Hello!"'.
     This example would run "echo Hello!" in the current folder.
 
-    Provide extra arguments to the recipe using "asr run recipe --arg1
-    --arg2".
+    Provide extra arguments to the recipe using 'asr run "recipe --arg1
+    --arg2"'.
 
-    Run a recipe in parallel using "asr run -p NCORES recipe --arg1".
+    Run a recipe in parallel using 'asr run -p NCORES "recipe --arg1"'.
 
-    Run command in multiple using "asr run recipe in folder1/ folder2/".
+    Run command in multiple folders using "asr run recipe folder1/ folder2/".
     This is also compatible with input arguments to the current command
-    through "asr run recipe --arg1 in folder1/ folder2/". Here the
-    special keyword "in" serves as the divider between arguments and
-    folders.
+    through 'asr run "recipe --arg1" folder1/ folder2/'.
 
     If you dont actually wan't to run the command, i.e., if it is a
-    dangerous command, then use the "asr run dry ..." syntax where ...
-    could be any of the above commands. For example,
-    "asr run dry shell echo Hello! in */" would run "echo Hello!" in all
-    folders of the current directory.
+    dangerous command, then use the "asr run --dry-run ..." syntax
+    where ... could be any of the above commands. For example,
+    'asr run --dry-run --shell "echo Hello!" */' would run "echo Hello!"
+    in all folders of the current directory.
 
     Examples:
 
     \b
     Run the relax recipe:
         asr run relax
+    Run the calculate function in the gs module
+        asr run gs@calculate
     Specify an argument:
-        asr run relax --ecut 600
+        asr run "relax --ecut 600"
     Run a recipe in parallel with an argument:
-        asr run -p 2 relax --ecut 600
+        asr run -p 2 "relax --ecut 600"
     Run relax recipe in two folders sequentially:
-        asr run relax in folder1/ folder2/
+        asr run relax folder1/ folder2/
     Run a shell command in this folder:
-        asr run shell ase convert gs.gpw structure.json
+        asr run --shell "ase convert gs.gpw structure.json"
     Run a shell command in "folder1/":
-        asr run shell ase convert gs.gpw structure.json in folder1/
+        asr run --shell "ase convert gs.gpw structure.json" folder1/
     Don't actually do anything just show what would be done
-        asr run dry shell mv str1.json str2.json in folder1/ folder2/
+        asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
 
     """
     import subprocess
