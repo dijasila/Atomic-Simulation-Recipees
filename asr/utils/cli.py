@@ -79,8 +79,10 @@ def run(shell, dry_run, parallel, command, folders):
     \b
     Run the relax recipe:
         asr run relax
-    Run the calculate function in the gs module
+    Run the calculate function in the gs module:
         asr run gs@calculate
+    Get help for a recipe:
+        asr run "relax -h"
     Specify an argument:
         asr run "relax --ecut 600"
     Run a recipe in parallel with an argument:
