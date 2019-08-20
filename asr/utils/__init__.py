@@ -252,33 +252,6 @@ class ASRCommand:
 
         help = self._main.__doc__ or ''
 
-        add_info = ''
-
-        if self.save_results_file:
-            add_info += ('Results stored in: '
-                         f'results-{self.name}.json\n')
-
-        if self.creates:
-            add_info += f'Creates files: {self.creates}\n'
-
-        if self.dependencies:
-            add_info += f'Dependencies: {self.dependencies}\n'
-
-        if self.resources:
-            add_info += f'Resources: {self.resources}\n'
-
-        if self.diskspace:
-            add_info += f'Diskspace: {self.diskspace}\n'
-
-        if self.diskspace:
-            add_info += f'Diskspace: {self.diskspace}\n'
-
-        if self.restart:
-            add_info += f'Number restarts allowed: {self.restart}\n'
-
-        if add_info:
-            help += '\n\nASR metadata:\n\n\b\n' + add_info
-            
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
 
