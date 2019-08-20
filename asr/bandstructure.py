@@ -6,7 +6,8 @@ tests.append({'description': 'Test band structure of Si.',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.gs@calculate:ecut 200 '
+                      'asr.gs@calculate:kptdensity 2.0 '
                       'asr.bandstructure:npoints 50 '
                       'asr.bandstructure:emptybands 5"',
                       'asr run bandstructure',
@@ -17,7 +18,8 @@ tests.append({'description': 'Test band structure of 2D-BN.',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs:ecut 300 asr.gs:kptdensity 2.0 '
+                      'asr.gs@calculate:ecut 300 '
+                      'asr.gs@calculate:kptdensity 2.0 '
                       'asr.bandstructure:npoints 50 '
                       'asr.bandstructure:emptybands 5"',
                       'asr run bandstructure',

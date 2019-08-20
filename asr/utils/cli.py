@@ -50,14 +50,14 @@ def cli():
               metavar='NCORES')
 @click.option('-j', '--jobs', type=int,
               help='Run COMMAND in serial on JOBS processes.')
-@click.option('-e', '--expand-wildcards', is_flag=True,
-              help='Expand wildcards.')
 @click.option('-s', '--skip-if-done', is_flag=True,
               help='Skip execution of recipe if done.')
+@click.option('--dont-raise', is_flag=True, default=False,
+              help='Continue to next folder when encountering error.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
 def run(shell, dry_run, parallel, command, folders, jobs,
-        expand_wildcards, skip_if_done):
+        skip_if_done, dont_raise):
     """Run recipe, python module or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
@@ -126,10 +126,10 @@ def run(shell, dry_run, parallel, command, folders, jobs,
             cmd = f'mpiexec -np {ncores} gpaw-python -m asr run'
             if dry_run:
                 cmd += ' --dry-run'
-            if expand_wildcards:
-                cmd += ' --expand-wildcards'
             if jobs:
                 cmd += f' --jobs {ncores}'
+            if dont_raise:
+                cmd += ' --dont-raise'
             cmd += f' {command}" '
             if folders:
                 cmd += ' '.join(folders)
@@ -139,10 +139,6 @@ def run(shell, dry_run, parallel, command, folders, jobs,
     if not folders:
         folders = ['.']
     else:
-        if expand_wildcards:
-            import glob
-            tmpfolders = [f for folder in folders for f in glob.glob(folder)]
-            folders = tmpfolders
         prt(f'Number of folders: {len(folders)}')
 
     nfolders = len(folders)
@@ -154,15 +150,15 @@ def run(shell, dry_run, parallel, command, folders, jobs,
             myfolders = folders[job::jobs]
             if skip_if_done:
                 cmd += ' --skip-if-done'
+            if dont_raise:
+                cmd += ' --dont-raise'
             if shell:
                 cmd += ' --shell'
             if dry_run:
                 cmd += ' --dry-run'
-            if expand_wildcards:
-                cmd += ' --expand-wildcards'
             cmd += f' "{command}" '
             cmd += ' '.join(myfolders)
-            p = subprocess.Popen(cmd, shell=True)
+            subprocess.Popen(cmd, shell=True)
         return
 
     # Identify function that should be executed
@@ -217,7 +213,10 @@ def run(shell, dry_run, parallel, command, folders, jobs,
             except click.Abort:
                 break
             except Exception as e:
-                prt(e)
+                if not dont_raise:
+                    raise
+                else:
+                    prt(e)
 
 
 @cli.command()
