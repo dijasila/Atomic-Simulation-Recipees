@@ -50,9 +50,14 @@ def cli():
               metavar='NCORES')
 @click.option('-j', '--jobs', type=int,
               help='Run COMMAND in serial on JOBS processes.')
+@click.option('-e', '--expand-wildcards', is_flag=True,
+              help='Expand wildcards.')
+@click.option('-s', '--skip-if-done', is_flag=True,
+              help='Skip execution of recipe if done.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
-def run(shell, dry_run, parallel, command, folders, jobs):
+def run(shell, dry_run, parallel, command, folders, jobs,
+        expand_wildcards, skip_if_done):
     """Run recipe, python module or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
@@ -103,51 +108,74 @@ def run(shell, dry_run, parallel, command, folders, jobs):
     from pathlib import Path
     from ase.parallel import parprint
     from asr.utils import chdir
+    from functools import partial
 
-    assert not parallel and jobs, '--parallel is incompatible with --jobs'
+    assert not (parallel and jobs), '--parallel is incompatible with --jobs'
+
+    prt = partial(parprint, flush=True)
 
     if parallel:
         assert not shell, \
             ('You cannot execute a shell command in parallel. '
              'Only supported for python modules.')
 
-    if jobs or parallel:
+    if parallel:
         ncores = jobs or parallel
         from gpaw.mpi import have_mpi
         if not have_mpi:
             cmd = f'mpiexec -np {ncores} gpaw-python -m asr run'
             if dry_run:
                 cmd += ' --dry-run'
-            cmd += f' {command} '
+            if expand_wildcards:
+                cmd += ' --expand-wildcards'
+            if jobs:
+                cmd += f' --jobs {ncores}'
+            cmd += f' {command}" '
             if folders:
                 cmd += ' '.join(folders)
-            return subprocess.run(cmd, shell=True, check=True)
+            return subprocess.run(cmd, shell=True,
+                                  check=True)
 
     if not folders:
         folders = ['.']
     else:
-        parprint(f'Number of folders: {len(folders)}')
+        if expand_wildcards:
+            import glob
+            tmpfolders = [f for folder in folders for f in glob.glob(folder)]
+            folders = tmpfolders
+        prt(f'Number of folders: {len(folders)}')
 
     nfolders = len(folders)
 
     if jobs:
-        from ase.parallel import world
-        rank = world.rank
-        myfolders = folders[rank::world.size]
-    else:
-        myfolders = folders
+        assert jobs <= nfolders, 'Too many jobs and too few folders!'
+        for job in range(jobs):
+            cmd = 'asr run'
+            myfolders = folders[job::jobs]
+            if skip_if_done:
+                cmd += ' --skip-if-done'
+            if shell:
+                cmd += ' --shell'
+            if dry_run:
+                cmd += ' --dry-run'
+            if expand_wildcards:
+                cmd += ' --expand-wildcards'
+            cmd += f' "{command}" '
+            cmd += ' '.join(myfolders)
+            p = subprocess.Popen(cmd, shell=True)
+        return
 
     # Identify function that should be executed
     if shell:
         command = command.strip()
         if dry_run:
-            parprint(f'Would run shell command "{command}" '
-                     f'in {nfolders} folders.')
+            prt(f'Would run shell command "{command}" '
+                f'in {nfolders} folders.')
             return
 
-        for i, folder in enumerate(myfolders):
+        for i, folder in enumerate(folders):
             with chdir(Path(folder)):
-                parprint(f'Running {command} in {folder} ({i + 1}/{nfolders})')
+                prt(f'Running {command} in {folder} ({i + 1}/{nfolders})')
                 subprocess.run(command, shell=True)
         return
 
@@ -175,19 +203,21 @@ def run(shell, dry_run, parallel, command, folders, jobs):
     func = getattr(mod, function)
 
     if dry_run:
-        parprint(f'Would run {module}@{function} '
-                 f'in {nfolders} folders.')
+        prt(f'Would run {module}@{function} '
+            f'in {nfolders} folders.')
         return
 
-    for i, folder in enumerate(myfolders):
+    for i, folder in enumerate(folders):
         with chdir(Path(folder)):
             try:
-                parprint(f'In folder: {folder} ({i + 1}/{nfolders})')
+                if skip_if_done and func.done:
+                    continue
+                prt(f'In folder: {folder} ({i + 1}/{nfolders})')
                 func.cli(args=args)
             except click.Abort:
                 break
             except Exception as e:
-                print(e)
+                prt(e)
 
 
 @cli.command()
