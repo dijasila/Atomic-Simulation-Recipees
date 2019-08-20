@@ -198,6 +198,14 @@ class ASRCommand:
         self.setup_cli()
 
     @property
+    def state(self):
+        """The state of tests of this recipe.
+        Currently only supports 'tested' and 'untested'"""
+        if not self.tests:
+            return 'untested'
+        return 'tested'
+
+    @property
     def requires(self):
         if self._requires:
             if callable(self._requires):
