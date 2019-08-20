@@ -8,8 +8,8 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr run "setup.params '
                       'asr.gs@calculate:ecut 200 '
                       'asr.gs@calculate:kptdensity 2.0 '
-                      'asr.bandstructure:npoints 50 '
-                      'asr.bandstructure:emptybands 5"',
+                      'asr.bandstructure@calculate:npoints 50 '
+                      'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
@@ -20,8 +20,8 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr run "setup.params '
                       'asr.gs@calculate:ecut 300 '
                       'asr.gs@calculate:kptdensity 2.0 '
-                      'asr.bandstructure:npoints 50 '
-                      'asr.bandstructure:emptybands 5"',
+                      'asr.bandstructure@calculate:npoints 50 '
+                      'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
