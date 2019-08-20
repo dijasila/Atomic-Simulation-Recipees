@@ -585,9 +585,9 @@ def webpanel(row, key_descriptions):
                 kd=key_descriptions_noxc)
 
     panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[fig('pbe-bs.png', link='pbe-bs.html'),
-                          fig('bz.png')],
-                         [fig('pbe-pdos.png', link='empty'), pbe]],
+             'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
+                         # fig('pbe-pdos.png', link='empty'),
+                         [fig('bz.png'), pbe]],
              'plot_descriptions': [{'function': bz_soc,
                                     'filenames': ['bz.png']},
                                    {'function': bs_pbe,
