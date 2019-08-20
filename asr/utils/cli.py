@@ -23,7 +23,7 @@ def format(content, indent=0, title=None, pad=2):
     for row in content:
         out = ' ' * indent
         if isinstance(row, str):
-            output += f'\n{row}'
+            output += f'{row}'
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
@@ -223,26 +223,35 @@ def run(shell, dry_run, parallel, command, folders, jobs,
 @cli.command()
 @click.argument('search', required=False)
 def list(search):
-    """Search for recipes.
+    """List and search for recipes.
 
-    If SEARCH is specified then only list recipes containing SEARCH."""
+    If SEARCH is specified: list only recipes containing SEARCH in their
+    description."""
     from asr.utils import get_recipes
     recipes = get_recipes()
-    panel = [['Recipe', 'Description'],
-             ['------', '-----------']]
+    recipes.sort(key=lambda x: x.name)
+    panel = [['Name', 'Description'],
+             ['----', '-----------']]
 
-    for recipe in recipes:
-        longhelp = recipe._main.__doc__
-        if not longhelp:
-            longhelp = ''
+    for state in ['tested', 'untested']:
+        for recipe in recipes:
+            if not recipe.state == state.strip():
+                continue
+            longhelp = recipe._main.__doc__
+            if not longhelp:
+                longhelp = ''
 
-        shorthelp, *_ = longhelp.split('\n')
+            shorthelp, *_ = longhelp.split('\n')
 
-        if search and (search not in longhelp and
-                       search not in recipe.name):
-            continue
-        status = [recipe.name[4:], shorthelp]
-        panel += [status]
+            if state == 'untested':
+                shorthelp = '(Untested) ' + shorthelp
+            if search and (search not in longhelp and
+                           search not in recipe.name):
+                continue
+            status = [recipe.name[4:], shorthelp]
+            panel += [status]
+        panel += ['\n']
+
     print(format(panel))
 
 
