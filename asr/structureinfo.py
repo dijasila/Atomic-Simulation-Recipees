@@ -124,7 +124,18 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+tests = [{'description': 'Test SI.',
+          'cli': ['asr run "setup.materials -s Si2"',
+                  'ase convert materials.json structure.json',
+                  'asr run "setup.params asr.gs@calculate:ecut 300 '
+                  'asr.gs@calculate:kptdensity 2"',
+                  'asr run structureinfo'
+                  'asr run database.fromtree',
+                  'asr run "browser --only-figures"']}]
+
+
 @command('asr.structureinfo',
+         tests=tests,
          requires=['structure.json'],
          webpanel=webpanel)
 def main():
