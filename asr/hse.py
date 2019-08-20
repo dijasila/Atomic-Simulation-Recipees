@@ -142,7 +142,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     """
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
-    results_hse = read_json('results_hse.json')
+    results_hse = read_json('results-asr.hse.json')
     data = results_hse['hse_eigenvalues']
     e_skn = data['e_hse_skn']
     e_skn.sort(axis=2)
