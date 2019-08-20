@@ -2,20 +2,19 @@ from asr.utils import command, option
 from pathlib import Path
 
 
-tests = []
-tests.append({'description': 'Test ground state of Si.',
+calctests = [{'description': 'Test ground state of Si.',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params asr.gs@calculate:ecut 300 '
                       'asr.gs@calculate:kptdensity 2"',
-                      'asr run gs',
+                      'asr run gs@calculate',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "browser --only-figures"']}]
 
 
 @command(module='asr.gs',
          creates=['gs.gpw'],
-         tests=tests,
+         tests=calctests,
          requires=['structure.json'],
          resources='8:10h',
          restart=1)
@@ -63,8 +62,19 @@ def calculate(ecut=800, xc='PBE',
     atoms.calc.write('gs.gpw')
 
 
+tests = [{'description': 'Test ground state of Si.',
+          'cli': ['asr run "setup.materials -s Si2"',
+                  'ase convert materials.json structure.json',
+                  'asr run "setup.params asr.gs@calculate:ecut 300 '
+                  'asr.gs@calculate:kptdensity 2"',
+                  'asr run gs',
+                  'asr run database.fromtree',
+                  'asr run "browser --only-figures"']}]
+
+
 @command(module='asr.gs',
          requires=['gs.gpw'],
+         tests=tests,
          dependencies=['asr.gs@calculate'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
