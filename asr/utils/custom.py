@@ -81,9 +81,9 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
             continue
         if not recipe.done:
             continue
-        print(recipe.name)
         panels = recipe.webpanel(row, key_descriptions)
-        page.extend(panels)
+        if panels:
+            page.extend(panels)
 
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
@@ -97,8 +97,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
     for panel in page:
-        plot_descriptions = panel.get('plot_descriptions', [])
-        plot_descriptions.extend(plot_descriptions)
+        plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
     missing = set()  # missing figures
