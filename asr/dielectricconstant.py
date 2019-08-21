@@ -4,16 +4,16 @@ from click import Choice
 
 @command('asr.dielectricconstant')
 @option(
-    '--gs', default='gs.gpw', help='Ground state on which response is based')
-@option('--kptdensity', default=20.0, help='K-point density')
-@option('--ecut', default=50.0, help='Plane wave cutoff')
-@option('--xc', default='RPA', help='XC interaction',
+    '--gs', help='Ground state on which response is based')
+@option('--kptdensity', help='K-point density')
+@option('--ecut', help='Plane wave cutoff')
+@option('--xc', help='XC interaction',
         type=Choice(['RPA', 'ALDA']))
-@option('--bandfactor', default=5, type=int,
+@option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 # @option('--low_freq/--high_freq', default=True,
 #         help='Specify which frequency limit to apply')
-def main(gs, kptdensity, ecut, xc, bandfactor):
+def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     """Calculate static dielectric constant.
 
     This recipe calculates to low-frequency (relaxed-ion) dielectric constant
