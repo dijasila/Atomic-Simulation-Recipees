@@ -419,7 +419,7 @@ def bs_pbe(row,
     x0 = xlim[1] * 0.01
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef),
+        xy=(x0, ef - reference),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
