@@ -109,14 +109,23 @@ def bs_pbe_html(row,
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
-    e_skn = d['bs_nosoc']['energies']
+
     path = d['bs_nosoc']['path']
     kpts = path.kpts
     ef = d['bs_nosoc']['efermi']
-    emin = row.get('vbm', ef) - 5
-    emax = row.get('cbm', ef) + 5
-    shape = e_skn.shape
 
+    if row.get('evac') is not None:
+        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
+        reference = row.get('evac')
+    else:
+        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
+        reference = ef
+
+    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    emin = gaps.get('vbm', ef) - 3
+    emax = gaps.get('cbm', ef) + 3
+    e_skn = d['bs_nosoc']['energies']
+    shape = e_skn.shape
     from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
@@ -124,7 +133,7 @@ def bs_pbe_html(row,
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_kn.T.ravel(),
+        y=e_kn.T.ravel() - reference,
         mode='markers',
         name='PBE no SOC',
         showlegend=True,
@@ -136,8 +145,6 @@ def bs_pbe_html(row,
     kpts = path.kpts
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
-    emin = row.get('vbm', ef) - 5
-    emax = row.get('cbm', ef) + 5
 
     from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
@@ -154,7 +161,7 @@ def bs_pbe_html(row,
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_mk.ravel(),
+        y=e_mk.ravel() - reference,
         mode='markers',
         name='PBE',
         showlegend=True,
@@ -173,7 +180,7 @@ def bs_pbe_html(row,
 
     linetrace = go.Scatter(
         x=[np.min(xcoords), np.max(xcoords)],
-        y=[ef, ef],
+        y=[ef - reference, ef - reference],
         mode='lines',
         line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
         name='Fermi level')
@@ -208,8 +215,8 @@ def bs_pbe_html(row,
     )
 
     bandyaxis = go.layout.YAxis(
-        title="<i>E</i> [eV]",
-        range=[emin, emax],
+        title=label,
+        range=[emin - reference, emax - reference],
         showgrid=True,
         showline=True,
         zeroline=False,
@@ -347,15 +354,26 @@ def bs_pbe(row,
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
+
+    path = d['bs_nosoc']['path']
+    ef = d['bs_nosoc']['efermi']
+    gaps = row.data.get('gaps_nosoc', {})
+    if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+        reference = row.get('evac')
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+        reference = ef
+
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-    path = d['bs_nosoc']['path']
-    ef = d['bs_nosoc']['efermi']
-    emin = row.get('vbm', ef) - 3 - ef
-    emax = row.get('cbm', ef) + 3 - ef
+
+    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    emin = gaps.get('vbm', ef) - 3
+    emax = gaps.get('cbm', ef) + 3
     mpl.rcParams['font.size'] = fontsize
-    bs = BandStructure(path, e_kn, ef)
+    bs = BandStructure(path, e_kn - reference, ef - reference)
     # pbe without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
@@ -368,9 +386,9 @@ def bs_pbe(row,
     bsp.plot(
         ax=ax,
         show=False,
-        emin=emin,
-        emax=emax,
-        ylabel=r'$E$ [eV]',
+        emin=emin - reference,
+        emax=emax - reference,
+        ylabel=label,
         **nosoc_style)
     # pbe with soc
     e_mk = d['bs_soc']['energies']
@@ -380,12 +398,12 @@ def bs_pbe(row,
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
-        energies=e_mk,
+        energies=e_mk - reference,
         colors=sz_mk,
         filename=filename,
         show=False,
-        emin=emin,
-        emax=emax,
+        emin=emin - reference,
+        emax=emax - reference,
         sortcolors=True,
         loc='upper right',
         clabel=r'$\langle S_{} \rangle $'.format(sdir),
@@ -610,7 +628,6 @@ def main():
     from asr.utils import read_json
     import copy
     import numpy as np
-    from asr.gs import get_evac
     from asr.utils.gpw2eigs import gpw2eigs
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
@@ -626,13 +643,9 @@ def main():
         path = calc.atoms.cell.bandpath(path=path['path'],
                                         npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
-    evac = get_evac()
 
     results = {}
     bsresults = bs.todict()
-
-    # Save vacuum level if it can be calculated
-    bsresults['evac'] = evac or None
 
     # Save Fermi levels
     gsresults = read_json('results-asr.gs.json')
@@ -673,6 +686,7 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
     results['bs_soc'] = bsresults
+
     return results
 
 

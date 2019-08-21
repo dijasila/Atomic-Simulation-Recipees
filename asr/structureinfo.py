@@ -191,8 +191,6 @@ def main():
             cell_cv,
             tolerance=tol,
             symmorphic=False,
-            rotate_aperiodic_directions=True,
-            translate_aperiodic_directions=True,
             time_reversal=True)
         coarsesymmetry.analyze(a.get_scaled_positions())
         return (coarsesymmetry.op_scc, coarsesymmetry.ft_sc)

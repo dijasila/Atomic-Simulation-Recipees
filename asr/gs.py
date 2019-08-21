@@ -114,7 +114,8 @@ def main():
                '__key_descriptions__':
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'KVP: Total energy (En.) [eV]'}}
+                'etot': 'KVP: Total energy (En.) [eV]',
+                'evac': 'KVP: Vacuum level (Vacuum level) [eV]'}}
 
     analysegs('gs.gpw', results)
 
@@ -144,7 +145,10 @@ def analysegs(gpw, results):
 
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:
-        results['vacuumlevels'] = vacuumlevels(atoms, calc)
+        vac = vacuumlevels(atoms, calc)
+        results['vacuumlevels'] = vac
+        results['evac'] = vac['evacmean']
+        results['evacdiff'] = vac['evacdiff']
 
 
 def gaps(calc, gpw, soc=True):
@@ -299,8 +303,8 @@ def get_evac():
     from asr.utils import read_json
 
     evac = None
-    if Path('results_gs.json').is_file():
-        results = read_json('results_gs.json')
+    if Path('results-asr.gs.json').is_file():
+        results = read_json('results-asr.gs.json')
         if 'vacuumlevels' in results.keys():
             evac = results['vacuumlevels']['evacmean']
 
