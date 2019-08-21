@@ -4,45 +4,49 @@ import numpy as np
 
 from ase.parallel import world
 from ase.io import read
-from ase.phonons import Phonons as ASEPhonons
+from ase.phonons import Phonons
 
 from asr.utils import command, option
 
 
-class Phonons(ASEPhonons):
-    def __init__(self, C_N=None, D_N=None, Z_avv=None, eps_vv=None,
-                 refcell=None, m_inv_x=None, *args, **kwargs):
-        ASEPhonons.__init__(self, refcell=refcell,
-                            *args, **kwargs)
-        self.C_N = C_N
-        self.D_N = D_N
-        self.Z_avv = Z_avv
-        self.eps_vv = eps_vv
-        self.refcell = refcell
-        self.m_inv_x = m_inv_x
-
-    def todict(self):
-        # It would be better to save the calculated forces
-        ASEPhonons.read(self)
-        dct = dict(atoms=np.arange(len(self.atoms)),  # Dummy atoms
-                   supercell=self.N_c,
-                   name=self.name,
-                   delta=self.delta,
-                   refcell=self.refcell,
-                   C_N=self.C_N,
-                   D_N=self.D_N,
-                   Z_avv=self.Z_avv,
-                   eps_vv=self.eps_vv,
-                   m_inv_x=self.m_inv_x)
-        return dct
+def creates():
+    atoms = read('structure.json')
+    natoms = len(atoms)
+    filenames = []
+    for a in range(natoms):
+        for v in 'xyz':
+            for pm in '+-':
+                # Atomic forces for a displacement of atom a in direction v
+                filenames.append(f'phonon.{a}{v}{pm}.pckl')
+    return filenames
 
 
-@command('asr.phonons')
+def todict(filename):
+    from ase.utils import pickleload
+    return {'contents': pickleload(open(filename, 'rb')),
+            'write': 'asr.phonons@tofile'}
+
+
+def tofile(filename, contents):
+    from ase.utils import opencew
+    import pickle
+    fd = opencew(filename)
+    if world.rank == 0:
+        pickle.dump(contents, fd, protocol=2)
+        fd.close()
+
+
+@command('asr.phonons',
+         requires=['structure.json', 'gs.gpw'],
+         dependencies=['asr.gs'],
+         creates=creates,
+         todict={'.pckl': todict})
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
 @option('--kptdensity', help='Kpoint density')
-def main(n=2, ecut=800, kptdensity=6.0):
-    """Calculate Phonons"""
+@option('--fconverge', help='Force convergence criterium')
+def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
+    """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
     # Remove empty files:
     if world.rank == 0:
@@ -57,10 +61,7 @@ def main(n=2, ecut=800, kptdensity=6.0):
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False}
     # Make sure to converge forces! Can be important
-    if 'convergence' in params:
-        params['convergence']['forces'] = 1e-4
-    else:
-        params['convergence'] = {'forces': 1e-4}
+    params['convergence'] = {'forces': fconverge}
 
     atoms = read('structure.json')
     fd = open('phonons.txt'.format(n), 'a')
@@ -85,27 +86,36 @@ def main(n=2, ecut=800, kptdensity=6.0):
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    results = {'phonons': p.todict()}
-    return results
+
+def requires():
+    return creates() + ['results-asr.phonons@calculate.json']
 
 
-def analyse(points=300, modes=False, q_qc=None):
+@command('asr.phonons',
+         requires=requires,
+         dependencies=['asr.phonons@calculate'])
+def main():
     from asr.utils import read_json
-    dct = read_json('results_phonons.json')
+    from asr.utils import get_dimensionality
+    dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
-    p = Phonons(**dct['phonons'])
-    p.atoms = atoms
-    if q_qc is None:
-        # This is the list of exactly known q-points
-        q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
+    n = dct['__params__']['n']
+    nd = get_dimensionality()
+    if nd == 3:
+        supercell = (n, n, n)
+    elif nd == 2:
+        supercell = (n, n, 1)
+    elif nd == 1:
+        supercell = (n, 1, 1)
+    p = Phonons(atoms=atoms, supercell=supercell)
+    p.read()
+    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
+    out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
+    omega_kl, u_kl = out
+    results = {'omega_kl': omega_kl,
+               'u_kl': u_kl}
 
-    out = p.band_structure(q_qc, modes=modes, born=False, verbose=False)
-    if modes:
-        omega_kl, u_kl = out
-        return np.array(omega_kl), u_kl, q_qc
-    else:
-        omega_kl = out
-        return np.array(omega_kl), np.array(omega_kl), q_qc
+    return results
 
 
 def plot_phonons(row, fname):
@@ -132,24 +142,6 @@ def plot_phonons(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
-
-def collect_data(atoms):
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-    try:
-        eigs2, freqs2, _ = analyse(atoms)
-        eigs3, freqs3, _ = analyse(atoms)
-    except (FileNotFoundError, EOFError):
-        return {}, {}, {}
-    kvp['minhessianeig'] = eigs3.min()
-    data['phonon_frequencies_2d'] = freqs2
-    data['phonon_frequencies_3d'] = freqs3
-    data['phonon_energies_2d'] = eigs2
-    data['phonon_energies_3d'] = eigs3
-
-    return kvp, key_descriptions, data
 
 
 def webpanel(row, key_descriptions):

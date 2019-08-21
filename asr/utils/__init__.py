@@ -11,6 +11,7 @@ from ase.io import jsonio
 from ase.parallel import parprint
 import ase.parallel as parallel
 import inspect
+import copy
 
 
 def md5sum(filename):
@@ -69,7 +70,6 @@ def option(*args, **kwargs):
             if name in params:
                 break
         else:
-            print(args)
             raise AssertionError(
                 paramerrormsg(func,
                               'You must give exactly one alias that starts '
@@ -100,20 +100,24 @@ def argument(name, **kwargs):
 
 class ASRCommand:
 
+    package_dependencies = ('asr', 'ase', 'gpaw')
+
     def __init__(self, main,
                  module=None,
+                 requires=None,
+                 dependencies=None,
+                 creates=None,
+                 tests=None,
+                 resources='1:10m',
+                 diskspace=0,
+                 restart=0,
+                 webpanel=None,
                  overwrite_defaults=None,
                  known_exceptions=None,
                  save_results_file=True,
                  pass_params=False,
                  add_skip_opt=True,
-                 creates=None,
-                 dependencies=None,
-                 resources='1:10m',
-                 diskspace=0,
-                 tests=None,
-                 restart=0,
-                 webpanel=None):
+                 todict=None):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -145,6 +149,7 @@ class ASRCommand:
         # Properties of this function
         self._resources = resources
         self._diskspace = diskspace
+        self._requires = requires
         self.restart = restart
 
         # Add skip dependencies option to control this?
@@ -164,6 +169,8 @@ class ASRCommand:
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
             self._main.__asr_params__ = {}
+
+        self.todict = todict
 
         import copy
         self.params = copy.deepcopy(self._main.__asr_params__)
@@ -187,6 +194,32 @@ class ASRCommand:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
 
+        # Setup the CLI
+        self.setup_cli()
+
+    @property
+    def state(self):
+        """The state of tests of this recipe.
+        Currently only supports 'tested' and 'untested'"""
+        if not self.tests:
+            return 'untested'
+        return 'tested'
+
+    @property
+    def requires(self):
+        if self._requires:
+            if callable(self._requires):
+                return self._requires()
+            else:
+                return self._requires
+        return []
+
+    def is_requirements_met(self):
+        for filename in self.requires:
+            if not Path(filename).is_file():
+                return False
+        return True
+
     @property
     def resources(self):
         if callable(self._resources):
@@ -202,6 +235,8 @@ class ASRCommand:
     @property
     def creates(self):
         creates = []
+        if self.save_results_file:
+            creates += [f'results-{self.name}.json']
         if self._creates:
             if callable(self._creates):
                 creates += self._creates()
@@ -211,53 +246,20 @@ class ASRCommand:
 
     @property
     def done(self):
-        creates = []
-        creates += self.creates
-        if not self.save_results_file:
-            return False
-        creates += [f'results-{self.name}.json']
-
-        for file in creates:
+        for file in self.creates:
             if not Path(file).exists():
                 return False
         return True
 
-    def cli(self):
+    def setup_cli(self):
         # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
         cc = click.command
         co = click.option
 
-        help = self._main.__doc__
+        help = self._main.__doc__ or ''
 
-        add_info = ''
-
-        if self.save_results_file:
-            add_info += ('Results stored in: '
-                         f'results-{self.name}.json\n')
-
-        if self.creates:
-            add_info += f'Creates additional files: {self.creates}\n'
-
-        if self.dependencies:
-            add_info += f'Dependencies: {self.dependencies}\n'
-
-        if self.resources:
-            add_info += f'Resources: {self.resources}\n'
-
-        if self.diskspace:
-            add_info += f'Diskspace: {self.diskspace}\n'
-
-        if self.diskspace:
-            add_info += f'Diskspace: {self.diskspace}\n'
-
-        if self.restart:
-            add_info += f'Number restarts allowed: {self.restart}\n'
-
-        if add_info:
-            help += '\n\nASR metadata:\n\n\b\n' + add_info
-            
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
 
@@ -282,23 +284,31 @@ class ASRCommand:
             command = co('--skip-deps', is_flag=True, default=False,
                          help='Skip execution of dependencies')(command)
 
-        return command(standalone_mode=False,
-                       prog_name=f'asr run {self.name}')
+        self._cli = command
+
+    def cli(self, *args, **kwargs):
+        return self._cli(standalone_mode=False,
+                         prog_name=f'asr run {self.name}', *args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
 
     def main(self, skip_deps=False, catch_exceptions=True,
              *args, **kwargs):
-        # Run all dependencies
+
+        if self.requires and self.is_requirements_met():
+            # All requirements are met and we shouldn't run dependencies
+            skip_deps = True
+
         if not skip_deps:
             deps = get_dep_tree(self.name)
             for name in deps[:-1]:
                 recipe = get_recipe_from_name(name)
-                if not recipe.done:
-                    recipe(skip_deps=True)
-                else:
-                    print(f'Dependency {name} already done!')
+                for filename in recipe.creates:
+                    if not Path(filename).is_file() and \
+                       filename in self.requires:
+                        recipe(skip_deps=True)
+
         # Try to run this command
         try:
             return self.callback(*args, **kwargs)
@@ -325,9 +335,13 @@ class ASRCommand:
         # If you to understand what happens when you execute an ASRCommand
         # this is a good place to start
 
+        assert self.is_requirements_met(), \
+            f'Some required files are missing: {self.requires}'
+
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        params = copy.deepcopy(self.defparams)
+        params.update(dict(self.signature.bind(*args, **kwargs).arguments))
 
         # Read arguments from params.json if not already in params
         paramsettings = {}
@@ -340,7 +354,9 @@ class ASRCommand:
                 # we don't use the ones from the param.json file
                 params[key] = value
 
-        print(f'Running {self.name}')
+        paramstring = ', '.join([f'{key}={value}' for key, value in
+                                 params.items()])
+        parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
         if self.pass_params:
@@ -349,20 +365,28 @@ class ASRCommand:
             results = self._main(**params) or {}
 
         # Do we have to store some digests of previous calculations?
-        if self.creates or self.dependencies:
-            results['__md5_digest__'] = {}
-
-        for filename in self.creates:
-            hexdigest = md5sum(filename)
-            results['__md5_digest__'][filename] = hexdigest
+        if self.creates:
+            results['__creates__'] = {}
+            for filename in self.creates:
+                if filename.startswith('results-'):
+                    # Don't log own results file
+                    continue
+                hexdigest = md5sum(filename)
+                results['__creates__'][filename] = hexdigest
 
         # Also make hexdigests of results-files for dependencies
-        for dep in self.dependencies:
-            filename = f'results-{dep}.json'
-            hexdigest = md5sum(filename)
-            results['__md5_digest__'][dep] = hexdigest
+        if self.requires:
+            results['__requires__'] = {}
+            for filename in self.requires:
+                hexdigest = md5sum(filename)
+                results['__requires__'][filename] = hexdigest
 
-        results.update(get_execution_info(params))
+        # Save parameters
+        if params:
+            results.update({'__params__': params})
+
+        # Update with hashes for packages dependencies
+        results.update(self.get_execution_info())
 
         if self.save_results_file:
             name = self.name
@@ -375,69 +399,110 @@ class ASRCommand:
 
         return results
 
+    def get_execution_info(self):
+        """Get parameter and software version information as a dictionary"""
+        from ase.utils import search_current_git_hash
+        exeinfo = {}
+        modnames = self.package_dependencies
+        versions = {}
+        for modname in modnames:
+            mod = import_module(modname)
+            githash = search_current_git_hash(mod)
+            version = mod.__version__
+            if githash:
+                versions[f'{modname}'] = f'{version}-{githash}'
+            else:
+                versions[f'{modname}'] = f'{version}'
+        exeinfo['__versions__'] = versions
+
+        return exeinfo
+
     def collect(self):
         import re
         kvp = {}
         key_descriptions = {}
         data = {}
-        if self.done:
-            name = self.name[4:]
-            resultfile = f'results-{self.name}.json'
-            results = read_json(resultfile)
-            if '__key_descriptions__' in results:
-                tmpkd = {}
 
-                for key, desc in results['__key_descriptions__'].items():
-                    descdict = {'type': None,
-                                'iskvp': False,
-                                'shortdesc': '',
-                                'longdesc': '',
-                                'units': ''}
-                    if isinstance(desc, dict):
-                        descdict.update(desc)
-                        tmpkd[key] = desc
-                        continue
+        resultfile = f'results-{self.name}.json'
+        results = read_json(resultfile)
+        msg = f'{self.name}: You cannot put a {resultfile} in data'
+        assert resultfile not in data, msg
+        data[resultfile] = results
 
-                    assert isinstance(desc, str), \
-                        'Key description has to be dict or str.'
-                    # Get key type
-                    desc, *keytype = desc.split('->')
-                    if keytype:
-                        descdict['type'] = keytype
+        extra_files = results.get('__requires__', {})
+        extra_files.update(results.get('__creates__', {}))
+        if extra_files:
+            for filename, checksum in extra_files.items():
+                if filename in data:
+                    continue
+                file = Path(filename)
+                if not file.is_file():
+                    print(f'Warning: Required file {filename}'
+                          ' doesn\'t exist')
 
-                    # Is this a kvp?
-                    iskvp = desc.startswith('KVP:')
-                    descdict['iskvp'] = iskvp
-                    desc = desc.replace('KVP:', '').strip()
+                filetype = file.suffix
+                if filetype == '.json':
+                    dct = read_json(filename)
+                elif self.todict and filetype in self.todict:
+                    dct = self.todict[filetype](filename)
+                    dct['__md5__'] = md5sum(filename)
+                else:
+                    dct = {'pointer': str(file.absolute()),
+                           '__md5__': md5sum(filename)}
+                data[filename] = dct
 
-                    # Find units
-                    m = re.search(r"\[(\w+)\]", desc)
-                    unit = m.group(1) if m else ''
-                    if unit:
-                        descdict['units'] = unit
-                    desc = desc.replace(f'[{unit}]', '').strip()
+        # Parse key descriptions to get long,
+        # short, units and key value pairs
+        if '__key_descriptions__' in results:
+            tmpkd = {}
 
-                    # Find short description
-                    m = re.search(r"\((\w+)\)", desc)
-                    shortdesc = m.group(1) if m else ''
+            for key, desc in results['__key_descriptions__'].items():
+                descdict = {'type': None,
+                            'iskvp': False,
+                            'shortdesc': '',
+                            'longdesc': '',
+                            'units': ''}
+                if isinstance(desc, dict):
+                    descdict.update(desc)
+                    tmpkd[key] = desc
+                    continue
 
-                    # The results is the long description
-                    longdesc = desc.replace(f'({shortdesc})', '').strip()
-                    if longdesc:
-                        descdict['longdesc'] = longdesc
-                    tmpkd[key] = descdict
+                assert isinstance(desc, str), \
+                    'Key description has to be dict or str.'
+                # Get key type
+                desc, *keytype = desc.split('->')
+                if keytype:
+                    descdict['type'] = keytype
 
-                for key, desc in tmpkd.items():
-                    key_descriptions[key] = \
-                        (desc['shortdesc'], desc['longdesc'], desc['units'])
+                # Is this a kvp?
+                iskvp = desc.startswith('KVP:')
+                descdict['iskvp'] = iskvp
+                desc = desc.replace('KVP:', '').strip()
 
-                    if key in results and desc['iskvp']:
-                        kvp[key] = results[key]
+                # Find units
+                m = re.search(r"\[(\w+)\]", desc)
+                unit = m.group(1) if m else ''
+                if unit:
+                    descdict['units'] = unit
+                desc = desc.replace(f'[{unit}]', '').strip()
 
-            key = f'results_{name}'
-            msg = f'{self.name}: You cannot put a {key} in data'
-            assert key not in data, msg
-            data[key] = results
+                # Find short description
+                m = re.search(r"\((\w+)\)", desc)
+                shortdesc = m.group(1) if m else ''
+
+                # The results is the long description
+                longdesc = desc.replace(f'({shortdesc})', '').strip()
+                if longdesc:
+                    descdict['longdesc'] = longdesc
+                tmpkd[key] = descdict
+
+            for key, desc in tmpkd.items():
+                key_descriptions[key] = \
+                    (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+                if key in results and desc['iskvp']:
+                    kvp[key] = results[key]
+
         return kvp, key_descriptions, data
 
 
@@ -482,7 +547,7 @@ class ASRSubResult:
         subresult = self.calculator.__call__(*args, **kwargs)
         assert isinstance(subresult, dict)
 
-        subresult.update(get_execution_info(params))
+        subresult.update(self.get_execution_info(params))
         self.results[self._asr_key] = subresult
 
         write_json(f'tmpresults_{self._asr_name}.json', self.results)
@@ -509,26 +574,6 @@ def chdir(folder, create=False, empty=False):
     os.chdir(str(folder))
     yield
     os.chdir(dir)
-
-
-def get_execution_info(params):
-    """Get parameter and software version information as a dictionary"""
-    exceinfo = {'__params__': params}
-
-    from ase.utils import search_current_git_hash
-    modnames = ['asr', 'ase', 'gpaw']
-    versions = {}
-    for modname in modnames:
-        mod = import_module(modname)
-        githash = search_current_git_hash(mod)
-        version = mod.__version__
-        if githash:
-            versions[f'{modname}'] = f'{version}-{githash}'
-        else:
-            versions[f'{modname}'] = f'{version}'
-    exceinfo['__versions__'] = versions
-
-    return exceinfo
 
 
 def get_recipe_module_names():
@@ -660,9 +705,10 @@ def write_json(filename, data):
     from pathlib import Path
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
+
     with file_barrier(filename):
         if world.rank == 0:
-            Path(filename).write_text(MyEncoder(indent=4).encode(data))
+            Path(filename).write_text(MyEncoder(indent=1).encode(data))
 
 
 def read_json(filename):
