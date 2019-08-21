@@ -106,7 +106,7 @@ class myBFGS(BFGS):
 
 
 def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None, xc='PBE', plusu=False, dftd3=True):
+          smask=None, xc='PBE', plusu=False, dftd3=True, chargestate=0):
     import spglib
 
     if dftd3:
@@ -132,7 +132,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                   symmetry={'symmorphic': False},
                   convergence={'forces': 1e-4},
                   kpts={'size': size, 'gamma': True},
-                  occupations={'name': 'fermi-dirac', 'width': width})
+                  occupations={'name': 'fermi-dirac', 'width': width},
+                  charge=chargestate)
 
     if nd == 2:
         assert not atoms.get_pbc()[2], \
@@ -202,7 +203,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
             opt.log()
             opt.call_observers()
             break
-        
+
     return atoms, calc, dft, kwargs
 
 
@@ -263,7 +264,9 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
-def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05):
+@option('--readout_charge', help='Read out chargestate from params.json')
+def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
+         readout_charge=False):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
@@ -278,6 +281,8 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05):
     Relax using the LDA exchange-correlation functional
         asr run relax --xc LDA
     """
+    from asr.utils import read_json
+
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
            'what the relax recipe is supposed to produce. You should '
@@ -288,10 +293,19 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05):
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
 
+    # Read out chargestate from params.json if specified as option
+    if readout_charge:
+        setup_params = read_json('params.json')
+        chargestate = setup_params.get('charge')
+        print('INFO: chargestate {}'.format(chargestate))
+    else:
+        chargestate = 0
+
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kptdensity=kptdensity, xc=xc,
-                                     plusu=plusu, dftd3=d3, width=width)
+                                     plusu=plusu, dftd3=d3, width=width,
+                                     chargestate=chargestate)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

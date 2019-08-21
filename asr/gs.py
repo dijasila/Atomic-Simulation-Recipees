@@ -22,8 +22,10 @@ calctests = [{'description': 'Test ground state of Si.',
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--xc', type=str, help='XC-functional')
 @option('--width', help='Fermi-Dirac smearing temperature')
+@option('-r', '--readoutcharge', type=bool,
+        help='Read out chargestate from params.json')
 def calculate(ecut=800, xc='PBE',
-              kptdensity=12.0, width=0.05):
+              kptdensity=12.0, width=0.05, readoutcharge=False):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -32,8 +34,17 @@ def calculate(ecut=800, xc='PBE',
     import numpy as np
     from ase.io import read
     from asr.calculators import get_calculator
+    from asr.utils import read_json
 
     atoms = read('structure.json')
+
+    # Read out chargestate from params.json if specified as option
+    if readoutcharge:
+        setup_params = read_json('params.json')
+        chargestate = setup_params.get('charge')
+        print('INFO: chargestate {}'.format(chargestate))
+    else:
+        chargestate = 0
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},
@@ -45,7 +56,8 @@ def calculate(ecut=800, xc='PBE',
         },
         occupations={'name': 'fermi-dirac', 'width': width},
         convergence={'bands': -3},
-        txt='gs.txt')
+        txt='gs.txt',
+        charge=chargestate)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
