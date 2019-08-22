@@ -122,8 +122,14 @@ def bs_pbe_html(row,
         reference = ef
 
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
-    emin = gaps.get('vbm', ef) - 3
-    emax = gaps.get('cbm', ef) + 3
+    if gaps.get('vbm'):
+        emin = gaps.get('vbm', ef) - 3
+    else:
+        emin = ef - 3
+    if gaps.get('cbm'):
+        emax = gaps.get('cbm', ef) + 3
+    else:
+        emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
     from ase.dft.kpoints import labels_from_kpts
@@ -370,8 +376,14 @@ def bs_pbe(row,
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
-    emin = gaps.get('vbm', ef) - 3
-    emax = gaps.get('cbm', ef) + 3
+    if gaps.get('vbm'):
+        emin = gaps.get('vbm', ef) - 3
+    else:
+        emin = ef - 3
+    if gaps.get('cbm'):
+        emax = gaps.get('cbm', ef) + 3
+    else:
+        emax = ef + 3
     mpl.rcParams['font.size'] = fontsize
     bs = BandStructure(path, e_kn - reference, ef - reference)
     # pbe without soc
