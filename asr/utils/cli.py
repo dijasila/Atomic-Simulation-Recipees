@@ -198,6 +198,13 @@ def run(shell, dry_run, parallel, command, folders, jobs,
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
     func = getattr(mod, function)
 
+    from asr.utils import ASRCommand
+    if isinstance(func, ASRCommand):
+        is_asr_command = True
+    else:
+        is_asr_command = False
+
+    import sys
     if dry_run:
         prt(f'Would run {module}@{function} '
             f'in {nfolders} folders.')
@@ -209,7 +216,11 @@ def run(shell, dry_run, parallel, command, folders, jobs,
                 if skip_if_done and func.done:
                     continue
                 prt(f'In folder: {folder} ({i + 1}/{nfolders})')
-                func.cli(args=args)
+                if is_asr_command:
+                    func.cli(args=args)
+                else:
+                    sys.argv = [mod.__name__] + args
+                    func()
             except click.Abort:
                 break
             except Exception as e:
@@ -217,6 +228,10 @@ def run(shell, dry_run, parallel, command, folders, jobs,
                     raise
                 else:
                     prt(e)
+            except SystemExit:
+                print('Unexpected error:', sys.exc_info()[0])
+                if not dont_raise:
+                    raise
 
 
 @cli.command()
