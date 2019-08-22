@@ -33,50 +33,53 @@ def main(folders, selectrecipe=None, level=2, data=True,
 
     # We use absolute path because of chdir below!
     dbname = os.path.join(os.getcwd(), 'database.db')
-    db = connect(dbname)
-
     from click import progressbar
 
-    with progressbar(folders, label='Collecting to database.db') as bar:
-        for folder in bar:
-            with chdir(folder):
-                # print(folder, end=':\n')
-                kvp = {}
-                data = {}
-                key_descriptions = {}
+    def item_show_func(item):
+        return str(item)
 
-                if not Path(atomsname).is_file():
-                    # print(f'{folder} doesn\'t contain '
-                    #       f'{atomsname}. Skipping.')
-                    continue
+    metadata = {}
+    with connect(dbname) as db:
+        with progressbar(folders, label='Collecting to database.db',
+                         item_show_func=item_show_func) as bar:
+            for folder in bar:
+                with chdir(folder):
+                    # print(folder, end=':\n')
+                    kvp = {}
+                    data = {}
+                    key_descriptions = {}
 
-                # The atomic structure uniquely defines the folder
-                kvp['asr_id'] = md5sum(atomsname)
-                atoms = read(atomsname)
-                if selectrecipe:
-                    recipes = get_dep_tree(selectrecipe)
-                else:
-                    recipes = get_recipes()
-
-                for recipe in recipes:
-                    if not recipe.done:
+                    if not Path(atomsname).is_file():
+                        # print(f'{folder} doesn\'t contain '
+                        #       f'{atomsname}. Skipping.')
                         continue
-                    # print(f'Collecting {recipe.name}')
-                    tmpkvp, tmpkd, tmpdata = recipe.collect()
-                    if tmpkvp or tmpkd or tmpdata:
-                        kvp.update(tmpkvp)
-                        data.update(tmpdata)
-                        key_descriptions.update(tmpkd)
 
-                if level > 1:
-                    db.write(atoms, data=data, **kvp)
-                elif level > 0:
-                    db.write(atoms, **kvp)
-                else:
-                    db.write(atoms)
-                metadata = db.metadata
-                metadata.update({'key_descriptions': key_descriptions})
-                db.metadata = metadata
+                    # The atomic structure uniquely defines the folder
+                    kvp['asr_id'] = md5sum(atomsname)
+                    atoms = read(atomsname)
+                    if selectrecipe:
+                        recipes = get_dep_tree(selectrecipe)
+                    else:
+                        recipes = get_recipes()
+
+                    for recipe in recipes:
+                        if not recipe.done:
+                            continue
+                        # print(f'Collecting {recipe.name}')
+                        tmpkvp, tmpkd, tmpdata = recipe.collect()
+                        if tmpkvp or tmpkd or tmpdata:
+                            kvp.update(tmpkvp)
+                            data.update(tmpdata)
+                            key_descriptions.update(tmpkd)
+
+                    if level > 1:
+                        db.write(atoms, data=data, **kvp)
+                    elif level > 0:
+                        db.write(atoms, **kvp)
+                    else:
+                        db.write(atoms)
+                    metadata.update({'key_descriptions': key_descriptions})
+    db.metadata = metadata
 
 
 tests = [
