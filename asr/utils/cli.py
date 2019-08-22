@@ -185,7 +185,7 @@ def run(shell, dry_run, parallel, command, folders, jobs,
     # Which kind of thing are we calling?
     import importlib
     try:
-        m = importlib.find_spec(module)
+        m = importlib.util.find_spec(module)
     except (AttributeError, ImportError, ValueError):
         m = None
     finally:
