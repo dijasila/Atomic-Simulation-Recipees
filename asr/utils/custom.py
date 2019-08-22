@@ -79,7 +79,8 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        if not recipe.done:
+        # We assumme that there should be a results file in
+        if f'results-{recipe.name}.json' not in row.data:
             continue
         panels = recipe.webpanel(row, key_descriptions)
         if panels:
@@ -109,6 +110,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
             if not path.is_file():
                 # Create figure(s) only once:
                 function(row, *(str(path) for path in paths))
+                plt.close('all')
                 for path in paths:
                     if not path.is_file():
                         path.write_text('')  # mark as missing
