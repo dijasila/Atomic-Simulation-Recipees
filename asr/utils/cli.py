@@ -42,23 +42,25 @@ def cli():
 
 
 @cli.command()
-@click.option('-c', '--shell', is_flag=True,
+@click.option('-s', '--shell', is_flag=True,
               help='Interpret COMMAND as shell command.')
+@click.option('-n', '--not-recipe', is_flag=True,
+              help='COMMAND is not a recipe.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Show what would happen without doing anything.')
 @click.option('-p', '--parallel', type=int, help='Run on NCORES.',
               metavar='NCORES')
 @click.option('-j', '--jobs', type=int,
               help='Run COMMAND in serial on JOBS processes.')
-@click.option('-s', '--skip-if-done', is_flag=True,
+@click.option('-S', '--skip-if-done', is_flag=True,
               help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
               help='Continue to next folder when encountering error.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
-def run(shell, dry_run, parallel, command, folders, jobs,
+def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
         skip_if_done, dont_raise):
-    """Run recipe, python module or shell command in multiple folders.
+    """Run recipe, python function or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
@@ -182,16 +184,15 @@ def run(shell, dry_run, parallel, command, folders, jobs,
     if '@' in module:
         module, function = module.split('@')
 
-    # Which kind of thing are we calling?
-    import importlib
-    try:
-        m = importlib.util.find_spec(module)
-    except (AttributeError, ImportError, ValueError):
-        m = None
-    finally:
-        if m is None:
+    if not_recipe:
+        assert function, \
+            ('If this is not a recipe you have to specify a '
+             'specific function to execute.')
+    else:
+        if not module.startswith('asr.'):
             module = f'asr.{module}'
 
+    import importlib
     mod = importlib.import_module(module)
     if not function:
         function = 'main'
