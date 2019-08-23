@@ -7,7 +7,7 @@ creates = []  # what files are created
 @command('asr.defectformation',
          resources='1:2h',
          dependencies=['asr.setup.defects', 'asr.gs'],
-         creates=[])
+         creates=None)
 # later include 'asr.dielectricconstant' and 'asr.relax')
 # and also the files that this recipe creates
 @option('--pristine', type=str,
@@ -41,7 +41,7 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
-    gs_dict = read_json('results_gs.json')
+    gs_dict = read_json('results-asr.gs.json')
     defectformation_dict = {}
     defectformation_dict['gaps_nosoc'] = gs_dict.get('gaps_nosoc')
     defectformation_dict['gaps_soc'] = gs_dict.get('gaps_soc')
@@ -287,7 +287,8 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     lw = 1
     linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
     colorlist = ['black', 'C0', 'C1']
-    plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    #plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    plt.ylim(0, 20)
     plt.xlim(x_range[0] - 0.1 * gap, x_range[1] + 0.1 * gap)
     # bbox = {'fc': '0.8', 'pad': 0}
 
@@ -331,9 +332,9 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
         if y_edges[i][0] == min(y_edges[:, 0]):
             # start_index = i
             linearray_up = np.delete(linearray_up, np.s_[0:i], 0)
-            q_copy = np.delete(q_copy, np.s_[0:i])
             trans_array = np.array(
                 [[(0, y_edges[i][0]), q_copy[i], q_copy[i]]])
+            q_copy = np.delete(q_copy, np.s_[0:i])
 
     # loop over all lines in linearray_up and calculate intersection points
     while len(linearray_up) > 1:
