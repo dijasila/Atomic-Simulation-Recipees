@@ -287,7 +287,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     lw = 1
     linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
     colorlist = ['black', 'C0', 'C1']
-    #plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    # plt.ylim(0, max(y_edges[:, 0]) * 1.1)
     plt.ylim(0, 20)
     plt.xlim(x_range[0] - 0.1 * gap, x_range[1] + 0.1 * gap)
     # bbox = {'fc': '0.8', 'pad': 0}
