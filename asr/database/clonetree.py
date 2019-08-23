@@ -78,8 +78,7 @@ def main(source, destination, patterns,
                             continue
                         log.append((srcfile, destfile))
 
-            if not destdir.is_dir():
-                mkdir.append(destdir)
+            mkdir.append(destdir)
 
     if len(errors) > 0:
         for error in errors:
@@ -90,6 +89,8 @@ def main(source, destination, patterns,
         with progressbar(mkdir,
                          label=f'Creating {len(mkdir)} folders') as bar:
             for destdir in bar:
+                if destdir.is_dir():
+                    continue
                 makedirs(str(destdir))
     else:
         print(f'Would create {len(mkdir)} folders')
@@ -117,18 +118,18 @@ def main(source, destination, patterns,
     if map_files:
         mapping = [tmp.split('->') for tmp in map_files.split(',')]
 
-        for destdir in mkdir:
-            with chdir(destdir):
-                for src, dest in mapping:
-                    src = Path(src)
-                    dest = Path(dest)
-                    if not Path(src).is_file():
-                        continue
-
-                    if Path(dest).is_file():
-                        Path(dest).unlink()
-
-                    dest.symlink_to(src.resolve())
+        with progressbar(mkdir,
+                         label=f'Remapping files') as bar:
+            for destdir in bar:
+                with chdir(destdir):
+                    for orig, replace in mapping:
+                        for src in Path('.').glob('*'):
+                            if orig not in src.name:
+                                continue
+                            dest = Path(src.name.replace(orig, replace))
+                            if Path(dest).is_file():
+                                Path(dest).unlink()
+                            dest.symlink_to(src.resolve())
 
 
 if __name__ == '__main__':
