@@ -112,8 +112,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
 
+    nd = int(np.sum(atoms.get_pbc()))
     if smask is None:
-        nd = int(np.sum(atoms.get_pbc()))
         if nd == 3:
             smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
@@ -134,6 +134,11 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                   kpts={'size': size, 'gamma': True},
                   occupations={'name': 'fermi-dirac', 'width': width},
                   charge=chargestate)
+
+    if nd == 2:
+        assert not atoms.get_pbc()[2], \
+            'The third unit cell axis should be aperiodic for a 2D material!'
+        kwargs['poissonsolver'] = {'dipolelayer': 'xy'}
 
     if plusu:
         # Try to get U values from previous image
