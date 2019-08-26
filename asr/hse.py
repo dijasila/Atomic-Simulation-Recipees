@@ -395,8 +395,12 @@ def interpolate_bandlines2(calc, path, e_skn=None):
     for i in range(1, len(partial_paths)):
         tot_kptsreal_kc = np.concatenate((tot_kptsreal_kc, list_kptsreal_kc[i]), axis=0)
         tot_epsreal_skn = np.concatenate((tot_epsreal_skn, list_epsreal_skn[i]), axis=1)
-        tot_xreal = np.concatenate((tot_xreal, list_xreal[i] + tot_xreal[-1]))
         tot_e2_skn = np.concatenate((tot_e2_skn, list_e2_skn[i]), axis=1)
+        try:
+            x0 = tot_xreal[-1]
+        except:
+            x0 = 0 # if tot_xreal is empty
+        tot_xreal = np.concatenate((tot_xreal, list_xreal[i] + x0))
 
     tot_kpts = path.kpts
     tot_x, tot_X, _ = labels_from_kpts(tot_kpts, cell)
