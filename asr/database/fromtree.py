@@ -4,59 +4,82 @@ from asr.utils import command, option, argument, chdir
 @command('asr.database.fromtree',
          dependencies=['asr.structureinfo'])
 @argument('folders', nargs=-1)
-@option('--recipe', help='Only collect data relevant for this recipe')
+@option('--selectrecipe', help='Only collect data relevant for this recipe')
 @option('--level', type=int,
         help=('0: Collect only atoms. '
               '1: Collect atoms+KVP. '
               '2: Collect atoms+kvp+data'))
 @option('--data/--nodata',
         help='Also add data objects to database')
-def main(folders, recipe=None, level=2, data=True):
-    """Collect data from folder tree into database."""
+@option('--atomsname', help='File containing atomic structure.')
+def main(folders, selectrecipe=None, level=2, data=True,
+         atomsname='structure.json'):
+    """Collect ASR data from folder tree into an ASE database."""
     import os
     from ase.db import connect
     from ase.io import read
     from asr.utils import get_recipes, get_dep_tree
-
-    # We use absolute path because of chdir below!
-    dbname = os.path.join(os.getcwd(), 'database.db')
-    db = connect(dbname)
+    import glob
+    from pathlib import Path
+    from asr.utils import md5sum
 
     if not folders:
         folders = ['.']
+    else:
+        tmpfolders = []
+        for folder in folders:
+            tmpfolders.extend(glob.glob(folder))
+        folders = tmpfolders
 
-    for i, folder in enumerate(folders):
-        with chdir(folder):
-            print(folder, end=':\n')
-            kvp = {}
-            data = {}
-            key_descriptions = {}
+    # We use absolute path because of chdir below!
+    dbname = os.path.join(os.getcwd(), 'database.db')
+    from click import progressbar
 
-            atoms = read('structure.json')
-            if recipe:
-                recipes = get_dep_tree(recipe)
-            else:
-                recipes = get_recipes()
+    def item_show_func(item):
+        return str(item)
 
-            for recipe in recipes:
-                if not recipe.done:
-                    continue
-                print(f'Collecting {recipe.name}')
-                tmpkvp, tmpkd, tmpdata = recipe.collect()
-                if tmpkvp or tmpkd or tmpdata:
-                    kvp.update(tmpkvp)
-                    data.update(tmpdata)
-                    key_descriptions.update(tmpkd)
+    metadata = {}
+    with connect(dbname) as db:
+        with progressbar(folders, label='Collecting to database.db',
+                         item_show_func=item_show_func) as bar:
+            for folder in bar:
+                with chdir(folder):
+                    # print(folder, end=':\n')
+                    kvp = {}
+                    data = {}
+                    key_descriptions = {}
 
-            if level > 1:
-                db.write(atoms, data=data, **kvp)
-            elif level > 0:
-                db.write(atoms, **kvp)
-            else:
-                db.write(atoms)
-            metadata = db.metadata
-            metadata.update({'key_descriptions': key_descriptions})
-            db.metadata = metadata
+                    if not Path(atomsname).is_file():
+                        # print(f'{folder} doesn\'t contain '
+                        #       f'{atomsname}. Skipping.')
+                        continue
+
+                    # The atomic structure uniquely defines the folder
+                    kvp['asr_id'] = md5sum(atomsname)
+                    atoms = read(atomsname)
+                    if selectrecipe:
+                        recipes = get_dep_tree(selectrecipe)
+                    else:
+                        recipes = get_recipes()
+
+                    for recipe in recipes:
+                        if not recipe.done:
+                            continue
+                        # print(f'Collecting {recipe.name}')
+                        tmpkvp, tmpkd, tmpdata = recipe.collect()
+                        if tmpkvp or tmpkd or tmpdata:
+                            kvp.update(tmpkvp)
+                            data.update(tmpdata)
+                            key_descriptions.update(tmpkd)
+
+                    if level > 1:
+                        db.write(atoms, data=data, **kvp)
+                    elif level > 0:
+                        db.write(atoms, **kvp)
+                    else:
+                        db.write(atoms)
+                    metadata.update({'key_descriptions': key_descriptions})
+    db.metadata = metadata
 
 
 tests = [

@@ -79,11 +79,12 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        if not recipe.done:
+        # We assumme that there should be a results file in
+        if f'results-{recipe.name}.json' not in row.data:
             continue
-        print(recipe.name)
         panels = recipe.webpanel(row, key_descriptions)
-        page.extend(panels)
+        if panels:
+            page.extend(panels)
 
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
@@ -97,8 +98,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
     for panel in page:
-        plot_descriptions = panel.get('plot_descriptions', [])
-        plot_descriptions.extend(plot_descriptions)
+        plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
     missing = set()  # missing figures
@@ -110,6 +110,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
             if not path.is_file():
                 # Create figure(s) only once:
                 function(row, *(str(path) for path in paths))
+                plt.close('all')
                 for path in paths:
                     if not path.is_file():
                         path.write_text('')  # mark as missing

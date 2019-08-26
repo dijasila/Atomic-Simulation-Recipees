@@ -56,6 +56,9 @@ def main(references: str, database: str):
                       qi['uid']))
 
     results['links'] = links
+    results['__key_descriptions__'] = \
+        {'ehull': 'KVP: Energy above convex hull [eV/atom]',
+         'hform': 'KVP: Heat of formation [eV/atom]'}
 
     return results
 
@@ -121,20 +124,6 @@ def select_references(db, symbols):
                 uid = row.get('uid', row.id)
                 refs[uid] = row
     return list(refs.values())
-
-
-def collect_data(atoms):
-    path = Path('results_convex_hull.json')
-    if not path.is_file():
-        return {}, {}, {}
-    dct = json.loads(path.read_text())
-    kvp = {'hform': dct.pop('hform')}
-    if 'ehull' in dct:
-        kvp['ehull'] = dct.pop('ehull')
-    return (kvp,
-            {'ehull': ('Energy above convex hull', '', 'eV/atom'),
-             'hform': ('Heat of formation', '', 'eV/atom')},
-            {'convex_hull': dct})
 
 
 def plot(row, fname):
