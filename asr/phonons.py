@@ -36,6 +36,8 @@ def tofile(filename, contents):
         fd.close()
 
 
+# XXX Add some tests
+
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs'],
