@@ -91,8 +91,23 @@ def requires():
     return creates() + ['results-asr.phonons@calculate.json']
 
 
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import table, fig
+    phonontable = table(row, 'Property',
+                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
+                         'minhessianeig'], key_descriptions)
+
+    panel = {'title': 'Elastic constants and phonons',
+             'columns': [[fig('phonons.png')], [phonontable]],
+             'plot_descriptions': [{'function': plot_phonons,
+                                    'filenames': ['phonons.png']}]}
+
+    return [panel]
+
+
 @command('asr.phonons',
          requires=requires,
+         webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
 def main():
     from asr.utils import read_json
@@ -144,17 +159,6 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import table, fig
-    phonontable = table(row, 'Property',
-                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
-                         'minhessianeig'], key_descriptions)
-
-    panel = ('Elastic constants and phonons',
-             [[fig('phonons.png')], [phonontable]])
-    things = [(plot_phonons, ['phonons.png'])]
-
-    return panel, things
 
 
 group = 'property'
