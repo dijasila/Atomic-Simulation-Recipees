@@ -12,7 +12,7 @@ from asr.utils import command, option
 def creates():
     atoms = read('structure.json')
     natoms = len(atoms)
-    filenames = []
+    filenames = ['phonon.eq.pckl']
     for a in range(natoms):
         for v in 'xyz':
             for pm in '+-':
