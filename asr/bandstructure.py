@@ -697,7 +697,10 @@ def main():
             sz_mk[:, idx] = 0.0
 
     bsresults['sz_mk'] = sz_mk
-    results['bs_soc'] = bsresults
+
+    from asr.utils import singleprec_dict
+    results['bs_soc'] = singleprec_dict(bsresults)
+    results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
 
     return results
 
