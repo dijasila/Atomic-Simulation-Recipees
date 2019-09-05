@@ -274,6 +274,17 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
 
+
+    Installation:
+    To install DFTD3 do
+
+    $ mkdir ~/DFTD3 && cd ~/DFTD3
+    $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+    $ tar -zxf dftd3.tgz
+    $ make
+    $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+    $ source ~/.bashrc
+
     \b
     Examples:
     Relax without using DFTD3
