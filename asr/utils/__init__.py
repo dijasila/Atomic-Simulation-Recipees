@@ -765,3 +765,21 @@ def file_barrier(path: Union[str, Path], world=None):
     while not path.is_file():
         time.sleep(1.0)
     world.barrier()
+
+
+def singleprec_dict(dct):
+    assert isinstance(dct, dict), f'Input {dct} is not dict.'
+
+    for key, value in dct.items():
+        if isinstance(value, np.ndarray):
+            if value.dtype == np.int64:
+                value = value.astype(np.int32)
+            elif value.dtype == np.float64:
+                value = value.astype(np.float32)
+            elif value.dtype == np.complex128:
+                value = value.astype(np.complex64)
+            dct[key] = value
+        elif isinstance(value, dict):
+            dct[key] = singleprec_dict(value)
+
+    return dct
