@@ -652,7 +652,8 @@ def main():
                         special_points=path['special_points'],
                         path=path['labelseq'])
     else:
-        path = calc.atoms.cell.bandpath(path=path['path'],
+        path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
+                                        path=path['path'],
                                         npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
