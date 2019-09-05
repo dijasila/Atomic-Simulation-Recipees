@@ -1,5 +1,5 @@
 Installation
-------------
+============
 To install ASR first clone the code and pip-install the code::
 
   $ cd ~ && git clone https://gitlab.com/mortengjerding/asr.git
@@ -7,9 +7,11 @@ To install ASR first clone the code and pip-install the code::
 
 
 ASE has to be installed manually since we need the newest version::
+
   $ python3 -m pip install git+https://gitlab.com/ase/ase.git
 
 Also if you don't already have GPAW installed you can get it with::
+
   $ python3 -m pip install git+https://gitlab.com/gpaw/gpaw.git
 
 Install a database of reference energies to calculate HOF and convex hull. Here 

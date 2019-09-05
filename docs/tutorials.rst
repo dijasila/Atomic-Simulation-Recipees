@@ -1,3 +1,10 @@
+Tutorials
+=========
+The tools of ASR can be combined to perform complicated tasks with little
+effort. Below you will find the recommended procedures to perform common
+tasks within the ASR framework.
+
+
 Advanced Example: Make a screening study
 ----------------------------------------
 A screening study what we call a simultaneous automatic study of many materials. ASR
@@ -84,17 +91,11 @@ To do this write::
 
   $ crontab -e
 
-choose your editor and put the line 
+  choose your editor and put the line
+
 `*/5 * * * * . ~/.bashrc; cd ~/oqmd12; mq kick; mq workflow workflow.py tree/*/*/*/*/`
 into the file. This will restart any timeout jobs and run the workflow command 
 to see if any new tasks should be spawned with a 5 minute interval. 
-
-Recommended Procedures
-=======================
-The tools of ASR can be combined to perform complicated tasks with little
-effort. Below you will find the recommended procedures to perform common
-tasks within the ASR framework.
-
 
 Make a convergence study
 ------------------------

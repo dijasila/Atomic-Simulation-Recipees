@@ -1,5 +1,5 @@
-Developing new recipes
-======================
+Development
+===========
 In the following you will find the necessary information needed to implement new
 recipes into the ASR framework. The first section gives an ultra short
 description of how to implement new recipes, and the following sections go
@@ -93,7 +93,7 @@ is produced by the relax recipe. Below you can see how this works for the ground
 
 
 Setting a different calculator
-==============================
+------------------------------
 The default DFT calculator of ASR is `GPAW`, however, at the moment some recipes
 support using the EMT calculator of ASE, specifically the `relax` and the `gs` recipes.
 This is mostly meant for testing, however in the future, we might want to support other
