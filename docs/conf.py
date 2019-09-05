@@ -54,7 +54,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'Atomic Simulation Recipes'
 copyright = '2019, CAMD'
-author = 'CAMD'
+author = 'Morten Gjerding'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
