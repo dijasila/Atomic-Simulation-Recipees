@@ -36,8 +36,6 @@ def tofile(filename, contents):
         fd.close()
 
 
-# XXX Add some tests
-
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs'],
@@ -160,11 +158,6 @@ def plot_phonons(row, fname):
     plt.savefig(fname)
     plt.close()
 
-
-
-
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main.cli()
