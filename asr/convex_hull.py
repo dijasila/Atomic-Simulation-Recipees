@@ -48,17 +48,17 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('results_structureinfo.json').read_text())
+        si = json.loads(Path('results-asr.structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
-                      qi.get('prototype', ''),
-                      qi['magstate'],
-                      qi['uid']))
+                      si.get('prototype', ''),
+                      si['magstate'],
+                      si['uid']))
 
     results['links'] = links
-    results['__key_descriptions__'] = \
-        {'ehull': 'KVP: Energy above convex hull [eV/atom]',
-         'hform': 'KVP: Heat of formation [eV/atom]'}
+    results['__key_descriptions__'] = {
+        'ehull': 'KVP: Energy above convex hull [eV/atom]',
+        'hform': 'KVP: Heat of formation [eV/atom]'}
 
     return results
 
