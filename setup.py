@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=['Click', 'matplotlib',
-                      'spglib', 'plotly'],
+                      'spglib', 'plotly', 'sphinx-autoapi'],
     entry_points='''
         [console_scripts]
         asr=asr.utils.cli:cli
