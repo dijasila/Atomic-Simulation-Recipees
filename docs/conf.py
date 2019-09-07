@@ -35,13 +35,12 @@
 
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
-              'sphinx.ext.coverage',
-              'sphinx.ext.mathjax',
-              'sphinx.ext.viewcode',
-              'autoapi.extension']
+              'sphinx.ext.napoleon',
+              'autoapi.extension',
+              ]
 autoapi_type = 'python'
 autoapi_dirs = ['../asr']
-
+napoleon_numpy_docstring = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -99,7 +98,9 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {'show_related': True}
+html_theme_options = {'show_related': True,
+                      'description': 'Recipes for materials research',
+                      'logo_name': True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -115,7 +116,7 @@ html_sidebars = {
     '**': [
         'about.html',
         'navigation.html',
-        'relations.html',  # needs 'show_related': True theme option to display
+        # 'relations.html',  # needs 'show_related': True theme option to display
         'searchbox.html',
     ]
 }

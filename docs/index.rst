@@ -17,17 +17,14 @@ structures, calculating dielectric functions and so on.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :hidden:
 
    install
    getting-started
    tutorials
    developing
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+..
+   :ref:`genindex`
+   :ref:`modindex`
+   :ref:`search`
