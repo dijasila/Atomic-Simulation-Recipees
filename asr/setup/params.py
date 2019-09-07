@@ -14,7 +14,6 @@ tests = [
 
 
 @command('asr.setup.params',
-         save_results_file=False,
          tests=tests)
 @argument('params', nargs=-1,
           metavar='recipe:option arg recipe:option arg')
@@ -26,10 +25,7 @@ def main(params=None):
     for specific options."""
     import json
     from pathlib import Path
-    from asr.utils import get_recipes
-
-    p = Path('params.json')
-    assert not p.exists(), 'params.json already exists!'
+    from asr.utils import get_recipes, read_json
 
     defparamdict = {}
     
@@ -38,7 +34,12 @@ def main(params=None):
         defparams = recipe.defparams
         defparamdict[recipe.name] = defparams
 
-    paramdict = {}
+    p = Path('params.json')
+    if p.is_file():
+        paramdict = read_json('params.json')
+    else:
+        paramdict = {}
+
     if params:
         # Find recipe:option
         options = params[::2]
@@ -58,8 +59,6 @@ def main(params=None):
             if recipe not in paramdict:
                 paramdict[recipe] = {}
 
-            assert option not in paramdict[recipe], \
-                'You cannot write the same option twice'
             paramdict[recipe][option] = \
                 type(defparamdict[recipe][option])(value)
 

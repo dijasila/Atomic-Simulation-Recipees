@@ -1,23 +1,24 @@
 from pathlib import Path
 from asr.utils import command, option
+import click
 
 
 @command('asr.setup.defects',
-         creates=['unrelaxed.json', 'params.json'])
+         creates=['general_parameters.json'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
         help='Charge states included (-q, ..., +q).')
+@option('--supercell', nargs=3, type=click.Tuple([int, int, int]),
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('--maxsize', type=float,
         help='Maximum supercell size in Å.')
-@option('--is2d/--is3d',
-        help='Specifies if input structure in atomfile is 2D or 3D.')
 @option('--intrinsic', type=bool,
         help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
-def main(atomfile='unrelaxed.json', chargestates=3, maxsize=8, is2d=True,
-         intrinsic=True, vacancies=True):
+def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
+         maxsize=8, intrinsic=True, vacancies=True):
     """
     Sets up defect structures for a given host.
 
@@ -25,94 +26,72 @@ def main(atomfile='unrelaxed.json', chargestates=3, maxsize=8, is2d=True,
     well as the respective pristine system for a given input structure.
     Defects include: vacancies, anti-site defects. For a given primitive input
     structure this recipe will create a directory tree in the following way:
-    For the example of MoS2:
-      - There has to be a 'unrelaxed.json' file with the primitive structure
-        of the desired system in the folder you run setup.defects. Let this
-        folder be called 'MoS2_setup'. The tree structure will then look like
-        this:
+    For the example of MoS2:\n
+    - There has to be a 'unrelaxed.json' file with the primitive structure
+      of the desired system in the folder you run setup.defects. The tree
+      structure will then look like this:\n
+    .                                                                        '
+    ├── general_parameters.json                                              '
+    ├── MoS2_231.v_at_b0                                                    '
+    │   ├── charge_0                                                         '
+    │   │   ├── params.json                                                  '
+    │   │   └── unrelaxed.json                                               '
+    │   ├── charge_1                                                         '
+    │   │   ├── ...                                                          '
+    │   │   .                                                                '
+    │   .                                                                    '
+    │                                                                        '
+    ├── MoS2_231.Mo_at_i1                                                    '
+    │   ├── charge_0                                                         '
+    .   .                                                                    '
+    .                                                                        '
+    ├── pristine                                                             '
+    │   └── neutral                                                          '
+    │       ├── params.json                                                  '
+    │       └── unrelaxed.json                                               '
+    ├── pristine_sc                                                          '
+    │   └── neutral                                                          '
+    │       ├── params.json                                                  '
+    │       └── unrelaxed.json                                               '
+    ├── results_setup.defects.json                                           '
+    └── unrelaxed.json                                                       '
 
-    .
-    ├── MoS2_defects_setup
-    │   ├── bulk
-    │   │   ├── params.json
-    │   │   └── unrelaxed.json
-    │   ├── defects
-    │   │   ├── MoS2_231.HX_at_0
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_-1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_2
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_-2
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   ├── MoS2_231.HX_at_1
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   ├── MoS2_231.Mo_at_1
-    │   │   │   ├── charge_0
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    │   │   │   ├── charge_1
-    │   │   │   │   ├── params.json
-    │   │   │   │   └── unrelaxed.json
-    .   .   .   .
-    .   .   .
-    .   .   .
-    │   │   └── MoS2_231.S_at_0
-    │   │       ├── charge_0
-    .   .       .
-    .   .
-    .   .
-    │   └── pristine
-    │       ├── params.json
-    │       └── unrelaxed.json
-    ├── results_setup.defects.json
-    └── unrelaxed.json
-
-      - Here, the notation for the defects is the following:
-        'formula_supercellsize.defect_at_substitutionposition' where 'HX'
-        denotes a vacancy
-      - In the resulting folders you can find the unrelaxed structures, as
-        well as a 'params.json' file which contains the charge states of the
-        different defect structures.
+    - Here, the notation for the defects is the following:
+      'formula_supercellsize.defect_at_substitutionposition' where 'v'
+      denotes a vacancy
+    - In the resulting folders you can find the unrelaxed structures, as
+      well as a 'params.json' file which contains the charge states of the
+      different defect structures.
     """
     from ase.io import read
+    import numpy as np
 
     # first, read input atomic structure and store it in ase's atoms object
     structure = read(atomfile)
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
 
+    # check dimensionality of initial parent structure
+    nd = int(np.sum(structure.get_pbc()))
+    if nd == 3:
+        is2d = False
+    elif nd == 2:
+        is2d = True
+    elif nd == 1:
+        raise NotImplementedError('Setup defects not implemented for 1D '
+                                  f'structures')
     # set up the different defect systems and store their properties
     # in a dictionary
     structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                    charge_states=chargestates,
-                                   vacancies=vacancies,
+                                   vacancies=vacancies, sc=supercell,
                                    max_lattice=maxsize, is_2D=is2d)
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
     create_folder_structure(structure, structure_dict, chargestates,
                             intrinsic=intrinsic, vacancies=vacancies,
-                            max_lattice=maxsize, is_2D=is2d)
+                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return None
 
@@ -157,7 +136,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def setup_defects(structure, intrinsic, charge_states, vacancies,
+def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                   max_lattice, is_2D):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
@@ -182,18 +161,17 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     structure_dict = {}
     formula = structure.symbols
 
-    # set up bulk system
-    parameters = {}
-    string = 'bulk'
-    parameters['txt'] = '{0}.txt'.format(string)
-    parameters['charge'] = 0
-    structure_dict[string] = {'structure': structure, 'parameters': parameters}
-
     # first, find the desired supercell
-    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    if sc == [0, 0, 0]:
+        pristine, N_x, N_y, N_z = setup_supercell(
+            structure, max_lattice, is_2D)
+    else:
+        N_x = sc[0]
+        N_y = sc[1]
+        N_z = sc[2]
+        pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
-    string = 'pristine'
-    # try to make naming compatible with defectformation recipe
+    string = 'pristine_sc'
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
@@ -201,6 +179,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
+    wyckoffs = dataset.get('wyckoffs')
 
     finished_list = []
     if vacancies:
@@ -209,8 +188,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
                 vacancy.pop(i)
-                string = '{0}_{1}{2}{3}.HX_at_{4}'.format(
-                         formula, N_x, N_y, N_z, i)
+                string = '{0}_{1}{2}{3}.v_at_{4}{5}'.format(
+                         formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
@@ -236,8 +215,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
                         defect[i].symbol = element
-                        string = '{0}_{1}{2}{3}.{4}_at_{5}'.format(
-                                 formula, N_x, N_y, N_z, element, i)
+                        string = '{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                                 formula, N_x, N_y, N_z, element,
+                                 wyckoffs[i], i)
                         charge_dict = {}
                         for q in range(
                             (-1) * charge_states,
@@ -255,16 +235,15 @@ def setup_defects(structure, intrinsic, charge_states, vacancies,
     # put together structure dict
     structure_dict['defects'] = temp_dict
 
-    # TBD!!!
     print('INFO: setting up {0} different defect supercell systems in '
-          'charge states -{1}, ..., +{1}, as well as the pristine and bulk '
-          'systems.'.format(len(structure_dict['defects']), charge_states))
+          'charge states -{1}, ..., +{1}, as well as the pristine supercell '
+          'system.'.format(len(structure_dict['defects']), charge_states))
 
     return structure_dict
 
 
 def create_folder_structure(structure, structure_dict, chargestates,
-                            intrinsic, vacancies, max_lattice, is_2D):
+                            intrinsic, vacancies, sc, max_lattice, is_2D):
     """
     Creates a folder for every configuration of the defect supercell in
     the following way:
@@ -278,32 +257,31 @@ def create_folder_structure(structure, structure_dict, chargestates,
     from ase.io import write
     from asr.utils import write_json
 
-    # first, create parent folder for the parent structure
-    try:
-        parent_folder = str(structure.symbols) + '_defects_setup'
-        Path(parent_folder).mkdir()
-    except FileExistsError:
-        print('WARNING: parent folder ("{0}") for this structure already '
-              f'exists in the directory. Skip creating parent folder '
-              f'and continue with sub-directories.'.format(parent_folder))
-
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
-    pristine, N_x, N_y, N_z = setup_supercell(structure, max_lattice, is_2D)
+    if sc == [0, 0, 0]:
+        pristine, N_x, N_y, N_z = setup_supercell(
+            structure, max_lattice, is_2D)
+    else:
+        N_x = sc[0]
+        N_y = sc[1]
+        N_z = sc[2]
     gen_params = {}
     gen_params['chargestates'] = chargestates
     gen_params['is_2D'] = is_2D
     gen_params['supercell'] = [N_x, N_y, N_z]
     gen_params['intrinsic'] = intrinsic
     gen_params['vacancies'] = vacancies
-    write_json(parent_folder + '/general_parameters.json', gen_params)
+    write_json('general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
-    # configuration of this parent folder
+    # configuration of this parent folder, as well as the pristine
+    # supercell system
     for element in structure_dict:
-        folder_name = parent_folder + '/' + element
+        folder_name = element
         try:
-            Path(folder_name).mkdir()
+            if not folder_name == 'defects':
+                Path(folder_name).mkdir()
         except FileExistsError:
             print('WARNING: folder ("{0}") already exists in this '
                   f'directory. Skip creating it.'.format(folder_name))
@@ -320,7 +298,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             j = 0
             for sub_element in sub_dict:
                 defect_name = [key for key in sub_dict.keys()]
-                defect_folder_name = folder_name + '/' + defect_name[j]
+                defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
                     Path(defect_folder_name).mkdir()
@@ -352,13 +330,6 @@ def create_folder_structure(structure, structure_dict, chargestates,
 def collect_data():
     return None
 
-
-def postprocessing():
-    """
-    Extract data after running setup.defects recipe.
-    """
-
-    return None
 
 # def webpanel(row, key_descriptions):
 #    from asr.utils.custom import fig, table

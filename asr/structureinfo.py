@@ -119,11 +119,24 @@ def webpanel(row, key_descriptions):
         ])
 
     panel = {'title': 'Basic properties',
-             'columns': [[basictable, UNITCELL], [ATOMS]]}
+             'columns': [[basictable, UNITCELL], [ATOMS]],
+             'sort': 1}
     return [panel]
 
 
+tests = [{'description': 'Test SI.',
+          'cli': ['asr run "setup.materials -s Si2"',
+                  'ase convert materials.json structure.json',
+                  'asr run "setup.params asr.gs@calculate:ecut 300 '
+                  'asr.gs@calculate:kptdensity 2"',
+                  'asr run structureinfo'
+                  'asr run database.fromtree',
+                  'asr run "browser --only-figures"']}]
+
+
 @command('asr.structureinfo',
+         tests=tests,
+         requires=['structure.json'],
          webpanel=webpanel)
 def main():
     """Get structural information of atomic structure.
@@ -133,10 +146,10 @@ def main():
     the atomic structure in `structure.json`.
     """
 
+    import numpy as np
     from random import randint
     from ase.io import read
     from pathlib import Path
-    import numpy as np
 
     atoms = read('structure.json')
     info = {}
@@ -178,8 +191,6 @@ def main():
             cell_cv,
             tolerance=tol,
             symmorphic=False,
-            rotate_aperiodic_directions=True,
-            translate_aperiodic_directions=True,
             time_reversal=True)
         coarsesymmetry.analyze(a.get_scaled_positions())
         return (coarsesymmetry.op_scc, coarsesymmetry.ft_sc)
@@ -201,7 +212,6 @@ def main():
     # Will be changed later once we know the prototype.
     uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
     info['uid'] = uid
-
     info['is_magnetic'] = info['magstate'] != 'NM'
 
     if (atoms.pbc == [True, True, False]).all():

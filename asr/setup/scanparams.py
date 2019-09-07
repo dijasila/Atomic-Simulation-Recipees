@@ -2,8 +2,7 @@ import click
 from asr.utils import command, argument, option
 
 
-@command('asr.setup.scanparams',
-         save_results_file=False)
+@command('asr.setup.scanparams')
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg recipe:option arg arg arg')
 @option('--symlink/--no-symlink',
