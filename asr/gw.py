@@ -2,7 +2,7 @@ from asr.utils import command, option, read_json
 from click import Choice
 
 
-@command('asr.gw') #, dependencies=['asr.gs'])
+@command('asr.gw')  # , dependencies=['asr.gs'])
 @option('--gs', help='Ground state on which GW is based')
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
@@ -11,10 +11,7 @@ from click import Choice
 @option('--verbose', help='verbose')
 def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
     """Calculate GW"""
-    import os
     import pickle
-    import warnings
-    from ase.io import read
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     import gpaw.mpi as mpi
@@ -38,10 +35,12 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
 
     # setup k points/parameters
     dim = np.sum(atoms.pbc.tolist())
-    if verbose: print("GW: dim =", dim)
+    if verbose:
+        print("GW: dim =", dim)
     if dim == 3:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
-        if verbose: print("kpt", kptdensity, kpts)
+        if verbose:
+            print("kpt", kptdensity, kpts)
         truncation = 'wigner-seitz'
         q0_correction = False
     elif dim == 2:
@@ -80,7 +79,6 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
         gw_file = 'g0w0_results_GW.pckl'
         raise NotImplementedError('asr for GWG not implemented!')
 
-
     # calculate or collect
     if not Path('results-asr.gw.json').is_file():
         # calculate
@@ -91,7 +89,8 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
 
             # we need energies/wavefunctions on the correct grid
             if not Path('gs_gw.gpw').is_file():
-                if verbose: print("GW: Run gs_gw...")
+                if verbose:
+                    print("GW: Run gs_gw...")
                 calc = GPAW(
                     gs,
                     txt='gs_gw.txt',
@@ -103,35 +102,40 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                 calc.write('gs_gw.gpw', mode='all')
                 mpi.world.barrier()
             else:
-                if verbose: print("GW: gs_gw already done")
+                if verbose:
+                    print("GW: gs_gw already done")
 
-            if verbose: print("GW: Run G0W0...")
+            if verbose:
+                print("GW: Run G0W0...")
             calc = G0W0(calc='gs_gw.gpw',
-                bands=(lb, ub),
-                ecut=ecut,
-                ecut_extrapolation=True,
-                truncation=truncation,
-                nblocksmax=True,
-                q0_correction=q0_correction,
-                filename='g0w0',
-                restartfile='g0w0.tmp',
-                savepckl=True)
+                        bands=(lb, ub),
+                        ecut=ecut,
+                        ecut_extrapolation=True,
+                        truncation=truncation,
+                        nblocksmax=True,
+                        q0_correction=q0_correction,
+                        filename='g0w0',
+                        restartfile='g0w0.tmp',
+                        savepckl=True)
 
             calc.calculate()
         else:
-            if verbose: print("GW: G0W0 already done")
+            if verbose:
+                print("GW: G0W0 already done")
 
-        # Interpolation => currently working for 2D, 3D is not - use same as HSE
-        if verbose: print("GW: Interpolate bs...")
+        # Interpolation => currently working for 2D, 3D is not - use
+        # same as HSE
+        if verbose:
+            print("GW: Interpolate bs...")
         ranks = [0]
         comm = mpi.world.new_communicator(ranks)
         if mpi.world.rank in ranks:
             if not Path('gs_gw_nowfs.gpw').is_file():
                 Exception("GW: No gs_gw_nowfs.gpw!")
             calc = GPAW('gs_gw_nowfs.gpw', communicator=comm, txt=None)
-            bandrange = list(range(lb,ub))
+            bandrange = list(range(lb, ub))
             gw_skn = pickle.load(open(gw_file, 'rb'), encoding='latin1')['qp']
-            theta, phi = 0., 0. # get_spin_direction()
+            theta, phi = 0., 0.  # get_spin_direction()
             e_mk = get_soc_eigs(calc, gw_kn=gw_skn, return_spin=False,
                                 theta=theta, phi=phi,
                                 bands=bandrange)
@@ -141,8 +145,9 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
 
             e_skm = e_mk.T[np.newaxis]
             efermi = fermi_level(calc, e_skm,
-                                 nelectrons=(2 * (calc.get_number_of_electrons() -
-                                                  bandrange[0] * 2)))
+                                 nelectrons=(2 *
+                                             (calc.get_number_of_electrons() -
+                                              bandrange[0] * 2)))
 
             gap, p1, p2 = bandgap(eigenvalues=e_skm, efermi=efermi,
                                   output=None)
@@ -169,10 +174,19 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                 data.update(path=kpts, eps_skn=e_skm, xreal=xreal,
                             epsreal_skn=epsreal_skn)
     else:
-        if verbose: print("GW: Interpolation already done")
+        if verbose:
+            print("GW: Interpolation already done")
         data = read_json('results-asr.gw.json')
 
-    if verbose: print("GW: Done.")
+    if verbose:
+        print("GW: Done.")
+
+    data['__key_descriptions__'] = {'gap_gw': 'KVP: Band gap (GW) [eV]',
+                                    'dir_gap_gw':
+                                    'KVP: Direct band gap (GW) [eV]',
+                                    'efermi_gw': 'KVP: Fermi level (GW) [eV]',
+                                    'cbm_gw': 'KVP: CBM vs. vacuum (GW) [eV]',
+                                    'vbm_gw': 'KVP: VBM vs. vacuum (GW) [eV]'}
     return data
 
 
@@ -238,7 +252,7 @@ def interpolate_bandlines2(calc, path, e_skn=None, npoints=400):
     import numpy as np
     from ase.dft.kpoints import bandpath
     from scipy.interpolate import CubicSpline
-    #print("GW: interpolate_bandlines2...")
+    # print("GW: interpolate_bandlines2...")
     if e_skn is None:
         e_skn = eigenvalues(calc)
     kpts = calc.get_bz_k_points()
