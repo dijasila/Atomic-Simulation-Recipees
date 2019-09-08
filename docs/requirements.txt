@@ -1,2 +1,3 @@
+ase==3.18.0
 sphinx-autoapi==1.1.0
 sphinxcontrib-programoutput==0.14
