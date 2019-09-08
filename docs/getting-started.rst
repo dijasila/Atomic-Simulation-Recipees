@@ -1,46 +1,16 @@
 Getting started
 ===============
-ASR comes with some built in functions. To see these simply write::
 
-  $ asr
-  Usage: asr [OPTIONS] COMMAND [ARGS]...
 
-  Options:
-    -h, --help  Show this message and exit.
+ASR comes with some built in functions. To see these simply write
 
-  Commands:
-  help      See help for recipe.
-  list      Show a list of all recipes.
-  run       Run recipe or ASE command.
-  status    Show the status of the current folder for all ASR recipes.
-  test      Run test of recipes.
-  workflow  Helper function to make workflows for MyQueue.
+.. command-output:: asr
 
 Let's put these functions into use by calculating some properties of 
 Silicon. To get an overview of the possible recipes we can use the `list`
-command to list the known recipes::
+command to list the known recipes
 
-  $ asr list
-  Recipe                Description
-  ------                -----------
-  collect               Collect data in ase database.
-  structureinfo         Get quick information about structure based...
-  browser               Open results in web browser.
-  relax                 Relax atomic positions and unit cell.
-  setup.decorate        Decorate structure with different atoms.
-  setup.params          Make a new params file.
-  setup.unpackdatabase  Set up folders with atomic structures based...
-  setup.magnetize       Set up magnetic moments of atomic structure.
-  gs                    Calculate ground state density.
-  dos                   Calculate DOS.
-  polarizability        Calculate linear response polarizability or...
-  convex_hull
-  phonons               Calculate Phonons.
-  anisotropy
-  bader                 Calculate bader charges.
-  borncharges           Calculate Born charges.
-  bandstructure         Calculate electronic band structure.
-  push                  Push structure along some phonon mode and...
+.. command-output:: asr list
 
 Let's say we want to relax a structure. We can search for `relax` and only get a
 subset of this list::

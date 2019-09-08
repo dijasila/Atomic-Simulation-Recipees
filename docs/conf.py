@@ -37,6 +37,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.napoleon',
               'autoapi.extension',
+              'sphinxcontrib.programoutput',
               ]
 autoapi_type = 'python'
 autoapi_dirs = ['../asr']
