@@ -134,7 +134,7 @@ class ASRCommand:
         self.name = name
 
         # We can handle these exceptions
-        self.known_exceptions = known_exceptions or {}
+        self._known_exceptions = known_exceptions or {}
 
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
@@ -196,6 +196,11 @@ class ASRCommand:
 
         # Setup the CLI
         self.setup_cli()
+
+    def get_known_exceptions(self):
+        if callable(self._known_exceptions):
+            return self._known_exceptions()
+        return self._known_exceptions
 
     @property
     def state(self):
