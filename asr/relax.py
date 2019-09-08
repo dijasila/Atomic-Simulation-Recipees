@@ -9,7 +9,6 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
 from asr.utils import command, option
-from gpaw import KohnShamConvergenceError
 from math import sqrt
 import time
 
@@ -249,8 +248,11 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 
 # Please note these are relative numbers that
 # are multiplied on the original ones
-known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
-                                               'width': 0.5}}
+def known_exceptions():
+    from gpaw import KohnShamConvergenceError
+    known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                                   'width': 0.5}}
+    return known_exceptions
 
 
 @command('asr.relax',
