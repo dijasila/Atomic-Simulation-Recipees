@@ -13,39 +13,14 @@ command to list the known recipes
 .. command-output:: asr list
 
 Let's say we want to relax a structure. We can search for `relax` and only get a
-subset of this list::
+subset of this list
 
-  $ asr list relax
-  Recipe                Description
-  ------                -----------
-  relax                 Relax atomic positions and unit cell.
-  setup.unpackdatabase  Set up folders with atomic structures based...
-  setup.magnetize       Set up magnetic moments of atomic structure.
-  push                  Push structure along some phonon mode and...
+.. command-output:: asr list relax
 
-  from which is clear that we will probably want to use the `relax` recipe. To see
-  more details about this recipe we can use the `help` function:
-  ```console
-  $ asr help relax
-  Usage: asr run relax [OPTIONS]
-  
-  Relax atomic positions and unit cell.
+from which is clear that we will probably want to use the `relax` recipe. To see
+more details about this recipe we can use the `help` function:
 
-  By default, this recipe takes the atomic structure in 'unrelaxed.json' and
-  relaxes the structure including the DFTD3 van der Waals correction. The
-  relaxed structure is saved to `structure.json` which can be processed by
-  other recipes.
-
-  Options:
-  --skip-deps / --run-deps  Skip execution of dependencies?  [default: False]
-  --ecut INTEGER            Energy cutoff in electronic structure calculation
-  [default: 800]
-  --kptdensity FLOAT        Kpoint density  [default: 6.0]
-  -U, --plusu               Do +U calculation  [default: False]
-  --xc TEXT                 XC-functional  [default: PBE]
-  --d3 / --nod3             Relax with vdW D3  [default: True]
-  --width FLOAT             Fermi-Dirac smearing temperature  [default: 0.05]
-  --help                    Show this message and exit.
+.. command-output:: asr run "relax -h"
 
 So to relax a structure, we start by creating
 a new folder and put an `unrelaxed.json` file into the directory containing
@@ -81,7 +56,7 @@ can be browsed using the `ase db` module::
   $ asr run collect
   $ ase db database.db
   id|age|user |formula|calculator| energy| fmax|pbc|volume|charge|  mass| smax
-  1| 7s|mogje|Si2    |dftd3     |-10.738|0.000|TTT|41.204| 0.000|56.170|0.001
+   1| 7s|mogje|Si2    |dftd3     |-10.738|0.000|TTT|41.204| 0.000|56.170|0.001
   Rows: 1
 
 We can also browse this database by using the `browser` recipe which starts a
