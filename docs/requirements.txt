@@ -1,3 +1,4 @@
 ase==3.18.0
+gpaw==19.8.1
 sphinx-autoapi==1.1.0
 sphinxcontrib-programoutput==0.14
