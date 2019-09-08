@@ -12,6 +12,7 @@ setup(
     version=version,
     description='Atomic Simulation Recipes',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author='M. N. Gjerding',
     author_email='mogje@fysik.dtu.dk',
     url='https://gitlab.com/mortengjerding/asr',
@@ -24,7 +25,7 @@ setup(
         asr=asr.utils.cli:cli
     ''',
     classifiers=[
-        'Development Status :: 0 - Beta', 'Environment :: Console',
+        'Development Status :: 4 - Beta', 'Environment :: Console',
         'Intended Audience :: Developers', 'License :: OSI Approved :: '
         'GNU General Public License v3 or later (GPLv3+)',
         'Operating System :: Unix',
