@@ -4,13 +4,13 @@ Getting started
 
 ASR comes with some built in functions. To see these simply write
 
-.. command-output:: asr
+.. command-output:: python3 -m asr
 
 Let's put these functions into use by calculating some properties of 
 Silicon. To get an overview of the possible recipes we can use the `list`
 command to list the known recipes
 
-.. command-output:: asr list
+.. command-output:: python3 -m asr list
 
 Let's say we want to relax a structure. We can search for `relax` and only get a
 subset of this list::
