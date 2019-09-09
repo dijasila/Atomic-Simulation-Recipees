@@ -118,9 +118,10 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
             smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
-        else:
-            # nd == 1
-            msg = 'Relax recipe not implemented for 1D structures'
+        elif nd == 1:
+	    smask = [0, 0, 1, 0, 0, 0]
+	else:		
+            msg = 'Relax recipe not implemented for 0D structures'
             raise NotImplementedError(msg)
 
     from ase.calculators.calculator import kpts2sizeandoffsets
@@ -139,7 +140,12 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
         assert not atoms.get_pbc()[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         kwargs['poissonsolver'] = {'dipolelayer': 'xy'}
-
+    elif nd == 1:
+	assert not atoms.pbc[0] and not atoms.pbc[1]
+	cell = atoms.cell
+        assert abs(cell[2, :2]).max() < 1e-12, cell
+        assert abs(cell[:2, 2]).max() < 1e-12, cell
+  
     if plusu:
         # Try to get U values from previous image
         try:
