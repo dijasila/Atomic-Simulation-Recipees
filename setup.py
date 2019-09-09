@@ -22,7 +22,7 @@ setup(
                       'spglib', 'plotly', 'sphinx-autoapi'],
     entry_points='''
         [console_scripts]
-        asr=asr.utils.cli:cli
+        asr=asr.core.cli:cli
     ''',
     classifiers=[
         'Development Status :: 4 - Beta', 'Environment :: Console',

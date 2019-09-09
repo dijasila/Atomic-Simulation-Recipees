@@ -299,10 +299,6 @@ def status():
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
 @argument('tests', nargs=-1, required=False)
-@option('-P', '--parallel',
-        metavar='NCORES',
-        type=int,
-        help='Run tests in parallel on NCORES')
 @option('-k', '--patterns', type=str, metavar='PATTERN,PATTERN,...',
         help='Select tests containing PATTERN.')
 @option('-j', '--jobs', type=int, metavar='JOBS', default=1,
@@ -311,38 +307,44 @@ def status():
         'for parallelization together with MPI.')
 @option('-s', '--show-output', is_flag=True,
         help='Show standard output from tests.')
-def test(tests, parallel, patterns, jobs, show_output):
-    from asr.utils.testrunner import ASRTestRunner
-    import os
-    import sys
+def test(tests, patterns, jobs, show_output):
+    from asr.core.testrunner import TestRunner
     from pathlib import Path
-    from asr.tests.generatetests import generatetests, cleantests
 
-    from gpaw.mpi import world
-    if parallel:
-        from gpaw.mpi import have_mpi
-        if not have_mpi:
-            # Start again using gpaw-python in parallel:
-            arguments = ['mpiexec', '-np', str(parallel),
-                         'gpaw-python', '-m', 'asr', 'test'] + sys.argv[2:]
-            os.execvp('mpiexec', arguments)
+    def get_tests():
+        folder = Path(__file__).parent.parent / 'tests'
+        tests = [{'type': 'file',
+                  'name': str(path),
+                  'path': str(path)} for path in folder.glob('test_*.py')]
 
-    try:
-        generatetests()
-        if not tests:
-            folder = Path(__file__).parent.parent / 'tests'
-            tests = [str(path) for path in folder.glob('test_*.py')]
+        from asr.core import get_recipes
+        recipes = get_recipes()
+        for recipe in recipes:
+            if recipe.tests:
+                id = 0
+                for test in recipe.tests:
+                    dct = {'type': 'dict'}.update(test)
+                    if 'name' not in dct:
+                        dct['name'] = f'test_{recipe.name}_{id}'
+                        id += 1
+                    tests.append(dct)
+        return tests
 
-        if patterns:
-            patterns = patterns.split(',')
-            tmptests = []
-            for pattern in patterns:
-                tmptests += [test for test in tests if pattern in test]
-            tests = tmptests
-        failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
-    finally:
-        if world.rank == 0:
-            cleantests()
+    tests = get_tests()
+    print(tests)
+    exit()
+    if not tests:
+        folder = Path(__file__).parent.parent / 'tests'
+        tests = [str(path) for path in folder.glob('test_*.py')]
+
+    if patterns:
+        patterns = patterns.split(',')
+        tmptests = []
+        for pattern in patterns:
+            tmptests += [test for test in tests if pattern in test]
+        tests = tmptests
+
+    failed = TestRunner(tests, jobs=jobs, show_output=show_output).run()
 
     assert not failed, 'Some tests failed!'
 
