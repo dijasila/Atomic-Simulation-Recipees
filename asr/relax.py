@@ -8,7 +8,7 @@ from ase.parallel import world
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.utils import command, option
+from asr.core import command, option
 from math import sqrt
 import time
 

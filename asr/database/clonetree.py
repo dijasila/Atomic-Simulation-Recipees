@@ -1,4 +1,4 @@
-from asr.utils import command, option, argument
+from asr.core import command, option, argument
 
 
 @command('asr.database.clonetree')

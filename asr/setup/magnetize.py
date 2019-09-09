@@ -1,5 +1,5 @@
 from click import Choice
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.setup.magnetize')

@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-from asr.utils import command, option
+from asr.core import command, option
 
 from ase.db import connect
 from ase.io import read

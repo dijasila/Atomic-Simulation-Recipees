@@ -6,7 +6,7 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.utils import command, option
+from asr.core import command, option
 
 
 def creates():
