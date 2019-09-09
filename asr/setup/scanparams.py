@@ -1,5 +1,5 @@
 import click
-from asr.utils import command, argument, option
+from asr.core import command, argument, option
 
 
 @command('asr.setup.scanparams')

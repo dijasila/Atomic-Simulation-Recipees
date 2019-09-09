@@ -1,4 +1,4 @@
-from asr.utils import command, subresult, option
+from asr.core import command, subresult, option
 
 from collections import defaultdict
 
@@ -10,7 +10,7 @@ from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
-from asr.utils import magnetic_atoms
+from asr.core import magnetic_atoms
 from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 
 

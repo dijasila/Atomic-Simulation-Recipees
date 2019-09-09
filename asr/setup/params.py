@@ -1,4 +1,4 @@
-from asr.utils import command, argument
+from asr.core import command, argument
 
 
 tests = [

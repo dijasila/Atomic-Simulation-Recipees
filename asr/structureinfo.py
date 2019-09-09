@@ -1,4 +1,4 @@
-from asr.utils import command
+from asr.core import command
 
 
 def get_reduced_formula(formula, stoichiometry=False):
