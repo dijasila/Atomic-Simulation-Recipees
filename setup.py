@@ -18,7 +18,7 @@ setup(
     url='https://gitlab.com/mortengjerding/asr',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['Click', 'matplotlib',
+    install_requires=['ase', 'Click', 'matplotlib',
                       'spglib', 'plotly', 'sphinx-autoapi'],
     entry_points='''
         [console_scripts]
