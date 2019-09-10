@@ -105,7 +105,8 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, fmax = 0.01, emin=-np.inf,
+def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05,
+          fmax=0.01, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True, chargestate=0):
     import spglib
 
@@ -119,8 +120,8 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, fmax = 0.01, emin=-
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         elif nd == 1:
-	    smask = [0, 0, 1, 0, 0, 0]
-	else:		
+            smask = [0, 0, 1, 0, 0, 0]
+        else:
             msg = 'Relax recipe not implemented for 0D structures'
             raise NotImplementedError(msg)
 
@@ -141,14 +142,13 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, fmax = 0.01, emin=-
             'The third unit cell axis should be aperiodic for a 2D material!'
         kwargs['poissonsolver'] = {'dipolelayer': 'xy'}
     elif nd == 1:
-	assert not atoms.pbc[0] and not atoms.pbc[1]
-	cell = atoms.cell
+        assert not atoms.pbc[0] and not atoms.pbc[1]
+        cell = atoms.cell
         assert abs(cell[2, :2]).max() < 1e-12, cell
         assert abs(cell[:2, 2]).max() < 1e-12, cell
-        assert abs(slab.cell[0, 1]) < 1e-12, slab.cell
-        assert abs(slab.cell[1, 0]) < 1e-12, slab.cell
-
-  
+        assert abs(cell[0, 1]) < 1e-12, cell
+        assert abs(cell[1, 0]) < 1e-12, cell
+ 
     if plusu:
         # Try to get U values from previous image
         try:
@@ -275,7 +275,8 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--width', help='Fermi-Dirac smearing temperature')
 @option('--readout_charge', help='Read out chargestate from params.json')
 @option('--fmax', help='Maximum atomic force')
-def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05, fmax = 0.01, readout_charge=False):
+def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True,
+         width=0.05, fmax=0.01, readout_charge=False):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
@@ -313,8 +314,8 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05, f
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kptdensity=kptdensity, xc=xc,
-                                     plusu=plusu, dftd3=d3, width=width, 
-				     fmax=fmax,
+                                     plusu=plusu, dftd3=d3, width=width,
+                                     fmax=fmax,
                                      chargestate=chargestate)
 
     edft = dft.get_potential_energy(atoms)
