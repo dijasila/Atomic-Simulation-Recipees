@@ -25,7 +25,7 @@ calctests = [{'description': 'Test ground state of Si.',
 @option('-r', '--readoutcharge', type=bool,
         help='Read out chargestate from params.json')
 def calculate(ecut=800, xc='PBE', kptdensity=12.0,
-              width=0.05, readoutcharge=False): 
+              width=0.05, readoutcharge=False):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
