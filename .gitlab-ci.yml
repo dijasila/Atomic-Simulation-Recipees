@@ -9,3 +9,11 @@ tests:
     - gpaw install-data paw-datasets --register
     - asr test asr.utils.cli asr.setup.params asr.relax_0 --raiseexc
     - flake8 asr
+
+docs_test:
+  image: python:3
+  script:
+    - pip install .[docs]
+    - which sphinx-build
+    - cd $CI_PROJECT_DIR/docs
+    - sphinx-build -W . build
