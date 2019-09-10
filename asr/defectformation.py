@@ -35,7 +35,7 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     """
     from ase.io import read
     from asr.utils import write_json, read_json
-    from gpaw import GPAW
+    # from gpaw import GPAW
     from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
@@ -71,9 +71,9 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
         sub_folder_list = []
         [sub_folder_list.append(x) for x in s.iterdir() if x.is_dir()]
         e_form = []
-        e_fermi = []
+        # e_fermi = []
         charges = []
-        e_fermi_calc = []
+        # e_fermi_calc = []
         for sub_folder in sub_folder_list:
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
@@ -90,13 +90,13 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
             else:
                 e_form.append(elc.calculate_corrected_formation_energy())
             charges.append(chargestate)
-            calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
-            e_fermi_calc.append(calc.get_fermi_level())
-            e_fermi.append(0)
+            # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
+            # e_fermi_calc.append(calc.get_fermi_level())
+            # e_fermi.append(0)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
-                                             'fermi_energies': e_fermi,
-                                             'chargestates': charges,
-                                             'fermi_energies_c': e_fermi_calc}
+                                             'chargestates': charges}
+        # 'fermi_energies_c': e_fermi_calc
+        # 'fermi_energies': e_fermi,
     write_json('defectformation.json', defectformation_dict)
 
     return None
@@ -202,21 +202,21 @@ def collect_data():
 # This function doesn't exist in the new asr version anymore and has to be   #
 # changed at a later stage, as well as the way the plots are created (db)    #
 # ========================================================================== #
-def postprocessing():
-    from asr.utils import read_json
-
-    formation_dict = read_json('defectformation.json')
-    transitions_dict = {}
-    gap = formation_dict.get('gaps_nosoc').get('gap')
-    for element in formation_dict:
-        if element != 'gaps_soc' and element != 'gaps_nosoc':
-            print(element)
-            plotname = element
-            defect_dict = formation_dict[element]
-            transitions_dict[plotname] = plot_formation_and_transitions(
-                defect_dict, plotname, gap)
-
-    return transitions_dict
+# def postprocessing():
+#     from asr.utils import read_json
+#
+#     formation_dict = read_json('defectformation.json')
+#     transitions_dict = {}
+#     gap = formation_dict.get('gaps_nosoc').get('gap')
+#     for element in formation_dict:
+#         if element != 'gaps_soc' and element != 'gaps_nosoc':
+#             print(element)
+#             plotname = element
+#             defect_dict = formation_dict[element]
+#             transitions_dict[plotname] = plot_formation_and_transitions(
+#                 defect_dict, plotname, gap)
+#
+#     return transitions_dict
 
 
 def line_intersection(line1, line2):
