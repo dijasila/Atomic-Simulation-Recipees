@@ -25,7 +25,7 @@ calctests = [{'description': 'Test ground state of Si.',
 @option('-r', '--readoutcharge', type=bool,
         help='Read out chargestate from params.json')
 def calculate(ecut=800, xc='PBE',
-              kptdensity=12.0, width=0.05, readoutcharge=False):
+              kptdensity=12.0, width=0.05, readoutcharge=False): 
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -64,6 +64,8 @@ def calculate(ecut=800, xc='PBE',
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         params['poissonsolver'] = {'dipolelayer': 'xy'}
+    elif nd == 1:
+        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     calc = get_calculator()(**params)
 
@@ -113,6 +115,8 @@ def main():
                 {'dipolelayer': 'xy'}, \
                 ('The ground state has a finite dipole moment along aperiodic '
                  'axis but calculation was without dipole correction.')
+    elif nd == 1:
+        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
@@ -271,7 +275,7 @@ def vacuumlevels(atoms, calc, n=8):
         number of gridpoints away from the edge to evaluate the vac levels
     """
     import numpy as np
-
+ 
     # Record electrostatic potential as a function of z
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
     z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
