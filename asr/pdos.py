@@ -54,7 +54,38 @@ class SOCDOS(DOS):
         return DOS.get_dos(self) / 2
 
 
+# ---------- Recipe tests ---------- #
+
+
+tests = []
+tests.append({'description': 'Test the pdos of Si (cores=1)',
+              'name': 'test_asr.pdos_Si_serial',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+tests.append({'description': 'Test the pdos of Si (cores=2)',
+              'name': 'test_asr.pdos_Si_parallel',
+              'cli': ['asr run setup.materials -s Si2',
+                      'ase convert materials.json structure.json',
+                      'asr run setup.params '
+                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
+                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
+                      'asr run -p 2 pdos',
+                      'asr run database.fromtree',
+                      'asr run browser --only-figures']})
+
+
 # ---------- Main functionality ---------- #
+
+
+group = 'property'
+resources = '8:1h'  # How many resources are used? XXX
+dependencies = ['asr.structureinfo', 'asr.gs']
 
 
 def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
@@ -465,34 +496,7 @@ def plot_pdos(row, filename, soc=True,
     plt.close()
 
 
-# ---------- ASR globals and main ---------- #
-
-
-group = 'property'
-resources = '8:1h'  # How many resources are used? XXX
-dependencies = ['asr.structureinfo', 'asr.gs']
-
-tests = []
-tests.append({'description': 'Test the pdos of Si (cores=1)',
-              'name': 'test_asr.pdos_Si_serial',
-              'cli': ['asr run setup.materials -s Si2',
-                      'ase convert materials.json structure.json',
-                      'asr run setup.params '
-                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
-                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
-                      'asr run pdos',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures']})
-tests.append({'description': 'Test the pdos of Si (cores=2)',
-              'name': 'test_asr.pdos_Si_parallel',
-              'cli': ['asr run setup.materials -s Si2',
-                      'ase convert materials.json structure.json',
-                      'asr run setup.params '
-                      'asr.gs:ecut 200 asr.gs:kptdensity 2.0 '
-                      'asr.pdos:kptdensity 3.0 asr.pdos:emptybands 5',
-                      'asr run -p 2 pdos',
-                      'asr run database.fromtree',
-                      'asr run browser --only-figures']})
+# ---------- ASR main ---------- #
 
 if __name__ == '__main__':
     main.cli()
