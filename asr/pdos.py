@@ -19,7 +19,7 @@ from asr.utils import magnetic_atoms
 from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 
 
-# ---------- GPAW hacks ---------- #
+# ---------- GPAW hack ---------- #
 
 
 class SOCDOS(DOS):
@@ -57,6 +57,14 @@ class SOCDOS(DOS):
 # ---------- Main functionality ---------- #
 
 
+def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
+    from asr.utils.refinegs import refinegs
+    calc, gpw = refinegs(selfc=False,
+                         kptdensity=kptdensity, emptybands=emptybands,
+                         gpw='pdos.gpw', txt='pdos.gpw')
+    return calc, gpw
+
+
 @command('asr.pdos')
 @option('--kptdensity', help='k-point density')
 @option('--emptybands', help='number of empty bands to include')
@@ -82,14 +90,6 @@ def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
 
 
 # ---------- Recipe methodology ---------- #
-
-
-def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
-    from asr.utils.refinegs import refinegs
-    calc, gpw = refinegs(selfc=False,
-                         kptdensity=kptdensity, emptybands=emptybands,
-                         gpw='default', txt='default')
-    return calc, gpw
 
 
 # ----- PDOS ----- #
