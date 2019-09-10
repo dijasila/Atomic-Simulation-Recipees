@@ -324,7 +324,7 @@ def get_evac():
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
+    from asr.browser import table
 
     if row.get('evacdiff', 0) < 0.02:
         t = table(row, 'Postprocessing',

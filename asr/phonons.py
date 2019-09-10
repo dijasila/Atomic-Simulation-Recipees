@@ -92,7 +92,7 @@ def requires():
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table, fig
+    from asr.browser import table, fig
     phonontable = table(row, 'Property',
                         ['c_11', 'c_22', 'c_12', 'bulk_modulus',
                          'minhessianeig'], key_descriptions)

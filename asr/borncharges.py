@@ -417,7 +417,7 @@ def polvsatom(row, *filenames):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig
+    from asr.browser import fig
     polfilenames = []
     if 'Z_avv' in row.data:
         def matrixtable(M, digits=2):

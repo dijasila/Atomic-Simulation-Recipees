@@ -241,7 +241,7 @@ def convex_hull_tables(row: AtomsRow,
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
 
     if 'convex_hull' not in row.data:
         return (), ()

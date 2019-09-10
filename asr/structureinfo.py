@@ -70,7 +70,7 @@ def has_inversion(atoms, use_spglib=True):
 
 def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
-    from asr.utils.custom import table
+    from asr.browser import table
 
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     basictable = table(row, 'Property', [
