@@ -81,7 +81,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     elif nd == 2:
         supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (n, 1, 1)
+        supercell = (1, 1, n)
 
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
@@ -106,7 +106,7 @@ def main():
     elif nd == 2:
         supercell = (n, n, 1)
     elif nd == 1:
-        supercell = (n, 1, 1)
+        supercell = (1, 1, n)
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read()
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
