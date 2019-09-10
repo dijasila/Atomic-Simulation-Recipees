@@ -46,12 +46,13 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
 
     convbands = emptybands // 2
+    Z = np.array([0, 0, 0.5])
     parms = {
         'basis': 'dzp',
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
-        'kpts': path,
+        'kpts': {'path': [-Z, Z], 'npoints': npoints},
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
