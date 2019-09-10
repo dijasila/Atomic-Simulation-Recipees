@@ -1,18 +1,15 @@
 def get_spin_direction(fname="anisotropy_xy.npz"):
-    '''
-    Uses the magnetic anisotropy to calculate the preferred spin orientation
+    """Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
     Parameters:
-        fname:
-            The filename of a datafile containing the xz and yz
+        fname: The filename of a datafile containing the xz and yz
             anisotropy energies.
+
     Returns:
-        theta:
-            Polar angle in radians
-        phi:
-            Azimuthal angle in radians
-    '''
+        theta: Polar angle in radians
+        phi: Azimuthal angle in radians
+    """
     import os
     import numpy as np
     theta = 0
@@ -28,12 +25,15 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
 
 
 def eigenvalues(calc):
-    """
-    Parameters:
-        calc: Calculator
-            GPAW calculator
-    Returns:
-        e_skn: (ns, nk, nb)-shape array
+    """Get eigenvalues from calculator.
+
+    Parameters
+    ----------
+    calc : Calculator
+
+    Returns
+    -------
+    e_skn: (ns, nk, nb)-shape array
     """
     import numpy as np
     rs = range(calc.get_number_of_spins())
@@ -43,16 +43,20 @@ def eigenvalues(calc):
 
 
 def fermi_level(calc, eps_skn=None, nelectrons=None):
-    """
-    Parameters:
-        calc: GPAW
+    """Get Fermi level from calculation.
+
+    Parameters
+    ----------
+        calc : GPAW
             GPAW calculator
-        eps_skn: ndarray, shape=(ns, nk, nb), optional
+        eps_skn : ndarray, shape=(ns, nk, nb), optional
             eigenvalues (taken from calc if None)
-        nelectrons: float, optional
+        nelectrons : float, optional
             number of electrons (taken from calc if None)
-    Returns:
-        out: float
+
+    Returns
+    -------
+        out : float
             fermi level
     """
     from gpaw.occupations import occupation_numbers
@@ -69,19 +73,20 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
              optimal_spin_direction=False):
-    """give the eigenvalues w or w/o spinorbit coupling and the corresponding
+    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
     fermi energy
+
     Parameters:
-        gpw: str
-            gpw filename
-        soc: None, bool
+        gpw (str): gpw filename
+        soc : None, bool
             use spinorbit coupling if None it returns both w and w/o
-        optimal_spin_direction: bool
+        optimal_spin_direction : bool
             If True, use get_spin_direction to calculate the spin direction
             for the SOC
-        bands: slice, list of ints or None
+        bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
-        Returns: dict or e_skn, efermi
+
+    Returns : dict or e_skn, efermi
         containg eigenvalues and fermi levels w and w/o spinorbit coupling
     """
     from gpaw import GPAW

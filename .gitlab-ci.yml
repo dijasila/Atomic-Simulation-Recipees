@@ -3,9 +3,8 @@ tests:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - pip install flake8 spglib
+    - pip install flake8
     - pip install -e .
-    - pip install git+https://gitlab.com/ase/ase.git
     - pip install gpaw
     - gpaw install-data paw-datasets --register
     - asr test -k asr.utils.cli,asr.setup.params,asr.relax_0

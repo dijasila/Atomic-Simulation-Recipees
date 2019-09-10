@@ -5,8 +5,8 @@ from asr.utils import command, option
 
 
 @command('asr.something')
-@option('--number', default=5)
-def main(number):
+@option('--number', type=int)
+def main(number=5):
     """Calculate something."""
     something = calculate_something(number)
     results = {'number': number,

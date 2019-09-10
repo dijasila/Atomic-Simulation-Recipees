@@ -9,7 +9,6 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
 from asr.utils import command, option
-from gpaw import KohnShamConvergenceError
 from math import sqrt
 import time
 
@@ -249,8 +248,11 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 
 # Please note these are relative numbers that
 # are multiplied on the original ones
-known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
-                                               'width': 0.5}}
+def known_exceptions():
+    from gpaw import KohnShamConvergenceError
+    known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                                   'width': 0.5}}
+    return known_exceptions
 
 
 @command('asr.relax',
@@ -273,6 +275,17 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     and relaxes the structure including the DFTD3 van der Waals
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
+
+
+    Installation:
+    To install DFTD3 do
+
+    $ mkdir ~/DFTD3 && cd ~/DFTD3
+    $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+    $ tar -zxf dftd3.tgz
+    $ make
+    $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+    $ source ~/.bashrc
 
     \b
     Examples:
