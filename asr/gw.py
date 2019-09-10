@@ -169,8 +169,9 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                     vh = GPAW('gs.gpw', txt=None).get_electrostatic_potential()
                     evac1, evac2 = vh.mean(axis=0).mean(axis=0)[[0, -1]]
                     evac = (evac1 + evac2) / 2
-            except:
+            except Exception as x:
                 raise Exception("GW: Not able to find evac!")
+                print(x)
 
             vbm = e_skm[p1]
             cbm = e_skm[p2]
@@ -213,6 +214,7 @@ def eigenvalues(calc):
     Returns:
         e_skn: (ns, nk, nb)-shape array
     """
+    import numpy as np
     rs = range(calc.get_number_of_spins())
     rk = range(len(calc.get_ibz_k_points()))
     e = calc.get_eigenvalues
