@@ -24,7 +24,7 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from asr.utils import file_barrier
+    from asr.core import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()

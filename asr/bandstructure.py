@@ -637,7 +637,7 @@ def main():
     from gpaw import GPAW
     from ase.dft.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from asr.utils import read_json
+    from asr.core import read_json
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
@@ -699,7 +699,7 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
 
-    from asr.utils import singleprec_dict
+    from asr.core import singleprec_dict
     results['bs_soc'] = singleprec_dict(bsresults)
     results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
 

@@ -208,7 +208,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
 def BN_check():
     # Check that 2D-BN doesn't relax to its 3D form
-    from asr.utils import read_json
+    from asr.core import read_json
     results = read_json('results-asr.relax.json')
     assert results['c'] > 5
 
@@ -294,7 +294,7 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     Relax using the LDA exchange-correlation functional
         asr run relax --xc LDA
     """
-    from asr.utils import read_json
+    from asr.core import read_json
 
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
@@ -326,7 +326,7 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     # Save atomic structure
     write('structure.json', atoms)
 
-    from asr.utils import write_json
+    from asr.core import write_json
     write_json('gs_params.json', kwargs)
 
     # Get setup fingerprints

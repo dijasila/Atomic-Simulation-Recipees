@@ -71,7 +71,7 @@ def table(row, title, keys, kd={}, digits=2):
 def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
            prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
-    from asr.utils import get_recipes
+    from asr.core import get_recipes
     page = []
     exclude = set()
 

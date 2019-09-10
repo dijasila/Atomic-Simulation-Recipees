@@ -6,229 +6,176 @@ import sys
 import traceback
 from pathlib import Path
 import numpy as np
-import os
-
 
 exclude = []
 
 
+def flatten(d, parent_key='', sep=':'):
+    import collections
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+def check_results(item):
+    from pathlib import Path
+    from asr.core import read_json
+
+    filename = item['file']
+    item.pop('file')
+    if not item:
+        # Then we just have to check for existence of file:
+        assert Path(filename).exists(), f'{filename} doesn\'t exist'
+        return
+    results = flatten(read_json(filename))
+    for key, value in item.items():
+        ref = value[0]
+        precision = value[1]
+        assert np.allclose(results[key], ref, atol=precision), \
+            f'{filename}[{key}] != {ref} ± {precision}'
+
+
+def check_tests(tests):
+    names = []
+    for test in tests:
+        assert isinstance(test, dict), f'Test has to have type dict {test}'
+        assert 'type' in test, f'No type in test {test}'
+        testtype = test['type']
+        assert testtype in ['file', 'dict'], f'Unknown test type {testtype}'
+
+        testname = test['name']
+        assert 'name' in test, f'No name in test {test}'
+
+        assert testname not in names, f'Duplicate name {testname}'
+        names.append(testname)
+        if testtype == 'file':
+            assert 'path' in test, f'Test has to contain key: path {test}'
+
+            testpath = test['path']
+            assert Path(testpath).is_file(), f'Unknown file {testpath}'
+
+
 class TestRunner:
     def __init__(self, tests, stream=sys.__stdout__, jobs=1,
-                 show_output=False):
+                 show_output=True):
 
         self.jobs = jobs
         self.show_output = show_output
         self.tests = tests
+        self.donetests = []
         self.failed = []
-        self.skipped = []
-        self.garbage = []
-        self.n = max([len(test) for test in tests])
+        self.log = stream
+        self.n = max([len(test['name']) for test in tests])
 
-        # Check *all* the files, not just the ones we are supposed to be
-        # running right now:
-        check_tests()
+        check_tests(self.tests)
 
-    def run(self, *args, **kwargs):
+    def run(self, raiseexc):
         # Make temporary directory
         tmpdir = tempfile.mkdtemp(prefix='asr-test-')
         info()
         print('Running tests in', tmpdir)
         print(f'Jobs: {self.jobs}')
 
-        with chdir(tmpdir):
-            self.log.write('=' * 77 + '\n')
-            if not self.show_output:
-                sys.stdout = devnull
-            ntests = len(self.tests)
-            t0 = time.time()
-            if self.jobs == 1:
-                self.run_single()
-            else:
-                # Run several processes using fork:
-                self.run_forked()
+        self.log.write('=' * 77 + '\n')
+        # if not self.show_output:
+        #     sys.stdout = devnull
+        ntests = len(self.tests)
+        t0 = time.time()
 
-            sys.stdout = sys.__stdout__
-            self.log.write('=' * 77 + '\n')
-            self.log.write('Ran %d tests out of %d in %.1f seconds\n' %
-                           (ntests - len(self.tests) - len(self.skipped),
-                            ntests, time.time() - t0))
-            self.log.write('Tests skipped: %d\n' % len(self.skipped))
-            if self.failed:
-                print('Tests failed:', len(self.failed), file=self.log)
-            else:
-                self.log.write('All tests passed!\n')
-            self.log.write('=' * 77 + '\n')
+        with chdir(tmpdir):
+            self.run_tests()
+
+        sys.stdout = sys.__stdout__
+        self.log.write('=' * 77 + '\n')
+        ntime = time.time() - t0
+        ndone = len(self.donetests)
+        self.log.write(f'Ran {ndone} out out {ntests} tests '
+                       f'in {ntime:0.1f} seconds\n')
+        if self.failed:
+            print('Tests failed:', len(self.failed), file=self.log)
+        else:
+            self.log.write('All tests passed!\n')
+        self.log.write('=' * 77 + '\n')
+        if raiseexc:
+            raise AssertionError('Some tests failed!')
         return self.failed
 
-    def run_single(self):
-        while self.tests:
-            test = self.tests.pop(0)
-            try:
-                self.run_one(test)
-            except KeyboardInterrupt:
-                self.tests.append(test)
-                break
-
-    def run_forked(self):
-        j = 0
-        pids = {}
-        while self.tests or j > 0:
-            if self.tests and j < self.jobs:
-                test = self.tests.pop(0)
-                pid = os.fork()
-                if pid == 0:
-                    exitcode = self.run_one(test)
-                    os._exit(exitcode)
-                else:
-                    j += 1
-                    pids[pid] = test
-            else:
+    def run_tests(self):
+        for test in self.tests:
+            t0 = time.time()
+            testname = test['name']
+            with chdir(Path(testname), create=True):
+                print(f'{testname: <{self.n}}', end='', flush=True,
+                      file=self.log)
                 try:
-                    while True:
-                        pid, exitcode = os.wait()
-                        if pid in pids:
-                            break
+                    self.run_test(test)
+                except Exception:
+                    self.failed.append(testname)
+                    tb = traceback.format_exc()
+                    msg = ('FAILED\n'
+                           '{0:#^77}\n'.format('TRACEBACK') +
+                           f'{tb}' +
+                           '{0:#^77}\n'.format(''))
+                    self.write_result(msg, t0)
+                    self.donetests.append(testname)
                 except KeyboardInterrupt:
-                    for pid, test in pids.items():
-                        os.kill(pid, signal.SIGHUP)
-                        self.write_result(test, 'STOPPED', time.time())
-                        self.tests.append(test)
-                    break
-                if exitcode == 512:
-                    self.failed.append(pids[pid])
-                elif exitcode == 256:
-                    self.skipped.append(pids[pid])
-                del pids[pid]
-                j -= 1
+                    self.write_result('INTERRUPT', t0)
+                else:
+                    self.donetests.append(testname)
+                    self.write_result('OK', t0)
 
-    def run_one(self, test):
-        exitcode_ok = 0
-        exitcode_skip = 1
-        exitcode_fail = 2
+    def run_test(self, test):
+        import subprocess
 
-        if self.jobs == 1:
-            self.log.write('%*s' % (-self.n, test))
-            self.log.flush()
+        cli = []
+        testfunction = None
+        fails = False
+        results = None
 
-        t0 = time.time()
-        filename = str(test)
+        if 'cli' in test:
+            assert isinstance(test['cli'], list), \
+                'Type: clitest. Should be a list commands.'
+            cli = test['cli']
 
-        tb = ''
-        skip = False
+        if 'test' in test:
+            testfunction = test['test']
+            assert callable(testfunction), \
+                'Function test type should be callable.'
 
-        if test in exclude:
-            self.register_skipped(test, t0)
-            return exitcode_skip
-        
-        assert test.endswith('.py')
-        dirname = Path(test).with_suffix('').name
-        if os.path.isabs(dirname):
-            mydir = os.path.split(__file__)[0]
-            dirname = os.path.relpath(dirname, mydir)
+        if 'fails' in test:
+            fails = test['fails']
 
-        # We don't want files anywhere outside the tempdir.
-        assert not dirname.startswith('../')  # test file outside sourcedir
-
-        if mpi.rank == 0:
-            os.makedirs(dirname)
-            (Path(dirname) / Path(filename).name).write_text(
-                Path(filename).read_text())
-        mpi.world.barrier()
-        cwd = os.getcwd()
-        os.chdir(dirname)
+        if 'results' in test:
+            results = test['results']
 
         try:
-            setup_paths[:] = self.setup_paths
-            loc = {}
-            with open(filename) as fd:
-                exec(compile(fd.read(), filename, 'exec'), loc)
-            loc.clear()
-            del loc
-            self.check_garbage()
-        except KeyboardInterrupt:
-            self.write_result(test, 'STOPPED', t0)
-            raise
-        except ImportError as ex:
-            if sys.version_info[0] >= 3:
-                module = ex.name
-            else:
-                module = ex.args[0].split()[-1].split('.')[0]
-            if module == 'scipy':
-                skip = True
-            else:
-                tb = traceback.format_exc()
-        except AttributeError as ex:
-            if (ex.args[0] ==
-                "'module' object has no attribute 'new_blacs_context'"):
-                skip = True
-            else:
-                tb = traceback.format_exc()
+            for command in cli:
+                subprocess.run(command, shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               check=True)
+
+            if testfunction:
+                testfunction()
+
+            if results:
+                for item in results:
+                    check_results(item)
+        except subprocess.CalledProcessError as e:
+            if not fails:
+                raise AssertionError(e.stderr.decode('ascii'))
         except Exception:
-            tb = traceback.format_exc()
-        finally:
-            os.chdir(cwd)
-
-        mpi.ibarrier(timeout=60.0)  # guard against parallel hangs
-
-        me = np.array(tb != '')
-        everybody = np.empty(mpi.size, bool)
-        mpi.world.all_gather(me, everybody)
-        failed = everybody.any()
-        skip = mpi.world.sum(int(skip))
-
-        if failed:
-            self.fail(test, np.argwhere(everybody).ravel(), tb, t0)
-            exitcode = exitcode_fail
-        elif skip:
-            self.register_skipped(test, t0)
-            exitcode = exitcode_skip
+            if not fails:
+                raise
         else:
-            self.write_result(test, 'OK', t0)
-            exitcode = exitcode_ok
+            if fails:
+                raise AssertionError('This test should fail but it doesn\'t.')
 
-        return exitcode
-
-    def register_skipped(self, test, t0):
-        self.write_result(test, 'SKIPPED', t0)
-        self.skipped.append(test)
-
-    def check_garbage(self):
-        gc.collect()
-        n = len(gc.garbage)
-        self.garbage += gc.garbage
-        del gc.garbage[:]
-        assert n == 0, ('Leak: Uncollectable garbage (%d object%s) %s' %
-                        (n, 's'[:n > 1], self.garbage))
-
-    def fail(self, test, ranks, tb, t0):
-        if mpi.size == 1:
-            text = 'FAILED!\n%s\n%s%s' % ('#' * 77, tb, '#' * 77)
-            self.write_result(test, text, t0)
-        else:
-            tbs = {tb: [0]}
-            for r in range(1, mpi.size):
-                if mpi.rank == r:
-                    mpi.send_string(tb, 0)
-                elif mpi.rank == 0:
-                    tb = mpi.receive_string(r)
-                    if tb in tbs:
-                        tbs[tb].append(r)
-                    else:
-                        tbs[tb] = [r]
-            if mpi.rank == 0:
-                text = ('FAILED! (rank %s)\n%s' %
-                        (','.join([str(r) for r in ranks]), '#' * 77))
-                for tb, ranks in tbs.items():
-                    if tb:
-                        text += ('\nRANK %s:\n' %
-                                 ','.join([str(r) for r in ranks]))
-                        text += '%s%s' % (tb, '#' * 77)
-                self.write_result(test, text, t0)
-
-        self.failed.append(test)
-
-    def write_result(self, test, text, t0):
+    def write_result(self, text, t0):
         t = time.time() - t0
-        if self.jobs > 1:
-            self.log.write('%*s' % (-self.n, test))
         self.log.write('%10.3f  %s\n' % (t, text))

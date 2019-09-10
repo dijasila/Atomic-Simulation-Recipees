@@ -109,7 +109,7 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
     import subprocess
     from pathlib import Path
     from ase.parallel import parprint
-    from asr.utils import chdir
+    from asr.core import chdir
     from functools import partial
 
     assert not (parallel and jobs), '--parallel is incompatible with --jobs'
@@ -199,7 +199,7 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
     func = getattr(mod, function)
 
-    from asr.utils import ASRCommand
+    from asr.core import ASRCommand
     if isinstance(func, ASRCommand):
         is_asr_command = True
     else:
@@ -242,7 +242,7 @@ def list(search):
 
     If SEARCH is specified: list only recipes containing SEARCH in their
     description."""
-    from asr.utils import get_recipes
+    from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
@@ -273,7 +273,7 @@ def list(search):
 @cli.command()
 def status():
     """Show the status of the current folder for all ASR recipes"""
-    from asr.utils import get_recipes
+    from asr.core import get_recipes
     recipes = get_recipes()
     panel = []
     missing_files = []
@@ -298,24 +298,16 @@ def status():
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@argument('tests', nargs=-1, required=False)
-@option('-k', '--patterns', type=str, metavar='PATTERN,PATTERN,...',
-        help='Select tests containing PATTERN.')
-@option('-j', '--jobs', type=int, metavar='JOBS', default=1,
-        help='Run JOBS threads.  Each test will be executed '
-        'in serial by one thread.  This option cannot be used '
-        'for parallelization together with MPI.')
+@argument('patterns', nargs=-1, required=False)
 @option('-s', '--show-output', is_flag=True,
         help='Show standard output from tests.')
-def test(tests, patterns, jobs, show_output):
+@option('--raiseexc', is_flag=True,
+        help='Raise error if tests fail')
+def test(patterns, show_output, raiseexc):
     from asr.core.testrunner import TestRunner
-    from pathlib import Path
 
     def get_tests():
-        folder = Path(__file__).parent.parent / 'tests'
-        tests = [{'type': 'file',
-                  'name': str(path),
-                  'path': str(path)} for path in folder.glob('test_*.py')]
+        tests = []
 
         from asr.core import get_recipes
         recipes = get_recipes()
@@ -323,7 +315,8 @@ def test(tests, patterns, jobs, show_output):
             if recipe.tests:
                 id = 0
                 for test in recipe.tests:
-                    dct = {'type': 'dict'}.update(test)
+                    dct = {'type': 'dict'}
+                    dct.update(test)
                     if 'name' not in dct:
                         dct['name'] = f'test_{recipe.name}_{id}'
                         id += 1
@@ -331,22 +324,17 @@ def test(tests, patterns, jobs, show_output):
         return tests
 
     tests = get_tests()
-    print(tests)
-    exit()
-    if not tests:
-        folder = Path(__file__).parent.parent / 'tests'
-        tests = [str(path) for path in folder.glob('test_*.py')]
 
     if patterns:
-        patterns = patterns.split(',')
         tmptests = []
-        for pattern in patterns:
-            tmptests += [test for test in tests if pattern in test]
+        for test in tests:
+            for pattern in patterns:
+                if pattern in test['name']:
+                    tmptests.append(test)
+                    break
         tests = tmptests
 
-    failed = TestRunner(tests, jobs=jobs, show_output=show_output).run()
-
-    assert not failed, 'Some tests failed!'
+    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc)
 
 
 @cli.command()
@@ -358,7 +346,7 @@ def test(tests, patterns, jobs, show_output):
               help='Only do these recipes for stable materials')
 def workflow(tasks, doforstable):
     """Helper function to make workflows for MyQueue"""
-    from asr.utils import get_recipes, get_dep_tree
+    from asr.core import get_recipes, get_dep_tree
 
     body = ''
     body += 'from myqueue.task import task\n\n\n'
@@ -366,7 +354,7 @@ def workflow(tasks, doforstable):
     isstablefunc = """def is_stable():
     # Example of function that looks at the heat of formation
     # and returns True if the material is stable
-    from asr.utils import read_json
+    from asr.core import read_json
     from pathlib import Path
     fname = 'results_convex_hull.json'
     if not Path(fname).is_file():

@@ -34,7 +34,7 @@ def calculate(ecut=800, xc='PBE',
     import numpy as np
     from ase.io import read
     from asr.calculators import get_calculator
-    from asr.utils import read_json
+    from asr.core import read_json
 
     atoms = read('structure.json')
 
@@ -312,7 +312,7 @@ def evacdiff(atoms):
 def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
     from pathlib import Path
-    from asr.utils import read_json
+    from asr.core import read_json
 
     evac = None
     if Path('results-asr.gs.json').is_file():

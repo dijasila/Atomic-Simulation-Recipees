@@ -7,5 +7,5 @@ tests:
     - pip install -e .
     - pip install gpaw
     - gpaw install-data paw-datasets --register
-    - asr test -k asr.utils.cli,asr.setup.params,asr.relax_0
+    - asr test asr.utils.cli asr.setup.params asr.relax_0 --raiseexc
     - flake8 asr

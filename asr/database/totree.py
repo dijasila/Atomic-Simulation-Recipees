@@ -85,9 +85,8 @@ def main(database, run=False, selection=None,
     from ase.db import connect
     from ase.io import write
     import spglib
-    from asr.utils import chdir, write_json
+    from asr.core import chdir, write_json, md5sum
     import importlib
-    from asr.utils import md5sum
 
     if selection:
         print(f'Selecting {selection}')

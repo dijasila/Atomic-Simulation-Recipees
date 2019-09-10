@@ -114,7 +114,7 @@ def main(source, destination, patterns,
 
     # Finally we allow for some postprocessing or massaging of the
     # created folders if some files have to be swapped around
-    from asr.utils import chdir
+    from asr.core import chdir
     if map_files:
         mapping = [tmp.split('->') for tmp in map_files.split(',')]
 

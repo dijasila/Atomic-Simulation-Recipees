@@ -289,7 +289,7 @@ def collect_data(atoms):
                            + 'with spin-orbit coupling ',
                            'states/eV')
 
-    from asr.utils import read_json
+    from asr.core import read_json
     results = read_json('results_pdos.json')
     kvp = {'dos_at_ef_nosoc': results['dos_at_ef_nosoc'],
            'dos_at_ef_soc': results['dos_at_ef_soc']}

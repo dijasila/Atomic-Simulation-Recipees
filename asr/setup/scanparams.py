@@ -34,7 +34,7 @@ def main(scanparams, symlink=True):
             asr.relax:ecut 300 400 500
     """
     from pathlib import Path
-    from asr.utils import get_recipes, ASRCommand, read_json, write_json
+    from asr.core import get_recipes, ASRCommand, read_json, write_json
 
     paramdict = {}
     recipes = get_recipes(sort=True)
