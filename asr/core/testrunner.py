@@ -70,12 +70,23 @@ class TestRunner:
         self.donetests = []
         self.failed = []
         self.log = stream
-        self.n = max([len(test['name']) for test in tests])
-
+        n = 0
+        for test in tests:
+            n = np.max([n, len(self.get_description(test))])
+        self.n = n
         check_tests(self.tests)
 
+    def get_description(self, test):
+        testname = test['name']
+        testdescription = test.get('description')
+        if testdescription:
+            description = f'{testname} ({testdescription})'
+        else:
+            description = f'{testname}'
+        return description
+
     def run(self, raiseexc):
-        # Make temporary directory
+        # Make temporary directory and print some execution info
         tmpdir = tempfile.mkdtemp(prefix='asr-test-')
         info()
         print('Running tests in', tmpdir)
@@ -101,7 +112,7 @@ class TestRunner:
         else:
             self.log.write('All tests passed!\n')
         self.log.write('=' * 77 + '\n')
-        if raiseexc:
+        if raiseexc and self.failed:
             raise AssertionError('Some tests failed!')
         return self.failed
 
@@ -109,8 +120,9 @@ class TestRunner:
         for test in self.tests:
             t0 = time.time()
             testname = test['name']
+            description = self.get_description(test)
             with chdir(Path(testname), create=True):
-                print(f'{testname: <{self.n}}', end='', flush=True,
+                print(f'{description: <{self.n}}', end='', flush=True,
                       file=self.log)
                 try:
                     self.run_test(test)

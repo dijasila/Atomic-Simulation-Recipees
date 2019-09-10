@@ -132,7 +132,7 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
                 cmd += f' --jobs {ncores}'
             if dont_raise:
                 cmd += ' --dont-raise'
-            cmd += f' {command}" '
+            cmd += f' "{command}" '
             if folders:
                 cmd += ' '.join(folders)
             return subprocess.run(cmd, shell=True,
@@ -318,7 +318,7 @@ def test(patterns, show_output, raiseexc):
                     dct = {'type': 'dict'}
                     dct.update(test)
                     if 'name' not in dct:
-                        dct['name'] = f'test_{recipe.name}_{id}'
+                        dct['name'] = f'{recipe.name}_{id}'
                         id += 1
                     tests.append(dct)
         return tests
