@@ -115,7 +115,7 @@ def main():
                 {'dipolelayer': 'xy'}, \
                 ('The ground state has a finite dipole moment along aperiodic '
                  'axis but calculation was without dipole correction.')
-    elif nd == 1:
+    elif ndim == 1:
         assert not atoms.pbc[0] and not atoms.pbc[1]
 
     # Now that some checks are done, we can extract information
