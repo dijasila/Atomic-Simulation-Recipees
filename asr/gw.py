@@ -163,7 +163,8 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
 
             try:
                 if Path('results_gs.json').is_file():
-                    evac = read_json('results_gs.json')['vacuumlevels']['evacmean']
+                    evac = read_json('results_gs.json')
+                    evac = evac['vacuumlevels']['evacmean']
                 else:
                     vh = GPAW('gs.gpw', txt=None).get_electrostatic_potential()
                     evac1, evac2 = vh.mean(axis=0).mean(axis=0)[[0, -1]]
@@ -182,11 +183,11 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                         efermi_gw=efermi - evac)
 
             data['__key_descriptions__'] = {
-                    'gap_gw': 'KVP: Band gap (GW) [eV]',
-                    'dir_gap_gw': 'KVP: Direct band gap (GW) [eV]',
-                    'efermi_gw': 'KVP: Fermi level (GW) [eV]',
-                    'cbm_gw': 'KVP: CBM vs. vacuum (GW) [eV]',
-                    'vbm_gw': 'KVP: VBM vs. vacuum (GW) [eV]'}
+                'gap_gw': 'KVP: Band gap (GW) [eV]',
+                'dir_gap_gw': 'KVP: Direct band gap (GW) [eV]',
+                'efermi_gw': 'KVP: Fermi level (GW) [eV]',
+                'cbm_gw': 'KVP: CBM vs. vacuum (GW) [eV]',
+                'vbm_gw': 'KVP: VBM vs. vacuum (GW) [eV]'}
 
             try:
                 kpts, e_skm, xreal, epsreal_skn = ip_bs(calc, e_skn=e_skm,
@@ -202,6 +203,20 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
         data = read_json('results-asr.gw.json')
 
     return data
+
+
+def eigenvalues(calc):
+    """
+    Parameters:
+        calc: Calculator
+            GPAW calculator
+    Returns:
+        e_skn: (ns, nk, nb)-shape array
+    """
+    rs = range(calc.get_number_of_spins())
+    rk = range(len(calc.get_ibz_k_points()))
+    e = calc.get_eigenvalues
+    return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
 def fermi_level(calc, eps_skn=None, nelectrons=None):
@@ -365,8 +380,8 @@ def segment_indices_and_x(cell, path_str, kpts):
     import numpy as np
     from ase.dft.kpoints import parse_path_string, get_special_points, bandpath
     special = get_special_points(cell)
-    #_, _, X = bandpath(path=path_str, cell=cell, npoints=len(path_str)) # was
-    #path = bandpath(path=path_str, cell=cell, npoints=len(path_str)) # also not working
+    # _, _, X = bandpath(path=path_str, cell=cell, npoints=len(path_str)) # was
+    # path = bandpath(path=path_str, cell=cell, npoints=len(path_str)) # wrong
     path = bandpath(path=path_str, cell=cell, npoints=400)
     _, X, _ = path.get_linear_kpoint_axis()
     # why did the old code broke here?
@@ -462,8 +477,10 @@ def bs_xc(row, path, xc, **kwargs):
     plt.savefig(path)
     plt.close()
 
+
 def bs_gw(row, path):
     bs_xc(row, path, xc='gw', label='G$_0$W$_0$')
+
 
 def webpanel(row, key_descriptions):
     from asr.utils.custom import fig, table
