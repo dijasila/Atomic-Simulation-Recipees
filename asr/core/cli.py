@@ -309,18 +309,33 @@ def test(patterns, show_output, raiseexc):
     def get_tests():
         tests = []
 
+        # Collect tests from recipes
         from asr.core import get_recipes
         recipes = get_recipes()
         for recipe in recipes:
             if recipe.tests:
                 id = 0
                 for test in recipe.tests:
-                    dct = {'type': 'dict'}
+                    dct = {}
                     dct.update(test)
                     if 'name' not in dct:
                         dct['name'] = f'{recipe.name}_{id}'
                         id += 1
                     tests.append(dct)
+
+        # Get cli tests
+        for i, test in enumerate(clitests):
+            clitest = {'name': f'clitest_{i}'}
+            clitest.update(test)
+            tests.append(clitest)
+
+        # Test docstrings
+        for recipe in recipes:
+            if recipe.__doc__:
+                tmptests = doctest(recipe.__doc__)
+                for i, test in enumerate(tmptests):
+                    test['name'] = f'{recipe.name}_doctest_{i}'
+                tests += tmptests
         return tests
 
     tests = get_tests()
@@ -335,6 +350,27 @@ def test(patterns, show_output, raiseexc):
         tests = tmptests
 
     TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc)
+
+
+def doctest(text):
+    text = text.split('\n')
+    tests = []
+    cli = []
+    for line in text:
+        if not line.startswith(' ' * 8) and cli:
+            tests.append({'cli': cli})
+            cli = []
+        line = line[8:]
+        # print(line)
+        if line.startswith('$ '):
+            cli.append(line[2:])
+        elif line.startswith('  ...'):
+            cli[-1] += line[5:]
+    else:
+        if cli:
+            tests.append({'cli': cli})
+
+    return tests
 
 
 @cli.command()
@@ -408,12 +444,12 @@ def workflow(tasks, doforstable):
     print('    return tasks')
 
 
-tests = [{'cli': ['asr run -h']},
-         {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
-         {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
-         {'cli': ['mkdir folder1',
-                  'mkdir folder2',
-                  'asr run "setup.params asr.relax:ecut'
-                  ' 300" folder1 folder2']},
-         {'cli': ['touch str1.json',
-                  'asr run --shell "mv str1.json str2.json"']}]
+clitests = [{'cli': ['asr run -h']},
+            {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
+            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
+            {'cli': ['mkdir folder1',
+                     'mkdir folder2',
+                     'asr run "setup.params asr.relax:ecut'
+                     ' 300" folder1 folder2']},
+            {'cli': ['touch str1.json',
+                     'asr run --shell "mv str1.json str2.json"']}]

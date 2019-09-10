@@ -1,6 +1,5 @@
 from asr.core import chdir
 import tempfile
-from gpaw.cli.info import info
 import time
 import sys
 import traceback
@@ -44,20 +43,11 @@ def check_tests(tests):
     names = []
     for test in tests:
         assert isinstance(test, dict), f'Test has to have type dict {test}'
-        assert 'type' in test, f'No type in test {test}'
-        testtype = test['type']
-        assert testtype in ['file', 'dict'], f'Unknown test type {testtype}'
-
         testname = test['name']
         assert 'name' in test, f'No name in test {test}'
 
         assert testname not in names, f'Duplicate name {testname}'
         names.append(testname)
-        if testtype == 'file':
-            assert 'path' in test, f'Test has to contain key: path {test}'
-
-            testpath = test['path']
-            assert Path(testpath).is_file(), f'Unknown file {testpath}'
 
 
 class TestRunner:
@@ -70,10 +60,7 @@ class TestRunner:
         self.donetests = []
         self.failed = []
         self.log = stream
-        n = 0
-        for test in tests:
-            n = np.max([n, len(self.get_description(test))])
-        self.n = n
+        self.n = 77
         check_tests(self.tests)
 
     def get_description(self, test):
@@ -88,10 +75,8 @@ class TestRunner:
     def run(self, raiseexc):
         # Make temporary directory and print some execution info
         tmpdir = tempfile.mkdtemp(prefix='asr-test-')
-        info()
-        print('Running tests in', tmpdir)
-        print(f'Jobs: {self.jobs}')
-
+        # info()
+        print('Running ASR tests')
         self.log.write('=' * 77 + '\n')
         # if not self.show_output:
         #     sys.stdout = devnull
@@ -117,12 +102,12 @@ class TestRunner:
         return self.failed
 
     def run_tests(self):
+
         for test in self.tests:
-            t0 = time.time()
             testname = test['name']
-            description = self.get_description(test)
             with chdir(Path(testname), create=True):
-                print(f'{description: <{self.n}}', end='', flush=True,
+                folder = Path('.').absolute()
+                print(f'{folder}/', flush=True,
                       file=self.log)
                 try:
                     self.run_test(test)
@@ -133,13 +118,13 @@ class TestRunner:
                            '{0:#^77}\n'.format('TRACEBACK') +
                            f'{tb}' +
                            '{0:#^77}\n'.format(''))
-                    self.write_result(msg, t0)
+                    print(msg, flush=True, file=self.log)
                     self.donetests.append(testname)
                 except KeyboardInterrupt:
-                    self.write_result('INTERRUPT', t0)
+                    print(' ... INTERRUPTED', file=self.log)
+                    break
                 else:
                     self.donetests.append(testname)
-                    self.write_result('OK', t0)
 
     def run_test(self, test):
         import subprocess
@@ -167,10 +152,14 @@ class TestRunner:
 
         try:
             for command in cli:
+                print(f'    $ {command}', end='', file=self.log, flush=True)
+                # self.log.write(f'\n    $ {command}')
                 subprocess.run(command, shell=True,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
                                check=True)
+                print(' ... OK', file=self.log, flush=True)
+                # print(f'\n    $ {command}', ' ... OK\n')
 
             if testfunction:
                 testfunction()
@@ -179,7 +168,9 @@ class TestRunner:
                 for item in results:
                     check_results(item)
         except subprocess.CalledProcessError as e:
-            if not fails:
+            if fails:
+                self.log.write(' ... OK\n')
+            else:
                 raise AssertionError(e.stderr.decode('ascii'))
         except Exception:
             if not fails:
@@ -190,4 +181,4 @@ class TestRunner:
 
     def write_result(self, text, t0):
         t = time.time() - t0
-        self.log.write('%10.3f  %s\n' % (t, text))
+        self.log.write('\n' + f'{t:10.3f}s {text}'.rjust(77) + '\n')

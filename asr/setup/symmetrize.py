@@ -161,8 +161,9 @@ def main(tolerance=1e-3, angle_tolerance=0.1):
     Examples:
     ---------
     Symmetrize an atomic structure using the default tolerances
-        asr run setup.symmetrize
-    """
+        $ ase build -x diamond C original.json
+        $ asr run setup.symmetrize
+"""
     import numpy as np
     from ase.io import read, write
     atoms = read('original.json')
