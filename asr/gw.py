@@ -22,16 +22,16 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
 
     # check that the system is a semiconductor
     calc = GPAW(gs, txt=None)
-    gap, _, _ = bandgap(calc, output=None)
-    if gap < 0.05:
-        print("GW: PBE gap =", gap, "eV is too small!")
-        return
+    pbe_gap, _, _ = bandgap(calc, output=None)
+    if pbe_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, PBE gap = " +
+                        str(pbe_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
     if len(atoms) > 4:
-        print("GW: Only for less than 4 atoms,", len(atoms), " >4!")
-        return
+        raise Exception("GW: Only for small systems, " +
+                        str(len(atoms)) + " > 4 atoms!")
 
     # setup k points/parameters
     dim = np.sum(atoms.pbc.tolist())
@@ -77,15 +77,14 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
         gw_file = 'g0w0_results.pckl'
     elif mode.startswith('GWG'):
         gw_file = 'g0w0_results_GW.pckl'
-        raise NotImplementedError('asr for GWG not implemented!')
+        raise NotImplementedError('GW: asr for GWG not implemented!')
 
     # calculate or collect
     if not Path('results-asr.gw.json').is_file():
         # calculate
         if not Path(gw_file).is_file():
             if "collect" in mode:
-                print("GW: Only collect!")
-                return
+                raise Exception("GW: No calculation in collect mode!")
 
             # we need energies/wavefunctions on the correct grid
             if not Path('gs_gw.gpw').is_file():
@@ -119,6 +118,8 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                         savepckl=True)
 
             calc.calculate()
+            if verbose:
+                print("GW: Done")
         else:
             if verbose:
                 print("GW: G0W0 already done")
@@ -126,12 +127,12 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
         # Interpolation => currently working for 2D, 3D is not - use
         # same as HSE
         if verbose:
-            print("GW: Interpolate bs...")
+            print("GW: Collect data/Interpolate bs...")
         ranks = [0]
         comm = mpi.world.new_communicator(ranks)
         if mpi.world.rank in ranks:
             if not Path('gs_gw_nowfs.gpw').is_file():
-                Exception("GW: No gs_gw_nowfs.gpw!")
+                raise Exception("GW: No gs_gw_nowfs.gpw!")
             calc = GPAW('gs_gw_nowfs.gpw', communicator=comm, txt=None)
             bandrange = list(range(lb, ub))
             gw_skn = pickle.load(open(gw_file, 'rb'), encoding='latin1')['qp']
@@ -154,17 +155,39 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
             gapd, p1d, p2d = bandgap(eigenvalues=e_skm, efermi=efermi,
                                      direct=True, output=None)
 
-            if not gap > 0:
-                Exception("GW: No gap found!")
+            if gap <= 0:
+                raise Exception("GW: No gap found, gap = " + str(gap) + "!")
+            if gap <= pbe_gap:
+                raise Exception("GW: Gap smaller than PBE, " +
+                                str(gap) + " <= " + str(pbe_gap) + "!")
+
+            try:
+                if Path('results_gs.json').is_file():
+                    evac = read_json('results_gs.json')['vacuumlevels']['evacmean']
+                else:
+                    vh = GPAW('gs.gpw', txt=None).get_electrostatic_potential()
+                    evac1, evac2 = vh.mean(axis=0).mean(axis=0)[[0, -1]]
+                    evac = (evac1 + evac2) / 2
+            except:
+                raise Exception("GW: Not able to find evac!")
 
             vbm = e_skm[p1]
             cbm = e_skm[p2]
             data = dict(gap_gw=gap,
                         bandrange=bandrange,
                         dir_gap_gw=gapd,
-                        cbm_gw=cbm,
-                        vbm_gw=vbm,
-                        efermi=efermi)
+                        cbm_gw=cbm - evac,
+                        vbm_gw=vbm - evac,
+                        efermi=efermi - evac,
+                        efermi_gw=efermi - evac)
+
+            data['__key_descriptions__'] = {
+                    'gap_gw': 'KVP: Band gap (GW) [eV]',
+                    'dir_gap_gw': 'KVP: Direct band gap (GW) [eV]',
+                    'efermi_gw': 'KVP: Fermi level (GW) [eV]',
+                    'cbm_gw': 'KVP: CBM vs. vacuum (GW) [eV]',
+                    'vbm_gw': 'KVP: VBM vs. vacuum (GW) [eV]'}
+
             try:
                 kpts, e_skm, xreal, epsreal_skn = ip_bs(calc, e_skn=e_skm,
                                                         npoints=400)
@@ -175,18 +198,9 @@ def main(gs='gs.gpw', kptdensity=5.0, ecut=200.0, mode='G0W0', verbose=False):
                             epsreal_skn=epsreal_skn)
     else:
         if verbose:
-            print("GW: Interpolation already done")
+            print("GW: Already done")
         data = read_json('results-asr.gw.json')
 
-    if verbose:
-        print("GW: Done.")
-
-    data['__key_descriptions__'] = {'gap_gw': 'KVP: Band gap (GW) [eV]',
-                                    'dir_gap_gw':
-                                    'KVP: Direct band gap (GW) [eV]',
-                                    'efermi_gw': 'KVP: Fermi level (GW) [eV]',
-                                    'cbm_gw': 'KVP: CBM vs. vacuum (GW) [eV]',
-                                    'vbm_gw': 'KVP: VBM vs. vacuum (GW) [eV]'}
     return data
 
 
@@ -396,83 +410,6 @@ def get_special_path(cell):
         return special_2d_paths[csfc(cell)]
 
 
-def collect_data(atoms):
-    if not Path('results-asr.gw.json').is_file():
-        return {}, {}, {}
-
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-
-    dct = read_json('results-asr.gw.json')
-    if float(dct['gap_gw']) <= 0.0:  # only pickup gw for semiconductors
-        print("GW: No gap found!")
-        return {}, {}, {}
-    try:
-	#evac = read_json('results_gs.json')['vacuumlevels']['evacmean'] TODO
-        evac = 0.
-    except:
-        raise Exception("GW: Not able to find evac!")
-
-    for key in ['gap_gw', 'dir_gap_gw']:
-        kvp[key] = float(dct[key])
-    for key in ['cbm_gw', 'vbm_gw']:
-        x = dct[key]
-        if x.size == 1 and isinstance(x.tolist(), numbers.Real):
-            kvp[key] = float(x) - evac
-    kd = {'gap_gw': ('Band gap (GW)',
-                     'Band gap (GW)', 'eV'),
-          'dir_gap_gw': ('Direct band gap (GW)',
-                         'Direct band gap (GW)', 'eV'),
-          'efermi_gw': ('Fermi level (GW)',
-                        'Fermi level (GW)', 'eV'),
-          'cbm_gw': ('CBM vs. vacuum (GW)',
-                     'CBM vs. vacuum (GW)' 'eV'),
-          'vbm_gw': ('VBM vs. vacuum (GW)',
-                     'VBM vs. vacuum (GW)' 'eV')}
-    key_descriptions.update(kd)
-
-    from c2db.utils import get_special_2d_path
-    from c2db.utils import gpw2eigs
-    from c2db.gw import get_bandrange
-    from ase.dft.kpoints import bandpath, parse_path_string
-
-    assert dct['path'].ndim == 2
-    xkreal = dct['xreal']
-    data['bs_gw'] = {
-        'path': dct['path'],
-        'bandrange': dct['bandrange'],
-        'eps_skn': dct['eps_skn'] - evac,
-        'efermi': dct['efermi'] - evac,
-        'epsreal_skn': dct['epsreal_skn'] - evac,
-        'xkreal': xkreal}
-    kvp['efermi_gw'] = dct['efermi'] - evac
-    return kvp, key_descriptions, data
-
-    # find high-symmetry points in xkreal
-    path_str = get_special_2d_path(atoms.cell)
-    path_str_list = parse_path_string(path_str)[0]
-    cell = atoms.cell
-    # _, _, X = bandpath(path=path_str, cell=cell, npoints=len(path_str))
-    _, x, X = bandpath(path=path_str, cell=cell, npoints=len(dct['path']))
-    highsym_lst = []
-    for x, symbol in zip(X, path_str_list):
-        delta = abs(x - xkreal)
-        i = delta.argmin()
-        if delta[i] < 1.0e-5:
-            highsym_lst.append((i, symbol))
-    # indices = [i for i, s in highsym_lst]
-    data['bs_gw'].update(highsym_points=highsym_lst)
-    # Try to interpolate with zero slope if pbe has it at
-    # at high symm points
-    gpw = 'bs.gpw'
-    if not op.isfile(gpw):
-        return
-    n1, n2 = get_bandrange(GPAW('gs.gpw', txt=None))
-    e_km, efermi = gpw2eigs('bs.gpw', soc=True)
-    e_km = e_km[..., n1:n2]
-    # ...
-
 def bs_xc(row, path, xc, **kwargs):
     """xc: 'gw' or 'hse'
     """
@@ -536,9 +473,9 @@ def webpanel(row, key_descriptions):
     ], key_descriptions)
 
     panel = ('Electronic band structure (GW)',
-             [[fig('gw-bs.png'), opt]])
+             [[fig('gw-bs.png'), prop]])
 
-    things = [(gwbs, ['gw-bs.png'])]
+    things = [(bs_gw, ['gw-bs.png'])]
 
     return panel, things
 
