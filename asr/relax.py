@@ -105,7 +105,7 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
+def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, fmax = 0.01, emin=-np.inf,
           smask=None, xc='PBE', plusu=False, dftd3=True, chargestate=0):
     import spglib
 
@@ -145,6 +145,9 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 	cell = atoms.cell
         assert abs(cell[2, :2]).max() < 1e-12, cell
         assert abs(cell[:2, 2]).max() < 1e-12, cell
+        assert abs(slab.cell[0, 1]) < 1e-12, slab.cell
+        assert abs(slab.cell[1, 0]) < 1e-12, slab.cell
+
   
     if plusu:
         # Try to get U values from previous image
@@ -205,7 +208,7 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
+        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
             opt.call_observers()
             break
@@ -271,8 +274,8 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
 @option('--readout_charge', help='Read out chargestate from params.json')
-def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
-         readout_charge=False):
+@option('--fmax', help='Maximum atomic force')
+def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05, fmax = 0.01, readout_charge=False):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
@@ -310,7 +313,8 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kptdensity=kptdensity, xc=xc,
-                                     plusu=plusu, dftd3=d3, width=width,
+                                     plusu=plusu, dftd3=d3, width=width, 
+				     fmax=fmax,
                                      chargestate=chargestate)
 
     edft = dft.get_potential_energy(atoms)
