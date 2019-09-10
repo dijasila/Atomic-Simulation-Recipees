@@ -290,9 +290,11 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     \b
     Examples:
     Relax without using DFTD3
-        asr run relax --nod3
+        $ ase build -x diamond Si unrelaxed.json
+        $ asr run "relax --nod3"
     Relax using the LDA exchange-correlation functional
-        asr run relax --xc LDA
+        $ ase build -x diamond Si unrelaxed.json
+        $ asr run "relax --xc LDA"
     """
     from asr.core import read_json
 

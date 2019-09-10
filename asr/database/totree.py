@@ -8,7 +8,7 @@ def folderexists():
 
 tests = [
     {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'],
+             'asr run "database.totree materials.json --run"'],
      'test': folderexists}
 ]
 

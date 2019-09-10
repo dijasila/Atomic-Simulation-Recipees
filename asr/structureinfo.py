@@ -129,7 +129,7 @@ tests = [{'description': 'Test SI.',
                   'ase convert materials.json structure.json',
                   'asr run "setup.params asr.gs@calculate:ecut 300 '
                   'asr.gs@calculate:kptdensity 2"',
-                  'asr run structureinfo'
+                  'asr run structureinfo',
                   'asr run database.fromtree',
                   'asr run "browser --only-figures"']}]
 
