@@ -38,12 +38,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 def calculate(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     from gpaw import GPAW
-    from ase.io import read
-    atoms = read('gs.gpw')
-    if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints)
-    else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
+    import numpy as np
 
     convbands = emptybands // 2
     Z = np.array([0, 0, 0.5])
@@ -56,7 +51,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
-    atoms = read('gs.gpw')
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
