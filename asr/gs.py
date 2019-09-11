@@ -60,12 +60,12 @@ def calculate(ecut=800, xc='PBE', kptdensity=12.0,
         charge=chargestate)
 
     nd = np.sum(atoms.pbc)
-    if nd == 2:
-        assert not atoms.pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        params['poissonsolver'] = {'dipolelayer': 'xy'}
-    elif nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
+#    if nd == 2:
+#        assert not atoms.pbc[2], \
+#            'The third unit cell axis should be aperiodic for a 2D material!'
+#        params['poissonsolver'] = {'dipolelayer': 'xy'}
+#    elif nd == 1:
+#        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     calc = get_calculator()(**params)
 
@@ -115,8 +115,6 @@ def main():
                 {'dipolelayer': 'xy'}, \
                 ('The ground state has a finite dipole moment along aperiodic '
                  'axis but calculation was without dipole correction.')
-    elif ndim == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
