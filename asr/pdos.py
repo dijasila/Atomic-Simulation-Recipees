@@ -116,24 +116,28 @@ def calculate(kptdensity=20.0, emptybands=20):
              gpw='pdos.gpw', txt='pdos.gpw')
 
 
-@command('asr.pdos')
+@command(module='asr.pdos',
+         requires=['pdos.gpw'],
+         tests=tests,
+         dependencies=['asr.pdos@calculate'])
 def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
     params = dict(kptdensity=kptdensity,
                   emptybands=emptybands)
     # Refine ground state with more k-points
-    calc, gpw = refine_gs_for_pdos(kptdensity, emptybands)
+    refine_gs_for_pdos(kptdensity, emptybands)
+    calc = GPAW('pdos.gpw', txt=None)
 
     results = {}
 
     # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos_nosoc(params, calc, gpw)  # subresults need
-    results['pdos_soc'] = pdos_soc(params, calc, gpw)  # context to log params
+    results['pdos_nosoc'] = pdos_nosoc(params, calc, 'pdos.gpw')  # subresults need
+    results['pdos_soc'] = pdos_soc(params, calc, 'pdos.gpw')  # context to log params
 
     # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
-    results['dos_at_ef_nosoc'] = calculate_dos_at_ef(calc, gpw, soc=False)
-    results['dos_at_ef_soc'] = calculate_dos_at_ef(calc, gpw, soc=True)
+    results['dos_at_ef_nosoc'] = calculate_dos_at_ef(calc, 'pdos.gpw', soc=False)
+    results['dos_at_ef_soc'] = calculate_dos_at_ef(calc, 'pdos.gpw', soc=True)
 
     return results
 
