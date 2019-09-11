@@ -56,6 +56,19 @@ class SOCDOS(DOS):
 
 # ---------- Recipe tests ---------- #
 
+ctests = []
+ctests.append({'description': 'Test the refined ground state of Si',
+               'name': 'test_asr.pdos_Si_serial',
+               'cli': ['asr run "setup.materials -s Si2"',
+                       'ase convert materials.json structure.json',
+                       'asr run "setup.params '
+                       'asr.gs@calculate:ecut 200 '
+                       'asr.gs@calculate:kptdensity 2.0 '
+                       'asr.pdos@calculate:kptdensity 3.0 '
+                       'asr.pdos@calculate:emptybands 5"',
+                       'asr run pdos@calculate',
+                       'asr run database.fromtree',
+                       'asr run "browser --only-figures"']})
 
 tests = []
 tests.append({'description': 'Test the pdos of Si (cores=1)',
@@ -90,17 +103,20 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 dependencies = ['asr.structureinfo', 'asr.gs']
 
 
-def refine_gs_for_pdos(kptdensity=36.0, emptybands=20):
+@command(module='asr.pdos',
+         creates=['pdos.gpw'],
+         tests=ctests,
+         requires=['gs.gpw'])
+@option('-k', '--kptdensity', type=float, help='K-point density')
+@option('--emptybands', type=int, help='number of empty bands to include')
+def calculate(kptdensity=20.0, emptybands=20):
     from asr.utils.refinegs import refinegs
-    calc, gpw = refinegs(selfc=False,
-                         kptdensity=kptdensity, emptybands=emptybands,
-                         gpw='pdos.gpw', txt='pdos.gpw')
-    return calc, gpw
+    refinegs(selfc=False,
+             kptdensity=kptdensity, emptybands=emptybands,
+             gpw='pdos.gpw', txt='pdos.gpw')
 
 
 @command('asr.pdos')
-@option('--kptdensity', help='k-point density')
-@option('--emptybands', help='number of empty bands to include')
 def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
     params = dict(kptdensity=kptdensity,
                   emptybands=emptybands)
