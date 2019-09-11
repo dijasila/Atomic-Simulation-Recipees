@@ -130,7 +130,6 @@ class TestRunner:
 
     def run_test(self, test):
         import subprocess
-        import os
 
         cli = []
         testfunction = None
