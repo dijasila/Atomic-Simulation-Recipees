@@ -111,8 +111,14 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
     from ase.parallel import parprint
     from asr.core import chdir
     from functools import partial
-
+    import os
     assert not (parallel and jobs), '--parallel is incompatible with --jobs'
+
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        # Then we have to log
+        import coverage
+        print('WARNING STARTING COVERAGE LOGGING (ONLY FOR TESTING)')
+        coverage.process_startup()
 
     prt = partial(parprint, flush=True)
 
