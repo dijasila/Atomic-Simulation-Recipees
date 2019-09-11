@@ -72,10 +72,12 @@ class TestRunner:
             description = f'{testname}'
         return description
 
-    def run(self, raiseexc):
+    def run(self, raiseexc, tmpdir=None):
         # Make temporary directory and print some execution info
-        tmpdir = tempfile.mkdtemp(prefix='asr-test-')
-        # info()
+        self.cwd = Path('.').absolute()
+        if tmpdir is None:
+            tmpdir = tempfile.mkdtemp(prefix='asr-test-')
+
         print('Running ASR tests')
         self.log.write('=' * 77 + '\n')
         # if not self.show_output:
@@ -154,12 +156,10 @@ class TestRunner:
         try:
             for command in cli:
                 print(f'    $ {command}', end='', file=self.log, flush=True)
-                env = os.environ.copy()
-                env['COVERAGE_PROCESS_START'] = '/home/morten/.coveragerc'
                 subprocess.run(command, shell=True,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
-                               check=True, env=env)
+                               check=True)
                 print(' ... OK', file=self.log, flush=True)
 
             if testfunction:
@@ -170,7 +170,7 @@ class TestRunner:
                     check_results(item)
         except subprocess.CalledProcessError as e:
             if fails:
-                self.log.write(' ... OK\n')
+                print(' ... OK', file=self.log, flush=True)
             else:
                 raise AssertionError(e.stderr.decode('ascii'))
         except Exception:

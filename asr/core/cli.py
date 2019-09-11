@@ -309,8 +309,17 @@ def status():
         help='Show standard output from tests.')
 @option('--raiseexc', is_flag=True,
         help='Raise error if tests fail')
-def test(patterns, show_output, raiseexc):
+@option('--tmpdir', help='Execution dir. If '
+        'not specified ASR will decide')
+def test(patterns, show_output, raiseexc, tmpdir):
     from asr.core.testrunner import TestRunner
+    import os
+    from pathlib import Path
+
+    # We will log the test home directory if needed
+    cwd = Path('.').absolute()
+    os.environ['COVERAGE_PROCESS_START'] = str(cwd /
+                                               '.coveragerc')
 
     def get_tests():
         tests = []
@@ -355,7 +364,8 @@ def test(patterns, show_output, raiseexc):
                     break
         tests = tmptests
 
-    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc)
+    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc,
+                                                   tmpdir=tmpdir)
 
 
 def doctest(text):
