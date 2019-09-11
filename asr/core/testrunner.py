@@ -128,6 +128,7 @@ class TestRunner:
 
     def run_test(self, test):
         import subprocess
+        import os
 
         cli = []
         testfunction = None
@@ -153,13 +154,13 @@ class TestRunner:
         try:
             for command in cli:
                 print(f'    $ {command}', end='', file=self.log, flush=True)
-                # self.log.write(f'\n    $ {command}')
+                env = os.environ.copy()
+                env['COVERAGE_PROCESS_START'] = '/home/morten/.coveragerc'
                 subprocess.run(command, shell=True,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
-                               check=True)
+                               check=True, env=env)
                 print(' ... OK', file=self.log, flush=True)
-                # print(f'\n    $ {command}', ' ... OK\n')
 
             if testfunction:
                 testfunction()
