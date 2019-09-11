@@ -9,7 +9,7 @@ tests:
     - pip install gpaw
     - gpaw install-data paw-datasets --register
     - tdir=$(mktemp -d /tmp/asr-test-XXXXXXXXX)
-    - coverage run -m asr test asr.utils.cli asr.setup.params asr.relax_0 --tmpdir $tdir --raiseexc
+    - coverage run -m asr test asr.utils.cli asr.setup.params asr.relax_0 asr.gs_0 --tmpdir $tdir --raiseexc
     - coverage combine $tdir/*/.coverage.* .coverage.*
     - coverage report --include '*/asr/asr/*'
     - coverage report -i --include="*asr/asr/*"
