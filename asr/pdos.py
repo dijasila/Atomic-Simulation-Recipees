@@ -100,7 +100,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 # ---------- Main functionality ---------- #
 
 
-dependencies = ['asr.structureinfo', 'asr.gs']
+# ----- Slow steps ----- #
 
 
 @command(module='asr.pdos',
@@ -113,31 +113,29 @@ def calculate(kptdensity=20.0, emptybands=20):
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
-             gpw='pdos.gpw', txt='pdos.gpw')
+             gpw='pdos.gpw', txt='pdos.txt')
+
+
+# ----- Fast steps ----- #
 
 
 @command(module='asr.pdos',
          requires=['pdos.gpw'],
          tests=tests,
          dependencies=['asr.pdos@calculate'])
-def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
-    params = dict(kptdensity=kptdensity,
-                  emptybands=emptybands)
-    # Refine ground state with more k-points
-    refine_gs_for_pdos(kptdensity, emptybands)
+def main():
+    # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
 
     results = {}
 
-    # ----- Slow steps ----- #
     # Calculate pdos (stored in tmpresults_pdos.json until recipe is completed)
-    results['pdos_nosoc'] = pdos_nosoc(params, calc, 'pdos.gpw')  # subresults need
-    results['pdos_soc'] = pdos_soc(params, calc, 'pdos.gpw')  # context to log params
+    results['pdos_nosoc'] = pdos(calc, 'pdos.gpw', soc=False)
+    results['pdos_soc'] = pdos(calc, 'pdos.gpw', soc=True)
 
-    # ----- Fast steps ----- #
     # Calculate the dos at the Fermi energy
-    results['dos_at_ef_nosoc'] = calculate_dos_at_ef(calc, 'pdos.gpw', soc=False)
-    results['dos_at_ef_soc'] = calculate_dos_at_ef(calc, 'pdos.gpw', soc=True)
+    results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
+    results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
 
     return results
 
@@ -146,15 +144,6 @@ def main(kptdensity=36.0, emptybands=20):  # subresults need params for log
 
 
 # ----- PDOS ----- #
-
-@subresult('asr.pdos')
-def pdos_nosoc(calc, gpw):
-    return pdos(calc, gpw, soc=False)
-
-
-@subresult('asr.pdos')
-def pdos_soc(calc, gpw):
-    return pdos(calc, gpw, soc=True)
 
 
 def pdos(calc, gpw, soc=True):
@@ -280,7 +269,7 @@ def get_l_a(zs):
 # ----- DOS at Fermi energy ----- #
 
 
-def calculate_dos_at_ef(calc, gpw, soc=True):
+def dos_at_ef(calc, gpw, soc=True):
     """Get dos at the Fermi energy"""
     if soc:
         dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
