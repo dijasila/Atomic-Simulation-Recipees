@@ -56,6 +56,7 @@ def calculate(ecut=800, xc='PBE',
         },
         occupations={'name': 'fermi-dirac', 'width': width},
         convergence={'bands': -3},
+        nbands=-10,
         txt='gs.txt',
         charge=chargestate)
 
