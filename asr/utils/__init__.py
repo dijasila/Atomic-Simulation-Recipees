@@ -197,7 +197,8 @@ class ASRCommand:
         # Setup the CLI
         self.setup_cli()
 
-    def get_known_exceptions(self):
+    @property
+    def known_exceptions(self):
         if callable(self._known_exceptions):
             return self._known_exceptions()
         return self._known_exceptions
