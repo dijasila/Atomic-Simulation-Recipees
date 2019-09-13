@@ -22,6 +22,10 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     from pathlib import Path
     import numpy as np
 
+    if Path('polarizability.npz').is_file():
+        data = np.load('polarizability.npz')
+        return data
+
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
 
