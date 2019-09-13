@@ -28,7 +28,7 @@ def main():
     from gpaw.mpi import world
     from asr.utils import read_json, get_dimensionality
     from ase.phonons import Phonons
-    
+
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
@@ -43,7 +43,6 @@ def main():
     C_NN = p.C_N.sum(axis=0)  # For q=0 the Fourier transform is just the sum
 
     dct = jsonio.decode(read_json('borncharges-0.01.json'))
-    print(dct)
     Z_avv = dct['Z_avv']
     phbb = phononbuildingblock(atoms=atoms, Z_avv=Z_avv,
                                force_constant_matrix=C_NN)
