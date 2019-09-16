@@ -19,4 +19,4 @@ docs_test:
     - pip install .[docs]
     - which sphinx-build
     - cd $CI_PROJECT_DIR/docs
-    - sphinx-build -W . build
+    - make html
