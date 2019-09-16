@@ -267,7 +267,8 @@ class ASRCommand:
         co = click.option
 
         def clickify_docstring(doc):
-
+            if doc is None:
+                return
             doc_n = doc.split('\n')
             clickdoc = []
             skip = False
