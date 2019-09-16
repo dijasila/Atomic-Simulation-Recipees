@@ -3,6 +3,7 @@ from asr.core import command, option
 tests = []
 tests.append({'description': 'Test band structure of Si.',
               'name': 'asr.bandstructure_Si',
+              'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '

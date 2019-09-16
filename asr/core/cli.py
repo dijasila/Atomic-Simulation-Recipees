@@ -311,7 +311,8 @@ def status():
         help='Raise error if tests fail')
 @option('--tmpdir', help='Execution dir. If '
         'not specified ASR will decide')
-def test(patterns, show_output, raiseexc, tmpdir):
+@option('--tag', help='Only run tests with given tag')
+def test(patterns, show_output, raiseexc, tmpdir, tag):
     from asr.core.testrunner import TestRunner
     import os
     from pathlib import Path
@@ -364,6 +365,14 @@ def test(patterns, show_output, raiseexc, tmpdir):
                     break
         tests = tmptests
 
+    if tag:
+        tmptests = []
+        for test in tests:
+            tags = test.get('tags', [])
+            if tag in tags:
+                tmptests.append(test)
+
+        tests = tmptests
     TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc,
                                                    tmpdir=tmpdir)
 
@@ -460,12 +469,17 @@ def workflow(tasks, doforstable):
     print('    return tasks')
 
 
-clitests = [{'cli': ['asr run -h']},
-            {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
-            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
+clitests = [{'cli': ['asr run -h'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"'],
+             'tags': ['gitlab-ci']},
             {'cli': ['mkdir folder1',
                      'mkdir folder2',
                      'asr run "setup.params asr.relax:ecut'
-                     ' 300" folder1 folder2']},
+                     ' 300" folder1 folder2'],
+             'tags': ['gitlab-ci']},
             {'cli': ['touch str1.json',
-                     'asr run --shell "mv str1.json str2.json"']}]
+                     'asr run --shell "mv str1.json str2.json"'],
+             'tags': ['gitlab-ci']}]

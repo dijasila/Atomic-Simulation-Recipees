@@ -12,8 +12,6 @@ tests:
     - coverage run -m asr test asr.utils.cli asr.setup.params asr.relax_0 asr.gs_0 --tmpdir $tdir --raiseexc
     - coverage combine $tdir/*/.coverage.* .coverage.*
     - coverage report --include '*/asr/asr/*'
-    - coverage report -i --include="*asr/asr/*"
-
 
 docs_test:
   image: python:3.6

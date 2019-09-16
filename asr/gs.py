@@ -75,6 +75,7 @@ def calculate(ecut=800, xc='PBE',
 
 
 tests = [{'description': 'Test ground state of Si.',
+          'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
                   'ase convert materials.json structure.json',
                   'asr run "setup.params asr.gs@calculate:ecut 300 '

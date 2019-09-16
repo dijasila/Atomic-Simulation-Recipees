@@ -215,6 +215,7 @@ def BN_check():
 
 tests = []
 tests.append({'description': 'Test relaxation of Si.',
+              'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
                       'asr run "setup.params asr.relax:ecut 300 '
