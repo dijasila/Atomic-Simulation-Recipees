@@ -1,4 +1,4 @@
-from asr.utils import command, option, read_json
+from asr.core import command, option, read_json
 from click import Choice
 
 
@@ -24,7 +24,7 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from asr.utils import file_barrier
+    from asr.core import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -277,7 +277,7 @@ def polarizability(row, fx, fy, fz):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
 
     opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'

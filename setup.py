@@ -20,9 +20,11 @@ setup(
     include_package_data=True,
     install_requires=['ase', 'Click', 'matplotlib',
                       'spglib', 'plotly', 'sphinx-autoapi'],
+    extras_require={'docs': ['sphinx', 'sphinx-autoapi',
+                             'sphinxcontrib-programoutput']},
     entry_points='''
         [console_scripts]
-        asr=asr.utils.cli:cli
+        asr=asr.core.cli:cli
     ''',
     classifiers=[
         'Development Status :: 4 - Beta', 'Environment :: Console',

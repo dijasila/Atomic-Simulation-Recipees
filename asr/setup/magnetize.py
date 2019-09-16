@@ -1,5 +1,5 @@
 from click import Choice
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.setup.magnetize')
@@ -51,7 +51,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     from pathlib import Path
     from ase.io import read, write
     from ase.parallel import world
-    from asr.utils import magnetic_atoms
+    from asr.core import magnetic_atoms
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
 

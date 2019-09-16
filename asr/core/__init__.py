@@ -197,6 +197,8 @@ class ASRCommand:
         # Setup the CLI
         self.setup_cli()
 
+        self.__doc__ = self._main.__doc__
+
     @property
     def known_exceptions(self):
         if callable(self._known_exceptions):
@@ -264,7 +266,38 @@ class ASRCommand:
         cc = click.command
         co = click.option
 
-        help = self._main.__doc__ or ''
+        def clickify_docstring(doc):
+            if doc is None:
+                return
+            doc_n = doc.split('\n')
+            clickdoc = []
+            skip = False
+            for i, line in enumerate(doc_n):
+                if skip:
+                    skip = False
+                    continue
+                lspaces = len(line) - len(line.lstrip(' '))
+                spaces = ' ' * lspaces
+                bb = spaces + '\b'
+                if line.endswith('::'):
+                    skip = True
+
+                    if not doc_n[i - 1].strip(' '):
+                        clickdoc.pop(-1)
+                        clickdoc.extend([bb, line, bb])
+                    else:
+                        clickdoc.extend([line, bb])
+                elif ('-' in line and
+                      (spaces + '-' * (len(line) - lspaces)) == line):
+                    clickdoc.insert(-1, bb)
+                    clickdoc.append(line)
+                else:
+                    clickdoc.append(line)
+            doc = '\n'.join(clickdoc)
+
+            return doc
+
+        help = clickify_docstring(self._main.__doc__) or ''
 
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)

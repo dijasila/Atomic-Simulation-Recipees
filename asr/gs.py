@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 from pathlib import Path
 
 
@@ -34,7 +34,7 @@ def calculate(ecut=800, xc='PBE',
     import numpy as np
     from ase.io import read
     from asr.calculators import get_calculator
-    from asr.utils import read_json
+    from asr.core import read_json
 
     atoms = read('structure.json')
 
@@ -76,6 +76,7 @@ def calculate(ecut=800, xc='PBE',
 
 
 tests = [{'description': 'Test ground state of Si.',
+          'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
                   'ase convert materials.json structure.json',
                   'asr run "setup.params asr.gs@calculate:ecut 300 '
@@ -313,7 +314,7 @@ def evacdiff(atoms):
 def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
     from pathlib import Path
-    from asr.utils import read_json
+    from asr.core import read_json
 
     evac = None
     if Path('results-asr.gs.json').is_file():
@@ -325,7 +326,7 @@ def get_evac():
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
+    from asr.browser import table
 
     if row.get('evacdiff', 0) < 0.02:
         t = table(row, 'Postprocessing',
