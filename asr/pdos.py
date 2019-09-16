@@ -11,7 +11,6 @@ from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from asr.core import magnetic_atoms
-from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
 
 
 # ---------- GPAW hacks ---------- #
@@ -30,6 +29,7 @@ class SOCDOS(DOS):
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
         import gpaw.mpi as mpi
+        from asr.utils.gpw2eigs import gpw2eigs
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
         DOS.__init__(self, calc, **kwargs)
 
@@ -136,6 +136,7 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw import GPAW
     import gpaw.mpi as mpi
     from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
+    from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
 
     if soc and world.rank == 0:

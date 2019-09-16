@@ -271,31 +271,34 @@ def known_exceptions():
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
          readout_charge=False):
     """Relax atomic positions and unit cell.
-
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
+
     and relaxes the structure including the DFTD3 van der Waals
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
 
+    Installation
+    ------------
+    To install DFTD3 do::
 
-    Installation:
-    To install DFTD3 do
+      $ mkdir ~/DFTD3 && cd ~/DFTD3
+      $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+      $ tar -zxf dftd3.tgz
+      $ make
+      $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+      $ source ~/.bashrc
 
-    $ mkdir ~/DFTD3 && cd ~/DFTD3
-    $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
-    $ tar -zxf dftd3.tgz
-    $ make
-    $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
-    $ source ~/.bashrc
+    Examples
+    --------
+    Relax without using DFTD3::
 
-    \b
-    Examples:
-    Relax without using DFTD3
-        $ ase build -x diamond Si unrelaxed.json
-        $ asr run "relax --nod3"
-    Relax using the LDA exchange-correlation functional
-        $ ase build -x diamond Si unrelaxed.json
-        $ asr run "relax --xc LDA"
+      $ ase build -x diamond Si unrelaxed.json
+      $ asr run "relax --nod3"
+
+    Relax using the LDA exchange-correlation functional::
+
+      $ ase build -x diamond Si unrelaxed.json
+      $ asr run "relax --xc LDA"
     """
     from asr.core import read_json
 
