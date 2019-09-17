@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-from asr.utils import command, option
+from asr.core import command, option
 
 from ase.db import connect
 from ase.io import read
@@ -19,6 +19,16 @@ from ase.db.row import AtomsRow
 @option('-d', '--database', type=str,
         help='Database of systems to be included in the figure.')
 def main(references: str, database: str):
+    """Calculate convex hull energies
+
+    For this recipe to work you need to install a database of
+    reference energies to calculate HOF and convex hull. Here
+    we use a database of one- and component-structures from OQMD::
+
+    $ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+    $ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
+    """
+
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
@@ -231,7 +241,7 @@ def convex_hull_tables(row: AtomsRow,
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
 
     if 'convex_hull' not in row.data:
         return (), ()

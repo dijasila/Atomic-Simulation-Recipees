@@ -1,4 +1,4 @@
-from asr.utils import read_json
+from asr.core import read_json
 from pathlib import Path
 
 
