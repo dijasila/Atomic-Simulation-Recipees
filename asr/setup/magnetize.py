@@ -1,19 +1,57 @@
-from asr.utils import command, option
+from click import Choice
+from asr.core import command, option
 
 
-@command('asr.setup.magnetize',
-         save_results_file=False)
-@option('--state', type=str, default='all', help='Choices: all, nm, fm, afm')
-@option('--name', default='unrelaxed.json',
-        help='Atomic structure')
-@option('--copy-params', default=False, is_flag=True,
+@command('asr.setup.magnetize')
+@option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
+        help='Magnetic states to create.')
+@option('--name', help='Atomic structure')
+@option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).')
-def main(state, name, copy_params):
-    """Set up magnetic moments of atomic structure."""
+def main(state='all', name='unrelaxed.json', copy_params=False):
+    """Set up folders with magnetic moments.
+
+    This recipe can be used to test different magnetic configurations
+    of an atomic structure. The recipe creates new folder using acronyms
+    for the magnetic configutions. Supported magnetic configurations at the
+    moment
+
+    \b
+    nm/  <- non-magnetic
+    fm/  <- ferro-magnetic
+    afm/ <- anti-ferro-magnetic (only works with exactly two-magnetic
+            atoms in the unit cell)
+
+    To test a specific magnetic configution, for example ferromagnetic,
+    simply use the --state switch: --state fm.
+
+    Use the 'all' identifier to test all magnetic configuration: --state all
+    This is the default option.
+
+    An atomic structure with the correct initial magnetic moments
+    named 'unrelaxed.json' is saved in each folder, which can be relaxed
+    using the relax recipe.
+
+    By default this recipe looks for a structure in the current directory named
+    'unrelaxed.json'. Use the --name switch to change this name.
+
+    If you also want to copy the params.json file in the current directory into
+    all newly created directories use the --copy-params switch.
+
+    \b
+    Examples:
+    ---------
+    Set up all known magnetic configurations (assuming existence of
+    'unrelaxed.json')
+        asr run setup.magnetize
+    \b
+    Only set up ferromagnetic configuration
+        asr run setup.magnetic --state fm
+    """
     from pathlib import Path
     from ase.io import read, write
     from ase.parallel import world
-    from asr.utils import magnetic_atoms
+    from asr.core import magnetic_atoms
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
 
@@ -82,4 +120,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

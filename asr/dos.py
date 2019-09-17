@@ -1,11 +1,11 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.dos')
-@option('--name', default='dos.gpw', type=str)
-@option('--filename', default='dos.json', type=str)
-@option('--kptdensity', default=12.0, help='K point kptdensity')
-def main(name, filename, kptdensity):
+@option('--name', type=str)
+@option('--filename', type=str)
+@option('--kptdensity', help='K point kptdensity')
+def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
     """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
@@ -87,7 +87,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig
+    from asr.browser import fig
 
     panel = ('Density of states (PBE)',
              [[fig('dos.png')], []])
@@ -102,4 +102,4 @@ dependencies = ['asr.structureinfo', 'asr.gs']
 creates = ['dos.json']
 
 if __name__ == '__main__':
-    main()
+    main.cli()

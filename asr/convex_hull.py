@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-from asr.utils import command, option
+from asr.core import command, option
 
 from ase.db import connect
 from ase.io import read
@@ -12,12 +12,23 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
-@command('asr.convex_hull')
+@command('asr.convex_hull',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 @option('-r', '--references', type=str,
         help='Reference database.')
 @option('-d', '--database', type=str,
         help='Database of systems to be included in the figure.')
 def main(references: str, database: str):
+    """Calculate convex hull energies
+
+    For this recipe to work you need to install a database of
+    reference energies to calculate HOF and convex hull. Here
+    we use a database of one- and component-structures from OQMD::
+
+    $ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
+    $ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
+    """
+
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
@@ -47,14 +58,17 @@ def main(references: str, database: str):
                           row.magstate,
                           row.uid))
     else:
-        qi = json.loads(Path('results_structureinfo.json').read_text())
+        si = json.loads(Path('results-asr.structureinfo.json').read_text())
         links.append((results['hform'],
                       formula,
-                      qi.get('prototype', ''),
-                      qi['magstate'],
-                      qi['uid']))
+                      si.get('prototype', ''),
+                      si['magstate'],
+                      si['uid']))
 
     results['links'] = links
+    results['__key_descriptions__'] = {
+        'ehull': 'KVP: Energy above convex hull [eV/atom]',
+        'hform': 'KVP: Heat of formation [eV/atom]'}
 
     return results
 
@@ -120,20 +134,6 @@ def select_references(db, symbols):
                 uid = row.get('uid', row.id)
                 refs[uid] = row
     return list(refs.values())
-
-
-def collect_data(atoms):
-    path = Path('results_convex_hull.json')
-    if not path.is_file():
-        return {}, {}, {}
-    dct = json.loads(path.read_text())
-    kvp = {'hform': dct.pop('hform')}
-    if 'ehull' in dct:
-        kvp['ehull'] = dct.pop('ehull')
-    return (kvp,
-            {'ehull': ('Energy above convex hull', '', 'eV/atom'),
-             'hform': ('Heat of formation', '', 'eV/atom')},
-            {'convex_hull': dct})
 
 
 def plot(row, fname):
@@ -241,7 +241,7 @@ def convex_hull_tables(row: AtomsRow,
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
 
     if 'convex_hull' not in row.data:
         return (), ()
@@ -267,10 +267,5 @@ def webpanel(row, key_descriptions):
     return panel, things
 
 
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
-sort = 2
-
-
 if __name__ == '__main__':
-    main()
+    main.cli()

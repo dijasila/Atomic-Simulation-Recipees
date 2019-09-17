@@ -1,9 +1,23 @@
-from asr.utils import command
+from asr.core import command
 
 
-@command('asr.bader')
+@command('asr.bader',
+         dependencies=['asr.structureinfo', 'asr.gs'])
 def main():
-    """Calculate bader charges"""
+    """Calculate bader charges.
+
+    Installation
+    ------------
+    To make Bader analysis we use another program. Download the executable
+    for Bader analysis and put in path (this is for Linux, find the
+    appropriate executable for you own OS)::
+
+        $ mkdir baderext && cd baderext
+        $ wget theory.cm.utexas.edu/henkelman/code/bader/download/
+        ...bader_lnx_64.tar.gz
+        $ tar -zxf bader_lnx_64.tar.gz
+        $ echo  'export PATH=~/baderext:$PATH' >> ~/.bashrc
+    """
     from pathlib import Path
     from ase.io import write
     from ase.units import Bohr
@@ -34,7 +48,6 @@ def main():
     err.close()
 
 
-@command('asr.bader.print')
 def print():
     """Print Bader charges"""
     import os.path as op
@@ -47,10 +60,5 @@ def print():
     print(dat)
 
 
-dependencies = ['asr.structureinfo', 'asr.gs']
-group = 'property'
-resources = '1:10m'
-
-
 if __name__ == '__main__':
-    main()
+    main.cli()

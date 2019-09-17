@@ -1,4 +1,4 @@
-from asr.utils import command, argument, option
+from asr.core import command, argument, option
 import numpy as np
 from pathlib import Path
 
@@ -74,14 +74,36 @@ def get_p_ab():
     return np.sqrt(tmp)
 
 
-help = 'Threshold of likelyhood of two atomic species to subsititute'
-@command('asr.setup.decorate',
-         save_results_file=False)
+@command('asr.setup.decorate')
 @argument('atoms', type=str)
-@option('--threshold', default=0.08, help=help)
-@option('--database', default='decorated.db')
-def main(atoms, threshold, database):
-    """Decorate structure with different atoms"""
+@option('--threshold',
+        help='Threshold of likelyhood of two atomic species to subsititute')
+@option('--database')
+def main(atoms, threshold=0.08, database='decorated.db'):
+    """Create similar atomic structures.
+
+    This recipe can substitute atoms in an atomic structure with other similar
+    atoms. In this case, similarity is defined as a probability describing the
+    number of experimentally known atomic structures which only differ
+    by a simple substitution, say Si -> Ge.
+
+    The number of coexisting atomic structures has been analyzed in Ref. XXX
+    and this recipe is converting this number to a probability.
+
+    The threshold option limits the number of performed atomic substitions to
+    the ones that have a probability larger than the threshold.
+
+    By default the decorated atomic structures will be packed into an ASE
+    database which can be unpacked into a folder structure using the
+    "setup.unpackdatabase" recipe.
+
+    \b
+    Examples:
+    ---------
+    \b
+    Perform likely substitions of atomic structure in structure.json
+        asr run setup.decorate structure.json
+    """
     from ase.db import connect
     from ase.io import read
     from ase.data import chemical_symbols
@@ -103,4 +125,4 @@ def main(atoms, threshold, database):
 
 
 if __name__ == "__main__":
-    main()
+    main.cli()

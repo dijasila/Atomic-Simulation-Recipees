@@ -1,17 +1,18 @@
 """Template recipe."""
 import json
 from pathlib import Path
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.something')
-@option('--number', default=5)
-def main(number):
+@option('--number', type=int)
+def main(number=5):
     """Calculate something."""
     something = calculate_something(number)
     results = {'number': number,
                'something': something}
     Path('something.json').write_text(json.dumps(results))
+    return results
 
 
 def calculate_something(number):

@@ -1,10 +1,10 @@
-from asr.utils import command, option
-#
+from asr.core import command, option
 
-@command('asr.emasses')
+@command('asr.emasses',
+         dependencies=['asr.gs', 'asr.structureinfo'])
 @option('--gpwfilename', type=str,
-        help='GS Filename', default='gs.gpw')
-def main(gpwfilename):
+        help='GS Filename')
+def main(gpwfilename='gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     import os.path
@@ -383,7 +383,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
+    from asr.browser import table
 
     t = table(row, 'Postprocessing',
               ['cb_emass', 'vb_emass'],
@@ -395,7 +395,7 @@ def webpanel(row, key_descriptions):
 
 # def webpanel(row, key_descriptions):
 
-#     from asr.utils.custom import fig
+#     from asr.browser import fig
 #     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
 #                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
 
@@ -418,8 +418,6 @@ def webpanel(row, key_descriptions):
 
 #     return panel
 
-group = 'property'
-dependencies = ['asr.gs', 'asr.structureinfo']
 
 if __name__ == '__main__':
-    main()
+    main.cli()
