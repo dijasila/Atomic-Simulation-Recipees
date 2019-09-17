@@ -58,7 +58,7 @@ class SOCDOS(DOS):
 
 ctests = []
 ctests.append({'description': 'Test the refined ground state of Si',
-               'name': 'test_asr.pdos_Si_serial',
+               'name': 'test_asr.pdos_Si_gpw',
                'cli': ['asr run "setup.materials -s Si2"',
                        'ase convert materials.json structure.json',
                        'asr run "setup.params '
@@ -66,6 +66,7 @@ ctests.append({'description': 'Test the refined ground state of Si',
                        'asr.gs@calculate:kptdensity 2.0 '
                        'asr.pdos@calculate:kptdensity 3.0 '
                        'asr.pdos@calculate:emptybands 5"',
+                       'asr run gs',
                        'asr run pdos@calculate',
                        'asr run database.fromtree',
                        'asr run "browser --only-figures"']})
@@ -80,6 +81,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
                       'asr.gs@calculate:kptdensity 2.0 '
                       'asr.pdos@calculate:kptdensity 3.0 '
                       'asr.pdos@calculate:emptybands 5"',
+                      'asr run gs',
                       'asr run pdos',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
@@ -92,7 +94,8 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr.gs@calculate:kptdensity 2.0 '
                       'asr.pdos@calculate:kptdensity 3.0 '
                       'asr.pdos@calculate:emptybands 5"',
-                      'asr run "-p 2 pdos"',
+                      'asr run gs',
+                      'asr run -p 2 pdos',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
 
@@ -344,9 +347,18 @@ def collect_data(atoms):
 def webpanel(row, key_descriptions):
     # PDOS plot goes to Electronic band structure (PBE) panel, which is
     # defined in the bandstructure recipe
+
+    panel = {'plot_descriptions': [{'function': plot_pdos,
+                                    'filenames': ['pbe-pdos.png']},
+                                   ]
+             }
+    return [panel]
+    '''
     panel = ()
     things = [(plot_pdos, ['pbe-pdos.png'])]
+    
     return panel, things
+    '''
 
 
 # ---------- Plotting ---------- #
