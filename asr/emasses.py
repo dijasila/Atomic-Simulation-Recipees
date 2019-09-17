@@ -70,25 +70,19 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
 
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
-    kcirc_kc = kptsinsphere(cell_cv)
+    kcirc_kc = kptsinsphere(cell_cv, twod=(ndim == 2))
+
     e_skn, efermi = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
+
     _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                             output=None)
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
 
-    if bandtype is None:
-        bandtypes = ('vb', 'cb')
-        ks = (k1_c, k2_c)
-    elif bandtype == 'vb':
-        bandtypes = ('vb',)
-        ks = (k1_c, )
-    elif bandtype == 'cb':
-        bandtypes = ('cb', )
-        ks = (k2_c, )
-
+    bandtypes, ks = get_bt_ks(bandtype, k1_c, k2_c)
+    
     for bt, k_c in zip(bandtypes, ks):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
@@ -98,6 +92,17 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
 
+def get_bt_ks(bandtype, k1_c, k2_c):
+    if bandtype is None:
+        bandtypes = ('vb', 'cb')
+        ks = (k1_c, k2_c)
+    elif bandtype == 'vb':
+        bandtypes = ('vb',)
+        ks = (k1_c, )
+    elif bandtype == 'cb':
+        bandtypes = ('cb', )
+        ks = (k2_c, )
+    return bandtypes, ks
 
 def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=False):
     import numpy as np
@@ -119,7 +124,6 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=False):
     kpts_kv /= Bohr
     kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
     return kpts_kc
-
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
