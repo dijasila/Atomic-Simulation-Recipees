@@ -1,4 +1,4 @@
-from asr.utils import command
+from asr.utils import command, option
 
 
 def phononbuildingblock(atoms, Z_avv, force_constant_matrix):
@@ -16,9 +16,9 @@ def phononbuildingblock(atoms, Z_avv, force_constant_matrix):
 @command(module='asr.phononbuildingblock',
          requires=['borncharges-0.01.json',
                    'results-asr.phonons@calculate.json'],
-         creates=['phononbuildingblock.npz'],
          dependencies=['asr.phonons@calculate'])
-def main():
+@option('--prefix', help='Prefix for BB file')
+def main(prefix):
     """Calculate Phonon Building Block for QEH model.
 
     """
@@ -47,8 +47,11 @@ def main():
     phbb = phononbuildingblock(atoms=atoms, Z_avv=Z_avv,
                                force_constant_matrix=C_NN)
 
+    formula = atoms.get_chemical_formula('metal')
+    if not prefix:
+        prefix = ''
     if world.rank == 0:
-        np.savez_compressed('phononbuildingblock.npz', **phbb)
+        np.savez_compressed(f'{prefix}{formula}-phonons.npz', **phbb)
 
 
 if __name__ == '__main__':
