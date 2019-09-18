@@ -26,46 +26,65 @@ def main(database1, database2, databaseout, identifier='asr_id'):
     db2 = connect(database2)
     dbmerged = connect(databaseout)
 
+    from click import progressbar
     # First merge rows common in both databases
+
+    def item_show_func(item):
+        if item is None:
+            return item
+        return str(item.formula)
+
     with connect(databaseout) as dbmerged:
-        for row1 in db1.select():
-            structid = row1.get(identifier)
-            matching = list(db2.select(f'{identifier}={structid}'))
-
-            if len(matching) > 1:
-                raise RuntimeError(f'More than one structure in {database2} '
-                                   f'matching identifier={identifier}')
-            elif len(matching) == 0:
-                print(f'No matching structures {row1.formula}')
+        with progressbar(db1.select(),
+                         label='Merging common rows',
+                         item_show_func=item_show_func) as selection:
+            for row1 in selection:
                 continue
-            row2 = matching[0]
+                structid = row1.get(identifier)
+                matching = list(db2.select(f'{identifier}={structid}'))
 
-            kvp1 = row1.key_value_pairs
-            kvp2 = row2.key_value_pairs
-            kvpmerged = kvp2.copy().update(kvp1)
+                if len(matching) > 1:
+                    raise RuntimeError('More than one structure '
+                                       f'in {database2} '
+                                       f'matching identifier={identifier}')
+                elif len(matching) == 0:
+                    continue
+                row2 = matching[0]
 
-            data1 = row1.data
-            data2 = row2.data
-            datamerged = data2.copy().update(data1)
-            dbmerged.write(row1.toatoms(), key_value_pairs=kvpmerged,
-                           data=datamerged)
+                kvp1 = row1.key_value_pairs.copy()
+                kvp2 = row2.key_value_pairs.copy()
+                kvpmerged = kvp2.copy().update(kvp1)
+
+                data1 = row1.data
+                data2 = row2.data
+                datamerged = data2.copy().update(data1)
+                dbmerged.write(row1.toatoms(), key_value_pairs=kvpmerged,
+                               data=datamerged)
     
         # Then insert rows that only exist in one of the databases
-        for row in db1.select():
-            structid = row.get(identifier)
-            matching = list(db2.select(f'{identifier}={structid}'))
-            if not len(matching):
-                dbmerged.write(row.toatoms(),
-                               key_value_pairs=row.key_value_pairs,
-                               data=row.data)
+        # with progressbar(db1.select(),
+        #                  label=('Finding unique materials in '
+        #                         f'{database1}'),
+        #                  item_show_func=item_show_func) as selection:
+        #     for row in selection:
+        #         structid = row.get(identifier)
+        #         matching = list(db2.select(f'{identifier}={structid}'))
+        #         if not len(matching):
+        #             dbmerged.write(row.toatoms(),
+        #                            key_value_pairs=row.key_value_pairs,
+        #                            data=row.data)
 
-        for row in db2.select():
-            structid = row.get(identifier)
-            matching = list(db1.select(f'{identifier}={structid}'))
-            if not len(matching):
-                dbmerged.write(row.toatoms(),
-                               key_value_pairs=row.key_value_pairs,
-                               data=row.data)
+        # with progressbar(db2.select(),
+        #                  label=('Finding unique materials in '
+        #                         f'{database2}'),
+        #                  item_show_func=item_show_func) as selection:
+        #     for row in selection:
+        #         structid = row.get(identifier)
+        #         matching = list(db1.select(f'{identifier}={structid}'))
+        #         if not len(matching):
+        #             dbmerged.write(row.toatoms(),
+        #                            key_value_pairs=row.key_value_pairs,
+        #                            data=row.data)
 
 
 if __name__ == '__main__':
