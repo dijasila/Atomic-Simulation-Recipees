@@ -16,75 +16,78 @@ tests = [
 @command('asr.database.totree',
          tests=tests)
 @argument('databaseout', nargs=1)
-@argument('database2', nargs=1)
-@argument('database1', nargs=1)
-@option('--identifier')
-def main(database1, database2, databaseout, identifier='asr_id'):
+@argument('databases', nargs=-1)
+@option('--identifier', help='Identifier for matching database entries.')
+def main(databases, databaseout, identifier='asr_id'):
     """Merge two ASE databases."""
     from ase.db import connect
-    db1 = connect(database1)
-    db2 = connect(database2)
+    from pathlib import Path
+    from click import progressbar
     dbmerged = connect(databaseout)
 
-    from click import progressbar
-    # First merge rows common in both databases
+    print(f'Merging {databases} into {databaseout}')
 
     def item_show_func(item):
         if item is None:
             return item
         return str(item.formula)
 
-    with connect(databaseout) as dbmerged:
-        with progressbar(db1.select(),
-                         label='Merging common rows',
-                         item_show_func=item_show_func) as selection:
+    dest = Path(databaseout)
+    assert not dest.is_file(), \
+        f'The destination path {databaseout} already exists.'
+
+    # We build up a temporary database file at this destination
+    tmpdest = Path(databaseout + '.tmp.db')
+    if tmpdest.is_file():
+        tmpdest.unlink()
+
+    # First merge rows common in both databases
+    for database in databases:
+        # Database for looking up existing materials
+        tmpdestsearch = Path('_' + str(tmpdest))
+        if tmpdestsearch.is_file():
+            tmpdestsearch.unlink()
+
+        if tmpdest.is_file():
+            tmpdest.rename(tmpdestsearch)
+
+        db = connect(database)
+        dbsearch = connect(str(tmpdestsearch))
+        dbmerged = connect(str(tmpdest))
+
+        selection = progressbar(list(db.select()),
+                                label=f'Merging {database}',
+                                item_show_func=item_show_func)
+        with dbmerged, dbsearch, selection:
             for row1 in selection:
-                continue
                 structid = row1.get(identifier)
-                matching = list(db2.select(f'{identifier}={structid}'))
+                matching = list(dbsearch.select(f'{identifier}={structid}'))
 
                 if len(matching) > 1:
                     raise RuntimeError('More than one structure '
-                                       f'in {database2} '
+                                       f'in {databaseout} '
                                        f'matching identifier={identifier}')
                 elif len(matching) == 0:
-                    continue
-                row2 = matching[0]
+                    dbmerged.write(row1.toatoms(),
+                                   key_value_pairs=row1.key_value_pairs,
+                                   data=row1.data)
+                else:
+                    row2 = matching[0]
+                    data = row2.data.copy()
+                    kvp = row2.key_value_pairs.copy()
 
-                kvp1 = row1.key_value_pairs.copy()
-                kvp2 = row2.key_value_pairs.copy()
-                kvpmerged = kvp2.copy().update(kvp1)
+                    data.update(row1.data)
+                    kvp.update(row1.key_value_pairs)
 
-                data1 = row1.data
-                data2 = row2.data
-                datamerged = data2.copy().update(data1)
-                dbmerged.write(row1.toatoms(), key_value_pairs=kvpmerged,
-                               data=datamerged)
-    
-        # Then insert rows that only exist in one of the databases
-        # with progressbar(db1.select(),
-        #                  label=('Finding unique materials in '
-        #                         f'{database1}'),
-        #                  item_show_func=item_show_func) as selection:
-        #     for row in selection:
-        #         structid = row.get(identifier)
-        #         matching = list(db2.select(f'{identifier}={structid}'))
-        #         if not len(matching):
-        #             dbmerged.write(row.toatoms(),
-        #                            key_value_pairs=row.key_value_pairs,
-        #                            data=row.data)
+                    atoms1 = row1.toatoms()
+                    atoms2 = row2.toatoms()
+                    assert atoms1 == atoms2, 'Atoms not matching!'
+                    dbmerged.write(row1.toatoms(),
+                                   data=data,
+                                   key_value_pairs=kvp)
 
-        # with progressbar(db2.select(),
-        #                  label=('Finding unique materials in '
-        #                         f'{database2}'),
-        #                  item_show_func=item_show_func) as selection:
-        #     for row in selection:
-        #         structid = row.get(identifier)
-        #         matching = list(db1.select(f'{identifier}={structid}'))
-        #         if not len(matching):
-        #             dbmerged.write(row.toatoms(),
-        #                            key_value_pairs=row.key_value_pairs,
-        #                            data=row.data)
+    # Copy the file to the final destination
+    tmpdest.rename(dest)
 
 
 if __name__ == '__main__':
