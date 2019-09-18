@@ -43,7 +43,6 @@ def main(folders, selectrecipe=None, level=2, data=True,
                          item_show_func=item_show_func) as bar:
             for folder in bar:
                 with chdir(folder):
-                    # print(folder, end=':\n')
                     kvp = {}
                     data = {}
                     key_descriptions = {}
@@ -52,8 +51,8 @@ def main(folders, selectrecipe=None, level=2, data=True,
                         continue
 
                     # The atomic structure uniquely defines the folder
-                    kvp['asr_id'] = md5sum(atomsname)
                     atoms = read(atomsname)
+                    kvp['asr_id'] = md5sum(repr(atoms).encode())
                     if selectrecipe:
                         recipes = get_dep_tree(selectrecipe)
                     else:
