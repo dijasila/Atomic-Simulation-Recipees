@@ -1,4 +1,4 @@
-from asr.utils import command, option, read_json
+from asr.core import command, option, read_json
 import os
 
 @command('asr.hseinterpol')
