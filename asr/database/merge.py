@@ -26,43 +26,48 @@ def main(database1, database2, databaseout, identifier='asr_id'):
 
     db1 = connect(database1)
     db2 = connect(database2)
-    dbout = connect(databaseout)
+    dbmerged = connect(databaseout)
 
-    column1 = set(db1.columnnames)
-    column2 = set(db2.columnnames)
+    # First merge rows common in both databases
+    with connect(databaseout) as dbmerged:
+        for row1 in db1.select():
+            structid = row1.get(identifier)
+            matching = list(db2.select(f'{identifier}={structid}'))
 
-    commoncolumns = column1.union(column2)
-
-    for row1 in db1.select():
-        print(row1.formula)
-        structid = row1.get(identifier)
-        row2 = db2.get(f'{identifier}={structid}')
-
-        skip_keys = ['ctime', 'mtime', 'unique_id', 'uid', 'user']
-        for key in row1:
-            if key not in row2 and key not in skip_keys:
+            if len(matching) > 1:
+                raise RuntimeError(f'More than one structure in {database2} '
+                                   f'matching identifier={identifier}')
+            elif len(matching) == 0:
+                print(f'No matching structures {row1.formula}')
                 continue
+            row2 = matching[0]
 
-            val1 = row1[key]
-            val2 = row2[key]
-            assert type(val1) == type(val2), 'type({key1}) != type({key2})'
-            if isinstance(val1, np.ndarray):
-                valf1 = val1.flatten().astype(float)
-                valf2 = val2.flatten().astype(float)
-                assert (valf1 - valf2 == 0.0).all(), \
-                    f'{row1[key]} != {row2[key]}'
-            else:
-                assert row1[key] == row2[key], f'{row1[key]} != {row2[key]}'
+            kvp1 = row1.key_value_pairs
+            kvp2 = row2.key_value_pairs
+            kvpmerged = kvp2.copy().update(kvp1)
 
-        # print(row1.toatoms())
-        # print(row1.key_value_pairs)
-        # sel = ','.join([f'{key}={row1.get(key)}' for key in commoncolumns
-        #                 if key in row1.key_value_pairs])
-        # # sel = f'id={row1.unique_id}'
-        
-        # print(sel)
-        # exit()
-        # row2 = db2.select(sel)
+            data1 = row1.data
+            data2 = row2.data
+            datamerged = data2.copy().update(data1)
+            dbmerged.write(row1.toatoms(), key_value_pairs=kvpmerged,
+                           data=datamerged)
+    
+        # Then insert rows that only exist in one of the databases
+        for row in db1.select():
+            structid = row.get(identifier)
+            matching = list(db2.select(f'{identifier}={structid}'))
+            if not len(matching):
+                dbmerged.write(row.toatoms(),
+                               key_value_pairs=row.key_value_pairs,
+                               data=row.data)
+
+        for row in db2.select():
+            structid = row.get(identifier)
+            matching = list(db1.select(f'{identifier}={structid}'))
+            if not len(matching):
+                dbmerged.write(row.toatoms(),
+                               key_value_pairs=row.key_value_pairs,
+                               data=row.data)
 
 
 if __name__ == '__main__':
