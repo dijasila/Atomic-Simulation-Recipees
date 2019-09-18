@@ -22,8 +22,6 @@ tests = [
 def main(database1, database2, databaseout, identifier='asr_id'):
     """Merge two ASE databases."""
     from ase.db import connect
-    import numpy as np
-
     db1 = connect(database1)
     db2 = connect(database2)
     dbmerged = connect(databaseout)
