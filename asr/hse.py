@@ -50,7 +50,7 @@ def hse(kptdensity, emptybands):
         pbc = atoms.pbc.tolist()
         ND = np.sum(pbc)
         if ND == 3 or ND == 1:
-            kpts = {'density': kptdensity, 'gamma': False, 'even': True}
+            kpts = {'density': kptdensity, 'gamma': True, 'even': False} # do not round up to nearest even number!
         elif ND == 2:
 
             # move to utils? [also in asr.polarizability]
