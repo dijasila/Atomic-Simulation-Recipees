@@ -66,7 +66,7 @@ def main(databases, databaseout, identifier='asr_id'):
                 if len(matching) > 1:
                     raise RuntimeError('More than one structure '
                                        f'in {databaseout} '
-                                       f'matching identifier={identifier}')
+                                       f'matching {identifier}={structid}')
                 elif len(matching) == 0:
                     dbmerged.write(row1.toatoms(),
                                    key_value_pairs=row1.key_value_pairs,

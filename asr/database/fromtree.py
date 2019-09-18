@@ -1,6 +1,20 @@
 from asr.core import command, option, argument, chdir
 
 
+def get_hash(atoms):
+    import numpy as np
+    from hashlib import md5
+    import json
+
+    dct = atoms.todict()
+    for key, value in dct.items():
+        if isinstance(value, np.ndarray):
+            value = value.tolist()
+        dct[key] = value
+    hash = md5(json.dumps(dct).encode()).hexdigest()
+    return hash
+
+
 @command('asr.database.fromtree',
          dependencies=['asr.structureinfo'])
 @argument('folders', nargs=-1)
@@ -21,7 +35,6 @@ def main(folders, selectrecipe=None, level=2, data=True,
     from asr.core import get_recipes, get_dep_tree
     import glob
     from pathlib import Path
-    from hashlib import md5
 
     if not folders:
         folders = ['.']
@@ -53,7 +66,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
 
                     # The atomic structure uniquely defines the folder
                     atoms = read(atomsname)
-                    kvp['asr_id'] = md5(repr(atoms).encode()).hexdigest()
+                    kvp['asr_id'] = get_hash(atoms)
                     if selectrecipe:
                         recipes = get_dep_tree(selectrecipe)
                     else:
