@@ -18,9 +18,10 @@ def main(folders, selectrecipe=None, level=2, data=True,
     import os
     from ase.db import connect
     from ase.io import read
-    from asr.core import get_recipes, get_dep_tree, md5sum
+    from asr.core import get_recipes, get_dep_tree
     import glob
     from pathlib import Path
+    from hashlib import md5
 
     if not folders:
         folders = ['.']
@@ -52,7 +53,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
 
                     # The atomic structure uniquely defines the folder
                     atoms = read(atomsname)
-                    kvp['asr_id'] = md5sum(repr(atoms).encode())
+                    kvp['asr_id'] = md5(repr(atoms).encode()).hexdigest()
                     if selectrecipe:
                         recipes = get_dep_tree(selectrecipe)
                     else:
