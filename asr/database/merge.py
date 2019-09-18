@@ -86,6 +86,9 @@ def main(databases, databaseout, identifier='asr_id'):
                                    data=data,
                                    key_value_pairs=kvp)
 
+    # Remove lookup db
+    tmpdestsearch.unlink()
+
     # Copy the file to the final destination
     tmpdest.rename(dest)
 
