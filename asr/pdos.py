@@ -1,4 +1,4 @@
-from asr.utils import command, subresult, option
+from asr.core import command, subresult, option
 
 from collections import defaultdict
 
@@ -10,13 +10,7 @@ from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
-import gpaw.mpi as mpi
-from gpaw import GPAW
-from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
-
-
-from asr.utils import magnetic_atoms
-from asr.utils.gpw2eigs import gpw2eigs, get_spin_direction
+from asr.core import magnetic_atoms
 
 
 # ---------- GPAW hacks ---------- #
@@ -33,6 +27,9 @@ class SOCDOS(DOS):
             it, instead of the normal ASE compliant calculator object.
         """
         # Initiate DOS with serial communicator instead
+        from gpaw import GPAW
+        import gpaw.mpi as mpi
+        from asr.utils.gpw2eigs import gpw2eigs
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
         DOS.__init__(self, calc, **kwargs)
 
@@ -136,6 +133,10 @@ def calculate_pdos(calc, gpw, soc=True):
     efermi : float
         Fermi energy
     """
+    from gpaw import GPAW
+    import gpaw.mpi as mpi
+    from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
+    from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
 
     if soc and world.rank == 0:
@@ -289,7 +290,7 @@ def collect_data(atoms):
                            + 'with spin-orbit coupling ',
                            'states/eV')
 
-    from asr.utils import read_json
+    from asr.core import read_json
     results = read_json('results_pdos.json')
     kvp = {'dos_at_ef_nosoc': results['dos_at_ef_nosoc'],
            'dos_at_ef_soc': results['dos_at_ef_soc']}

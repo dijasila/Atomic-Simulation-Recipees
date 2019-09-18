@@ -8,8 +8,7 @@ from ase.parallel import world
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.utils import command, option
-from gpaw import KohnShamConvergenceError
+from asr.core import command, option
 from math import sqrt
 import time
 
@@ -209,13 +208,14 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
 def BN_check():
     # Check that 2D-BN doesn't relax to its 3D form
-    from asr.utils import read_json
+    from asr.core import read_json
     results = read_json('results-asr.relax.json')
     assert results['c'] > 5
 
 
 tests = []
 tests.append({'description': 'Test relaxation of Si.',
+              'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
                       'asr run "setup.params asr.relax:ecut 300 '
@@ -249,8 +249,11 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 
 # Please note these are relative numbers that
 # are multiplied on the original ones
-known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
-                                               'width': 0.5}}
+def known_exceptions():
+    from gpaw import KohnShamConvergenceError
+    known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
+                                                   'width': 0.5}}
+    return known_exceptions
 
 
 @command('asr.relax',
@@ -268,20 +271,36 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
          readout_charge=False):
     """Relax atomic positions and unit cell.
-
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
+
     and relaxes the structure including the DFTD3 van der Waals
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
 
-    \b
-    Examples:
-    Relax without using DFTD3
-        asr run relax --nod3
-    Relax using the LDA exchange-correlation functional
-        asr run relax --xc LDA
+    Installation
+    ------------
+    To install DFTD3 do::
+
+      $ mkdir ~/DFTD3 && cd ~/DFTD3
+      $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+      $ tar -zxf dftd3.tgz
+      $ make
+      $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+      $ source ~/.bashrc
+
+    Examples
+    --------
+    Relax without using DFTD3::
+
+      $ ase build -x diamond Si unrelaxed.json
+      $ asr run "relax --nod3"
+
+    Relax using the LDA exchange-correlation functional::
+
+      $ ase build -x diamond Si unrelaxed.json
+      $ asr run "relax --xc LDA"
     """
-    from asr.utils import read_json
+    from asr.core import read_json
 
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
@@ -313,7 +332,7 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     # Save atomic structure
     write('structure.json', atoms)
 
-    from asr.utils import write_json
+    from asr.core import write_json
     write_json('gs_params.json', kwargs)
 
     # Get setup fingerprints

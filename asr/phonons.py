@@ -6,13 +6,13 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.utils import command, option
+from asr.core import command, option
 
 
 def creates():
     atoms = read('structure.json')
     natoms = len(atoms)
-    filenames = []
+    filenames = ['phonon.eq.pckl']
     for a in range(natoms):
         for v in 'xyz':
             for pm in '+-':
@@ -68,13 +68,13 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
-    from asr.utils import is_magnetic
+    from asr.core import is_magnetic
     if is_magnetic():
         gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    from asr.utils import get_dimensionality
+    from asr.core import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
         supercell = (n, n, n)
@@ -91,12 +91,27 @@ def requires():
     return creates() + ['results-asr.phonons@calculate.json']
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import table, fig
+    phonontable = table(row, 'Property',
+                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
+                         'minhessianeig'], key_descriptions)
+
+    panel = {'title': 'Elastic constants and phonons',
+             'columns': [[fig('phonons.png')], [phonontable]],
+             'plot_descriptions': [{'function': plot_phonons,
+                                    'filenames': ['phonons.png']}]}
+
+    return [panel]
+
+
 @command('asr.phonons',
          requires=requires,
+         webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
 def main():
-    from asr.utils import read_json
-    from asr.utils import get_dimensionality
+    from asr.core import read_json
+    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
@@ -143,22 +158,6 @@ def plot_phonons(row, fname):
     plt.savefig(fname)
     plt.close()
 
-
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import table, fig
-    phonontable = table(row, 'Property',
-                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
-                         'minhessianeig'], key_descriptions)
-
-    panel = ('Elastic constants and phonons',
-             [[fig('phonons.png')], [phonontable]])
-    things = [(plot_phonons, ['phonons.png'])]
-
-    return panel, things
-
-
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main.cli()

@@ -20,7 +20,6 @@ from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
 import numpy as np
 from numpy import linalg as la
 from scipy.interpolate import CubicSpline, InterpolatedUnivariateSpline
-
 from ase.parallel import paropen, parprint
 import os
 import gpaw.mpi as mpi

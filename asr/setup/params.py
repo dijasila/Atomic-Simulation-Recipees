@@ -1,4 +1,4 @@
-from asr.utils import command, argument
+from asr.core import command, argument
 
 
 tests = [
@@ -25,7 +25,7 @@ def main(params=None):
     for specific options."""
     import json
     from pathlib import Path
-    from asr.utils import get_recipes, read_json
+    from asr.core import get_recipes, read_json
 
     defparamdict = {}
     

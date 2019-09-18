@@ -1,4 +1,4 @@
-from asr.utils import command, option, argument, chdir
+from asr.core import command, option, argument, chdir
 
 
 @command('asr.database.fromtree',
@@ -18,10 +18,9 @@ def main(folders, selectrecipe=None, level=2, data=True,
     import os
     from ase.db import connect
     from ase.io import read
-    from asr.utils import get_recipes, get_dep_tree
+    from asr.core import get_recipes, get_dep_tree, md5sum
     import glob
     from pathlib import Path
-    from asr.utils import md5sum
 
     if not folders:
         folders = ['.']
@@ -50,8 +49,6 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     key_descriptions = {}
 
                     if not Path(atomsname).is_file():
-                        # print(f'{folder} doesn\'t contain '
-                        #       f'{atomsname}. Skipping.')
                         continue
 
                     # The atomic structure uniquely defines the folder
@@ -65,7 +62,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     for recipe in recipes:
                         if not recipe.done:
                             continue
-                        # print(f'Collecting {recipe.name}')
+
                         tmpkvp, tmpkd, tmpdata = recipe.collect()
                         if tmpkvp or tmpkd or tmpdata:
                             kvp.update(tmpkvp)

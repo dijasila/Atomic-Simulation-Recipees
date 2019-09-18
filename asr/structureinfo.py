@@ -1,4 +1,4 @@
-from asr.utils import command
+from asr.core import command
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -70,7 +70,7 @@ def has_inversion(atoms, use_spglib=True):
 
 def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
-    from asr.utils.custom import table
+    from asr.browser import table
 
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     basictable = table(row, 'Property', [
@@ -129,7 +129,7 @@ tests = [{'description': 'Test SI.',
                   'ase convert materials.json structure.json',
                   'asr run "setup.params asr.gs@calculate:ecut 300 '
                   'asr.gs@calculate:kptdensity 2"',
-                  'asr run structureinfo'
+                  'asr run structureinfo',
                   'asr run database.fromtree',
                   'asr run "browser --only-figures"']}]
 

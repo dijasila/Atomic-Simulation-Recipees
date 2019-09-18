@@ -134,7 +134,7 @@ class ASRCommand:
         self.name = name
 
         # We can handle these exceptions
-        self.known_exceptions = known_exceptions or {}
+        self._known_exceptions = known_exceptions or {}
 
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
@@ -197,6 +197,14 @@ class ASRCommand:
         # Setup the CLI
         self.setup_cli()
 
+        self.__doc__ = self._main.__doc__
+
+    @property
+    def known_exceptions(self):
+        if callable(self._known_exceptions):
+            return self._known_exceptions()
+        return self._known_exceptions
+
     @property
     def state(self):
         """The state of tests of this recipe.
@@ -258,7 +266,38 @@ class ASRCommand:
         cc = click.command
         co = click.option
 
-        help = self._main.__doc__ or ''
+        def clickify_docstring(doc):
+            if doc is None:
+                return
+            doc_n = doc.split('\n')
+            clickdoc = []
+            skip = False
+            for i, line in enumerate(doc_n):
+                if skip:
+                    skip = False
+                    continue
+                lspaces = len(line) - len(line.lstrip(' '))
+                spaces = ' ' * lspaces
+                bb = spaces + '\b'
+                if line.endswith('::'):
+                    skip = True
+
+                    if not doc_n[i - 1].strip(' '):
+                        clickdoc.pop(-1)
+                        clickdoc.extend([bb, line, bb])
+                    else:
+                        clickdoc.extend([line, bb])
+                elif ('-' in line and
+                      (spaces + '-' * (len(line) - lspaces)) == line):
+                    clickdoc.insert(-1, bb)
+                    clickdoc.append(line)
+                else:
+                    clickdoc.append(line)
+            doc = '\n'.join(clickdoc)
+
+            return doc
+
+        help = clickify_docstring(self._main.__doc__) or ''
 
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
@@ -765,3 +804,21 @@ def file_barrier(path: Union[str, Path], world=None):
     while not path.is_file():
         time.sleep(1.0)
     world.barrier()
+
+
+def singleprec_dict(dct):
+    assert isinstance(dct, dict), f'Input {dct} is not dict.'
+
+    for key, value in dct.items():
+        if isinstance(value, np.ndarray):
+            if value.dtype == np.int64:
+                value = value.astype(np.int32)
+            elif value.dtype == np.float64:
+                value = value.astype(np.float32)
+            elif value.dtype == np.complex128:
+                value = value.astype(np.complex64)
+            dct[key] = value
+        elif isinstance(value, dict):
+            dct[key] = singleprec_dict(value)
+
+    return dct
