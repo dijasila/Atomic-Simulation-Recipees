@@ -124,6 +124,7 @@ def calculate(kptdensity=20.0, emptybands=20):
          tests=tests,
          dependencies=['asr.pdos@calculate'])
 def main():
+    from gpaw import GPAW
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
 
