@@ -127,8 +127,14 @@ def main():
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
+    minimumomega = np.min(omega_kl.ravel())
     results = {'omega_kl': omega_kl,
-               'u_kl': u_kl}
+               'u_kl': u_kl,
+               'minfreq': minimumomega}
+
+    results['__key_descriptions__'] = \
+        {'minfreq': 'KVP: Minimum eigenfrequency, if negative then value '
+         'represents the imaginary part (Min. eig. freq.) [eV]'}
 
     return results
 
@@ -136,11 +142,12 @@ def main():
 def plot_phonons(row, fname):
     import matplotlib.pyplot as plt
 
-    freqs = row.data.get('phonon_frequencies_3d')
-    if freqs is None:
+    data = row.data.get('results-asr.phonons.json')
+    if data is None:
         return
 
-    gamma = freqs[0]
+    omega_kl = data['omega_kl']
+    gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
 
