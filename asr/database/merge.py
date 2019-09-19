@@ -13,7 +13,7 @@ tests = [
 ]
 
 
-@command('asr.database.totree',
+@command('asr.database.merge',
          tests=tests)
 @argument('databaseout', nargs=1)
 @argument('databases', nargs=-1)

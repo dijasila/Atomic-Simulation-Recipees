@@ -1,6 +1,20 @@
 from asr.core import command
 
 
+def todict(atoms):
+    import numpy as np
+    d = dict(atoms.arrays)
+    d['cell'] = np.asarray(atoms.cell)
+    d['pbc'] = atoms.pbc
+    if atoms._celldisp.any():
+        d['celldisp'] = atoms._celldisp
+    if atoms.constraints:
+        d['constraints'] = atoms.constraints
+    if atoms.info:
+        d['info'] = atoms.info
+    return d
+
+
 @command(module='asr.database.material_fingerprint')
 def main():
     import numpy as np
@@ -10,7 +24,7 @@ def main():
     from collections import OrderedDict
 
     atoms = read('structure.json')
-    dct = atoms.todict()
+    dct = todict(atoms)
 
     for key, value in dct.items():
         if isinstance(value, np.ndarray):
