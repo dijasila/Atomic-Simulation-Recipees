@@ -326,15 +326,18 @@ def status():
 @option('--tmpdir', help='Execution dir. If '
         'not specified ASR will decide')
 @option('--tag', help='Only run tests with given tag')
-def test(patterns, show_output, raiseexc, tmpdir, tag):
+@option('--run-coverage', is_flag=True, help='Run coverage module')
+def test(patterns, show_output, raiseexc, tmpdir, tag, run_coverage):
     from asr.core.testrunner import TestRunner
     import os
     from pathlib import Path
 
     # We will log the test home directory if needed
     cwd = Path('.').absolute()
-    os.environ['COVERAGE_PROCESS_START'] = str(cwd /
-                                               '.coveragerc')
+
+    if run_coverage:
+        os.environ['COVERAGE_PROCESS_START'] = str(cwd /
+                                                   '.coveragerc')
 
     def get_tests():
         tests = []
