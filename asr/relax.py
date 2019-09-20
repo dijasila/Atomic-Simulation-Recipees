@@ -230,7 +230,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
+                           'c': (3.872, 0.001)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
@@ -240,7 +240,7 @@ tests.append({'description': 'Test relaxation of Si (cores=2).',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
+                           'c': (3.872, 0.001)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
               'name': 'test_asr.relax_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
