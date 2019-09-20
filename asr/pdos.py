@@ -436,8 +436,11 @@ def plot_pdos(row, filename, soc=True,
         return np.convolve(y, np.ones(npts) / npts, mode='same')
 
     # Check if pdos data is stored in row
+    results = 'results-asr.pdos.json'
     pdos = 'pdos_soc' if soc else 'pdos_nosoc'
-    if pdos not in row.data:
+    if results in row.data and pdos in row.data[results]:
+        data = row.data[results][pdos]
+    else:
         return
 
     import matplotlib as mpl
@@ -445,7 +448,6 @@ def plot_pdos(row, filename, soc=True,
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
-    data = row.data[pdos]
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
     e_e = data['energies']
