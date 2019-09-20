@@ -97,6 +97,26 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr run "browser --only-figures"']})
 
 
+# ---------- Webpanel ---------- #
+
+
+def webpanel(row, key_descriptions):
+    # PDOS plot goes to Electronic band structure (PBE) panel, which is
+    # defined in the bandstructure recipe
+
+    panel = {'plot_descriptions': [{'function': plot_pdos,
+                                    'filenames': ['pbe-pdos.png']},
+                                   ]
+             }
+    return [panel]
+    '''
+    panel = ()
+    things = [(plot_pdos, ['pbe-pdos.png'])]
+    
+    return panel, things
+    '''
+
+
 # ---------- Main functionality ---------- #
 
 
@@ -122,7 +142,8 @@ def calculate(kptdensity=20.0, emptybands=20):
 @command(module='asr.pdos',
          requires=['pdos.gpw'],
          tests=tests,
-         dependencies=['asr.pdos@calculate'])
+         dependencies=['asr.pdos@calculate'],
+         webpanel=webpanel)
 def main():
     from gpaw import GPAW
     # Get refined ground state with more k-points
@@ -344,23 +365,6 @@ def collect_data(atoms):
             'pdos_soc': results['pdos_soc']}
 
     return kvp, kd, data
-
-
-def webpanel(row, key_descriptions):
-    # PDOS plot goes to Electronic band structure (PBE) panel, which is
-    # defined in the bandstructure recipe
-
-    panel = {'plot_descriptions': [{'function': plot_pdos,
-                                    'filenames': ['pbe-pdos.png']},
-                                   ]
-             }
-    return [panel]
-    '''
-    panel = ()
-    things = [(plot_pdos, ['pbe-pdos.png'])]
-    
-    return panel, things
-    '''
 
 
 # ---------- Plotting ---------- #
