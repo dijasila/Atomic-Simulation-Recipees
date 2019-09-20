@@ -83,36 +83,56 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
     'asr run --dry-run --shell "echo Hello!" */' would run "echo Hello!"
     in all folders of the current directory.
 
-    Examples:
+    Examples
+    --------
+    Run the relax recipe::
 
-    \b
-    Run the relax recipe:
-        asr run relax
-    Run the calculate function in the gs module:
-        asr run gs@calculate
-    Get help for a recipe:
-        asr run "relax -h"
-    Specify an argument:
-        asr run "relax --ecut 600"
-    Run a recipe in parallel with an argument:
-        asr run -p 2 "relax --ecut 600"
-    Run relax recipe in two folders sequentially:
-        asr run relax folder1/ folder2/
-    Run a shell command in this folder:
-        asr run --shell "ase convert gs.gpw structure.json"
-    Run a shell command in "folder1/":
-        asr run --shell "ase convert gs.gpw structure.json" folder1/
-    Don't actually do anything just show what would be done
-        asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
+        $ asr run relax
 
+    Run the calculate function in the gs module::
+        $ asr run gs@calculate
+
+    Get help for a recipe::
+
+        $ asr run "relax -h"
+
+    Specify an argument::
+
+        $ asr run "relax --ecut 600"
+
+    Run a recipe in parallel with an argument::
+
+        $ asr run -p 2 "relax --ecut 600"
+
+    Run relax recipe in two folders sequentially::
+
+        $ asr run relax folder1/ folder2/
+
+    Run a shell command in this folder::
+
+        $ asr run --shell "ase convert gs.gpw structure.json"
+
+    Run a shell command in "folder1/"::
+
+        $ asr run --shell "ase convert gs.gpw structure.json" folder1/
+
+    Don't actually do anything just show what would be done::
+
+        $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
     from pathlib import Path
     from ase.parallel import parprint
-    from asr.utils import chdir
+    from asr.core import chdir
     from functools import partial
-
+    import os
     assert not (parallel and jobs), '--parallel is incompatible with --jobs'
+
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        # Then we have to log
+        import coverage
+        print('WARNING STARTING COVERAGE LOGGING (ONLY FOR TESTING)')
+        coverage.process_startup()
 
     prt = partial(parprint, flush=True)
 
@@ -132,7 +152,7 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
                 cmd += f' --jobs {ncores}'
             if dont_raise:
                 cmd += ' --dont-raise'
-            cmd += f' {command}" '
+            cmd += f' "{command}" '
             if folders:
                 cmd += ' '.join(folders)
             return subprocess.run(cmd, shell=True,
@@ -199,7 +219,7 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
     assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
     func = getattr(mod, function)
 
-    from asr.utils import ASRCommand
+    from asr.core import ASRCommand
     if isinstance(func, ASRCommand):
         is_asr_command = True
     else:
@@ -242,7 +262,7 @@ def list(search):
 
     If SEARCH is specified: list only recipes containing SEARCH in their
     description."""
-    from asr.utils import get_recipes
+    from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
@@ -273,7 +293,7 @@ def list(search):
 @cli.command()
 def status():
     """Show the status of the current folder for all ASR recipes"""
-    from asr.utils import get_recipes
+    from asr.core import get_recipes
     recipes = get_recipes()
     panel = []
     missing_files = []
@@ -298,53 +318,101 @@ def status():
 
 @cli.command(context_settings={'ignore_unknown_options': True,
                                'allow_extra_args': True})
-@argument('tests', nargs=-1, required=False)
-@option('-P', '--parallel',
-        metavar='NCORES',
-        type=int,
-        help='Run tests in parallel on NCORES')
-@option('-k', '--patterns', type=str, metavar='PATTERN,PATTERN,...',
-        help='Select tests containing PATTERN.')
-@option('-j', '--jobs', type=int, metavar='JOBS', default=1,
-        help='Run JOBS threads.  Each test will be executed '
-        'in serial by one thread.  This option cannot be used '
-        'for parallelization together with MPI.')
+@argument('patterns', nargs=-1, required=False)
 @option('-s', '--show-output', is_flag=True,
         help='Show standard output from tests.')
-def test(tests, parallel, patterns, jobs, show_output):
-    from asr.utils.testrunner import ASRTestRunner
+@option('--raiseexc', is_flag=True,
+        help='Raise error if tests fail')
+@option('--tmpdir', help='Execution dir. If '
+        'not specified ASR will decide')
+@option('--tag', help='Only run tests with given tag')
+@option('--run-coverage', is_flag=True, help='Run coverage module')
+def test(patterns, show_output, raiseexc, tmpdir, tag, run_coverage):
+    from asr.core.testrunner import TestRunner
     import os
-    import sys
     from pathlib import Path
-    from asr.tests.generatetests import generatetests, cleantests
 
-    from gpaw.mpi import world
-    if parallel:
-        from gpaw.mpi import have_mpi
-        if not have_mpi:
-            # Start again using gpaw-python in parallel:
-            arguments = ['mpiexec', '-np', str(parallel),
-                         'gpaw-python', '-m', 'asr', 'test'] + sys.argv[2:]
-            os.execvp('mpiexec', arguments)
+    # We will log the test home directory if needed
+    cwd = Path('.').absolute()
 
-    try:
-        generatetests()
-        if not tests:
-            folder = Path(__file__).parent.parent / 'tests'
-            tests = [str(path) for path in folder.glob('test_*.py')]
+    if run_coverage:
+        os.environ['COVERAGE_PROCESS_START'] = str(cwd /
+                                                   '.coveragerc')
 
-        if patterns:
-            patterns = patterns.split(',')
-            tmptests = []
+    def get_tests():
+        tests = []
+
+        # Collect tests from recipes
+        from asr.core import get_recipes
+        recipes = get_recipes()
+        for recipe in recipes:
+            if recipe.tests:
+                id = 0
+                for test in recipe.tests:
+                    dct = {}
+                    dct.update(test)
+                    if 'name' not in dct:
+                        dct['name'] = f'{recipe.name}_{id}'
+                        id += 1
+                    tests.append(dct)
+
+        # Get cli tests
+        for i, test in enumerate(clitests):
+            clitest = {'name': f'clitest_{i}'}
+            clitest.update(test)
+            tests.append(clitest)
+
+        # Test docstrings
+        for recipe in recipes:
+            if recipe.__doc__:
+                tmptests = doctest(recipe.__doc__)
+                for i, test in enumerate(tmptests):
+                    test['name'] = f'{recipe.name}_doctest_{i}'
+                tests += tmptests
+        return tests
+
+    tests = get_tests()
+
+    if patterns:
+        tmptests = []
+        for test in tests:
             for pattern in patterns:
-                tmptests += [test for test in tests if pattern in test]
-            tests = tmptests
-        failed = ASRTestRunner(tests, jobs=jobs, show_output=show_output).run()
-    finally:
-        if world.rank == 0:
-            cleantests()
+                if pattern in test['name']:
+                    tmptests.append(test)
+                    break
+        tests = tmptests
 
-    assert not failed, 'Some tests failed!'
+    if tag:
+        tmptests = []
+        for test in tests:
+            tags = test.get('tags', [])
+            if tag in tags:
+                tmptests.append(test)
+
+        tests = tmptests
+    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc,
+                                                   tmpdir=tmpdir)
+
+
+def doctest(text):
+    text = text.split('\n')
+    tests = []
+    cli = []
+    for line in text:
+        if not line.startswith(' ' * 8) and cli:
+            tests.append({'cli': cli})
+            cli = []
+        line = line[8:]
+        # print(line)
+        if line.startswith('$ '):
+            cli.append(line[2:])
+        elif line.startswith('  ...'):
+            cli[-1] += line[5:]
+    else:
+        if cli:
+            tests.append({'cli': cli})
+
+    return tests
 
 
 @cli.command()
@@ -356,7 +424,7 @@ def test(tests, parallel, patterns, jobs, show_output):
               help='Only do these recipes for stable materials')
 def workflow(tasks, doforstable):
     """Helper function to make workflows for MyQueue"""
-    from asr.utils import get_recipes, get_dep_tree
+    from asr.core import get_recipes, get_dep_tree
 
     body = ''
     body += 'from myqueue.task import task\n\n\n'
@@ -364,7 +432,7 @@ def workflow(tasks, doforstable):
     isstablefunc = """def is_stable():
     # Example of function that looks at the heat of formation
     # and returns True if the material is stable
-    from asr.utils import read_json
+    from asr.core import read_json
     from pathlib import Path
     fname = 'results_convex_hull.json'
     if not Path(fname).is_file():
@@ -418,12 +486,17 @@ def workflow(tasks, doforstable):
     print('    return tasks')
 
 
-tests = [{'cli': ['asr run -h']},
-         {'cli': ['asr run "setup.params asr.relax:ecut 300"']},
-         {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"']},
-         {'cli': ['mkdir folder1',
-                  'mkdir folder2',
-                  'asr run "setup.params asr.relax:ecut'
-                  ' 300" folder1 folder2']},
-         {'cli': ['touch str1.json',
-                  'asr run --shell "mv str1.json str2.json"']}]
+clitests = [{'cli': ['asr run -h'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['mkdir folder1',
+                     'mkdir folder2',
+                     'asr run "setup.params asr.relax:ecut'
+                     ' 300" folder1 folder2'],
+             'tags': ['gitlab-ci']},
+            {'cli': ['touch str1.json',
+                     'asr run --shell "mv str1.json str2.json"'],
+             'tags': ['gitlab-ci']}]

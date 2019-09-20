@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.emasses',
@@ -377,7 +377,7 @@ def collect_data(atoms):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
+    from asr.browser import table
 
     t = table(row, 'Postprocessing',
               ['cb_emass', 'vb_emass'],
@@ -389,7 +389,7 @@ def webpanel(row, key_descriptions):
 
 # def webpanel(row, key_descriptions):
 
-#     from asr.utils.custom import fig
+#     from asr.browser import fig
 #     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
 #                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
 

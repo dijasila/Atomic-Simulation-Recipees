@@ -1,8 +1,9 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 tests = []
 tests.append({'description': 'Test band structure of Si.',
-              'name': 'test_asr.bandstructure_Si',
+              'name': 'asr.bandstructure_Si',
+              'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
@@ -14,7 +15,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"']})
 tests.append({'description': 'Test band structure of 2D-BN.',
-              'name': 'test_asr.bandstructure_2DBN',
+              'name': 'asr.bandstructure_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
@@ -561,7 +562,7 @@ def bz_soc(row, fname):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -637,7 +638,7 @@ def main():
     from gpaw import GPAW
     from ase.dft.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from asr.utils import read_json
+    from asr.core import read_json
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
@@ -699,7 +700,7 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
 
-    from asr.utils import singleprec_dict
+    from asr.core import singleprec_dict
     results['bs_soc'] = singleprec_dict(bsresults)
     results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
 

@@ -23,6 +23,7 @@ structures, calculating dielectric functions and so on.
    getting-started
    tutorials
    developing
+   autoapi/index
 
 ..
    :ref:`genindex`
