@@ -62,9 +62,8 @@ def main(params=None):
             paramdict[recipe][option] = \
                 type(defparamdict[recipe][option])(value)
 
-    if not paramdict:
-        paramdict = defparamdict
-    p.write_text(json.dumps(paramdict, indent=4))
+    if paramdict:
+        p.write_text(json.dumps(paramdict, indent=4))
     return paramdict
 
 

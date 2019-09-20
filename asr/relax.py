@@ -104,8 +104,9 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
-          smask=None, xc='PBE', plusu=False, dftd3=True, chargestate=0):
+def relax(atoms, name, kpts, ecut=800, width=0.05,
+          emin=-np.inf, smask=None, xc='PBE', plusu=False, dftd3=True,
+          chargestate=0, fixcell=False):
     import spglib
 
     if dftd3:
@@ -113,24 +114,29 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
 
     nd = int(np.sum(atoms.get_pbc()))
     if smask is None:
-        if nd == 3:
+        if fixcell:
+            smask = [0, 0, 0, 0, 0, 0]
+        elif nd == 3:
             smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            # nd == 1
             msg = 'Relax recipe not implemented for 1D structures'
             raise NotImplementedError(msg)
 
-    from ase.calculators.calculator import kpts2sizeandoffsets
-    size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
+    if 'size' not in kpts:
+        kptdensity = kpts.pop('density')
+        from ase.calculators.calculator import kpts2sizeandoffsets
+        size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
+        kpts['size'] = size
+
     kwargs = dict(txt=name + '.txt',
                   mode={'name': 'pw', 'ecut': ecut, 'dedecut': 'estimate'},
                   xc=xc,
                   basis='dzp',
                   symmetry={'symmorphic': False},
                   convergence={'forces': 1e-4},
-                  kpts={'size': size, 'gamma': True},
+                  kpts=kpts,
                   occupations={'name': 'fermi-dirac', 'width': width},
                   charge=chargestate)
 
@@ -219,7 +225,7 @@ tests.append({'description': 'Test relaxation of Si.',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
                       'asr run "setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2"',
+                      'asr.relax:kpts {\'density\':2.0}"',
                       'asr run "relax --nod3"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
@@ -262,14 +268,16 @@ def known_exceptions():
          resources='24:10h')
 @option('--ecut',
         help='Energy cutoff in electronic structure calculation')
-@option('--kptdensity', help='Kpoint density')
+@option('--kpts', help='k-point description.')
 @option('-U', '--plusu', help='Do +U calculation', is_flag=True)
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
 @option('--readout_charge', help='Read out chargestate from params.json')
-def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
-         readout_charge=False):
+@option('--fixcell', is_flag=True, help='Don\'t relax stresses')
+def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
+         xc='PBE', d3=True, width=0.05,
+         readout_charge=False, fixcell=False):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -301,7 +309,8 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
       $ asr run "relax --xc LDA"
     """
     from asr.core import read_json
-
+    from asr.utils.args import parse_arg
+    
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
            'what the relax recipe is supposed to produce. You should '
@@ -320,11 +329,13 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     else:
         chargestate = 0
 
+    kpts = parse_arg(kpts)
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
-                                     kptdensity=kptdensity, xc=xc,
-                                     plusu=plusu, dftd3=d3, width=width,
-                                     chargestate=chargestate)
+                                     kpts=kpts,
+                                     xc=xc, plusu=plusu, dftd3=d3, width=width,
+                                     chargestate=chargestate,
+                                     fixcell=fixcell)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

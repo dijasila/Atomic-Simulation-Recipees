@@ -184,8 +184,7 @@ class ASRCommand:
         for key, value in sig.parameters.items():
             assert key in self.params, \
                 f'You havent provided a description for {key}'
-            if value.default and \
-               value.default is not inspect.Parameter.empty:
+            if value.default is not inspect.Parameter.empty:
                 defparams[key] = value.default
             myparams.append(key)
 
