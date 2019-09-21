@@ -20,7 +20,11 @@ def main(strain_percent=1.0):
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
-    stiffness = []
+    ij_to_voigt = [[0, 5, 4],
+                   [5, 1, 3],
+                   [4, 3, 2]]
+
+    stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
@@ -30,13 +34,15 @@ def main(strain_percent=1.0):
             # calculated
             stress = structure.get_stress(voigt=True)
             dstress += stress * sign
-        stiffness.append(dstress / (strain_percent * 0.02))
+        stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 
     stiffness = np.array(stiffness, float)
     # We work with Mandel notation which is conventional and convenient
     stiffness[3:, :] *= 2**0.5
     stiffness[:, 3:] *= 2**0.5
-    stiffness *= 10**20 / J
+
+    # Convert the stiffness tensor from [eV/Ang^3] -> [J/m^3]=[N/m^2]
+    stiffness *= 10**30 / J
 
     # Now do some post processing
     data = {'__key_descriptions__': {}}
@@ -46,7 +52,7 @@ def main(strain_percent=1.0):
         cell = atoms.get_cell()
         # We have to normalize with the supercell size
         z = cell[2, 2]
-        stiffness = stiffness[[0, 1, 5], :][:, [0, 1, 5]] * z
+        stiffness = stiffness[[0, 1, 5], :][:, [0, 1, 5]] * z * 1e-10
         from ase.units import kg
         from ase.units import m as meter
         area = atoms.get_volume() / cell[2, 2]
@@ -59,14 +65,13 @@ def main(strain_percent=1.0):
         data['speed_of_sound'] = speed_of_sound
         kd['speed_of_sound'] = 'KVP: Speed of sound [m/s]'
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
-
     elif nd == 1:
         area = atoms.get_volume() / cell[2, 2]
-        stiffness = stiffness[5, 5] * area
+        stiffness = stiffness[5, 5] * area * 1e-20
         kd['stiffness_tensor'] = 'Stiffness tensor [N]'
     else:
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
 
-    data['stiffness_tensor'] = stiffness
+    data['stiffness_tensor'] = stiffness.tolist()
 
     return data
