@@ -124,6 +124,20 @@ def main():
         supercell = (n, 1, 1)
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read()
+
+    # We correct the force constant matrix and
+    # dynamical matrix
+    C_N = mingocorrection(p.C_N, atoms, supercell)
+    p.C_N = C_N
+
+    # Calculate dynamical matrix
+    D_N = C_N.copy()
+    m_a = atoms.get_masses()
+    m_inv_x = np.repeat(m_a**-0.5, 3)
+    M_inv = np.outer(m_inv_x, m_inv_x)
+    for D in D_N:
+        D *= M_inv
+    p.D_N = D_N
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
@@ -164,6 +178,62 @@ def plot_phonons(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
+
+
+def mingocorrection(Cin_NVV, atoms, supercell):
+    na = len(atoms)
+    nc = np.prod(supercell)
+    dimension = nc * na * 3
+
+    Cin = (Cin_NVV.reshape(*supercell, 3, na, 3, na).
+           transpose(3, 4, 0, 1, 2, 5, 6))
+
+    C = np.empty((*supercell, na, 3, *supercell, na, 3))
+
+    from itertools import product
+    for n1, n2, n3 in product(range(supercell[0]),
+                              range(supercell[1]),
+                              range(supercell[2])):
+        inds1 = (np.arange(supercell[0]) - n1) % supercell[0]
+        inds2 = (np.arange(supercell[1]) - n2) % supercell[1]
+        inds3 = (np.arange(supercell[2]) - n3) % supercell[2]
+        C[n1, n2, n3, :, :, inds1, inds2, inds3] = Cin
+
+    C.shape = (dimension, dimension)
+    C += C.T.copy()
+    C *= 0.5
+
+    # Mingo correction.
+    #
+    # See:
+    #
+    #    Phonon transmission through defects in carbon nanotubes
+    #    from first principles
+    #
+    #    N. Mingo, D. A. Stewart, D. A. Broido, and D. Srivastava
+    #    Phys. Rev. B 77, 033418 – Published 30 January 2008
+    #    http://dx.doi.org/10.1103/PhysRevB.77.033418
+
+    R_in = np.zeros((dimension, 3))
+    for n in range(3):
+        R_in[n::3, n] = 1.0
+    a_in = -np.dot(C, R_in)
+    B_inin = np.zeros((dimension, 3, dimension, 3))
+    for i in range(dimension):
+        B_inin[i, :, i] = np.dot(R_in.T, C[i, :, np.newaxis]**2 * R_in) / 4
+        for j in range(dimension):
+            B_inin[i, :, j] += np.outer(R_in[i], R_in[j]).T * C[i, j]**2 / 4
+
+    L_in = np.dot(np.linalg.pinv(B_inin.reshape((dimension * 3,
+                                                 dimension * 3))),
+                  a_in.reshape((dimension * 3,))).reshape((dimension, 3))
+    D_ii = C**2 * (np.dot(L_in, R_in.T) + np.dot(L_in, R_in.T).T) / 4
+    C += D_ii
+
+    Cout = C[0, 0, 0].transpose(2, 3, 4, 0, 1, 5, 6).reshape(nc,
+                                                             na * 3,
+                                                             na * 3)
+    return Cout
 
 
 if __name__ == '__main__':
