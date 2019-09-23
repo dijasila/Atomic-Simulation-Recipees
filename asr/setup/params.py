@@ -26,6 +26,7 @@ def main(params=None):
     import json
     from pathlib import Path
     from asr.core import get_recipes, read_json
+    from ast import literal_eval
 
     defparamdict = {}
     
@@ -59,8 +60,12 @@ def main(params=None):
             if recipe not in paramdict:
                 paramdict[recipe] = {}
 
-            paramdict[recipe][option] = \
-                type(defparamdict[recipe][option])(value)
+            paramtype = type(defparamdict[recipe][option])
+            if paramtype == bool:
+                val = paramtype(literal_eval(value))
+            else:
+                val = paramtype(value)
+            paramdict[recipe][option] = val
 
     if paramdict:
         p.write_text(json.dumps(paramdict, indent=4))

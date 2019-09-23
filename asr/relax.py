@@ -106,7 +106,7 @@ class myBFGS(BFGS):
 
 def relax(atoms, name, kpts, ecut=800, width=0.05,
           emin=-np.inf, smask=None, xc='PBE', plusu=False, dftd3=True,
-          chargestate=0, fixcell=False):
+          chargestate=0, fixcell=False, allow_symmetry_breaking=False):
     import spglib
 
     if dftd3:
@@ -179,8 +179,9 @@ def relax(atoms, name, kpts, ecut=800, width=0.05,
                                             symprec=1e-4,
                                             angle_tolerance=0.1).split()
 
-    from ase.constraints import ExpCellFilter
-
+    # We are fixing atom=0 to reduce computational effort
+    from ase.constraints import ExpCellFilter, FixAtoms
+    atoms.set_constraint(FixAtoms(indices=[0]))
     filter = ExpCellFilter(atoms, mask=smask)
     opt = myBFGS(filter,
                  logfile=name + '.log',
@@ -194,7 +195,7 @@ def relax(atoms, name, kpts, ecut=800, width=0.05,
                                                   symprec=1e-4,
                                                   angle_tolerance=0.1).split()
 
-        if not number == number2:
+        if not (allow_symmetry_breaking or number == number2):
             # Log the last step
             opt.log()
             opt.call_observers()
@@ -265,7 +266,9 @@ def known_exceptions():
 @command('asr.relax',
          known_exceptions=known_exceptions,
          tests=tests,
-         resources='24:10h')
+         resources='24:10h',
+         requires=['unrelaxed.json'],
+         creates=['structure.json'])
 @option('--ecut',
         help='Energy cutoff in electronic structure calculation')
 @option('--kpts', help='k-point description.')
@@ -275,9 +278,11 @@ def known_exceptions():
 @option('--width', help='Fermi-Dirac smearing temperature')
 @option('--readout_charge', help='Read out chargestate from params.json')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
+@option('--allow-symmetry-breaking', is_flag=True,
+        help='Allow symmetries to be broken during relaxation')
 def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
          xc='PBE', d3=True, width=0.05,
-         readout_charge=False, fixcell=False):
+         readout_charge=False, fixcell=False, allow_symmetry_breaking=False):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -331,11 +336,13 @@ def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
 
     kpts = parse_arg(kpts)
     # Relax the structure
+    asb = allow_symmetry_breaking
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kpts=kpts,
                                      xc=xc, plusu=plusu, dftd3=d3, width=width,
                                      chargestate=chargestate,
-                                     fixcell=fixcell)
+                                     fixcell=fixcell,
+                                     allow_symmetry_breaking=asb)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

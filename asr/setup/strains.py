@@ -58,6 +58,6 @@ def main(strain_percent=1, kptdensity=6.0):
             with chdir(folder):
                 params = ("asr.relax:kpts {'size':[" +
                           '{},{},{}'.format(*size)
-                          + ']}').split()
+                          + "],'gamma':True}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
                 setup_params(params=params)

@@ -142,20 +142,22 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
             ('You cannot execute a shell command in parallel. '
              'Only supported for python modules.')
 
-    if parallel:
-        ncores = jobs or parallel
         from gpaw.mpi import have_mpi
         if not have_mpi:
-            cmd = f'mpiexec -np {ncores} gpaw-python -m asr run'
-            if dry_run:
-                cmd += ' --dry-run'
-            if jobs:
-                cmd += f' --jobs {ncores}'
-            if dont_raise:
-                cmd += ' --dont-raise'
-            cmd += f' "{command}" '
-            if folders:
-                cmd += ' '.join(folders)
+            cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
+            cliargs = ''
+            for param, value in ctx.params.items():
+                if param in ['command', 'folders']:
+                    continue
+                tmp = param.replace('_', '-')
+                key = f' --{tmp}'
+                if isinstance(value, (bool, type(None))):
+                    if value:
+                        cliargs += key
+                else:
+                    cliargs += key + f' {value}'
+            cliargs += f' {command} ' + ' '.join(folders)
+            cmd += cliargs
             return subprocess.run(cmd, shell=True,
                                   check=True)
 
