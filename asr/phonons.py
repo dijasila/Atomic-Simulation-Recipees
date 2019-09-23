@@ -109,7 +109,9 @@ def webpanel(row, key_descriptions):
          requires=requires,
          webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
-def main():
+@option('--mingo/--no-mingo', is_flag=True,
+        help='Perform Mingo correction of force constant matrix')
+def main(mingo=True):
     from asr.core import read_json
     from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
@@ -125,19 +127,21 @@ def main():
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read()
 
-    # We correct the force constant matrix and
-    # dynamical matrix
-    C_N = mingocorrection(p.C_N, atoms, supercell)
-    p.C_N = C_N
+    if mingo:
+        # We correct the force constant matrix and
+        # dynamical matrix
+        C_N = mingocorrection(p.C_N, atoms, supercell)
+        p.C_N = C_N
 
-    # Calculate dynamical matrix
-    D_N = C_N.copy()
-    m_a = atoms.get_masses()
-    m_inv_x = np.repeat(m_a**-0.5, 3)
-    M_inv = np.outer(m_inv_x, m_inv_x)
-    for D in D_N:
-        D *= M_inv
-    p.D_N = D_N
+        # Calculate dynamical matrix
+        D_N = C_N.copy()
+        m_a = atoms.get_masses()
+        m_inv_x = np.repeat(m_a**-0.5, 3)
+        M_inv = np.outer(m_inv_x, m_inv_x)
+        for D in D_N:
+            D *= M_inv
+            p.D_N = D_N
+
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
@@ -197,7 +201,7 @@ def mingocorrection(Cin_NVV, atoms, supercell):
         inds1 = (np.arange(supercell[0]) - n1) % supercell[0]
         inds2 = (np.arange(supercell[1]) - n2) % supercell[1]
         inds3 = (np.arange(supercell[2]) - n3) % supercell[2]
-        C[n1, n2, n3, :, :, inds1, inds2, inds3] = Cin
+        C[n1, n2, n3][:, :, inds1][:, :, :, inds2][:, :, :, :, inds3] = Cin
 
     C.shape = (dimension, dimension)
     C += C.T.copy()
@@ -230,6 +234,7 @@ def mingocorrection(Cin_NVV, atoms, supercell):
     D_ii = C**2 * (np.dot(L_in, R_in.T) + np.dot(L_in, R_in.T).T) / 4
     C += D_ii
 
+    C.shape = (*supercell, na, 3, *supercell, na, 3)
     Cout = C[0, 0, 0].transpose(2, 3, 4, 0, 1, 5, 6).reshape(nc,
                                                              na * 3,
                                                              na * 3)
