@@ -468,8 +468,20 @@ def plot_pdos(row, filename, soc=True,
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
 
     # Set up energy range to plot in
+    gsresults = 'results-asr.gs.json'
+    gaps = 'gaps_soc' if soc else 'gaps_nosoc'
+    if gsresults in row.data and gaps in row.data[gsresults]:
+        emin = row.data[gsresults][gaps]['vbm'] - 3
+        emax = row.data[gsresults][gaps]['cbm'] + 3
+    else:
+        emin = ef - 3
+        emax = ef + 3
+    print(emin, ef - 3)
+    print(emax, ef + 3)
+    '''  # remove me XXX
     emin = row.get('vbm', ef) - 3
     emax = row.get('cbm', ef) + 3
+    '''
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
 
     # Plot pdos
