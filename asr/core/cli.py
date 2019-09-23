@@ -58,7 +58,8 @@ def cli():
               help='Continue to next folder when encountering error.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
-def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
+@click.pass_context
+def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
         skip_if_done, dont_raise):
     """Run recipe, python function or shell command in multiple folders.
 
