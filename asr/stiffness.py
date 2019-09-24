@@ -61,9 +61,22 @@ def main(strain_percent=1.0):
         # speed of sound in m/s
         speed_x = np.sqrt(stiffness[0, 0] / area_density)
         speed_y = np.sqrt(stiffness[1, 1] / area_density)
-        speed_of_sound = np.array([speed_x, speed_y])
-        data['speed_of_sound'] = speed_of_sound
-        kd['speed_of_sound'] = 'KVP: Speed of sound [m/s]'
+        data['speed_of_sound_x'] = speed_x
+        data['speed_of_sound_y'] = speed_y
+        data['c_11'] = stiffness[0, 0]
+        data['c_22'] = stiffness[1, 1]
+        data['c_33'] = stiffness[2, 2]
+        data['c_23'] = stiffness[1, 2]
+        data['c_13'] = stiffness[0, 2]
+        data['c_12'] = stiffness[0, 1]
+        kd['c_11'] = 'KVP: Elastic tensor: 11-component [N/m]'
+        kd['c_22'] = 'KVP: Elastic tensor: 22-component [N/m]'
+        kd['c_33'] = 'KVP: Elastic tensor: 33-component [N/m]'
+        kd['c_23'] = 'KVP: Elastic tensor: 23-component [N/m]'
+        kd['c_13'] = 'KVP: Elastic tensor: 13-component [N/m]'
+        kd['c_12'] = 'KVP: Elastic tensor: 12-component [N/m]'
+        kd['speed_of_sound_x'] = 'KVP: Speed of sound in x direction [m/s]'
+        kd['speed_of_sound_y'] = 'KVP: Speed of sound in y direction [m/s]'
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
     elif nd == 1:
         area = atoms.get_volume() / cell[2, 2]

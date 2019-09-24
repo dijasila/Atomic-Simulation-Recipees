@@ -94,7 +94,7 @@ def requires():
 def webpanel(row, key_descriptions):
     from asr.browser import table, fig
     phonontable = table(row, 'Property',
-                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
+                        ['c_11', 'c_22', 'c_33', 'c_23', 'c_13', 'c_12',
                          'minhessianeig'], key_descriptions)
 
     panel = {'title': 'Elastic constants and phonons',
@@ -145,14 +145,23 @@ def main(mingo=True):
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
-    minimumomega = np.min(omega_kl.ravel())
+
+    R_cN = p.lattice_vectors()
+    eigs = []
+    for q_c in q_qc:
+        phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
+        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * p.C_N, axis=0)
+        eigs.append(np.linalg.eigvalsh(C_q))
+
+    eigs = np.array(eigs)
+    mineig = np.min(eigs)
+
     results = {'omega_kl': omega_kl,
                'u_kl': u_kl,
-               'minfreq': minimumomega}
+               'minhessianeig': mineig}
 
     results['__key_descriptions__'] = \
-        {'minfreq': 'KVP: Minimum eigenfrequency, if negative then value '
-         'represents the imaginary part (Min. eig. freq.) [eV]'}
+        {'mineig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
 
     return results
 
