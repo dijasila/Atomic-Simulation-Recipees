@@ -189,7 +189,7 @@ def mingocorrection(Cin_NVV, atoms, supercell):
     nc = np.prod(supercell)
     dimension = nc * na * 3
 
-    Cin = (Cin_NVV.reshape(*supercell, 3, na, 3, na).
+    Cin = (Cin_NVV.reshape(*supercell, na, 3, na, 3).
            transpose(3, 4, 0, 1, 2, 5, 6))
 
     C = np.empty((*supercell, na, 3, *supercell, na, 3))
@@ -228,12 +228,9 @@ def mingocorrection(Cin_NVV, atoms, supercell):
         for j in range(dimension):
             B_inin[i, :, j] += np.outer(R_in[i], R_in[j]).T * C[i, j]**2 / 4
 
-    L_in = np.linalg.solve(B_inin.reshape((dimension * 3, dimension * 3)),
-                           a_in.reshape((dimension * 3,))).reshape((dimension,
-                                                                    3))
-    # L_in = np.dot(np.linalg.pinv(B_inin.reshape((dimension * 3,
-    #                                              dimension * 3))),
-    # a_in.reshape((dimension * 3,))).reshape((dimension, 3))
+    L_in = np.dot(np.linalg.pinv(B_inin.reshape((dimension * 3,
+                                                 dimension * 3))),
+                  a_in.reshape((dimension * 3,))).reshape((dimension, 3))
     D_ii = C**2 * (np.dot(L_in, R_in.T) + np.dot(L_in, R_in.T).T) / 4
     C += D_ii
 
