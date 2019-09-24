@@ -173,17 +173,8 @@ def pdos(calc, gpw, soc=True):
     # Do calculation
     e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
 
-    # Subtract the vacuum energy
-    from asr.gs import get_evac
-    evac = get_evac()
-    if evac is not None:
-        e_e -= evac
-        ef -= evac
-
-    subresults = {'pdos_syl': pdos_syl, 'symbols': symbols,
-                  'energies': e_e, 'efermi': ef}
-
-    return subresults
+    return {'pdos_syl': pdos_syl, 'symbols': symbols,
+            'energies': e_e, 'efermi': ef}
 
 
 def calculate_pdos(calc, gpw, soc=True):
@@ -453,6 +444,30 @@ def plot_pdos(row, filename, soc=True,
     e_e = data['energies']
     ef = data['efermi']
 
+    # Find energy range to plot in
+    gsresults = 'results-asr.gs.json'
+    gaps = 'gaps_soc' if soc else 'gaps_nosoc'
+    if gsresults in row.data and gaps in row.data[gsresults]:
+        emin = row.data[gsresults][gaps]['vbm'] - 3
+        emax = row.data[gsresults][gaps]['cbm'] + 3
+    else:
+        emin = ef - 3
+        emax = ef + 3
+
+    # Subtract the vacuum energy
+    evac = None
+    if 'evac' in row.data[gsresults]:
+        evac = row.data[gsresults]['evac']
+    if evac is not None:
+        e_e -= evac
+        ef -= evac
+        emin -= evac
+        emax -= evac
+
+    # Set up energy range to plot in
+    i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
+
+    # Get color code
     color_yl = get_yl_colors(pdos_syl)
 
     # Figure out if pdos has been calculated for more than one spin channel
@@ -466,23 +481,6 @@ def plot_pdos(row, filename, soc=True,
     mpl.rcParams['font.size'] = fontsize
     ax = plt.figure(figsize=figsize).add_subplot(111)
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
-
-    # Set up energy range to plot in
-    gsresults = 'results-asr.gs.json'
-    gaps = 'gaps_soc' if soc else 'gaps_nosoc'
-    if gsresults in row.data and gaps in row.data[gsresults]:
-        emin = row.data[gsresults][gaps]['vbm'] - 3
-        emax = row.data[gsresults][gaps]['cbm'] + 3
-    else:
-        emin = ef - 3
-        emax = ef + 3
-    print(emin, ef - 3)
-    print(emax, ef + 3)
-    '''  # remove me XXX
-    emin = row.get('vbm', ef) - 3
-    emax = row.get('cbm', ef) + 3
-    '''
-    i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
 
     # Plot pdos
     pdosint_s = defaultdict(float)
