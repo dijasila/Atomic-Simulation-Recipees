@@ -125,7 +125,7 @@ def main(mingo=True):
     elif nd == 1:
         supercell = (n, 1, 1)
     p = Phonons(atoms=atoms, supercell=supercell)
-    p.read()
+    p.read(symmetrize=0)
 
     if mingo:
         # We correct the force constant matrix and
@@ -228,9 +228,12 @@ def mingocorrection(Cin_NVV, atoms, supercell):
         for j in range(dimension):
             B_inin[i, :, j] += np.outer(R_in[i], R_in[j]).T * C[i, j]**2 / 4
 
-    L_in = np.dot(np.linalg.pinv(B_inin.reshape((dimension * 3,
-                                                 dimension * 3))),
-                  a_in.reshape((dimension * 3,))).reshape((dimension, 3))
+    L_in = np.linalg.solve(B_inin.reshape((dimension * 3, dimension * 3)),
+                           a_in.reshape((dimension * 3,))).reshape((dimension,
+                                                                    3))
+    # L_in = np.dot(np.linalg.pinv(B_inin.reshape((dimension * 3,
+    #                                              dimension * 3))),
+    # a_in.reshape((dimension * 3,))).reshape((dimension, 3))
     D_ii = C**2 * (np.dot(L_in, R_in.T) + np.dot(L_in, R_in.T).T) / 4
     C += D_ii
 
