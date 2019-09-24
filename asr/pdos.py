@@ -395,12 +395,15 @@ def plot_pdos(row, filename, soc=True,
     # Find energy range to plot in
     gsresults = 'results-asr.gs.json'
     gaps = 'gaps_soc' if soc else 'gaps_nosoc'
+    emin = ef - 3
+    emax = ef + 3
     if gsresults in row.data and gaps in row.data[gsresults]:
-        emin = row.data[gsresults][gaps]['vbm'] - 3
-        emax = row.data[gsresults][gaps]['cbm'] + 3
-    else:
-        emin = ef - 3
-        emax = ef + 3
+        vbm = row.data[gsresults][gaps]['vbm']
+        if vbm is not None:
+            emin = vbm - 3
+        cbm = row.data[gsresults][gaps]['cbm']
+        if cbm is not None:
+            emax = cbm + 3
 
     # Subtract the vacuum energy
     evac = None
