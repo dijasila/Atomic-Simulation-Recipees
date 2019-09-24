@@ -109,12 +109,6 @@ def webpanel(row, key_descriptions):
                                    ]
              }
     return [panel]
-    '''
-    panel = ()
-    things = [(plot_pdos, ['pbe-pdos.png'])]
-    
-    return panel, things
-    '''
 
 
 # ---------- Main functionality ---------- #
@@ -309,43 +303,6 @@ def dos_at_ef(calc, gpw, soc=True):
     else:
         dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
     return dos.get_dos()[1]
-
-
-# ---------- Database and webpanel ---------- #
-
-
-# Old format
-def collect_data(atoms):
-    kd = {}
-
-    kd['pdos_nosoc'] = ('PDOS without soc',
-                        'Projected density of states '
-                        + 'without spin-orbit coupling',
-                        '')
-
-    kd['pdos_soc'] = ('PDOS with soc',
-                      'Projected density of states '
-                      + 'with spin-orbit coupling',
-                      '')
-
-    kd['dos_at_ef_nosoc'] = ('DOS at ef without soc',
-                             'Density of states at the Fermi energy '
-                             + 'without spin-orbit coupling',
-                             'states/eV')
-
-    kd['dos_at_ef_soc'] = ('DOS at ef with soc',
-                           'Density of states at the Fermi energy '
-                           + 'with spin-orbit coupling ',
-                           'states/eV')
-
-    from asr.core import read_json
-    results = read_json('results_pdos.json')
-    kvp = {'dos_at_ef_nosoc': results['dos_at_ef_nosoc'],
-           'dos_at_ef_soc': results['dos_at_ef_soc']}
-    data = {'pdos_nosoc': results['pdos_nosoc'],
-            'pdos_soc': results['pdos_soc']}
-
-    return kvp, kd, data
 
 
 # ---------- Plotting ---------- #
