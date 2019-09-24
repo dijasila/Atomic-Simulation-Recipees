@@ -120,7 +120,8 @@ def webpanel(row, key_descriptions):
 @command(module='asr.pdos',
          creates=['pdos.gpw'],
          tests=ctests,
-         requires=['gs.gpw'])
+         requires=['gs.gpw'],
+         dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
 def calculate(kptdensity=20.0, emptybands=20):
@@ -134,9 +135,9 @@ def calculate(kptdensity=20.0, emptybands=20):
 
 
 @command(module='asr.pdos',
-         requires=['pdos.gpw'],
+         requires=['results-asr.gs.json', 'pdos.gpw'],
          tests=tests,
-         dependencies=['asr.pdos@calculate'],
+         dependencies=['asr.gs', 'asr.pdos@calculate'],
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
