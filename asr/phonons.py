@@ -201,7 +201,7 @@ def mingocorrection(Cin_NVV, atoms, supercell):
         inds1 = (np.arange(supercell[0]) - n1) % supercell[0]
         inds2 = (np.arange(supercell[1]) - n2) % supercell[1]
         inds3 = (np.arange(supercell[2]) - n3) % supercell[2]
-        C[n1, n2, n3][:, :, inds1][:, :, :, inds2][:, :, :, :, inds3] = Cin
+        C[n1, n2, n3] = Cin[:, :, inds1][:, :, :, inds2][:, :, :, :, inds3]
 
     C.shape = (dimension, dimension)
     C += C.T.copy()
