@@ -37,7 +37,6 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
 
     contours = []
     for n, zi in enumerate(zis):
-        print(n)
         cs = plt.contour(xi, yi, zi, levels=[0])
         paths = cs.collections[0].get_paths()
 

@@ -1,7 +1,8 @@
-from asr.core import command
+from asr.core import command, option
 
 @command('asr.plasmafrequency',
          creates=['es_plasma.gpw'])
+@option('--kptdensity', help='k-point density')
 def calculate(kptdensity=20):
     """Calculate excited states for polarizability calculation"""
     from gpaw import GPAW
@@ -31,6 +32,8 @@ def calculate(kptdensity=20):
 @command('asr.plasmafrequency',
          requires=['es_plasma.gpw'],
          dependencies=['asr.plasmafrequency@calculate'])
+@option('--tetra', is_flag=True,
+        help='Use tetrahedron integration')
 def main(tetra=True):
     """Calculate polarizability"""
     from gpaw.response.df import DielectricFunction
