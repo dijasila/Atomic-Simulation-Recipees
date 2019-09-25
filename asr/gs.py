@@ -87,17 +87,21 @@ tests = [{'description': 'Test ground state of Si.',
 
 
 @command(module='asr.gs',
-         requires=['gs.gpw'],
+         requires=['gs.gpw', 'structure.json'],
          tests=tests,
          dependencies=['asr.gs@calculate'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
+    from ase.io import read
     from asr.calculators import get_calculator
+    from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    calc = get_calculator()('gs.gpw', txt=None)
-    pbc = calc.atoms.pbc
+    atoms = read('gs.gpw')
+    calc = get_calculator()('gs.gpw', txt=None,
+                            communicator=serial_comm)
+    pbc = atoms.pbc
     ndim = np.sum(pbc)
 
     if ndim == 2:
@@ -131,7 +135,15 @@ def main():
                 'etot': 'KVP: Total energy (En.) [eV]',
                 'evac': 'KVP: Vacuum level (Vacuum level) [eV]'}}
 
-    analysegs('gs.gpw', results)
+    results['gaps_nosoc'] = gaps(calc, soc=False)
+    results['gaps_soc'] = gaps(calc, soc=True)
+
+    # Vacuum level is calculated for c2db backwards compability
+    if int(np.sum(atoms.get_pbc())) == 2:
+        vac = vacuumlevels(atoms, calc)
+        results['vacuumlevels'] = vac
+        results['evac'] = vac['evacmean']
+        results['evacdiff'] = vac['evacdiff']
 
     fingerprint = {}
     for setup in calc.setups:
@@ -141,47 +153,23 @@ def main():
     return results
 
 
-def analysegs(gpw, results):
-    """Analyse the computed ground state according to the class of materials,
-    it belongs to."""
-    # What about metals? XXX - should dos_at_ef be here?
-    # There should be a metals check somewhere? XXX
-    from pathlib import Path
-    import numpy as np
-    from gpaw import restart
-
-    if not Path(gpw).is_file():
-        raise ValueError('Groundstate file not present')
-    atoms, calc = restart(gpw, txt=None)
-
-    results['gaps_nosoc'] = gaps(calc, gpw, soc=False)
-    results['gaps_soc'] = gaps(calc, gpw, soc=True)
-
-    # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:
-        vac = vacuumlevels(atoms, calc)
-        results['vacuumlevels'] = vac
-        results['evac'] = vac['evacmean']
-        results['evacdiff'] = vac['evacdiff']
-
-
-def gaps(calc, gpw, soc=True):
+def gaps(calc, soc=True):
     """Could use some documentation!!! XXX
     Who is in charge of this thing??
     """
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
 
     ibzkpts = calc.get_ibz_k_points()
 
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
-                                      calc=calc, gpw=gpw)
+                                      calc=calc)
     (evbm_ecbm_direct_gap,
      direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True,
-                                                    calc=calc, gpw=gpw)
+                                                    calc=calc)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -194,8 +182,8 @@ def gaps(calc, gpw, soc=True):
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        _, efermi = gpw2eigs(gpw, soc=True,
-                             optimal_spin_direction=True)
+        _, efermi = calc2eigs(calc, ranks=[0], soc=True,
+                              optimal_spin_direction=True)
     else:
         efermi = calc.get_fermi_level()
 
@@ -226,12 +214,13 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(soc, direct, calc, gpw):
+def get_gap_info(soc, direct, calc):
     from ase.dft.bandgap import bandgap
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     # e1 is VBM, e2 is CBM
     if soc:
-        e_km, efermi = gpw2eigs(gpw, soc=True, optimal_spin_direction=True)
+        e_km, efermi = calc2eigs(calc, ranks=[0],
+                                 soc=True, optimal_spin_direction=True)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
                                 kpts=calc.get_ibz_k_points(), output=None)
