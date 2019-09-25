@@ -5,7 +5,7 @@ from asr.core import command
 def calculate(kptdensity=20):
     """Calculate excited states for polarizability calculation"""
     from gpaw import GPAW
-    
+
     def get_kpts_size(atoms, density):
         """trying to get a reasonable monkhorst size which hits high
         symmetry points
