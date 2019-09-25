@@ -281,7 +281,7 @@ def known_exceptions():
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
-         xc='PBE', d3=True, width=0.05,
+         xc='PBE', d3=False, width=0.05,
          readout_charge=False, fixcell=False, allow_symmetry_breaking=False):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
