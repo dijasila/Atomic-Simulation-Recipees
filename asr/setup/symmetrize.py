@@ -200,6 +200,8 @@ def main(tolerance=1e-3, angle_tolerance=0.1):
         msg = 'Reached maximum iteration! Went through ' + ' -> '.join(spgs)
         raise RuntimeError(msg)
     print(f'Idealizing structure into spacegroup {spg2} using SPGLIB.')
+    idealized.set_initial_magnetic_moments(
+        atoms.get_initial_magnetic_moments())
     write('unrelaxed.json', idealized)
 
     # Check that the cell was only slightly perturbed
