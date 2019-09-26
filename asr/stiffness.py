@@ -24,16 +24,23 @@ def main(strain_percent=1.0):
                    [5, 1, 3],
                    [4, 3, 2]]
 
-    stiffness = np.zeros((6, 6), float)
+    stiffness = np.zeros((6, 6), float) + np.nan
     for i, j in ij:
         dstress = np.zeros((6,), float)
+        completed = True
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
-            structure = read(str(folder / 'structure.json'))
+            structurefile = folder / 'structure.json'
+            if not structurefile.is_file():
+                completed = False
+                continue
+            structure = read(str(structurefile))
             # The structure already has the stress if it was
             # calculated
             stress = structure.get_stress(voigt=True)
             dstress += stress * sign
+        if not completed:
+            continue
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 
     stiffness = np.array(stiffness, float)
