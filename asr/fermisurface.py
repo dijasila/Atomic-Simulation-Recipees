@@ -103,7 +103,8 @@ def main():
         if (inds_k).any():
             contours.append(cnt[inds_k, :])
 
-    return contours
+    data = {'contours': contours}
+    return data
 
 
 if __name__ == '__main__':
