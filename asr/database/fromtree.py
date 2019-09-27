@@ -1,12 +1,73 @@
 from asr.core import command, option, argument, chdir
 
 
-def collect(recipe):
+def get_kvp_kd(resultdct):
     import re
-    from pathlib import Path
-    from asr.core import read_json, md5sum
     kvp = {}
     key_descriptions = {}
+
+    if '__key_descriptions__' not in resultdct:
+        return {}, {}
+
+    tmpkd = {}
+
+    for key, desc in resultdct['__key_descriptions__'].items():
+        descdict = {'type': None,
+                    'iskvp': False,
+                    'shortdesc': '',
+                    'longdesc': '',
+                    'units': ''}
+        if isinstance(desc, dict):
+            descdict.update(desc)
+            tmpkd[key] = desc
+            continue
+
+        assert isinstance(desc, str), \
+            'Key description has to be dict or str.'
+        # Get key type
+        desc, *keytype = desc.split('->')
+        if keytype:
+            descdict['type'] = keytype
+
+        # Is this a kvp?
+        iskvp = desc.startswith('KVP:')
+        descdict['iskvp'] = iskvp
+        desc = desc.replace('KVP:', '').strip()
+
+        # Find units
+        m = re.search(r"\[(.*)\]", desc)
+        unit = m.group(1) if m else ''
+        if unit:
+            descdict['units'] = unit
+        desc = desc.replace(f'[{unit}]', '').strip()
+
+        # Find short description
+        m = re.search(r"\((.*)\)", desc)
+        shortdesc = m.group(1) if m else ''
+        if shortdesc:
+            descdict['shortdesc'] = shortdesc
+
+        # Everything remaining is the long description
+        longdesc = desc.replace(f'({shortdesc})', '').strip()
+        if longdesc:
+            descdict['longdesc'] = longdesc
+            if not shortdesc:
+                descdict['shortdesc'] = descdict['longdesc']
+        tmpkd[key] = descdict
+
+    for key, desc in tmpkd.items():
+        key_descriptions[key] = \
+            (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+        if key in resultdct and desc['iskvp']:
+            kvp[key] = resultdct[key]
+
+    return kvp, key_descriptions
+
+
+def collect(recipe):
+    from pathlib import Path
+    from asr.core import read_json, md5sum
     data = {}
 
     resultfile = f'results-{recipe.name}.json'
@@ -39,61 +100,11 @@ def collect(recipe):
 
     # Parse key descriptions to get long,
     # short, units and key value pairs
-    if '__key_descriptions__' in results:
-        tmpkd = {}
-
-        for key, desc in results['__key_descriptions__'].items():
-            descdict = {'type': None,
-                        'iskvp': False,
-                        'shortdesc': '',
-                        'longdesc': '',
-                        'units': ''}
-            if isinstance(desc, dict):
-                descdict.update(desc)
-                tmpkd[key] = desc
-                continue
-
-            assert isinstance(desc, str), \
-                'Key description has to be dict or str.'
-            # Get key type
-            desc, *keytype = desc.split('->')
-            if keytype:
-                descdict['type'] = keytype
-
-            # Is this a kvp?
-            iskvp = desc.startswith('KVP:')
-            descdict['iskvp'] = iskvp
-            desc = desc.replace('KVP:', '').strip()
-
-            # Find units
-            m = re.search(r"\[(\w+)\]", desc)
-            unit = m.group(1) if m else ''
-            if unit:
-                descdict['units'] = unit
-            desc = desc.replace(f'[{unit}]', '').strip()
-
-            # Find short description
-            m = re.search(r"\((\w+)\)", desc)
-            shortdesc = m.group(1) if m else ''
-
-            # The results is the long description
-            longdesc = desc.replace(f'({shortdesc})', '').strip()
-            if longdesc:
-                descdict['longdesc'] = longdesc
-            tmpkd[key] = descdict
-
-        for key, desc in tmpkd.items():
-            key_descriptions[key] = \
-                (desc['shortdesc'], desc['longdesc'], desc['units'])
-
-            if key in results and desc['iskvp']:
-                kvp[key] = results[key]
-
+    kvp, key_descriptions = get_kvp_kd(results)
     return kvp, key_descriptions, data
 
 
-@command('asr.database.fromtree',
-         dependencies=['asr.structureinfo'])
+@command('asr.database.fromtree')
 @argument('folders', nargs=-1)
 @option('--selectrecipe', help='Only collect data relevant for this recipe')
 @option('--level', type=int,
@@ -109,9 +120,10 @@ def main(folders, selectrecipe=None, level=2, data=True,
     import os
     from ase.db import connect
     from ase.io import read
-    from asr.core import get_recipes, get_dep_tree
+    from asr.core import get_recipes, get_dep_tree, read_json
     import glob
     from pathlib import Path
+    from asr.database.material_fingerprint import main as mat_finger
 
     if not folders:
         folders = ['.']
@@ -138,6 +150,9 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     data = {}
                     key_descriptions = {}
 
+                    assert mat_finger.done, \
+                        (f'{folder}: You have to run asr.database.'
+                         'material_fingerprint to collect to a database')
                     if not Path(atomsname).is_file():
                         continue
 
@@ -157,6 +172,13 @@ def main(folders, selectrecipe=None, level=2, data=True,
                             kvp.update(tmpkvp)
                             data.update(tmpdata)
                             key_descriptions.update(tmpkd)
+
+                    if Path('info.json').is_file():
+                        info = read_json('info.json')
+                        data['info.json'] = info
+                        tmpkvp, tmpkd = get_kvp_kd(info)
+                        kvp.update(tmpkvp)
+                        key_descriptions.update(tmpkd)
 
                     if level > 1:
                         db.write(atoms, data=data, **kvp)
