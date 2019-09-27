@@ -147,7 +147,6 @@ def main():
     """
 
     import numpy as np
-    from random import randint
     from ase.io import read
     from pathlib import Path
 
@@ -210,8 +209,6 @@ def main():
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.
-    uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
-    info['uid'] = uid
     info['is_magnetic'] = info['magstate'] != 'NM'
 
     if (atoms.pbc == [True, True, False]).all():
@@ -222,7 +219,6 @@ def main():
         'is_magnetic': 'KVP: Material is magnetic (Magnetic)',
         'cell_area': 'KVP: Area of unit-cell [Ang^2]',
         'has_invsymm': 'KVP: Inversion symmetry',
-        'uid': 'KVP: Identifier',
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
         'prototype': 'KVP: Prototype'}
