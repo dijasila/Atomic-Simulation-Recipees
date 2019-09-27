@@ -161,7 +161,7 @@ def main(mingo=True):
                'minhessianeig': mineig}
 
     results['__key_descriptions__'] = \
-        {'mineig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
+        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
 
     return results
 
