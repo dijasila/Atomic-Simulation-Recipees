@@ -1,20 +1,7 @@
 from asr.core import command, argument, option
 
 
-def folderexists():
-    from pathlib import Path
-    assert Path('tree').is_dir()
-
-
-tests = [
-    {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'],
-     'test': folderexists}
-]
-
-
-@command('asr.database.merge',
-         tests=tests)
+@command('asr.database.merge')
 @argument('databaseout', nargs=1)
 @argument('databases', nargs=-1)
 @option('--identifier', help='Identifier for matching database entries.')
@@ -23,7 +10,6 @@ def main(databases, databaseout, identifier='asr_id'):
     from ase.db import connect
     from pathlib import Path
     from click import progressbar
-    dbmerged = connect(databaseout)
 
     print(f'Merging {databases} into {databaseout}')
 
@@ -49,11 +35,19 @@ def main(databases, databaseout, identifier='asr_id'):
             tmpdestsearch.unlink()
 
         if tmpdest.is_file():
-            tmpdest.rename(tmpdestsearch)
+            tmpdestsearch.write_bytes(tmpdest.read_bytes())
 
         db = connect(database)
         dbsearch = connect(str(tmpdestsearch))
         dbmerged = connect(str(tmpdest))
+
+        # Update metadata
+        metadata = {}
+        if dbsearch.metadata:
+            metadata.update(dbsearch.metadata)
+        if db.metadata:
+            metadata.update(db.metadata)
+        dbmerged.metadata = metadata
 
         selection = progressbar(list(db.select()),
                                 label=f'Merging {database}',
@@ -82,9 +76,9 @@ def main(databases, databaseout, identifier='asr_id'):
                     atoms1 = row1.toatoms()
                     atoms2 = row2.toatoms()
                     assert atoms1 == atoms2, 'Atoms not matching!'
-                    dbmerged.write(row1.toatoms(),
-                                   data=data,
-                                   key_value_pairs=kvp)
+                    dbmerged.update(row2.id,
+                                    data=data,
+                                    **kvp)
 
     # Remove lookup db
     tmpdestsearch.unlink()
