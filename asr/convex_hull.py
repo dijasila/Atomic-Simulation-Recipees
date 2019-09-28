@@ -1,5 +1,4 @@
 import os
-import json
 from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
@@ -13,14 +12,16 @@ from ase.db.row import AtomsRow
 
 
 @command('asr.convex_hull',
-         dependencies=['asr.structureinfo', 'asr.gs'])
+         requires=['gs.gpw', 'results-asr.structureinfo.json',
+                   'results-asr.database.material_fingerprint.json'],
+         dependencies=['asr.structureinfo',
+                       'asr.database.material_fingerprint'])
 @option('-r', '--references', type=str,
         help='Reference database.')
-@option('-d', '--database', type=str,
-        help='Database of systems to be included in the figure.')
-def main(references: str, database: str):
+def main(references: str):
     """Calculate convex hull energies
 
+    The reference database has to have a type column indicating
     For this recipe to work you need to install a database of
     reference energies to calculate HOF and convex hull. Here
     we use a database of one- and component-structures from OQMD::
@@ -28,7 +29,7 @@ def main(references: str, database: str):
     $ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
     $ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
     """
-
+    from asr.core import read_json
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
@@ -47,23 +48,22 @@ def main(references: str, database: str):
         results['coefs'] = coefs.tolist()
 
     links = []
-    if database:
-        db = connect(database)
-        rows = select_references(db, set(count))
-        for row in rows:
-            hform = hof(row.energy, row.count_atoms(), ref_energies)
-            links.append((hform,
-                          row.formula,
-                          row.get('prototype', ''),
-                          row.magstate,
-                          row.uid))
-    else:
-        si = json.loads(Path('results-asr.structureinfo.json').read_text())
-        links.append((results['hform'],
-                      formula,
-                      si.get('prototype', ''),
-                      si['magstate'],
-                      si['uid']))
+    db = connect(references)
+    rows = select_references(db, set(count))
+    for row in rows:
+        hform = hof(row.energy, row.count_atoms(), ref_energies)
+        links.append((hform,
+                      row.formula,
+                      row.get('spacegroup', ''),
+                      row.magstate if 'magstate' in row else 'None',
+                      row.uid))
+    si = read_json('results-asr.structureinfo.json')
+    mf = read_json('results-asr.database.material_fingerprint.json')
+    links.append((results['hform'],
+                  formula,
+                  si.get('spacegroup', ''),
+                  si['magstate'],
+                  mf['uid']))
 
     results['links'] = links
     results['__key_descriptions__'] = {
@@ -98,7 +98,8 @@ def get_hof(atoms, references):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             assert symbol not in ref_energies
-            ref_energies[symbol] = row.energy / row.natoms
+            energy = row.etot if 'etot' in row else row.energy
+            ref_energies[symbol] = energy / row.natoms
 
     pdrefs = []
     for row in rows:
@@ -112,8 +113,8 @@ def get_hof(atoms, references):
 
 def hof(energy, count, ref_energies):
     """Heat of formation."""
-    energy -= sum(n * ref_energies[symbol]
-                  for symbol, n in count.items())
+    energy = energy - sum(n * ref_energies[symbol]
+                          for symbol, n in count.items())
     return energy / sum(count.values())
 
 

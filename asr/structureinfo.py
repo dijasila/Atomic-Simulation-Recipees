@@ -198,14 +198,11 @@ def main():
     symmetry = [(op_cc.tolist(), ft_c.tolist())
                 for op_cc, ft_c in zip(op_scc, ft_sc)]
     info['symmetries'] = symmetry
-    try:
-        import spglib
-    except ImportError:
-        pass
-    else:
-        sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
-        number = int(number[1:-1])
-        info['spacegroup'] = sg
+    import spglib
+    sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
+    number = int(number[1:-1])
+    info['spacegroup'] = sg
+    info['spgnum'] = number
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.
@@ -221,6 +218,7 @@ def main():
         'has_invsymm': 'KVP: Inversion symmetry',
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
+        'spgnum': 'KVP: Space group number',
         'prototype': 'KVP: Prototype'}
 
     return info
