@@ -76,6 +76,7 @@ def collect(recipe):
     assert resultfile not in data, msg
     data[resultfile] = results
 
+    # Find relevant files for this recipe
     extra_files = results.get('__requires__', {})
     extra_files.update(results.get('__creates__', {}))
     if extra_files:
@@ -86,6 +87,7 @@ def collect(recipe):
             if not file.is_file():
                 print(f'Warning: Required file {filename}'
                       ' doesn\'t exist')
+                continue
 
             filetype = file.suffix
             if filetype == '.json':
@@ -98,10 +100,11 @@ def collect(recipe):
                        '__md5__': md5sum(filename)}
             data[filename] = dct
 
+    links = results.get('__links__', {})
     # Parse key descriptions to get long,
     # short, units and key value pairs
     kvp, key_descriptions = get_kvp_kd(results)
-    return kvp, key_descriptions, data
+    return kvp, key_descriptions, data, links
 
 
 @command('asr.database.fromtree')
@@ -147,7 +150,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
             for folder in bar:
                 with chdir(folder):
                     kvp = {}
-                    data = {}
+                    data = {'__links__': {}}
                     key_descriptions = {}
 
                     assert mat_finger.done, \
@@ -167,11 +170,17 @@ def main(folders, selectrecipe=None, level=2, data=True,
                         if not recipe.done:
                             continue
 
-                        tmpkvp, tmpkd, tmpdata = collect(recipe)
-                        if tmpkvp or tmpkd or tmpdata:
+                        tmpkvp, tmpkd, tmpdata, tmplinks = collect(recipe)
+                        if tmpkvp or tmpkd or tmpdata or tmplinks:
                             kvp.update(tmpkvp)
                             data.update(tmpdata)
                             key_descriptions.update(tmpkd)
+                            data['__links__'].update(tmplinks)
+
+                    if Path('links.json').is_file():
+                        links = read_json('links.json')
+                        data['links.json'] = links
+                        data['__links__'].update(links)
 
                     if Path('info.json').is_file():
                         info = read_json('info.json')

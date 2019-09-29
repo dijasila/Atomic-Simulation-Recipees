@@ -25,7 +25,7 @@ tests = [
 @option('--copy', is_flag=True, help='Copy pointer tagged files')
 @option('--atomsname', help='Filename to unpack atomic structure to')
 @option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
-def main(database, run=False, selection=None,
+def main(database, run=False, selection='',
          tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
                          '{spg}-{wyck}-{uid}'),
          sort=None, data=False, atomsname='unrelaxed.json',
@@ -99,7 +99,7 @@ def main(database, run=False, selection=None,
     db = connect(database)
     rows = list(db.select(selection, sort=sort))
 
-    folders = []
+    folders = {}
     err = []
     nc = 0
     for row in rows:
@@ -141,7 +141,7 @@ def main(database, run=False, selection=None,
                                            formula=formula,
                                            mag=magstate)
         assert folder not in folders, f'{folder} already exists!'
-        folders.append(folder)
+        folders[row.id] = (folder, row)
 
     print(f'Number of collisions: {nc}')
     for er in err:
@@ -153,13 +153,14 @@ def main(database, run=False, selection=None,
             print(f'Would divide these folders into {chunks} chunks')
 
         print('The first 10 folders would be')
-        for folder in folders[:10]:
+        for rowid, folder in folders.items()[:10]:
             print(f'    {folder}')
         print('    ...')
         print('To run the command use the --run option')
         return
 
-    for i, (folder, row) in enumerate(zip(folders, rows)):
+    cwd = Path('.').absolute()
+    for i, (rowid, (folder, row)) in enumerate(folders.items()):
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
@@ -175,6 +176,22 @@ def main(database, run=False, selection=None,
                     # We treat json differently
                     if filename.endswith('.json'):
                         write_json(filename, results)
+                    elif filename == '__links__':
+                        for destdir, identifier in results.items():
+                            destdir = Path(destdir).absolute()
+                            try:
+                                linkedrow = db.get(selection +
+                                                   f',uid={identifier}')
+                            except KeyError:
+                                print(f'{folder}: Unknown unique identifier '
+                                      f'{identifier}! Cannot link to'
+                                      f' {destdir}.')
+                                srcdir = None
+                            else:
+                                srcdir = cwd / folders[linkedrow.id][0]
+                            finally:
+                                destdir.symlink_to(srcdir,
+                                                   target_is_directory=True)
                     elif results.get('pointer'):
                         path = results.get('pointer')
                         md5 = results.get('__md5__')

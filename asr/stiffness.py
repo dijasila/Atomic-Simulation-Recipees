@@ -15,6 +15,7 @@ def main(strain_percent=1.0):
                                    get_relevant_strains)
     from ase.io import read
     from ase.units import J
+    from asr.core import read_json
     import numpy as np
     
     atoms = read('structure.json')
@@ -24,6 +25,7 @@ def main(strain_percent=1.0):
                    [5, 1, 3],
                    [4, 3, 2]]
 
+    links = {}
     stiffness = np.zeros((6, 6), float) + np.nan
     for i, j in ij:
         dstress = np.zeros((6,), float)
@@ -34,6 +36,9 @@ def main(strain_percent=1.0):
             if not structurefile.is_file():
                 completed = False
                 continue
+            mf = read_json(folder / ('results-asr.database.'
+                                     'material_fingerprint.json'))
+            links[folder] = mf['uid']
             structure = read(str(structurefile))
             # The structure already has the stress if it was
             # calculated
@@ -92,6 +97,7 @@ def main(strain_percent=1.0):
     else:
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
 
+    data['__links__'] = links
     data['stiffness_tensor'] = stiffness.tolist()
 
     return data
