@@ -392,7 +392,7 @@ class ASRCommand:
                 # we don't use the ones from the param.json file
                 params[key] = value
 
-        paramstring = ', '.join([f'{key}={value}' for key, value in
+        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
