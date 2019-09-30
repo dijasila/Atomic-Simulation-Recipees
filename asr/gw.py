@@ -1,4 +1,4 @@
-from asr.utils import command, option, read_json
+from asr.core import command, option, read_json
 from click import Choice
 
 
@@ -485,7 +485,7 @@ def bs_gw(row, path):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser.custom import fig, table
 
     prop = table(row, 'Property', [
         'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
