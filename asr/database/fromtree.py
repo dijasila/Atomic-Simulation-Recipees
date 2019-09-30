@@ -161,6 +161,7 @@ def main(folders, selectrecipe=None, level=2, data=True,
 
                     # The atomic structure uniquely defines the folder
                     atoms = read(atomsname)
+                    data[atomsname] = read_json(atomsname)
                     if selectrecipe:
                         recipes = get_dep_tree(selectrecipe)
                     else:
@@ -177,17 +178,13 @@ def main(folders, selectrecipe=None, level=2, data=True,
                             key_descriptions.update(tmpkd)
                             data['__links__'].update(tmplinks)
 
-                    if Path('links.json').is_file():
-                        links = read_json('links.json')
-                        data['links.json'] = links
-                        data['__links__'].update(links)
-
                     if Path('info.json').is_file():
                         info = read_json('info.json')
                         data['info.json'] = info
                         tmpkvp, tmpkd = get_kvp_kd(info)
                         kvp.update(tmpkvp)
                         key_descriptions.update(tmpkd)
+                        data['__links__'].update(info.get('__links__', {}))
 
                     if level > 1:
                         db.write(atoms, data=data, **kvp)

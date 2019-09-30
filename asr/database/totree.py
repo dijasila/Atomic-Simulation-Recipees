@@ -143,7 +143,8 @@ def main(database, run=False, selection='',
                                            mag=magstate)
         assert folder not in folderlist, f'Collision in folder: {folder}!'
         folderlist.append(folder)
-        folders[row.id] = (folder, row)
+        identifier = row.get('uid', row.id)
+        folders[identifier] = (folder, row)
 
     print(f'Number of collisions: {nc}')
     for er in err:
@@ -163,6 +164,7 @@ def main(database, run=False, selection='',
 
     cwd = Path('.').absolute()
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
+        print(folder)
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
@@ -172,7 +174,7 @@ def main(database, run=False, selection='',
         makedirs(folder)
         folder = Path(folder)
         with chdir(folder):
-            write(atomsname, row.toatoms())
+            # write(atomsname, row.toatoms())
             if data:
                 for filename, results in row.data.items():
                     # We treat json differently
@@ -181,19 +183,15 @@ def main(database, run=False, selection='',
                     elif filename == '__links__':
                         for destdir, identifier in results.items():
                             destdir = Path(destdir).absolute()
-                            try:
-                                linkedrow = db.get(selection +
-                                                   f',uid={identifier}')
-                            except KeyError:
+                            if identifier not in folders:
                                 print(f'{folder}: Unknown unique identifier '
                                       f'{identifier}! Cannot link to'
                                       f' {destdir}.')
                                 srcdir = None
                             else:
-                                srcdir = cwd / folders[linkedrow.id][0]
-                            finally:
-                                destdir.symlink_to(srcdir,
-                                                   target_is_directory=True)
+                                srcdir = cwd / folders[identifier][0]
+                            destdir.symlink_to(srcdir,
+                                               target_is_directory=True)
                     elif results.get('pointer'):
                         path = results.get('pointer')
                         md5 = results.get('__md5__')
