@@ -38,7 +38,7 @@ def main(strain_percent=1.0):
                 continue
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
-            links[folder] = mf['uid']
+            links[str(folder)] = mf['uid']
             structure = read(str(structurefile))
             # The structure already has the stress if it was
             # calculated

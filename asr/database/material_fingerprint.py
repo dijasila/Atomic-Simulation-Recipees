@@ -8,8 +8,8 @@ def todict(atoms):
     d['pbc'] = atoms.pbc
     if atoms._celldisp.any():
         d['celldisp'] = atoms._celldisp
-    if atoms.constraints:
-        d['constraints'] = atoms.constraints
+    # if atoms.constraints:
+    #     d['constraints'] = atoms.constraints
     if atoms.info:
         d['info'] = atoms.info
     return d

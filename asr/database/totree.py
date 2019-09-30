@@ -100,6 +100,7 @@ def main(database, run=False, selection='',
     rows = list(db.select(selection, sort=sort))
 
     folders = {}
+    folderlist = []
     err = []
     nc = 0
     for row in rows:
@@ -127,7 +128,7 @@ def main(database, run=False, selection='',
                                                formula=formula,
                                                mag=magstate,
                                                uid=uid)
-                if folder not in folders:
+                if folder not in folderlist:
                     break
             else:
                 msg = ('Too many materials with same stoichiometry, '
@@ -140,7 +141,8 @@ def main(database, run=False, selection='',
             folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
                                            formula=formula,
                                            mag=magstate)
-        assert folder not in folders, f'{folder} already exists!'
+        assert folder not in folderlist, f'Collision in folder: {folder}!'
+        folderlist.append(folder)
         folders[row.id] = (folder, row)
 
     print(f'Number of collisions: {nc}')
@@ -153,8 +155,8 @@ def main(database, run=False, selection='',
             print(f'Would divide these folders into {chunks} chunks')
 
         print('The first 10 folders would be')
-        for rowid, folder in folders.items()[:10]:
-            print(f'    {folder}')
+        for rowid, folder in list(folders.items())[:10]:
+            print(f'    {folder[0]}')
         print('    ...')
         print('To run the command use the --run option')
         return
