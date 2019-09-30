@@ -1,5 +1,5 @@
 import numpy as np
-from asr.utils import command, option, read_json
+from asr.core import command, option, read_json
 from click import Choice
 
 
@@ -29,7 +29,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from asr.utils import file_barrier
+    from asr.core import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -205,7 +205,7 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.utils.custom import fig, table
+    from asr.browser.custom import fig, table
     from ase.io import read
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
@@ -258,7 +258,7 @@ def main():
     if Path('bse_polz.csv').is_file():
         alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
-    from asr.utils import read_json
+    from asr.core import read_json
                          
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
