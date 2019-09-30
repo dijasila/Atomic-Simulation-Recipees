@@ -1,10 +1,18 @@
 from asr.core import command, option
 
-@command('asr.emasses',
-         dependencies=['asr.gs', 'asr.structureinfo'])
-@option('--gpwfilename', type=str,
-        help='GS Filename')
-def main(gpwfilename='gs.gpw'):
+
+
+# TODO Resources?
+@command('asr.emasses@refine',
+         requires=['gs.gpw'],
+         dependencies=['asr.gs', 'asr.structureinfo'],
+         creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
+                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
+def refine():
+    '''
+    Take a bandstructure and calculate more kpts around
+    the vbm and cbm
+    '''
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     import os.path
@@ -16,28 +24,21 @@ def main(gpwfilename='gs.gpw'):
                                        optimal_spin_direction=True)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+        name = get_name(soc=soc, bt=bt)
+        gpw2 = name + '.gpw'
+            
         if not gap > 0:
+            from gpaw.mpi import rank
+            if rank == 0:
+                with open(name, "w+") as f:
+                    f.write("0")
             continue
         for bt in ['vb', 'cb']:
-            name = get_name(soc=soc, bt=bt)
-            gpw2 = name + '.gpw'
-            if not os.path.isfile(gpw2):
-                nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
-            try:
-                masses = embands(gpw2,
-                                 soc=soc,
-                                 bandtype=bt,
-                                 efermi=efermi)
-            except ValueError:
-                tb = traceback.format_exc()
-                print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
-            else:
-                _savemass(soc=soc, bt=bt, mass=masses)
+            nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
             
-        
+            
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
-
 
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """non sc calculation based for kpts in a sphere around the
@@ -70,7 +71,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
 
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
-    kcirc_kc = kptsinsphere(cell_cv, twod=(ndim == 2))
+    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim)
 
     e_skn, efermi = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
     if e_skn.ndim == 2:
@@ -92,6 +93,34 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
 
+def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
+    import numpy as np
+    from ase.units import Hartree, Bohr
+    from ase.dft.kpoints import kpoint_convert
+
+    # zfactor and yfactor are used to kill contributions from
+    # "inert" coordinates in 2 and 1-D
+    if dimensionality == 2:
+        zfactor = 0
+        yfactor = 1
+    elif dimensionality == 1:
+        zfactor = 0
+        yfactor = 0
+    else:
+        zfactor = 1
+        yfactor = 1
+
+    a = np.linspace(-1, 1, npoints)
+    X, Y, Z = np.meshgrid(a, a, a)
+    indices = X**2 + yfactor * Y**2 + zfactor * Z**2 <= 1
+    x, y, z = X[indices], Y[indices], Z[indices]
+    kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
+    kr = np.sqrt(2 * m * erange / Hartree)
+    kpts_kv *= kr
+    kpts_kv /= Bohr
+    kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
+    return kpts_kc
+
 def get_bt_ks(bandtype, k1_c, k2_c):
     if bandtype is None:
         bandtypes = ('vb', 'cb')
@@ -104,26 +133,42 @@ def get_bt_ks(bandtype, k1_c, k2_c):
         ks = (k2_c, )
     return bandtypes, ks
 
-def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, twod=False):
-    import numpy as np
-    from ase.units import Hartree, Bohr
-    from ase.dft.kpoints import kpoint_convert
-    if twod:
-        # This factor is used to kill contribution from z-coordinates in 2D
-        zfactor = 0
-    else:
-        zfactor = 1
 
-    a = np.linspace(-1, 1, npoints)
-    X, Y, Z = np.meshgrid(a, a, a)
-    indices = X**2 + Y**2 + zfactor * Z**2 <= 1
-    x, y, z = X[indices], Y[indices], Z[indices]
-    kpts_kv = np.vstack([x, y, z * zfactor]).T
-    kr = np.sqrt(2 * m * erange / Hartree)
-    kpts_kv *= kr
-    kpts_kv /= Bohr
-    kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
-    return kpts_kc
+# TODO Resources?
+@command('asr.emasses',
+         requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
+                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'],
+         dependencies=['asr.emasses@refine'],
+         webpanel=webpanel)
+# @option('--gpwfilename', type=str,
+#         help='GS Filename')
+def main(gpwfilename='gs.gpw'):
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.dft.bandgap import bandgap
+    import os.path
+    import traceback
+    socs = [True, False]
+
+    for soc in socs:
+        eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
+                                       optimal_spin_direction=True)
+        gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
+                            output=None)
+        if not gap > 0:
+            continue
+        for bt in ['vb', 'cb']:
+            name = get_name(soc=soc, bt=bt)
+            gpw2 = name + '.gpw'
+            try:
+                masses = embands(gpw2,
+                                 soc=soc,
+                                 bandtype=bt,
+                                 efermi=efermi)
+            except ValueError:
+                tb = traceback.format_exc()
+                print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
+            else:
+                _savemass(soc=soc, bt=bt, mass=masses)
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
@@ -146,6 +191,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
     calc = GPAW(gpw, txt=None)
+
     e_skn, efermi2 = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
     if efermi is None:
         efermi = efermi2
