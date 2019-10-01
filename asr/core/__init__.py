@@ -334,18 +334,21 @@ class ASRCommand:
     def main(self, skip_deps=False, catch_exceptions=True,
              *args, **kwargs):
 
-        if self.requires and self.is_requirements_met():
-            # All requirements are met and we shouldn't run dependencies
-            skip_deps = True
-
         if not skip_deps:
-            deps = get_dep_tree(self.name)
-            for name in deps[:-1]:
-                recipe = get_recipe_from_name(name)
-                for filename in recipe.creates:
-                    if not Path(filename).is_file() and \
-                       filename in self.requires:
-                        recipe(skip_deps=True)
+            # Run this recipes dependencies but only if it actually creates
+            # a file that is in __requires__
+            for filename in self.requires:
+                if Path(filename).is_file():
+                    continue
+                for name in self.dependencies:
+                    recipe = get_recipe_from_name(name)
+
+                    if filename in recipe.creates:
+                        recipe()
+                        assert Path(filename).is_file(), \
+                            ('{filename} should have been produced by '
+                             '{recipe.name} but wasn\'t')
+                        break
 
         # Try to run this command
         try:
@@ -374,7 +377,8 @@ class ASRCommand:
         # this is a good place to start
 
         assert self.is_requirements_met(), \
-            f'Some required files are missing: {self.requires}'
+            (f'Some required files are missing: {self.requires}. '
+             'This could be caused by incorrect dependencies.')
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
@@ -402,6 +406,7 @@ class ASRCommand:
         else:
             results = self._main(**params) or {}
 
+        results = {'__asr_name__': self.name}.update(results)
         # Do we have to store some digests of previous calculations?
         if self.creates:
             results['__creates__'] = {}
