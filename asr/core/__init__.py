@@ -121,6 +121,10 @@ class ASRCommand:
 
         if module is None:
             module = main.__module__
+            if module == '__main__':
+                import inspect
+                mod = inspect.getmodule(main)
+                module = str(mod).split('\'')[1]
 
         name = f'{module}@{main.__name__}'
 
