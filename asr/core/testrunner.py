@@ -116,7 +116,7 @@ class TestRunner:
                 except Exception:
                     self.failed.append(testname)
                     tb = traceback.format_exc()
-                    msg = ('FAILED\n'
+                    msg = (' ... FAILED\n'
                            '{0:#^77}\n'.format('TRACEBACK') +
                            f'{tb}' +
                            '{0:#^77}\n'.format(''))
