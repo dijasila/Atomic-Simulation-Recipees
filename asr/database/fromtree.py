@@ -68,8 +68,6 @@ def get_kvp_kd(resultdct):
 def collect(filename):
     from pathlib import Path
     from asr.core import read_json, md5sum
-    import importlib
-    from fnmatch import fnmatch
     data = {}
 
     # resultfile = f'results-{recipe.name}.json'
@@ -79,46 +77,28 @@ def collect(filename):
     data[filename] = results
 
     # Find and try to collect related files for this resultsfile
-    extra_files = results.get('__requires__', {})
+    files = results.get('__files__', {})
+    extra_files = results.get('__requires__', {}).copy()
     extra_files.update(results.get('__creates__', {}))
-    todb = results.get('__todatabase__', {})
-    fromdb = results.get('__fromdatabase__', {})
-    for key in todb:
-        assert '@' in key, f'Wrong function description {key}'
-        assert key in fromdb, f'{key} not in __fromdatabase__'
-        mod, func = todb[key].split('@')
-        todb['key'] = getattr(importlib.import_module(mod), func)
 
-    if extra_files:
-        for extrafile, checksum in extra_files.items():
-            assert extrafile not in data, f'{extrafile} already collected!'
+    for extrafile, checksum in extra_files.items():
+        assert extrafile not in data, f'{extrafile} already collected!'
 
-            file = Path(extrafile)
+        if extrafile in files:
+            continue
+        file = Path(extrafile)
 
-            if not file.is_file():
-                print(f'Warning: Required file {extrafile}'
-                      ' doesn\'t exist.')
-                continue
+        if not file.is_file():
+            print(f'Warning: Required file {extrafile}'
+                  ' doesn\'t exist.')
+            continue
 
-            if file.suffix == '.json':
-                dct = read_json(extrafile)
-                continue
-
-            matches = [fnmatch(extrafile, key) for key in todb]
-            nmatches = sum(matches)
-            assert nmatches < 2, \
-                f'Too many matches for {extrafile} in __todatabase__'
-
-            if nmatches == 1:
-                for key, match in zip(todb, matches):
-                    if match:
-                        break
-                dct = todb[key](extrafile)
-                dct['__fromdatabase__'] = fromdb[key]
-            else:
-                dct = {'pointer': str(file.absolute()),
-                       '__md5__': md5sum(extrafile)}
-            data[extrafile] = dct
+        if file.suffix == '.json':
+            dct = read_json(extrafile)
+        else:
+            dct = {'pointer': str(file.absolute()),
+                   '__md5__': md5sum(extrafile)}
+        data[extrafile] = dct
 
     links = results.get('__links__', {})
     # Parse key descriptions to get long,

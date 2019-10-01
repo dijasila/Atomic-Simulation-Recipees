@@ -27,7 +27,7 @@ def todict(filename):
             'write': 'asr.phonons@tofile'}
 
 
-def tofile(filename, contents):
+def topckl(filename, contents):
     from ase.utils import opencew
     import pickle
     fd = opencew(filename)
@@ -85,8 +85,13 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    data = {'__todatabase__': {'*.json': 'asr.phonons@todict'},
-            '__fromdatabase__': {'*.json': 'asr.phonons@tofile'}}
+    # Read creates files
+    files = {}
+    for filename in creates():
+        dct = todict(filename)
+        dct['__tofile__'] = 'asr.phonons@topckl'
+        files[filename] = dct
+    data = {'__files__': files}
     return data
 
 

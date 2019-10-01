@@ -177,6 +177,16 @@ def main(database, run=False, selection='',
                 # We treat json differently
                 if filename.endswith('.json'):
                     write_json(filename, results)
+
+                    # Unpack any extra files
+                    files = results.get('__files__', {})
+                    for extrafile, content in files.items():
+                        if '__tofile__' in content:
+                            tofile = content.pop('__tofile__')
+                            mod, func = tofile.split('@')
+                            write = getattr(importlib.import_module(mod),
+                                            func)
+                            write(extrafile, content)
                 elif filename == '__links__':
                     for destdir, identifier in results.items():
                         destdir = Path(destdir).absolute()
@@ -189,7 +199,7 @@ def main(database, run=False, selection='',
                             srcdir = cwd / folders[identifier][0]
                         destdir.symlink_to(srcdir,
                                            target_is_directory=True)
-                elif filename == '__pointers__':
+                else:
                     path = results.get('pointer')
                     md5 = results.get('__md5__')
                     srcfile = Path(path)
@@ -205,19 +215,6 @@ def main(database, run=False, selection='',
                         print('Warning: File {filename} does not match '
                               'original file. (Difference in '
                               'checksums).')
-                else:
-                    assert '__fromdatabase__' in results, \
-                        f'Unknown data entry {results}.'
-                    fromdb = results.pop('__fromdatabase__')
-                    md5 = results.get('__md5__')
-                    mod, func = fromdb.split('@')
-
-                    write = getattr(importlib.import_module(mod), func)
-                    write(filename, results)
-                    if not md5sum(filename) == md5:
-                        print('Warning: File {filename} does not match'
-                              ' original file. (Difference in '
-                              'checksums)')
 
 
 if __name__ == '__main__':
