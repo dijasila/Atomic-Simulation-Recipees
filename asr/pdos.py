@@ -144,23 +144,24 @@ def main():
 
     # Find mem-error  # remove XXX
     from ase.parallel import parprint
-    parprint('Reading gs')  # remove XXX
+    parprint('Reading gs', flush=True)  # remove XXX
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
 
     results = {}
 
     # Calculate pdos
-    parprint('Calculating pdos no soc')  # remove XXX
+    parprint('Calculating pdos no soc', flush=True)  # remove XXX
     results['pdos_nosoc'] = pdos(calc, 'pdos.gpw', soc=False)
-    parprint('Calculating pdos w. soc')  # remove XXX
+    parprint('Calculating pdos w. soc', flush=True)  # remove XXX
     results['pdos_soc'] = pdos(calc, 'pdos.gpw', soc=True)
 
     # Calculate the dos at the Fermi energy
-    parprint('Calculating dos at ef no soc')  # remove XXX
+    parprint('Calculating dos at ef no soc', flush=True)  # remove XXX
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
-    parprint('Calculating dos at ef w. soc')  # remove XXX
+    parprint('Calculating dos at ef w. soc', flush=True)  # remove XXX
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
+    parprint('Logging results', flush=True)  # remove XXX
 
     # Log key descriptions
     kd = {}
