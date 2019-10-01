@@ -39,8 +39,7 @@ def tofile(filename, contents):
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs'],
-         creates=creates,
-         todict={'.pckl': todict})
+         creates=creates)
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
 @option('--kptdensity', help='Kpoint density')
@@ -85,6 +84,10 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
 
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
+
+    data = {'__todatabase__': {'*.json': 'asr.phonons@todict'},
+            '__fromdatabase__': {'*.json': 'asr.phonons@tofile'}}
+    return data
 
 
 def requires():

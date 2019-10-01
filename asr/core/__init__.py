@@ -116,8 +116,7 @@ class ASRCommand:
                  known_exceptions=None,
                  save_results_file=True,
                  pass_params=False,
-                 add_skip_opt=True,
-                 todict=None):
+                 add_skip_opt=True):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -169,8 +168,6 @@ class ASRCommand:
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
             self._main.__asr_params__ = {}
-
-        self.todict = todict
 
         import copy
         self.params = copy.deepcopy(self._main.__asr_params__)

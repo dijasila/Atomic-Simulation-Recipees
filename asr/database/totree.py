@@ -21,14 +21,13 @@ tests = [
 @option('-t', '--tree-structure')
 @option('--sort', help='Sort the generated materials '
         '(only useful when dividing chunking tree)')
-@option('--data', is_flag=True, help='Unpack data')
 @option('--copy', is_flag=True, help='Copy pointer tagged files')
 @option('--atomsname', help='Filename to unpack atomic structure to')
 @option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
 def main(database, run=False, selection='',
          tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
                          '{spg}-{wyck}-{uid}'),
-         sort=None, data=False, atomsname='unrelaxed.json',
+         sort=None, atomsname='structure.json',
          chunks=1, copy=False):
     """Unpack an ASE database to a tree of folders.
 
@@ -164,7 +163,6 @@ def main(database, run=False, selection='',
 
     cwd = Path('.').absolute()
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
-        print(folder)
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
@@ -174,53 +172,52 @@ def main(database, run=False, selection='',
         makedirs(folder)
         folder = Path(folder)
         with chdir(folder):
-            # write(atomsname, row.toatoms())
-            if data:
-                for filename, results in row.data.items():
-                    # We treat json differently
-                    if filename.endswith('.json'):
-                        write_json(filename, results)
-                    elif filename == '__links__':
-                        for destdir, identifier in results.items():
-                            destdir = Path(destdir).absolute()
-                            if identifier not in folders:
-                                print(f'{folder}: Unknown unique identifier '
-                                      f'{identifier}! Cannot link to'
-                                      f' {destdir}.')
-                                srcdir = None
-                            else:
-                                srcdir = cwd / folders[identifier][0]
-                            destdir.symlink_to(srcdir,
-                                               target_is_directory=True)
-                    elif results.get('pointer'):
-                        path = results.get('pointer')
-                        md5 = results.get('__md5__')
-                        srcfile = Path(path)
-                        if not srcfile.is_file():
-                            print(f'Cannot locate source file: {path}')
-                            continue
-                        destfile = Path(filename)
-                        if copy:
-                            destfile.write_bytes(srcfile.read_bytes())
+            write(atomsname, row.toatoms())
+            for filename, results in row.data.items():
+                # We treat json differently
+                if filename.endswith('.json'):
+                    write_json(filename, results)
+                elif filename == '__links__':
+                    for destdir, identifier in results.items():
+                        destdir = Path(destdir).absolute()
+                        if identifier not in folders:
+                            print(f'{folder}: Unknown unique identifier '
+                                  f'{identifier}! Cannot link to'
+                                  f' {destdir}.')
+                            srcdir = None
                         else:
-                            destfile.symlink_to(srcfile)
-                        if not md5sum(filename) == md5:
-                            print('Warning: File {filename} does not match'
-                                  ' original file. (Difference in '
-                                  'checksums).')
+                            srcdir = cwd / folders[identifier][0]
+                        destdir.symlink_to(srcdir,
+                                           target_is_directory=True)
+                elif filename == '__pointers__':
+                    path = results.get('pointer')
+                    md5 = results.get('__md5__')
+                    srcfile = Path(path)
+                    if not srcfile.is_file():
+                        print(f'Cannot locate source file: {path}')
+                        continue
+                    destfile = Path(filename)
+                    if copy:
+                        destfile.write_bytes(srcfile.read_bytes())
                     else:
-                        assert 'contents' in results, \
-                            f'Unknown data entry {results}.'
-                        contents = results.get('contents')
-                        md5 = results.get('__md5__')
-                        mod, func = results.get('write').split('@')
+                        destfile.symlink_to(srcfile)
+                    if not md5sum(filename) == md5:
+                        print('Warning: File {filename} does not match '
+                              'original file. (Difference in '
+                              'checksums).')
+                else:
+                    assert '__fromdatabase__' in results, \
+                        f'Unknown data entry {results}.'
+                    fromdb = results.pop('__fromdatabase__')
+                    md5 = results.get('__md5__')
+                    mod, func = fromdb.split('@')
 
-                        write = getattr(importlib.import_module(mod), func)
-                        write(filename, contents)
-                        if not md5sum(filename) == md5:
-                            print('Warning: File {filename} does not match'
-                                  ' original file. (Difference in '
-                                  'checksums)')
+                    write = getattr(importlib.import_module(mod), func)
+                    write(filename, results)
+                    if not md5sum(filename) == md5:
+                        print('Warning: File {filename} does not match'
+                              ' original file. (Difference in '
+                              'checksums)')
 
 
 if __name__ == '__main__':
