@@ -407,7 +407,8 @@ class ASRCommand:
         else:
             results = self._main(**params) or {}
 
-        results = {'__asr_name__': self.name}.update(results)
+        results['__asr_name__'] = self.name
+
         # Do we have to store some digests of previous calculations?
         if self.creates:
             results['__creates__'] = {}
