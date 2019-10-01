@@ -143,25 +143,26 @@ def main():
     from gpaw import GPAW
 
     # Find mem-error  # remove XXX
-    from ase.parallel import parprint
-    parprint('Reading gs', flush=True)  # remove XXX
+    from ase.parallel import parprint  # remove XXX
+    from gpaw.utilities.memory import maxrss  # remove XXX
+    parprint('Reading gs, %s' % str(maxrss()), flush=True)  # remove XXX
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
 
     results = {}
 
     # Calculate pdos
-    parprint('Calculating pdos no soc', flush=True)  # remove XXX
+    parprint('Calculating pdos no soc, %s' % str(maxrss()), flush=True)  # remove XXX
     results['pdos_nosoc'] = pdos(calc, 'pdos.gpw', soc=False)
-    parprint('Calculating pdos w. soc', flush=True)  # remove XXX
+    parprint('Calculating pdos w. soc, %s' % str(maxrss()), flush=True)  # remove XXX
     results['pdos_soc'] = pdos(calc, 'pdos.gpw', soc=True)
 
     # Calculate the dos at the Fermi energy
-    parprint('Calculating dos at ef no soc', flush=True)  # remove XXX
+    parprint('Calculating dos at ef no soc, %s' % str(maxrss()), flush=True)  # remove XXX
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
-    parprint('Calculating dos at ef w. soc', flush=True)  # remove XXX
+    parprint('Calculating dos at ef w. soc, %s' % str(maxrss()), flush=True)  # remove XXX
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
-    parprint('Logging results', flush=True)  # remove XXX
+    parprint('Logging results, %s' % str(maxrss()), flush=True)  # remove XXX
 
     # Log key descriptions
     kd = {}
@@ -218,9 +219,10 @@ def calculate_pdos(calc, gpw, soc=True):
     world = mpi.world
 
     # Find mem-error  # remove XXX
-    from ase.parallel import parprint
+    from ase.parallel import parprint  # remove XXX
+    from gpaw.utilities.memory import maxrss  # remove XXX
     if soc and world.rank == 0:
-        parprint('\tLoading serial comm', flush=True)  # remove XXX
+        parprint('\tLoading serial comm, %s' % str(maxrss()), flush=True)  # remove XXX
         calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
 
     zs = calc.atoms.get_atomic_numbers()
@@ -248,9 +250,9 @@ def calculate_pdos(calc, gpw, soc=True):
             for l in l_a[a]:
                 if soc:
                     if world.rank == 0:  # GPAW soc is done in serial
-                        parprint('\tCalling ldos for (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
+                        parprint('\tCalling ldos for (s, a, l)=(%d, %s, %s), %s' % (spin, a, l, maxrss()), flush=True)  # remove XXX
                         energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                        parprint('\tBroadcasting (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
+                        parprint('\tBroadcasting (s, a, l)=(%d, %s, %s), %s' % (spin, a, l, maxrss()), flush=True)  # remove XXX
                         mpi.broadcast((energies, weights))
                     else:
                         energies, weights = mpi.broadcast(None)
@@ -269,7 +271,7 @@ def calculate_pdos(calc, gpw, soc=True):
                 w.shape = tuple(kd.N_c) + (-1, )
 
                 # Linear tetrahedron integration
-                parprint('\tDoing lti for (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
+                parprint('\tDoing lti for (s, a, l)=(%d, %s, %s), %s' % (spin, a, l, maxrss()), flush=True)  # remove XXX
                 p = lti(calc.atoms.cell, energies * Ha, e_e, w)
 
                 # Store in dictionary
