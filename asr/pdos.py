@@ -217,7 +217,10 @@ def calculate_pdos(calc, gpw, soc=True):
     from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
 
+    # Find mem-error  # remove XXX
+    from ase.parallel import parprint
     if soc and world.rank == 0:
+        parprint('\tLoading serial comm', flush=True)  # remove XXX
         calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
 
     zs = calc.atoms.get_atomic_numbers()
@@ -245,7 +248,9 @@ def calculate_pdos(calc, gpw, soc=True):
             for l in l_a[a]:
                 if soc:
                     if world.rank == 0:  # GPAW soc is done in serial
+                        parprint('\tCalling ldos for (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
                         energies, weights = ldos(calc0, a, spin, l, theta, phi)
+                        parprint('\tBroadcasting (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
                         mpi.broadcast((energies, weights))
                     else:
                         energies, weights = mpi.broadcast(None)
@@ -264,6 +269,7 @@ def calculate_pdos(calc, gpw, soc=True):
                 w.shape = tuple(kd.N_c) + (-1, )
 
                 # Linear tetrahedron integration
+                parprint('\tDoing lti for (s, a, l)=(%d, %s, %s)' % (spin, a, l), flush=True)  # remove XXX
                 p = lti(calc.atoms.cell, energies * Ha, e_e, w)
 
                 # Store in dictionary
