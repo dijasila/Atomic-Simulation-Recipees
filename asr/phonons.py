@@ -23,13 +23,13 @@ def creates():
 
 def todict(filename):
     from ase.utils import pickleload
-    return {'contents': pickleload(open(filename, 'rb')),
-            'write': 'asr.phonons@tofile'}
+    return {'content': pickleload(open(filename, 'rb'))}
 
 
-def topckl(filename, contents):
+def topckl(filename, dct):
     from ase.utils import opencew
     import pickle
+    contents = dct['content']
     fd = opencew(filename)
     if world.rank == 0:
         pickle.dump(contents, fd, protocol=2)
