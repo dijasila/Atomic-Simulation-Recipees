@@ -30,7 +30,7 @@ def calculate(kptdensity=20):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table
+    from asr.browser import table
 
     plasmatable = table(row, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
