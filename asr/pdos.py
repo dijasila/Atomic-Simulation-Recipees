@@ -295,6 +295,8 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw import GPAW
     import gpaw.mpi as mpi
     from gpaw.utilities.dos import raw_orbital_LDOS
+    from gpaw.utilities.progressbar import ProgressBar
+    from ase.parallel import parprint
     from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
 
@@ -319,37 +321,43 @@ def calculate_pdos(calc, gpw, soc=True):
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
     # species, their pdos are added together.
+    # Set up progressbar
+    s_i = [s for s in range(ns) for a in l_a for l in l_a[a]]
+    a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
+    l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     pdos_syl = defaultdict(float)
-    for spin in range(ns):
-        for a in l_a:
-            symbol = chem_symbols[a]
-            for l in l_a[a]:
-                if soc:
-                    if world.rank == 0:  # GPAW soc is done in serial
-                        energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                        mpi.broadcast((energies, weights))
-                    else:
-                        energies, weights = mpi.broadcast(None)
-                else:
-                    energies, weights = ldos(calc, a, spin, l)
+    parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
+    pb = ProgressBar()
+    for _, (spin, a, l) in pb.enumerate([(s, a, l) for (s, a, l)
+                                         in zip(s_i, a_i, l_i)]):
+        symbol = chem_symbols[a]
 
-                # Reshape energies
-                energies.shape = (kd.nibzkpts, -1)
-                energies = energies[kd.bz2ibz_k]
-                energies.shape = tuple(kd.N_c) + (-1, )
+        if soc:
+            if world.rank == 0:  # GPAW soc is done in serial
+                energies, weights = ldos(calc0, a, spin, l, theta, phi)
+                mpi.broadcast((energies, weights))
+            else:
+                energies, weights = mpi.broadcast(None)
+        else:
+            energies, weights = ldos(calc, a, spin, l)
 
-                # Get true weights and reshape
-                weights.shape = (kd.nibzkpts, -1)
-                weights /= kd.weight_k[:, np.newaxis]
-                w = weights[kd.bz2ibz_k]
-                w.shape = tuple(kd.N_c) + (-1, )
+        # Reshape energies
+        energies.shape = (kd.nibzkpts, -1)
+        energies = energies[kd.bz2ibz_k]
+        energies.shape = tuple(kd.N_c) + (-1, )
 
-                # Linear tetrahedron integration
-                p = lti(calc.atoms.cell, energies * Ha, e_e, w)
+        # Get true weights and reshape
+        weights.shape = (kd.nibzkpts, -1)
+        weights /= kd.weight_k[:, np.newaxis]
+        w = weights[kd.bz2ibz_k]
+        w.shape = tuple(kd.N_c) + (-1, )
 
-                # Store in dictionary
-                key = ','.join([str(spin), str(symbol), str(l)])
-                pdos_syl[key] += p
+        # Linear tetrahedron integration
+        p = lti(calc.atoms.cell, energies * Ha, e_e, w)
+
+        # Store in dictionary
+        key = ','.join([str(spin), str(symbol), str(l)])
+        pdos_syl[key] += p
 
     return e_e, pdos_syl, calc.atoms.get_chemical_symbols(), efermi
 
