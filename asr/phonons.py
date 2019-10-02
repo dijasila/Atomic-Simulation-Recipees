@@ -173,8 +173,8 @@ def main(mingo=True):
     path = atoms.cell.bandpath(npoints=50)
     freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
                                 verbose=False)
-    # results['interp_freqs_kl'] = freqs_kl
-    # results['path'] = path
+    results['interp_freqs_kl'] = freqs_kl
+    results['path'] = path
     results['__key_descriptions__'] = \
         {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
 
