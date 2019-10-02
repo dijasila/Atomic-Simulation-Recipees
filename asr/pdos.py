@@ -10,12 +10,17 @@ from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
+from ase.units import Hartree
+from gpaw.utilities.dos import get_angular_projectors
+from gpaw.spinorbit import get_spinorbit_eigenvalues
+
 from asr.core import magnetic_atoms
 
 
-# ---------- GPAW hack ---------- #
+# ---------- GPAW hacks ---------- #
 
 
+# Hack the density of states
 class SOCDOS(DOS):
     """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
@@ -49,6 +54,90 @@ class SOCDOS(DOS):
 
     def get_dos(self):
         return DOS.get_dos(self) / 2
+
+
+# Hack the local density of states to keep spin-orbit results and not
+# compute them repeatedly
+class SOCDescriptor:
+    """Descriptor for spin-orbit corrections.
+    [Developed and tested for raw_spinorbit_orbital_LDOS only]
+    """
+
+    def __init__(self, paw):
+        self.paw = paw
+
+        # Log eigenvalues and wavefunctions for multiple spin directions
+        self.theta_d = []
+        self.phi_d = []
+        self.eps_dmk = []
+        self.v_dknm = []
+
+    def calculate_soc_eig(self, theta, phi):
+        eps_mk, v_knm = get_spinorbit_eigenvalues(self.paw, return_wfs=True,
+                                                  theta=theta, phi=phi)
+        self.theta_d.append(theta)
+        self.phi_d.append(phi)
+        self.eps_dmk.append(eps_mk)
+        self.v_dknm.append(v_knm)
+
+    def get_soc_eig(self, theta=0, phi=0):
+        # Check if eigenvalues have been computed already
+        for d, (t, p) in enumerate(zip(self.theta_d, self.phi_d)):
+            if abs(t - theta) < np.pi * 1.e-4 and abs(p - phi) < np.pi * 1.e-4:
+                return self.eps_dmk[d], self.v_dknm[d]
+        # Calculate if not
+        self.calculate_soc_eig(theta, phi)
+        return self.eps_dmk[-1], self.v_dknm[-1]
+
+
+def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
+                                    theta=0, phi=0):
+    """Hack raw_spinorbit_orbital_LDOS"""
+
+    from gpaw.spinorbit import get_spinorbit_projections
+
+    # Attach SOCDescriptor to the calculator object
+    if not hasattr(paw, 'socd'):
+        paw.socd = SOCDescriptor(paw)
+
+    # Get eigenvalues and wavefunctions from SOCDescriptor
+    eps_mk, v_knm = paw.socd.get_soc_eig(theta, phi)
+    e_mk = eps_mk / Hartree
+
+    # Do the rest as usual:
+    ns = paw.wfs.nspins
+    w_k = paw.wfs.kd.weight_k
+    nk = len(w_k)
+    nb = len(e_mk)
+
+    if a < 0:
+        # Allow list-style negative indices; we'll need the positive a for the
+        # dictionary lookup later
+        a = len(paw.wfs.setups) + a
+
+    setup = paw.wfs.setups[a]
+    energies = np.empty(nb * nk)
+    weights_xi = np.empty((nb * nk, setup.ni))
+    x = 0
+    for k, w in enumerate(w_k):
+        energies[x:x + nb] = e_mk[:, k]
+        P_ami = get_spinorbit_projections(paw, k, v_knm[k])
+        if ns == 2:
+            weights_xi[x:x + nb, :] = w * np.absolute(P_ami[a][:, spin::2])**2
+        else:
+            weights_xi[x:x + nb, :] = w * np.absolute(P_ami[a][:, 0::2])**2 / 2
+            weights_xi[x:x + nb, :] += w * np.absolute(P_ami[a][:, 1::2])**2  / 2
+        x += nb
+
+    if angular is None:
+        return energies, weights_xi
+    elif isinstance(angular, int):
+        return energies, weights_xi[:, angular]
+    else:
+        projectors = get_angular_projectors(setup, angular, type='bound')
+        weights = np.sum(np.take(weights_xi,
+                                 indices=projectors, axis=1), axis=1)
+        return energies, weights
 
 
 # ---------- Recipe tests ---------- #
@@ -205,7 +294,7 @@ def calculate_pdos(calc, gpw, soc=True):
     """
     from gpaw import GPAW
     import gpaw.mpi as mpi
-    from gpaw.utilities.dos import raw_orbital_LDOS, raw_spinorbit_orbital_LDOS
+    from gpaw.utilities.dos import raw_orbital_LDOS
     from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
 
@@ -219,7 +308,7 @@ def calculate_pdos(calc, gpw, soc=True):
     kd = calc.wfs.kd
 
     if soc:
-        ldos = raw_spinorbit_orbital_LDOS
+        ldos = raw_spinorbit_orbital_LDOS_hack
     else:
         ldos = raw_orbital_LDOS
 
