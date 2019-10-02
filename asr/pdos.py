@@ -296,6 +296,7 @@ def calculate_pdos(calc, gpw, soc=True):
     import gpaw.mpi as mpi
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
+    from ase.utils import DevNull
     from ase.parallel import parprint
     from asr.utils.gpw2eigs import get_spin_direction
     world = mpi.world
@@ -321,15 +322,19 @@ def calculate_pdos(calc, gpw, soc=True):
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
     # species, their pdos are added together.
+    pdos_syl = defaultdict(float)
     # Set up progressbar
     s_i = [s for s in range(ns) for a in l_a for l in l_a[a]]
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
-    pdos_syl = defaultdict(float)
+    sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
     parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
-    pb = ProgressBar()
-    for _, (spin, a, l) in pb.enumerate([(s, a, l) for (s, a, l)
-                                         in zip(s_i, a_i, l_i)]):
+    if mpi.world.rank == 0:
+        pb = ProgressBar()
+    else:
+        devnull = DevNull()
+        pb = ProgressBar(devnull)
+    for _, (spin, a, l) in pb.enumerate(sal_i):
         symbol = chem_symbols[a]
 
         if soc:
