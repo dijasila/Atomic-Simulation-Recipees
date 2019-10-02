@@ -302,7 +302,7 @@ class ASRCommand:
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
 
-        # Convert out parameters into CLI Parameters!
+        # Convert parameters into CLI Parameters!
         for name, param in self.params.items():
             param = param.copy()
             alias = param.pop('alias')
@@ -321,7 +321,9 @@ class ASRCommand:
                 
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
-                         help='Skip execution of dependencies')(command)
+                         help='Skip execution of dependencies.')(command)
+        command = co('--silence', is_flag=True, default=False,
+                     help='Silence output.')(command)
 
         self._cli = command
 
@@ -332,8 +334,14 @@ class ASRCommand:
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
 
-    def main(self, skip_deps=False, catch_exceptions=True,
+    def main(self, skip_deps=False, catch_exceptions=True, silence=False,
              *args, **kwargs):
+
+        if silence:
+            import sys
+            f = open(os.devnull, 'w')
+            _stdout = sys.stdout
+            sys.stdout = f
 
         if not skip_deps:
             # Run this recipes dependencies but only if it actually creates
@@ -352,24 +360,12 @@ class ASRCommand:
                         break
 
         # Try to run this command
-        try:
-            return self.callback(*args, **kwargs)
-        except Exception as e:
-            if type(e) in self.known_exceptions:
-                parameters = self.known_exceptions[type(e)]
-                # Update context
-                if catch_exceptions:
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'Trying again.')
-                    for key in parameters:
-                        kwargs[key] *= parameters[key]
-                    return self.main(*args, **kwargs, catch_exceptions=False)
-                else:
-                    # We only allow the capture of one exception
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'ERROR: I already caught one exception, '
-                             'and I can at most catch one.')
-            raise
+        results = self.callback(*args, **kwargs)
+
+        if silence:
+            sys.stdout = _stdout
+
+        return results
 
     def callback(self, *args, **kwargs):
         # This is the main function of an ASRCommand. It takes care of

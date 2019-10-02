@@ -153,9 +153,9 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     data = {'__links__': {}}
                     key_descriptions = {}
 
-                    assert mat_finger.done, \
-                        (f'{folder}: You have to run asr.database.'
-                         'material_fingerprint to collect to a database')
+                    if not mat_finger.done:
+                        mat_finger(silence=True)
+
                     if not Path(atomsname).is_file():
                         continue
 
