@@ -101,9 +101,7 @@ def requires():
 
 def webpanel(row, key_descriptions):
     from asr.browser import table, fig
-    phonontable = table(row, 'Property',
-                        ['c_11', 'c_22', 'c_33', 'c_23', 'c_13', 'c_12',
-                         'minhessianeig'], key_descriptions)
+    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
     panel = {'title': 'Elastic constants and phonons',
              'columns': [[fig('phonons.png')], [phonontable]],
