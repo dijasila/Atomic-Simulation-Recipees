@@ -6,7 +6,7 @@ def webpanel(row, key_descriptions):
     from asr.utils.custom import fig, table
 
     opt = table(row, 'Property', [
-        'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
+        'alphax', 'alphay', 'alphaz',
     ], key_descriptions)
 
     panel = {'title': 'Polarizability (RPA)',

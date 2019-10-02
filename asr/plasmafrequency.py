@@ -29,8 +29,20 @@ def calculate(kptdensity=20):
     calc.write('es_plasma.gpw', 'all')
 
 
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import table
+
+    plasmatable = table(row, 'Property', [
+        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
+
+    panel = {'title': 'Polarizability (RPA)',
+             'columns': [[], [plasmatable]]}
+    return [panel]
+
+
 @command('asr.plasmafrequency',
          requires=['es_plasma.gpw'],
+         webpanel=webpanel,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
@@ -38,6 +50,8 @@ def main(tetra=True):
     """Calculate polarizability"""
     from gpaw.response.df import DielectricFunction
     from ase.io import read
+    import numpy as np
+    from ase.units import Hartree, Bohr
 
     atoms = read('structure.json')
     nd = sum(atoms.pbc)
@@ -61,8 +75,23 @@ def main(tetra=True):
     df.get_polarizability(q_c=[0, 0, 0], direction='x',
                           pbc=[True, True, False],
                           filename=None)
-    plasmafreq_vv = df.chi0.plasmafreq_vv
-    data = {'plasmafreq_vv': plasmafreq_vv}
+    plasmafreq_vv = df.chi0.plasmafreq_vv.real
+    data = {'plasmafreq_vv': plasmafreq_vv,
+            '__key_descriptions__': {'plasmafreq_vv':
+                                     'Plasma frequency tensor [Hartree]'}}
+
+    if nd == 2:
+        wp2_v = np.linalg.eigvalsh(plasmafreq_vv[:2, :2])
+        L = atoms.cell[2, 2] / Bohr
+        plasmafreq_v = (np.sqrt(wp2_v * L / 2) *
+                        Hartree * Bohr**0.5)
+        data['plasmafrequency_x'] = plasmafreq_v[0].real
+        data['plasmafrequency_y'] = plasmafreq_v[1].real
+
+        data['__key_descriptions__']['plasmafrequency_x'] = \
+            'KVP: 2D Plasma frequency, x-direction [eV/Ang^0.5]'
+        data['__key_descriptions__']['plasmafrequency_y'] = \
+            'KVP: 2D Plasma frequency, y-direction [eV/Ang^0.5]'
 
     return data
 

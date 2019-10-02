@@ -72,7 +72,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
            prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
     from asr.core import get_recipes
-    page = []
+    page = {}
     exclude = set()
 
     # Locate all webpanels
@@ -84,9 +84,25 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
         if f'results-{recipe.name}.json' not in row.data:
             continue
         panels = recipe.webpanel(row, key_descriptions)
-        if panels:
-            page.extend(panels)
+        for thispanel in panels:
+            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
+            panel = {'columns': [[], []],
+                     'plot_descriptions': []}
+            panel.update(thispanel)
+            columns = panel['columns']
+            plot_descriptions = panel['plot_descriptions']
+            if len(columns) == 1:
+                columns.extend([])
+            paneltitle = panel['title']
+            if paneltitle in page:
+                pagepanel = panel[paneltitle]
+                pagepanel['columns'][0].extend(columns[0])
+                pagepanel['columns'][1].extend(columns[1])
+                pagepanel['plot_descriptions'].extend(plot_descriptions)
+            else:
+                page[paneltitle] = panel
 
+    page = [panel for _, panel in page.items()]
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
