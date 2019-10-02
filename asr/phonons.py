@@ -106,9 +106,9 @@ def webpanel(row, key_descriptions):
                          'minhessianeig'], key_descriptions)
 
     panel = {'title': 'Elastic constants and phonons',
-             'columns': [[fig('phonons.png')], [phonontable]],
+             'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonons.png']}]}
+                                    'filenames': ['phonon_bs.png']}]}
 
     return [panel]
 
