@@ -166,11 +166,12 @@ def main(mingo=True):
     mineig = np.min(eigs)
 
     results = {'exact_freqs_kl': omega_kl,
+               'q_qc': q_qc,
                'modes_kl': u_kl,
                'minhessianeig': mineig}
 
     # Next calculate an approximate phonon band structure
-    path = atoms.cell.bandpath(npoints=50)
+    path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
     freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl
@@ -215,9 +216,25 @@ def plot_bandstructure(row, fname):
     path = data['path']
     energies = data['interp_freqs_kl']
     bs = BandStructure(path=path,
-                       energies=energies,
+                       energies=energies[None, :, :],
                        reference=0)
     bs.plot()
+
+    exact_indices = []
+    for q_c in data['q_qc']:
+        diff_kc = path.kpts - q_c
+        diff_kc -= np.round(diff_kc)
+        inds = np.argwhere(np.all(np.abs(diff_kc) < 1e-3, 1))
+        exact_indices.extend(inds.tolist())
+
+    en_exact = np.zeros_like(energies) + np.nan
+    for ind in exact_indices:
+        en_exact[ind] = energies[ind]
+
+    bs2 = BandStructure(path=path, energies=en_exact[None])
+    bs2.plot(ax=plt.gca(), ls=None, marker='o', color='k',
+             emin=np.min(energies * 1.1), emax=np.max(energies * 1.1),
+             ylabel='Phonon frequencies [eV]')
     plt.savefig(fname)
     plt.close()
 
