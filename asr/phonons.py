@@ -107,7 +107,7 @@ def webpanel(row, key_descriptions):
 
     panel = {'title': 'Elastic constants and phonons',
              'columns': [[fig('phonons.png')], [phonontable]],
-             'plot_descriptions': [{'function': plot_phonons,
+             'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['phonons.png']}]}
 
     return [panel]
@@ -150,6 +150,7 @@ def main(mingo=True):
             D *= M_inv
             p.D_N = D_N
 
+    # First calculate the exactly known q-points
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
@@ -164,10 +165,16 @@ def main(mingo=True):
     eigs = np.array(eigs)
     mineig = np.min(eigs)
 
-    results = {'omega_kl': omega_kl,
-               'u_kl': u_kl,
+    results = {'exact_freqs_kl': omega_kl,
+               'modes_kl': u_kl,
                'minhessianeig': mineig}
 
+    # Next calculate an approximate phonon band structure
+    path = atoms.cell.bandpath(npoints=50)
+    freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
+                                verbose=False)
+    # results['interp_freqs_kl'] = freqs_kl
+    # results['path'] = path
     results['__key_descriptions__'] = \
         {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
 
@@ -181,7 +188,7 @@ def plot_phonons(row, fname):
     if data is None:
         return
 
-    omega_kl = data['omega_kl']
+    omega_kl = data['exact_freqs_kl']
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
@@ -197,6 +204,20 @@ def plot_phonons(row, fname):
     ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
+
+
+def plot_bandstructure(row, fname):
+    from matplotlib import pyplot as plt
+    from ase.dft.band_structure import BandStructure
+    data = row.data.get('results-asr.phonons.json')
+    path = data['path']
+    energies = data['interp_freqs_kl']
+    bs = BandStructure(path=path,
+                       energies=energies,
+                       reference=0)
+    bs.plot()
     plt.savefig(fname)
     plt.close()
 

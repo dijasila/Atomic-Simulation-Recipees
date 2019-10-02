@@ -163,7 +163,8 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     atoms = read(atomsname)
                     data[atomsname] = read_json(atomsname)
                     for filename in Path('.').glob('results-asr.*.json'):
-                        tmpkvp, tmpkd, tmpdata, tmplinks = collect(filename)
+                        tmpkvp, tmpkd, tmpdata, tmplinks = \
+                            collect(str(filename))
                         if tmpkvp or tmpkd or tmpdata or tmplinks:
                             kvp.update(tmpkvp)
                             data.update(tmpdata)

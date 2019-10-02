@@ -7,7 +7,30 @@ tests = [{'cli': ['ase build -x diamond Si structure.json',
                   'asr run stiffness']}]
 
 
+def webpanel(row, key_descriptions):
+    def matrixtable(M, digits=2, unit=''):
+        table = M.tolist()
+        shape = M.shape
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                value = table[i][j]
+                table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
+        return table
+
+    c_ij = row.data['results-asr.stiffness.json']['stiffness_tensor']
+
+    ctable = dict(
+        type='table',
+        rows=matrixtable(c_ij, unit=' N/m'))
+
+    panel = {'title': 'Stiffness tensor',
+             'columns': [[ctable]]}
+
+    return [panel]
+
+
 @command(module='asr.stiffness',
+         webpanel=webpanel,
          tests=tests)
 @option('--strain-percent', help='Magnitude of applied strain')
 def main(strain_percent=1.0):
