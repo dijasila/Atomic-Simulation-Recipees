@@ -103,10 +103,10 @@ def webpanel(row, key_descriptions):
     from asr.browser import table, fig
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    panel = {'title': 'Elastic constants and phonons',
-             'columns': [[fig('phonons.png')], [phonontable]],
+    panel = {'title': 'Phonon bandstructure',
+             'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonons.png']}]}
+                                    'filenames': ['phonon_bs.png']}]}
 
     return [panel]
 
