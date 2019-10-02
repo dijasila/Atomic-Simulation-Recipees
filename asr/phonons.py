@@ -218,7 +218,7 @@ def plot_bandstructure(row, fname):
     bs = BandStructure(path=path,
                        energies=energies[None, :, :],
                        reference=0)
-    bs.plot()
+    bs.plot(label='Interpolated')
 
     exact_indices = []
     for q_c in data['q_qc']:
@@ -232,9 +232,10 @@ def plot_bandstructure(row, fname):
         en_exact[ind] = energies[ind]
 
     bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(ax=plt.gca(), ls=None, marker='o', color='k',
+    bs2.plot(ax=plt.gca(), ls='', marker='o', color='k',
              emin=np.min(energies * 1.1), emax=np.max(energies * 1.1),
-             ylabel='Phonon frequencies [eV]')
+             ylabel='Phonon frequencies [eV]', label='Exact')
+    plt.tight_layout()
     plt.savefig(fname)
     plt.close()
 
