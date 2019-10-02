@@ -1,14 +1,14 @@
 from asr.core import command, option
 
-
-
 # TODO Resources?
-@command('asr.emasses@refine',
+@command('asr.emasses',
          requires=['gs.gpw'],
-         dependencies=['asr.gs', 'asr.structureinfo'],
+         dependencies=['asr.gs@calculate', 'asr.structureinfo'],
          creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
                    'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
-def refine():
+@option('--gpwfilename', type=str,
+        help='GS Filename')
+def refine(gpwfilename='gs.gpw'):
     '''
     Take a bandstructure and calculate more kpts around
     the vbm and cbm
@@ -24,16 +24,16 @@ def refine():
                                        optimal_spin_direction=True)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
-        name = get_name(soc=soc, bt=bt)
-        gpw2 = name + '.gpw'
-            
-        if not gap > 0:
-            from gpaw.mpi import rank
-            if rank == 0:
-                with open(name, "w+") as f:
-                    f.write("0")
-            continue
         for bt in ['vb', 'cb']:
+            name = get_name(soc=soc, bt=bt)
+            gpw2 = name + '.gpw'
+            
+            if not gap > 0:
+                from gpaw import GPAW
+                calc = GPAW(gpwfilename, txt=None)
+                calc.write(gpw2)
+                continue
+
             nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
             
             
@@ -65,9 +65,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
     # Check that 1D: Only x-axis, 2D: Only x- and y-axis
-    assert np.allclose(calc.atoms.pbc[ndim:], 0)
-    if ndim == 1:
-        raise NotImplementedError("Recipe not implemented for 1D")
+    #assert np.allclose(calc.atoms.pbc[ndim:], 0)
 
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
@@ -79,6 +77,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
 
     _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                             output=None)
+
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
 
@@ -98,28 +97,33 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
 
-    # zfactor and yfactor are used to kill contributions from
-    # "inert" coordinates in 2 and 1-D
-    if dimensionality == 2:
-        zfactor = 0
-        yfactor = 1
-    elif dimensionality == 1:
-        zfactor = 0
-        yfactor = 0
-    else:
-        zfactor = 1
-        yfactor = 1
-
     a = np.linspace(-1, 1, npoints)
     X, Y, Z = np.meshgrid(a, a, a)
-    indices = X**2 + yfactor * Y**2 + zfactor * Z**2 <= 1
+
+    na = np.logical_and
+    if dimensionality == 2:
+        indices = na(X**2 + Y**2 <= 1.0, Z == 0)
+    elif dimensionality == 1:
+        indices = na(Z**2 <= 1.0, na(X == 0, Y == 0))
+    else:
+        indices = X**2 + Y**2 + Z**2 <= 1.0
+        
     x, y, z = X[indices], Y[indices], Z[indices]
-    kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
+    kpts_kv = np.vstack([x, y, z]).T
     kr = np.sqrt(2 * m * erange / Hartree)
     kpts_kv *= kr
     kpts_kv /= Bohr
     kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
     return kpts_kc
+
+    # print(kpts_kv)
+
+    # a = np.linspace(-1, 1, npoints)
+    # X, Y, Z = np.meshgrid(a, a, a)
+    # indices = X**2 + Y**2 + Z**2 <= 1.0
+    # sh = X.shape
+    # x, y, z = X[indices], Y[indices], Z[indices]
+    # kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
 
 def get_bt_ks(bandtype, k1_c, k2_c):
     if bandtype is None:
@@ -134,14 +138,25 @@ def get_bt_ks(bandtype, k1_c, k2_c):
     return bandtypes, ks
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import table
+
+    t = table(row, 'Postprocessing',
+              ['cb_emass', 'vb_emass'],
+              key_descriptions)
+    
+    panel = ('Effective masses', [[t]])
+    return panel, None
+
+
 # TODO Resources?
 @command('asr.emasses',
          requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'],
-         dependencies=['asr.emasses@refine'],
+                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw', 'gs.gpw'],
+         dependencies=['asr.emasses@refine', 'asr.gs@calculate'],
          webpanel=webpanel)
-# @option('--gpwfilename', type=str,
-#         help='GS Filename')
+@option('--gpwfilename', type=str,
+         help='GS Filename')
 def main(gpwfilename='gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -428,15 +443,6 @@ def collect_data(atoms):
     return kvp, key_descriptions, all_data
 
 
-def webpanel(row, key_descriptions):
-    from asr.browser import table
-
-    t = table(row, 'Postprocessing',
-              ['cb_emass', 'vb_emass'],
-              key_descriptions)
-    
-    panel = ('Effective masses', [[t]])
-    return panel, None
 
 
 # def webpanel(row, key_descriptions):
