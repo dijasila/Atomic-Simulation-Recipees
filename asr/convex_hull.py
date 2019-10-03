@@ -12,8 +12,35 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import fig, table
+    
+    print('In hull webpanel')
+    prefix = key_descriptions.get('prefix', '')
+    if 'c2db-' in prefix:  # make sure links to other rows just works!
+        projectname = 'c2db'
+    else:
+        projectname = 'default'
+
+    
+    hulltable1 = table(row, 'Property',
+                       ['hform', 'ehull', 'minhessianeig'],
+                       key_descriptions)
+    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
+
+    panel = {'title': 'Stability',
+             'columns': [[fig('convex_hull.png')],
+                        [hulltable1, hulltable2, hulltable3]],
+             'plot_descriptions': [{'function': plot,
+                                    'filenames': ['convex_hull.png']}]}
+    
+    return [panel]
+
+
 @command('asr.convex_hull',
-         dependencies=['asr.structureinfo', 'asr.gs'])
+         requires=['gs.gpw'],
+         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
+         webpanel=webpanel)
 @option('-r', '--references', type=str,
         help='Reference database.')
 @option('-d', '--database', type=str,
@@ -126,19 +153,23 @@ def select_references(db, symbols):
     return list(refs.values())
 
 
-def plot(row, fname):
+def plot(row, filename):
     from ase.phasediagram import PhaseDiagram, parse_formula
     import matplotlib.pyplot as plt
-
-    data = row.data.convex_hull
-
-    count = row.count_atoms()
-    if not (2 <= len(count) <= 3):
+    print('in hull plot') 
+    data = row.data.get('results-asr.convex_hull.json') 
+    if not data:
         return
 
+    count = row.count_atoms()
+    #print('count', count, 'len', len(count))
+    if not (2 <= len(count) <= 3):
+        return
+ 
+    #print('aaaaa')
     refs = data['references']
     pd = PhaseDiagram(refs, verbose=False)
-
+    
     fig = plt.figure()
     ax = fig.gca()
 
@@ -155,7 +186,7 @@ def plot(row, fname):
         A, B = pd.symbols
         ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
-        label = '2D'
+        label = '1D'
         ymin = e.min()
         for y, formula, prot, magstate, uid in links:
             count = parse_formula(formula)[0]
@@ -178,8 +209,8 @@ def plot(row, fname):
         for a, b, name in zip(x, y, names):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
-        label = '2D'
-        for e, formula, prot, magstate, id, uid in links:
+        label = '1D' 
+        for e, formula, prot, magstate, uid in links: 
             count = parse_formula(formula)[0]
             x = count.get(B, 0) / sum(count.values())
             y = count.get(C, 0) / sum(count.values())
@@ -195,7 +226,7 @@ def plot(row, fname):
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig(fname)
+    plt.savefig(filename)
     plt.close()
 
 
@@ -203,7 +234,7 @@ def convex_hull_tables(row: AtomsRow,
                        project: str = 'c2db',
                        ) -> List[Dict[str, Any]]:
     from ase.symbols import string2symbols
-    data = row.data.convex_hull
+    data = row.data.get('results-asr.convex_hull.json')
 
     links = data.get('links', [])
     rows = []
@@ -214,7 +245,7 @@ def convex_hull_tables(row: AtomsRow,
             name = '<a href="/{}/row/{}">{}</a>'.format(project, uid, name)
         rows.append([name, '{:.3f} eV/atom'.format(e)])
 
-    refs = data.references
+    refs = data['references']
     bulkrows = []
     for formula, e in refs:
         e /= len(string2symbols(formula))
@@ -228,33 +259,6 @@ def convex_hull_tables(row: AtomsRow,
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
              'rows': bulkrows}]
-
-
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
-
-    if 'convex_hull' not in row.data:
-        return (), ()
-
-    prefix = key_descriptions.get('prefix', '')
-    if 'c2db-' in prefix:  # make sure links to other rows just works!
-        projectname = 'c2db'
-    else:
-        projectname = 'default'
-
-    hulltable1 = table(row,
-                       'Property',
-                       ['hform', 'ehull', 'minhessianeig'],
-                       key_descriptions)
-    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
-
-    panel = ('Stability',
-             [[fig('convex-hull.png')],
-              [hulltable1, hulltable2, hulltable3]])
-
-    things = [(plot, ['convex-hull.png'])]
-
-    return panel, things
 
 
 if __name__ == '__main__':

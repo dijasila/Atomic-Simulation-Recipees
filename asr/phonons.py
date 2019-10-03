@@ -1,18 +1,15 @@
 from pathlib import Path
-
 import numpy as np
-
 from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
-
 from asr.utils import command, option
 
 
 def creates():
     atoms = read('structure.json')
     natoms = len(atoms)
-    filenames = []
+    filenames = ['phonon.eq.pckl']
     for a in range(natoms):
         for v in 'xyz':
             for pm in '+-':
@@ -38,7 +35,7 @@ def tofile(filename, contents):
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          creates=creates,
          todict={'.pckl': todict})
 @option('-n', help='Supercell size')
@@ -91,8 +88,24 @@ def requires():
     return creates() + ['results-asr.phonons@calculate.json']
 
 
+def webpanel(row, key_descriptions):
+    from asr.utils.custom import table, fig
+    print('in phonons webpanel')
+    phonontable = table(row, 'Property',
+                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
+                         'minhessianeig'], key_descriptions)
+
+    panel = {'title': 'Elastic constants and phonons',
+             'columns': [[fig('phonons.png')], [phonontable]],
+             'plot_descriptions': [{'function': plot,
+                                    'filenames': ['phonons.png']}]}
+
+    return [panel]
+
+
 @command('asr.phonons',
          requires=requires,
+         webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
 def main():
     from asr.utils import read_json
@@ -111,23 +124,36 @@ def main():
     p.read()
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
-    omega_kl, u_kl = out
+    omega_kl, u_klav = out
     results = {'omega_kl': omega_kl,
                'u_kl': u_kl}
 
     return results
 
 
-def plot_phonons(row, fname):
+def plot(row, filename):
     import matplotlib.pyplot as plt
+    print('in phonon plot')
 
-    freqs = row.data.get('phonon_frequencies_3d')
-    if freqs is None:
-        return
 
-    gamma = freqs[0]
+    gamma = []
+    atoms = row.toatoms()
+    data=row.data['results-asr.phonons.json']
+    omega_kl = data['omega_kl']
+    u_kl = data['u_kl']
+
+    for l in range(3*len(atoms)):
+         print('mode:', l+1)
+         modsum = np.linalg.norm(u_kl[0,l].sum(axis=-2))
+         summod = np.linalg.norm(u_kl[0,l],axis=-1).sum()
+         print(omega_kl[0,l], modsum/summod)
+         if abs(modsum/summod-1) >= 0.01:
+             gamma.append(omega_kl[0,l])
+
+    gamma = np.array(gamma)
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
+    gamma = np.array(gamma)
 
     x0 = -0.0005  # eV
     for x, color in [(gamma[gamma < x0], 'r'),
@@ -140,25 +166,10 @@ def plot_phonons(row, fname):
     ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
-    plt.savefig(fname)
+    #print('saving to file', filename)
+    plt.savefig(filename)
     plt.close()
 
-
-def webpanel(row, key_descriptions):
-    from asr.utils.custom import table, fig
-    phonontable = table(row, 'Property',
-                        ['c_11', 'c_22', 'c_12', 'bulk_modulus',
-                         'minhessianeig'], key_descriptions)
-
-    panel = ('Elastic constants and phonons',
-             [[fig('phonons.png')], [phonontable]])
-    things = [(plot_phonons, ['phonons.png'])]
-
-    return panel, things
-
-
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
 
 if __name__ == '__main__':
     main.cli()

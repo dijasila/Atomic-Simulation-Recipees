@@ -26,7 +26,7 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def is_relax_done(atoms, fmax=0.01, smax=0.002,
+def is_relax_done(atoms, fmax=0.05, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
     s = atoms.get_stress() * smask
@@ -276,7 +276,7 @@ known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
 @option('--readout_charge', help='Read out chargestate from params.json')
 @option('--fmax', help='Maximum atomic force')
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True,
-         width=0.05, fmax=0.01, readout_charge=False):
+         width=0.05, fmax=0.05, readout_charge=False):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in 'unrelaxed.json'

@@ -54,6 +54,7 @@ def calculate(ecut=800, xc='PBE', kptdensity=12.0,
             'density': kptdensity,
             'gamma': True
         },
+        nbands=-10,
         occupations={'name': 'fermi-dirac', 'width': width},
         convergence={'bands': -3},
         txt='gs.txt',
@@ -64,6 +65,8 @@ def calculate(ecut=800, xc='PBE', kptdensity=12.0,
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         params['poissonsolver'] = {'dipolelayer': 'xy'}
+    elif nd == 1:
+        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     calc = get_calculator()(**params)
 

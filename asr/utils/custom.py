@@ -86,7 +86,9 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
         if panels:
             page.extend(panels)
 
+   
     # Sort sections if they have a sort key
+    #print(page)
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
@@ -94,7 +96,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     misc_panel = {'title': misc_title,
                   'columns': misc_columns}
     page.append(misc_panel)
-
+    #print(misc_panel)
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
     for panel in page:
@@ -104,6 +106,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     missing = set()  # missing figures
     for desc in plot_descriptions:
         function = desc['function']
+        #print(function)
         filenames = desc['filenames']
         paths = [Path(prefix + filename) for filename in filenames]
         for path in paths:
