@@ -19,7 +19,7 @@ def webpanel(row, key_descriptions):
 @option('--name', type=str)
 @option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity')
-def main(name='dos.gpw', filename='dos.json', kptdensity=50.0):
+def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
     """Calculate DOS"""
     from pathlib import Path
     from gpaw import GPAW
