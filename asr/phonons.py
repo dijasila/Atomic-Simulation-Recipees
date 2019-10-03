@@ -166,7 +166,6 @@ def plot_phonons(row, filename):
     ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
-    #print('saving to file', filename)
     plt.savefig(filename)
     plt.close()
 
