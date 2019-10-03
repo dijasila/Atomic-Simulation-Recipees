@@ -133,7 +133,6 @@ def main():
 
 def plot_phonons(row, filename):
     import matplotlib.pyplot as plt
-    print('in phonon plot')
 
 
     gamma = []

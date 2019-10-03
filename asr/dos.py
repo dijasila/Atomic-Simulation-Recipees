@@ -3,7 +3,6 @@ from asr.core import command, option
 
 def webpanel(row, key_descriptions):
     from asr.utils.custom import fig
-    print('In dos webpanel')
     panel = {'title': 'Density of states (PBE)',
              'columns': [[fig('dos.png')]],
              'plot_descriptions': [{'function': plot,
@@ -63,7 +62,6 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     import json
     import matplotlib.pyplot as plt
     import numpy as np
-    print('In dos plot')
     dos = None
         
     # Get data from row
@@ -82,7 +80,6 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
     plt.ylabel(r'DOS (states / (eV Å$^3$)')
     plt.tight_layout()
-    #print('saving to file', filename)
     plt.savefig(filename)
     if show:
         plt.show()
