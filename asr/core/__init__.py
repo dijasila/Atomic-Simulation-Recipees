@@ -197,7 +197,10 @@ class ASRCommand:
         # Setup the CLI
         self.setup_cli()
 
-    def get_known_exceptions(self):
+        self.__doc__ = self._main.__doc__
+
+    @property
+    def known_exceptions(self):
         if callable(self._known_exceptions):
             return self._known_exceptions()
         return self._known_exceptions
@@ -263,7 +266,38 @@ class ASRCommand:
         cc = click.command
         co = click.option
 
-        help = self._main.__doc__ or ''
+        def clickify_docstring(doc):
+            if doc is None:
+                return
+            doc_n = doc.split('\n')
+            clickdoc = []
+            skip = False
+            for i, line in enumerate(doc_n):
+                if skip:
+                    skip = False
+                    continue
+                lspaces = len(line) - len(line.lstrip(' '))
+                spaces = ' ' * lspaces
+                bb = spaces + '\b'
+                if line.endswith('::'):
+                    skip = True
+
+                    if not doc_n[i - 1].strip(' '):
+                        clickdoc.pop(-1)
+                        clickdoc.extend([bb, line, bb])
+                    else:
+                        clickdoc.extend([line, bb])
+                elif ('-' in line and
+                      (spaces + '-' * (len(line) - lspaces)) == line):
+                    clickdoc.insert(-1, bb)
+                    clickdoc.append(line)
+                else:
+                    clickdoc.append(line)
+            doc = '\n'.join(clickdoc)
+
+            return doc
+
+        help = clickify_docstring(self._main.__doc__) or ''
 
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
@@ -421,94 +455,6 @@ class ASRCommand:
         exeinfo['__versions__'] = versions
 
         return exeinfo
-
-    def collect(self):
-        import re
-        kvp = {}
-        key_descriptions = {}
-        data = {}
-
-        resultfile = f'results-{self.name}.json'
-        results = read_json(resultfile)
-        msg = f'{self.name}: You cannot put a {resultfile} in data'
-        assert resultfile not in data, msg
-        data[resultfile] = results
-
-        extra_files = results.get('__requires__', {})
-        extra_files.update(results.get('__creates__', {}))
-        if extra_files:
-            for filename, checksum in extra_files.items():
-                if filename in data:
-                    continue
-                file = Path(filename)
-                if not file.is_file():
-                    print(f'Warning: Required file {filename}'
-                          ' doesn\'t exist')
-
-                filetype = file.suffix
-                if filetype == '.json':
-                    dct = read_json(filename)
-                elif self.todict and filetype in self.todict:
-                    dct = self.todict[filetype](filename)
-                    dct['__md5__'] = md5sum(filename)
-                else:
-                    dct = {'pointer': str(file.absolute()),
-                           '__md5__': md5sum(filename)}
-                data[filename] = dct
-
-        # Parse key descriptions to get long,
-        # short, units and key value pairs
-        if '__key_descriptions__' in results:
-            tmpkd = {}
-
-            for key, desc in results['__key_descriptions__'].items():
-                descdict = {'type': None,
-                            'iskvp': False,
-                            'shortdesc': '',
-                            'longdesc': '',
-                            'units': ''}
-                if isinstance(desc, dict):
-                    descdict.update(desc)
-                    tmpkd[key] = desc
-                    continue
-
-                assert isinstance(desc, str), \
-                    'Key description has to be dict or str.'
-                # Get key type
-                desc, *keytype = desc.split('->')
-                if keytype:
-                    descdict['type'] = keytype
-
-                # Is this a kvp?
-                iskvp = desc.startswith('KVP:')
-                descdict['iskvp'] = iskvp
-                desc = desc.replace('KVP:', '').strip()
-
-                # Find units
-                m = re.search(r"\[(\w+)\]", desc)
-                unit = m.group(1) if m else ''
-                if unit:
-                    descdict['units'] = unit
-                desc = desc.replace(f'[{unit}]', '').strip()
-
-                # Find short description
-                m = re.search(r"\((\w+)\)", desc)
-                shortdesc = m.group(1) if m else ''
-
-                # The results is the long description
-                longdesc = desc.replace(f'({shortdesc})', '').strip()
-                if longdesc:
-                    descdict['longdesc'] = longdesc
-                tmpkd[key] = descdict
-
-            for key, desc in tmpkd.items():
-                key_descriptions[key] = \
-                    (desc['shortdesc'], desc['longdesc'], desc['units'])
-
-                if key in results and desc['iskvp']:
-                    kvp[key] = results[key]
-
-        return kvp, key_descriptions, data
 
 
 def command(*args, **kwargs):

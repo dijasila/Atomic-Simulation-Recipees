@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.dos')
@@ -87,7 +87,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig
+    from asr.browser import fig
 
     panel = ('Density of states (PBE)',
              [[fig('dos.png')], []])

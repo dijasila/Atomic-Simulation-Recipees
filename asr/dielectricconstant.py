@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 from click import Choice
 
 
@@ -22,7 +22,7 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     Rev. B 86, 045112 (2012)).
     """
     from ase.io import read
-    from asr.utils import write_json
+    from asr.core import write_json
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
@@ -143,7 +143,7 @@ def postprocessing():
     """Extract data from dielectricconstant.json.
 
     This will be called after main by default."""
-    from asr.utils import read_json
+    from asr.core import read_json
     results = read_json('dielectricconstant.json')
     results['__key_descriptions__'] = {
         'local_field': 'Static dielectric constant with local field '

@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 group = 'property'
@@ -34,8 +34,8 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     also executed.
     """
     from ase.io import read
-    from asr.utils import write_json, read_json
-    # from gpaw import GPAW
+    from asr.core import write_json, read_json
+    from gpaw import GPAW
     from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
@@ -105,7 +105,7 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
 def check_and_get_general_inputs():
     """Checks if all necessary input files and input parameters for this
     recipe are acessible"""
-    from asr.utils import read_json
+    from asr.core import read_json
 
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
     # 'dielectricconstant.json' of the pristine system
@@ -393,7 +393,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
 
 
 # def webpanel(row, key_descriptions):
-#    from asr.utils.custom import fig, table
+#    from asr.browser import fig, table
 #
 #    if 'something' not in row.data:
 #        return None, []

@@ -1,7 +1,7 @@
 """Template recipe."""
 import json
 from pathlib import Path
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.something')

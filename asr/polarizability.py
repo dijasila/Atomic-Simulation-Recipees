@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 from click import Choice
 
 
@@ -250,7 +250,7 @@ def polarizability(row, fx, fy, fz):
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
 
     opt = table(row, 'Property', [
         'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
