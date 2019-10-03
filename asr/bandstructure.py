@@ -43,17 +43,18 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
 
     atoms = read('gs.gpw')
 
-    if nd == 2:
+    if nd == 1:
+        assert not atoms.pbc[0] and not atoms.pbc[1]
+        Z = np.array([0.5, 0, 0])
+        path={'path': [-Z,Z], 'npoints':npoints}
+
+    else
         assert not atoms.get_pbc()[2], \
         if kptpath is None:
              path = atoms.cell.bandpath(npoints=npoints)
          else:
              path = atoms.cell.bandpath(path=kptpath, npoints=npoints)         
 
-    elif nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
-        Z = np.array([0.5, 0, 0])
-        path=[-Z,Z]    
 
     convbands = emptybands // 2
 
@@ -62,7 +63,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
-        'kpts': {'path': [-Z, Z], 'npoints': npoints},
+        'kpts': path,
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
