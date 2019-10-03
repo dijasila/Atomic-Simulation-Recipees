@@ -124,7 +124,7 @@ def main():
     p.read()
     q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
-    omega_kl, u_klav = out
+    omega_kl, u_kl = out
     results = {'omega_kl': omega_kl,
                'u_kl': u_kl}
 
