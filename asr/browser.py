@@ -95,7 +95,7 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
                 columns.extend([])
             paneltitle = panel['title']
             if paneltitle in page:
-                pagepanel = panel[paneltitle]
+                pagepanel = page[paneltitle]
                 pagepanel['columns'][0].extend(columns[0])
                 pagepanel['columns'][1].extend(columns[1])
                 pagepanel['plot_descriptions'].extend(plot_descriptions)
