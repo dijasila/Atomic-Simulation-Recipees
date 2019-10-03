@@ -123,6 +123,8 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     # We convert the page into ASE format
     asepage = []
     for panel in page:
+        if 'title' not in page:
+            continue
         asepage.append((panel['title'], panel['columns']))
 
     def ok(block):
