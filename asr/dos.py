@@ -1,4 +1,4 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 def webpanel(row, key_descriptions):
@@ -88,6 +88,21 @@ def plot(row=None, filename='dos.png', file=None, show=False):
         plt.show()
     return plt.gca()
 
+
+def webpanel(row, key_descriptions):
+    from asr.browser import fig
+
+    panel = ('Density of states (PBE)',
+             [[fig('dos.png')], []])
+
+    things = [(plot, ['dos.png'])]
+
+    return panel, things
+
+
+group = 'property'
+dependencies = ['asr.structureinfo', 'asr.gs']
+creates = ['dos.json']
 
 if __name__ == '__main__':
     main.cli()

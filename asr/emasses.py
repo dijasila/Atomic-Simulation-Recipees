@@ -1,5 +1,6 @@
 from asr.core import command, option
 
+
 # TODO Resources?
 @command('asr.emasses',
          requires=['gs.gpw'],
@@ -443,6 +444,15 @@ def collect_data(atoms):
     return kvp, key_descriptions, all_data
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import table
+
+    t = table(row, 'Postprocessing',
+              ['cb_emass', 'vb_emass'],
+              key_descriptions)
+    
+    panel = ('Effective masses', [[t]])
+    return panel, None
 
 
 # def webpanel(row, key_descriptions):

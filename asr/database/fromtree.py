@@ -1,4 +1,95 @@
-from asr.utils import command, option, argument, chdir
+from asr.core import command, option, argument, chdir
+
+
+def collect(recipe):
+    import re
+    from pathlib import Path
+    from asr.core import read_json, md5sum
+    kvp = {}
+    key_descriptions = {}
+    data = {}
+
+    resultfile = f'results-{recipe.name}.json'
+    results = read_json(resultfile)
+    msg = f'{recipe.name}: {resultfile} already in data'
+    assert resultfile not in data, msg
+    data[resultfile] = results
+
+    extra_files = results.get('__requires__', {})
+    extra_files.update(results.get('__creates__', {}))
+    if extra_files:
+        for filename, checksum in extra_files.items():
+            if filename in data:
+                continue
+            file = Path(filename)
+            if not file.is_file():
+                print(f'Warning: Required file {filename}'
+                      ' doesn\'t exist')
+
+            filetype = file.suffix
+            if filetype == '.json':
+                dct = read_json(filename)
+            elif recipe.todict and filetype in recipe.todict:
+                dct = recipe.todict[filetype](filename)
+                dct['__md5__'] = md5sum(filename)
+            else:
+                dct = {'pointer': str(file.absolute()),
+                       '__md5__': md5sum(filename)}
+            data[filename] = dct
+
+    # Parse key descriptions to get long,
+    # short, units and key value pairs
+    if '__key_descriptions__' in results:
+        tmpkd = {}
+
+        for key, desc in results['__key_descriptions__'].items():
+            descdict = {'type': None,
+                        'iskvp': False,
+                        'shortdesc': '',
+                        'longdesc': '',
+                        'units': ''}
+            if isinstance(desc, dict):
+                descdict.update(desc)
+                tmpkd[key] = desc
+                continue
+
+            assert isinstance(desc, str), \
+                'Key description has to be dict or str.'
+            # Get key type
+            desc, *keytype = desc.split('->')
+            if keytype:
+                descdict['type'] = keytype
+
+            # Is this a kvp?
+            iskvp = desc.startswith('KVP:')
+            descdict['iskvp'] = iskvp
+            desc = desc.replace('KVP:', '').strip()
+
+            # Find units
+            m = re.search(r"\[(\w+)\]", desc)
+            unit = m.group(1) if m else ''
+            if unit:
+                descdict['units'] = unit
+            desc = desc.replace(f'[{unit}]', '').strip()
+
+            # Find short description
+            m = re.search(r"\((\w+)\)", desc)
+            shortdesc = m.group(1) if m else ''
+
+            # The results is the long description
+            longdesc = desc.replace(f'({shortdesc})', '').strip()
+            if longdesc:
+                descdict['longdesc'] = longdesc
+            tmpkd[key] = descdict
+
+        for key, desc in tmpkd.items():
+            key_descriptions[key] = \
+                (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+            if key in results and desc['iskvp']:
+                kvp[key] = results[key]
+
+    return kvp, key_descriptions, data
 
 
 @command('asr.database.fromtree',
@@ -18,10 +109,9 @@ def main(folders, selectrecipe=None, level=2, data=True,
     import os
     from ase.db import connect
     from ase.io import read
-    from asr.utils import get_recipes, get_dep_tree
+    from asr.core import get_recipes, get_dep_tree
     import glob
     from pathlib import Path
-    from asr.utils import md5sum
 
     if not folders:
         folders = ['.']
@@ -44,18 +134,14 @@ def main(folders, selectrecipe=None, level=2, data=True,
                          item_show_func=item_show_func) as bar:
             for folder in bar:
                 with chdir(folder):
-                    # print(folder, end=':\n')
                     kvp = {}
                     data = {}
                     key_descriptions = {}
 
                     if not Path(atomsname).is_file():
-                        # print(f'{folder} doesn\'t contain '
-                        #       f'{atomsname}. Skipping.')
                         continue
 
                     # The atomic structure uniquely defines the folder
-                    kvp['asr_id'] = md5sum(atomsname)
                     atoms = read(atomsname)
                     if selectrecipe:
                         recipes = get_dep_tree(selectrecipe)
@@ -65,8 +151,8 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     for recipe in recipes:
                         if not recipe.done:
                             continue
-                        # print(f'Collecting {recipe.name}')
-                        tmpkvp, tmpkd, tmpdata = recipe.collect()
+
+                        tmpkvp, tmpkd, tmpdata = collect(recipe)
                         if tmpkvp or tmpkd or tmpdata:
                             kvp.update(tmpkvp)
                             data.update(tmpdata)

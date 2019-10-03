@@ -1,4 +1,31 @@
-from asr.utils import command, option
+from asr.core import command, option
+
+tests = []
+tests.append({'description': 'Test band structure of Si.',
+              'name': 'asr.bandstructure_Si',
+              'tags': ['gitlab-ci'],
+              'cli': ['asr run "setup.materials -s Si2"',
+                      'ase convert materials.json structure.json',
+                      'asr run "setup.params '
+                      'asr.gs@calculate:ecut 200 '
+                      'asr.gs@calculate:kptdensity 2.0 '
+                      'asr.bandstructure@calculate:npoints 50 '
+                      'asr.bandstructure@calculate:emptybands 5"',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"']})
+tests.append({'description': 'Test band structure of 2D-BN.',
+              'name': 'asr.bandstructure_2DBN',
+              'cli': ['asr run "setup.materials -s BN,natoms=2"',
+                      'ase convert materials.json structure.json',
+                      'asr run "setup.params '
+                      'asr.gs@calculate:ecut 300 '
+                      'asr.gs@calculate:kptdensity 2.0 '
+                      'asr.bandstructure@calculate:npoints 50 '
+                      'asr.bandstructure@calculate:emptybands 5"',
+                      'asr run bandstructure',
+                      'asr run database.fromtree',
+                      'asr run "browser --only-figures"']})
 
 
 @command('asr.bandstructure',
@@ -683,6 +710,152 @@ def bz_soc(row, fname):
     lat = cell.get_bravais_lattice()
     lat.plot_bz()
     plt.savefig(fname)
+
+
+def webpanel(row, key_descriptions):
+    from asr.browser import fig, table
+    from typing import Tuple, List
+
+    def rmxclabel(d: 'Tuple[str, str, str]',
+                  xcs: List) -> 'Tuple[str, str, str]':
+        def rm(s: str) -> str:
+            for xc in xcs:
+                s = s.replace('({})'.format(xc), '')
+            return s.rstrip()
+
+        return tuple(rm(s) for s in d)
+
+    xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
+    key_descriptions_noxc = {
+        k: rmxclabel(d, xcs)
+        for k, d in key_descriptions.items()
+    }
+
+    if row.get('gap', 0) > 0.0:
+        if row.get('evacdiff', 0) > 0.02:
+            pbe = table(
+                row,
+                'Property', [
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
+                    'D_cbm', 'dipz', 'evacdiff'
+                ],
+                kd=key_descriptions_noxc)
+        else:
+            pbe = table(
+                row,
+                'Property', [
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
+                    'D_cbm'
+                ],
+                kd=key_descriptions_noxc)
+    else:
+        if row.get('evacdiff', 0) > 0.02:
+            pbe = table(
+                row,
+                'Property', [
+                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
+                    'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
+                ],
+                kd=key_descriptions_noxc)
+        else:
+            pbe = table(
+                row,
+                'Property', [
+                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
+                    'cbm', 'D_vbm', 'D_cbm'
+                ],
+                kd=key_descriptions_noxc)
+
+    panel = {'title': 'Electronic band structure (PBE)',
+             'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
+                         # fig('pbe-pdos.png', link='empty'),
+                         [fig('bz.png'), pbe]],
+             'plot_descriptions': [{'function': bz_soc,
+                                    'filenames': ['bz.png']},
+                                   {'function': bs_pbe,
+                                    'filenames': ['pbe-bs.png']},
+                                   {'function': bs_pbe_html,
+                                    'filenames': ['pbe-bs.html']}]}
+    return [panel]
+
+
+@command('asr.bandstructure',
+         requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
+                   'results-asr.structureinfo.json'],
+         dependencies=['asr.bandstructure@calculate', 'asr.gs',
+                       'asr.structureinfo'],
+         webpanel=webpanel)
+def main():
+    from gpaw import GPAW
+    from ase.dft.band_structure import get_band_structure
+    from ase.dft.kpoints import BandPath
+    from asr.core import read_json
+    import copy
+    import numpy as np
+    from asr.utils.gpw2eigs import gpw2eigs
+
+    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
+    calc = GPAW('bs.gpw', txt=None)
+    atoms = calc.atoms
+    path = calc.parameters.kpts
+    if 'kpts' in path:
+        # In this case path comes from a bandpath object
+        path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                        special_points=path['special_points'],
+                        path=path['labelseq'])
+    else:
+        path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
+                                        path=path['path'],
+                                        npoints=path['npoints'])
+    bs = get_band_structure(calc=calc, path=path, reference=ref)
+
+    results = {}
+    bsresults = bs.todict()
+
+    # Save Fermi levels
+    gsresults = read_json('results-asr.gs.json')
+    efermi_nosoc = gsresults['gaps_nosoc']['efermi']
+    bsresults['efermi'] = efermi_nosoc
+
+    # We copy the bsresults dict because next we will add SOC
+    results['bs_nosoc'] = copy.deepcopy(bsresults)  # BS with no SOC
+
+    # Add spin orbit correction
+    bsresults = bs.todict()
+
+    e_km, _, s_kvm = gpw2eigs(
+        'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+    bsresults['energies'] = e_km.T
+    efermi = gsresults['gaps_soc']['efermi']
+    bsresults['efermi'] = efermi
+
+    # Get spin projections for coloring of bandstructure
+    path = bsresults['path']
+    npoints = len(path.kpts)
+    s_mvk = np.array(s_kvm.transpose(2, 1, 0))
+    if s_mvk.ndim == 3:
+        sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
+    else:
+        sz_mk = s_mvk
+
+    assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
+
+    from gpaw.symmetry import atoms2symmetry
+    op_scc = atoms2symmetry(atoms).op_scc
+
+    magstate = read_json('results-asr.structureinfo.json')['magstate']
+    for idx, kpt in enumerate(path.kpts):
+        if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
+                or magstate == 'AFM'):
+            sz_mk[:, idx] = 0.0
+
+    bsresults['sz_mk'] = sz_mk
+
+    from asr.core import singleprec_dict
+    results['bs_soc'] = singleprec_dict(bsresults)
+    results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
+
+    return results
 
 
 if __name__ == '__main__':

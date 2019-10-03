@@ -3,7 +3,8 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
-from asr.utils import command, option
+
+from asr.core import command, option
 
 
 def creates():
@@ -65,13 +66,13 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
-    from asr.utils import is_magnetic
+    from asr.core import is_magnetic
     if is_magnetic():
         gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    from asr.utils import get_dimensionality
+    from asr.core import get_dimensionality
     nd = get_dimensionality()
     if nd == 3:
         supercell = (n, n, n)
@@ -89,15 +90,14 @@ def requires():
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import table, fig
-    print('in phonons webpanel')
+    from asr.browser import table, fig
     phonontable = table(row, 'Property',
                         ['c_11', 'c_22', 'c_12', 'bulk_modulus',
                          'minhessianeig'], key_descriptions)
 
     panel = {'title': 'Elastic constants and phonons',
              'columns': [[fig('phonons.png')], [phonontable]],
-             'plot_descriptions': [{'function': plot,
+             'plot_descriptions': [{'function': plot_phonons,
                                     'filenames': ['phonons.png']}]}
 
     return [panel]
@@ -108,8 +108,8 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
 def main():
-    from asr.utils import read_json
-    from asr.utils import get_dimensionality
+    from asr.core import read_json
+    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
@@ -131,7 +131,7 @@ def main():
     return results
 
 
-def plot(row, filename):
+def plot_phonons(row, filename):
     import matplotlib.pyplot as plt
     print('in phonon plot')
 

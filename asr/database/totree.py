@@ -1,4 +1,4 @@
-from asr.utils import command, argument, option
+from asr.core import command, argument, option
 
 
 def folderexists():
@@ -8,7 +8,7 @@ def folderexists():
 
 tests = [
     {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'],
+             'asr run "database.totree materials.json --run"'],
      'test': folderexists}
 ]
 
@@ -85,9 +85,8 @@ def main(database, run=False, selection=None,
     from ase.db import connect
     from ase.io import write
     import spglib
-    from asr.utils import chdir, write_json
+    from asr.core import chdir, write_json, md5sum
     import importlib
-    from asr.utils import md5sum
 
     if selection:
         print(f'Selecting {selection}')
