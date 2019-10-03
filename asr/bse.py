@@ -205,7 +205,7 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.browser.custom import fig, table
+    from asr.browser import fig, table
     from ase.io import read
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
