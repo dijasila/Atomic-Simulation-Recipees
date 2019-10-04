@@ -56,7 +56,61 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
     return contours
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import fig
+
+    panel = {'title': 'Fermi surface',
+             'columns': [[fig('fermi_surface.png')]],
+             'plot_descriptions': [{'function': plot_fermi,
+                                    'filenames': ['fermi_surface.png']}]}
+
+    return [panel]
+
+
+def plot_fermi(row, fname,
+               annotate=True, fontsize=10, svbm=100, scbm=40, lwvbm=2.5,
+               sfs=0.25, dpi=200, scale=None, scalecb=None,
+               bbox_to_anchor=None, angle=0):
+    from ase.geometry.cell import Cell
+    from matplotlib import pyplot as plt
+    cell = Cell(row.cell)
+    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    ax = lat.plot_bz()
+    add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
+    plt.savefig(fname, dpi=dpi)
+    plt.close()
+
+
+def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
+    from matplotlib import pyplot as plt
+    import matplotlib.colors as colors
+    import numpy as np
+    verts = row.data['results-asr.fermisurface.json']['contours'].copy()
+    normalize = colors.Normalize(vmin=-1, vmax=1)
+    rotate = np.array([[np.cos(angle), -np.sin(angle), 0],
+                       [np.sin(angle), np.cos(angle), 0],
+                       [0, 0, 1]])
+    verts[:, :2] /= (2 * np.pi)
+    verts[:, :2] = np.dot(rotate[:2, :2], verts[:, :2].T).T
+    im = ax.scatter(verts[:, 0], verts[:, 1], c=verts[:, -1],
+                    s=s, cmap='viridis', marker=',',
+                    norm=normalize, alpha=1, zorder=2)
+    rect = np.array([0.85, 0.2, 0.025, 0.6])
+    if scale is not None:
+        center = np.array([0, 0.5, 0, 0])
+        rect = (rect - center) * scale + center
+    cbaxes = plt.gcf().add_axes(rect)
+    cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
+    cbar.ax.tick_params()
+    cbar.set_label('$\\langle S_z \\rangle$')
+    ax.annotate('Fermi surface', xy=(0.5, 1), ha='center',
+                va='top', xycoords='axes fraction')
+
+    return cbaxes
+
+
 @command('asr.fermisurface',
+         webpanel=webpanel,
          requires=['gs.gpw'])
 def main():
     import numpy as np
@@ -103,6 +157,7 @@ def main():
         if (inds_k).any():
             contours.append(cnt[inds_k, :])
 
+    contours = np.concatenate(contours)
     data = {'contours': contours}
     return data
 
