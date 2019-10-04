@@ -134,61 +134,54 @@ def absorption(row, filename, direction='x'):
     import numpy as np
     import matplotlib.pyplot as plt
     from ase.units import alpha, Ha, Bohr
-    from ase.io import read
 
-    def ylim(w_w, data, wstart=0.0):
-        i = abs(w_w - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y = max(x1.max(), x2.max()) * 1.02
-        return y
-
-    atoms = read('structure.json')
+    atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
     dim = np.sum(pbc)
 
-    info = read_json('results-asr.structureinfo.json')
-    magstate = info['magstate']
+    magstate = row.magstate
 
-    gsresults = read_json('results-asr.gs.json')
-    gap_soc = gsresults['gaps_soc']['gap_dir']
-    gap_nosoc = gsresults['gaps_nosoc']['gap_dir']
-    qp_gap_soc = gap_soc  # XXX Correct this - QP gap with SOC
-    qp_gap_nosoc = gap_soc  # XXX Correct this - QP gap without SOC
-    if magstate == 'NM':
-        delta_bse = qp_gap_soc - gap_soc
-    else:
-        delta_bse = qp_gap_nosoc - gap_nosoc
-    delta_rpa = qp_gap_nosoc - gap_nosoc
+    gap_dir = row.gap_dir
+    gap_dir_nosoc = row.gap_dir_nosoc
+
+    for method in ['_gw', '_hse', '_gllbsc', '']:
+        gapkey = f'gap_dir{method}'
+        if gapkey in row:
+            gap_dir_x = row.get(gapkey)
+            delta_bse = gap_dir_x - gap_dir
+            delta_rpa = gap_dir_x - gap_dir_nosoc
+            break
+
+    qp_gap = gap_dir + delta_bse
+
+    if magstate != 'NM':
+        qp_gap = gap_dir_nosoc + delta_rpa
+        delta_bse = delta_rpa
 
     ax = plt.figure().add_subplot(111)
 
     data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
     wbse_w = data[:, 0] + delta_bse
-    abs_w = 4 * np.pi * data[:, 2]
+    absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
-        abs_w *= wbse_w * alpha / Ha / Bohr * 100
-    ybse = ylim(wbse_w, abs_w, 0.0)
-    ax.plot(wbse_w, abs_w, '-', c='0.0', label='BSE')
+        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+    ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
 
     data = row.data['results-asr.polarizability.json']
     wrpa_w = data['frequencies'] + delta_rpa
-    abs_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+    absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
     if dim == 2:
-        abs_w *= wrpa_w * alpha / Ha / Bohr
-    yrpa = ylim(wrpa_w, abs_w, 0.0)
-    ax.plot(wrpa_w, abs_w, '-', c='C0', label='RPA')
+        absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
 
-    ymax = max(ybse, yrpa)
+    xmax = wbse_w[-1]
+    ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+                               absrpa_w[wrpa_w < xmax]])) * 1.05
 
-    if magstate == 'NM':
-        ax.plot([gap_soc, gap_soc], [0, ymax], '--', c='0.5',
-                label='Direct QP gap')
-    else:
-        ax.plot([gap_nosoc, gap_nosoc], [0, ymax], '--', c='0.5',
-                label='Direct QP gap')
+    ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
+            label='Direct QP gap')
 
-    ax.set_xlim(0.0, wbse_w[-1])
+    ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
     ax.set_title(f'{direction}-direction')
     ax.set_xlabel('energy [eV]')
@@ -206,11 +199,10 @@ def absorption(row, filename, direction='x'):
 def webpanel(row, key_descriptions):
     from functools import partial
     from asr.browser import fig, table
-    from ase.io import read
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
-    atoms = read('structure.json')
+    atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
     dim = np.sum(pbc)
 
