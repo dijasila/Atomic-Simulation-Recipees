@@ -555,8 +555,8 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
-    cell = Cell(row.cell, pbc=row.pbc)
-    lat = cell.get_bravais_lattice()
+    cell = Cell(row.cell)
+    lat = cell.get_bravais_lattice(pbc=row.pbc)
     lat.plot_bz()
     plt.savefig(fname)
 
