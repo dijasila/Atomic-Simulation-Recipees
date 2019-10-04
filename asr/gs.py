@@ -133,10 +133,16 @@ def main():
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
                 'etot': 'KVP: Total energy (En.) [eV]',
-                'evac': 'KVP: Vacuum level (Vacuum level) [eV]'}}
+                'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
+                'gap_dir': 'KVP: Direct gap with SOC (Dir. gap w. soc.) [eV]',
+                'gap_dir_nosoc': ('KVP: Direct gap without SOC (Dir. gap wo.'
+                                  ' soc.) [eV]')}}
 
     results['gaps_nosoc'] = gaps(calc, soc=False)
     results['gaps_soc'] = gaps(calc, soc=True)
+
+    results['gap_dir'] = results['gaps_soc']['gap_dir']
+    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
 
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:
