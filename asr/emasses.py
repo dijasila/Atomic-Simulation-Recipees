@@ -33,7 +33,8 @@ def refine(gpwfilename='gs.gpw'):
                 calc = GPAW(gpwfilename, txt=None)
                 calc.write(gpw2)
                 continue
-
+            if os.path.exists(gpw2):
+                continue
             nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
             
             
@@ -164,6 +165,7 @@ def main(gpwfilename='gs.gpw'):
     import traceback
     socs = [True, False]
 
+    good_results = {}
     for soc in socs:
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        optimal_spin_direction=True)
@@ -179,11 +181,44 @@ def main(gpwfilename='gs.gpw'):
                                  soc=soc,
                                  bandtype=bt,
                                  efermi=efermi)
+                unpack_masses(masses, soc, bt, good_results) # Modifies last argument
             except ValueError:
                 tb = traceback.format_exc()
                 print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
             else:
                 _savemass(soc=soc, bt=bt, mass=masses)
+                
+    return good_results
+
+def unpack_masses(masses, soc, bt, results_dict):
+    # Structure of 'masses' object:
+    # There is an 'indices' key which tells you at which spin-k indices 
+    # effective masses have been calculated
+    # At a given index there is saved the dict returned by the em function:
+    # out = dict(mass_u=masses, eigenvectors_vu=vecs,
+    #            ke_v=kmax,
+    #            c=c,
+    #            r=r)
+    # We want to flatten this structure so that results_dict contains
+    # the masses directly
+    if len(masses['indices']) > 1:
+        raise ValueError("Several effective mass index-pairs found")
+
+    for index in masses['indices']:
+        out_dict = masses[index]
+        
+        socpre = 'soc' if soc else 'nosoc'
+        prefix = bt + '_' + socpre + '_'
+
+        results_dict[prefix + 'effmass_dir1'] = out_dict['mass_u'][0]
+        results_dict[prefix + 'effmass_dir2'] = out_dict['mass_u'][1]
+        results_dict[prefix + 'effmass_dir3'] = out_dict['mass_u'][2]
+        results_dict[prefix + 'eigenvectors_vdir1'] = out_dict['eigenvectors_vu'][:, 0]
+        results_dict[prefix + 'eigenvectors_vdir2'] = out_dict['eigenvectors_vu'][:, 1]
+        results_dict[prefix + 'eigenvectors_vdir3'] = out_dict['eigenvectors_vu'][:, 2]
+        results_dict[prefix + 'spin'] = index[0]
+        results_dict[prefix + 'kptindex'] = index[1]
+        results_dict[prefix + 'vb_kpt_v'] = out_dict['ke_v']
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
