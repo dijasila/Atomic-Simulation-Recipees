@@ -9,6 +9,7 @@ def main(databases, databaseout, identifier='asr_id'):
     """Merge two ASE databases."""
     from ase.db import connect
     from pathlib import Path
+    from click import progressbar
 
     print(f'Merging {databases} into {databaseout}')
 
@@ -27,7 +28,8 @@ def main(databases, databaseout, identifier='asr_id'):
         tmpdest.unlink()
 
     # First merge rows common in both databases
-    for i_d, database in enumerate(databases):
+    metadata = {'key_descriptions': {}}
+    for database in databases:
         # Database for looking up existing materials
         tmpdestsearch = Path('_' + str(tmpdest))
         if tmpdestsearch.is_file():
@@ -36,20 +38,15 @@ def main(databases, databaseout, identifier='asr_id'):
         if tmpdest.is_file():
             tmpdest.rename(tmpdestsearch)
 
+        print(f'Connecting to {database}', flush=True)
         db = connect(database)
         dbsearch = connect(str(tmpdestsearch))
         dbmerged = connect(str(tmpdest))
 
-        # Update metadata
-        metadata = {}
-        if dbsearch.metadata:
-            metadata.update(dbsearch.metadata.copy())
-        if db.metadata:
-            metadata.update(db.metadata.copy())
-        dbmerged.metadata = metadata
-
-        selection = db.select()
-        with dbmerged:
+        with dbmerged, progressbar(db.select(),
+                                   length=len(db),
+                                   label=f'Merging {database}',
+                                   item_show_func=item_show_func) as selection:
             id_matches = []
             for row1 in selection:
                 structid = row1.get(identifier)
@@ -72,10 +69,9 @@ def main(databases, databaseout, identifier='asr_id'):
                     data.update(row1.data.copy())
                     kvp.update(row1.key_value_pairs.copy())
 
-                    atoms1 = row1.toatoms()
+                    atoms = row1.toatoms()
                     atoms2 = row2.toatoms()
-                    assert atoms1 == atoms2, 'Atoms not matching!'
-                    atoms = atoms1
+                    assert atoms == atoms2, 'Atoms not matching!'
 
                 dbmerged.write(atoms,
                                key_value_pairs=kvp,
@@ -87,6 +83,12 @@ def main(databases, databaseout, identifier='asr_id'):
                     dbmerged.write(row2.toatoms(),
                                    key_value_pairs=row2.key_value_pairs,
                                    data=row2.data)
+
+        # Update metadata
+        metadata['key_descriptions'].update(db.metadata.get('key_descriptions',
+                                                            {}))
+
+    dbmerged.metadata = metadata
 
     # Remove lookup db
     tmpdestsearch.unlink()

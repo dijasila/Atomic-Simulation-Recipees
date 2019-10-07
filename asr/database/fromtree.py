@@ -109,16 +109,10 @@ def collect(filename):
 
 @command('asr.database.fromtree')
 @argument('folders', nargs=-1)
-@option('--selectrecipe', help='Only collect data relevant for this recipe')
-@option('--level', type=int,
-        help=('0: Collect only atoms. '
-              '1: Collect atoms+KVP. '
-              '2: Collect atoms+kvp+data'))
-@option('--data/--nodata',
-        help='Also add data objects to database')
-@option('--atomsname', help='File containing atomic structure.')
-def main(folders, selectrecipe=None, level=2, data=True,
-         atomsname='structure.json'):
+@option('--patterns', help='Only select files matching pattern.')
+@option('--dbname', help='Database name.')
+def main(folders, patterns='info.json,results-asr.*.json',
+         dbname='database.db'):
     """Collect ASR data from folder tree into an ASE database."""
     import os
     from ase.db import connect
@@ -127,7 +121,13 @@ def main(folders, selectrecipe=None, level=2, data=True,
     import glob
     from pathlib import Path
     from asr.database.material_fingerprint import main as mat_finger
+    from fnmatch import fnmatch
+    from click import progressbar
 
+    def item_show_func(item):
+        return str(item)
+
+    atomsname = 'structure.json'
     if not folders:
         folders = ['.']
     else:
@@ -136,16 +136,14 @@ def main(folders, selectrecipe=None, level=2, data=True,
             tmpfolders.extend(glob.glob(folder))
         folders = tmpfolders
 
+    patterns = patterns.split(',')
+
     # We use absolute path because of chdir below!
-    dbname = os.path.join(os.getcwd(), 'database.db')
-    from click import progressbar
+    dbname = os.path.join(os.getcwd(), dbname)
 
-    def item_show_func(item):
-        return str(item)
-
-    metadata = {}
+    metadata = {'key_descriptions': {}}
     with connect(dbname) as db:
-        with progressbar(folders, label='Collecting to database.db',
+        with progressbar(folders, label=f'Collecting to {dbname}',
                          item_show_func=item_show_func) as bar:
             for folder in bar:
                 with chdir(folder):
@@ -159,10 +157,14 @@ def main(folders, selectrecipe=None, level=2, data=True,
                     if not Path(atomsname).is_file():
                         continue
 
-                    # The atomic structure uniquely defines the folder
                     atoms = read(atomsname)
                     data[atomsname] = read_json(atomsname)
-                    for filename in Path('.').glob('results-asr.*.json'):
+                    for filename in glob.glob('*'):
+                        for pattern in patterns:
+                            if fnmatch(filename, pattern):
+                                break
+                        else:
+                            continue
                         tmpkvp, tmpkd, tmpdata, tmplinks = \
                             collect(str(filename))
                         if tmpkvp or tmpkd or tmpdata or tmplinks:
@@ -171,21 +173,8 @@ def main(folders, selectrecipe=None, level=2, data=True,
                             key_descriptions.update(tmpkd)
                             data['__links__'].update(tmplinks)
 
-                    if Path('info.json').is_file():
-                        info = read_json('info.json')
-                        data['info.json'] = info
-                        tmpkvp, tmpkd = get_kvp_kd(info)
-                        kvp.update(tmpkvp)
-                        key_descriptions.update(tmpkd)
-                        data['__links__'].update(info.get('__links__', {}))
-
-                    if level > 1:
-                        db.write(atoms, data=data, **kvp)
-                    elif level > 0:
-                        db.write(atoms, **kvp)
-                    else:
-                        db.write(atoms)
-                    metadata.update({'key_descriptions': key_descriptions})
+                    db.write(atoms, data=data, **kvp)
+                    metadata['key_descriptions'].update(key_descriptions)
     db.metadata = metadata
 
 

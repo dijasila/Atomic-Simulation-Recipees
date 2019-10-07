@@ -1,4 +1,3 @@
-import os
 from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
@@ -11,24 +10,41 @@ from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import fig, table
+
+    prefix = key_descriptions.get('prefix', '')
+    if 'c2db-' in prefix:  # make sure links to other rows just works!
+        projectname = 'c2db'
+    else:
+        projectname = 'default'
+
+    hulltable1 = table(row,
+                       'Property',
+                       ['hform', 'ehull', 'minhessianeig'],
+                       key_descriptions)
+    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
+
+    panel = {'title': 'Stability',
+             'columns': [[fig('convex-hull.png')],
+                         [hulltable1, hulltable2, hulltable3]],
+             'plot_descriptions': [{'function': plot,
+                                    'filenames': ['convex-hull.png']}]}
+    return [panel]
+
+
 @command('asr.convex_hull',
          requires=['gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
          dependencies=['asr.structureinfo',
-                       'asr.database.material_fingerprint'])
+                       'asr.database.material_fingerprint'],
+         webpanel=webpanel)
 @option('-r', '--references', type=str,
         help='Reference database.')
 def main(references: str):
     """Calculate convex hull energies
 
-    The reference database has to have a type column indicating
-    For this recipe to work you need to install a database of
-    reference energies to calculate HOF and convex hull. Here
-    we use a database of one- and component-structures from OQMD::
-
-    $ cd ~ && wget https://cmr.fysik.dtu.dk/_downloads/oqmd12.db
-    $ echo 'export ASR_REFERENCES=~/oqmd12.db' >> ~/.bashrc
-    """
+    The reference database has to have a type column indicating"""
     from asr.core import read_json
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
@@ -36,7 +52,6 @@ def main(references: str):
     hform, pdrefs, ref_energies = get_hof(atoms, references)
     results = {'hform': hform,
                'references': pdrefs}
-
     try:
         pd = PhaseDiagram(pdrefs)
     except ValueError:
@@ -76,20 +91,7 @@ def main(references: str):
 def get_hof(atoms, references):
     energy = atoms.get_potential_energy()
     count = Counter(atoms.get_chemical_symbols())
-    if references is None:
-        references = os.environ.get('ASR_REFERENCES')
-        if references is None:
-            msg = ('You have to provide a reference database! Maybe you '
-                   'want https://cmr.fysik.dtu.dk/_downloads/oqmd12.db\n\n'
-                   'You can set the $ASR_REFERENCES environment variable '
-                   'to point to the location of the reference database '
-                   'file.')
-            raise ValueError(msg)
-
     refpath = Path(references)
-    if not refpath.is_file():
-        raise FileNotFoundError(refpath)
-
     refdb = connect(refpath)
     rows = select_references(refdb, set(count))
 
@@ -98,8 +100,7 @@ def get_hof(atoms, references):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             assert symbol not in ref_energies
-            energy = row.etot if 'etot' in row else row.energy
-            ref_energies[symbol] = energy / row.natoms
+            ref_energies[symbol] = row.energy / row.natoms
 
     pdrefs = []
     for row in rows:
@@ -136,12 +137,11 @@ def select_references(db, symbols):
                 refs[uid] = row
     return list(refs.values())
 
-
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
     import matplotlib.pyplot as plt
 
-    data = row.data.convex_hull
+    data = row.data['results-asr.convex_hull.json']
 
     count = row.count_atoms()
     if not (2 <= len(count) <= 3):
@@ -169,8 +169,10 @@ def plot(row, fname):
         label = '2D'
         ymin = e.min()
         for y, formula, prot, magstate, uid in links:
+
+            print('y, formula, prot, magstate, uid', y, formula, prot, magstate, uid)
             count = parse_formula(formula)[0]
-            x = count[B] / sum(count.values())
+            x = count.get(B, 0) / sum(count.values())
             if uid == row.uid:
                 ax.plot([x], [y], 'rv', label=label)
                 ax.plot([x], [y], 'ko', ms=15, fillstyle='none')
@@ -214,7 +216,7 @@ def convex_hull_tables(row: AtomsRow,
                        project: str = 'c2db',
                        ) -> List[Dict[str, Any]]:
     from ase.symbols import string2symbols
-    data = row.data.convex_hull
+    data = row.data['results-asr.convex_hull.json']
 
     links = data.get('links', [])
     rows = []
@@ -225,7 +227,7 @@ def convex_hull_tables(row: AtomsRow,
             name = '<a href="/{}/row/{}">{}</a>'.format(project, uid, name)
         rows.append([name, '{:.3f} eV/atom'.format(e)])
 
-    refs = data.references
+    refs = data['references']
     bulkrows = []
     for formula, e in refs:
         e /= len(string2symbols(formula))
@@ -239,33 +241,6 @@ def convex_hull_tables(row: AtomsRow,
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
              'rows': bulkrows}]
-
-
-def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
-
-    if 'convex_hull' not in row.data:
-        return (), ()
-
-    prefix = key_descriptions.get('prefix', '')
-    if 'c2db-' in prefix:  # make sure links to other rows just works!
-        projectname = 'c2db'
-    else:
-        projectname = 'default'
-
-    hulltable1 = table(row,
-                       'Property',
-                       ['hform', 'ehull', 'minhessianeig'],
-                       key_descriptions)
-    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
-
-    panel = ('Stability',
-             [[fig('convex-hull.png')],
-              [hulltable1, hulltable2, hulltable3]])
-
-    things = [(plot, ['convex-hull.png'])]
-
-    return panel, things
 
 
 if __name__ == '__main__':
