@@ -2,7 +2,7 @@ from collections import Counter
 from pathlib import Path
 from typing import List, Dict, Any
 
-from asr.core import command, option
+from asr.core import command, argument, option
 
 from ase.db import connect
 from ase.io import read
@@ -13,21 +13,15 @@ from ase.db.row import AtomsRow
 def webpanel(row, key_descriptions):
     from asr.browser import fig, table
 
-    prefix = key_descriptions.get('prefix', '')
-    if 'c2db-' in prefix:  # make sure links to other rows just works!
-        projectname = 'c2db'
-    else:
-        projectname = 'default'
-
     hulltable1 = table(row,
                        'Property',
-                       ['hform', 'ehull', 'minhessianeig'],
+                       ['hform', 'ehull'],
                        key_descriptions)
-    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
-
+    hulltables = convex_hull_tables(row)
+    print([hulltable1].extend(hulltables))
     panel = {'title': 'Stability',
              'columns': [[fig('convex-hull.png')],
-                         [hulltable1, hulltable2, hulltable3]],
+                         [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}]}
     return [panel]
@@ -39,48 +33,67 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
-@option('-r', '--references', type=str,
-        help='Reference database.')
-def main(references: str):
+@argument('databases', nargs=-1)
+@option('--standardreferences',
+        help='Database containing standard references.')
+def main(databases, standardreferences=None):
     """Calculate convex hull energies
 
     The reference database has to have a type column indicating"""
     from asr.core import read_json
+    if standardreferences is None:
+        standardreferences = databases[0]
+
     atoms = read('gs.gpw')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
-    hform, pdrefs, ref_energies = get_hof(atoms, references)
-    results = {'hform': hform,
-               'references': pdrefs}
-    try:
-        pd = PhaseDiagram(pdrefs)
-    except ValueError:
-        pass
-    else:
-        e0, indices, coefs = pd.decompose(formula)
-        results['ehull'] = hform - e0 / len(atoms)
-        results['indices'] = indices.tolist()
-        results['coefs'] = coefs.tolist()
-
-    links = []
-    db = connect(references)
-    rows = select_references(db, set(count))
-    for row in rows:
-        hform = hof(row.energy, row.count_atoms(), ref_energies)
-        links.append((hform,
-                      row.formula,
-                      row.get('spacegroup', ''),
-                      row.magstate if 'magstate' in row else 'None',
-                      row.uid))
-    si = read_json('results-asr.structureinfo.json')
+    ref_energies = get_reference_energies(atoms, databases[0])
+    hform = hof(atoms.get_potential_energy(), count, ref_energies)
     mf = read_json('results-asr.database.material_fingerprint.json')
-    links.append((results['hform'],
-                  formula,
-                  si.get('spacegroup', ''),
-                  si['magstate'],
-                  mf['uid']))
+    uid = mf['uid']
 
-    results['links'] = links
+    # Now compute convex hull
+    dbdata = {}
+    for database in databases:
+        # Connect to databases and save relevant rows
+        rows = []
+        refdb = connect(database)
+        rows.extend(select_references(refdb, set(count)))
+        dbdata[database] = {'rows': rows,
+                            'metadata': refdb.metadata}
+
+    # Make a list of the relevant references
+    references = []
+    for data in dbdata.values():
+        metadata = data['metadata']
+        for row in data['rows']:
+            if row.uid == uid:
+                continue
+            hformref = hof(row.energy, row.count_atoms(), ref_energies)
+            reference = {'hform': hformref,
+                         'formula': row.formula,
+                         'uid': row.uid,
+                         'natoms': row.natoms}
+            reference.update(metadata)
+            if 'label' in reference:
+                reference['label'] = reference['label'].format(row=row)
+            if 'link' in reference:
+                reference['link'] = reference['link'].format(row=row)
+            references.append(reference)
+
+    pdrefs = []
+    for reference in references:
+        h = reference['natoms'] * reference['hform']
+        pdrefs.append((reference['formula'], h))
+
+    pd = PhaseDiagram(pdrefs)
+    e0, indices, coefs = pd.decompose(formula)
+
+    results = {'hform': hform,
+               'references': references}
+    results['ehull'] = hform - e0 / len(atoms)
+    results['indices'] = indices.tolist()
+    results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
         'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'hform': 'KVP: Heat of formation [eV/atom]'}
@@ -88,28 +101,20 @@ def main(references: str):
     return results
 
 
-def get_hof(atoms, references):
-    energy = atoms.get_potential_energy()
+def get_reference_energies(atoms, references):
     count = Counter(atoms.get_chemical_symbols())
-    refpath = Path(references)
-    refdb = connect(refpath)
-    rows = select_references(refdb, set(count))
 
+    # Get reference energies
     ref_energies = {}
-    for row in rows:
+    refdb = connect(references)
+    for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
+            e_ref = row.energy / row.natoms
             assert symbol not in ref_energies
-            ref_energies[symbol] = row.energy / row.natoms
+            ref_energies[symbol] = e_ref
 
-    pdrefs = []
-    for row in rows:
-        h = row.natoms * hof(row.energy, row.count_atoms(), ref_energies)
-        pdrefs.append((row.formula, h))
-
-    hform = hof(energy, count, ref_energies)
-
-    return hform, pdrefs, ref_energies
+    return ref_energies
 
 
 def hof(energy, count, ref_energies):
@@ -122,23 +127,20 @@ def hof(energy, count, ref_energies):
 def select_references(db, symbols):
     refs: Dict[int, 'AtomsRow'] = {}
 
-    # Check if database has "u" key:
-    kwargs = {}
-    for row in db.select('u', limit=1):
-        kwargs['u'] = 0
-
     for symbol in symbols:
-        for row in db.select(symbol, **kwargs):
+        for row in db.select(symbol):
             for symb in row.count_atoms():
                 if symb not in symbols:
                     break
             else:
-                uid = row.get('uid', row.id)
+                uid = row.get('uid')
                 refs[uid] = row
     return list(refs.values())
 
+
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram, parse_formula
+    import re
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
@@ -147,63 +149,63 @@ def plot(row, fname):
     if not (2 <= len(count) <= 3):
         return
 
-    refs = data['references']
-    pd = PhaseDiagram(refs, verbose=False)
+    references = data['references']
+    pdrefs = []
+    for reference in references:
+        h = reference['natoms'] * reference['hform']
+        pdrefs.append((reference['formula'], h))
 
-    fig = plt.figure()
+    pd = PhaseDiagram(pdrefs, verbose=False)
+
+    fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
 
-    links = data.get('links', [])
-
     if len(count) == 2:
-        x, e, names, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
+                 for ref in references]
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='lightblue')
-        ax.plot(x, e, 's', color='C0', label='Bulk')
-        dy = e.ptp() / 30
-        for a, b, name in zip(x, e, names):
-            ax.text(a, b - dy, name, ha='center', va='top')
+            ax.plot(x[[i, j]], e[[i, j]], '-b')
+        ax.plot(x, e, 'sg')
+        delta = e.ptp() / 30
+        for a, b, name, on_hull in zip(x, e, names, hull):
+            if on_hull:
+                va = 'top'
+                ha = 'center'
+                dy = - delta
+                dx = 0
+            else:
+                va = 'center'
+                ha = 'left'
+                dy = 0
+                dx = 0.02
+            ax.text(a + dx, b + dy, name, ha=ha, va=va)
+
         A, B = pd.symbols
         ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
-        label = '2D'
-        ymin = e.min()
-        for y, formula, prot, magstate, uid in links:
+        for i, j in simplices:
+            ax.plot(x[[i, j]], e[[i, j]], '-', color='lightblue')
 
-            print('y, formula, prot, magstate, uid', y, formula, prot, magstate, uid)
-            count = parse_formula(formula)[0]
-            x = count.get(B, 0) / sum(count.values())
-            if uid == row.uid:
-                ax.plot([x], [y], 'rv', label=label)
-                ax.plot([x], [y], 'ko', ms=15, fillstyle='none')
-            else:
-                ax.plot([x], [y], 'v', color='C1', label=label)
-            label = None
-            # ax.text(x + 0.03, y, '{}-{}'.format(prot, magstate))
-            ymin = min(ymin, y)
-        ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * dy)
+        # Circle this material
+        xt = count.get(B, 0) / sum(count.values())
+        ax.plot([xt], [row.hform], 'sg', label=re.sub(r'(\d+)', r'$_{\1}$',
+                                                      row.formula))
+
+        ymin = e.min()
+
+        ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
         x, y, names, hull, simplices = pd.plot2d3()
+        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
+                 for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        ax.plot(x[hull], y[hull], 's', color='C0', label='Bulk (on hull)')
-        ax.plot(x[~hull], y[~hull], 's', color='C2', label='Bulk (above hull)')
+        ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
+        ax.plot(x[~hull], y[~hull], 's', color='C2', label='Above hull')
         for a, b, name in zip(x, y, names):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
-        label = '2D'
-        for e, formula, prot, magstate, id, uid in links:
-            count = parse_formula(formula)[0]
-            x = count.get(B, 0) / sum(count.values())
-            y = count.get(C, 0) / sum(count.values())
-            x += y / 2
-            y *= 3**0.5 / 2
-            if id == row.id:
-                ax.plot([x], [y], 'rv', label=label)
-                ax.plot([x], [y], 'ko', ms=15, fillstyle='none')
-            else:
-                ax.plot([x], [y], 'v', color='C1', label=label)
-            label = None
         plt.axis('off')
 
     plt.legend()
@@ -212,35 +214,29 @@ def plot(row, fname):
     plt.close()
 
 
-def convex_hull_tables(row: AtomsRow,
-                       project: str = 'c2db',
-                       ) -> List[Dict[str, Any]]:
-    from ase.symbols import string2symbols
+def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
     data = row.data['results-asr.convex_hull.json']
 
-    links = data.get('links', [])
-    rows = []
-    for e, formula, prot, magstate, uid in sorted(links,
-                                                  reverse=True):
-        name = '{} ({}-{})'.format(formula, prot, magstate)
-        if id != row.id:
-            name = '<a href="/{}/row/{}">{}</a>'.format(project, uid, name)
-        rows.append([name, '{:.3f} eV/atom'.format(e)])
+    references = data.get('references', [])
+    tables = {}
+    for reference in references:
+        tables[reference['title']] = []
 
-    refs = data['references']
-    bulkrows = []
-    for formula, e in refs:
-        e /= len(string2symbols(formula))
-        link = '<a href="/oqmd12/row/{formula}">{formula}</a>'.format(
-            formula=formula)
-        bulkrows.append([link, '{:.3f} eV/atom'.format(e)])
+    for reference in sorted(references, reverse=True,
+                            key=lambda x: x['hform']):
+        name = '{} ({})'.format(reference['formula'], reference['legend'])
+        matlink = reference['link']
+        if reference['uid'] != row.uid:
+            name = f'<a href="{matlink}">{name}</a>'
+        e = reference['hform']
+        tables[reference['title']].append([name, '{:.3f} eV/atom'.format(e)])
 
-    return [{'type': 'table',
-             'header': ['Monolayer formation energies', ''],
-             'rows': rows},
-            {'type': 'table',
-             'header': ['Bulk formation energies', ''],
-             'rows': bulkrows}]
+    final_tables = []
+    for title, rows in tables.items():
+        final_tables.append({'type': 'table',
+                             'header': [title, ''],
+                             'rows': rows})
+    return final_tables
 
 
 if __name__ == '__main__':
