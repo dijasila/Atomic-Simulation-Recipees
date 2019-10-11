@@ -16,8 +16,8 @@ def webpanel(row, key_descriptions):
                  [{'function': polarizability,
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
-                                 'rpa-pol-z.png']}]
-             }
+                                 'rpa-pol-z.png']}],
+             'sort': 10}
 
     return [panel]
 

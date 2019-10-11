@@ -118,7 +118,7 @@ def webpanel(row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
-    panel = {'title': 'Basic properties',
+    panel = {'title': 'Summary',
              'columns': [[basictable, UNITCELL], [ATOMS]],
              'sort': 1}
     return [panel]

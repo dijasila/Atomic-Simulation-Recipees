@@ -111,8 +111,9 @@ def collect(filename):
 @argument('folders', nargs=-1)
 @option('--patterns', help='Only select files matching pattern.')
 @option('--dbname', help='Database name.')
+@option('-m', '--metadata-from-file', help='Get metadata from file.')
 def main(folders, patterns='info.json,results-asr.*.json',
-         dbname='database.db'):
+         dbname='database.db', metadata_from_file=None):
     """Collect ASR data from folder tree into an ASE database."""
     import os
     from ase.db import connect
@@ -140,8 +141,10 @@ def main(folders, patterns='info.json,results-asr.*.json',
 
     # We use absolute path because of chdir below!
     dbname = os.path.join(os.getcwd(), dbname)
-
     metadata = {'key_descriptions': {}}
+    if metadata_from_file:
+        metadata.update(read_json(metadata_from_file))
+
     with connect(dbname) as db:
         with progressbar(folders, label=f'Collecting to {dbname}',
                          item_show_func=item_show_func) as bar:

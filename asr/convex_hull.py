@@ -18,13 +18,15 @@ def webpanel(row, key_descriptions):
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    print([hulltable1].extend(hulltables))
-    panel = {'title': 'Stability',
+    panel = {'title': 'Convex hull',
              'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}]}
-    return [panel]
+
+    summary = {'title': 'Summary',
+               'columns': [[hulltable1]]}
+    return [panel, summary]
 
 
 @command('asr.convex_hull',
@@ -189,9 +191,8 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'sg', label=re.sub(r'(\d+)', r'$_{\1}$',
-                                                      row.formula))
-
+        ax.plot([xt], [row.hform], 'ko', ms=15, fillstyle='none',
+                label='This material')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
