@@ -24,8 +24,21 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}]}
 
+    thermostab = row.get('thermodynamic_stability_level')
+    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
+    high = 'Heat of formation < convex hull + 0.2 eV/atom'
+    medium = 'Heat of formation < 0.2 eV/atom'
+    low = 'Heat of formation > 0.2 eV/atom'
+    row = ['Thermodynamic stability',
+           '<a href="#" data-toggle="tooltip" data-html="true" ' +
+           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+               low, medium, high, stabilities[thermostab].upper())]
+
     summary = {'title': 'Summary',
-               'columns': [[hulltable1]]}
+               'columns': [[hulltable1,
+                            {'type': 'table',
+                             'header': ['Summary', ''],
+                             'rows': [row]}]]}
     return [panel, summary]
 
 
@@ -93,13 +106,24 @@ def main(databases, standardreferences=None):
 
     results = {'hform': hform,
                'references': references}
-    results['ehull'] = hform - e0 / len(atoms)
+    ehull = hform - e0 / len(atoms)
+    results['ehull'] = ehull
     results['indices'] = indices.tolist()
     results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
         'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'hform': 'KVP: Heat of formation [eV/atom]'}
 
+    if hform >= 0.2:
+        thermodynamic_stability = 1
+    elif hform is None or ehull is None:
+        thermodynamic_stability = None
+    elif ehull >= 0.2:
+        thermodynamic_stability = 2
+    else:
+        thermodynamic_stability = 3
+
+    results['thermodynamic_stability_level'] = thermodynamic_stability
     return results
 
 

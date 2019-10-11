@@ -108,7 +108,21 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['phonon_bs.png']}]}
 
-    return [panel]
+    dynstab = row.get('dynamic_stability_level')
+    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
+    high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
+    medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
+    low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
+    row = ['Dynamic stability',
+           '<a href="#" data-toggle="tooltip" data-html="true" ' +
+           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+               low, medium, high, stabilities[dynstab].upper())]
+
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Summary', ''],
+                             'rows': [row]}]]}
+    return [panel, summary]
 
 
 @command('asr.phonons',
@@ -163,10 +177,18 @@ def main(mingo=True):
     eigs = np.array(eigs)
     mineig = np.min(eigs)
 
+    if mineig < -2:
+        dynamic_stability = 1
+    elif mineig < -1e-5:
+        dynamic_stability = 2
+    else:
+        dynamic_stability = 3
+
     results = {'exact_freqs_kl': omega_kl,
                'q_qc': q_qc,
                'modes_kl': u_kl,
-               'minhessianeig': mineig}
+               'minhessianeig': mineig,
+               'dynamic_stability_level': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)

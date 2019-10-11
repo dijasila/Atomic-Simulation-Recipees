@@ -72,7 +72,6 @@ def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
     from asr.browser import table
 
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     basictable = table(row, 'Property', [
         'prototype', 'class', 'spacegroup', 'gap', 'magstate', 'ICSD_id',
         'COD_id'
@@ -86,29 +85,6 @@ def webpanel(row, key_descriptions):
                     '{id}.html">{id}</a>'.format(id=codid))
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
-    dynstab = row.get('dynamic_stability_level')
-    if dynstab:
-        high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
-        medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
-        low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
-        rows.append([
-            'Dynamic stability',
-            '<a href="#" data-toggle="tooltip" data-html="true" ' +
-            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-                low, medium, high, stabilities[dynstab].upper())
-        ])
-
-    thermostab = row.get('thermodynamic_stability_level')
-    if thermostab:
-        high = 'Heat of formation < convex hull + 0.2 eV/atom'
-        medium = 'Heat of formation < 0.2 eV/atom'
-        low = 'Heat of formation > 0.2 eV/atom'
-        rows.append([
-            'Thermodynamic stability',
-            '<a href="#" data-toggle="tooltip" data-html="true" ' +
-            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-                low, medium, high, stabilities[thermostab].upper())
-        ])
 
     doi = row.get('monolayer_doi')
     if doi:

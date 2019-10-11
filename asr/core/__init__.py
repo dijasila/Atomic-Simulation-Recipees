@@ -254,10 +254,9 @@ class ASRCommand:
 
     @property
     def done(self):
-        for file in self.creates:
-            if not Path(file).exists():
-                return False
-        return True
+        if Path(f'results-{self.name}.json').exists():
+            return True
+        return False
 
     def setup_cli(self):
         # Click CLI Interface
@@ -346,18 +345,10 @@ class ASRCommand:
         if not skip_deps:
             # Run this recipes dependencies but only if it actually creates
             # a file that is in __requires__
-            for filename in self.requires:
-                if Path(filename).is_file():
-                    continue
-                for name in self.dependencies:
-                    recipe = get_recipe_from_name(name)
-
-                    if filename in recipe.creates:
-                        recipe()
-                        assert Path(filename).is_file(), \
-                            ('{filename} should have been produced by '
-                             '{recipe.name} but wasn\'t')
-                        break
+            recipes = get_dep_tree(self.name)
+            for recipe in recipes[:-1]:
+                if not recipe.done:
+                    recipe(skip_deps=True)
 
         # Try to run this command
         results = self.callback(*args, **kwargs)
