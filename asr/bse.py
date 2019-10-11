@@ -1,5 +1,5 @@
 import numpy as np
-from asr.core import command, option, read_json
+from asr.core import command, option
 from click import Choice
 
 

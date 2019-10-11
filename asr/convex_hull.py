@@ -1,5 +1,4 @@
 from collections import Counter
-from pathlib import Path
 from typing import List, Dict, Any
 
 from asr.core import command, argument, option
@@ -165,7 +164,7 @@ def select_references(db, symbols):
 
 
 def plot(row, fname):
-    from ase.phasediagram import PhaseDiagram, parse_formula
+    from ase.phasediagram import PhaseDiagram
     import re
     import matplotlib.pyplot as plt
 
