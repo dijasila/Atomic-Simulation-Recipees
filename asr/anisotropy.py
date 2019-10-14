@@ -14,7 +14,7 @@ def webpanel(row, key_descriptions):
 @command('asr.anisotropy',
          requires=['gs.gpw'],
          webpanel=webpanel,
-         dependencies=['asr.structureinfo', 'asr.gs'])
+         dependencies=['asr.structureinfo', 'asr.gs@calculate'])
 def main():
     """Calculate the magnetic anisotropy from densk.gpw."""
     import numpy as np
