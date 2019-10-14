@@ -18,10 +18,10 @@ def recursive_update(dct, updatedct, level=0, maxlevel=0):
     for key, value in updatedct.items():
         if level < maxlevel and key in dct and isinstance(value, dict) and \
            isinstance(dct[key], dict):
-            return recursive_update(dct[key], updatedct[key],
-                                    level=level + 1, maxlevel=maxlevel)
-
-        dct[key] = value
+            recursive_update(dct[key], updatedct[key],
+                             level=level + 1, maxlevel=maxlevel)
+        else:
+            dct[key] = value
 
 
 def md5sum(filename):
@@ -184,7 +184,7 @@ class ASRCommand:
             self._main.__asr_params__ = {}
 
         import copy
-        self.params = copy.deepcopy(self._main.__asr_params__)
+        self.myparams = copy.deepcopy(self._main.__asr_params__)
 
         import inspect
         sig = inspect.signature(self._main)
@@ -193,14 +193,14 @@ class ASRCommand:
         myparams = []
         defparams = {}
         for key, value in sig.parameters.items():
-            assert key in self.params, \
+            assert key in self.myparams, \
                 f'You havent provided a description for {key}'
             if value.default is not inspect.Parameter.empty:
                 defparams[key] = value.default
             myparams.append(key)
 
         myparams = [k for k, v in sig.parameters.items()]
-        for key in self.params:
+        for key in self.myparams:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
 
@@ -312,13 +312,13 @@ class ASRCommand:
                      help=help)(self.main)
 
         # Convert parameters into CLI Parameters!
-        for name, param in self.params.items():
+        for name, param in self.myparams.items():
             param = param.copy()
             alias = param.pop('alias')
             argtype = param.pop('argtype')
             name2 = param.pop('name')
             assert name == name2
-            assert name in self.params
+            assert name in self.myparams
             default = self.defparams.get(name, None)
 
             if argtype == 'option':
@@ -384,19 +384,20 @@ class ASRCommand:
 
         inputparams = dict(self.signature.bind(*args, **kwargs).arguments)
         for key, value in inputparams.items():
-            assert key in self.params, f'Unknown key: {key} {params}'
+            assert key in self.myparams, f'Unknown key: {key} {params}'
             if isinstance(params[key], dict) and isinstance(value, str):
                 from ast import literal_eval
                 value = literal_eval(value)
             inputparams[key] = value
 
         recursive_update(params, inputparams, maxlevel=1)
+
         # Read arguments from params.json if not already in params
         paramsettings = {}
         if Path('params.json').is_file():
             paramsettings = read_json('params.json').get(self.name, {})
             for key, value in paramsettings.items():
-                assert key in self.params, f'Unknown key: {key} {params}'
+                assert key in self.myparams, f'Unknown key: {key} {params}'
 
             recursive_update(params, paramsettings, maxlevel=1)
 
