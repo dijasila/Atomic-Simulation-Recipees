@@ -41,7 +41,6 @@ class SpgAtoms(Atoms):
 
     def set_symmetries(self, symmetries, translations):
         self.t_sc = translations
-        self.op_scc = [op_cc.T for op_cc in symmetries]
         self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
                        op_cc in symmetries]
         self.nsym = len(symmetries)
@@ -49,8 +48,8 @@ class SpgAtoms(Atoms):
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
-        for i, (op_cc, t_c) in enumerate(zip(self.op_scc, self.t_sc)):
-            symspos_ac = np.dot(spos_ac, op_cc) + t_c
+        for op_cc, t_c in zip(symmetries, self.t_sc):
+            symspos_ac = np.dot(spos_ac, op_cc.T) + t_c
 
             a_a = []
             for s_c in symspos_ac:
@@ -62,8 +61,8 @@ class SpgAtoms(Atoms):
                 assert ind not in a_a, f'Bad symmetry {ind}, {diff_ac}'
                 a_a.append(ind)
             a_sa.append(a_a)
-        a_sa = np.array(a_sa)
-        self.a_sa = a_sa
+
+        self.a_sa = np.array(a_sa)
 
     def get_stress(self, voigt=True, *args, **kwargs):
         sigma0_vv = Atoms.get_stress(self, voigt=False, *args, **kwargs)
@@ -187,7 +186,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             opt.call_observers()
             break
 
-    return atoms, calc, dft, kwargs
+    return atoms
 
 
 def BN_check():
@@ -299,13 +298,12 @@ def main(dftcalculator={'name': 'gpaw',
 
     calc = Calculator(**dftcalculator)
     # Relax the structure
-    asb = allow_symmetry_breaking
-    atoms, calc, dft, kwargs = relax(atoms, name='relax', dftd3=d3,
-                                     fixcell=fixcell,
-                                     allow_symmetry_breaking=asb,
-                                     dft=calc)
+    atoms = relax(atoms, name='relax', dftd3=d3,
+                  fixcell=fixcell,
+                  allow_symmetry_breaking=allow_symmetry_breaking,
+                  dft=calc)
 
-    edft = dft.get_potential_energy(atoms)
+    edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
 
     # Save atomic structure
@@ -313,7 +311,7 @@ def main(dftcalculator={'name': 'gpaw',
 
     # Get setup fingerprints
     fingerprint = {}
-    for setup in dft.setups:
+    for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
 
     cellpar = atoms.cell.cellpar()
