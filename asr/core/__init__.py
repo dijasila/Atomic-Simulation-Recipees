@@ -14,6 +14,16 @@ import inspect
 import copy
 
 
+def recursive_update(dct, updatedct, level=0, maxlevel=0):
+    for key, value in updatedct.items():
+        if level < maxlevel and key in dct and isinstance(value, dict) and \
+           isinstance(dct[key], dict):
+            return recursive_update(dct[key], updatedct[key],
+                                    level=level + 1, maxlevel=maxlevel)
+
+        dct[key] = value
+
+
 def md5sum(filename):
     from hashlib import md5
     hash = md5()
@@ -371,8 +381,16 @@ class ASRCommand:
         # Use the wrapped functions signature to create dictionary of
         # parameters
         params = copy.deepcopy(self.defparams)
-        params.update(dict(self.signature.bind(*args, **kwargs).arguments))
 
+        inputparams = dict(self.signature.bind(*args, **kwargs).arguments)
+        for key, value in inputparams.items():
+            assert key in self.params, f'Unknown key: {key} {params}'
+            if isinstance(params[key], dict) and isinstance(value, str):
+                from ast import literal_eval
+                value = literal_eval(value)
+            inputparams[key] = value
+
+        recursive_update(params, inputparams, maxlevel=1)
         # Read arguments from params.json if not already in params
         paramsettings = {}
         if Path('params.json').is_file():
@@ -380,9 +398,7 @@ class ASRCommand:
             for key, value in paramsettings.items():
                 assert key in self.params, f'Unknown key: {key} {params}'
 
-                # If any parameters have been given directly to the function
-                # we don't use the ones from the param.json file
-                params[key] = value
+            recursive_update(params, paramsettings, maxlevel=1)
 
         paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])

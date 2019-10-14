@@ -2,9 +2,6 @@ from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
-from ase.io.ulm import open as ulmopen
-from ase.io.ulm import InvalidULMFileError
-from ase.parallel import world
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
@@ -42,13 +39,31 @@ class SpgAtoms(Atoms):
         # -> therefore we make our own
         return cls(atoms)
 
-    def set_symmetries(self, symmetries, translations, atomsmap):
-        self.op_scc = symmetries
+    def set_symmetries(self, symmetries, translations):
         self.t_sc = translations
-        self.op_svv = [np.linalg.inv(self.cell).dot(op_cc).dot(self.cell) for
+        self.op_scc = [op_cc.T for op_cc in symmetries]
+        self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
                        op_cc in symmetries]
         self.nsym = len(symmetries)
-        self.a_sa = atomsmap
+        tolerance = 1e-4
+        spos_ac = self.get_scaled_positions()
+        a_sa = []
+
+        for i, (op_cc, t_c) in enumerate(zip(self.op_scc, self.t_sc)):
+            symspos_ac = np.dot(spos_ac, op_cc) + t_c
+
+            a_a = []
+            for s_c in symspos_ac:
+                diff_ac = spos_ac - s_c
+                diff_ac -= np.round(diff_ac)
+                mask_c = np.all(np.abs(diff_ac) < tolerance, axis=1)
+                assert np.sum(mask_c) == 1, f'Bad symmetry, {mask_c}'
+                ind = np.argwhere(mask_c)[0][0]
+                assert ind not in a_a, f'Bad symmetry {ind}, {diff_ac}'
+                a_a.append(ind)
+            a_sa.append(a_a)
+        a_sa = np.array(a_sa)
+        self.a_sa = a_sa
 
     def get_stress(self, voigt=True, *args, **kwargs):
         sigma0_vv = Atoms.get_stress(self, voigt=False, *args, **kwargs)
@@ -104,9 +119,8 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, kpts, ecut=800, width=0.05,
-          emin=-np.inf, smask=None, xc='PBE', plusu=False, dftd3=True,
-          chargestate=0, fixcell=False, allow_symmetry_breaking=False):
+def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
+          fixcell=False, allow_symmetry_breaking=False, dft=None):
     import spglib
 
     if dftd3:
@@ -124,56 +138,19 @@ def relax(atoms, name, kpts, ecut=800, width=0.05,
             msg = 'Relax recipe not implemented for 1D structures'
             raise NotImplementedError(msg)
 
-    if 'size' not in kpts:
-        kptdensity = kpts.pop('density')
-        from ase.calculators.calculator import kpts2sizeandoffsets
-        size, _ = kpts2sizeandoffsets(density=kptdensity, atoms=atoms)
-        kpts['size'] = size
-
-    kwargs = dict(txt=name + '.txt',
-                  mode={'name': 'pw', 'ecut': ecut, 'dedecut': 'estimate'},
-                  xc=xc,
-                  basis='dzp',
-                  symmetry={'symmorphic': False},
-                  convergence={'forces': 1e-4},
-                  kpts=kpts,
-                  occupations={'name': 'fermi-dirac', 'width': width},
-                  charge=chargestate)
-
-    if nd == 2:
-        assert not atoms.get_pbc()[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        kwargs['poissonsolver'] = {'dipolelayer': 'xy'}
-
-    if plusu:
-        # Try to get U values from previous image
-        try:
-            u = ulmopen(f'{name}.traj')
-            setups = u[-1].calculator.get('parameters', {})['setups']
-            u.close()
-        except (FileNotFoundError, KeyError, InvalidULMFileError):
-            # Read from standard values
-            symbols = set(atoms.get_chemical_symbols())
-            setups = {symbol: Uvalues[symbol] for symbol in symbols
-                      if symbol in Uvalues}
-        kwargs['setups'] = setups
-        world.barrier()
-
-    from asr.calculators import get_calculator
-    from gpaw.symmetry import atoms2symmetry
-    symmetry = atoms2symmetry(atoms)
+    from asr.setup.symmetrize import atomstospgcell as ats
+    dataset = spglib.get_symmetry_dataset(ats(atoms),
+                                          symprec=1e-4,
+                                          angle_tolerance=0.1)
     atoms = SpgAtoms.from_atoms(atoms)
-    atoms.set_symmetries(symmetries=symmetry.op_scc,
-                         translations=symmetry.ft_sc,
-                         atomsmap=symmetry.a_sa)
-    dft = get_calculator()(**kwargs)
+    atoms.set_symmetries(symmetries=dataset['rotations'],
+                         translations=dataset['translations'])
     if dftd3:
         calc = DFTD3(dft=dft)
     else:
         calc = dft
     atoms.calc = calc
 
-    from asr.setup.symmetrize import atomstospgcell as ats
     spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
                                                      parallel=False)),
                                             symprec=1e-4,
@@ -259,20 +236,23 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
          resources='24:10h',
          requires=['unrelaxed.json'],
          creates=['structure.json'])
-@option('--ecut',
-        help='Energy cutoff in electronic structure calculation')
-@option('--kpts', help='k-point description.')
-@option('-U', '--plusu', help='Do +U calculation', is_flag=True)
-@option('--xc', help='XC-functional')
+@option('--dftcalculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')
-@option('--width', help='Fermi-Dirac smearing temperature')
-@option('--readout_charge', help='Read out chargestate from params.json')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
-def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
-         xc='PBE', d3=False, width=0.05,
-         readout_charge=False, fixcell=False, allow_symmetry_breaking=False):
+def main(dftcalculator={'name': 'gpaw',
+                        'mode': {'name': 'pw', 'ecut': 800,
+                                 'dedecut': 'estimate'},
+                        'xc': 'PBE',
+                        'kpts': {'density': 6.0, 'gamma': True},
+                        'basis': 'dzp',
+                        'symmetry': {'symmorphic': False},
+                        'convergence': {'forces': 1e-4},
+                        'txt': 'relax.txt',
+                        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+                        'charge': 0},
+         d3=False, fixcell=False, allow_symmetry_breaking=False):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -303,9 +283,6 @@ def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --xc LDA"
     """
-    from asr.core import read_json
-    from asr.utils.args import parse_arg
-    
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
            'what the relax recipe is supposed to produce. You should '
@@ -316,32 +293,23 @@ def main(plusu=False, ecut=800, kpts="{'density': 6.0, 'gamma': True}",
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
 
-    # Read out chargestate from params.json if specified as option
-    if readout_charge:
-        setup_params = read_json('params.json')
-        chargestate = setup_params.get('charge')
-        print('INFO: chargestate {}'.format(chargestate))
-    else:
-        chargestate = 0
+    from ase.calculators.calculator import get_calculator_class
+    calculatorname = dftcalculator.pop('name')
+    Calculator = get_calculator_class(calculatorname)
 
-    kpts = parse_arg(kpts)
+    calc = Calculator(**dftcalculator)
     # Relax the structure
     asb = allow_symmetry_breaking
-    atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
-                                     kpts=kpts,
-                                     xc=xc, plusu=plusu, dftd3=d3, width=width,
-                                     chargestate=chargestate,
+    atoms, calc, dft, kwargs = relax(atoms, name='relax', dftd3=d3,
                                      fixcell=fixcell,
-                                     allow_symmetry_breaking=asb)
+                                     allow_symmetry_breaking=asb,
+                                     dft=calc)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
 
     # Save atomic structure
     write('structure.json', atoms)
-
-    from asr.core import write_json
-    write_json('gs_params.json', kwargs)
 
     # Get setup fingerprints
     fingerprint = {}
