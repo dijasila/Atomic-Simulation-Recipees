@@ -254,17 +254,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
               'test': BN_check})
 
 
-# Please note these are relative numbers that
-# are multiplied on the original ones
-def known_exceptions():
-    from gpaw import KohnShamConvergenceError
-    known_exceptions = {KohnShamConvergenceError: {'kptdensity': 1.5,
-                                                   'width': 0.5}}
-    return known_exceptions
-
-
 @command('asr.relax',
-         known_exceptions=known_exceptions,
          tests=tests,
          resources='24:10h',
          requires=['unrelaxed.json'],
