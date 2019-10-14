@@ -345,10 +345,10 @@ class ASRCommand:
         if not skip_deps:
             # Run this recipes dependencies but only if it actually creates
             # a file that is in __requires__
-            recipes = get_dep_tree(self.name)
-            for recipe in recipes[:-1]:
+            for dep in self.dependencies:
+                recipe = get_recipe_from_name(dep)
                 if not recipe.done:
-                    recipe(skip_deps=True)
+                    recipe()
 
         # Try to run this command
         results = self.callback(*args, **kwargs)
@@ -565,8 +565,8 @@ def get_dep_tree(name, reload=True):
         assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
         function = getattr(module, func)
         dependencies = function.dependencies
-        if not dependencies and hasattr(module, 'dependencies'):
-            dependencies = module.dependencies
+        # if not dependencies and hasattr(module, 'dependencies'):
+        #     dependencies = module.dependencies
 
         for dependency in dependencies:
             tmpdeplist.append(dependency)

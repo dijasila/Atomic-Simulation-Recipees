@@ -42,9 +42,10 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     from ase.io import read
     atoms = read('gs.gpw')
     if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints)
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
+        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                                   pbc=atoms.pbc)
 
     convbands = emptybands // 2
     parms = {

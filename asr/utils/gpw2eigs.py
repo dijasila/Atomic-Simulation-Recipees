@@ -136,5 +136,6 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     from gpaw import mpi
     ranks = [0]
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
-    return calc2eigs(calc, soc=True, bands=None, return_spin=False,
-                     optimal_spin_direction=False, ranks=ranks)
+    return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
+                     optimal_spin_direction=optimal_spin_direction,
+                     ranks=ranks)
