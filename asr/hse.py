@@ -30,16 +30,40 @@ from ase.io import read
 from ase.dft.kpoints import get_cellinfo
 from contextlib import contextmanager
 
-@command('asr.hse')
+@command(module='asr.hse',
+         dependencies = ['asr.structureinfo', 'asr.gs'],
+         creates=['hse_nowfs.gpw', 'hse-restart.json'],
+         #tests=...,
+         #requires=['gs.gpw'], # file needed to run asr.hse@calculate
+         resources='24:10h',
+         restart=2)
 @option('--kptdensity', help='K-point density')
 @option('--emptybands', help='number of empty bands to include')
-def main(kptdensity=12, emptybands=20):
+def calculate(kptdensity=12, emptybands=20):
     """Calculate HSE band structure"""
     results = {}
     results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
     mpi.world.barrier()
     results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
     return results
+
+
+
+@command(module='asr.hse',
+         dependencies = ['asr.hse@calculate'],
+         #creates=[], # nothing but results-asr.hse.json
+         #tests=...,
+         requires=['hse_nowfs.gpw'],
+         resources='8:10m',
+         restart=2)
+@option('--kptpath', type=str)
+@option('--npoints')
+def main(kptpath=None, npoints=400):
+    """Interpolate HSE band structure along a given path"""
+    results = bs_interpolate(kptpath, npoints)
+    return results
+
+
 
 def hse(kptdensity, emptybands):
 
@@ -595,12 +619,6 @@ def collect_data(atoms):
     return kvp, key_descriptions, data
 
 
-group = 'property'
-resources = '24:10h'
-creates = ['hse_nowfs.gpw', 'hse-restart.json']
-dependencies = ['asr.structureinfo', 'asr.gs']
-diskspace = 0  # how much diskspace is used
-restart = 0  # how many times to restart
 
 
 if __name__ == '__main__':
