@@ -61,14 +61,14 @@ def main(params=None):
                 paramdict[recipe] = {}
 
             paramtype = type(defparamdict[recipe][option])
-            if paramtype == bool:
+            if paramtype in (bool, dict):
                 val = paramtype(literal_eval(value))
             else:
                 val = paramtype(value)
             paramdict[recipe][option] = val
 
     if paramdict:
-        p.write_text(json.dumps(paramdict, indent=4))
+        p.write_text(json.dumps(paramdict, indent=1))
     return paramdict
 
 
