@@ -156,8 +156,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                                             angle_tolerance=0.1).split()
 
     # We are fixing atom=0 to reduce computational effort
-    from ase.constraints import ExpCellFilter, FixAtoms
-    atoms.set_constraint(FixAtoms(indices=[0]))
+    from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
     opt = myBFGS(filter,
                  logfile=name + '.log',
