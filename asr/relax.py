@@ -267,9 +267,9 @@ def known_exceptions():
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('--readout_charge', help='Read out chargestate from params.json')
+@option('--chargestate', help='Specify the chargestate of the system')
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
-         readout_charge=False):
+         chargestate=0):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -311,14 +311,6 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
-
-    # Read out chargestate from params.json if specified as option
-    if readout_charge:
-        setup_params = read_json('params.json')
-        chargestate = setup_params.get('charge')
-        print('INFO: chargestate {}'.format(chargestate))
-    else:
-        chargestate = 0
 
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
