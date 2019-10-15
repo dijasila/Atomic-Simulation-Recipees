@@ -11,12 +11,17 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+tests = [{'cli': ['ase build -x bcc Fe',
+                  'asr run asr.anisotropy']}]
+
+
 @command('asr.anisotropy',
+         tests=tests,
          requires=['gs.gpw'],
          webpanel=webpanel,
          dependencies=['asr.structureinfo', 'asr.gs@calculate'])
 def main():
-    """Calculate the magnetic anisotropy from densk.gpw."""
+    """Calculate the magnetic anisotropy."""
     import numpy as np
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
