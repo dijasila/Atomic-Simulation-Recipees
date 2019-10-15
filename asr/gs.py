@@ -1,31 +1,34 @@
 from asr.core import command, option
 from pathlib import Path
 
-
-calctests = [{'description': 'Test ground state of Si.',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params asr.gs@calculate:ecut 300 '
-                      'asr.gs@calculate:kptdensity 2"',
-                      'asr run gs@calculate',
-                      'asr run database.fromtree',
-                      'asr run "browser --only-figures"']}]
+test1 = {'description': 'Test ground state of Si.',
+         'cli': ['asr run "setup.materials -s Si2"',
+                 'ase convert materials.json structure.json',
+                 'asr run "setup.params *:dftcalculator '
+                 "{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}" '"',
+                 'asr run gs@calculate -c {''}',
+                 'asr run database.fromtree',
+                 'asr run "browser --only-figures"']}
 
 
 @command(module='asr.gs',
          creates=['gs.gpw'],
-         tests=calctests,
+         tests=[test1],
          requires=['structure.json'],
          resources='8:10h',
          restart=1)
-@option('--ecut', type=float, help='Plane-wave cutoff')
-@option('-k', '--kptdensity', type=float, help='K-point density')
-@option('--xc', type=str, help='XC-functional')
-@option('--width', help='Fermi-Dirac smearing temperature')
-@option('-r', '--readoutcharge', type=bool,
-        help='Read out chargestate from params.json')
-def calculate(ecut=800, xc='PBE',
-              kptdensity=12.0, width=0.05, readoutcharge=False):
+@option('-c', '--calculator', help='Calculator params.')
+def calculate(calculator={'name': 'gpaw',
+                          'mode': {'name': 'pw', 'ecut': 800},
+                          'xc': 'PBE',
+                          'basis': 'dzp',
+                          'kpts': {'density': 12.0, 'gamma': True},
+                          'occupations': {'name': 'fermi-dirac',
+                                          'width': 0.05},
+                          'convergence': {'bands': -3},
+                          'nbands': -10,
+                          'txt': 'gs.txt',
+                          'charge': 0}):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -33,44 +36,25 @@ def calculate(ecut=800, xc='PBE',
     information."""
     import numpy as np
     from ase.io import read
-    from asr.calculators import get_calculator
-    from asr.core import read_json
-
+    from ase.calculators.calculator import PropertyNotImplementedError
     atoms = read('structure.json')
-
-    # Read out chargestate from params.json if specified as option
-    if readoutcharge:
-        setup_params = read_json('params.json')
-        chargestate = setup_params.get('charge')
-        print('INFO: chargestate {}'.format(chargestate))
-    else:
-        chargestate = 0
-
-    params = dict(
-        mode={'name': 'pw', 'ecut': ecut},
-        xc=xc,
-        basis='dzp',
-        kpts={
-            'density': kptdensity,
-            'gamma': True
-        },
-        occupations={'name': 'fermi-dirac', 'width': width},
-        convergence={'bands': -3},
-        nbands=-10,
-        txt='gs.txt',
-        charge=chargestate)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
-        params['poissonsolver'] = {'dipolelayer': 'xy'}
+        calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = get_calculator()(**params)
-
+    from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
+    
     atoms.calc = calc
     atoms.get_forces()
-    atoms.get_stress()
+    try:
+        atoms.get_stress()
+    except PropertyNotImplementedError:
+        pass
     atoms.get_potential_energy()
     atoms.calc.write('gs.gpw')
 
@@ -78,9 +62,9 @@ def calculate(ecut=800, xc='PBE',
 tests = [{'description': 'Test ground state of Si.',
           'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
+                  'asr run "setup.params *:dftcalculator '
+                  'dict(name="gpaw",mode="lcao",kpts=(4,4,4))"',
                   'ase convert materials.json structure.json',
-                  'asr run "setup.params asr.gs@calculate:ecut 300 '
-                  'asr.gs@calculate:kptdensity 2"',
                   'asr run gs',
                   'asr run database.fromtree',
                   'asr run "browser --only-figures"']}]
