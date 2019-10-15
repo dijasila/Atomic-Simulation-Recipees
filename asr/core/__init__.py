@@ -380,37 +380,41 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = copy.deepcopy(self.defparams)
-
-        inputparams = dict(self.signature.bind(*args, **kwargs).arguments)
-        for key, value in inputparams.items():
+        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
-            if isinstance(params[key], dict) and isinstance(value, str):
-                from ast import literal_eval
-                value = literal_eval(value)
-            inputparams[key] = value
+            # Default type
+            tp = type(self.defparams[key])
 
-        recursive_update(params, inputparams, maxlevel=1)
+            if tp != type(value):
+                # Then this is a str. repr. of a python literal:
+                assert type(value) == str
+                # Dicts has to be treated specially
+                if tp == dict:
+                    from ast import literal_eval
+                    if value.startswith('+'):
+                        value = literal_eval(value[1:])
+                        dct = copy.deepcopy(self.defparams[key])
+                        dct.update(value)
+                    else:
+                        dct = literal_eval(value)
+                    params[key] = dct
+                else:
+                    params[key] = tp(value)
 
-        # Read arguments from params.json if not already in params
-        paramsettings = {}
+        # Read arguments from params.json and overwrite params
         if Path('params.json').is_file():
             paramsettings = read_json('params.json').get(self.name, {})
             for key, value in paramsettings.items():
                 assert key in self.myparams, f'Unknown key: {key} {params}'
-
-            recursive_update(params, paramsettings, maxlevel=1)
+                params[key] = value
 
         paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
-        if self.pass_params:
-            results = self._main(params, **params) or {}
-        else:
-            results = self._main(**params) or {}
-
+        results = self._main(**copy.deepcopy(params)) or {}
         results['__asr_name__'] = self.name
 
         # Do we have to store some digests of previous calculations?
@@ -431,8 +435,7 @@ class ASRCommand:
                 results['__requires__'][filename] = hexdigest
 
         # Save parameters
-        if params:
-            results.update({'__params__': params})
+        results.update({'__params__': params})
 
         # Update with hashes for packages dependencies
         results.update(self.get_execution_info())
