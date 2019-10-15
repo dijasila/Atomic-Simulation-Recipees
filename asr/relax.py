@@ -188,15 +188,15 @@ def relax(atoms, name, kptdensity=6.0, ecut=800, width=0.05, emin=-np.inf,
                                                   symprec=1e-4,
                                                   angle_tolerance=0.1).split()
 
-        if not number == number2:
-            # Log the last step
-            opt.log()
-            opt.call_observers()
-            msg = ('The symmetry was broken during the relaxation! '
-                   f'The initial spacegroup was {spgname} {number} '
-                   f'but it changed to {spgname2} {number2} during '
-                   'the relaxation.')
-            raise AssertionError(msg)
+        # if not number == number2:
+        #     # Log the last step
+        #     opt.log()
+        #     opt.call_observers()
+        #     msg = ('The symmetry was broken during the relaxation! '
+        #            f'The initial spacegroup was {spgname} {number} '
+        #            f'but it changed to {spgname2} {number2} during '
+        #            'the relaxation.')
+        #    raise AssertionError(msg)
 
         if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
             opt.log()

@@ -266,7 +266,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
           processing (e.g. relax the defect structure)
     """
     from ase.io import write
-    from asr.utils import write_json
+    from asr.core import write_json
 
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
