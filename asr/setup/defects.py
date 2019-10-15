@@ -131,9 +131,9 @@ def setup_supercell(structure, max_lattice, is_2D):
 
     print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
           x_size, y_size, z_size))
-    x_size = max(1, x_sizw)
-    y_size = max(1, y_sizw)
-    z_size = max(1, z_sizw)
+    x_size = max(1, x_size)
+    y_size = max(1, y_size)
+    z_size = max(1, z_size)
     structure_sc = structure.repeat((x_size, y_size, z_size))
     print(structure_sc)
     print(structure)
@@ -176,7 +176,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         N_z = sc[2]
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
-    string = 'pristine_sc'
+    string = 'defects.pristine_sc'
     parameters['txt'] = '{0}.txt'.format(string)
     parameters['charge'] = 0
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
@@ -199,7 +199,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 print(vacancy)
 
                 vacancy.pop(i)
-                string = '{0}_{1}{2}{3}.v_{4}{5}'.format(
+                string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
@@ -226,7 +226,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
                         defect[i].symbol = element
-                        string = '{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                        string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
                                  formula, N_x, N_y, N_z, element,
                                  wyckoffs[i], i)
                         charge_dict = {}
