@@ -4,7 +4,7 @@ tests:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - pip install flake8 coverage
-    - pip install -e .
+    - pip install -r requirements.txt
     - flake8 asr
     - pip install gpaw
     - gpaw install-data paw-datasets --register
