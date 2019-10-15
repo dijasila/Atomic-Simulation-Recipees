@@ -112,7 +112,7 @@ def collect(filename):
 @option('--patterns', help='Only select files matching pattern.')
 @option('--dbname', help='Database name.')
 @option('-m', '--metadata-from-file', help='Get metadata from file.')
-def main(folders, patterns='info.json,results-asr.*.json',
+def main(folders=None, patterns='info.json,results-asr.*.json',
          dbname='database.db', metadata_from_file=None):
     """Collect ASR data from folder tree into an ASE database."""
     import os
