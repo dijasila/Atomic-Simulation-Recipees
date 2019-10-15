@@ -393,8 +393,9 @@ def test(patterns, show_output, raiseexc, tmpdir, tag, run_coverage):
                 tmptests.append(test)
 
         tests = tmptests
-    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc,
-                                                   tmpdir=tmpdir)
+    failed = TestRunner(tests, show_output=show_output).run(tmpdir=tmpdir)
+    if raiseexc and failed:
+        raise AssertionError('Some tests failed!')
 
 
 def doctest(text):
