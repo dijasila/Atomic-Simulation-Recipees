@@ -6,6 +6,9 @@ to do:
 - get evac
 - create tests
 - move relevant functions to hseinterpolate? or merge into one single recipe?
+- get spin_axis, get_spin_direction, eigenvalues from asr.utils.gpw2eigs
+- use instead of get_soc_eigs
+
 """
 import json
 from pathlib import Path
@@ -57,7 +60,11 @@ def calculate(kptdensity=12, emptybands=20):
 @option('--npoints')
 def main(kptpath=None, npoints=400):
     """Interpolate HSE band structure along a given path"""
-    results = bs_interpolate(kptpath, npoints)
+    #results = bs_interpolate(kptpath, npoints)
+
+    # XXX no need to pass kptpath and npoints
+    # they are taken from PBE bandstructure
+    results = MP_interpolate(kptpath, npoints)
     return results
 
 
@@ -145,6 +152,79 @@ def hse_spinorbit(dct):
 
         return dct_soc
 
+def MP_interpolate(kptpath, npoints=400, show=False):
+    """
+    Calculates band stucture along the same band path used for PBE.
+    Band structure is obtained by using 'monkhorst_pack_interpolate' to get the HSE correction
+    """
+    # read PBE
+    results_bandstructure = read_json('results-asr.bandstructure.json')
+    
+    path = results_bandstructure['bs_soc']['path']
+    e_pbe_skn = results_bandstructure['bs_nosoc']['energies'] # without soc
+    e_pbe_mk = results_bandstructure['bs_soc']['energies'] # with soc
+
+    calc = GPAW('hse_nowfs.gpw', txt=None)
+    atoms = calc.atoms
+    results_hse = read_json('results-asr.hse@calculate.json')
+    data = results_hse['hse_eigenvalues']
+    delta_skn = data['vxc_hse_skn']-data['vxc_pbe_skn']
+    # delta_skn is the HSE correction to PBE eigenvalues
+    delta_skn.sort(axis=2)
+
+    """ XXX remove this!
+    try:
+        data = results_hse['hse_eigenvalues_soc']
+        delta_mk = data['vxc_hse_mk']-data['vxc_pbe_mk']
+        s_mk = data['s_hse_mk']
+        perm_mk = delta_mk.argsort(axis=0)
+        for s_m, e_m, perm_m in zip(s_mk.T, delta_mk.T, perm_mk.T):
+            delta_m[:] = delta_m[perm_m]
+            s_m[:] = s_m[perm_m]
+    except IOError:
+        delta_mk = None
+    """
+
+    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
+    bz2ibz = calc.get_bz_to_ibz_map()
+    icell = atoms.get_reciprocal_cell()
+    eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
+                                     icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
+    e_hse_skn = eps.transpose(1, 0, 2)+e_pbe_skn 
+    dct = dict(e_hse_skn=e_hse_skn, path=path)
+
+    """
+    if delta_mk is not None:
+        eps_soc = monkhorst_pack_interpolate(path.kpts, delta_mk.transpose(1, 0),
+                                             icell, bz2ibz, size, offset)
+        s_soc = monkhorst_pack_interpolate(path.kpts, s_mk.transpose(1, 0),
+                                           icell, bz2ibz, size, offset)
+        e_hse_mk = eps_soc.transpose(1, 0)+e_pbe_mk
+        s_hse_mk = s_soc.transpose(1, 0)
+        dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
+    """
+
+    results = {}
+    results['hse_bandstructure'] = dct
+
+    return results
+
+    """
+    ranks = [0]
+    comm = mpi.world.new_communicator(ranks)
+    if mpi.world.rank in ranks:
+        calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
+        e_skn = dct.get('e_hse_skn')
+        dct_soc = {}
+        theta, phi = get_spin_direction()
+        e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
+                                   bands=np.arange(e_skn.shape[2]),
+                                   theta=theta, phi=phi)
+        dct_soc['e_hse_mk'] = e_mk
+        dct_soc['s_hse_mk'] = s_kvm[:, spin_axis(), :].transpose()
+    """
+
+# OLD!
 def bs_interpolate(kptpath, npoints=400, show=False):
     """inpolate the eigenvalues on a monkhorst pack grid to
     a path in the bz between high-symmetry points.
@@ -214,7 +294,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
 
     return results
 
-
+# OLD!
 # move to utils?
 def ontheline(p1, p2, p3s, eps=1.0e-5):
     """
@@ -249,6 +329,7 @@ def ontheline(p1, p2, p3s, eps=1.0e-5):
     its = sorted(its, key=lambda x: x[1])
     return its
 
+# OLD!
 # move to utils?
 def segment_indices_and_x(cell, path, kpts):
     """finds indices of bz k-points that is located on segments of a bandpath
@@ -291,6 +372,7 @@ def segment_indices_and_x(cell, path, kpts):
 
     return segments_indices, segments_xs
 
+# OLD!
 # move to utils?
 def interpolate_bandstructure(calc, path, e_skn=None):
     """simple wrapper for interpolate_bandlines2
@@ -302,6 +384,7 @@ def interpolate_bandstructure(calc, path, e_skn=None):
     r = interpolate_bandlines2(calc=calc, path=path, e_skn=e_skn)
     return r['kpts'], r['x'], r['X'], r['e_skn'], r['xreal'], r['epsreal_skn']
 
+# OLD!
 # move to utils?
 def interpolate_bandlines2(calc, path, e_skn=None):
     """Interpolate bandstructure
@@ -433,7 +516,7 @@ def interpolate_bandlines2(calc, path, e_skn=None):
                }
     return results
 
-# move to utils? [also in asr.bandstructure]
+# move to utils? [also in asr.bandstructure] -> in asr.utils.gpw2eigs
 def eigenvalues(calc):
     """
     Parameters:
@@ -448,7 +531,7 @@ def eigenvalues(calc):
     e = calc.get_eigenvalues
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
-# move to utils? [also in asr.bandstructure]
+# move to utils? [also in asr.bandstructure] -> in asr.utils.gpw2eigs
 def get_spin_direction(fname='anisotropy_xy.npz'):
     '''
     Uses the magnetic anisotropy to calculate the preferred spin orientation
@@ -478,7 +561,7 @@ def get_spin_direction(fname='anisotropy_xy.npz'):
                 phi = np.pi / 2
     return theta, phi
 
-# move to utils? [also in asr.bandstructure]
+# move to utils? [also in asr.bandstructure] -> in asr.utils.gpw2eigs (?)
 def spin_axis(fname='anisotropy_xy.npz') -> int:
     import numpy as np
     theta, phi = get_spin_direction(fname=fname)
