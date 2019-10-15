@@ -34,7 +34,7 @@ from contextlib import contextmanager
          dependencies = ['asr.structureinfo', 'asr.gs'],
          creates=['hse_nowfs.gpw', 'hse-restart.json'],
          #tests=...,
-         #requires=['gs.gpw'], # file needed to run asr.hse@calculate
+         requires=['gs.gpw'],
          resources='24:10h',
          restart=2)
 @option('--kptdensity', help='K-point density')
@@ -47,13 +47,10 @@ def calculate(kptdensity=12, emptybands=20):
     results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
     return results
 
-
-
 @command(module='asr.hse',
-         dependencies = ['asr.hse@calculate'],
-         #creates=[], # nothing but results-asr.hse.json
+         dependencies = ['asr.hse@calculate', 'asr.bandstructure'],
          #tests=...,
-         requires=['hse_nowfs.gpw'],
+         requires=['hse_nowfs.gpw', 'results-asr.bandstructure.json'],
          resources='8:10m',
          restart=2)
 @option('--kptpath', type=str)
@@ -62,7 +59,6 @@ def main(kptpath=None, npoints=400):
     """Interpolate HSE band structure along a given path"""
     results = bs_interpolate(kptpath, npoints)
     return results
-
 
 
 def hse(kptdensity, emptybands):
@@ -165,7 +161,7 @@ def bs_interpolate(kptpath, npoints=400, show=False):
     """
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
-    results_hse = read_json('results-asr.hse.json')
+    results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     e_skn = data['e_hse_skn']
     e_skn.sort(axis=2)
@@ -514,10 +510,10 @@ def collect_data(atoms):
     evac = 0.0 # XXX where do I find evac?
     #evac = kvp.get('evac')
 
-    if not os.path.isfile('results-asr.hse.json'):
+    if not os.path.isfile('results-asr.hse@calculate.json'):
         return kvp, key_descriptions, data
 
-    results_hse = read_json('results-asr.hse.json')
+    results_hse = read_json('results-asr.hse@calculate.json')
     
     eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
