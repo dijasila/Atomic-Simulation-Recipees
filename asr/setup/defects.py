@@ -135,8 +135,6 @@ def setup_supercell(structure, max_lattice, is_2D):
     y_size = max(1, y_size)
     z_size = max(1, z_size)
     structure_sc = structure.repeat((x_size, y_size, z_size))
-    print(structure_sc)
-    print(structure)
 
     return structure_sc, x_size, y_size, z_size
 
@@ -167,13 +165,15 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc == [0, 0, 0]:
+    if sc == (0, 0, 0):
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
     else:
         N_x = sc[0]
         N_y = sc[1]
         N_z = sc[2]
+        print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
+              N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
     string = 'defects.pristine_sc'
@@ -187,17 +187,11 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     wyckoffs = dataset.get('wyckoffs')
 
     finished_list = []
-    print(pristine)
     if vacancies:
         temp_dict = {}
         for i in range(len(structure)):
             if not eq_pos[i] in finished_list:
-                print(pristine)
                 vacancy = pristine.copy()
-                # test
-                print(i, len(structure))
-                print(vacancy)
-
                 vacancy.pop(i)
                 string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
