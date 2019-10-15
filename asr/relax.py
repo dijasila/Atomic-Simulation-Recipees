@@ -234,22 +234,22 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
          resources='24:10h',
          requires=['unrelaxed.json'],
          creates=['structure.json'])
-@option('--dftcalculator', help='Calculator and its parameters.')
+@option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
-def main(dftcalculator={'name': 'gpaw',
-                        'mode': {'name': 'pw', 'ecut': 800,
-                                 'dedecut': 'estimate'},
-                        'xc': 'PBE',
-                        'kpts': {'density': 6.0, 'gamma': True},
-                        'basis': 'dzp',
-                        'symmetry': {'symmorphic': False},
-                        'convergence': {'forces': 1e-4},
-                        'txt': 'relax.txt',
-                        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
-                        'charge': 0},
+def main(calculator={'name': 'gpaw',
+                     'mode': {'name': 'pw', 'ecut': 800,
+                              'dedecut': 'estimate'},
+                     'xc': 'PBE',
+                     'kpts': {'density': 6.0, 'gamma': True},
+                     'basis': 'dzp',
+                     'symmetry': {'symmorphic': False},
+                     'convergence': {'forces': 1e-4},
+                     'txt': 'relax.txt',
+                     'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+                     'charge': 0},
          d3=False, fixcell=False, allow_symmetry_breaking=False):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
@@ -292,10 +292,10 @@ def main(dftcalculator={'name': 'gpaw',
         atoms = read('unrelaxed.json', parallel=False)
 
     from ase.calculators.calculator import get_calculator_class
-    calculatorname = dftcalculator.pop('name')
+    calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
-    calc = Calculator(**dftcalculator)
+    calc = Calculator(**calculator)
     # Relax the structure
     atoms = relax(atoms, name='relax', dftd3=d3,
                   fixcell=fixcell,
