@@ -22,10 +22,10 @@ calctests = [{'description': 'Test ground state of Si.',
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--xc', type=str, help='XC-functional')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('-r', '--readoutcharge', type=bool,
-        help='Read out chargestate from params.json')
+@option('--chargestate', type=int,
+        help='Specify the chargestate of the system')
 def calculate(ecut=800, xc='PBE',
-              kptdensity=12.0, width=0.05, readoutcharge=False):
+              kptdensity=12.0, width=0.05, chargestate=0):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -37,14 +37,6 @@ def calculate(ecut=800, xc='PBE',
     from asr.core import read_json
 
     atoms = read('structure.json')
-
-    # Read out chargestate from params.json if specified as option
-    if readoutcharge:
-        setup_params = read_json('params.json')
-        chargestate = setup_params.get('charge')
-        print('INFO: chargestate {}'.format(chargestate))
-    else:
-        chargestate = 0
 
     params = dict(
         mode={'name': 'pw', 'ecut': ecut},
