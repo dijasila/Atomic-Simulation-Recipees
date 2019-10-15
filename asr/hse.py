@@ -168,6 +168,7 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     atoms = calc.atoms
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
+    nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
     delta_skn = data['vxc_hse_skn']-data['vxc_pbe_skn']
     # delta_skn is the HSE correction to PBE eigenvalues
     delta_skn.sort(axis=2)
@@ -190,7 +191,7 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
-    e_hse_skn = eps.transpose(1, 0, 2)+e_pbe_skn 
+    e_hse_skn = eps.transpose(1, 0, 2)+e_pbe_skn[:,:,:nbands]
     dct = dict(e_hse_skn=e_hse_skn, path=path)
 
     """
