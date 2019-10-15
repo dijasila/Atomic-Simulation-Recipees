@@ -27,6 +27,7 @@ def main(params=None):
     from pathlib import Path
     from asr.core import get_recipes, read_json
     from ast import literal_eval
+    from fnmatch import fnmatch
 
     defparamdict = {}
     
@@ -43,11 +44,26 @@ def main(params=None):
 
     if params:
         # Find recipe:option
-        options = params[::2]
-        args = params[1::2]
+        tmpoptions = params[::2]
+        tmpargs = params[1::2]
+        options = []
+        args = []
+        for tmpoption, tmparg in zip(tmpoptions, tmpargs):
+            assert ':' in tmpoption, 'You have to use the recipe:option syntax'
+            recipe, option = tmpoption.split(':')
+            if '*' in recipe:
+                for tmprecipe in defparamdict:
+                    if not fnmatch(tmprecipe, recipe):
+                        continue
+                    if option in defparamdict[tmprecipe]:
+                        options.append(f'{tmprecipe}:{option}')
+                        args.append(tmparg)
+            else:
+                options.append(tmpoption)
+                args.append(tmparg)
 
+        print(options, args)
         for option, value in zip(options, args):
-            assert ':' in option, 'You have to use the recipe:option syntax'
             recipe, option = option.split(':')
             assert option, 'You have to provide an option'
             assert recipe, 'You have to provide a recipe'
@@ -62,6 +78,7 @@ def main(params=None):
 
             paramtype = type(defparamdict[recipe][option])
             if paramtype in (bool, dict):
+                print(repr(value))
                 val = paramtype(literal_eval(value))
             else:
                 val = paramtype(value)
