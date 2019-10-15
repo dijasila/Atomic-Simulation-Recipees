@@ -177,8 +177,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
     string = 'defects.pristine_sc'
-    parameters['txt'] = '{0}.txt'.format(string)
-    parameters['charge'] = 0
+    parameters['asr.relax'] = {}
+    parameters['asr.gs'] = {}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
@@ -198,8 +198,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
-                    parameters['txt'] = '{0}.charged_{1}'.format(string, q)
-                    parameters['charge'] = q
+                    parameters['asr.relax'] = {'chargestate': q}
+                    parameters['asr.gs'] = {'chargestate': q}
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {'structure': vacancy,
                                                   'parameters': parameters}
@@ -228,9 +228,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                             (-1) * charge_states,
                             charge_states + 1):
                             parameters = {}
-                            parameters['txt'] = '{0}.charged_{1}'.format(
-                                string, q)
-                            parameters['charge'] = q
+                            parameters['asr.relax'] = {'chargestate': q}
+                            parameters['asr.gs'] = {'chargestate': q}
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
