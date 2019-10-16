@@ -53,7 +53,7 @@ def calculate(kptdensity=12, emptybands=20):
 @command(module='asr.hse',
          dependencies = ['asr.hse@calculate', 'asr.bandstructure'],
          #tests=...,
-         requires=['hse_nowfs.gpw', 'results-asr.bandstructure.json'],
+         requires=['hse_nowfs.gpw', 'results-asr.bandstructure.json', 'bs.gpw'],
          resources='8:10m',
          restart=2)
 @option('--kptpath', type=str)
@@ -162,7 +162,7 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     
     path = results_bandstructure['bs_soc']['path']
     e_pbe_skn = results_bandstructure['bs_nosoc']['energies'] # without soc
-    e_pbe_mk = results_bandstructure['bs_soc']['energies'] # with soc
+    #e_pbe_mk = results_bandstructure['bs_soc']['energies'] # with soc
 
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
@@ -173,7 +173,7 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     # delta_skn is the HSE correction to PBE eigenvalues
     delta_skn.sort(axis=2)
 
-    """ XXX remove this!
+    """ XXX remove this?
     try:
         data = results_hse['hse_eigenvalues_soc']
         delta_mk = data['vxc_hse_mk']-data['vxc_pbe_mk']
@@ -191,10 +191,11 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
-    e_hse_skn = eps.transpose(1, 0, 2)+e_pbe_skn[:,:,:nbands]
+    delta_interp_skn = eps.transpose(1, 0, 2)
+    e_hse_skn = e_pbe_skn[:,:,:nbands] + delta_interp_skn
     dct = dict(e_hse_skn=e_hse_skn, path=path)
 
-    """
+    """ XXX remove this?
     if delta_mk is not None:
         eps_soc = monkhorst_pack_interpolate(path.kpts, delta_mk.transpose(1, 0),
                                              icell, bz2ibz, size, offset)
@@ -204,6 +205,30 @@ def MP_interpolate(kptpath, npoints=400, show=False):
         s_hse_mk = s_soc.transpose(1, 0)
         dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
     """
+    
+    """
+    # add soc?
+    # XXX does it work?
+    ranks = [0]
+    comm = mpi.world.new_communicator(ranks)
+    if mpi.world.rank in ranks:
+        calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
+        theta, phi = get_spin_direction()
+        e_hse_mk, s_hse_mk = get_soc_eigs(calc, gw_kn=e_hse_skn, return_spin=True,
+                                          bands=np.arange(e_hse_skn.shape[2]),
+                                          theta=theta, phi=phi)
+        dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
+    """
+    
+    ranks = [0]
+    comm = mpi.world.new_communicator(ranks)
+    if mpi.world.rank in ranks:
+        calc = GPAW('bs.gpw', communicator=comm, txt=None)
+        theta, phi = get_spin_direction()
+        e_hse_mk, s_hse_mk = get_soc_eigs(calc, gw_kn=e_hse_skn, return_spin=True,
+                                          bands=np.arange(e_hse_skn.shape[2]),
+                                          theta=theta, phi=phi)
+        dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
 
     results = {}
     results['hse_bandstructure'] = dct
