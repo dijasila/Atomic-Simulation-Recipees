@@ -5,21 +5,25 @@ def webpanel(row, key_descriptions):
     from asr.browser import table
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
-                      'maganis_zx', 'maganis_zy', 'dE_NM'])
+                      'maganis_zx', 'maganis_zy'])
     panel = {'title': 'Magnetic properties',
              'columns': [[magtable], []]}
     return [panel]
 
 
-tests = [{'cli': ['ase build -x bcc Fe',
-                  'asr run asr.anisotropy']}]
+params = '''asr.gs@calculate:calculator +{'mode':'lcao','kpts':(2,2,2)}'''
+tests = [{'cli': ['ase build -x hcp Co structure.json',
+                  f'asr run "setup.params {params}"',
+                  'asr run asr.anisotropy',
+                  'asr run database.fromtree',
+                  'asr run "browser --only-figures"']}]
 
 
 @command('asr.anisotropy',
          tests=tests,
          requires=['gs.gpw'],
          webpanel=webpanel,
-         dependencies=['asr.structureinfo', 'asr.gs@calculate'])
+         dependencies=['asr.gs@calculate'])
 def main():
     """Calculate the magnetic anisotropy."""
     import numpy as np
