@@ -295,7 +295,7 @@ def bs_hse(row,
            show_legend=True,
            s=0.5):
 
-    if 'hse_interpol' not in row.data:
+    if 'hse_bandstructure' not in row.data:
         return
 
     import matplotlib as mpl
@@ -305,15 +305,22 @@ def bs_hse(row,
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     from ase.dft.kpoints import labels_from_kpts
 
-    d = row.data.hse_interpol
+    if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+        reference = row.get('evac')
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+        reference = ef
+
+    d = row.data.hse_bandstructure
     path = d['path']
     ef = row.efermi_hse_soc
     emin = row.get('vbm_hse', ef) - 3 - ef
     emax = row.get('cbm_hse', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
 
-    e_mk = d['eps_mk']
-    s_mk = d['s_mk']
+    e_mk = d['e_hse_mk']-reference
+    s_mk = d['s_hse_mk']
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
        
     # hse with soc
@@ -328,7 +335,7 @@ def bs_hse(row,
         ax.plot(x, e_m, **hse_style)
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(r'$E-E_{\mathrm{vac}}$ [eV]')
+    ax.set_ylabel(label)
     ax.set_xlabel('$k$-points')
     ax.set_xticks(X)
     ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
