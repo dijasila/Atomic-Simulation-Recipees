@@ -4,9 +4,9 @@ from pathlib import Path
 test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',
                  'ase convert materials.json structure.json',
-                 'asr run "setup.params *:dftcalculator '
-                 "{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}" '"',
-                 'asr run gs@calculate -c {''}',
+                 'asr run "setup.params *:calculator '
+                 "+{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}" '"',
+                 'asr run gs@calculate',
                  'asr run database.fromtree',
                  'asr run "browser --only-figures"']}
 
@@ -62,8 +62,8 @@ def calculate(calculator={'name': 'gpaw',
 tests = [{'description': 'Test ground state of Si.',
           'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
-                  'asr run "setup.params *:dftcalculator '
-                  'dict(name="gpaw",mode="lcao",kpts=(4,4,4))"',
+                  'asr run "setup.params *:calculator '
+                  '''{'name':'gpaw','mode':'lcao',kpts:(4,4,4))"''',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
