@@ -60,6 +60,7 @@ def calculate(kptdensity=12, emptybands=20):
 @option('--npoints')
 def main(kptpath=None, npoints=400):
     """Interpolate HSE band structure along a given path"""
+    # XXX you don't need to pass kptpath, npoints to this function!
     results = MP_interpolate(kptpath, npoints)
     return results
 
@@ -216,21 +217,11 @@ def cleanup(*files):
                 if os.path.isfile(f):
                     os.remove(f)
 
-def collect_data(atoms):
+
+def analyse_hse(results):
     from ase.dft.bandgap import bandgap
-    kvp = {}
-    key_descriptions = {}
-    data = {}
-
-    evac = 0.0 # XXX where do I find evac?
-    #evac = kvp.get('evac')
-
-    if not os.path.isfile('results-asr.hse@calculate.json'):
-        return kvp, key_descriptions, data
-
-    results_hse = read_json('results-asr.hse@calculate.json')
-    
-    eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
+   
+    eps_skn = results['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
 
@@ -239,17 +230,20 @@ def collect_data(atoms):
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                              direct=True, output=None)
-    if 'hse' not in data:
-        data['hse'] = {}
+    dct = {}
     if gap:
-        data['hse']['kvbm_nosoc'] = ibzkpts[p1[1]] # k coordinates of vbm
-        data['hse']['kcbm_nosoc'] = ibzkpts[p2[1]] # k coordinates of cbm
-        vbm = eps_skn[p1] - evac
-        cbm = eps_skn[p2] - evac
-        kvp.update(vbm_hse_nosoc=vbm, cbm_hse_nosoc=cbm,
-                   dir_gap_hse_nosoc=gapd, gap_hse_nosoc=gap)
+        kvbm_nosoc = ibzkpts[p1[1]] # k coordinates of vbm
+        kcbm_nosoc = ibzkpts[p2[1]] # k coordinates of cbm
+        vbm = eps_skn[p1]
+        cbm = eps_skn[p2]
+        dct.update(vbm_hse_nosoc=vbm,
+                   cbm_hse_nosoc=cbm,
+                   dir_gap_hse_nosoc=gapd,
+                   gap_hse_nosoc=gap,
+                   kvbm_nosoc=kvbm_nosoc,
+                   kcbm_nosoc=kcbm_nosoc)
 
-    eps = results_hse['hse_eigenvalues_soc']['e_hse_mk']
+    eps = results['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eps_skn=eps,
                          nelectrons=calc.get_number_of_electrons() * 2)
@@ -258,51 +252,142 @@ def collect_data(atoms):
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        data['hse']['kvbm'] = ibzkpts[p1[1]]
-        data['hse']['kcbm'] = ibzkpts[p2[1]]
-        vbm = eps[p1] - evac
-        cbm = eps[p2] - evac
-        kvp.update(vbm_hse=vbm, cbm_hse=cbm,
-                   dir_gap_hse=gapd, gap_hse=gap)
-    kvp.update(efermi_hse_nosoc=efermi_nosoc - evac,
-               efermi_hse_soc=efermi_soc - evac)
+        kvbm = ibzkpts[p1[1]]
+        kcbm = ibzkpts[p2[1]]
+        vbm = eps[p1]
+        cbm = eps[p2]
+        dct.update(vbm_hse=vbm,
+                   cbm_hse=cbm,
+                   dir_gap_hse=gapd,
+                   gap_hse=gap,
+                   kvbm=kvbm,
+                   kcbm=kcbm)
+    dct.update(efermi_hse_nosoc=efermi_nosoc,
+               efermi_hse_soc=efermi_soc)
       
     kd = {
-        'vbm_hse_nosoc': ('HSE Valence Band Max - no soc',
-                          'HSE Valence Band Maximum without spin-orbit coupling',
-                          'eV'),
-        'cbm_hse_nosoc': ('HSE Conduction Band Min - no soc',
-                          'HSE Conduction Band Minimum without spin-orbit coupling',
-                          'eV'),
-        'dir_gap_hse_nosoc': ('HSE direct gap - no soc',
-                              'HSE direct gap without spin-orbit coupling',
-                              'eV'),
-        'gap_hse_nosoc': ('HSE gap - no soc',
-                          'HSE gap without spin-orbit coupling',
-                          'eV'),
-        'vbm_hse': ('HSE Valence Band Max - soc',
-                    'HSE Valence Band Maximum with spin-orbit coupling',
-                    'eV'),
-        'cbm_hse': ('HSE Conduction Band Min - soc',
-                    'HSE Conduction Band Minimum with spin-orbit coupling',
-                    'eV'),
-        'dir_gap_hse': ('HSE direct gap - soc',
-                        'HSE direct gap with spin-orbit coupling',
-                        'eV'),
-        'gap_hse': ('HSE gap - soc',
-                    'HSE gap with spin-orbit coupling',
-                    'eV'),
-        'efermi_hse_nosoc': ('HSE Fermi energy - no soc',
-                             'HSE Fermi energy without spin-orbit coupling',
-                             'eV'),
-        'efermi_hse_soc': ('HSE Fermi energy - soc',
-                           'HSE Fermi energy with spin-orbit coupling',
-                           'eV'),
+        'vbm_hse_nosoc': 'HSE valence band max. w/o soc (HSE vbm w/o soc) [eV]',
+        'cbm_hse_nosoc': 'HSE condution band min. w/o soc (HSE cbm w/o soc) [eV]',
+        'dir_gap_hse_nosoc': 'HSE direct gap w/o soc (HSE dir. gap w/o soc) [eV]',
+        'gap_hse_nosoc': 'HSE gap w/o soc [eV]',
+        'vbm_hse': 'HSE valence band max. (HSE vbm) [eV]',
+        'cbm_hse': 'HSE conduction band min. (HSE cbm) [eV]',
+        'dir_gap_hse': 'HSE direct gap (HSE dir. gap) [eV]',
+        'gap_hse': 'HSE gap [eV]',
+        'efermi_hse_nosoc': 'HSE Fermi energy w/o soc [eV]',
+        'efermi_hse_soc': 'HSE Fermi energy [eV]',
     }
-    key_descriptions.update(kd)
+    dct.update(__key_descriptors__=kd)
 
-    return kvp, key_descriptions, data
+    results['HSE_gaps']=dct
 
+
+# XXX remove this
+# in asr.bandstructure
+"""
+if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+        reference = row.get('evac')
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+        reference = ef
+"""
+
+
+# HSE soc and PBE soc
+def bs_hse(row,
+           filename='hse-bs.png',
+           figsize=(6.4, 4.8),
+           fontsize=10,
+           show_legend=True,
+           s=0.5):
+
+    if 'hse_interpol' not in row.data:
+        return
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
+    import numpy as np
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.dft.kpoints import labels_from_kpts
+
+    d = row.data.hse_interpol
+    path = d['path']
+    ef = row.efermi_hse_soc
+    emin = row.get('vbm_hse', ef) - 3 - ef
+    emax = row.get('cbm_hse', ef) + 3 - ef
+    mpl.rcParams['font.size'] = fontsize
+
+    e_mk = d['eps_mk']
+    s_mk = d['s_mk']
+    x, X, labels = labels_from_kpts(path.kpts, row.cell)
+       
+    # hse with soc
+    hse_style = dict(
+        color='k',
+        #label='HSE',
+        ls='-',
+        lw=1.0,
+        zorder=0)
+    ax = plt.figure(figsize=figsize).add_subplot(111)
+    for e_m in e_mk:
+        ax.plot(x, e_m, **hse_style)
+    ax.set_ylim([emin, emax])
+    ax.set_xlim([x[0], x[-1]])
+    ax.set_ylabel(r'$E-E_{\mathrm{vac}}$ [eV]')
+    ax.set_xlabel('$k$-points')
+    ax.set_xticks(X)
+    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
+
+    xlim = ax.get_xlim()
+    x0 = xlim[1] * 0.01
+    ax.axhline(ef, c='k', ls=':')
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef),
+        ha='left',
+        va='bottom',
+        fontsize=fontsize * 1.3)
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
+
+    # add PBE band structure with soc
+    from asr.bandstructure import add_bs_pbe
+    if 'bs_pbe' in row.data and 'path' in row.data.bs_pbe:
+        ax = add_bs_pbe(row, ax)
+    
+    for Xi in X:
+        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
+
+    line_hse = ax.plot([], [], **hse_style, label='HSE')
+    plt.legend(loc='upper right')
+   
+    if not show_legend:
+        ax.legend_.remove()
+    plt.savefig(filename, bbox_inches='tight')
+
+
+def webpanel(row, key_descriptions):
+    from asr.browser import fig, table
+    
+    if row.get('gap_hse', 0) > 0.0:
+        hse = table(row, 'Property',
+                    ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
+                    kd=key_descriptions)
+    else:
+        hse = table(row, 'Property',
+                    [],
+                    kd=key_descriptions)
+
+    panel = {'title': 'Electronic band structure (HSE)',
+             'columns': [[fig('hse-bs.png')],
+                         [hse]],
+             'plot_descriptions': [{'function': bs_hse,
+                                    'filenames': ['hse-bs.png']}]}
+    return [panel]
 
 if __name__ == '__main__':
     main.cli()
