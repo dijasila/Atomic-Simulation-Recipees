@@ -492,14 +492,13 @@ def workflow(tasks, doforstable):
 
 clitests = [{'cli': ['asr run -h'],
              'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
+            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
              'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"'],
+            {'cli': ['asr run --dry-run setup.params'],
              'tags': ['gitlab-ci']},
             {'cli': ['mkdir folder1',
                      'mkdir folder2',
-                     'asr run "setup.params asr.relax:ecut'
-                     ' 300" folder1 folder2'],
+                     'asr run setup.params folder1 folder2'],
              'tags': ['gitlab-ci']},
             {'cli': ['touch str1.json',
                      'asr run --shell "mv str1.json str2.json"'],

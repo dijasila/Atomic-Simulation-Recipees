@@ -63,7 +63,7 @@ tests = [{'description': 'Test ground state of Si.',
           'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
                   'asr run "setup.params *:calculator '
-                  '''{'name':'gpaw','mode':'lcao',kpts:(4,4,4))"''',
+                  '''{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}"''',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
