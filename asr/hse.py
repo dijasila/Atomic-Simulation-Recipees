@@ -11,7 +11,7 @@ to do:
 import json
 from pathlib import Path
 from asr.core import command, option, read_json
-from asr.utils.gpw2eigs import eigenvalues, get_spin_direction
+from asr.utils.gpw2eigs import eigenvalues, get_spin_direction, fermi_level
 
 import time
 
@@ -76,7 +76,7 @@ def hse(kptdensity, emptybands):
             kpts = {'density': kptdensity, 'gamma': True, 'even': False} # do not round up to nearest even number!
         elif ND == 2:
 
-            # move to utils? [also in asr.polarizability]
+            # XXX move to utils? [also in asr.polarizability]
             def get_kpts_size(atoms, kptdensity):
                 """trying to get a reasonable monkhorst size which hits high
                 symmetry points
@@ -153,24 +153,26 @@ def MP_interpolate(kptpath, npoints=400, show=False):
     Calculates band stucture along the same band path used for PBE.
     Band structure is obtained by using 'monkhorst_pack_interpolate' to get the HSE correction
     """
-    # read PBE
+    # read PBE (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')  
-    path = results_bandstructure['bs_soc']['path']
-    e_pbe_skn = results_bandstructure['bs_nosoc']['energies'] # without SOC
+    path = results_bandstructure['bs_nosoc']['path']
+    e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
 
+    # get the HSE correction to PBE eigenvalues (delta_skn)
     calc = GPAW('hse_nowfs.gpw', txt=None)
     atoms = calc.atoms
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn']-data['vxc_pbe_skn'] # delta_skn is the HSE correction to PBE eigenvalues
+    delta_skn = data['vxc_hse_skn']-data['vxc_pbe_skn']
     delta_skn.sort(axis=2)
 
+    # interpolate delta_skn to kpts along the band path
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
     icell = atoms.get_reciprocal_cell()
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset) # monkhorst_pack_interpolate wants a (npoints, 3) path array
+                                     icell, bz2ibz, size, offset)
     delta_interp_skn = eps.transpose(1, 0, 2)
     e_hse_skn = e_pbe_skn[:,:,:nbands] + delta_interp_skn
     dct = dict(e_hse_skn=e_hse_skn, path=path)
@@ -231,32 +233,6 @@ def collect_data(atoms):
     eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
-
-
-    def fermi_level(calc, eps_skn=None, nelectrons=None):
-        """
-        Parameters:
-            calc: GPAW
-                GPAW calculator
-            eps_skn: ndarray, shape=(ns, nk, nb), optional
-                eigenvalues (taken from calc if None)
-            nelectrons: float, optional
-                number of electrons (taken from calc if None)
-        Returns:
-            out: float
-                fermi level
-        """
-        if nelectrons is None:
-            nelectrons = calc.get_number_of_electrons()
-        if eps_skn is None:
-            eps_skn = eigenvalues(calc)
-        eps_skn.sort(axis=-1)
-        occ = calc.occupations.todict()
-        weight_k = calc.get_k_point_weights()
-        from gpaw.occupations import occupation_numbers
-        from ase.units import Ha
-        return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
-
 
     efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
