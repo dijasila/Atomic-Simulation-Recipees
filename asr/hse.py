@@ -43,11 +43,12 @@ from contextlib import contextmanager
 @option('--emptybands', help='number of empty bands to include')
 def calculate(kptdensity=12, emptybands=20):
     """Calculate HSE band structure"""
-    results = {}
-    results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
-    mpi.world.barrier()
-    results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
-    return results
+    with cleanup('hse.gpw'):
+        results = {}
+        results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
+        mpi.world.barrier()
+        results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
+        return results
 
 @command(module='asr.hse',
          dependencies = ['asr.hse@calculate', 'asr.bandstructure'],
@@ -327,8 +328,5 @@ def collect_data(atoms):
     return kvp, key_descriptions, data
 
 
-
-
 if __name__ == '__main__':
-    with cleanup('hse.gpw'):
-        main.cli()
+    main.cli()
