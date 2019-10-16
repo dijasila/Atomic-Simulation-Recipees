@@ -267,7 +267,8 @@ def known_exceptions():
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('--chargestate', help='Specify the chargestate of the system')
+@option('--chargestate', type=int,
+        help='Specify the chargestate of the system')
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
          chargestate=0):
     """Relax atomic positions and unit cell.

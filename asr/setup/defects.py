@@ -178,7 +178,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     parameters = {}
     string = 'defects.pristine_sc'
     parameters['asr.relax'] = {}
-    parameters['asr.gs'] = {}
+    parameters['asr.gs@calculate'] = {}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
@@ -199,7 +199,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
                     parameters['asr.relax'] = {'chargestate': q}
-                    parameters['asr.gs'] = {'chargestate': q}
+                    parameters['asr.gs@calculate'] = {'chargestate': q}
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {'structure': vacancy,
                                                   'parameters': parameters}
@@ -229,7 +229,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                             charge_states + 1):
                             parameters = {}
                             parameters['asr.relax'] = {'chargestate': q}
-                            parameters['asr.gs'] = {'chargestate': q}
+                            parameters['asr.gs@calculate'] = {'chargestate': q}
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
