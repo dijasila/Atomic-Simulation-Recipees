@@ -156,7 +156,7 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
                         cliargs += key
                 else:
                     cliargs += key + f' {value}'
-            cliargs += f' {command} ' + ' '.join(folders)
+            cliargs += f' "{command}" ' + ' '.join(folders)
             cmd += cliargs
             return subprocess.run(cmd, shell=True,
                                   check=True)
