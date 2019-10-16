@@ -25,9 +25,10 @@ def main(params=None):
     for specific options."""
     import json
     from pathlib import Path
-    from asr.core import get_recipes, read_json
+    from asr.core import get_recipes, read_json, parse_dict_string
     from ast import literal_eval
     from fnmatch import fnmatch
+    import copy
 
     defparamdict = {}
     
@@ -62,7 +63,6 @@ def main(params=None):
                 options.append(tmpoption)
                 args.append(tmparg)
 
-        print(options, args)
         for option, value in zip(options, args):
             recipe, option = option.split(':')
             assert option, 'You have to provide an option'
@@ -77,9 +77,14 @@ def main(params=None):
                 paramdict[recipe] = {}
 
             paramtype = type(defparamdict[recipe][option])
-            if paramtype in (bool, dict):
-                print(repr(value))
-                val = paramtype(literal_eval(value))
+            if paramtype == dict:
+                if value.startswith('+'):
+                    dct = copy.deepcopy(defparamdict[recipe][option])
+                    val = parse_dict_string(value[1:], dct=dct)
+                else:
+                    val = parse_dict_string(value)
+            elif paramtype == bool:
+                val = literal_eval(value)
             else:
                 val = paramtype(value)
             paramdict[recipe][option] = val

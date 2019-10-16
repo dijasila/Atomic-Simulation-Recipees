@@ -2,7 +2,8 @@ from asr.core import command, option
 
 tests = [{'cli': ['ase build -x diamond Si structure.json',
                   'asr run "setup.strains --kptdensity 2.0"',
-                  'asr run "setup.params asr.relax:ecut 200" strains*/',
+                  'asr run "setup.params asr.relax:calculator '
+                  '''+{'mode':{'ecut':200}}" strains*/''',
                   'asr run "relax --nod3" strains*/',
                   'asr run stiffness']}]
 

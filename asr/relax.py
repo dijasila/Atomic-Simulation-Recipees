@@ -196,34 +196,29 @@ def BN_check():
 
 
 tests = []
+testargs = '''+{'mode':{'ecut':300},'kpts':{'density':2,'gamma':True}}'''
 tests.append({'description': 'Test relaxation of Si.',
               'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
-                      'asr run "setup.params asr.relax:ecut 300 '
-                      'asr.relax:kpts {\'density\':2.0}"',
-                      'asr run "relax --nod3"',
+                      f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.872, 0.001)}]})
+                           'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json unrelaxed.json',
-                      'asr run "setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2"',
-                      'asr run -p 2 "relax --nod3"',
+                      f'asr run -p 2 "relax -c {testargs}"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.872, 0.001)}]})
+                           'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
               'name': 'test_asr.relax_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
                       'ase convert materials.json unrelaxed.json',
-                      'asr run "setup.params asr.relax:ecut 300 '
-                      'asr.relax:kptdensity 2"',
-                      'asr run "relax --nod3"',
+                      f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
                       'asr run "browser --only-figures"'],
               'test': BN_check})
@@ -248,7 +243,8 @@ def main(calculator={'name': 'gpaw',
                      'symmetry': {'symmorphic': False},
                      'convergence': {'forces': 1e-4},
                      'txt': 'relax.txt',
-                     'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+                     'occupations': {'name': 'fermi-dirac',
+                                     'width': 0.05},
                      'charge': 0},
          d3=False, fixcell=False, allow_symmetry_breaking=False):
     """Relax atomic positions and unit cell.
