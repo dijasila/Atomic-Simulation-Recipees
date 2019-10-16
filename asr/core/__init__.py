@@ -12,14 +12,23 @@ from ase.parallel import parprint
 import ase.parallel as parallel
 import inspect
 import copy
+from ast import literal_eval
 
 
-def recursive_update(dct, updatedct, level=0, maxlevel=0):
+def parse_dict_string(string, dct=None):
+    if dct is None:
+        dct = {}
+
+    for tmpstring in string.split(';'):
+        recursive_update(dct, literal_eval(tmpstring))
+    return dct
+
+
+def recursive_update(dct, updatedct):
     for key, value in updatedct.items():
-        if level < maxlevel and key in dct and isinstance(value, dict) and \
+        if key in dct and isinstance(value, dict) and \
            isinstance(dct[key], dict):
-            recursive_update(dct[key], updatedct[key],
-                             level=level + 1, maxlevel=maxlevel)
+            recursive_update(dct[key], updatedct[key])
         else:
             dct[key] = value
 
@@ -384,6 +393,10 @@ class ASRCommand:
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
             # Default type
+            if key not in self.defparams:
+                continue
+            if self.defparams[key] is None:
+                continue
             tp = type(self.defparams[key])
 
             if tp != type(value):
@@ -391,13 +404,11 @@ class ASRCommand:
                 assert type(value) == str
                 # Dicts has to be treated specially
                 if tp == dict:
-                    from ast import literal_eval
                     if value.startswith('+'):
-                        value = literal_eval(value[1:])
                         dct = copy.deepcopy(self.defparams[key])
-                        dct.update(value)
+                        dct = parse_dict_string(value[1:], dct=dct)
                     else:
-                        dct = literal_eval(value)
+                        dct = parse_dict_string(value)
                     params[key] = dct
                 else:
                     params[key] = tp(value)
