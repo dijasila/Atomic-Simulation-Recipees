@@ -332,7 +332,7 @@ def collect_data():
 
 
 # def webpanel(row, key_descriptions):
-#    from asr.utils.custom import fig, table
+#    from asr.browser import fig, table
 #
 #    if 'something' not in row.data:
 #        return None, []

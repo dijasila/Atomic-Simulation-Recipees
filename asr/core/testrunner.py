@@ -72,7 +72,7 @@ class TestRunner:
             description = f'{testname}'
         return description
 
-    def run(self, raiseexc, tmpdir=None):
+    def run(self, tmpdir=None):
         # Make temporary directory and print some execution info
         self.cwd = Path('.').absolute()
         if tmpdir is None:
@@ -99,8 +99,6 @@ class TestRunner:
         else:
             self.log.write('All tests passed!\n')
         self.log.write('=' * 77 + '\n')
-        if raiseexc and self.failed:
-            raise AssertionError('Some tests failed!')
         return self.failed
 
     def run_tests(self):
@@ -116,7 +114,7 @@ class TestRunner:
                 except Exception:
                     self.failed.append(testname)
                     tb = traceback.format_exc()
-                    msg = ('FAILED\n'
+                    msg = (' ... FAILED\n'
                            '{0:#^77}\n'.format('TRACEBACK') +
                            f'{tb}' +
                            '{0:#^77}\n'.format(''))
