@@ -147,6 +147,7 @@ params = "+{'mode':{'ecut':200},'kpts':{'density':2.0}}"
 ctests = []
 ctests.append({'description': 'Test the refined ground state of Si',
                'name': 'test_asr.pdos_Si_gpw',
+               'tags': ['gitlab-ci'],
                'cli': ['asr run "setup.materials -s Si2"',
                        'ase convert materials.json structure.json',
                        'asr run "setup.params '
