@@ -492,7 +492,7 @@ def plot_pdos(row, filename, soc=True,
     # Extract raw data
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies']
+    e_e = data['energies'].copy()
     ef = data['efermi']
 
     # Find energy range to plot in
