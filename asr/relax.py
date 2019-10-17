@@ -267,10 +267,10 @@ def known_exceptions():
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('--chargestate', type=int,
-        help='Specify the chargestate of the system')
+@option('--charge', type=int,
+        help='Chargestate of the system')
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
-         chargestate=0):
+         charge=0):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -317,7 +317,7 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kptdensity=kptdensity, xc=xc,
                                      plusu=plusu, dftd3=d3, width=width,
-                                     chargestate=chargestate)
+                                     chargestate=charge)
 
     edft = dft.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

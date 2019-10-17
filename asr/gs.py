@@ -21,11 +21,9 @@ calctests = [{'description': 'Test ground state of Si.',
 @option('--ecut', type=float, help='Plane-wave cutoff')
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--xc', type=str, help='XC-functional')
+@option('--charge', type=int, help='Chargestate of the system')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('--chargestate', type=int,
-        help='Specify the chargestate of the system')
-def calculate(ecut=800, xc='PBE',
-              kptdensity=12.0, width=0.05, chargestate=0):
+def calculate(ecut=800, xc='PBE', kptdensity=12.0, width=0.05, charge=0):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -50,7 +48,7 @@ def calculate(ecut=800, xc='PBE',
         convergence={'bands': -3},
         nbands=-10,
         txt='gs.txt',
-        charge=chargestate)
+        charge=charge)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
