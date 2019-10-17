@@ -1,14 +1,15 @@
 from asr.core import command, option
 
 tests = []
+params1 = "+{'mode':'lcao','kpts':{'density':2}}"
+params2 = "+{'mode':'lcao','kpts':{'density':2}}"
 tests.append({'description': 'Test band structure of Si.',
               'name': 'asr.bandstructure_Si',
               'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs@calculate:ecut 200 '
-                      'asr.gs@calculate:kptdensity 2.0 '
+                      f'asr.gs@calculate:calculator {params1} '
                       'asr.bandstructure@calculate:npoints 50 '
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
@@ -19,8 +20,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs@calculate:ecut 300 '
-                      'asr.gs@calculate:kptdensity 2.0 '
+                      f'asr.gs@calculate:calculator {params2} '
                       'asr.bandstructure@calculate:npoints 50 '
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
@@ -42,9 +42,10 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     from ase.io import read
     atoms = read('gs.gpw')
     if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints)
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints)
+        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                                   pbc=atoms.pbc)
 
     convbands = emptybands // 2
     parms = {
@@ -555,8 +556,8 @@ def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
-    cell = Cell(row.cell, pbc=row.pbc)
-    lat = cell.get_bravais_lattice()
+    cell = Cell(row.cell)
+    lat = cell.get_bravais_lattice(pbc=row.pbc)
     lat.plot_bz()
     plt.savefig(fname)
 

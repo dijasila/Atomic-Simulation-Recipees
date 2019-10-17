@@ -19,7 +19,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=['ase', 'Click', 'matplotlib',
-                      'spglib', 'plotly', 'sphinx-autoapi'],
+                      'spglib', 'plotly'],
     extras_require={'docs': ['sphinx', 'sphinx-autoapi',
                              'sphinxcontrib-programoutput']},
     entry_points='''
