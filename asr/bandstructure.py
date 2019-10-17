@@ -87,18 +87,6 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def spin_axis(fname='anisotropy_xy.npz') -> int:
-    import numpy as np
-    from asr.utils.gpw2eigs import get_spin_direction
-    theta, phi = get_spin_direction(fname=fname)
-    if theta == 0:
-        return 2
-    elif np.allclose(phi, np.pi / 2):
-        return 1
-    else:
-        return 0
-
-
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 4.8),
@@ -642,7 +630,7 @@ def main():
     from asr.core import read_json
     import copy
     import numpy as np
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import gpw2eigs, spin_axis
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
     calc = GPAW('bs.gpw', txt=None)

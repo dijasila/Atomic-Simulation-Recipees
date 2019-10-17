@@ -24,6 +24,17 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
     return theta, phi
 
 
+def spin_axis(fname='anisotropy_xy.npz') -> int:
+    import numpy as np
+    theta, phi = get_spin_direction(fname=fname)
+    if theta == 0:
+        return 2
+    elif np.allclose(phi, np.pi / 2):
+        return 1
+    else:
+        return 0
+
+
 def eigenvalues(calc):
     """Get eigenvalues from calculator.
 

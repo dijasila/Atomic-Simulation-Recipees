@@ -183,7 +183,7 @@ def hse_spinorbit(dct):
     import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
-    from asr.utils.gpw2eigs import get_spin_direction
+    from asr.utils.gpw2eigs import get_spin_direction, spin_axis
 
     if not os.path.isfile('hse_nowfs.gpw'):
         return
@@ -255,18 +255,6 @@ def MP_interpolate():
 
     return results
 
-# XXX move to utils? [also in asr.bandstructure] -> in asr.utils.gpw2eigs (?)
-def spin_axis(fname='anisotropy_xy.npz') -> int:
-    import numpy as np
-    from asr.utils.gpw2eigs import get_spin_direction
-
-    theta, phi = get_spin_direction(fname=fname)
-    if theta == 0:
-        return 2
-    elif np.allclose(phi, np.pi / 2):
-        return 1
-    else:
-        return 0
 
 # XXX move to utils?
 @contextmanager
