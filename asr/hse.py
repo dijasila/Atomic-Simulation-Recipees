@@ -1,41 +1,10 @@
-"""
-to do:
-- better interpolation scheme?
-- find reasonable default values for params
-- move stuff to utils
-- get evac
-- create tests
-- move relevant functions to hseinterpolate? or merge into one single recipe?
-- get spin_axis, get_spin_direction, eigenvalues from asr.utils.gpw2eigs
-"""
-import json
-from pathlib import Path
 from asr.core import command, option, read_json
-from asr.utils.gpw2eigs import eigenvalues, get_spin_direction, fermi_level
-
-import time
-
-from gpaw import GPAW
-from gpaw.xc.exx import EXX
-from gpaw.xc.tools import vxc
-from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
-import numpy as np
-from numpy import linalg as la
-from scipy.interpolate import CubicSpline, InterpolatedUnivariateSpline
-from ase.parallel import paropen, parprint
-import os
-import gpaw.mpi as mpi
-from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
-                             monkhorst_pack_interpolate,
-                             bandpath, parse_path_string, labels_from_kpts)
-from ase.io import read
-from ase.dft.kpoints import get_cellinfo
 from contextlib import contextmanager
 
 @command(module='asr.hse',
          dependencies = ['asr.structureinfo', 'asr.gs'],
          creates=['hse_nowfs.gpw', 'hse-restart.json'],
-         #tests=...,
+         # tests=...,
          requires=['gs.gpw'],
          resources='24:10h',
          restart=2)
@@ -43,6 +12,8 @@ from contextlib import contextmanager
 @option('--emptybands', help='number of empty bands to include')
 def calculate(kptdensity=12, emptybands=20):
     """Calculate HSE band structure"""
+    import gpaw.mpi as mpi
+
     with cleanup('hse.gpw'):
         results = {}
         results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
@@ -52,7 +23,7 @@ def calculate(kptdensity=12, emptybands=20):
 
 @command(module='asr.hse',
          dependencies = ['asr.hse@calculate', 'asr.bandstructure'],
-         #tests=...,
+         # tests=...,
          requires=['hse_nowfs.gpw',
                    'results-asr.hse@calculate.json',
                    'results-asr.bandstructure.json',
@@ -61,15 +32,16 @@ def calculate(kptdensity=12, emptybands=20):
          restart=2)
 def main():
     """Interpolate HSE band structure along a given path"""
-    
+    import numpy as np
+    from gpaw import GPAW
+    from asr.utils.gpw2eigs import fermi_level
+    from ase.dft.bandgap import bandgap
+
     # interpolate band structure
     results = MP_interpolate()
 
     # get gap, cbm, vbm, etc...
-    from ase.dft.bandgap import bandgap
-
     results['__key_descriptions__'] = {}
-   
     results_calc=read_json('results-asr.hse@calculate.json')
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
@@ -136,6 +108,12 @@ def main():
 
 
 def hse(kptdensity, emptybands):
+    import os
+    import numpy as np
+    import gpaw.mpi as mpi
+    from gpaw import GPAW
+    from gpaw.xc.exx import EXX
+    from gpaw.xc.tools import vxc
 
     convbands = int(emptybands / 2)
     if not os.path.isfile('hse.gpw'):
@@ -172,8 +150,7 @@ def hse(kptdensity, emptybands):
         calc.write('hse.gpw', 'all')
         calc.write('hse_nowfs.gpw')
     mpi.world.barrier()
-    time.sleep(10)  # is this needed?
-
+    
     calc = GPAW('hse.gpw', txt=None)
     ns = calc.get_number_of_spins()
     nk = len(calc.get_ibz_k_points())
@@ -201,6 +178,13 @@ def hse(kptdensity, emptybands):
     return dct
 
 def hse_spinorbit(dct):
+    import os
+    import numpy as np
+    import gpaw.mpi as mpi
+    from gpaw import GPAW
+    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from asr.utils.gpw2eigs import get_spin_direction
+
     if not os.path.isfile('hse_nowfs.gpw'):
         return
 
@@ -224,6 +208,13 @@ def MP_interpolate():
     Calculates band stucture along the same band path used for PBE.
     Band structure is obtained by using 'monkhorst_pack_interpolate' to get the HSE correction
     """
+    import numpy as np
+    import gpaw.mpi as mpi
+    from gpaw import GPAW
+    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from asr.utils.gpw2eigs import get_spin_direction
+    from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack_interpolate
+
     # read PBE (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')  
     path = results_bandstructure['bs_nosoc']['path']
@@ -267,6 +258,8 @@ def MP_interpolate():
 # XXX move to utils? [also in asr.bandstructure] -> in asr.utils.gpw2eigs (?)
 def spin_axis(fname='anisotropy_xy.npz') -> int:
     import numpy as np
+    from asr.utils.gpw2eigs import get_spin_direction
+
     theta, phi = get_spin_direction(fname=fname)
     if theta == 0:
         return 2
@@ -278,6 +271,9 @@ def spin_axis(fname='anisotropy_xy.npz') -> int:
 # XXX move to utils?
 @contextmanager
 def cleanup(*files):
+    import os
+    import gpaw.mpi as mpi
+    
     try:
         yield
     finally:
@@ -302,7 +298,6 @@ def bs_hse(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
     from ase.dft.kpoints import labels_from_kpts
 
     d = row.data.hse_bandstructure
@@ -319,14 +314,13 @@ def bs_hse(row,
         label = r'$E - E_\mathrm{F}$ [eV]'
         reference = ef
 
-    e_mk = d['e_hse_mk']-reference
-    s_mk = d['s_hse_mk']
+    e_mk = d['e_hse_mk'] - reference
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
        
     # hse with soc
     hse_style = dict(
         color='k',
-        #label='HSE',
+        # label='HSE',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -362,7 +356,7 @@ def bs_hse(row,
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    line_hse = ax.plot([], [], **hse_style, label='HSE')
+    ax.plot([], [], **hse_style, label='HSE')
     plt.legend(loc='upper right')
    
     if not show_legend:
@@ -388,6 +382,7 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': bs_hse,
                                     'filenames': ['hse-bs.png']}]}
     return [panel]
+
 
 if __name__ == '__main__':
     main.cli()
