@@ -77,21 +77,25 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
             chargestate = setup_params.get('charge')
-            charged_file = find_file_in_folder('gs.gpw',
-                                               sub_folder_path)
-            elc = ElectrostaticCorrections(pristine=path_gs,
-                                           charged=charged_file,
-                                           q=chargestate, sigma=sigma,
-                                           dimensionality=dim)
-            elc.set_epsilons(epsilon)
-            if chargestate == 0:
-                e_form.append(elc.calculate_uncorrected_formation_energy())
-            else:
-                e_form.append(elc.calculate_corrected_formation_energy())
-            charges.append(chargestate)
-            # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
-            # e_fermi_calc.append(calc.get_fermi_level())
-            # e_fermi.append(0)
+            try:
+                charged_file = find_file_in_folder('gs.gpw',
+                                                   sub_folder_path)
+                elc = ElectrostaticCorrections(pristine=path_gs,
+                                               charged=charged_file,
+                                               q=chargestate, sigma=sigma,
+                                               dimensionality=dim)
+                elc.set_epsilons(epsilon)
+                if chargestate == 0:
+                    e_form.append(elc.calculate_uncorrected_formation_energy())
+                else:
+                    e_form.append(elc.calculate_corrected_formation_energy())
+                charges.append(chargestate)
+                # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
+                # e_fermi_calc.append(calc.get_fermi_level())
+                # e_fermi.append(0)
+            except:
+                eform.append(None)
+                charges.append(chargestate)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'chargestates': charges}
         # 'fermi_energies_c': e_fermi_calc
