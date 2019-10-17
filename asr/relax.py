@@ -267,10 +267,10 @@ def known_exceptions():
 @option('--xc', help='XC-functional')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--width', help='Fermi-Dirac smearing temperature')
-@option('--charge', type=int,
+@option('--charge', type=float,
         help='Chargestate of the system')
 def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
-         charge=0):
+         charge=0.01):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -301,7 +301,6 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --xc LDA"
     """
-    from asr.core import read_json
 
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
@@ -313,6 +312,7 @@ def main(plusu=False, ecut=800, kptdensity=6.0, xc='PBE', d3=True, width=0.05,
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
 
+    charge = int(charge)
     # Relax the structure
     atoms, calc, dft, kwargs = relax(atoms, name='relax', ecut=ecut,
                                      kptdensity=kptdensity, xc=xc,

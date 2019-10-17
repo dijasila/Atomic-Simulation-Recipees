@@ -35,7 +35,6 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     """
     from ase.io import read
     from asr.core import write_json, read_json
-    from gpaw import GPAW
     from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
