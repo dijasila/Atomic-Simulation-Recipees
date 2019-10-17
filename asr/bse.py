@@ -1,9 +1,14 @@
-from asr.core import command, option, read_json
+import numpy as np
+from asr.core import command, option
 from click import Choice
 
 
-@command('asr.bse',
-         dependencies=['asr.structureinfo', 'asr.gs'])
+@command(module='asr.bse',
+         creates=['bse_polx.csv', 'bse_eigx.dat',
+                  'bse_poly.csv', 'bse_eigy.dat',
+                  'bse_polz.csv', 'bse_eigz.dat'],
+         requires=['gs.gpw'],
+         resources='480:20h')
 @option('--gs', help='Ground state on which BSE is based')
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
@@ -13,8 +18,8 @@ from click import Choice
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
-         nv=4, nc=4):
+def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
+              nv=4, nc=4):
     """Calculate BSE polarizability"""
     import os
     from ase.io import read
@@ -95,202 +100,175 @@ def main(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
               conduction_bands=conduction_bands,
               nbands=nbands,
               mode=mode,
-              wfile='wfile',
               truncation=truncation,
               txt='bse.txt')
 
-    w_w = np.linspace(0.0, 5.0, 5001)
+    w_w = np.linspace(-2.0, 8.0, 10001)
 
-    with file_barrier('eig_x.dat'):
-        w_w, alphax_w = bse.get_polarizability(eta=eta,
-                                               filename=None,
-                                               direction=0,
-                                               write_eig='eig_x.dat',
-                                               pbc=pbc,
-                                               w_w=w_w)
+    w_w, alphax_w = bse.get_polarizability(eta=eta,
+                                           filename='bse_polx.csv',
+                                           direction=0,
+                                           write_eig='bse_eigx.dat',
+                                           pbc=pbc,
+                                           w_w=w_w)
+    
+    w_w, alphay_w = bse.get_polarizability(eta=eta,
+                                           filename='bse_poly.csv',
+                                           direction=1,
+                                           write_eig='bse_eigy.dat',
+                                           pbc=pbc,
+                                           w_w=w_w)
 
-    with file_barrier('eig_y.dat'):
-        w_w, alphay_w = bse.get_polarizability(eta=eta,
-                                               filename=None,
-                                               direction=1,
-                                               write_eig='eig_y.dat',
-                                               pbc=pbc,
-                                               w_w=w_w)
-
-    with file_barrier('eig_z.dat'):
-        w_w, alphaz_w = bse.get_polarizability(eta=eta,
-                                               filename=None,
-                                               direction=2,
-                                               write_eig='eig_z.dat',
-                                               pbc=pbc,
-                                               w_w=w_w)
-
-    eigx = np.loadtxt('eig_x.dat')
-    eigy = np.loadtxt('eig_y.dat')
-    eigz = np.loadtxt('eig_z.dat')
-
+    w_w, alphaz_w = bse.get_polarizability(eta=eta,
+                                           filename='bse_polz.csv',
+                                           direction=2,
+                                           write_eig='bse_eigz.dat',
+                                           pbc=pbc,
+                                           w_w=w_w)
     if world.rank == 0:
         os.system('rm gs_bse.gpw')
         os.system('rm gs_nosym.gpw')
-        os.system('rm wfile.npz')
-        os.system('rm eig_x.dat')
-        os.system('rm eig_y.dat')
-        os.system('rm eig_z.dat')
 
-    data = {
-        'eigx': eigx,
-        'eigy': eigy,
-        'eigz': eigz,
-        'alphax_w': alphax_w,
-        'alphay_w': alphay_w,
-        'alphaz_w': alphaz_w,
-        'frequencies': w_w
-    }
-
-    return data
-
-
-def collect_data(atoms):
-    from pathlib import Path
-    if not Path('results_bse.json').is_file():
-        return {}, {}, {}
-
-    kvp = {}
-    data = {}
-    key_descriptions = {}
-
-    dct = read_json('results_bse.json')
-    gap_dir = read_json('gap_soc.json')['gap_dir']
-    kvp['bse_binding'] = gap_dir - dct['eigx'][0, 1]
-
-    kd = {'bse_binding': ('BSE binding energy',
-                          'BSE binding energy', 'eV')}
-    key_descriptions.update(kd)
-
-    print(kvp['bse_binding'])
-    # Save data
-    return kvp, key_descriptions, data
-
-
-def polarizability(row, fx, fy, fz):
+                         
+def absorption(row, filename, direction='x'):
     import numpy as np
     import matplotlib.pyplot as plt
+    from ase.units import alpha, Ha, Bohr
 
-    def xlim():
-        return (0, 10)
+    atoms = row.toatoms()
+    pbc = atoms.pbc.tolist()
+    dim = np.sum(pbc)
 
-    def ylims(ws, data, wstart=0.0):
-        i = abs(ws - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y1 = min(x1.min(), x2.min()) * 1.02
-        y2 = max(x1.max(), x2.max()) * 1.02
-        return y1, y2
+    magstate = row.magstate
 
-    if 'bse_polarization' in row.data:
-        data = row.data['bse_polarization']
-        frequencies = data['frequencies']
-        alphax_w = data['alphax_w']
-        alphay_w = data['alphay_w']
-        alphaz_w = data['alphaz_w']
+    gap_dir = row.gap_dir
+    gap_dir_nosoc = row.gap_dir_nosoc
 
-        ax = plt.figure().add_subplot(111)
-        ax1 = ax
-        try:
-            wpx = row.plasmafrequency_x
-            if wpx > 0.01:
-                alphaxfull_w = alphax_w - wpx**2 / (2 * np.pi *
-                                                    (frequencies + 1e-9)**2)
-                ax.plot(
-                    frequencies,
-                    np.real(alphaxfull_w),
-                    '-',
-                    c='C1',
-                    label='real')
-                ax.plot(
-                    frequencies,
-                    np.real(alphax_w),
-                    '--',
-                    c='C1',
-                    label='real interband')
-            else:
-                ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
-        except AttributeError:
-            ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
-        ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
-        ax.set_title('x-direction')
-        ax.set_xlabel('energy [eV]')
-        ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
-        ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-        ax.legend()
-        ax.set_xlim(xlim())
-        plt.tight_layout()
-        plt.savefig(fx)
+    for method in ['_gw', '_hse', '_gllbsc', '']:
+        gapkey = f'gap_dir{method}'
+        if gapkey in row:
+            gap_dir_x = row.get(gapkey)
+            delta_bse = gap_dir_x - gap_dir
+            delta_rpa = gap_dir_x - gap_dir_nosoc
+            break
 
-        ax = plt.figure().add_subplot(111)
-        ax2 = ax
-        try:
-            wpy = row.plasmafrequency_y
-            if wpy > 0.01:
-                alphayfull_w = alphay_w - wpy**2 / (2 * np.pi *
-                                                    (frequencies + 1e-9)**2)
-                ax.plot(
-                    frequencies,
-                    np.real(alphayfull_w),
-                    '-',
-                    c='C1',
-                    label='real')
-                ax.plot(
-                    frequencies,
-                    np.real(alphay_w),
-                    '--',
-                    c='C1',
-                    label='real interband')
-            else:
-                ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
-        except AttributeError:
-            ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
-        ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-        ax.set_title('y-component')
-        ax.set_xlabel('energy [eV]')
-        ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
-        ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-        ax.legend()
-        ax.set_xlim(xlim())
-        plt.tight_layout()
-        plt.savefig(fy)
+    qp_gap = gap_dir + delta_bse
 
-        ax = plt.figure().add_subplot(111)
-        ax3 = ax
-        ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
-        ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
-        ax.set_title('z-component')
-        ax.set_xlabel('energy [eV]')
-        ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
-        ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
-        ax.legend()
-        ax.set_xlim(xlim())
-        plt.tight_layout()
-        plt.savefig(fz)
+    if magstate != 'NM':
+        qp_gap = gap_dir_nosoc + delta_rpa
+        delta_bse = delta_rpa
 
-        return ax1, ax2, ax3
+    ax = plt.figure().add_subplot(111)
+
+    data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
+    wbse_w = data[:, 0] + delta_bse
+    absbse_w = 4 * np.pi * data[:, 2]
+    if dim == 2:
+        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+    ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
+
+    data = row.data['results-asr.polarizability.json']
+    wrpa_w = data['frequencies'] + delta_rpa
+    absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+    if dim == 2:
+        absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+
+    xmax = wbse_w[-1]
+    ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+                               absrpa_w[wrpa_w < xmax]])) * 1.05
+
+    ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
+            label='Direct QP gap')
+
+    ax.set_xlim(0.0, xmax)
+    ax.set_ylim(0.0, ymax)
+    ax.set_title(f'{direction}-direction')
+    ax.set_xlabel('energy [eV]')
+    if dim == 2:
+        ax.set_ylabel('absorbance [%]')
+    else:
+        ax.set_ylabel(r'$\varepsilon(\omega)$')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(filename)
+
+    return ax
 
 
 def webpanel(row, key_descriptions):
+    from functools import partial
     from asr.browser import fig, table
 
-    opt = table(row, 'Property', [
-        'alphax', 'alphay', 'alphaz', 'plasmafrequency_x', 'plasmafrequency_y'
-    ], key_descriptions)
+    E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
-    panel = ('Polarizability (RPA)',
-             [[fig('rpa-pol-x.png'),
-               fig('rpa-pol-z.png')], [fig('rpa-pol-y.png'), opt]])
+    atoms = row.toatoms()
+    pbc = atoms.pbc.tolist()
+    dim = np.sum(pbc)
 
-    things = [(polarizability,
-               ['rpa-pol-x.png', 'rpa-pol-y.png', 'rpa-pol-z.png'])]
+    if dim == 2:
+        funcx = partial(absorption, direction='x')
+        funcz = partial(absorption, direction='z')
 
-    return panel, things
+        panel = {'title': 'Optical absorption',
+                 'columns': [[fig('absx.png'), E_B],
+                             [fig('absz.png')]],
+                 'plot_descriptions': [{'function': funcx,
+                                        'filenames': ['absx.png']},
+                                       {'function': funcz,
+                                        'filenames': ['absz.png']}]}
+    else:
+        funcx = partial(absorption, direction='x')
+        funcy = partial(absorption, direction='y')
+        funcz = partial(absorption, direction='z')
+
+        panel = {'title': 'Optical absorption',
+                 'columns': [[fig('absx.png'), fig('absz.png')],
+                             [fig('absy.png'), E_B]],
+                 'plot_descriptions': [{'function': funcx,
+                                        'filenames': ['absx.png']},
+                                       {'function': funcy,
+                                        'filenames': ['absy.png']},
+                                       {'function': funcz,
+                                        'filenames': ['absz.png']}]}
+    return [panel]
+
+
+@command(module='asr.bse',
+         requires=['bse_polx.csv', 'results-asr.gs.json',
+                   'results-asr.structureinfo.json'],
+         dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
+         webpanel=webpanel)
+def main():
+    alphax_w = np.loadtxt('bse_polx.csv', delimiter=',')
+    data = {'bse_alphax_w': alphax_w.astype(np.float32)}
+
+    from pathlib import Path
+    if Path('bse_poly.csv').is_file():
+        alphay_w = np.loadtxt('bse_poly.csv', delimiter=',')
+        data['bse_alphay_w'] = alphay_w.astype(np.float32)
+    if Path('bse_polz.csv').is_file():
+        alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
+        data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
+    from asr.core import read_json
+                         
+    if Path('bse_eigx.dat').is_file():
+        E = np.loadtxt('bse_eigx.dat')[0, 1]
+
+        info = read_json('results-asr.structureinfo.json')
+        magstate = info['magstate']
+
+        gsresults = read_json('results-asr.gs.json')
+        if magstate == 'NM':
+            E_B = gsresults['gaps_soc']['gap_dir'] - E
+        else:
+            E_B = gsresults['gaps_nosoc']['gap_dir'] - E
+
+        data['E_B'] = E_B
+        data['__key_descriptions__'] = \
+            {'E_B': 'KVP: BSE binding energy (Exc. bind. energy) [eV]'}
+
+    return data
 
 
 if __name__ == '__main__':

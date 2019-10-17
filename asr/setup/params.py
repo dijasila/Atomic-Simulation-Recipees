@@ -25,7 +25,10 @@ def main(params=None):
     for specific options."""
     import json
     from pathlib import Path
-    from asr.core import get_recipes, read_json
+    from asr.core import get_recipes, read_json, parse_dict_string
+    from ast import literal_eval
+    from fnmatch import fnmatch
+    import copy
 
     defparamdict = {}
     
@@ -42,11 +45,25 @@ def main(params=None):
 
     if params:
         # Find recipe:option
-        options = params[::2]
-        args = params[1::2]
+        tmpoptions = params[::2]
+        tmpargs = params[1::2]
+        options = []
+        args = []
+        for tmpoption, tmparg in zip(tmpoptions, tmpargs):
+            assert ':' in tmpoption, 'You have to use the recipe:option syntax'
+            recipe, option = tmpoption.split(':')
+            if '*' in recipe:
+                for tmprecipe in defparamdict:
+                    if not fnmatch(tmprecipe, recipe):
+                        continue
+                    if option in defparamdict[tmprecipe]:
+                        options.append(f'{tmprecipe}:{option}')
+                        args.append(tmparg)
+            else:
+                options.append(tmpoption)
+                args.append(tmparg)
 
         for option, value in zip(options, args):
-            assert ':' in option, 'You have to use the recipe:option syntax'
             recipe, option = option.split(':')
             assert option, 'You have to provide an option'
             assert recipe, 'You have to provide a recipe'
@@ -59,12 +76,21 @@ def main(params=None):
             if recipe not in paramdict:
                 paramdict[recipe] = {}
 
-            paramdict[recipe][option] = \
-                type(defparamdict[recipe][option])(value)
+            paramtype = type(defparamdict[recipe][option])
+            if paramtype == dict:
+                if value.startswith('+'):
+                    dct = copy.deepcopy(defparamdict[recipe][option])
+                    val = parse_dict_string(value[1:], dct=dct)
+                else:
+                    val = parse_dict_string(value)
+            elif paramtype == bool:
+                val = literal_eval(value)
+            else:
+                val = paramtype(value)
+            paramdict[recipe][option] = val
 
-    if not paramdict:
-        paramdict = defparamdict
-    p.write_text(json.dumps(paramdict, indent=4))
+    if paramdict:
+        p.write_text(json.dumps(paramdict, indent=1))
     return paramdict
 
 
