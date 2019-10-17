@@ -143,14 +143,14 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
 # ---------- Recipe tests ---------- #
 
+params = "+{'mode':{'ecut':200},'kpts':{'density':2.0}}"
 ctests = []
 ctests.append({'description': 'Test the refined ground state of Si',
                'name': 'test_asr.pdos_Si_gpw',
                'cli': ['asr run "setup.materials -s Si2"',
                        'ase convert materials.json structure.json',
                        'asr run "setup.params '
-                       'asr.gs@calculate:ecut 200 '
-                       'asr.gs@calculate:kptdensity 2.0 '
+                       f'asr.gs@calculate:calculator {params} '
                        'asr.pdos@calculate:kptdensity 3.0 '
                        'asr.pdos@calculate:emptybands 5"',
                        'asr run gs',
@@ -164,8 +164,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs@calculate:ecut 200 '
-                      'asr.gs@calculate:kptdensity 2.0 '
+                      f'asr.gs@calculate:calculator {params} '
                       'asr.pdos@calculate:kptdensity 3.0 '
                       'asr.pdos@calculate:emptybands 5"',
                       'asr run gs',
@@ -177,8 +176,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
               'cli': ['asr run "setup.materials -s Si2"',
                       'ase convert materials.json structure.json',
                       'asr run "setup.params '
-                      'asr.gs@calculate:ecut 200 '
-                      'asr.gs@calculate:kptdensity 2.0 '
+                      f'asr.gs@calculate:calculator {params} '
                       'asr.pdos@calculate:kptdensity 3.0 '
                       'asr.pdos@calculate:emptybands 5"',
                       'asr run gs',
@@ -191,13 +189,13 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(row, key_descriptions):
+    from asr.browser import fig
     # PDOS plot goes to Electronic band structure (PBE) panel, which is
     # defined in the bandstructure recipe
-
-    panel = {'plot_descriptions': [{'function': plot_pdos,
-                                    'filenames': ['pbe-pdos.png']},
-                                   ]
-             }
+    panel = {'title': 'Electronic band structure (PBE)',
+             'columns': [[fig('pbe-pdos.png', link='empty')]],
+             'plot_descriptions': [{'function': plot_pdos,
+                                    'filenames': ['pbe-pdos.png']}]}
     return [panel]
 
 
