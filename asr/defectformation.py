@@ -8,7 +8,7 @@ creates = []  # what files are created
 @command('asr.defectformation',
          resources='1:2h',
          dependencies=['asr.setup.defects', 'asr.gs'],
-         creates=[])
+         creates=None)
 # later include 'asr.dielectricconstant' and 'asr.relax')
 # and also the files that this recipe creates
 @option('--pristine', type=str,
@@ -35,14 +35,13 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
     """
     from ase.io import read
     from asr.core import write_json, read_json
-    from gpaw import GPAW
     from gpaw.defects import ElectrostaticCorrections
     from pathlib import Path
     import numpy as np
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
-    gs_dict = read_json('results_gs.json')
+    gs_dict = read_json('results-asr.gs.json')
     defectformation_dict = {}
     defectformation_dict['gaps_nosoc'] = gs_dict.get('gaps_nosoc')
     defectformation_dict['gaps_soc'] = gs_dict.get('gaps_soc')
@@ -71,9 +70,9 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
         sub_folder_list = []
         [sub_folder_list.append(x) for x in s.iterdir() if x.is_dir()]
         e_form = []
-        e_fermi = []
+        # e_fermi = []
         charges = []
-        e_fermi_calc = []
+        # e_fermi_calc = []
         for sub_folder in sub_folder_list:
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
@@ -90,13 +89,13 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
             else:
                 e_form.append(elc.calculate_corrected_formation_energy())
             charges.append(chargestate)
-            calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
-            e_fermi_calc.append(calc.get_fermi_level())
-            e_fermi.append(0)
+            # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
+            # e_fermi_calc.append(calc.get_fermi_level())
+            # e_fermi.append(0)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
-                                             'fermi_energies': e_fermi,
-                                             'chargestates': charges,
-                                             'fermi_energies_c': e_fermi_calc}
+                                             'chargestates': charges}
+        # 'fermi_energies_c': e_fermi_calc
+        # 'fermi_energies': e_fermi,
     write_json('defectformation.json', defectformation_dict)
 
     return None
@@ -202,21 +201,21 @@ def collect_data():
 # This function doesn't exist in the new asr version anymore and has to be   #
 # changed at a later stage, as well as the way the plots are created (db)    #
 # ========================================================================== #
-def postprocessing():
-    from asr.core import read_json
-
-    formation_dict = read_json('defectformation.json')
-    transitions_dict = {}
-    gap = formation_dict.get('gaps_nosoc').get('gap')
-    for element in formation_dict:
-        if element != 'gaps_soc' and element != 'gaps_nosoc':
-            print(element)
-            plotname = element
-            defect_dict = formation_dict[element]
-            transitions_dict[plotname] = plot_formation_and_transitions(
-                defect_dict, plotname, gap)
-
-    return transitions_dict
+# def postprocessing():
+#     from asr.utils import read_json
+#
+#     formation_dict = read_json('defectformation.json')
+#     transitions_dict = {}
+#     gap = formation_dict.get('gaps_nosoc').get('gap')
+#     for element in formation_dict:
+#         if element != 'gaps_soc' and element != 'gaps_nosoc':
+#             print(element)
+#             plotname = element
+#             defect_dict = formation_dict[element]
+#             transitions_dict[plotname] = plot_formation_and_transitions(
+#                 defect_dict, plotname, gap)
+#
+#     return transitions_dict
 
 
 def line_intersection(line1, line2):
@@ -288,7 +287,8 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     lw = 1
     linestylelist = ['solid', 'dashdot', 'dashed', 'dotted']
     colorlist = ['black', 'C0', 'C1']
-    plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    # plt.ylim(0, max(y_edges[:, 0]) * 1.1)
+    plt.ylim(0, 20)
     plt.xlim(x_range[0] - 0.1 * gap, x_range[1] + 0.1 * gap)
     # bbox = {'fc': '0.8', 'pad': 0}
 
@@ -332,9 +332,9 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
         if y_edges[i][0] == min(y_edges[:, 0]):
             # start_index = i
             linearray_up = np.delete(linearray_up, np.s_[0:i], 0)
-            q_copy = np.delete(q_copy, np.s_[0:i])
             trans_array = np.array(
                 [[(0, y_edges[i][0]), q_copy[i], q_copy[i]]])
+            q_copy = np.delete(q_copy, np.s_[0:i])
 
     # loop over all lines in linearray_up and calculate intersection points
     while len(linearray_up) > 1:
