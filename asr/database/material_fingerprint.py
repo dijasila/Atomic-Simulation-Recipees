@@ -8,8 +8,8 @@ def todict(atoms):
     d['pbc'] = atoms.pbc
     if atoms._celldisp.any():
         d['celldisp'] = atoms._celldisp
-    if atoms.constraints:
-        d['constraints'] = atoms.constraints
+    # if atoms.constraints:
+    #     d['constraints'] = atoms.constraints
     if atoms.info:
         d['info'] = atoms.info
     return d
@@ -39,8 +39,11 @@ def main():
         orddct[key] = dct[key]
 
     hash = md5(json.dumps(orddct).encode()).hexdigest()
-    results = {'asr_id': hash}
-    results['__key_descriptions__'] = {'asr_id': 'KVP: Material fingerprint'}
+    formula = atoms.symbols.formula
+    results = {'asr_id': hash,
+               'uid': f'{formula:abc}-' + hash[:12]}
+    results['__key_descriptions__'] = {'asr_id': 'KVP: Material fingerprint',
+                                       'uid': 'KVP: Unique identifier'}
     return results
 
 

@@ -72,7 +72,7 @@ class TestRunner:
             description = f'{testname}'
         return description
 
-    def run(self, raiseexc, tmpdir=None):
+    def run(self, tmpdir=None):
         # Make temporary directory and print some execution info
         self.cwd = Path('.').absolute()
         if tmpdir is None:
@@ -99,8 +99,6 @@ class TestRunner:
         else:
             self.log.write('All tests passed!\n')
         self.log.write('=' * 77 + '\n')
-        if raiseexc and self.failed:
-            raise AssertionError('Some tests failed!')
         return self.failed
 
     def run_tests(self):
@@ -109,14 +107,16 @@ class TestRunner:
             testname = test['name']
             with chdir(Path(testname), create=True):
                 folder = Path('.').absolute()
+                time1 = time.time()
                 print(f'{folder}/', flush=True,
                       file=self.log)
+                interrupted = False
                 try:
                     self.run_test(test)
                 except Exception:
                     self.failed.append(testname)
                     tb = traceback.format_exc()
-                    msg = ('FAILED\n'
+                    msg = (' ... FAILED\n'
                            '{0:#^77}\n'.format('TRACEBACK') +
                            f'{tb}' +
                            '{0:#^77}\n'.format(''))
@@ -124,9 +124,15 @@ class TestRunner:
                     self.donetests.append(testname)
                 except KeyboardInterrupt:
                     print(' ... INTERRUPTED', file=self.log)
-                    break
+                    interrupted = True
                 else:
                     self.donetests.append(testname)
+                time2 = time.time()
+                deltat = time2 - time1
+                print(f'    (Runtime = {deltat:.1f} s)\n', file=self.log)
+
+                if interrupted:
+                    break
 
     def run_test(self, test):
         import subprocess

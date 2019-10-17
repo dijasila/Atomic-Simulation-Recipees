@@ -1,29 +1,34 @@
 from asr.core import command, option
 from pathlib import Path
 
-
-calctests = [{'description': 'Test ground state of Si.',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params asr.gs@calculate:ecut 300 '
-                      'asr.gs@calculate:kptdensity 2"',
-                      'asr run gs@calculate',
-                      'asr run database.fromtree',
-                      'asr run "browser --only-figures"']}]
+test1 = {'description': 'Test ground state of Si.',
+         'cli': ['asr run "setup.materials -s Si2"',
+                 'ase convert materials.json structure.json',
+                 'asr run "setup.params *:calculator '
+                 "+{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}" '"',
+                 'asr run gs@calculate',
+                 'asr run database.fromtree',
+                 'asr run "browser --only-figures"']}
 
 
 @command(module='asr.gs',
          creates=['gs.gpw'],
-         tests=calctests,
+         tests=[test1],
          requires=['structure.json'],
          resources='8:10h',
          restart=1)
-@option('--ecut', type=float, help='Plane-wave cutoff')
-@option('-k', '--kptdensity', type=float, help='K-point density')
-@option('--xc', type=str, help='XC-functional')
-@option('--charge', type=float, help='Chargestate of the system')
-@option('--width', help='Fermi-Dirac smearing temperature')
-def calculate(ecut=800, xc='PBE', kptdensity=12.0, width=0.05, charge=0.01):
+@option('-c', '--calculator', help='Calculator params.')
+def calculate(calculator={'name': 'gpaw',
+                          'mode': {'name': 'pw', 'ecut': 800},
+                          'xc': 'PBE',
+                          'basis': 'dzp',
+                          'kpts': {'density': 12.0, 'gamma': True},
+                          'occupations': {'name': 'fermi-dirac',
+                                          'width': 0.05},
+                          'convergence': {'bands': -3},
+                          'nbands': -10,
+                          'txt': 'gs.txt',
+                          'charge': 0}):
     """Calculate ground state file.
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
@@ -31,36 +36,25 @@ def calculate(ecut=800, xc='PBE', kptdensity=12.0, width=0.05, charge=0.01):
     information."""
     import numpy as np
     from ase.io import read
-    from asr.calculators import get_calculator
-
-    charge = int(charge)
+    from ase.calculators.calculator import PropertyNotImplementedError
     atoms = read('structure.json')
-
-    params = dict(
-        mode={'name': 'pw', 'ecut': ecut},
-        xc=xc,
-        basis='dzp',
-        kpts={
-            'density': kptdensity,
-            'gamma': True
-        },
-        occupations={'name': 'fermi-dirac', 'width': width},
-        convergence={'bands': -3},
-        nbands=-10,
-        txt='gs.txt',
-        charge=charge)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
-        params['poissonsolver'] = {'dipolelayer': 'xy'}
+        calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = get_calculator()(**params)
-
+    from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
+    
     atoms.calc = calc
     atoms.get_forces()
-    atoms.get_stress()
+    try:
+        atoms.get_stress()
+    except PropertyNotImplementedError:
+        pass
     atoms.get_potential_energy()
     atoms.calc.write('gs.gpw')
 
@@ -68,26 +62,30 @@ def calculate(ecut=800, xc='PBE', kptdensity=12.0, width=0.05, charge=0.01):
 tests = [{'description': 'Test ground state of Si.',
           'tags': ['gitlab-ci'],
           'cli': ['asr run "setup.materials -s Si2"',
+                  'asr run "setup.params *:calculator '
+                  '''{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}"''',
                   'ase convert materials.json structure.json',
-                  'asr run "setup.params asr.gs@calculate:ecut 300 '
-                  'asr.gs@calculate:kptdensity 2"',
                   'asr run gs',
                   'asr run database.fromtree',
                   'asr run "browser --only-figures"']}]
 
 
 @command(module='asr.gs',
-         requires=['gs.gpw'],
+         requires=['gs.gpw', 'structure.json'],
          tests=tests,
          dependencies=['asr.gs@calculate'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
+    from ase.io import read
     from asr.calculators import get_calculator
+    from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    calc = get_calculator()('gs.gpw', txt=None)
-    pbc = calc.atoms.pbc
+    atoms = read('gs.gpw')
+    calc = get_calculator()('gs.gpw', txt=None,
+                            communicator=serial_comm)
+    pbc = atoms.pbc
     ndim = np.sum(pbc)
 
     if ndim == 2:
@@ -119,9 +117,23 @@ def main():
                {'forces': 'Forces on atoms [eV/Angstrom]',
                 'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
                 'etot': 'KVP: Total energy (En.) [eV]',
-                'evac': 'KVP: Vacuum level (Vacuum level) [eV]'}}
+                'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
+                'gap_dir': 'KVP: Direct gap with SOC (Dir. gap w. soc.) [eV]',
+                'gap_dir_nosoc': ('KVP: Direct gap without SOC (Dir. gap wo.'
+                                  ' soc.) [eV]')}}
 
-    analysegs('gs.gpw', results)
+    results['gaps_nosoc'] = gaps(calc, soc=False)
+    results['gaps_soc'] = gaps(calc, soc=True)
+
+    results['gap_dir'] = results['gaps_soc']['gap_dir']
+    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
+
+    # Vacuum level is calculated for c2db backwards compability
+    if int(np.sum(atoms.get_pbc())) == 2:
+        vac = vacuumlevels(atoms, calc)
+        results['vacuumlevels'] = vac
+        results['evac'] = vac['evacmean']
+        results['evacdiff'] = vac['evacdiff']
 
     fingerprint = {}
     for setup in calc.setups:
@@ -131,47 +143,23 @@ def main():
     return results
 
 
-def analysegs(gpw, results):
-    """Analyse the computed ground state according to the class of materials,
-    it belongs to."""
-    # What about metals? XXX - should dos_at_ef be here?
-    # There should be a metals check somewhere? XXX
-    from pathlib import Path
-    import numpy as np
-    from gpaw import restart
-
-    if not Path(gpw).is_file():
-        raise ValueError('Groundstate file not present')
-    atoms, calc = restart(gpw, txt=None)
-
-    results['gaps_nosoc'] = gaps(calc, gpw, soc=False)
-    results['gaps_soc'] = gaps(calc, gpw, soc=True)
-
-    # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:
-        vac = vacuumlevels(atoms, calc)
-        results['vacuumlevels'] = vac
-        results['evac'] = vac['evacmean']
-        results['evacdiff'] = vac['evacdiff']
-
-
-def gaps(calc, gpw, soc=True):
+def gaps(calc, soc=True):
     """Could use some documentation!!! XXX
     Who is in charge of this thing??
     """
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
 
     ibzkpts = calc.get_ibz_k_points()
 
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
-                                      calc=calc, gpw=gpw)
+                                      calc=calc)
     (evbm_ecbm_direct_gap,
      direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True,
-                                                    calc=calc, gpw=gpw)
+                                                    calc=calc)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -184,8 +172,8 @@ def gaps(calc, gpw, soc=True):
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        _, efermi = gpw2eigs(gpw, soc=True,
-                             optimal_spin_direction=True)
+        _, efermi = calc2eigs(calc, ranks=[0], soc=True,
+                              optimal_spin_direction=True)
     else:
         efermi = calc.get_fermi_level()
 
@@ -216,12 +204,13 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(soc, direct, calc, gpw):
+def get_gap_info(soc, direct, calc):
     from ase.dft.bandgap import bandgap
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     # e1 is VBM, e2 is CBM
     if soc:
-        e_km, efermi = gpw2eigs(gpw, soc=True, optimal_spin_direction=True)
+        e_km, efermi = calc2eigs(calc, ranks=[0],
+                                 soc=True, optimal_spin_direction=True)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
                                 kpts=calc.get_ibz_k_points(), output=None)
