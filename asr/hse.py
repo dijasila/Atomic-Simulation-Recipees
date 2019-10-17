@@ -305,19 +305,19 @@ def bs_hse(row,
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     from ase.dft.kpoints import labels_from_kpts
 
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
-
     d = row.data.hse_bandstructure
     path = d['path']
     ef = row.efermi_hse_soc
     emin = row.get('vbm_hse', ef) - 3 - ef
     emax = row.get('cbm_hse', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
+
+    if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+        reference = row.get('evac')
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+        reference = ef
 
     e_mk = d['e_hse_mk']-reference
     s_mk = d['s_hse_mk']
