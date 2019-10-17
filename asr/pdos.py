@@ -194,7 +194,7 @@ def webpanel(row, key_descriptions):
     # PDOS plot goes to Electronic band structure (PBE) panel, which is
     # defined in the bandstructure recipe
     panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[fig('pbe-pdos.png', link='empty')]],
+             'columns': [[], [fig('pbe-pdos.png', link='empty')]],
              'plot_descriptions': [{'function': plot_pdos,
                                     'filenames': ['pbe-pdos.png']}]}
     return [panel]
