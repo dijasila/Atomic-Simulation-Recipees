@@ -400,8 +400,6 @@ class ASRCommand:
             tp = type(self.defparams[key])
 
             if tp != type(value):
-                # Then this is a str. repr. of a python literal:
-                assert type(value) == str
                 # Dicts has to be treated specially
                 if tp == dict:
                     if value.startswith('+'):
