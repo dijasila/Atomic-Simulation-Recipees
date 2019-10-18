@@ -9,22 +9,11 @@ creates = []  # what files are created
          resources='1:2h',
          dependencies=['asr.setup.defects', 'asr.gs'],
          creates=None)
-# later include 'asr.dielectricconstant' and 'asr.relax')
-# and also the files that this recipe creates
-@option('--pristine', type=str,
-        help='Name of the groundstate .gpw file of the pristine system. It '
-             'always has to be somewhere within a folder that is called '
-             '"pristine" in order to work correctly.')
-@option('--defect', type=str,
-        help='Name of the groundstate .gpw file of the defect systems. They '
-             'always have to be within a folder for the specific defect with '
-             'a subfolder calles "charge_q" for the respective chargestate q '
-             'in order to work correctly.')
 @option('--defect_name',
         help='Runs recipe for all defect folder within your directory when '
              'set to None. Set this option to the name of a desired defect '
              'folder in order for it to run only for this particular defect.')
-def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
+def main(defect_name=None):
     """
     Calculate formation energy of defects.
 
@@ -94,7 +83,7 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
                 # e_fermi_calc.append(calc.get_fermi_level())
                 # e_fermi.append(0)
             except:
-                eform.append(None)
+                e_form.append(None)
                 charges.append(chargestate)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'chargestates': charges}
