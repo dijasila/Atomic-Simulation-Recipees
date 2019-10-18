@@ -366,7 +366,12 @@ class ASRCommand:
             # a file that is in __requires__
             for dep in self.dependencies:
                 recipe = get_recipe_from_name(dep)
-                if not recipe.done:
+                if recipe.done:
+                    continue
+
+                filenames = set(self.requires).intersection(recipe.creates)
+                if not all([Path(filename).exists() for filename in
+                            filenames]):
                     recipe()
 
         # Try to run this command
