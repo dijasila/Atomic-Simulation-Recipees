@@ -13,7 +13,7 @@ def webpanel(row, key_descriptions):
     from asr.browser import fig, table
 
     hulltable1 = table(row,
-                       'Property',
+                       'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
@@ -34,10 +34,10 @@ def webpanel(row, key_descriptions):
                low, medium, high, stabilities[thermostab].upper())]
 
     summary = {'title': 'Summary',
-               'columns': [[hulltable1,
-                            {'type': 'table',
-                             'header': ['Summary', ''],
-                             'rows': [row]}]]}
+               'columns': [[{'type': 'table',
+                             'header': ['Stability', ''],
+                             'rows': [row]},
+                            hulltable1]]}
     return [panel, summary]
 
 
@@ -111,7 +111,8 @@ def main(databases, standardreferences=None):
     results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
         'ehull': 'KVP: Energy above convex hull [eV/atom]',
-        'hform': 'KVP: Heat of formation [eV/atom]'}
+        'hform': 'KVP: Heat of formation [eV/atom]',
+        'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
         thermodynamic_stability = 1
@@ -214,6 +215,7 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
+        ax.plot([xt], [row.hform], 'sg')
         ax.plot([xt], [row.hform], 'ko', ms=15, fillstyle='none',
                 label='This material')
         ymin = e.min()
