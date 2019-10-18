@@ -1,8 +1,9 @@
 from asr.core import command, option, read_json
 from contextlib import contextmanager
 
+
 @command(module='asr.hse',
-         dependencies = ['asr.structureinfo', 'asr.gs'],
+         dependencies=['asr.structureinfo', 'asr.gs'],
          creates=['hse_nowfs.gpw', 'hse-restart.json'],
          # tests=...,
          requires=['gs.gpw'],
@@ -15,10 +16,12 @@ def calculate(kptdensity=12, emptybands=20):
     import gpaw.mpi as mpi
 
     with cleanup('hse.gpw'):
-        results = {}
-        results['hse_eigenvalues'] = hse(kptdensity=kptdensity, emptybands=emptybands)
+        eigs = hse(kptdensity=kptdensity,emptybands=emptybands)
         mpi.world.barrier()
-        results['hse_eigenvalues_soc'] = hse_spinorbit(results['hse_eigenvalues'])
+        eigs_soc = hse_spinorbit(eigs)
+        mpi.world.barrier()
+        results = {'hse_eigenvalues': eigs,
+                   'hse_eigenvalues_soc': eigs_soc}
         return results
 
 
@@ -37,7 +40,7 @@ def hse(kptdensity, emptybands):
         pbc = atoms.pbc.tolist()
         ND = np.sum(pbc)
         if ND == 3 or ND == 1:
-            kpts = {'density': kptdensity, 'gamma': True, 'even': False} # do not round up to nearest even number!
+            kpts = {'density': kptdensity, 'gamma': True, 'even': False}
         elif ND == 2:
 
             # XXX move to utils? [also in asr.polarizability]
@@ -92,6 +95,7 @@ def hse(kptdensity, emptybands):
                    e_hse_skn=e_hse_skn)
     return dct
 
+
 def hse_spinorbit(dct):
     import os
     import numpy as np
@@ -118,20 +122,23 @@ def hse_spinorbit(dct):
 
         return dct_soc
 
+
 def MP_interpolate():
     """
     Calculates band stucture along the same band path used for PBE.
-    Band structure is obtained by using 'monkhorst_pack_interpolate' to get the HSE correction
+    Band structure is obtained by using 'monkhorst_pack_interpolate'
+    to get the HSE correction
     """
     import numpy as np
     import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
     from asr.utils.gpw2eigs import get_spin_direction
-    from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack_interpolate
+    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
+                                 monkhorst_pack_interpolate)
 
     # read PBE (without SOC)
-    results_bandstructure = read_json('results-asr.bandstructure.json')  
+    results_bandstructure = read_json('results-asr.bandstructure.json')
     path = results_bandstructure['bs_nosoc']['path']
     e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
 
@@ -141,7 +148,7 @@ def MP_interpolate():
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn']-data['vxc_pbe_skn']
+    delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
     delta_skn.sort(axis=2)
 
     # interpolate delta_skn to kpts along the band path
@@ -151,7 +158,7 @@ def MP_interpolate():
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset)
     delta_interp_skn = eps.transpose(1, 0, 2)
-    e_hse_skn = e_pbe_skn[:,:,:nbands] + delta_interp_skn
+    e_hse_skn = e_pbe_skn[:, :, :nbands] + delta_interp_skn
     dct = dict(e_hse_skn=e_hse_skn, path=path)
 
     # add SOC from bs.gpw
@@ -160,7 +167,8 @@ def MP_interpolate():
     if mpi.world.rank in ranks:
         calc = GPAW('bs.gpw', communicator=comm, txt=None)
         theta, phi = get_spin_direction()
-        e_hse_mk, s_hse_mk = get_soc_eigs(calc, gw_kn=e_hse_skn, return_spin=True,
+        e_hse_mk, s_hse_mk = get_soc_eigs(calc, gw_kn=e_hse_skn,
+                                          return_spin=True,
                                           bands=np.arange(e_hse_skn.shape[2]),
                                           theta=theta, phi=phi)
         dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
@@ -186,7 +194,7 @@ def cleanup(*files):
                 if os.path.isfile(f):
                     os.remove(f)
 
-# HSE soc and PBE soc
+
 def bs_hse(row,
            filename='hse-bs.png',
            figsize=(6.4, 4.8),
@@ -196,7 +204,6 @@ def bs_hse(row,
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
-    import numpy as np
     from ase.dft.kpoints import labels_from_kpts
 
     data = row.data.get('results-asr.hse.json')
@@ -284,7 +291,7 @@ def webpanel(row, key_descriptions):
 
 
 @command(module='asr.hse',
-         dependencies = ['asr.hse@calculate', 'asr.bandstructure'],
+         dependencies=['asr.hse@calculate', 'asr.bandstructure'],
          # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
@@ -305,7 +312,7 @@ def main():
 
     # get gap, cbm, vbm, etc...
     results['__key_descriptions__'] = {}
-    results_calc=read_json('results-asr.hse@calculate.json')
+    results_calc = read_json('results-asr.hse@calculate.json')
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
@@ -315,8 +322,8 @@ def main():
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                              direct=True, output=None)
     if gap:
-        kvbm_nosoc = ibzkpts[p1[1]] # k coordinates of vbm
-        kcbm_nosoc = ibzkpts[p2[1]] # k coordinates of cbm
+        kvbm_nosoc = ibzkpts[p1[1]]  # k coordinates of vbm
+        kcbm_nosoc = ibzkpts[p2[1]]  # k coordinates of cbm
         vbm = eps_skn[p1]
         cbm = eps_skn[p2]
         subresults = {'vbm_hse_nosoc': vbm,
@@ -337,7 +344,7 @@ def main():
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eps_skn=eps,
-                         nelectrons=calc.get_number_of_electrons() * 2)
+                             nelectrons=calc.get_number_of_electrons() * 2)
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
@@ -362,10 +369,12 @@ def main():
         results.update(subresults)
         results['__key_descriptions__'].update(kd)
 
-    results.update(efermi_hse_nosoc=efermi_nosoc,
-                   efermi_hse_soc=efermi_soc)
-    results['__key_descriptions__'].update(efermi_hse_nosoc='HSE Fermi energy w/o soc [eV]',
-                                           efermi_hse_soc='HSE Fermi energy [eV]')
+    subresults = {'efermi_hse_nosoc': efermi_nosoc,
+                  'efermi_hse_soc': efermi_soc}
+    kd = {'efermi_hse_nosoc': 'HSE Fermi energy w/o soc [eV]',
+          'efermi_hse_soc': 'HSE Fermi energy [eV]'}
+    results.update(subresults)
+    results['__key_descriptions__'].update(kd)
     
     return results
 
