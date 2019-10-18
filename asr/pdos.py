@@ -230,6 +230,7 @@ def calculate(kptdensity=20.0, emptybands=20):
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
+    from asr.core import singleprec_dict
 
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
@@ -237,8 +238,8 @@ def main():
     results = {}
 
     # Calculate pdos
-    results['pdos_nosoc'] = pdos(calc, 'pdos.gpw', soc=False)
-    results['pdos_soc'] = pdos(calc, 'pdos.gpw', soc=True)
+    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Calculate the dos at the Fermi energy
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
@@ -299,6 +300,7 @@ def calculate_pdos(calc, gpw, soc=True):
     from ase.utils import DevNull
     from ase.parallel import parprint
     from asr.utils.gpw2eigs import get_spin_direction
+    from asr.core import read_json
     world = mpi.world
 
     if soc and world.rank == 0:
@@ -317,8 +319,11 @@ def calculate_pdos(calc, gpw, soc=True):
 
     ns = calc.get_number_of_spins()
     theta, phi = get_spin_direction()
-    # We want to extract the pdos +-10 eV from efermi
-    e_e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
+    e1 = gaps.get('vbm') or gaps.get('efermi')
+    e2 = gaps.get('cbm') or gaps.get('efermi')
+    e_e = np.linspace(e1 - 3, e2 + 3, 500)
+
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
     # species, their pdos are added together.
