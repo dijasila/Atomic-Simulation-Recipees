@@ -48,6 +48,9 @@ def table(row, title, keys, kd={}, digits=2):
 
 
 def merge_panels(page):
+    """Merge panels which have the same title.
+
+    Also merge tables with same first entry in header."""
     # Update panels
     for title, panels in page.items():
         panels = sorted(panels, key=lambda x: x['sort'])
@@ -68,12 +71,16 @@ def merge_panels(page):
                             if header in known_tables:
                                 known_tables[header]['rows']. \
                                     extend(item['rows'])
-                                del column[ii]
+                                column[ii] = None
                             else:
                                 known_tables[header] = item
+
             columns = tmppanel['columns']
             if len(columns) == 1:
                 columns.append([])
+
+            columns[0] = [item for item in columns[0] if item]
+            columns[1] = [item for item in columns[1] if item]
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])

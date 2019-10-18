@@ -120,7 +120,7 @@ def webpanel(row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Summary', ''],
+                             'header': ['Stability', ''],
                              'rows': [row]}]]}
     return [panel, summary]
 
@@ -184,7 +184,7 @@ def main(mingo=True):
     else:
         dynamic_stability = 3
 
-    results = {'exact_freqs_kl': omega_kl,
+    results = {'omega_kl': omega_kl,
                'q_qc': q_qc,
                'modes_kl': u_kl,
                'minhessianeig': mineig,
@@ -197,7 +197,8 @@ def main(mingo=True):
     results['interp_freqs_kl'] = freqs_kl
     results['path'] = path
     results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]'}
+        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
+         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 
@@ -209,7 +210,7 @@ def plot_phonons(row, fname):
     if data is None:
         return
 
-    omega_kl = data['exact_freqs_kl']
+    omega_kl = data['omega_kl']
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
