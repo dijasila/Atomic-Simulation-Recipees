@@ -16,7 +16,7 @@ def calculate(kptdensity=12, emptybands=20):
     import gpaw.mpi as mpi
 
     with cleanup('hse.gpw'):
-        eigs = hse(kptdensity=kptdensity,emptybands=emptybands)
+        eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
         mpi.world.barrier()
         eigs_soc = hse_spinorbit(eigs)
         mpi.world.barrier()
@@ -134,8 +134,6 @@ def MP_interpolate():
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
     from asr.utils.gpw2eigs import get_spin_direction
-    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
-                                 monkhorst_pack_interpolate)
 
     # read PBE (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')
@@ -144,7 +142,6 @@ def MP_interpolate():
 
     # get the HSE correction to PBE eigenvalues (delta_skn)
     calc = GPAW('hse_nowfs.gpw', txt=None)
-    atoms = calc.atoms
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
@@ -152,12 +149,7 @@ def MP_interpolate():
     delta_skn.sort(axis=2)
 
     # interpolate delta_skn to kpts along the band path
-    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
-    bz2ibz = calc.get_bz_to_ibz_map()
-    icell = atoms.get_reciprocal_cell()
-    eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset)
-    delta_interp_skn = eps.transpose(1, 0, 2)
+    delta_interp_skn = interpolate_to_path(calc, delta_skn, path.kpts)
     e_hse_skn = e_pbe_skn[:, :, :nbands] + delta_interp_skn
     dct = dict(e_hse_skn=e_hse_skn, path=path)
 
@@ -177,6 +169,24 @@ def MP_interpolate():
     results['hse_bandstructure'] = dct
 
     return results
+
+
+def interpolate_to_path(calc, delta_skn, kpts):
+    """
+    Calculates band stucture along the same band path used for PBE.
+    Band structure is obtained by using 'monkhorst_pack_interpolate'
+    to get the HSE correction
+    """
+    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
+                                 monkhorst_pack_interpolate)
+
+    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
+    bz2ibz = calc.get_bz_to_ibz_map()
+    icell = calc.atoms.get_reciprocal_cell()
+    eps = monkhorst_pack_interpolate(kpts, delta_skn.transpose(1, 0, 2),
+                                     icell, bz2ibz, size, offset)
+    delta_interp_skn = eps.transpose(1, 0, 2)
+    return delta_interp_skn
 
 
 # XXX move to utils?
