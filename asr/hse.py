@@ -133,6 +133,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     from asr.utils.gpw2eigs import get_spin_direction
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
+    from asr.core import singleprec_dict
 
     bandrange = np.arange(lb, ub)
     # read PBE (without SOC)
@@ -162,7 +163,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
         dct.update(e_int_mk=e_int_mk, s_int_mk=s_int_mk)
 
     results = {}
-    results['bandstructure'] = dct
+    results['bandstructure'] = singleprec_dict(dct)
 
     return results
 
