@@ -2,6 +2,83 @@ from asr.core import command, option, read_json
 from click import Choice
 
 
+# This function is basically doing the exact same as HSE and could
+# probably be refactored
+def bs_gw(row,
+          filename='gw-bs.png',
+          figsize=(6.4, 4.8),
+          fontsize=10,
+          show_legend=True,
+          s=0.5):
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
+    from ase.dft.kpoints import labels_from_kpts
+
+    data = row.data.get('results-asr.gw.json')
+    path = data['bandstructure']['path']
+    ef = data['efermi_gw_soc']
+    emin = row.get('vbm_gw', ef) - 3 - ef
+    emax = row.get('cbm_gw', ef) + 3 - ef
+    mpl.rcParams['font.size'] = fontsize
+
+    if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+        reference = row.get('evac')
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+        reference = ef
+
+    e_mk = data['bandstructure']['e_int_mk'] - reference
+    x, X, labels = labels_from_kpts(path.kpts, row.cell)
+
+    # hse with soc
+    hse_style = dict(
+        color='k',
+        # label='HSE',
+        ls='-',
+        lw=1.0,
+        zorder=0)
+    ax = plt.figure(figsize=figsize).add_subplot(111)
+    for e_m in e_mk:
+        ax.plot(x, e_m, **hse_style)
+    ax.set_ylim([emin, emax])
+    ax.set_xlim([x[0], x[-1]])
+    ax.set_ylabel(label)
+    ax.set_xlabel('$k$-points')
+    ax.set_xticks(X)
+    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
+
+    xlim = ax.get_xlim()
+    x0 = xlim[1] * 0.01
+    ax.axhline(ef, c='k', ls=':')
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef),
+        ha='left',
+        va='bottom',
+        fontsize=fontsize * 1.3)
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
+
+    # add PBE band structure with soc
+    from asr.bandstructure import add_bs_pbe
+    if 'results-asr.bandstructure.json' in row.data:
+        ax = add_bs_pbe(row, ax)
+
+    for Xi in X:
+        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
+
+    ax.plot([], [], **hse_style, label='GW')
+    plt.legend(loc='upper right')
+
+    if not show_legend:
+        ax.legend_.remove()
+    plt.savefig(filename, bbox_inches='tight')
+
+
 def webpanel(row, key_descriptions):
     from asr.browser import fig, table
 
