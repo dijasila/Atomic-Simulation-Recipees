@@ -96,10 +96,8 @@ def webpanel(row, key_descriptions):
 @command(requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
-@option('--gs', help='Ground state on which GW is based')
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
-@option('--verbose', help='verbose')
 def gs(kptdensity=5.0, ecut=200.0):
     """Calculate GW"""
     from ase.dft.bandgap import bandgap
@@ -164,8 +162,7 @@ def gs(kptdensity=5.0, ecut=200.0):
 @option('--ecut', help='Plane wave cutoff')
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
-def gw(kptdensity=5.0, ecut=200.0,
-       mode='G0W0'):
+def gw(ecut=200.0, mode='G0W0'):
     """Calculate GW"""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
