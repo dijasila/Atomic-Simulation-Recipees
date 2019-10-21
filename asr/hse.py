@@ -123,35 +123,31 @@ def hse_spinorbit(dct):
         return dct_soc
 
 
-def MP_interpolate():
-    """
-    Calculates band stucture along the same band path used for PBE.
-    Band structure is obtained by using 'monkhorst_pack_interpolate'
-    to get the HSE correction
-    """
+def MP_interpolate(calc, delta_skn, lb, ub):
+    """Calculates band stucture along the same band path used for PBE
+    by interpolating a correction onto the PBE band structure."""
     import numpy as np
     import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
     from asr.utils.gpw2eigs import get_spin_direction
+    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
+                                 monkhorst_pack_interpolate)
 
+    bandrange = np.arange(lb, ub)
     # read PBE (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')
     path = results_bandstructure['bs_nosoc']['path']
     e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
 
-    # get the HSE correction to PBE eigenvalues (delta_skn)
-    calc = GPAW('hse_nowfs.gpw', txt=None)
-    results_hse = read_json('results-asr.hse@calculate.json')
-    data = results_hse['hse_eigenvalues']
-    nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
-    delta_skn.sort(axis=2)
-
-    # interpolate delta_skn to kpts along the band path
-    delta_interp_skn = interpolate_to_path(calc, delta_skn, path.kpts)
-    e_hse_skn = e_pbe_skn[:, :, :nbands] + delta_interp_skn
-    dct = dict(e_hse_skn=e_hse_skn, path=path)
+    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
+    bz2ibz = calc.get_bz_to_ibz_map()
+    icell = calc.atoms.get_reciprocal_cell()
+    eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
+                                     icell, bz2ibz, size, offset)
+    delta_interp_skn = eps.transpose(1, 0, 2)
+    e_int_skn = e_pbe_skn[:, :, bandrange] + delta_interp_skn
+    dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
     ranks = [0]
@@ -159,34 +155,16 @@ def MP_interpolate():
     if mpi.world.rank in ranks:
         calc = GPAW('bs.gpw', communicator=comm, txt=None)
         theta, phi = get_spin_direction()
-        e_hse_mk, s_hse_mk = get_soc_eigs(calc, gw_kn=e_hse_skn,
+        e_int_mk, s_int_mk = get_soc_eigs(calc, gw_kn=e_int_skn,
                                           return_spin=True,
-                                          bands=np.arange(e_hse_skn.shape[2]),
+                                          bands=bandrange,
                                           theta=theta, phi=phi)
-        dct.update(e_hse_mk=e_hse_mk, s_hse_mk=s_hse_mk)
+        dct.update(e_int_mk=e_int_mk, s_int_mk=s_int_mk)
 
     results = {}
-    results['hse_bandstructure'] = dct
+    results['bandstructure'] = dct
 
     return results
-
-
-def interpolate_to_path(calc, delta_skn, kpts):
-    """
-    Calculates band stucture along the same band path used for PBE.
-    Band structure is obtained by using 'monkhorst_pack_interpolate'
-    to get the HSE correction
-    """
-    from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
-                                 monkhorst_pack_interpolate)
-
-    size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
-    bz2ibz = calc.get_bz_to_ibz_map()
-    icell = calc.atoms.get_reciprocal_cell()
-    eps = monkhorst_pack_interpolate(kpts, delta_skn.transpose(1, 0, 2),
-                                     icell, bz2ibz, size, offset)
-    delta_interp_skn = eps.transpose(1, 0, 2)
-    return delta_interp_skn
 
 
 # XXX move to utils?
@@ -217,7 +195,7 @@ def bs_hse(row,
     from ase.dft.kpoints import labels_from_kpts
 
     data = row.data.get('results-asr.hse.json')
-    path = data['hse_bandstructure']['path']
+    path = data['bandstructure']['path']
     ef = data['efermi_hse_soc']
     emin = row.get('vbm_hse', ef) - 3 - ef
     emax = row.get('cbm_hse', ef) + 3 - ef
@@ -230,7 +208,7 @@ def bs_hse(row,
         label = r'$E - E_\mathrm{F}$ [eV]'
         reference = ef
 
-    e_mk = data['hse_bandstructure']['e_hse_mk'] - reference
+    e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
        
     # hse with soc
@@ -318,7 +296,13 @@ def main():
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
-    results = MP_interpolate()
+    calc = GPAW('hse_nowfs.gpw', txt=None)
+    results_hse = read_json('results-asr.hse@calculate.json')
+    data = results_hse['hse_eigenvalues']
+    nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
+    delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
+    delta_skn.sort(axis=2)
+    results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...
     results['__key_descriptions__'] = {}
