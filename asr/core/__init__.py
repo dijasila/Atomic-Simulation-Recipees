@@ -366,7 +366,12 @@ class ASRCommand:
             # a file that is in __requires__
             for dep in self.dependencies:
                 recipe = get_recipe_from_name(dep)
-                if not recipe.done:
+                if recipe.done:
+                    continue
+
+                filenames = set(self.requires).intersection(recipe.creates)
+                if not all([Path(filename).exists() for filename in
+                            filenames]):
                     recipe()
 
         # Try to run this command
@@ -400,8 +405,6 @@ class ASRCommand:
             tp = type(self.defparams[key])
 
             if tp != type(value):
-                # Then this is a str. repr. of a python literal:
-                assert type(value) == str
                 # Dicts has to be treated specially
                 if tp == dict:
                     if value.startswith('+'):

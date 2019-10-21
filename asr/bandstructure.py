@@ -31,7 +31,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @command('asr.bandstructure',
          requires=['gs.gpw'],
          creates=['bs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          tests=tests)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints')
