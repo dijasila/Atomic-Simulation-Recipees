@@ -13,7 +13,6 @@ def bs_gw(row,
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
-    from ase.dft.kpoints import labels_from_kpts
 
     data = row.data.get('results-asr.gw.json')
     path = data['bandstructure']['path']
@@ -31,7 +30,7 @@ def bs_gw(row,
     emax = row.get('cbm_gw', ef) + 10 - reference
 
     e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = labels_from_kpts(path.kpts, row.cell)
+    x, X, labels = path.get_linear_kpoint_axis()
 
     # hse with soc
     style = dict(

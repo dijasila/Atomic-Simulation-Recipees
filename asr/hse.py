@@ -193,7 +193,6 @@ def bs_hse(row,
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
-    from ase.dft.kpoints import labels_from_kpts
 
     data = row.data.get('results-asr.hse.json')
     path = data['bandstructure']['path']
@@ -208,10 +207,9 @@ def bs_hse(row,
 
     emin = row.get('vbm_hse', ef) - 3 - reference
     emax = row.get('cbm_hse', ef) + 3 - reference
-
     e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = labels_from_kpts(path.kpts, row.cell)
-       
+    x, X, labels = path.get_linear_kpoint_axis()
+
     # hse with soc
     hse_style = dict(
         color='k',
