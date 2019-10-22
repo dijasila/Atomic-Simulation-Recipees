@@ -95,7 +95,7 @@ def webpanel(row, key_descriptions):
         ])
 
     panel = {'title': 'Summary',
-             'columns': [[basictable], [ATOMS, UNITCELL]],
+             'columns': [[UNITCELL, basictable], [ATOMS]],
              'sort': 1}
     return [panel]
 

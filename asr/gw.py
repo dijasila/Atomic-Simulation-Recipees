@@ -231,11 +231,15 @@ def plot_renorm_factor(row, filename):
 
 def webpanel(row, key_descriptions):
     from asr.browser import fig, table
-
+    ref = row.get('evac', row.get('ef'))
+    keys = ['vbm_gw', 'cbm_gw']
+    for key in keys:
+        row[key] -= ref
     prop = table(row, 'Property', [
         'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
     ], key_descriptions)
-
+    for key in keys:
+        row[key] += ref
     panel = {'title': 'Electronic band structure (GW)',
              'columns': [[fig('gw-bs.png'), prop], [fig('renorm.png')]],
              'plot_descriptions': [{'function': bs_gw,

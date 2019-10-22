@@ -197,17 +197,17 @@ def bs_hse(row,
 
     data = row.data.get('results-asr.hse.json')
     path = data['bandstructure']['path']
-    ef = data['efermi_hse_soc']
-    emin = row.get('vbm_hse', ef) - 3 - ef
-    emax = row.get('cbm_hse', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
+    ef = data['efermi_hse_soc']
 
+    reference = row.get('evac', row.get('ef'))
     if row.get('evac') is not None:
         label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
     else:
         label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
+
+    emin = row.get('vbm_hse', ef) - 3 - reference
+    emax = row.get('cbm_hse', ef) + 3 - reference
 
     e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
@@ -231,10 +231,10 @@ def bs_hse(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef, c='k', ls=':')
+    ax.axhline(ef - reference, c='k', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef),
+        xy=(x0, ef - reference),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
@@ -246,7 +246,7 @@ def bs_hse(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax)
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
     
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -263,9 +263,15 @@ def webpanel(row, key_descriptions):
     from asr.browser import fig, table
     
     if row.get('gap_hse', 0) > 0.0:
+        ref = row.get('evac', row.get('ef'))
+        keys = ['vbm_hse', 'cbm_hse']
+        for key in keys:
+            row[key] -= ref
         hse = table(row, 'Property',
                     ['gap_hse', 'dir_gap_hse', 'vbm_hse', 'cbm_hse'],
                     kd=key_descriptions)
+        for key in keys:
+            row[key] += ref
     else:
         hse = table(row, 'Property',
                     [],
@@ -302,7 +308,6 @@ def main():
     data = results_hse['hse_eigenvalues']
     nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
     delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
-    delta_skn.sort(axis=2)
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...
