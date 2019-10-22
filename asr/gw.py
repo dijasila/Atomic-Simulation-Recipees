@@ -17,10 +17,8 @@ def bs_gw(row,
 
     data = row.data.get('results-asr.gw.json')
     path = data['bandstructure']['path']
-    ef = data['efermi_gw_soc']
-    emin = row.get('vbm_gw', ef) - 3 - ef
-    emax = row.get('cbm_gw', ef) + 3 - ef
     mpl.rcParams['font.size'] = fontsize
+    ef = data['efermi_gw_soc']
 
     if row.get('evac') is not None:
         label = r'$E - E_\mathrm{vac}$ [eV]'
@@ -29,11 +27,14 @@ def bs_gw(row,
         label = r'$E - E_\mathrm{F}$ [eV]'
         reference = ef
 
+    emin = row.get('vbm_gw', ef) - 5 - reference
+    emax = row.get('cbm_gw', ef) + 10 - reference
+
     e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = labels_from_kpts(path.kpts, row.cell)
 
     # hse with soc
-    hse_style = dict(
+    style = dict(
         color='k',
         # label='HSE',
         ls='-',
@@ -41,7 +42,7 @@ def bs_gw(row,
         zorder=0)
     ax = plt.figure(figsize=figsize).add_subplot(111)
     for e_m in e_mk:
-        ax.plot(x, e_m, **hse_style)
+        ax.plot(x, e_m, **style)
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
     ax.set_ylabel(label)
@@ -51,10 +52,10 @@ def bs_gw(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef, c='k', ls=':')
+    ax.axhline(ef - reference, c='k', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef),
+        xy=(x0, ef - reference),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
@@ -66,31 +67,17 @@ def bs_gw(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax)
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    ax.plot([], [], **hse_style, label='GW')
+    ax.plot([], [], **style, label='GW')
     plt.legend(loc='upper right')
 
     if not show_legend:
         ax.legend_.remove()
     plt.savefig(filename, bbox_inches='tight')
-
-
-def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
-
-    prop = table(row, 'Property', [
-        'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
-    ], key_descriptions)
-
-    panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png'), prop]],
-             'plot_descriptions': [{'function': bs_gw,
-                                    'filenames': ['gw-bs.png']}]}
-    return [panel]
 
 
 @command(requires=['gs.gpw'],
@@ -221,8 +208,46 @@ def gw(ecut=200.0, mode='G0W0'):
     return results
 
 
+def plot_renorm_factor(row, filename):
+    from matplotlib import pyplot as plt
+    data = row.data.get('results-asr.gw@gw.json')
+    q_skn = data['qp']
+    Z_skn = data['Z']
+    reference = row.get('evac', row.get('ef'))
+    plt.figure(figsize=(6.4, 4.8))
+    plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
+                s=2)
+    emin = row.get('vbm_gw', row.get('ef')) - 5 - reference
+    emax = row.get('cbm_gw', row.get('ef')) + 10 - reference
+    if row.get('evac') is not None:
+        plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
+    else:
+        plt.ylabel(r'$E - E_\mathrm{F}$ [eV]')
+    plt.ylim(emin, emax)
+    plt.xlabel('Renormalization factor Z')
+    plt.tight_layout()
+    plt.savefig(filename)
+
+
+def webpanel(row, key_descriptions):
+    from asr.browser import fig, table
+
+    prop = table(row, 'Property', [
+        'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
+    ], key_descriptions)
+
+    panel = {'title': 'Electronic band structure (GW)',
+             'columns': [[fig('gw-bs.png'), prop], [fig('renorm.png')]],
+             'plot_descriptions': [{'function': bs_gw,
+                                    'filenames': ['gw-bs.png']},
+                                   {'function': plot_renorm_factor,
+                                    'filenames': ['renorm.png']}]}
+    return [panel]
+
+
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs'])
+         dependencies=['asr.gw@gw', 'asr.gw@gs'],
+         webpanel=webpanel)
 def main():
     import numpy as np
     from gpaw import GPAW
@@ -232,21 +257,22 @@ def main():
     from types import SimpleNamespace
     
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
-    gwresults = SimpleNamespace(read_json('results-asr.gw@gw.json'))
+    gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
 
     lb = gwresults.minband
     ub = gwresults.maxband
 
-    delta_skn = gwresults.qp_skn - gwresults.eps_skn
+    delta_skn = gwresults.qp - gwresults.eps
 
     # Interpolate band structure
     results = MP_interpolate(calc, delta_skn, lb, ub)
     kd = {}
 
     # First get stuff without SOC
-    eps_skn = gwresults['qp']
-    
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
+    eps_skn = gwresults.qp
+    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn,
+                               nelectrons=(calc.get_number_of_electrons() -
+                                           2 * lb))
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -281,6 +307,7 @@ def main():
                         bands=bandrange,
                         return_spin=False,
                         theta=theta, phi=phi)
+
     eps = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eps_skn=eps,
                              nelectrons=(2 *
@@ -301,19 +328,19 @@ def main():
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        kd = {'vbm_gw': 'KVP: GW valence band max. [eV]',
-              'cbm_gw': 'KVP: GW conduction band min. [eV]',
-              'dir_gap_gw': 'KVP: GW direct gap [eV]',
-              'gap_gw': 'KVP: GW gap [eV]',
-              'kvbm': 'k-point of GW valence band max.',
-              'kcbm': 'k-point of GW conduction band min.'}
+        kd.update({'vbm_gw': 'KVP: GW valence band max. [eV]',
+                   'cbm_gw': 'KVP: GW conduction band min. [eV]',
+                   'dir_gap_gw': 'KVP: GW direct gap [eV]',
+                   'gap_gw': 'KVP: GW gap [eV]',
+                   'kvbm': 'k-point of GW valence band max.',
+                   'kcbm': 'k-point of GW conduction band min.'})
         results.update(subresults)
-        results['__key_descriptions__'].update(kd)
 
+    results.update({'efermi_gw_nosoc': efermi_nosoc,
+                    'efermi_gw_soc': efermi_soc})
     kd.update({'efermi_gw_nosoc': 'GW Fermi energy w/o soc [eV]',
                'efermi_gw_soc': 'GW Fermi energy [eV]'})
     results['__key_descriptions__'] = kd
-    results['__key_descriptions__'].update(kd)
 
     return results
 
