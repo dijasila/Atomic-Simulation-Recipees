@@ -181,13 +181,14 @@ def main(gpwfilename='gs.gpw'):
                                  soc=soc,
                                  bandtype=bt,
                                  efermi=efermi)
-                unpack_masses(masses, soc, bt, good_results) # Modifies last argument
+
+                # This function modifies the last argument
+                unpack_masses(masses, soc, bt, good_results)
             except ValueError:
                 tb = traceback.format_exc()
                 print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
             else:
                 _savemass(soc=soc, bt=bt, mass=masses)
-                
     return good_results
 
 def unpack_masses(masses, soc, bt, results_dict):
@@ -201,24 +202,29 @@ def unpack_masses(masses, soc, bt, results_dict):
     #            r=r)
     # We want to flatten this structure so that results_dict contains
     # the masses directly
-    if len(masses['indices']) > 1:
-        raise ValueError("Several effective mass index-pairs found")
-
-    for index in masses['indices']:
-        out_dict = masses[index]
-        
+    for ind in masses['indices']:
+        out_dict = masses[ind]
+        index = str(ind)
         socpre = 'soc' if soc else 'nosoc'
         prefix = bt + '_' + socpre + '_'
 
-        results_dict[prefix + 'effmass_dir1'] = out_dict['mass_u'][0]
-        results_dict[prefix + 'effmass_dir2'] = out_dict['mass_u'][1]
-        results_dict[prefix + 'effmass_dir3'] = out_dict['mass_u'][2]
-        results_dict[prefix + 'eigenvectors_vdir1'] = out_dict['eigenvectors_vu'][:, 0]
-        results_dict[prefix + 'eigenvectors_vdir2'] = out_dict['eigenvectors_vu'][:, 1]
-        results_dict[prefix + 'eigenvectors_vdir3'] = out_dict['eigenvectors_vu'][:, 2]
-        results_dict[prefix + 'spin'] = index[0]
-        results_dict[prefix + 'kptindex'] = index[1]
-        results_dict[prefix + 'vb_kpt_v'] = out_dict['ke_v']
+        results_dict[index] = {}
+
+        results_dict[index][prefix + 'effmass_dir1'] = out_dict['mass_u'][0]
+        results_dict[index][prefix + 'effmass_dir2'] = out_dict['mass_u'][1]
+        results_dict[index][prefix + 'effmass_dir3'] = out_dict['mass_u'][2]
+        results_dict[index][prefix + 'eigenvectors_vdir1'] = out_dict['eigenvectors_vu'][:, 0]
+        results_dict[index][prefix + 'eigenvectors_vdir2'] = out_dict['eigenvectors_vu'][:, 1]
+        results_dict[index][prefix + 'eigenvectors_vdir3'] = out_dict['eigenvectors_vu'][:, 2]
+        results_dict[index][prefix + 'spin'] = ind[0]
+        results_dict[index][prefix + 'bandindex'] = ind[1]
+        results_dict[index][prefix + 'kpt_v'] = out_dict['ke_v']
+        results_dict[index][prefix + 'fitcoeff'] = out_dict['c']
+        results_dict[index][prefix + 'mass_u'] = out_dict['mass_u']
+        results_dict[index][prefix + 'bzcuts'] = out_dict['bs_along_emasses']
+
+
+# Calc energies along eff mass eig vecs
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
@@ -260,8 +266,72 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
         e_k = e_skn[b[0], :, b[1]]
         masses[b] = em(kpts_kv=ibz_kv * Bohr,
                        eps_k=e_k / Hartree, bandtype=bandtype)
+
+        masses[b]['bs_along_emasses'] = calculate_bs_along_emass_vecs(masses[b], soc, bandtype, calc)
+
     return masses
 
+def calculate_bs_along_emass_vecs(masses_dict, soc, bt, calc, erange=500e-3, npoints=91):
+    # out = dict(mass_u=masses, eigenvectors_vu=vecs,
+    #            ke_v=kmax,
+    #            c=c,
+    #            r=r)
+    from ase.units import Hartree, Bohr
+    from ase.dft.kpoints import kpoint_convert
+    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.spinutils import spin_axis
+    from asr.utils.symmetry import is_symmetry_protected
+    import numpy as np
+    from gpaw.mpi import rank
+    cell_cv = calc.get_atoms().get_cell()
+
+    results_dicts = []
+    for u, mass in enumerate(masses_dict['mass_u']):
+        # embzcut stuff
+        kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+        kd_v = masses_dict['eigenvectors_vu'][:, u]
+        k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
+        k_kv += masses_dict['ke_v']
+        k_kv /= Bohr
+        k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+        atoms = calc.get_atoms()
+        skip_it = False
+        for i, pb in enumerate(atoms.pbc):
+            if not pb and not np.allclose(k_kc[:, i], 0):
+                results_dicts.append(dict())
+                skip_it = True
+                break
+        if skip_it:
+            continue
+        
+        calc.set(kpts=k_kc, symmetry='off', txt=None)
+        atoms.get_potential_energy()
+        name = 'temp.gpw'
+        calc.write(name)
+
+        # Start of collect.py stuff
+        e_km, _, s_kvm = gpw2eigs(name, soc=soc, return_spin=True,
+                       optimal_spin_direction=True)
+
+        sz_km = s_kvm[:, spin_axis(), :]
+        from gpaw.symmetry import atoms2symmetry
+        op_scc = atoms2symmetry(calc.get_atoms()).op_scc # Ask Morten, get it from somewhere?
+        magstate = 'NM' # Ask Morten, get it from where?
+        for idx, kpt in enumerate(k_kc):
+            if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
+                magstate == 'AFM'):
+                sz_km[idx, :] = 0.0
+
+        # Start of custom.py stuff
+        # xb is (v/c)b dict from data["effectivemass"]["(v/c)b"]
+        ## It contains 
+        #b_u is list of kpts, es, szs for eff mass dirs (u) for given bt
+
+        # custom.py processing requires other data from eff mass calculation
+        
+        results_dicts.append(dict(kpts_kc=k_kc,
+                                  e_dft_km=e_km,
+                                  sz_dft_km=sz_km))
 
 def get_vb_cb_indices(e_skn, efermi, delta):
     """
@@ -327,6 +397,33 @@ def em(kpts_kv, eps_k, bandtype=None):
     fy = c[7]
     fz = c[8]
 
+    # Get min/max location from 2nd order fit to evalulate
+    # the second order derivative in the third order fit
+    xm, ym, zm = get_2nd_order_extremum(c)
+    ke2_v = np.array([xm, ym, zm])
+
+    c3, r3, rank3, s3 = fit(kpts_kv, eps_k, thirdorder=True)
+
+    f3xx, f3yy, f3zz, f3xy, f3xz, f3yz, f3x, f3y, f3z, f30, f3xxx, f3yyy, f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3
+    
+    extremum_type = get_extremum_type(fxx, fyy, fzz, fxy, fxz, fyz)
+    xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3, extremum_type)
+    ke_v = np.array([xm, ym, zm])
+
+
+    d3xx = 2 * f3xx + 6 * f3xxx * xm + 2 * f3xxy * ym + 2 * f3xxz * zm 
+    d3yy = 2 * f3yy + 6 * f3yyy * ym + 2 * f3yyx * xm + 2 * f3yyz * zm
+    d3zz = 2 * f3zz + 6 * f3zzz * zm + 2 * f3zzx * xm + 2 * f3zzy * ym
+    d3xy = f3xy + 2 * f3xxy * xm + 2 * f3yyx * ym + f3xyz * zm
+    d3xz = f3xz + 2 * f3xxz * xm + 2 * f3zzx * zm + f3xyz * ym
+    d3yz = f3yz + 2 * f3yyz * ym + 2 * f3zzy * zm + f3xyz * xm
+    
+    hessian3 = np.array([[d3xx, d3xy, d3xz],
+                         [d3xy, d3yy, d3yz],
+                         [d3xz, d3yz, d3zz]])
+    
+    v3_n, w3_vn = np.linalg.eigh(hessian3)
+
     # This commented out code is needed for further
     # refinement of the effective mass calculation
     # def get_bt(fxx, fyy, fzz, fxy, fxz, fyz):
@@ -347,18 +444,80 @@ def em(kpts_kv, eps_k, bandtype=None):
     # if bandtype is None:
     #    bandtype = get_bt(fxx, fyy, fzz, fxy, fxz, fyz)
     hessian = np.array([[fxx, fxy, fxz], [fxy, fyy, fyz], [fxz, fyz, fzz]])
-    masses, vecs = np.linalg.eigh(hessian)
-    
-    # Calculate extremum point
-    A = np.array([fx, fy, fz])
-    kmax = -0.5 * A.dot(np.linalg.inv(hessian))
+    v2_n, vecs = np.linalg.eigh(hessian)
+        
 
-    out = dict(mass_u=masses, eigenvectors_vu=vecs,
-               ke_v=kmax,
-               c=c,
-               r=r)
+    out = dict(mass_u=1 / v3_n,
+               eigenvectors_vu=w3_vn,
+               ke_v=ke_v,
+               c=c3,
+               r=r3,
+               mass2_u=1 / v2_n,
+               eigenvectors2_vu=vecs,
+               ke2_v=ke2_v,
+               c2=c,
+               r2=r)
+
     return out
 
+def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz):
+    # Input: 2nd order derivatives at the extremum point
+    import numpy as np
+    hessian = np.array([[dxx, dxy, dxz],
+                        [dxy, dyy, dyz],
+                        [dxz, dyz, dzz]])
+    vals, vecs = np.linalg.eigh(hessian)
+    saddlepoint = not (np.sign(vals[0]) == np.sign(vals[1]) and np.sign(vals[0]) == np.sign(vals[2]))
+
+    if saddlepoint:
+        etype = 'saddlepoint'
+    elif (vals < 0).all():
+        etype = 'max'
+    elif (vals > 0).all():
+        etype = 'min'
+    else:
+        raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
+    return etype
+
+def get_2nd_order_extremum(c):
+    import numpy as np
+    # fit is 
+    # fxx x^2 + fyy y^2 + fzz z^2 + fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
+    assert len(c) == 10
+    fxx, fyy, fzz, fxy, fxz, fyz, fx, fy, fz, f0 = c
+    
+    ma = np.array([[2 * fxx, fxy, fxz],
+                   [fxy, 2 * fyy, fyz],
+                   [fxz, fyz, 2 * fzz]])
+
+    v = np.array([-fx, -fy, -fz])
+
+    min_pos = np.linalg.solve(ma, v)
+
+    return min_pos
+
+def get_3rd_order_extremum(xm, ym, zm, c, extremum_type):
+    import numpy as np
+    from scipy import optimize
+    # We want to use a minimization function from scipy
+    # so if the extremum type is a 'max' we need to multiply
+    # the function by - 1
+    assert len(c) == 20
+
+    def get_v(kpts):
+        k = np.asarray(kpts)
+        if k.ndim == 1:
+            k = k[np.newaxis]
+        return model(k)
+
+    if extremum_type == 'max':
+        func = lambda v: -1 * np.dot(get_v(v), c)
+    else:
+        func = lambda v: np.dot(get_v(v), c)
+
+    x0 = np.array([xm, ym, zm])
+    x, y, z = optimize.fmin(func, x0=x0, xtol=1.0e-15, ftol=1.0e-15, disp=False)
+    return x, y, z
 
 def fit(kpts_kv, eps_k, thirdorder=False):
     import numpy.linalg as la
@@ -397,7 +556,8 @@ def model(kpts_kv):
                      k_ky**2 * k_kx,
                      k_ky**2 * k_kz,
                      k_kz**2 * k_kx,
-                     k_kz**2 * k_ky]).T
+                     k_kz**2 * k_ky,
+                     k_kx * k_ky * k_kz]).T
 
     return A_dp
 
