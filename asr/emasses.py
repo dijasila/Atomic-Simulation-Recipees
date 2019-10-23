@@ -247,6 +247,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
     calc = GPAW(gpw, txt=None)
+    ndim = calc.atoms.pbc.sum()
 
     e_skn, efermi2 = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
     if efermi is None:
@@ -265,7 +266,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     for b in indices:
         e_k = e_skn[b[0], :, b[1]]
         masses[b] = em(kpts_kv=ibz_kv * Bohr,
-                       eps_k=e_k / Hartree, bandtype=bandtype)
+                       eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
 
         masses[b]['bs_along_emasses'] = calculate_bs_along_emass_vecs(masses[b], soc, bandtype, calc)
 
@@ -371,7 +372,7 @@ def get_vb_cb_indices(e_skn, efermi, delta):
     return vb_indices, cb_indices
 
 
-def em(kpts_kv, eps_k, bandtype=None):
+def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     """
     Parameters:
         kpts_kv: (nk, 3)-shape ndarray
@@ -399,15 +400,15 @@ def em(kpts_kv, eps_k, bandtype=None):
 
     # Get min/max location from 2nd order fit to evalulate
     # the second order derivative in the third order fit
-    xm, ym, zm = get_2nd_order_extremum(c)
+    xm, ym, zm = get_2nd_order_extremum(c, ndim=ndim)
     ke2_v = np.array([xm, ym, zm])
 
     c3, r3, rank3, s3 = fit(kpts_kv, eps_k, thirdorder=True)
 
     f3xx, f3yy, f3zz, f3xy, f3xz, f3yz, f3x, f3y, f3z, f30, f3xxx, f3yyy, f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3
     
-    extremum_type = get_extremum_type(fxx, fyy, fzz, fxy, fxz, fyz)
-    xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3, extremum_type)
+    extremum_type = get_extremum_type(fxx, fyy, fzz, fxy, fxz, fyz, ndim=ndim)
+    xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3, extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
 
 
@@ -460,43 +461,78 @@ def em(kpts_kv, eps_k, bandtype=None):
 
     return out
 
-def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz):
+def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
     # Input: 2nd order derivatives at the extremum point
     import numpy as np
-    hessian = np.array([[dxx, dxy, dxz],
-                        [dxy, dyy, dyz],
-                        [dxz, dyz, dzz]])
-    vals, vecs = np.linalg.eigh(hessian)
-    saddlepoint = not (np.sign(vals[0]) == np.sign(vals[1]) and np.sign(vals[0]) == np.sign(vals[2]))
+    if ndim == 3:
+        hessian = np.array([[dxx, dxy, dxz],
+                            [dxy, dyy, dyz],
+                            [dxz, dyz, dzz]])
+        vals, vecs = np.linalg.eigh(hessian)
+        saddlepoint = not (np.sign(vals[0]) == np.sign(vals[1]) and np.sign(vals[0]) == np.sign(vals[2]))
 
-    if saddlepoint:
-        etype = 'saddlepoint'
-    elif (vals < 0).all():
-        etype = 'max'
-    elif (vals > 0).all():
-        etype = 'min'
-    else:
-        raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
-    return etype
+        if saddlepoint:
+            etype = 'saddlepoint'
+        elif (vals < 0).all():
+            etype = 'max'
+        elif (vals > 0).all():
+            etype = 'min'
+        else:
+            raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
+        return etype
+    elif ndim == 2:
+        # Assume x and y axis are the periodic directions
+        hessian = np.array([[dxx, dxy],
+                            [dxy, dyy]])
+        det = np.linalg.det(hessian)
+        if det < 0:
+            etype = 'saddlepoint'
+        elif dxx < 0 and dyy < 0:
+            etype = 'max'
+        elif dxx > 0 and dyy > 0:
+            etype = 'min'
+        else:
+            raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
+        return etype
+    elif ndim == 1:
+        # Assume z axis is the periodic direction
+        if dzz < 0:
+            etype = 'max'
+        else:
+            etype = 'min'
+        return etype
 
-def get_2nd_order_extremum(c):
+def get_2nd_order_extremum(c, ndim=3):
     import numpy as np
     # fit is 
     # fxx x^2 + fyy y^2 + fzz z^2 + fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
     assert len(c) == 10
     fxx, fyy, fzz, fxy, fxz, fyz, fx, fy, fz, f0 = c
     
-    ma = np.array([[2 * fxx, fxy, fxz],
-                   [fxy, 2 * fyy, fyz],
-                   [fxz, fyz, 2 * fzz]])
+    if ndim == 3:
+        ma = np.array([[2 * fxx, fxy, fxz],
+                       [fxy, 2 * fyy, fyz],
+                       [fxz, fyz, 2 * fzz]])
 
-    v = np.array([-fx, -fy, -fz])
+        v = np.array([-fx, -fy, -fz])
 
-    min_pos = np.linalg.solve(ma, v)
+        min_pos = np.linalg.solve(ma, v)
 
-    return min_pos
+        return min_pos
 
-def get_3rd_order_extremum(xm, ym, zm, c, extremum_type):
+    elif ndim == 2:
+        # Assume x and y are periodic directions
+        ma = np.array([[2 * fxx, fxy],
+                       [fxy, 2 * fyy]])
+        v = np.array([-fx, -fy])
+        min_pos = np.linalg.solve(ma, v)
+        return np.array([min_pos[0], min_pos[1], 0.0])
+
+    elif ndim == 1:
+        # Assume z is periodic direction
+        return np.array([0.0, 0.0, -fz / (2 * fzz)])
+
+def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     import numpy as np
     from scipy import optimize
     # We want to use a minimization function from scipy
@@ -504,11 +540,45 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type):
     # the function by - 1
     assert len(c) == 20
 
-    def get_v(kpts):
-        k = np.asarray(kpts)
-        if k.ndim == 1:
-            k = k[np.newaxis]
-        return model(k)
+
+    z_indices = [2, 4, 5, 8, 12, 14, 16, 17, 18, 19]
+    if ndim == 3:
+        def get_v(kpts):
+            k = np.asarray(kpts)
+            if k.ndim == 1:
+                k = k[np.newaxis]
+            return model(k)
+    elif ndim == 2:
+        # Assume x and y are periodic
+        # Remove z-dependence
+        def get_v(kpts):
+            k = np.asarray(kpts)
+            if k.ndim == 1:
+                k = k[np.newaxis]
+            m = model(k)
+            m[:, z_indices] = 0
+            # m[:, 2] = 0
+            # m[:, 4] = 0
+            # m[:, 5] = 0
+            # m[:, 8] = 0
+            # m[:, 12] = 0
+            # m[:, 14] = 0
+            # m[:, 16] = 0
+            # m[:, 17] = 0
+            # m[:, 18] = 0
+            # m[:, 19] = 0
+            return m
+    elif ndim == 1:
+        # Assume z is periodic
+        # Remove x, y - dependence
+        def get_v(kpts):
+            k = np.asarray(kpts)
+            if k.ndim == 1:
+                k = k[np.newaxis]
+            m = model(k)
+            m2 = np.zeros_like(m)
+            m2[:, z_indices] = m[:, z_indices]
+            return m2
 
     if extremum_type == 'max':
         func = lambda v: -1 * np.dot(get_v(v), c)
