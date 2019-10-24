@@ -14,7 +14,7 @@ def webpanel(row, key_descriptions):
 params = '''asr.gs@calculate:calculator +{'mode':'lcao','kpts':(2,2,2)}'''
 tests = [{'cli': ['ase build -x hcp Co structure.json',
                   f'asr run "setup.params {params}"',
-                  'asr run asr.anisotropy',
+                  'asr run asr.magnetic_anisotropy',
                   'asr run database.fromtree',
                   'asr run "browser --only-figures"']}]
 
