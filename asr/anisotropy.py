@@ -30,15 +30,17 @@ def main():
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
+    from gpaw.utilities.ibz2bz import ibz2bz
 
+    ibz2bz('gs.gpw', 'gs_nosym.gpw')
     width = 0.001
     nbands = None
-    calc = GPAW('gs.gpw', communicator=serial_comm, txt=None)
+    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
     E_x = get_anisotropy(calc, theta=np.pi / 2, nbands=nbands,
                          width=width)
-    calc = GPAW('gs.gpw', communicator=serial_comm, txt=None)
+    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
     E_z = get_anisotropy(calc, theta=0.0, nbands=nbands, width=width)
-    calc = GPAW('gs.gpw', communicator=serial_comm, txt=None)
+    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
     E_y = get_anisotropy(calc, theta=np.pi / 2, phi=np.pi / 2,
                          nbands=nbands, width=width)
 

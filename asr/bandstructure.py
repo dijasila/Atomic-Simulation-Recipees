@@ -547,6 +547,7 @@ def bz_soc(row, fname):
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     lat.plot_bz()
+    plt.tight_layout()
     plt.savefig(fname)
 
 

@@ -1,4 +1,4 @@
-def get_spin_direction(fname="anisotropy_xy.npz"):
+def get_spin_direction(fname='results-asr.magnetic_anisotropy.json'):
     """Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
@@ -12,19 +12,20 @@ def get_spin_direction(fname="anisotropy_xy.npz"):
     """
     import os
     import numpy as np
+    from asr.core import read_json
     theta = 0
     phi = 0
-    if os.path.isfile(fname):
-        data = np.load(fname)
-        DE = max(data["dE_zx"], data["dE_zy"])
-        if DE > 0:
-            theta = np.pi / 2
-            if data["dE_zy"] > data["dE_zx"]:
-                phi = np.pi / 2
+    assert os.path.isfile(fname), f'Cannot find {fname}'
+    data = read_json(fname)
+    DE = max(data["dE_zx"], data["dE_zy"])
+    if DE > 0:
+        theta = np.pi / 2
+        if data["dE_zy"] > data["dE_zx"]:
+            phi = np.pi / 2
     return theta, phi
 
 
-def spin_axis(fname='anisotropy_xy.npz') -> int:
+def spin_axis(fname='results-asr.magnetic_anisotropy.json') -> int:
     import numpy as np
     theta, phi = get_spin_direction(fname=fname)
     if theta == 0:
