@@ -303,9 +303,9 @@ def main():
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
-    from asr.utils.gpw2eigs import get_spin_direction
+    from asr.magnetic_anisotropy import get_spin_axis
     bandrange = np.arange(lb, ub)
-    theta, phi = get_spin_direction()
+    theta, phi = get_spin_axis()
     e_mk = get_soc_eigs(calc, gw_kn=eps_skn,
                         bands=bandrange,
                         return_spin=False,

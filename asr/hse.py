@@ -102,8 +102,8 @@ def hse_spinorbit(dct):
     import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
-    from asr.utils.gpw2eigs import get_spin_direction, spin_axis
-
+    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    
     if not os.path.isfile('hse_nowfs.gpw'):
         return
 
@@ -113,12 +113,13 @@ def hse_spinorbit(dct):
         calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
         e_skn = dct.get('e_hse_skn')
         dct_soc = {}
-        theta, phi = get_spin_direction()
+        theta, phi = get_spin_axis()
+        
         e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
                                    bands=np.arange(e_skn.shape[2]),
                                    theta=theta, phi=phi)
         dct_soc['e_hse_mk'] = e_mk
-        dct_soc['s_hse_mk'] = s_kvm[:, spin_axis(), :].transpose()
+        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index, :].transpose()
 
         return dct_soc
 
@@ -130,10 +131,10 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
-    from asr.utils.gpw2eigs import get_spin_direction
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
     from asr.core import singleprec_dict
+    from asr.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
     # read PBE (without SOC)
@@ -155,7 +156,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     comm = mpi.world.new_communicator(ranks)
     if mpi.world.rank in ranks:
         calc = GPAW('bs.gpw', communicator=comm, txt=None)
-        theta, phi = get_spin_direction()
+        theta, phi = get_spin_axis()
         e_int_mk, s_int_mk = get_soc_eigs(calc, gw_kn=e_int_skn,
                                           return_spin=True,
                                           bands=bandrange,

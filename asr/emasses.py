@@ -8,13 +8,15 @@ from asr.core import command, option
 def main(gpwfilename='gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
     import os.path
     import traceback
     socs = [True, False]
 
     for soc in socs:
+        theta, phi = get_spin_axis()
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
-                                       optimal_spin_direction=True)
+                                       theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
         if not gap > 0:
@@ -62,6 +64,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
     # Check that 1D: Only x-axis, 2D: Only x- and y-axis
@@ -72,7 +75,8 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
     kcirc_kc = kptsinsphere(cell_cv)
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
+    theta, phi = get_spin_axis()
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
     _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
@@ -142,8 +146,10 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     import numpy as np
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
+    from asr.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
-    e_skn, efermi2 = gpw2eigs(gpw, soc=soc, optimal_spin_direction=True)
+    theta, phi = get_spin_axis()
+    e_skn, efermi2 = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if efermi is None:
         efermi = efermi2
     if e_skn.ndim == 2:

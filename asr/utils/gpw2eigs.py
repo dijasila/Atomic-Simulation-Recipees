@@ -1,41 +1,3 @@
-def get_spin_direction(fname='results-asr.magnetic_anisotropy.json'):
-    """Uses the magnetic anisotropy to calculate the preferred spin orientation
-    for magnetic (FM/AFM) systems.
-
-    Parameters:
-        fname: The filename of a datafile containing the xz and yz
-            anisotropy energies.
-
-    Returns:
-        theta: Polar angle in radians
-        phi: Azimuthal angle in radians
-    """
-    import os
-    import numpy as np
-    from asr.core import read_json
-    theta = 0
-    phi = 0
-    assert os.path.isfile(fname), f'Cannot find {fname}'
-    data = read_json(fname)
-    DE = max(data["dE_zx"], data["dE_zy"])
-    if DE > 0:
-        theta = np.pi / 2
-        if data["dE_zy"] > data["dE_zx"]:
-            phi = np.pi / 2
-    return theta, phi
-
-
-def spin_axis(fname='results-asr.magnetic_anisotropy.json') -> int:
-    import numpy as np
-    theta, phi = get_spin_direction(fname=fname)
-    if theta == 0:
-        return 2
-    elif np.allclose(phi, np.pi / 2):
-        return 1
-    else:
-        return 0
-
-
 def eigenvalues(calc):
     """Get eigenvalues from calculator.
 
@@ -84,17 +46,13 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
 
 
 def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
-              optimal_spin_direction=False):
+              theta=0, phi=0):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
     dct = None
     if mpi.world.rank in ranks:
-        theta = 0
-        phi = 0
-        if optimal_spin_direction:
-            theta, phi = get_spin_direction()
         if bands is None:
             n2 = calc.todict().get("convergence", {}).get("bands")
             bands = slice(0, n2)
@@ -127,7 +85,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
-             optimal_spin_direction=False):
+             theta=0, phi=0):
     """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
     fermi energy
 
@@ -135,9 +93,6 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
         gpw (str): gpw filename
         soc : None, bool
             use spinorbit coupling if None it returns both w and w/o
-        optimal_spin_direction : bool
-            If True, use get_spin_direction to calculate the spin direction
-            for the SOC
         bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
 
@@ -149,5 +104,5 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     ranks = [0]
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
     return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
-                     optimal_spin_direction=optimal_spin_direction,
+                     theta=theta, phi=phi,
                      ranks=ranks)

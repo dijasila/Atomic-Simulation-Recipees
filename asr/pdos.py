@@ -14,7 +14,7 @@ from ase.units import Hartree
 from gpaw.utilities.dos import get_angular_projectors
 from gpaw.spinorbit import get_spinorbit_eigenvalues
 
-from asr.core import magnetic_atoms
+from asr.core import magnetic_atoms, read_json
 
 
 # ---------- GPAW hacks ---------- #
@@ -35,6 +35,8 @@ class SOCDOS(DOS):
         from gpaw import GPAW
         import gpaw.mpi as mpi
         from asr.utils.gpw2eigs import gpw2eigs
+        from asr.magnetic_anisotropy import get_spin_axis
+
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
         DOS.__init__(self, calc, **kwargs)
 
@@ -42,7 +44,8 @@ class SOCDOS(DOS):
         self.nspins = 1
 
         # Hack the eigenvalues
-        e_skm, ef = gpw2eigs(gpw, optimal_spin_direction=True)
+        theta, phi = get_spin_axis()
+        e_skm, ef = gpw2eigs(gpw, theta=theta, phi=phi)
         if e_skm.ndim == 2:
             e_skm = e_skm[np.newaxis]
         e_skn = e_skm - ef
@@ -299,8 +302,7 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
     from ase.parallel import parprint
-    from asr.utils.gpw2eigs import get_spin_direction
-    from asr.core import read_json
+    from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
     if soc and world.rank == 0:
@@ -318,7 +320,7 @@ def calculate_pdos(calc, gpw, soc=True):
         ldos = raw_orbital_LDOS
 
     ns = calc.get_number_of_spins()
-    theta, phi = get_spin_direction()
+    theta, phi = get_spin_axis()
     gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
