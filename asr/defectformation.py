@@ -7,7 +7,7 @@ creates = []  # what files are created
 
 @command('asr.defectformation',
          resources='1:2h',
-         dependencies=['asr.setup.defects', 'asr.gs'],
+         dependencies=[],
          creates=None)
 @option('--defect_name',
         help='Runs recipe for all defect folder within your directory when '
@@ -30,7 +30,7 @@ def main(defect_name=None):
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
-    gs_dict = read_json('results-asr.gs.json')
+    gs_dict = read_json('results-asr.gs@calculate.json')
     defectformation_dict = {}
     defectformation_dict['gaps_nosoc'] = gs_dict.get('gaps_nosoc')
     defectformation_dict['gaps_soc'] = gs_dict.get('gaps_soc')
@@ -65,10 +65,11 @@ def main(defect_name=None):
         for sub_folder in sub_folder_list:
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
-            chargestate = setup_params.get('charge')
+            chargestate = setup_params.get('asr.relax').get('calculator').get('charge')
             try:
                 charged_file = find_file_in_folder('gs.gpw',
                                                    sub_folder_path)
+                print(path_gs, charged_file, chargestate, sigma, dim)
                 elc = ElectrostaticCorrections(pristine=path_gs,
                                                charged=charged_file,
                                                q=chargestate, sigma=sigma,
@@ -76,8 +77,10 @@ def main(defect_name=None):
                 elc.set_epsilons(epsilon)
                 if chargestate == 0:
                     e_form.append(elc.calculate_uncorrected_formation_energy())
+                    print('Calculate corrected formation energy')
                 else:
                     e_form.append(elc.calculate_corrected_formation_energy())
+                    print('Calculate uncorrected formation energy')
                 charges.append(chargestate)
                 # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
                 # e_fermi_calc.append(calc.get_fermi_level())
@@ -102,7 +105,7 @@ def check_and_get_general_inputs():
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
     # 'dielectricconstant.json' of the pristine system
     path_epsilon = find_file_in_folder('dielectricconstant.json', None)
-    path_gs = find_file_in_folder('gs.gpw', 'pristine_sc')
+    path_gs = find_file_in_folder('gs.gpw', 'defects.pristine_sc')
     path_q = find_file_in_folder('general_parameters.json', None)
 
     # if paths were found correctly, extract epsilon and q
