@@ -114,7 +114,7 @@ def make_test_files(functionname, tests):
         filename = Path(__file__).parent / testname
         assert not filename.exists(), \
             f'This file already exists: {filename}'
-        with file_barrier(filename):
+        with file_barrier([filename]):
             if world.rank == 0:
                 print(filename)
                 filename.write_text(text)
