@@ -690,7 +690,7 @@ def write_json(filename, data):
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
 
-    with file_barrier(filename):
+    with file_barrier([filename]):
         if world.rank == 0:
             Path(filename).write_text(MyEncoder(indent=1).encode(data))
 
