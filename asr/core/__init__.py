@@ -433,7 +433,7 @@ class ASRCommand:
         parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
-        with file_barrier(self.created_files):
+        with file_barrier(self.created_files, delete=False):
             results = self._main(**copy.deepcopy(params)) or {}
         results['__asr_name__'] = self.name
 
