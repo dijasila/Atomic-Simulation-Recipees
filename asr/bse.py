@@ -77,7 +77,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
         calc.get_potential_energy()
-        with file_barrier('gs_bse.gpw'):
+        with file_barrier(['gs_bse.gpw']):
             calc.write('gs_bse.gpw', mode='all')
 
     if spin:

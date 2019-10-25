@@ -3,7 +3,7 @@ import time
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import click
 import numpy as np
@@ -260,15 +260,20 @@ class ASRCommand:
         return self._diskspace
 
     @property
-    def creates(self):
+    def created_files(self):
         creates = []
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
         if self._creates:
             if callable(self._creates):
                 creates += self._creates()
             else:
                 creates += self._creates
+        return creates
+
+    @property
+    def creates(self):
+        creates = self.created_files
+        if self.save_results_file:
+            creates += [f'results-{self.name}.json']
         return creates
 
     @property
@@ -428,7 +433,8 @@ class ASRCommand:
         parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
-        results = self._main(**copy.deepcopy(params)) or {}
+        with file_barrier(self.created_files):
+            results = self._main(**copy.deepcopy(params)) or {}
         results['__asr_name__'] = self.name
 
         # Do we have to store some digests of previous calculations?
@@ -717,30 +723,33 @@ def unlink(path: Union[str, Path], world=None):
 
 
 @contextmanager
-def file_barrier(path: Union[str, Path], world=None):
+def file_barrier(paths: List[Union[str, Path]], world=None,
+                 delete=True):
     """Context manager for writing a file.
 
     After the with-block all cores will be able to read the file.
 
-    >>> with file_barrier('something.txt'):
+    >>> with file_barrier(['something.txt']):
     ...     <write file>
     ...
 
     This will remove the file, write the file and wait for the file.
     """
-
-    if isinstance(path, str):
-        path = Path(path)
     if world is None:
         world = parallel.world
 
-    # Remove file:
-    unlink(path, world)
+    for i, path in enumerate(paths):
+        if isinstance(path, str):
+            path = Path(path)
+            paths[i] = path
+        # Remove file:
+        if delete:
+            unlink(path, world)
 
     yield
 
     # Wait for file:
-    while not path.is_file():
+    while not all([path.is_file() for path in paths]):
         time.sleep(1.0)
     world.barrier()
 
