@@ -1,5 +1,6 @@
 from asr.core import command, option
 
+
 @command('asr.emasses',
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
@@ -31,12 +32,12 @@ def densify_full_k_grid(gpwfilename='gs.gpw', kptdensity=12,
     calc.get_potential_energy()
     calc.write('dense_k.gpw')
 
-# TODO Resources?
+
 @command('asr.emasses',
          requires=['dense_k.gpw'],
          dependencies=['asr.emasses@densify_full_k_grid', 'asr.structureinfo'],
          creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
+                  'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def refine(gpwfilename='dense_k.gpw'):
@@ -47,7 +48,6 @@ def refine(gpwfilename='dense_k.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     import os.path
-    import traceback
     socs = [True, False]
 
     for soc in socs:
@@ -72,6 +72,7 @@ def refine(gpwfilename='dense_k.gpw'):
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
+
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """non sc calculation based for kpts in a sphere around the
         valence band maximum and conduction band minimum.
@@ -90,7 +91,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
                 for both cb and vb
 
     """
-    from gpaw import GPAW, PW
+    from gpaw import GPAW
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -130,6 +131,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
 
+
 def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
     import numpy as np
     from ase.units import Hartree, Bohr
@@ -163,6 +165,7 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
     # x, y, z = X[indices], Y[indices], Z[indices]
     # kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
 
+
 def get_bt_ks(bandtype, k1_c, k2_c):
     if bandtype is None:
         bandtypes = ('vb', 'cb')
@@ -187,19 +190,18 @@ def webpanel(row, key_descriptions):
     return panel, None
 
 
-# TODO Resources?
 @command('asr.emasses',
          requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw', 'dense_k.gpw',
-                   'results-asr.structureinfo.json'],
-         dependencies=['asr.emasses@refine', 'asr.gs@calculate', 'asr.structureinfo'],
+                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+                   'dense_k.gpw', 'results-asr.structureinfo.json'],
+         dependencies=['asr.emasses@refine', 'asr.gs@calculate',
+                       'asr.structureinfo'],
          webpanel=webpanel)
 @option('--gpwfilename', type=str,
-         help='GS Filename')
+        help='GS Filename')
 def main(gpwfilename='dense_k.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
-    import os.path
     import traceback
     socs = [True, False]
 
@@ -229,9 +231,10 @@ def main(gpwfilename='dense_k.gpw'):
                 _savemass(soc=soc, bt=bt, mass=masses)
     return good_results
 
+
 def unpack_masses(masses, soc, bt, results_dict):
     # Structure of 'masses' object:
-    # There is an 'indices' key which tells you at which spin-k indices 
+    # There is an 'indices' key which tells you at which spin-k indices
     # effective masses have been calculated
     # At a given index there is saved the dict returned by the em function:
     # out = dict(mass_u=masses, eigenvectors_vu=vecs,
@@ -251,9 +254,10 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'effmass_dir1'] = out_dict['mass_u'][0]
         results_dict[index][prefix + 'effmass_dir2'] = out_dict['mass_u'][1]
         results_dict[index][prefix + 'effmass_dir3'] = out_dict['mass_u'][2]
-        results_dict[index][prefix + 'eigenvectors_vdir1'] = out_dict['eigenvectors_vu'][:, 0]
-        results_dict[index][prefix + 'eigenvectors_vdir2'] = out_dict['eigenvectors_vu'][:, 1]
-        results_dict[index][prefix + 'eigenvectors_vdir3'] = out_dict['eigenvectors_vu'][:, 2]
+        vecs = out_dict['eigenvectors_vu']
+        results_dict[index][prefix + 'eigenvectors_vdir1'] = vecs[:, 0]
+        results_dict[index][prefix + 'eigenvectors_vdir2'] = vecs[:, 1]
+        results_dict[index][prefix + 'eigenvectors_vdir3'] = vecs[:, 2]
         results_dict[index][prefix + 'spin'] = ind[0]
         results_dict[index][prefix + 'bandindex'] = ind[1]
         results_dict[index][prefix + 'kpt_v'] = out_dict['ke_v']
@@ -264,7 +268,6 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'fitkpts_kv'] = out_dict['fitkpts_kv']
         results_dict[index][prefix + 'fite_k'] = out_dict['fite_k']
 
-# Calc energies along eff mass eig vecs
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
@@ -308,11 +311,16 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
         masses[b] = em(kpts_kv=ibz_kv * Bohr,
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
 
-        masses[b]['bs_along_emasses'] = calculate_bs_along_emass_vecs(masses[b], soc, bandtype, calc)
+        calc_bs = calculate_bs_along_emass_vecs
+        masses[b]['bs_along_emasses'] = calc_bs(masses[b],
+                                                soc, bandtype, calc)
 
     return masses
 
-def calculate_bs_along_emass_vecs(masses_dict, soc, bt, calc, erange=500e-3, npoints=91):
+
+def calculate_bs_along_emass_vecs(masses_dict, soc,
+                                  bt, calc,
+                                  erange=500e-3, npoints=91):
     # out = dict(mass_u=masses, eigenvectors_vu=vecs,
     #            ke_v=kmax,
     #            c=c,
@@ -324,7 +332,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc, bt, calc, erange=500e-3, npo
     from asr.utils.symmetry import is_symmetry_protected
     from asr.core import read_json
     import numpy as np
-    from gpaw.mpi import rank
     cell_cv = calc.get_atoms().get_cell()
 
     results_dicts = []
@@ -355,7 +362,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc, bt, calc, erange=500e-3, npo
 
         # Start of collect.py stuff
         e_km, _, s_kvm = gpw2eigs(name, soc=soc, return_spin=True,
-                       optimal_spin_direction=True)
+                                  optimal_spin_direction=True)
 
         sz_km = s_kvm[:, spin_axis(), :]
         from gpaw.symmetry import atoms2symmetry
@@ -366,20 +373,14 @@ def calculate_bs_along_emass_vecs(masses_dict, soc, bt, calc, erange=500e-3, npo
             if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
                 magstate == 'AFM'):
                 sz_km[idx, :] = 0.0
-
-        # Start of custom.py stuff
-        # xb is (v/c)b dict from data["effectivemass"]["(v/c)b"]
-        ## It contains 
-        #b_u is list of kpts, es, szs for eff mass dirs (u) for given bt
-
-        # custom.py processing requires other data from eff mass calculation
-        
+         
         results_dicts.append(dict(kpts_kc=k_kc,
                                   kpts_kv=k_kv,
                                   e_dft_km=e_km,
                                   sz_dft_km=sz_km))
 
     return results_dicts
+
 
 def get_vb_cb_indices(e_skn, efermi, delta):
     """
@@ -433,69 +434,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             - k-pot extremum in cartesian coordinates (units of 1 / Bohr)
 
     """
-    # if ndim == 2:
-    #     import numpy as np
-    #     import numpy.linalg as la
-    #     c, r, rank, s = fit_2d(kpts_kv, eps_k, thirdorder=False)
-    #     fxx = 2 * c[0]
-    #     fyy = 2 * c[1]
-    #     fxy = c[2]
-        
-    #     def get_bt(fxx, fyy, fxy):
-    #         if fxx * fyy - fxy**2 > 0:
-    #             bandtype = 'sadlepoint'
-    #         elif fxx < 0 and fyy < 0:
-    #             bandtype = 'vb'
-    #         elif fxx > 0 and fyy > 0:
-    #             bandtype = 'cb'
-    #         return bandtype
-            
-    #     if bandtype is None:
-    #         bandtype = get_bt(fxx, fyy, fxy)
-            
-    #     d = 4 * c[0] * c[1] - c[2]**2
-    #     x = (-2 * c[1] * c[3] + c[2] * c[4]) / d
-    #     y = (-2 * c[0] * c[4] + c[2] * c[3]) / d
-    #     x20 = np.array((x, y, 0.0))
-        
-    #     c3, r3, rankr3, s3 = fit_2d(kpts_kv, eps_k, thirdorder=True)
-    #     f3xx = 2 * c3[0] + 6 * c3[6] * x + 2 * c3[8] * y
-    #     f3yy = 2 * c3[1] + 6 * c3[7] * y + 2 * c3[9] * x
-    #     f3xy = c3[2] + 2 * c3[8] * x + 2 * c3[9] * y
-    #     if bandtype is None:
-    #         bandtype = get_bt(f3xx, f3yy, f3xy)
-        
-    #     sign = -1 if bandtype == 'vb' else 1
-        
-    #     from scipy import optimize
-    #     x, y, _ = optimize.fmin(evalmodel_2d, x0=x20, args=(sign * c3,),
-    #                             xtol=1.0e-15, ftol=1.0e-15, disp=False)
-    #     x30 = np.array((x, y, 0.0))
-    #     f3xx = 2 * c3[0] + 6 * c3[6] * x + 2 * c3[8] * y
-    #     f3yy = 2 * c3[1] + 6 * c3[7] * y + 2 * c3[9] * x
-    #     f3xy = c3[2] + 2 * c3[8] * x + 2 * c3[9] * y
-
-    #     M2_vv = [[fxx, fxy],
-    #              [fxy, fyy]]
-
-    #     M3_vv = [[f3xx, f3xy],
-    #              [f3xy, f3yy]]
-    #     v2_n, w2_vn = la.eigh(M2_vv)
-    #     v3_n, w3_vn = la.eigh(M3_vv)
-        
-    #     mass_u = np.array([1 / v3_n[0], 1 / v3_n[1], np.nan])
-    #     eig_vn = np.zeros((w3_vn.shape[0] + 1, 3))
-    #     eig_vn[:2, 0] = w3_vn[:, 0]
-    #     eig_vn[:2, 1] = w3_vn[:, 1]
-    #     return dict(mass_u=mass_u, eigenvectors_vu=eig_vn,
-    #                 ke_v=x30,
-    #                 ke2_v=x20,
-    #                 c=c3,
-    #                 fitkpts_kv=kpts_kv,
-    #                 fite_k=eps_k,
-    #                 c2=c)
-
-    
     import numpy as np
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     dxx = 2 * c[0]
@@ -504,31 +442,25 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     dxy = c[3]
     dxz = c[4]
     dyz = c[5]
-    dx = c[6]
-    dy = c[7]
-    dz = c[8]
 
-    # Get min/max location from 2nd order fit to evalulate
-    # the second order derivative in the third order fit
     xm, ym, zm = get_2nd_order_extremum(c, ndim=ndim)
     ke2_v = np.array([xm, ym, zm])
-    assert np.allclose(zm, 0)
 
     c3, r3, rank3, s3 = fit(kpts_kv, eps_k, thirdorder=True)
 
-    f3xx, f3yy, f3zz, f3xy, f3xz, f3yz, f3x, f3y, f3z, f30, f3xxx, f3yyy, f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3
-
+    f3xx, f3yy, f3zz, f3xy = c[:4]
+    f3xz, f3yz, f3x, f3y = c[4:8]
+    f3z, f30, f3xxx, f3yyy = c[8:12]
+    f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
 
     if ndim == 2:
         def check_zero(v, i):
             assert np.allclose(v, 0), "Value was {} for index {}".format(v, i)
 
-
-        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz, f3yyz, f3zzx, f3zzy, f3xyz]
+        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz,
+                 f3yyz, f3zzx, f3zzy, f3xyz]
         for i, z in enumerate(zeros):
             check_zero(z, i)
-
-    # Next step: Plot fit with calculated values
 
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
     if bandtype == 'vb':
@@ -537,13 +469,9 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
         assert extremum_type == 'min'
     else:
         raise NotImplementedError("Incorrect bandtype: {}".format(bandtype))
-    xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3, extremum_type, ndim=ndim)
+    xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3,
+                                        extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
-
-    if bandtype == 'cb':
-        assert np.allclose(np.max(eps_k), evalmodel(ke_v, c3), rtol=1e-1), "max e: {} -- model at extremum: {}".format(np.max(eps_k), evalmodel(ke_v, c3))
-    else:
-        assert np.allclose(np.min(eps_k), evalmodel(ke_v, c3), rtol=1e-1), "min e: {} -- model at extremum: {}".format(np.min(eps_k), evalmodel(ke_v, c3))
 
     assert not (np.isnan(ke_v)).any()
     if ndim == 2:
@@ -563,25 +491,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     v3_n, w3_vn = np.linalg.eigh(hessian3)
     assert not (np.isnan(w3_vn)).any()
 
-    # This commented out code is needed for further
-    # refinement of the effective mass calculation
-    # def get_bt(fxx, fyy, fzz, fxy, fxz, fyz):
-    #    hessian = np.array([[fxx, fxy, fxz],
-    # [fxy, fyy, fyz], [fxz, fyz, fzz]])
-    #    detH = np.linalg.det(hessian)
-    #    if detH < 0:
-    #        bandtype = 'saddlepoint'
-    #    elif fxx < 0 and fyy < 0 and fzz < 0:
-    #        bandtype = 'vb'
-    #    elif fxx > 0 and fyy > 0 and fzz > 0:
-    #        bandtype = 'cb'
-    #    else:
-    #        raise ValueError("Bandtype could not be found.
-    # Hessian had determinant: {}"
-    # .format(detH))
-    #    return bandtype
-    # if bandtype is None:
-    #    bandtype = get_bt(fxx, fyy, fzz, fxy, fxz, fyz)
     hessian = np.array([[dxx, dxy, dxz],
                         [dxy, dyy, dyz],
                         [dxz, dyz, dzz]])
@@ -607,6 +516,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
     return out
 
+
 def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
     # Input: 2nd order derivatives at the extremum point
     import numpy as np
@@ -615,7 +525,8 @@ def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
                             [dxy, dyy, dyz],
                             [dxz, dyz, dzz]])
         vals, vecs = np.linalg.eigh(hessian)
-        saddlepoint = not (np.sign(vals[0]) == np.sign(vals[1]) and np.sign(vals[0]) == np.sign(vals[2]))
+        saddlepoint = not (np.sign(vals[0]) == np.sign(vals[1])
+                           and np.sign(vals[0]) == np.sign(vals[2]))
 
         if saddlepoint:
             etype = 'saddlepoint'
@@ -624,7 +535,9 @@ def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
         elif (vals > 0).all():
             etype = 'min'
         else:
-            raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
+            msg = 'Extremum type could not be' \
+                  + 'found for hessian: {}'.format(hessian)
+            raise ValueError(msg)
         return etype
     elif ndim == 2:
         # Assume x and y axis are the periodic directions
@@ -638,7 +551,8 @@ def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
         elif dxx > 0 and dyy > 0:
             etype = 'min'
         else:
-            raise ValueError('Extremum type could not be determined for hessian: {}'.format(hessian))
+            raise ValueError('Extremum type could not'
+                             + 'be determined for hessian: {}'.format(hessian))
         return etype
     elif ndim == 1:
         # Assume z axis is the periodic direction
@@ -648,10 +562,12 @@ def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
             etype = 'min'
         return etype
 
+
 def get_2nd_order_extremum(c, ndim=3):
     import numpy as np
-    # fit is 
-    # fxx x^2 + fyy y^2 + fzz z^2 + fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
+    # fit is
+    # fxx x^2 + fyy y^2 + fzz z^2 +
+    # fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
     assert len(c) == 10
     fxx, fyy, fzz, fxy, fxz, fyz, fx, fy, fz, f0 = c
     
@@ -673,20 +589,12 @@ def get_2nd_order_extremum(c, ndim=3):
         v = np.array([-fx, -fy])
         min_pos = np.linalg.solve(ma, v)
 
-        ## MANUAL
-        d = 4 * fxx * fyy - fxy**2
-        x = (-2 * fyy * fx + fxy * fy) / d
-        y = (-2 * fxx * fy + fxy * fx) / d
-        res = np.array([x, y])
-        assert np.allclose(min_pos, res), "Min pos: {}, manual: {}".format(min_pos, res)
-
-        ## END MANUAL
-
         return np.array([min_pos[0], min_pos[1], 0.0])
 
     elif ndim == 1:
         # Assume z is periodic direction
         return np.array([0.0, 0.0, -fz / (2 * fzz)])
+
 
 def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     import numpy as np
@@ -694,8 +602,6 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
 
     assert len(c) == 20
 
-
-    z_indices = [2, 4, 5, 8, 12, 14, 16, 17, 18, 19]
     if ndim == 3:
         def get_v(kpts):
             k = np.asarray(kpts)
@@ -710,17 +616,6 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
             if k.ndim == 1:
                 k = k[np.newaxis]
             m = model(k)
-            #m[:, z_indices] = 0
-            # m[:, 2] = 0
-            # m[:, 4] = 0
-            # m[:, 5] = 0
-            # m[:, 8] = 0
-            # m[:, 12] = 0
-            # m[:, 14] = 0
-            # m[:, 16] = 0
-            # m[:, 17] = 0
-            # m[:, 18] = 0
-            # m[:, 19] = 0
             return m
     elif ndim == 1:
         # Assume z is periodic
@@ -736,29 +631,23 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     # so if the extremum type is a 'max' we need to multiply
     # the function by - 1
     if extremum_type == 'max':
-        func = lambda v: -1 * np.dot(get_v(v), c)
+        def func(v):
+            return -1 * np.dot(get_v(v), c)
     else:
-        func = lambda v: np.dot(get_v(v), c)
+        def func(v):
+            return np.dot(get_v(v), c)
 
     x0 = np.array([xm, ym, zm])
-    x, y, z = optimize.fmin(func, x0=x0, xtol=1.0e-15, ftol=1.0e-15, disp=False)
+    x, y, z = optimize.fmin(func, x0=x0,
+                            xtol=1.0e-15, ftol=1.0e-15, disp=False)
 
     if ndim == 2:
-        f3xx, f3yy, f3zz, f3xy, f3xz, f3yz, f3x, f3y, f3z, f30, f3xxx, f3yyy, f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c
-        
-
-
-        assert np.allclose(func(np.array([x, y, z])), func(np.array([x, y, 0]))), "At found val: {}\nAt z = 0: {}".format(func(np.array([x, y, z])), func(np.array([x, y, 0])))
-        if extremum_type == 'max':
-            assert -func(np.array([x, y, z])) >= -func(np.array([1.05*x, y, z])), "val at max: {}\nval nearby: {}".format(-func(np.array([x, y, z])), -func(np.array([1.05*x, y, z])))
-        elif extremum_type == 'min':
-            assert func(np.array([x, y, z])) <= func(np.array([1.05*x, y, z])), "val at min: {}\nval nearby: {}".format(func(np.array([x, y, z])), func(np.array([1.05*x, y, z])))
         return x, y, 0
     elif ndim == 1:
-        assert np.allclose(func(np.array([x, y, z])), func(np.array([0, 0, z]))), "At found val: {}\nAt x, y = 0: {}".format(func(np.array([x, y, z])), func(np.array([0, 0, z])))
         return 0, 0, z
     else:
         return x, y, z
+
 
 def fit(kpts_kv, eps_k, thirdorder=False):
     import numpy.linalg as la
@@ -779,28 +668,29 @@ def model(kpts_kv):
 
     ones = np.ones(len(k_kx))
 
-    A_dp = np.array([k_kx**2, #0
-                     k_ky**2, #1
-                     k_kz**2, #2
-                     k_kx * k_ky, #3
-                     k_kx * k_kz, #4
-                     k_ky * k_kz, #5
-                     k_kx, #6
-                     k_ky, #7
-                     k_kz, #8
-                     ones, #9
-                     k_kx**3, #10
-                     k_ky**3, #11
-                     k_kz**3, #12
-                     k_kx**2 * k_ky, #13
-                     k_kx**2 * k_kz, #14
-                     k_ky**2 * k_kx, #15
-                     k_ky**2 * k_kz, #16
-                     k_kz**2 * k_kx, #17
-                     k_kz**2 * k_ky, #18
-                     k_kx * k_ky * k_kz]).T #19
+    A_dp = np.array([k_kx**2,
+                     k_ky**2,
+                     k_kz**2,
+                     k_kx * k_ky,
+                     k_kx * k_kz,
+                     k_ky * k_kz,
+                     k_kx,
+                     k_ky,
+                     k_kz,
+                     ones,
+                     k_kx**3,
+                     k_ky**3,
+                     k_kz**3,
+                     k_kx**2 * k_ky,
+                     k_kx**2 * k_kz,
+                     k_ky**2 * k_kx,
+                     k_ky**2 * k_kz,
+                     k_kz**2 * k_kx,
+                     k_kz**2 * k_ky,
+                     k_kx * k_ky * k_kz]).T
 
     return A_dp
+
 
 def fit_2d(kpts_kv, eps_k, thirdorder=False):
     import numpy.linalg as la
@@ -818,20 +708,20 @@ def model_2d(kpts_kv):
                 units of (1 / Bohr)
     """
     import numpy as np
-    k_kx, k_ky, k_kz = kpts_kv[:, 0], kpts_kv[:, 1], kpts_kv[:, 2]
+    k_kx, k_ky = kpts_kv[:, 0], kpts_kv[:, 1]
 
     ones = np.ones(len(k_kx))
 
-    A_dp = np.array([k_kx**2, #0
-                     k_ky**2, #1
-                     k_kx * k_ky, #3
-                     k_kx, #6
-                     k_ky, #7
-                     ones, #9
-                     k_kx**3, #10
-                     k_ky**3, #11
-                     k_kx**2 * k_ky, #13
-                     k_ky**2 * k_kx]).T #19
+    A_dp = np.array([k_kx**2,
+                     k_ky**2,
+                     k_kx * k_ky,
+                     k_kx,
+                     k_ky,
+                     ones,
+                     k_kx**3,
+                     k_ky**3,
+                     k_kx**2 * k_ky,
+                     k_ky**2 * k_kx]).T
 
     return A_dp
 
@@ -919,6 +809,7 @@ def evalmodel(kpts_kv, c_p):
         kpts_kv = kpts_kv[np.newaxis]
     A_kp = model(kpts_kv)
     return np.dot(A_kp, c_p)
+
 
 def evalmodel_2d(kpts_kv, c_p):
     import numpy as np
