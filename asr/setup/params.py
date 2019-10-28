@@ -78,11 +78,8 @@ def main(params=None):
 
             paramtype = type(defparamdict[recipe][option])
             if paramtype == dict:
-                if value.startswith('+'):
-                    dct = copy.deepcopy(defparamdict[recipe][option])
-                    val = parse_dict_string(value[1:], dct=dct)
-                else:
-                    val = parse_dict_string(value)
+                dct = copy.deepcopy(defparamdict[recipe][option])
+                val = parse_dict_string(value, dct=dct)
             elif paramtype == bool:
                 val = literal_eval(value)
             else:

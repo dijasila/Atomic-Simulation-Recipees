@@ -19,18 +19,30 @@ def parse_dict_string(string, dct=None):
     if dct is None:
         dct = {}
 
-    for tmpstring in string.split(';'):
-        recursive_update(dct, literal_eval(tmpstring))
-    return dct
+    # Locate ellipsis
+    string = string.replace('...', 'None:None')
+    tmpdct = literal_eval(string)
+    recursive_update(tmpdct, dct)
+    return tmpdct
 
 
-def recursive_update(dct, updatedct):
-    for key, value in updatedct.items():
-        if key in dct and isinstance(value, dict) and \
-           isinstance(dct[key], dict):
-            recursive_update(dct[key], updatedct[key])
-        else:
-            dct[key] = value
+def recursive_update(dct, defaultdct):
+    if None in dct:
+        # This marks that we take default values from defaultdct
+        del dct[None]
+        for key in defaultdct:
+            if key not in dct:
+                dct[key] = defaultdct[key]
+
+    for key, value in dct.items():
+        if isinstance(value, dict) and None in value:
+            if key not in defaultdct:
+                del value[None]
+                continue
+            if not isinstance(defaultdct[key], dict):
+                del value[None]
+                continue
+            recursive_update(dct[key], defaultdct[key])
 
 
 def md5sum(filename):
@@ -412,11 +424,8 @@ class ASRCommand:
             if tp != type(value):
                 # Dicts has to be treated specially
                 if tp == dict:
-                    if value.startswith('+'):
-                        dct = copy.deepcopy(self.defparams[key])
-                        dct = parse_dict_string(value[1:], dct=dct)
-                    else:
-                        dct = parse_dict_string(value)
+                    dct = copy.deepcopy(self.defparams[key])
+                    dct = parse_dict_string(value, dct=dct)
                     params[key] = dct
                 else:
                     params[key] = tp(value)
