@@ -87,18 +87,6 @@ def is_symmetry_protected(kpt, op_scc):
     return False
 
 
-def spin_axis(fname='anisotropy_xy.npz') -> int:
-    import numpy as np
-    from asr.utils.gpw2eigs import get_spin_direction
-    theta, phi = get_spin_direction(fname=fname)
-    if theta == 0:
-        return 2
-    elif np.allclose(phi, np.pi / 2):
-        return 1
-    else:
-        return 0
-
-
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 4.8),
@@ -165,7 +153,7 @@ def bs_pbe_html(row,
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get('spin_orientation', 'z')
+    sdir = row.get('spin_axis', 'z')
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
@@ -281,7 +269,7 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, **kwargs):
+def add_bs_pbe(row, ax, reference=0, **kwargs):
     """plot pbe with soc on ax"""
     from ase.dft.kpoints import labels_from_kpts
     c = '0.8'  # light grey for pbe with soc plot
@@ -292,10 +280,10 @@ def add_bs_pbe(row, ax, **kwargs):
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
     return ax
 
 
@@ -364,14 +352,14 @@ def bs_pbe(row,
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
-    ef = d['bs_nosoc']['efermi']
-    gaps = row.data.get('gaps_nosoc', {})
+    ef_nosoc = d['bs_nosoc']['efermi']
+    ef_soc = d['bs_soc']['efermi']
+    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
+    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
     if row.get('evac') is not None:
         label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
     else:
         label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
@@ -379,15 +367,15 @@ def bs_pbe(row,
 
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
-        emin = gaps.get('vbm', ef) - 3
+        emin = gaps.get('vbm') - 3
     else:
-        emin = ef - 3
+        emin = ef_nosoc - 3
     if gaps.get('cbm'):
-        emax = gaps.get('cbm', ef) + 3
+        emax = gaps.get('cbm') + 3
     else:
-        emax = ef + 3
+        emax = ef_nosoc + 3
     mpl.rcParams['font.size'] = fontsize
-    bs = BandStructure(path, e_kn - reference, ef - reference)
+    bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # pbe without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
@@ -400,24 +388,24 @@ def bs_pbe(row,
     bsp.plot(
         ax=ax,
         show=False,
-        emin=emin - reference,
-        emax=emax - reference,
+        emin=emin - ref_nosoc,
+        emax=emax - ref_nosoc,
         ylabel=label,
         **nosoc_style)
     # pbe with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
-    sdir = row.get('spin_orientation', 'z')
+    sdir = row.get('spin_axis', 'z')
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
-        energies=e_mk - reference,
+        energies=e_mk - ref_soc,
         colors=sz_mk,
         filename=filename,
         show=False,
-        emin=emin - reference,
-        emax=emax - reference,
+        emin=emin - ref_soc,
+        emax=emax - ref_soc,
         sortcolors=True,
         loc='upper right',
         clabel=r'$\langle S_{} \rangle $'.format(sdir),
@@ -433,7 +421,7 @@ def bs_pbe(row,
     x0 = xlim[1] * 0.01
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
+        xy=(x0, ef_soc - ref_soc),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
@@ -559,6 +547,7 @@ def bz_soc(row, fname):
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     lat.plot_bz()
+    plt.tight_layout()
     plt.savefig(fname)
 
 
@@ -643,6 +632,7 @@ def main():
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
+    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
     calc = GPAW('bs.gpw', txt=None)
@@ -673,8 +663,9 @@ def main():
     # Add spin orbit correction
     bsresults = bs.todict()
 
+    theta, phi = get_spin_axis()
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
     bsresults['energies'] = e_km.T
     efermi = gsresults['gaps_soc']['efermi']
     bsresults['efermi'] = efermi
@@ -683,8 +674,9 @@ def main():
     path = bsresults['path']
     npoints = len(path.kpts)
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
+
     if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
+        sz_mk = s_mvk[:, get_spin_index(), :]  # take x, y or z component
     else:
         sz_mk = s_mvk
 
