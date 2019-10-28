@@ -143,7 +143,7 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
 # ---------- Recipe tests ---------- #
 
-params = "+{'mode':{'ecut':200},'kpts':{'density':2.0}}"
+params = "{'mode':{'ecut':200,...},'kpts':{'density':2.0},...}"
 ctests = []
 ctests.append({'description': 'Test the refined ground state of Si',
                'name': 'test_asr.pdos_Si_gpw',

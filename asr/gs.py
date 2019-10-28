@@ -5,7 +5,7 @@ test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',
                  'ase convert materials.json structure.json',
                  'asr run "setup.params *:calculator '
-                 "+{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}" '"',
+                 "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
                  'asr run gs@calculate',
                  'asr run database.fromtree',
                  'asr run "browser --only-figures"']}

@@ -1,8 +1,8 @@
 from asr.core import command, option
 
 tests = []
-params1 = "+{'mode':'lcao','kpts':{'density':2}}"
-params2 = "+{'mode':'lcao','kpts':{'density':2}}"
+params1 = "{'mode':'lcao','kpts':{'density':2,...},...}"
+params2 = "{'mode':'lcao','kpts':{'density':2,...},...}"
 tests.append({'description': 'Test band structure of Si.',
               'name': 'asr.bandstructure_Si',
               'tags': ['gitlab-ci'],
