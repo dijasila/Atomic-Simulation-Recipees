@@ -15,7 +15,8 @@ def is_symmetry_protected(kpt, op_scc):
                 # Mapping k -> k, modulo a lattice vector
                 if np.allclose(kpt % 1, (np.dot(symm, kpt)) % 1):
                     mirror_count += 1
-        # If we have two or more mirror planes, then we must have a spin-degenerate
+        # If we have two or more mirror planes,
+        # then we must have a spin-degenerate
         # subspace
         if mirror_count >= 2:
             return True

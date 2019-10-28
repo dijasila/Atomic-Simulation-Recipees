@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def get_spin_direction(fname='anisotropy_xy.npz'):
     import os.path as op
     theta = 0
@@ -9,8 +11,9 @@ def get_spin_direction(fname='anisotropy_xy.npz'):
         if DE > 0:
             theta = np.pi / 2
             if data['dE_zy'] > data['dE_zx']:
-                phi  = np.pi / 2
+                phi = np.pi / 2
     return theta, phi
+
 
 def spin_axis(fname='anisotropy_xy.npz'):
     theta, phi = get_spin_direction(fname=fname)

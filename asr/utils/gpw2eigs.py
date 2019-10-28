@@ -134,4 +134,3 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
         if not return_spin:
             return dct['eps_nosoc_skn'], dct['efermi_nosoc']
         return dct['eps_nosoc_skn'], dct['efermi_nosoc'], dct['s_kvm']
-                        

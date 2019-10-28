@@ -448,9 +448,9 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
     c3, r3, rank3, s3 = fit(kpts_kv, eps_k, thirdorder=True)
 
-    f3xx, f3yy, f3zz, f3xy = c[:4]
-    f3xz, f3yz, f3x, f3y = c[4:8]
-    f3z, f30, f3xxx, f3yyy = c[8:12]
+    f3xx, f3yy, f3zz, f3xy = c3[:4]
+    f3xz, f3yz, f3x, f3y = c3[4:8]
+    f3z, f30, f3xxx, f3yyy = c3[8:12]
     f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
 
     if ndim == 2:
