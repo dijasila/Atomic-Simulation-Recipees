@@ -60,6 +60,7 @@ def main():
         phi: Azimuthal angle in radians
     """
     import numpy as np
+    from gpaw.mpi import world
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
@@ -123,7 +124,9 @@ def main():
                     'E_z': E_z,
                     'dE_zx': dE_zx,
                     'dE_zy': dE_zy})
-    Path('gs_nosym.gpw').unlink()
+    world.barrier()
+    if world.rank == 0:
+        Path('gs_nosym.gpw').unlink()
     return results
 
 
