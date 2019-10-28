@@ -71,9 +71,10 @@ tests = [{'description': 'Test ground state of Si.',
 
 
 @command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json'],
+         requires=['gs.gpw', 'structure.json',
+                   'results-asr.magnetic_anisotropy.json'],
          tests=tests,
-         dependencies=['asr.gs@calculate'])
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'])
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
@@ -151,6 +152,7 @@ def gaps(calc, soc=True):
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
+    from asr.magnetic_anisotropy import get_spin_axis
 
     ibzkpts = calc.get_ibz_k_points()
 
@@ -172,8 +174,9 @@ def gaps(calc, soc=True):
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
+        theta, phi = get_spin_axis()
         _, efermi = calc2eigs(calc, ranks=[0], soc=True,
-                              optimal_spin_direction=True)
+                              theta=theta, phi=phi)
     else:
         efermi = calc.get_fermi_level()
 
@@ -207,10 +210,12 @@ def get_1bz_k(ibzkpts, calc, k_index):
 def get_gap_info(soc, direct, calc):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
+    from asr.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
+        theta, phi = get_spin_axis()
         e_km, efermi = calc2eigs(calc, ranks=[0],
-                                 soc=True, optimal_spin_direction=True)
+                                 soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
                                 kpts=calc.get_ibz_k_points(), output=None)
