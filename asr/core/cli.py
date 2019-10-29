@@ -58,7 +58,8 @@ def cli():
               help='Continue to next folder when encountering error.')
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
-def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
+@click.pass_context
+def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
         skip_if_done, dont_raise):
     """Run recipe, python function or shell command in multiple folders.
 
@@ -141,20 +142,22 @@ def run(shell, not_recipe, dry_run, parallel, command, folders, jobs,
             ('You cannot execute a shell command in parallel. '
              'Only supported for python modules.')
 
-    if parallel:
-        ncores = jobs or parallel
         from gpaw.mpi import have_mpi
         if not have_mpi:
-            cmd = f'mpiexec -np {ncores} gpaw-python -m asr run'
-            if dry_run:
-                cmd += ' --dry-run'
-            if jobs:
-                cmd += f' --jobs {ncores}'
-            if dont_raise:
-                cmd += ' --dont-raise'
-            cmd += f' "{command}" '
-            if folders:
-                cmd += ' '.join(folders)
+            cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
+            cliargs = ''
+            for param, value in ctx.params.items():
+                if param in ['command', 'folders']:
+                    continue
+                tmp = param.replace('_', '-')
+                key = f' --{tmp}'
+                if isinstance(value, (bool, type(None))):
+                    if value:
+                        cliargs += key
+                else:
+                    cliargs += key + f' {value}'
+            cliargs += f' "{command}" ' + ' '.join(folders)
+            cmd += cliargs
             return subprocess.run(cmd, shell=True,
                                   check=True)
 
@@ -390,8 +393,9 @@ def test(patterns, show_output, raiseexc, tmpdir, tag, run_coverage):
                 tmptests.append(test)
 
         tests = tmptests
-    TestRunner(tests, show_output=show_output).run(raiseexc=raiseexc,
-                                                   tmpdir=tmpdir)
+    failed = TestRunner(tests, show_output=show_output).run(tmpdir=tmpdir)
+    if raiseexc and failed:
+        raise AssertionError('Some tests failed!')
 
 
 def doctest(text):
@@ -488,14 +492,13 @@ def workflow(tasks, doforstable):
 
 clitests = [{'cli': ['asr run -h'],
              'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
+            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
              'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run "setup.params asr.relax:ecut 300"'],
+            {'cli': ['asr run --dry-run setup.params'],
              'tags': ['gitlab-ci']},
             {'cli': ['mkdir folder1',
                      'mkdir folder2',
-                     'asr run "setup.params asr.relax:ecut'
-                     ' 300" folder1 folder2'],
+                     'asr run setup.params folder1 folder2'],
              'tags': ['gitlab-ci']},
             {'cli': ['touch str1.json',
                      'asr run --shell "mv str1.json str2.json"'],

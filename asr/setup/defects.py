@@ -131,6 +131,9 @@ def setup_supercell(structure, max_lattice, is_2D):
 
     print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
           x_size, y_size, z_size))
+    x_size = max(1, x_size)
+    y_size = max(1, y_size)
+    z_size = max(1, z_size)
     structure_sc = structure.repeat((x_size, y_size, z_size))
 
     return structure_sc, x_size, y_size, z_size
@@ -162,18 +165,20 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc == [0, 0, 0]:
+    if sc == (0, 0, 0):
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
     else:
         N_x = sc[0]
         N_y = sc[1]
         N_z = sc[2]
+        print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
+              N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
-    string = 'pristine_sc'
-    parameters['txt'] = '{0}.txt'.format(string)
-    parameters['charge'] = 0
+    string = 'defects.pristine_sc'
+    parameters['asr.relax'] = {}
+    parameters['asr.gs@calculate'] = {}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
@@ -188,13 +193,13 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
                 vacancy.pop(i)
-                string = '{0}_{1}{2}{3}.v_at_{4}{5}'.format(
+                string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
-                    parameters['txt'] = '{0}.charged_{1}'.format(string, q)
-                    parameters['charge'] = q
+                    parameters['asr.relax'] = {'chargestate': q}
+                    parameters['asr.gs@calculate'] = {'chargestate': q}
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {'structure': vacancy,
                                                   'parameters': parameters}
@@ -215,7 +220,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
                         defect[i].symbol = element
-                        string = '{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                        string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
                                  formula, N_x, N_y, N_z, element,
                                  wyckoffs[i], i)
                         charge_dict = {}
@@ -223,9 +228,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                             (-1) * charge_states,
                             charge_states + 1):
                             parameters = {}
-                            parameters['txt'] = '{0}.charged_{1}'.format(
-                                string, q)
-                            parameters['charge'] = q
+                            parameters['asr.relax'] = {'chargestate': q}
+                            parameters['asr.gs@calculate'] = {'chargestate': q}
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
@@ -255,7 +259,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
           processing (e.g. relax the defect structure)
     """
     from ase.io import write
-    from asr.utils import write_json
+    from asr.core import write_json
 
     # create a json file for general parameters that are equivalent for all
     # the different defect systems
@@ -332,7 +336,7 @@ def collect_data():
 
 
 # def webpanel(row, key_descriptions):
-#    from asr.utils.custom import fig, table
+#    from asr.browser import fig, table
 #
 #    if 'something' not in row.data:
 #        return None, []

@@ -3,7 +3,7 @@ import time
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import click
 import numpy as np
@@ -12,6 +12,37 @@ from ase.parallel import parprint
 import ase.parallel as parallel
 import inspect
 import copy
+from ast import literal_eval
+
+
+def parse_dict_string(string, dct=None):
+    if dct is None:
+        dct = {}
+
+    # Locate ellipsis
+    string = string.replace('...', 'None:None')
+    tmpdct = literal_eval(string)
+    recursive_update(tmpdct, dct)
+    return tmpdct
+
+
+def recursive_update(dct, defaultdct):
+    if None in dct:
+        # This marks that we take default values from defaultdct
+        del dct[None]
+        for key in defaultdct:
+            if key not in dct:
+                dct[key] = defaultdct[key]
+
+    for key, value in dct.items():
+        if isinstance(value, dict) and None in value:
+            if key not in defaultdct:
+                del value[None]
+                continue
+            if not isinstance(defaultdct[key], dict):
+                del value[None]
+                continue
+            recursive_update(dct[key], defaultdct[key])
 
 
 def md5sum(filename):
@@ -116,12 +147,15 @@ class ASRCommand:
                  known_exceptions=None,
                  save_results_file=True,
                  pass_params=False,
-                 add_skip_opt=True,
-                 todict=None):
+                 add_skip_opt=True):
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
             module = main.__module__
+            if module == '__main__':
+                import inspect
+                mod = inspect.getmodule(main)
+                module = str(mod).split('\'')[1]
 
         name = f'{module}@{main.__name__}'
 
@@ -170,10 +204,8 @@ class ASRCommand:
         if not hasattr(self._main, '__asr_params__'):
             self._main.__asr_params__ = {}
 
-        self.todict = todict
-
         import copy
-        self.params = copy.deepcopy(self._main.__asr_params__)
+        self.myparams = copy.deepcopy(self._main.__asr_params__)
 
         import inspect
         sig = inspect.signature(self._main)
@@ -182,15 +214,14 @@ class ASRCommand:
         myparams = []
         defparams = {}
         for key, value in sig.parameters.items():
-            assert key in self.params, \
+            assert key in self.myparams, \
                 f'You havent provided a description for {key}'
-            if value.default and \
-               value.default is not inspect.Parameter.empty:
+            if value.default is not inspect.Parameter.empty:
                 defparams[key] = value.default
             myparams.append(key)
 
         myparams = [k for k, v in sig.parameters.items()]
-        for key in self.params:
+        for key in self.myparams:
             assert key in myparams, f'Param: {key} is unknown'
         self.defparams = defparams
 
@@ -241,10 +272,8 @@ class ASRCommand:
         return self._diskspace
 
     @property
-    def creates(self):
+    def created_files(self):
         creates = []
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
         if self._creates:
             if callable(self._creates):
                 creates += self._creates()
@@ -253,11 +282,17 @@ class ASRCommand:
         return creates
 
     @property
+    def creates(self):
+        creates = self.created_files
+        if self.save_results_file:
+            creates += [f'results-{self.name}.json']
+        return creates
+
+    @property
     def done(self):
-        for file in self.creates:
-            if not Path(file).exists():
-                return False
-        return True
+        if Path(f'results-{self.name}.json').exists():
+            return True
+        return False
 
     def setup_cli(self):
         # Click CLI Interface
@@ -302,14 +337,14 @@ class ASRCommand:
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
 
-        # Convert out parameters into CLI Parameters!
-        for name, param in self.params.items():
+        # Convert parameters into CLI Parameters!
+        for name, param in self.myparams.items():
             param = param.copy()
             alias = param.pop('alias')
             argtype = param.pop('argtype')
             name2 = param.pop('name')
             assert name == name2
-            assert name in self.params
+            assert name in self.myparams
             default = self.defparams.get(name, None)
 
             if argtype == 'option':
@@ -321,7 +356,9 @@ class ASRCommand:
                 
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
-                         help='Skip execution of dependencies')(command)
+                         help='Skip execution of dependencies.')(command)
+        command = co('--silence', is_flag=True, default=False,
+                     help='Silence output.')(command)
 
         self._cli = command
 
@@ -332,41 +369,35 @@ class ASRCommand:
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
 
-    def main(self, skip_deps=False, catch_exceptions=True,
+    def main(self, skip_deps=False, catch_exceptions=True, silence=False,
              *args, **kwargs):
 
-        if self.requires and self.is_requirements_met():
-            # All requirements are met and we shouldn't run dependencies
-            skip_deps = True
+        if silence:
+            import sys
+            f = open(os.devnull, 'w')
+            _stdout = sys.stdout
+            sys.stdout = f
 
         if not skip_deps:
-            deps = get_dep_tree(self.name)
-            for name in deps[:-1]:
-                recipe = get_recipe_from_name(name)
-                for filename in recipe.creates:
-                    if not Path(filename).is_file() and \
-                       filename in self.requires:
-                        recipe(skip_deps=True)
+            # Run this recipes dependencies but only if it actually creates
+            # a file that is in __requires__
+            for dep in self.dependencies:
+                recipe = get_recipe_from_name(dep)
+                if recipe.done:
+                    continue
+
+                filenames = set(self.requires).intersection(recipe.creates)
+                if not all([Path(filename).exists() for filename in
+                            filenames]):
+                    recipe()
 
         # Try to run this command
-        try:
-            return self.callback(*args, **kwargs)
-        except Exception as e:
-            if type(e) in self.known_exceptions:
-                parameters = self.known_exceptions[type(e)]
-                # Update context
-                if catch_exceptions:
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'Trying again.')
-                    for key in parameters:
-                        kwargs[key] *= parameters[key]
-                    return self.main(*args, **kwargs, catch_exceptions=False)
-                else:
-                    # We only allow the capture of one exception
-                    parprint(f'Caught known exception: {type(e)}. '
-                             'ERROR: I already caught one exception, '
-                             'and I can at most catch one.')
-            raise
+        results = self.callback(*args, **kwargs)
+
+        if silence:
+            sys.stdout = _stdout
+
+        return results
 
     def callback(self, *args, **kwargs):
         # This is the main function of an ASRCommand. It takes care of
@@ -375,33 +406,45 @@ class ASRCommand:
         # this is a good place to start
 
         assert self.is_requirements_met(), \
-            f'Some required files are missing: {self.requires}'
+            (f'Some required files are missing: {self.requires}. '
+             'This could be caused by incorrect dependencies.')
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = copy.deepcopy(self.defparams)
-        params.update(dict(self.signature.bind(*args, **kwargs).arguments))
+        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        for key, value in params.items():
+            assert key in self.myparams, f'Unknown key: {key} {params}'
+            # Default type
+            if key not in self.defparams:
+                continue
+            if self.defparams[key] is None:
+                continue
+            tp = type(self.defparams[key])
 
-        # Read arguments from params.json if not already in params
-        paramsettings = {}
+            if tp != type(value):
+                # Dicts has to be treated specially
+                if tp == dict:
+                    dct = copy.deepcopy(self.defparams[key])
+                    dct = parse_dict_string(value, dct=dct)
+                    params[key] = dct
+                else:
+                    params[key] = tp(value)
+
+        # Read arguments from params.json and overwrite params
         if Path('params.json').is_file():
             paramsettings = read_json('params.json').get(self.name, {})
             for key, value in paramsettings.items():
-                assert key in self.params, f'Unknown key: {key} {params}'
-
-                # If any parameters have been given directly to the function
-                # we don't use the ones from the param.json file
+                assert key in self.myparams, f'Unknown key: {key} {params}'
                 params[key] = value
 
-        paramstring = ', '.join([f'{key}={value}' for key, value in
+        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
-        if self.pass_params:
-            results = self._main(params, **params) or {}
-        else:
-            results = self._main(**params) or {}
+        with file_barrier(self.created_files, delete=False):
+            results = self._main(**copy.deepcopy(params)) or {}
+        results['__asr_name__'] = self.name
 
         # Do we have to store some digests of previous calculations?
         if self.creates:
@@ -421,8 +464,7 @@ class ASRCommand:
                 results['__requires__'][filename] = hexdigest
 
         # Save parameters
-        if params:
-            results.update({'__params__': params})
+        results.update({'__params__': params})
 
         # Update with hashes for packages dependencies
         results.update(self.get_execution_info())
@@ -572,8 +614,8 @@ def get_dep_tree(name, reload=True):
         assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
         function = getattr(module, func)
         dependencies = function.dependencies
-        if not dependencies and hasattr(module, 'dependencies'):
-            dependencies = module.dependencies
+        # if not dependencies and hasattr(module, 'dependencies'):
+        #     dependencies = module.dependencies
 
         for dependency in dependencies:
             tmpdeplist.append(dependency)
@@ -657,7 +699,7 @@ def write_json(filename, data):
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
 
-    with file_barrier(filename):
+    with file_barrier([filename]):
         if world.rank == 0:
             Path(filename).write_text(MyEncoder(indent=1).encode(data))
 
@@ -690,30 +732,33 @@ def unlink(path: Union[str, Path], world=None):
 
 
 @contextmanager
-def file_barrier(path: Union[str, Path], world=None):
+def file_barrier(paths: List[Union[str, Path]], world=None,
+                 delete=True):
     """Context manager for writing a file.
 
     After the with-block all cores will be able to read the file.
 
-    >>> with file_barrier('something.txt'):
+    >>> with file_barrier(['something.txt']):
     ...     <write file>
     ...
 
     This will remove the file, write the file and wait for the file.
     """
-
-    if isinstance(path, str):
-        path = Path(path)
     if world is None:
         world = parallel.world
 
-    # Remove file:
-    unlink(path, world)
+    for i, path in enumerate(paths):
+        if isinstance(path, str):
+            path = Path(path)
+            paths[i] = path
+        # Remove file:
+        if delete:
+            unlink(path, world)
 
     yield
 
     # Wait for file:
-    while not path.is_file():
+    while not all([path.is_file() for path in paths]):
         time.sleep(1.0)
     world.barrier()
 

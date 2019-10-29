@@ -1,20 +1,7 @@
 from asr.core import command, argument, option
 
 
-def folderexists():
-    from pathlib import Path
-    assert Path('tree').is_dir()
-
-
-tests = [
-    {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'],
-     'test': folderexists}
-]
-
-
-@command('asr.database.merge',
-         tests=tests)
+@command('asr.database.merge')
 @argument('databaseout', nargs=1)
 @argument('databases', nargs=-1)
 @option('--identifier', help='Identifier for matching database entries.')
@@ -23,7 +10,6 @@ def main(databases, databaseout, identifier='asr_id'):
     from ase.db import connect
     from pathlib import Path
     from click import progressbar
-    dbmerged = connect(databaseout)
 
     print(f'Merging {databases} into {databaseout}')
 
@@ -42,6 +28,7 @@ def main(databases, databaseout, identifier='asr_id'):
         tmpdest.unlink()
 
     # First merge rows common in both databases
+    metadata = {'key_descriptions': {}}
     for database in databases:
         # Database for looking up existing materials
         tmpdestsearch = Path('_' + str(tmpdest))
@@ -51,14 +38,16 @@ def main(databases, databaseout, identifier='asr_id'):
         if tmpdest.is_file():
             tmpdest.rename(tmpdestsearch)
 
+        print(f'Connecting to {database}', flush=True)
         db = connect(database)
         dbsearch = connect(str(tmpdestsearch))
         dbmerged = connect(str(tmpdest))
 
-        selection = progressbar(list(db.select()),
-                                label=f'Merging {database}',
-                                item_show_func=item_show_func)
-        with dbmerged, dbsearch, selection:
+        with dbmerged, progressbar(db.select(),
+                                   length=len(db),
+                                   label=f'Merging {database}',
+                                   item_show_func=item_show_func) as selection:
+            id_matches = []
             for row1 in selection:
                 structid = row1.get(identifier)
                 matching = list(dbsearch.select(f'{identifier}={structid}'))
@@ -68,23 +57,38 @@ def main(databases, databaseout, identifier='asr_id'):
                                        f'in {databaseout} '
                                        f'matching {identifier}={structid}')
                 elif len(matching) == 0:
-                    dbmerged.write(row1.toatoms(),
-                                   key_value_pairs=row1.key_value_pairs,
-                                   data=row1.data)
+                    atoms = row1.toatoms()
+                    kvp = row1.key_value_pairs
+                    data = row1.data
                 else:
                     row2 = matching[0]
-                    data = row2.data.copy()
-                    kvp = row2.key_value_pairs.copy()
+                    id_matches.append(row2.id)
+                    data = row2.data
+                    kvp = row2.key_value_pairs
 
-                    data.update(row1.data)
-                    kvp.update(row1.key_value_pairs)
+                    data.update(row1.data.copy())
+                    kvp.update(row1.key_value_pairs.copy())
 
-                    atoms1 = row1.toatoms()
+                    atoms = row1.toatoms()
                     atoms2 = row2.toatoms()
-                    assert atoms1 == atoms2, 'Atoms not matching!'
-                    dbmerged.write(row1.toatoms(),
-                                   data=data,
-                                   key_value_pairs=kvp)
+                    assert atoms == atoms2, 'Atoms not matching!'
+
+                dbmerged.write(atoms,
+                               key_value_pairs=kvp,
+                               data=data)
+
+            # Write the remaining rows from db2 that wasn't matched
+            for row2 in dbsearch.select():
+                if row2.id not in id_matches:
+                    dbmerged.write(row2.toatoms(),
+                                   key_value_pairs=row2.key_value_pairs,
+                                   data=row2.data)
+
+        # Update metadata
+        metadata['key_descriptions'].update(db.metadata.get('key_descriptions',
+                                                            {}))
+
+    dbmerged.metadata = metadata
 
     # Remove lookup db
     tmpdestsearch.unlink()

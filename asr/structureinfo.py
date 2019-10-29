@@ -72,8 +72,7 @@ def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
     from asr.browser import table
 
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    basictable = table(row, 'Property', [
+    basictable = table(row, 'Structural info', [
         'prototype', 'class', 'spacegroup', 'gap', 'magstate', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
@@ -86,31 +85,8 @@ def webpanel(row, key_descriptions):
                     '{id}.html">{id}</a>'.format(id=codid))
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
-    dynstab = row.get('dynamic_stability_level')
-    if dynstab:
-        high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
-        medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
-        low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
-        rows.append([
-            'Dynamic stability',
-            '<a href="#" data-toggle="tooltip" data-html="true" ' +
-            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-                low, medium, high, stabilities[dynstab].upper())
-        ])
 
-    thermostab = row.get('thermodynamic_stability_level')
-    if thermostab:
-        high = 'Heat of formation < convex hull + 0.2 eV/atom'
-        medium = 'Heat of formation < 0.2 eV/atom'
-        low = 'Heat of formation > 0.2 eV/atom'
-        rows.append([
-            'Thermodynamic stability',
-            '<a href="#" data-toggle="tooltip" data-html="true" ' +
-            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-                low, medium, high, stabilities[thermostab].upper())
-        ])
-
-    doi = row.get('monolayer_doi')
+    doi = row.get('doi')
     if doi:
         rows.append([
             'Monolayer DOI',
@@ -118,8 +94,8 @@ def webpanel(row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
-    panel = {'title': 'Basic properties',
-             'columns': [[basictable, UNITCELL], [ATOMS]],
+    panel = {'title': 'Summary',
+             'columns': [[UNITCELL, basictable], [ATOMS]],
              'sort': 1}
     return [panel]
 
@@ -147,7 +123,6 @@ def main():
     """
 
     import numpy as np
-    from random import randint
     from ase.io import read
     from pathlib import Path
 
@@ -199,19 +174,14 @@ def main():
     symmetry = [(op_cc.tolist(), ft_c.tolist())
                 for op_cc, ft_c in zip(op_scc, ft_sc)]
     info['symmetries'] = symmetry
-    try:
-        import spglib
-    except ImportError:
-        pass
-    else:
-        sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
-        number = int(number[1:-1])
-        info['spacegroup'] = sg
+    import spglib
+    sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
+    number = int(number[1:-1])
+    info['spacegroup'] = sg
+    info['spgnum'] = number
 
     # Set temporary uid.
     # Will be changed later once we know the prototype.
-    uid = '{}-X-{}-{}'.format(formula, magstate, randint(2, 9999999))
-    info['uid'] = uid
     info['is_magnetic'] = info['magstate'] != 'NM'
 
     if (atoms.pbc == [True, True, False]).all():
@@ -222,9 +192,9 @@ def main():
         'is_magnetic': 'KVP: Material is magnetic (Magnetic)',
         'cell_area': 'KVP: Area of unit-cell [Ang^2]',
         'has_invsymm': 'KVP: Inversion symmetry',
-        'uid': 'KVP: Identifier',
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
+        'spgnum': 'KVP: Space group number',
         'prototype': 'KVP: Prototype'}
 
     return info
