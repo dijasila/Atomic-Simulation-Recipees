@@ -463,12 +463,12 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             check_zero(z, i)
 
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
-    if bandtype == 'vb':
-        assert extremum_type == 'max'
-    elif bandtype == 'cb':
-        assert extremum_type == 'min'
-    else:
-        raise NotImplementedError("Incorrect bandtype: {}".format(bandtype))
+    # if bandtype == 'vb':
+    #     assert extremum_type == 'max'
+    # elif bandtype == 'cb':
+    #     assert extremum_type == 'min'
+    # else:
+    #     raise NotImplementedError("Incorrect bandtype: {}".format(bandtype))
     xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3,
                                         extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
