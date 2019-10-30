@@ -131,7 +131,7 @@ def main():
     return results
 
 
-def plot_phonons(row, filename):
+def plot_phonons(row, fname):
     import matplotlib.pyplot as plt
 
 
@@ -165,7 +165,7 @@ def plot_phonons(row, filename):
     ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
-    plt.savefig(filename)
+    plt.savefig(fname)
     plt.close()
 
 
