@@ -2,7 +2,7 @@ from asr.core import command, option
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig
+    from asr.browser import fig
     panel = {'title': 'Density of states (PBE)',
              'columns': [[fig('dos.png')]],
              'plot_descriptions': [{'function': plot,
