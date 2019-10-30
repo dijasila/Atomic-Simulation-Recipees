@@ -40,20 +40,14 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     from gpaw import GPAW
     import numpy as np
     from ase.io import read
+    from ase.cell import Cell
 
     atoms = read('gs.gpw')
-
-    if nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
-        Z = np.array([0.5, 0, 0])
-        path={'path': [-Z,Z], 'npoints':npoints}
-
-    else
-        assert not atoms.get_pbc()[2], \
-        if kptpath is None:
-             path = atoms.cell.bandpath(npoints=npoints)
-         else:
-             path = atoms.cell.bandpath(path=kptpath, npoints=npoints)         
+    
+    if kptpath is None:
+         path = cell.bandpath(npoints=npoints, pbc=atoms.pbc)
+    else:
+         path = cell.bandpath(path=kptpath, npoints=npoints, pbc=atoms.pbc)
 
 
     convbands = emptybands // 2
@@ -67,6 +61,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
+    atoms = read('gs.gpw')
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
