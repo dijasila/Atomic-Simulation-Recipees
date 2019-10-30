@@ -13,9 +13,8 @@ from ase.db.row import AtomsRow
 
 
 def webpanel(row, key_descriptions):
-    from asr.utils.custom import fig, table
+    from asr.browser import fig, table
     
-    print('In hull webpanel')
     prefix = key_descriptions.get('prefix', '')
     if 'c2db-' in prefix:  # make sure links to other rows just works!
         projectname = 'c2db'
@@ -166,17 +165,14 @@ def select_references(db, symbols):
 def plot(row, filename):
     from ase.phasediagram import PhaseDiagram, parse_formula
     import matplotlib.pyplot as plt
-    print('in hull plot') 
     data = row.data.get('results-asr.convex_hull.json') 
     if not data:
         return
 
     count = row.count_atoms()
-    #print('count', count, 'len', len(count))
     if not (2 <= len(count) <= 3):
         return
  
-    #print('aaaaa')
     refs = data['references']
     pd = PhaseDiagram(refs, verbose=False)
     
@@ -219,7 +215,7 @@ def plot(row, filename):
         for a, b, name in zip(x, y, names):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
-        label = '1D' 
+        label = '2D' 
         for e, formula, prot, magstate, uid in links: 
             count = parse_formula(formula)[0]
             x = count.get(B, 0) / sum(count.values())
@@ -269,33 +265,6 @@ def convex_hull_tables(row: AtomsRow,
             {'type': 'table',
              'header': ['Bulk formation energies', ''],
              'rows': bulkrows}]
-
-
-def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
-
-    if 'convex_hull' not in row.data:
-        return (), ()
-
-    prefix = key_descriptions.get('prefix', '')
-    if 'c2db-' in prefix:  # make sure links to other rows just works!
-        projectname = 'c2db'
-    else:
-        projectname = 'default'
-
-    hulltable1 = table(row,
-                       'Property',
-                       ['hform', 'ehull', 'minhessianeig'],
-                       key_descriptions)
-    hulltable2, hulltable3 = convex_hull_tables(row, projectname)
-
-    panel = ('Stability',
-             [[fig('convex-hull.png')],
-              [hulltable1, hulltable2, hulltable3]])
-
-    things = [(plot, ['convex-hull.png'])]
-
-    return panel, things
 
 
 if __name__ == '__main__':
