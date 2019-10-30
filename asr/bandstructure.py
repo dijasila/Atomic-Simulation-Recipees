@@ -620,9 +620,10 @@ def webpanel(row, key_descriptions):
 
 @command('asr.bandstructure',
          requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json'],
+                   'results-asr.structureinfo.json',
+                   'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
-                       'asr.structureinfo'],
+                       'asr.structureinfo', 'asr.magnetic_anisotropy'],
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
