@@ -421,4 +421,3 @@ def webpanel(row, key_descriptions):
 
 if __name__ == '__main__':
     main.cli()
-
