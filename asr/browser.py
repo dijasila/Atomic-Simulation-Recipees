@@ -8,39 +8,18 @@ from ase.db.row import AtomsRow
 from ase.db.summary import create_table, miscellaneous_section
 assert sys.version_info >= (3, 4)
 
-title = 'Computational materials database'
-
 plotlyjs = (
     '<script src="https://cdn.plot.ly/plotly-latest.min.js">' + '</script>')
-external_libraries = [
-    plotlyjs,
-]
+external_libraries = [plotlyjs]
 
 unique_key = 'uid'
 
-default_columns = [
-    'formula', 'prototype', 'magstate', 'class', 'spacegroup', 'hform', 'gap',
-    'work_function'
-]
-
-stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-
-special_keys = [('SELECT', 'prototype'), ('SELECT', 'class'),
-                ('SRANGE', 'dynamic_stability_level', stabilities),
-                ('SRANGE', 'thermodynamic_stability_level', stabilities),
-                ('SELECT', 'magstate'),
-                ('RANGE', 'gap', 'Band gap range [eV]',
-                 [('PBE', 'gap'), ('G0W0@PBE', 'gap_gw'),
-                  ('GLLBSC', 'gap_gllbsc'), ('HSE@PBE', 'gap_hse')])]
-
-params = {
-    'legend.fontsize': 'large',
-    'axes.labelsize': 'large',
-    'axes.titlesize': 'large',
-    'xtick.labelsize': 'large',
-    'ytick.labelsize': 'large',
-    'savefig.dpi': 200
-}
+params = {'legend.fontsize': 'large',
+          'axes.labelsize': 'large',
+          'axes.titlesize': 'large',
+          'xtick.labelsize': 'large',
+          'ytick.labelsize': 'large',
+          'savefig.dpi': 200}
 plt.rcParams.update(**params)
 
 
@@ -68,11 +47,51 @@ def table(row, title, keys, kd={}, digits=2):
     return create_table(row, [title, 'Value'], keys, kd, digits)
 
 
+def merge_panels(page):
+    """Merge panels which have the same title.
+
+    Also merge tables with same first entry in header."""
+    # Update panels
+    for title, panels in page.items():
+        panels = sorted(panels, key=lambda x: x['sort'])
+
+        panel = {'title': title,
+                 'columns': [[], []],
+                 'plot_descriptions': [],
+                 'sort': panels[0]['sort']}
+        known_tables = {}
+        for tmppanel in panels:
+            for column in tmppanel['columns']:
+                for ii, item in enumerate(column):
+                    if isinstance(item, dict):
+                        if item['type'] == 'table':
+                            if 'header' not in item:
+                                continue
+                            header = item['header'][0]
+                            if header in known_tables:
+                                known_tables[header]['rows']. \
+                                    extend(item['rows'])
+                                column[ii] = None
+                            else:
+                                known_tables[header] = item
+
+            columns = tmppanel['columns']
+            if len(columns) == 1:
+                columns.append([])
+
+            columns[0] = [item for item in columns[0] if item]
+            columns[1] = [item for item in columns[1] if item]
+            panel['columns'][0].extend(columns[0])
+            panel['columns'][1].extend(columns[1])
+            panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+        page[title] = panel
+
+
 def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
            prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
     from asr.core import get_recipes
-    page = []
+    page = {}
     exclude = set()
 
     # Locate all webpanels
@@ -80,13 +99,24 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     for recipe in recipes:
         if not recipe.webpanel:
             continue
-        # We assumme that there should be a results file in
+        # We assume that there should be a results file in
         if f'results-{recipe.name}.json' not in row.data:
             continue
         panels = recipe.webpanel(row, key_descriptions)
-        if panels:
-            page.extend(panels)
+        for thispanel in panels:
+            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
+            panel = {'columns': [[], []],
+                     'plot_descriptions': [],
+                     'sort': 99}
+            panel.update(thispanel)
+            paneltitle = panel['title']
+            if paneltitle in page:
+                page[paneltitle].append(panel)
+            else:
+                page[paneltitle] = [panel]
 
+    merge_panels(page)
+    page = [panel for _, panel in page.items()]
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 

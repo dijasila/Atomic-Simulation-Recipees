@@ -1,118 +1,134 @@
 from asr.core import command, option, argument, chdir
 
 
-def collect(recipe):
+def get_kvp_kd(resultdct):
     import re
-    from pathlib import Path
-    from asr.core import read_json, md5sum
     kvp = {}
     key_descriptions = {}
+
+    if '__key_descriptions__' not in resultdct:
+        return {}, {}
+
+    tmpkd = {}
+
+    for key, desc in resultdct['__key_descriptions__'].items():
+        descdict = {'type': None,
+                    'iskvp': False,
+                    'shortdesc': '',
+                    'longdesc': '',
+                    'units': ''}
+        if isinstance(desc, dict):
+            descdict.update(desc)
+            tmpkd[key] = desc
+            continue
+
+        assert isinstance(desc, str), \
+            'Key description has to be dict or str.'
+        # Get key type
+        desc, *keytype = desc.split('->')
+        if keytype:
+            descdict['type'] = keytype
+
+        # Is this a kvp?
+        iskvp = desc.startswith('KVP:')
+        descdict['iskvp'] = iskvp
+        desc = desc.replace('KVP:', '').strip()
+
+        # Find units
+        m = re.search(r"\[(.*)\]", desc)
+        unit = m.group(1) if m else ''
+        if unit:
+            descdict['units'] = unit
+        desc = desc.replace(f'[{unit}]', '').strip()
+
+        # Find short description
+        m = re.search(r"\((.*)\)", desc)
+        shortdesc = m.group(1) if m else ''
+        if shortdesc:
+            descdict['shortdesc'] = shortdesc
+
+        # Everything remaining is the long description
+        longdesc = desc.replace(f'({shortdesc})', '').strip()
+        if longdesc:
+            descdict['longdesc'] = longdesc
+            if not shortdesc:
+                descdict['shortdesc'] = descdict['longdesc']
+        tmpkd[key] = descdict
+
+    for key, desc in tmpkd.items():
+        key_descriptions[key] = \
+            (desc['shortdesc'], desc['longdesc'], desc['units'])
+
+        if key in resultdct and desc['iskvp']:
+            kvp[key] = resultdct[key]
+
+    return kvp, key_descriptions
+
+
+def collect(filename):
+    from pathlib import Path
+    from asr.core import read_json, md5sum
     data = {}
 
-    resultfile = f'results-{recipe.name}.json'
-    results = read_json(resultfile)
-    msg = f'{recipe.name}: {resultfile} already in data'
-    assert resultfile not in data, msg
-    data[resultfile] = results
+    # resultfile = f'results-{recipe.name}.json'
+    results = read_json(filename)
+    msg = f'{filename} already in data!'
+    assert filename not in data, msg
+    data[filename] = results
 
-    extra_files = results.get('__requires__', {})
+    # Find and try to collect related files for this resultsfile
+    files = results.get('__files__', {})
+    extra_files = results.get('__requires__', {}).copy()
     extra_files.update(results.get('__creates__', {}))
-    if extra_files:
-        for filename, checksum in extra_files.items():
-            if filename in data:
-                continue
-            file = Path(filename)
-            if not file.is_file():
-                print(f'Warning: Required file {filename}'
-                      ' doesn\'t exist')
 
-            filetype = file.suffix
-            if filetype == '.json':
-                dct = read_json(filename)
-            elif recipe.todict and filetype in recipe.todict:
-                dct = recipe.todict[filetype](filename)
-                dct['__md5__'] = md5sum(filename)
-            else:
-                dct = {'pointer': str(file.absolute()),
-                       '__md5__': md5sum(filename)}
-            data[filename] = dct
+    for extrafile, checksum in extra_files.items():
+        assert extrafile not in data, f'{extrafile} already collected!'
 
+        if extrafile in files:
+            continue
+        file = Path(extrafile)
+
+        if not file.is_file():
+            print(f'Warning: Required file {extrafile}'
+                  ' doesn\'t exist.')
+            continue
+
+        if file.suffix == '.json':
+            dct = read_json(extrafile)
+        else:
+            dct = {'pointer': str(file.absolute()),
+                   '__md5__': md5sum(extrafile)}
+        data[extrafile] = dct
+
+    links = results.get('__links__', {})
     # Parse key descriptions to get long,
     # short, units and key value pairs
-    if '__key_descriptions__' in results:
-        tmpkd = {}
-
-        for key, desc in results['__key_descriptions__'].items():
-            descdict = {'type': None,
-                        'iskvp': False,
-                        'shortdesc': '',
-                        'longdesc': '',
-                        'units': ''}
-            if isinstance(desc, dict):
-                descdict.update(desc)
-                tmpkd[key] = desc
-                continue
-
-            assert isinstance(desc, str), \
-                'Key description has to be dict or str.'
-            # Get key type
-            desc, *keytype = desc.split('->')
-            if keytype:
-                descdict['type'] = keytype
-
-            # Is this a kvp?
-            iskvp = desc.startswith('KVP:')
-            descdict['iskvp'] = iskvp
-            desc = desc.replace('KVP:', '').strip()
-
-            # Find units
-            m = re.search(r"\[(\w+)\]", desc)
-            unit = m.group(1) if m else ''
-            if unit:
-                descdict['units'] = unit
-            desc = desc.replace(f'[{unit}]', '').strip()
-
-            # Find short description
-            m = re.search(r"\((\w+)\)", desc)
-            shortdesc = m.group(1) if m else ''
-
-            # The results is the long description
-            longdesc = desc.replace(f'({shortdesc})', '').strip()
-            if longdesc:
-                descdict['longdesc'] = longdesc
-            tmpkd[key] = descdict
-
-        for key, desc in tmpkd.items():
-            key_descriptions[key] = \
-                (desc['shortdesc'], desc['longdesc'], desc['units'])
-
-            if key in results and desc['iskvp']:
-                kvp[key] = results[key]
-
-    return kvp, key_descriptions, data
+    kvp, key_descriptions = get_kvp_kd(results)
+    return kvp, key_descriptions, data, links
 
 
-@command('asr.database.fromtree',
-         dependencies=['asr.structureinfo'])
+@command('asr.database.fromtree')
 @argument('folders', nargs=-1)
-@option('--selectrecipe', help='Only collect data relevant for this recipe')
-@option('--level', type=int,
-        help=('0: Collect only atoms. '
-              '1: Collect atoms+KVP. '
-              '2: Collect atoms+kvp+data'))
-@option('--data/--nodata',
-        help='Also add data objects to database')
-@option('--atomsname', help='File containing atomic structure.')
-def main(folders, selectrecipe=None, level=2, data=True,
-         atomsname='structure.json'):
+@option('--patterns', help='Only select files matching pattern.')
+@option('--dbname', help='Database name.')
+@option('-m', '--metadata-from-file', help='Get metadata from file.')
+def main(folders=None, patterns='info.json,results-asr.*.json',
+         dbname='database.db', metadata_from_file=None):
     """Collect ASR data from folder tree into an ASE database."""
     import os
     from ase.db import connect
     from ase.io import read
-    from asr.core import get_recipes, get_dep_tree
+    from asr.core import read_json
     import glob
     from pathlib import Path
+    from asr.database.material_fingerprint import main as mat_finger
+    from fnmatch import fnmatch
+    from click import progressbar
 
+    def item_show_func(item):
+        return str(item)
+
+    atomsname = 'structure.json'
     if not folders:
         folders = ['.']
     else:
@@ -121,50 +137,47 @@ def main(folders, selectrecipe=None, level=2, data=True,
             tmpfolders.extend(glob.glob(folder))
         folders = tmpfolders
 
+    patterns = patterns.split(',')
+
     # We use absolute path because of chdir below!
-    dbname = os.path.join(os.getcwd(), 'database.db')
-    from click import progressbar
+    dbname = os.path.join(os.getcwd(), dbname)
+    metadata = {'key_descriptions': {}}
+    if metadata_from_file:
+        metadata.update(read_json(metadata_from_file))
 
-    def item_show_func(item):
-        return str(item)
-
-    metadata = {}
     with connect(dbname) as db:
-        with progressbar(folders, label='Collecting to database.db',
+        with progressbar(folders, label=f'Collecting to {dbname}',
                          item_show_func=item_show_func) as bar:
             for folder in bar:
                 with chdir(folder):
                     kvp = {}
-                    data = {}
+                    data = {'__links__': {}}
                     key_descriptions = {}
+
+                    if not mat_finger.done:
+                        mat_finger(silence=True)
 
                     if not Path(atomsname).is_file():
                         continue
 
-                    # The atomic structure uniquely defines the folder
                     atoms = read(atomsname)
-                    if selectrecipe:
-                        recipes = get_dep_tree(selectrecipe)
-                    else:
-                        recipes = get_recipes()
-
-                    for recipe in recipes:
-                        if not recipe.done:
+                    data[atomsname] = read_json(atomsname)
+                    for filename in glob.glob('*'):
+                        for pattern in patterns:
+                            if fnmatch(filename, pattern):
+                                break
+                        else:
                             continue
-
-                        tmpkvp, tmpkd, tmpdata = collect(recipe)
-                        if tmpkvp or tmpkd or tmpdata:
+                        tmpkvp, tmpkd, tmpdata, tmplinks = \
+                            collect(str(filename))
+                        if tmpkvp or tmpkd or tmpdata or tmplinks:
                             kvp.update(tmpkvp)
                             data.update(tmpdata)
                             key_descriptions.update(tmpkd)
+                            data['__links__'].update(tmplinks)
 
-                    if level > 1:
-                        db.write(atoms, data=data, **kvp)
-                    elif level > 0:
-                        db.write(atoms, **kvp)
-                    else:
-                        db.write(atoms)
-                    metadata.update({'key_descriptions': key_descriptions})
+                    db.write(atoms, data=data, **kvp)
+                    metadata['key_descriptions'].update(key_descriptions)
     db.metadata = metadata
 
 
