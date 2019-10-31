@@ -136,22 +136,9 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 1:
             smask = [0, 0, 1, 0, 0, 0]
         else:
-
-    if nd == 2:
-        assert not atoms.get_pbc()[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        kwargs['poissonsolver'] = {'dipolelayer': 'xy'}
-    elif nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
-        cell = atoms.cell
-        assert abs(cell[2, :2]).max() < 1e-12, cell
-        assert abs(cell[:2, 2]).max() < 1e-12, cell
-        assert abs(cell[0, 1]) < 1e-12, cell
-        assert abs(cell[1, 0]) < 1e-12, cell
- 
             msg = 'Relax recipe not implemented for 0D structures'
             raise NotImplementedError(msg)
-
+    
     from asr.setup.symmetrize import atomstospgcell as ats
     dataset = spglib.get_symmetry_dataset(ats(atoms),
                                           symprec=1e-4,
@@ -305,6 +292,23 @@ def main(calculator={'name': 'gpaw',
     from ase.calculators.calculator import get_calculator_class
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
+
+    # Some calculator specific mumbo jumbo
+    nd = int(np.sum(atoms.get_pbc()))
+    if calculatorname == 'gpaw':
+        if nd == 2:
+            assert not atoms.get_pbc()[2], \
+                ('The third unit cell axis should be aperiodic for '
+                 'a 2D material!')
+            calculator['poissonsolver'] = {'dipolelayer': 'xy'}
+  
+        elif nd == 1:
+            assert not atoms.pbc[0] and not atoms.pbc[1]
+            cell = atoms.cell
+            assert abs(cell[2, :2]).max() < 1e-12, cell
+            assert abs(cell[:2, 2]).max() < 1e-12, cell
+            assert abs(cell[0, 1]) < 1e-12, cell
+            assert abs(cell[1, 0]) < 1e-12, cell
 
     calc = Calculator(**calculator)
     # Relax the structure
