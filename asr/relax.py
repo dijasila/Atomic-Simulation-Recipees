@@ -291,6 +291,15 @@ def main(calculator={'name': 'gpaw',
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
+    # Some calculator specific mumbo jumbo
+    nd = int(np.sum(atoms.get_pbc()))
+    if calculatorname == 'gpaw':
+        if nd == 2:
+            assert not atoms.get_pbc()[2], \
+                ('The third unit cell axis should be aperiodic for '
+                 'a 2D material!')
+            calculator['poissonsolver'] = {'dipolelayer': 'xy'}
+
     calc = Calculator(**calculator)
     # Relax the structure
     atoms = relax(atoms, name='relax', dftd3=d3,
