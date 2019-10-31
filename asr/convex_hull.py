@@ -170,9 +170,11 @@ def plot(row, fname):
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
+
     count = row.count_atoms()
     if not (2 <= len(count) <= 3):
         return
+
     references = data['references']
     pdrefs = []
     for reference in references:
