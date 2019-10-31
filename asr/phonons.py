@@ -1,5 +1,7 @@
 from pathlib import Path
+
 import numpy as np
+
 from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
@@ -212,7 +214,6 @@ def plot_phonons(row, fname):
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
-    gamma = np.array(gamma)
 
     x0 = -0.0005  # eV
     for x, color in [(gamma[gamma < x0], 'r'),
