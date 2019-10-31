@@ -47,7 +47,6 @@ def calculate(calculator={'name': 'gpaw',
     elif nd == 1:
         assert not atoms.pbc[0] and not atoms.pbc[1]
 
-
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
