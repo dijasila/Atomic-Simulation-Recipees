@@ -1,20 +1,7 @@
-from asr.core import command, option
+sr.core import command, option
 
 
-def webpanel(row, key_descriptions):
-    from asr.browser import fig
-    panel = {'title': 'Density of states (PBE)',
-             'columns': [[fig('dos.png')]],
-             'plot_descriptions': [{'function': plot,
-                                    'filenames': ['dos.png']}]}
-
-    return [panel]
-
-
-@command('asr.dos',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         webpanel=webpanel)
+@command('asr.dos')
 @option('--name', type=str)
 @option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity')
@@ -47,12 +34,24 @@ def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-    return data
-
     import json
+    
     from ase.parallel import paropen
     with paropen(filename, 'w') as fd:
         json.dump(data, fd)
+
+
+def collect_data(atoms):
+    """Band structure PBE and GW +- SOC."""
+    from ase.io.jsonio import read_json
+    from pathlib import Path
+        
+    if not Path('dos.json').is_file():
+        return {}, {}, {}
+
+    dos = read_json('dos.json')
+
+    return {}, {}, {'dos': dos}
 
 
 def plot(row=None, filename='dos.png', file=None, show=False):
@@ -62,16 +61,17 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     import json
     import matplotlib.pyplot as plt
     import numpy as np
+
     dos = None
-        
+
     # Get data from row
     if row is not None:
-        if 'results-asr.dos.json' not in row.data:
+        if 'dos' not in row.data:
             return
-        dos = row.data['results-asr.dos.json']
-     
+        dos = row.data['dos']
+    
     # Otherwise from from file
-    file = file or 'results-asr.dos.json'
+    file = file or 'dos.json'
     if not dos:
         dos = json.load(open(file, 'r'))
     plt.figure()
@@ -103,3 +103,4 @@ creates = ['dos.json']
 
 if __name__ == '__main__':
     main.cli()
+
