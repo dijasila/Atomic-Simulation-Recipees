@@ -103,4 +103,3 @@ creates = ['dos.json']
 
 if __name__ == '__main__':
     main.cli()
-
