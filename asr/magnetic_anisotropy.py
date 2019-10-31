@@ -60,6 +60,7 @@ def main():
         phi: Azimuthal angle in radians
     """
     import numpy as np
+    from asr.core import file_barrier
     from gpaw.mpi import world
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
@@ -90,8 +91,9 @@ def main():
         results['phi'] = 0
         results['spin_axis'] = 'z'
         return results
-    
-    ibz2bz('gs.gpw', 'gs_nosym.gpw')
+
+    with file_barrier(['gs_nosym.gpw']):
+        ibz2bz('gs.gpw', 'gs_nosym.gpw')
     width = 0.001
     nbands = None
     calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
