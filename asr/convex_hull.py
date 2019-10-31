@@ -234,7 +234,7 @@ def plot(row, fname):
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig(filename)
+    plt.savefig(fname)
     plt.close()
 
 
