@@ -1,4 +1,4 @@
-sr.core import command, option
+from asr.core import command, option
 
 
 @command('asr.dos')
