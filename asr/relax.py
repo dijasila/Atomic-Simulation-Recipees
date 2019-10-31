@@ -195,7 +195,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
+        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
             opt.log()
             opt.call_observers()
             break
