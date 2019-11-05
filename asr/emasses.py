@@ -246,11 +246,12 @@ def get_emass_dict_from_row(row):
                         direction += 1
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
-                            my_dict['{}, direction {}'.format(name, direction)] = '{}'.format(
-                                mass_str)  # + r'$\mathrm{m_e}$'
+                            my_dict[f'{name}, direction {direction}'] = \
+                                '{}'.format(mass_str)
                         else:
                             my_dict['{} {} {}, direction {}'.format(
-                                name, offset_sym, offset_num, direction)] = '{}'.format(mass_str)  # + r'$\mathrm{m_e}$'
+                                name, offset_sym,
+                                offset_num, direction)] = mass_str
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -269,7 +270,6 @@ def make_the_plots(row, *args):
     import matplotlib.pyplot as plt
     import numpy as np
     from asr.browser import fig as asrfig
-    from asr.browser import table
 
     results = row.data.get('results-asr.emasses.json')
 
@@ -461,7 +461,8 @@ def make_the_plots(row, *args):
     # For direction i, loop through vbs and plot on fig
     # Make a final column containing a table with the numerical values
     # for the effective masses
-    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(
+    assert len(cb_fnames) == len(vb_fnames), \
+        'Num cb plots: {}\nNum vb plots: {}'.format(
         len(cb_fnames), len(vb_fnames))
 
     num_cols = len(cb_fnames)
@@ -496,7 +497,7 @@ def custom_table(values_dict, title):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.browser import table
 
     columns, fnames = create_columns_fnames(row)
 
@@ -505,8 +506,11 @@ def webpanel(row, key_descriptions):
     electron_table = custom_table(electron_dict, 'Electron effective mass')
     hole_table = custom_table(hole_dict, 'Hole effective mass')
     electron_table2 = table(electron_dict, 'Electron effective mass', list(
-        electron_dict.keys()), key_descriptions)  # kd={k: ("", k, "") for k in electron_dict.keys()})
-    # hole_table = table(hole_dict, 'Hole effective mass', list(hole_dict.keys()), key_descriptions)#kd={k: ("", k, "") for k in electron_dic
+        electron_dict.keys()), key_descriptions)
+    # kd={k: ("", k, "") for k in electron_dict.keys()})
+    # hole_table = table(hole_dict, 'Hole effective mass',
+    # list(hole_dict.keys()),
+    # key_descriptions)#kd={k: ("", k, "") for k in electron_dic
     # t.keys()})
 
     print("MY TABLE: ", electron_table)
@@ -524,7 +528,7 @@ def webpanel(row, key_descriptions):
     columns.append(table_col)
 
     for col in columns:
-        assert type(col) == type([])
+        assert isinstance(col, list)
         print("ASSERTIVE")
     panel = {'title': 'Effective masses (PBE)',
              'columns': columns,
@@ -545,11 +549,7 @@ def webpanel(row, key_descriptions):
 
 
 def create_columns_fnames(row):
-    from ase.dft.kpoints import kpoint_convert, labels_from_kpts
-    from ase.units import Bohr, Ha
-    import numpy as np
     from asr.browser import fig as asrfig
-    from asr.browser import table
 
     results = row.data.get('results-asr.emasses.json')
 
@@ -610,7 +610,8 @@ def create_columns_fnames(row):
             fname = 'vb_dir_{}.png'.format(direction)
             vb_fnames.append(fname)
 
-    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(
+    assert len(cb_fnames) == len(vb_fnames), \
+        'Num cb plots: {}\nNum vb plots: {}'.format(
         len(cb_fnames), len(vb_fnames))
 
     num_cols = len(cb_fnames)
@@ -819,7 +820,9 @@ def create_columns_fnames(row):
     # # For direction i, loop through vbs and plot on fig
     # # Make a final column containing a table with the numerical values
     # # for the effective masses
-    # assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(len(cb_fnames), len(vb_fnames))
+    # assert len(cb_fnames) == len(vb_fnames), \
+    #     'Num cb plots: {}\nNum vb plots: {}'.format(len(cb_fnames),
+    #                                                 len(vb_fnames))
 
     # num_cols = len(cb_fnames)
 
@@ -913,16 +916,20 @@ def main(gpwfilename='dense_k.gpw'):
     for j in range(bands):
         if j == 0:
             for k in range(3):
-                kdescs['CB, direction {}'.format(k)] = 'KVP: CB, direction {}'.format(
+                kdescs['CB, direction {}'.format(k)] = \
+                    'KVP: CB, direction {}'.format(
                     k) + r' [$\mathrm{m_e}$]'
-                kdescs['VB, direction {}'.format(k)] = 'KVP: VB, direction {}'.format(
+                kdescs['VB, direction {}'.format(k)] = \
+                    'KVP: VB, direction {}'.format(
                     k) + r' [$\mathrm{m_e}$]'
         else:
             for k in range(3):
-                kdescs['CB + {}, direction {}'.format(
-                    j, k)] = 'KVP: CB + {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
-                kdescs['VB - {}, direction {}'.format(
-                    j, k)] = 'KVP: VB - {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
+                kdescs['CB + {}, direction {}'.format(j, k)] = \
+                    'KVP: CB + {}, direction {}'.format(j, k) \
+                    + r' [$\mathrm{m_e}$]'
+                kdescs['VB - {}, direction {}'.format(j, k)] = \
+                    'KVP: VB - {}, direction {}'.format(j, k) + \
+                    r' [$\mathrm{m_e}$]'
 
     good_results['__key_descriptions__'] = kdescs
 
