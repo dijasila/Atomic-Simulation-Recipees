@@ -17,7 +17,7 @@ def densify_full_k_grid(gpwfilename='gs.gpw', kptdensity=12,
     from asr.utils.kpts import get_kpts_size
     calc = GPAW(gpwfilename, txt=None)
     spinpol = calc.get_spin_polarized()
-    
+
     kpts = get_kpts_size(atoms=calc.atoms, density=kptdensity)
     convbands = emptybands // 2
     calc.set(nbands=-emptybands,
@@ -28,7 +28,7 @@ def densify_full_k_grid(gpwfilename='gs.gpw', kptdensity=12,
 
     if spinpol:
         calc.set(symmetry='off')
-    
+
     calc.get_potential_energy()
     calc.write('dense_k.gpw')
 
@@ -61,7 +61,7 @@ def refine(gpwfilename='dense_k.gpw'):
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
-            
+
             if not gap > 0:
                 from gpaw import GPAW
                 calc = GPAW(gpwfilename, txt=None)
@@ -70,8 +70,8 @@ def refine(gpwfilename='dense_k.gpw'):
             if os.path.exists(gpw2):
                 continue
             nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
-            
-            
+
+
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
@@ -127,7 +127,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     k2_c = k_kc[k2]
 
     bandtypes, ks = get_bt_ks(bandtype, k1_c, k2_c)
-    
+
     for bt, k_c in zip(bandtypes, ks):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
@@ -153,7 +153,7 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
         indices = na(Z**2 <= 1.0, na(X == 0, Y == 0))
     else:
         indices = X**2 + Y**2 + Z**2 <= 1.0
-        
+
     x, y, z = X[indices], Y[indices], Z[indices]
     kpts_kv = np.vstack([x, y, z]).T
     kr = np.sqrt(2 * m * erange / Hartree)
@@ -183,6 +183,7 @@ def get_bt_ks(bandtype, k1_c, k2_c):
         bandtypes = ('cb', )
         ks = (k2_c, )
     return bandtypes, ks
+
 
 def get_ndims_from_row(row):
     import numpy as np
@@ -245,14 +246,16 @@ def get_emass_dict_from_row(row):
                         direction += 1
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
-                            my_dict['{}, direction {}'.format(name, direction)] = '{}'.format(mass_str)# + r'$\mathrm{m_e}$'
+                            my_dict['{}, direction {}'.format(name, direction)] = '{}'.format(
+                                mass_str)  # + r'$\mathrm{m_e}$'
                         else:
-                            my_dict['{} {} {}, direction {}'.format(name, offset_sym, offset_num, direction)] = '{}'.format(mass_str)# + r'$\mathrm{m_e}$'
+                            my_dict['{} {} {}, direction {}'.format(
+                                name, offset_sym, offset_num, direction)] = '{}'.format(mass_str)  # + r'$\mathrm{m_e}$'
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
     hole_dict = get_the_dict(ordered_vb_indices, 'VB', '-')
-    
+
     return electron_dict, hole_dict
 
 
@@ -311,11 +314,11 @@ def make_the_plots(row, *args):
                 masses.append(data[k])
         tuple_key = convert_key_to_tuple(vb_key)
         vb_masses[tuple_key] = masses
-            
-    
+
     erange = 0.05
+
     def get_range(mass, _erange):
-        return (2 * mass *_erange / Ha) ** 0.5 / Bohr
+        return (2 * mass * _erange / Ha) ** 0.5 / Bohr
 
     plt_count = 0
     for direction in range(3):
@@ -337,7 +340,6 @@ def make_the_plots(row, *args):
                 should_plot = False
                 continue
 
-
             mass = cb_masses[cb_tuple][-1 - direction]
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
@@ -346,7 +348,7 @@ def make_the_plots(row, *args):
             xk -= xk[-1] / 2
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
-            
+
             e_km = fit_data['e_dft_km']
             sz_km = fit_data['sz_dft_km']
             if e_km.ndim == 2:
@@ -363,7 +365,7 @@ def make_the_plots(row, *args):
 
             things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
             axes.plot(xk, emodel_k, c='r', ls='--')
-                
+
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(emodel_k) - erange * 0.25
                 y2 = np.min(emodel_k) + erange * 0.75
@@ -383,7 +385,7 @@ def make_the_plots(row, *args):
             fname = args[plt_count]
             plt.savefig(fname)
             plt.close()
-            
+
         # axes.clear()
         # VB plots
         y1 = None
@@ -401,7 +403,6 @@ def make_the_plots(row, *args):
             if direction >= len(fit_data_list):
                 continue
 
-        
             mass = vb_masses[vb_tuple][direction]
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
@@ -422,13 +423,12 @@ def make_the_plots(row, *args):
             else:
                 sz_k = sz_km[0, :, vb_tuple[1]]
 
-            
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha
             emodel_k += np.max(e_k) - np.max(emodel_k)
-            
+
             things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
             axes.plot(xk2, emodel_k, c='r', ls='--')
-            
+
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(emodel_k) - erange * 0.75
                 y2 = np.max(emodel_k) + erange * 0.25
@@ -454,14 +454,15 @@ def make_the_plots(row, *args):
 
     # Make table
 
-    # Algo: 
+    # Algo:
     # Loop through directions, each direction is a column
     # For direction i, loop through cbs and plot on fig
     # -- Plot also quadratic fit from curvature/effective mass value
     # For direction i, loop through vbs and plot on fig
     # Make a final column containing a table with the numerical values
     # for the effective masses
-    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(len(cb_fnames), len(vb_fnames))
+    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(
+        len(cb_fnames), len(vb_fnames))
 
     num_cols = len(cb_fnames)
 
@@ -492,19 +493,19 @@ def custom_table(values_dict, title):
     print("")
 
     return table
-        
-    
+
+
 def webpanel(row, key_descriptions):
     from asr.browser import fig, table
 
     columns, fnames = create_columns_fnames(row)
-    
 
     electron_dict, hole_dict = get_emass_dict_from_row(row)
 
     electron_table = custom_table(electron_dict, 'Electron effective mass')
     hole_table = custom_table(hole_dict, 'Hole effective mass')
-    electron_table2 = table(electron_dict, 'Electron effective mass', list(electron_dict.keys()), key_descriptions) #kd={k: ("", k, "") for k in electron_dict.keys()})
+    electron_table2 = table(electron_dict, 'Electron effective mass', list(
+        electron_dict.keys()), key_descriptions)  # kd={k: ("", k, "") for k in electron_dict.keys()})
     # hole_table = table(hole_dict, 'Hole effective mass', list(hole_dict.keys()), key_descriptions)#kd={k: ("", k, "") for k in electron_dic
     # t.keys()})
 
@@ -593,7 +594,7 @@ def create_columns_fnames(row):
                 masses.append(data[k])
         tuple_key = convert_key_to_tuple(vb_key)
         vb_masses[tuple_key] = masses
-            
+
     for direction in range(3):
         should_plot = True
         for cb_key in cb_indices:
@@ -609,7 +610,8 @@ def create_columns_fnames(row):
             fname = 'vb_dir_{}.png'.format(direction)
             vb_fnames.append(fname)
 
-    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(len(cb_fnames), len(vb_fnames))
+    assert len(cb_fnames) == len(vb_fnames), 'Num cb plots: {}\nNum vb plots: {}'.format(
+        len(cb_fnames), len(vb_fnames))
 
     num_cols = len(cb_fnames)
 
@@ -620,7 +622,6 @@ def create_columns_fnames(row):
         columns.append(col)
 
     return columns, cb_fnames + vb_fnames
-
 
     # from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     # from ase.units import Bohr, Ha
@@ -672,8 +673,7 @@ def create_columns_fnames(row):
     #             masses.append(data[k])
     #     tuple_key = convert_key_to_tuple(vb_key)
     #     vb_masses[tuple_key] = masses
-            
-    
+
     # erange = 0.05
     # def get_range(mass, _erange):
     #     return (2 * mass *_erange / Ha) ** 0.5 / Bohr
@@ -697,7 +697,6 @@ def create_columns_fnames(row):
     #             should_plot = False
     #             continue
 
-
     #         mass = cb_masses[cb_tuple][-1 - direction]
     #         fit_data = fit_data_list[direction]
     #         ks = fit_data['kpts_kc']
@@ -706,7 +705,7 @@ def create_columns_fnames(row):
     #         xk -= xk[-1] / 2
     #         kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
     #         kpts_kv *= Bohr
-            
+
     #         e_km = fit_data['e_dft_km']
     #         sz_km = fit_data['sz_dft_km']
     #         if e_km.ndim == 2:
@@ -723,7 +722,7 @@ def create_columns_fnames(row):
 
     #         things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
     #         axes.plot(xk, emodel_k, c='r', ls='--')
-                
+
     #         if y1 is None or y2 is None or my_range is None:
     #             y1 = np.min(emodel_k) - erange * 0.25
     #             y2 = np.min(emodel_k) + erange * 0.75
@@ -744,7 +743,7 @@ def create_columns_fnames(row):
     #         cb_fnames.append(fname)
     #         plt.savefig(fname)
     #         plt.close()
-            
+
     #     # axes.clear()
     #     # VB plots
     #     y1 = None
@@ -762,7 +761,6 @@ def create_columns_fnames(row):
     #         if direction >= len(fit_data_list):
     #             continue
 
-        
     #         mass = vb_masses[vb_tuple][direction]
     #         fit_data = fit_data_list[direction]
     #         ks = fit_data['kpts_kc']
@@ -783,13 +781,12 @@ def create_columns_fnames(row):
     #         else:
     #             sz_k = sz_km[0, :, vb_tuple[1]]
 
-            
     #         emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha
     #         emodel_k += np.max(e_k) - np.max(emodel_k)
-            
+
     #         things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
     #         axes.plot(xk2, emodel_k, c='r', ls='--')
-            
+
     #         if y1 is None or y2 is None or my_range is None:
     #             y1 = np.max(emodel_k) - erange * 0.75
     #             y2 = np.max(emodel_k) + erange * 0.25
@@ -815,7 +812,7 @@ def create_columns_fnames(row):
 
     # # Make table
 
-    # # Algo: 
+    # # Algo:
     # # Loop through directions, each direction is a column
     # # For direction i, loop through cbs and plot on fig
     # # -- Plot also quadratic fit from curvature/effective mass value
@@ -834,7 +831,6 @@ def create_columns_fnames(row):
 
     # return columns, cb_fnames + vb_fnames
 
-    
     # for spin_band_str, data in results.items():
     #     data = results[spin_band_str]
 
@@ -850,13 +846,11 @@ def create_columns_fnames(row):
     #     if mass is None or np.isnan(mass):
     #         continue
 
-
     #     # Create a column
     #     # A column should consist of the plots of the eigenvalues
     #     # and the quadratic fit for all the vbs/cbs for a given dir
     #     # lastly we should have a column with the numerical values
     #     #        panel = {'title': 'Effective masses
-
 
     # return None
 
@@ -867,8 +861,6 @@ def check_soc(spin_band_dict):
             return False
 
     return True
-                             
-
 
 
 @command('asr.emasses',
@@ -921,13 +913,16 @@ def main(gpwfilename='dense_k.gpw'):
     for j in range(bands):
         if j == 0:
             for k in range(3):
-                kdescs['CB, direction {}'.format(k)] = 'KVP: CB, direction {}'.format(k) + r' [$\mathrm{m_e}$]'
-                kdescs['VB, direction {}'.format(k)] = 'KVP: VB, direction {}'.format(k) + r' [$\mathrm{m_e}$]'
+                kdescs['CB, direction {}'.format(k)] = 'KVP: CB, direction {}'.format(
+                    k) + r' [$\mathrm{m_e}$]'
+                kdescs['VB, direction {}'.format(k)] = 'KVP: VB, direction {}'.format(
+                    k) + r' [$\mathrm{m_e}$]'
         else:
             for k in range(3):
-                kdescs['CB + {}, direction {}'.format(j, k)] = 'KVP: CB + {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
-                kdescs['VB - {}, direction {}'.format(j, k)] = 'KVP: VB - {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
-
+                kdescs['CB + {}, direction {}'.format(
+                    j, k)] = 'KVP: CB + {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
+                kdescs['VB - {}, direction {}'.format(
+                    j, k)] = 'KVP: VB - {}, direction {}'.format(j, k) + r' [$\mathrm{m_e}$]'
 
     good_results['__key_descriptions__'] = kdescs
 
@@ -1007,7 +1002,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     atoms = calc.get_atoms()
     cell_cv = atoms.get_cell()
     ibz_kc = calc.get_ibz_k_points()
-       
+
     ibz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ibz_kc)
     masses = {'indices': indices}
     for b in indices:
@@ -1080,7 +1075,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
             if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
                 magstate == 'AFM'):
                 sz_km[idx, :] = 0.0
-         
+
         results_dicts.append(dict(kpts_kc=k_kc,
                                   kpts_kv=k_kv,
                                   e_dft_km=e_km,
@@ -1110,10 +1105,10 @@ def get_vb_cb_indices(e_skn, efermi, delta):
         e_skn = e_skn[np.newaxis]
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn,
                                               efermi=efermi, output=None)
-     
+
     if not gap > 0:
         raise ValueError('Band gap is zero')
-     
+
     cbm = e_skn[s2, k2, n2]
     vbm = e_skn[s1, k1, n1]
 
@@ -1122,7 +1117,7 @@ def get_vb_cb_indices(e_skn, efermi, delta):
     cbs, cbn = np.where(cb_sn <= cbm + delta)
     cbn += n2
     cb_indices = list(zip(cbs, cbn))
-     
+
     vbs, vbn = np.where(vb_sn >= vbm - delta)
     vb_indices = list(reversed(list(zip(vbs, vbn))))
     return vb_indices, cb_indices
@@ -1191,11 +1186,11 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     d3xy = f3xy + (2 * f3xxy * xm) + (2 * f3yyx * ym) + (f3xyz * zm)
     d3xz = f3xz + (2 * f3xxz * xm) + (2 * f3zzx * zm) + (f3xyz * ym)
     d3yz = f3yz + (2 * f3yyz * ym) + (2 * f3zzy * zm) + (f3xyz * xm)
-    
+
     hessian3 = np.array([[d3xx, d3xy, d3xz],
                          [d3xy, d3yy, d3yz],
                          [d3xz, d3yz, d3zz]])
-    
+
     v3_n, w3_vn = np.linalg.eigh(hessian3)
     assert not (np.isnan(w3_vn)).any()
 
@@ -1203,7 +1198,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                         [dxy, dyy, dyz],
                         [dxz, dyz, dzz]])
     v2_n, vecs = np.linalg.eigh(hessian)
-        
+
     mass_u = 1 / v3_n
     for u, v3 in enumerate(v3_n):
         if np.allclose(v3, 0):
@@ -1287,7 +1282,7 @@ def get_2nd_order_extremum(c, ndim=3):
     # fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
     assert len(c) == 10
     fxx, fyy, fzz, fxy, fxz, fyz, fx, fy, fz, f0 = c
-    
+
     if ndim == 3:
         ma = np.array([[2 * fxx, fxy, fxz],
                        [fxy, 2 * fyy, fyz],
@@ -1515,7 +1510,7 @@ def collect_data(atoms):
                 key_descriptions[key] = descs[0] if bt == 'cb' else descs[1]
             else:
                 key_descriptions[key] = descs[2] if bt == 'cb' else descs[3]
-                
+
     return kvp, key_descriptions, all_data
 
 
@@ -1537,7 +1532,7 @@ def evalmodel_2d(kpts_kv, c_p):
     num_ks = kpts_kv.shape[0]
     assert A_kp.shape == (num_ks, 10)
     return np.dot(A_kp, c_p)
-            
+
 
 # def webpanel(row, key_descriptions):
 
