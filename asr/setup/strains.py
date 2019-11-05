@@ -60,4 +60,5 @@ def main(strain_percent=1, kptdensity=6.0):
                           '{},{},{}'.format(*size)
                           + "],'gamma':True},...}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
+                params.extend(['asr.relax:allow_symmetry_breaking', 'True'])
                 setup_params(params=params)
