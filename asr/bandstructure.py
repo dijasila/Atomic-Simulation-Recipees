@@ -63,30 +63,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     calc.write('bs.gpw')
 
 
-def is_symmetry_protected(kpt, op_scc):
-    """Calculate electronic band structure"""
-    import numpy as np
-
-    mirror_count = 0
-    for symm in op_scc:
-        # Inversion symmetry forces spin degeneracy and 180 degree rotation
-        # forces the spins to lie in plane
-        if (np.allclose(symm, -1 * np.eye(3))
-                or np.allclose(symm, np.array([-1, -1, 1] * np.eye(3)))):
-            return True
-        vals, vecs = np.linalg.eigh(symm)
-        # A mirror plane
-        if np.allclose(np.abs(vals), 1) and np.allclose(np.prod(vals), -1):
-            # Mapping k -> k, modulo a lattice vector
-            if np.allclose(kpt % 1, (np.dot(symm, kpt)) % 1):
-                mirror_count += 1
-    # If we have two or more mirror planes, then we must have a spin-degenerate
-    # subspace
-    if mirror_count >= 2:
-        return True
-    return False
-
-
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 4.8),
@@ -633,6 +609,7 @@ def main():
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()

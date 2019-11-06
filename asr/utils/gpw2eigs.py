@@ -81,7 +81,9 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
             out = out[:2]
         return out
     else:
-        return dct['eps_nosoc_skn'], dct['efermi_nosoc']
+        if not return_spin:
+            return dct['eps_nosoc_skn'], dct['efermi_nosoc']
+        return dct['eps_nosoc_skn'], dct['efermi_nosoc'], dct['s_kvm']
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
