@@ -1034,9 +1034,8 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.utils.spinutils import spin_axis
     from asr.utils.symmetry import is_symmetry_protected
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import read_json
     import numpy as np
     cell_cv = calc.get_atoms().get_cell()
@@ -1073,7 +1072,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         e_km, _, s_kvm = gpw2eigs(name, soc=soc, return_spin=True,
                                   theta=theta, phi=phi)
 
-        sz_km = s_kvm[:, spin_axis(), :]
+        sz_km = s_kvm[:, get_spin_index(), :]
         from gpaw.symmetry import atoms2symmetry
         op_scc = atoms2symmetry(calc.get_atoms()).op_scc
 

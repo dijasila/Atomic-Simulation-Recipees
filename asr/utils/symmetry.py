@@ -1,5 +1,3 @@
-
-
 def is_symmetry_protected(kpt, op_scc):
     import numpy as np
     mirror_count = 0
