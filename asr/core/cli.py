@@ -144,7 +144,7 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
 
         from gpaw.mpi import have_mpi
         if not have_mpi:
-            cmd = f'mpiexec -np {parallel} gpaw-python -m asr run'
+            cmd = f'mpiexec -np {parallel} gpaw python -m asr run'
             cliargs = ''
             for param, value in ctx.params.items():
                 if param in ['command', 'folders']:
