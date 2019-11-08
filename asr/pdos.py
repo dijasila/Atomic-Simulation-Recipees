@@ -56,7 +56,7 @@ class SOCDOS(DOS):
         self.e_skn = e_skn[:, bz2ibz].reshape(shape)
 
     def get_dos(self):
-        return DOS.get_dos(self) / 2
+        return DOS.get_dos(self, spin=0)
 
 
 # Hack the local density of states to keep spin-orbit results and not
