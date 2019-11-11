@@ -46,7 +46,8 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "browser --only-figures"']}]
 
 
-@command(tests=tests,
+@command('asr.magnetic_anisotropy',
+         tests=tests,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          webpanel=webpanel,
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
