@@ -20,7 +20,8 @@ def main(defect_name=None):
     This recipe needs the directory structure that was created with
     setup.defects in order to run properly. It has to be launched within the
     folder of the initial structure, i.e. the folder where setup.defects was
-    also executed.
+    also executed. Note, that the resulting formation energy is without
+    applying any chemical potential for the defect.
     """
     from ase.io import read
     from asr.core import write_json, read_json
@@ -59,13 +60,12 @@ def main(defect_name=None):
         sub_folder_list = []
         [sub_folder_list.append(x) for x in s.iterdir() if x.is_dir()]
         e_form = []
-        # e_fermi = []
         charges = []
-        # e_fermi_calc = []
         for sub_folder in sub_folder_list:
             sub_folder_path = folder.name + '/' + sub_folder.name
             setup_params = read_json(sub_folder_path + '/params.json')
-            chargestate = setup_params.get('asr.relax').get('calculator').get('charge')
+            chargestate = setup_params.get(
+                'asr.relax').get('calculator').get('charge')
             try:
                 charged_file = find_file_in_folder('gs.gpw',
                                                    sub_folder_path)
@@ -82,16 +82,11 @@ def main(defect_name=None):
                     e_form.append(elc.calculate_corrected_formation_energy())
                     print('Calculate uncorrected formation energy')
                 charges.append(chargestate)
-                # calc = GPAW(find_file_in_folder('gs.gpw', sub_folder_path))
-                # e_fermi_calc.append(calc.get_fermi_level())
-                # e_fermi.append(0)
-            except:
+            except BaseException:
                 e_form.append(None)
                 charges.append(chargestate)
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'chargestates': charges}
-        # 'fermi_energies_c': e_fermi_calc
-        # 'fermi_energies': e_fermi,
     write_json('defectformation.json', defectformation_dict)
 
     return None
@@ -198,11 +193,11 @@ def collect_data():
 # changed at a later stage, as well as the way the plots are created (db)    #
 # ========================================================================== #
 # def postprocessing():
-#     from asr.utils import read_json
+#     from asr.core import read_json
 #
 #     formation_dict = read_json('defectformation.json')
 #     transitions_dict = {}
-#     gap = formation_dict.get('gaps_nosoc').get('gap')
+#     gap = formation_dict.get('gaps_nosoc')
 #     for element in formation_dict:
 #         if element != 'gaps_soc' and element != 'gaps_nosoc':
 #             print(element)
@@ -336,7 +331,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     while len(linearray_up) > 1:
         linedists = np.array([[intersection(linearray_up[0][0],
                                             linearray_up[1][0]),
-                              q_copy[0], q_copy[1]]])
+                               q_copy[0], q_copy[1]]])
         if len(linearray_up) > 2:
             for j in range(2, len(linearray_up)):
                 linedists = np.append(linedists, [[intersection(

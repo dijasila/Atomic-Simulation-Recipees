@@ -198,28 +198,37 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
-                    calculator_relax={'name': 'gpaw',
-                                      'mode': {'name': 'pw', 'ecut': 800,
-                                               'dedecut': 'estimate'},
-                                      'xc': 'PBE',
-                                      'kpts': {'density': 6.0, 'gamma': True},
-                                      'basis': 'dzp',
-                                      'symmetry': {'symmorphic': False},
-                                      'convergence': {'forces': 1e-4},
-                                      'txt': 'relax.txt',
-                                      'occupations': {'name': 'fermi-dirac',
-                                                      'width': 0.05}}
-                    calculator_gs={'name': 'gpaw',
-                                   'mode': {'name': 'pw', 'ecut': 800},
-                                   'xc': 'PBE',
-                                   'basis': 'dzp',
-                                   'kpts': {'density': 12.0, 'gamma': True},
-                                   'occupations': {'name': 'fermi-dirac',
-                                                   'width': 0.05},
-                                   'convergence': {'bands': -3},
-                                   'nbands': -10,
-                                   'txt': 'gs.txt'}
-                    parameters['asr.gs@calculate'] = {'calculator': calculator_gs}
+                    calculator_relax = {
+                        'name': 'gpaw',
+                        'mode': {
+                            'name': 'pw',
+                            'ecut': 800,
+                            'dedecut': 'estimate'},
+                        'xc': 'PBE',
+                        'kpts': {
+                            'density': 6.0,
+                            'gamma': True},
+                        'basis': 'dzp',
+                        'symmetry': {
+                            'symmorphic': False},
+                        'convergence': {
+                            'forces': 1e-4},
+                        'txt': 'relax.txt',
+                        'occupations': {
+                            'name': 'fermi-dirac',
+                            'width': 0.05}}
+                    calculator_gs = {'name': 'gpaw',
+                                     'mode': {'name': 'pw', 'ecut': 800},
+                                     'xc': 'PBE',
+                                     'basis': 'dzp',
+                                     'kpts': {'density': 12.0, 'gamma': True},
+                                     'occupations': {'name': 'fermi-dirac',
+                                                     'width': 0.05},
+                                     'convergence': {'bands': -3},
+                                     'nbands': -10,
+                                     'txt': 'gs.txt'}
+                    parameters['asr.gs@calculate'] = {
+                        'calculator': calculator_gs}
                     parameters['asr.gs@calculate']['calculator']['charge'] = q
                     parameters['asr.relax'] = {'calculator': calculator_relax}
                     parameters['asr.relax']['calculator']['charge'] = q
@@ -251,30 +260,48 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                             (-1) * charge_states,
                             charge_states + 1):
                             parameters = {}
-                            calculator_relax={'name': 'gpaw',
-                                              'mode': {'name': 'pw', 'ecut': 800,
-                                                       'dedecut': 'estimate'},
-                                              'xc': 'PBE',
-                                              'kpts': {'density': 6.0, 'gamma': True},
-                                              'basis': 'dzp',
-                                              'symmetry': {'symmorphic': False},
-                                              'convergence': {'forces': 1e-4},
-                                              'txt': 'relax.txt',
-                                              'occupations': {'name': 'fermi-dirac',
-                                                              'width': 0.05}}
-                            calculator_gs={'name': 'gpaw',
-                                           'mode': {'name': 'pw', 'ecut': 800},
-                                           'xc': 'PBE',
-                                           'basis': 'dzp',
-                                           'kpts': {'density': 12.0, 'gamma': True},
-                                           'occupations': {'name': 'fermi-dirac',
-                                                           'width': 0.05},
-                                           'convergence': {'bands': -3},
-                                           'nbands': -10,
-                                           'txt': 'gs.txt'}
-                            parameters['asr.gs@calculate'] = {'calculator': calculator_gs}
-                            parameters['asr.gs@calculate']['calculator']['charge'] = q
-                            parameters['asr.relax'] = {'calculator': calculator_relax}
+                            calculator_relax = {
+                                'name': 'gpaw',
+                                'mode': {
+                                    'name': 'pw',
+                                    'ecut': 800,
+                                    'dedecut': 'estimate'},
+                                'xc': 'PBE',
+                                'kpts': {
+                                    'density': 6.0,
+                                    'gamma': True},
+                                'basis': 'dzp',
+                                'symmetry': {
+                                    'symmorphic': False},
+                                'convergence': {
+                                    'forces': 1e-4},
+                                'txt': 'relax.txt',
+                                'occupations': {
+                                    'name': 'fermi-dirac',
+                                    'width': 0.05}}
+                            calculator_gs = {
+                                'name': 'gpaw',
+                                'mode': {
+                                    'name': 'pw',
+                                    'ecut': 800},
+                                'xc': 'PBE',
+                                'basis': 'dzp',
+                                'kpts': {
+                                    'density': 12.0,
+                                    'gamma': True},
+                                'occupations': {
+                                    'name': 'fermi-dirac',
+                                    'width': 0.05},
+                                'convergence': {
+                                    'bands': -3},
+                                'nbands': -10,
+                                'txt': 'gs.txt'}
+                            parameters['asr.gs@calculate'] = {
+                                'calculator': calculator_gs}
+                            parameters['asr.gs@calculate']['calculator'
+                                                           ]['charge'] = q
+                            parameters['asr.relax'] = {
+                                'calculator': calculator_relax}
                             parameters['asr.relax']['calculator']['charge'] = q
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
