@@ -47,6 +47,8 @@ def main(params=None):
         # Find recipe:option
         tmpoptions = params[::2]
         tmpargs = params[1::2]
+        assert len(tmpoptions) == len(tmpargs), \
+            'You must provide a value for each option'
         options = []
         args = []
         for tmpoption, tmparg in zip(tmpoptions, tmpargs):
@@ -65,6 +67,7 @@ def main(params=None):
 
         for option, value in zip(options, args):
             recipe, option = option.split(':')
+
             assert option, 'You have to provide an option'
             assert recipe, 'You have to provide a recipe'
 

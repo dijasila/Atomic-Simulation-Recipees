@@ -2,46 +2,14 @@ from asr.core import command, option
 
 
 @command('asr.emasses',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=['dense_k.gpw'])
-@option('--gpwfilename', type=str,
-        help='GS filename')
-@option('--kptdensity', type=int,
-        help='kpt density')
-@option('--emptybands', type=int,
-        help='Number of empty bands')
-def densify_full_k_grid(gpwfilename='gs.gpw', kptdensity=12,
-                        emptybands=20):
-    from gpaw import GPAW
-    from asr.utils.kpts import get_kpts_size
-    calc = GPAW(gpwfilename, txt=None)
-    spinpol = calc.get_spin_polarized()
-
-    kpts = get_kpts_size(atoms=calc.atoms, density=kptdensity)
-    convbands = emptybands // 2
-    calc.set(nbands=-emptybands,
-             txt='dense_k.txt',
-             fixdensity=True,
-             kpts=kpts,
-             convergence={'bands': -convbands})
-
-    if spinpol:
-        calc.set(symmetry='off')
-
-    calc.get_potential_energy()
-    calc.write('dense_k.gpw')
-
-
-@command('asr.emasses',
-         requires=['dense_k.gpw', 'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.emasses@densify_full_k_grid', 'asr.structureinfo',
+         requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
+         dependencies=['asr.structureinfo',
                        'asr.magnetic_anisotropy'],
          creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def refine(gpwfilename='dense_k.gpw'):
+def refine(gpwfilename='gs.gpw'):
     '''
     Take a bandstructure and calculate more kpts around
     the vbm and cbm
@@ -260,10 +228,6 @@ def get_emass_dict_from_row(row):
     return electron_dict, hole_dict
 
 
-def dummyfunc(row, *args):
-    return None
-
-
 def make_the_plots(row, *args):
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
@@ -272,7 +236,12 @@ def make_the_plots(row, *args):
     from asr.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
+    efermi = row.data.get('results-asr.gs.json')['gaps_soc']['efermi']
+    sdir = row.get('spin_axis', 'z')
+    cell_cv = row.cell
 
+    reference = row.get('evac', efermi)
+    label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
     columns = []
     cb_fnames = []
     vb_fnames = []
@@ -340,27 +309,18 @@ def make_the_plots(row, *args):
                 should_plot = False
                 continue
 
-            mass = cb_masses[cb_tuple][-1 - direction]
+            mass = cb_masses[cb_tuple][direction]
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
-            cell_cv = fit_data['cell_cv']
+            bt = fit_data['bt']
             xk, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
             xk -= xk[-1] / 2
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_km = fit_data['e_dft_km']
-            sz_km = fit_data['sz_dft_km']
-            if e_km.ndim == 2:
-                e_k = e_km[:, cb_tuple[1]]
-            else:
-                e_k = e_km[0, :, cb_tuple[1]]
-            if sz_km.ndim == 2:
-                sz_k = sz_km[:, cb_tuple[1]]
-            else:
-                sz_k = sz_km[0, :, cb_tuple[1]]
-
-            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha
+            e_k = fit_data['e_k'] - reference
+            sz_k = fit_data['spin_k']
+            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.min(e_k) - np.min(emodel_k)
 
             things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
@@ -375,10 +335,13 @@ def make_the_plots(row, *args):
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
-                cbar.set_label(r'$\langle S_z \rangle$')
+                cbar.set_label(rf'$\langle S_{sdir} \rangle$')
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
 
+            axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
+            axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
+            axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             fig.tight_layout()
             plt.tight_layout()
         if should_plot:
@@ -406,24 +369,16 @@ def make_the_plots(row, *args):
             mass = vb_masses[vb_tuple][direction]
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
-            cell_cv = fit_data['cell_cv']
+            bt = fit_data['bt']
             xk2, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
             xk2 -= xk2[-1] / 2
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_km = fit_data['e_dft_km']
-            sz_km = fit_data['sz_dft_km']
-            if e_km.ndim == 2:
-                e_k = e_km[:, vb_tuple[1]]
-            else:
-                e_k = e_km[0, :, vb_tuple[1]]
-            if sz_km.ndim == 2:
-                sz_k = sz_km[:, vb_tuple[1]]
-            else:
-                sz_k = sz_km[0, :, vb_tuple[1]]
+            e_k = fit_data['e_k'] - reference
+            sz_k = fit_data['spin_k']
 
-            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha
+            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.max(e_k) - np.max(emodel_k)
 
             things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
@@ -438,10 +393,13 @@ def make_the_plots(row, *args):
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
-                cbar.set_label(r'$\langle S_z \rangle$')
+                cbar.set_label(rf'$\langle S_{sdir} \rangle$')
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
 
+            axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
+            axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
+            axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             fig.tight_layout()
             plt.tight_layout()
         if should_plot:
@@ -485,19 +443,11 @@ def custom_table(values_dict, title):
         rows.append((k, values_dict[k]))
 
     table['rows'] = rows
-    print("")
-    print("")
-    print("")
-    print("ROWS = ", rows)
-    print("")
-    print("")
-    print("")
-
     return table
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table
+    # from asr.browser import table
 
     columns, fnames = create_columns_fnames(row)
 
@@ -505,31 +455,9 @@ def webpanel(row, key_descriptions):
 
     electron_table = custom_table(electron_dict, 'Electron effective mass')
     hole_table = custom_table(hole_dict, 'Hole effective mass')
-    electron_table2 = table(electron_dict, 'Electron effective mass', list(
-        electron_dict.keys()), key_descriptions)
-    # kd={k: ("", k, "") for k in electron_dict.keys()})
-    # hole_table = table(hole_dict, 'Hole effective mass',
-    # list(hole_dict.keys()),
-    # key_descriptions)#kd={k: ("", k, "") for k in electron_dic
-    # t.keys()})
+    columns[0].append(electron_table)
+    columns[1].append(hole_table)
 
-    print("MY TABLE: ", electron_table)
-
-    print("")
-    print("")
-    print("")
-    print("STUPID TABLE: ", electron_table2)
-    print("")
-    print("")
-    print("")
-
-    table_col = [electron_table, hole_table]
-
-    columns.append(table_col)
-
-    for col in columns:
-        assert isinstance(col, list)
-        print("ASSERTIVE")
     panel = {'title': 'Effective masses (PBE)',
              'columns': columns,
              'plot_descriptions':
@@ -537,14 +465,6 @@ def webpanel(row, key_descriptions):
                'filenames': fnames
                }],
              'sort': 10}
-    print('emasses fnames', fnames)
-    print('In emasses webpanel', columns[-1])
-    print("")
-    print("")
-    print("")
-    print("LEN OF COLUMNS: ", len(panel['columns']))
-    print("")
-    print("")
     return [panel]
 
 
@@ -624,239 +544,6 @@ def create_columns_fnames(row):
 
     return columns, cb_fnames + vb_fnames
 
-    # from ase.dft.kpoints import kpoint_convert, labels_from_kpts
-    # from ase.units import Bohr, Ha
-    # import matplotlib.pyplot as plt
-    # import numpy as np
-    # from asr.browser import fig as asrfig
-    # from asr.browser import table
-
-    # results = row.data.get('results-asr.emasses.json')
-
-    # columns = []
-    # cb_fnames = []
-    # vb_fnames = []
-
-    # vb_indices = []
-    # cb_indices = []
-
-    # for spin_band_str, data in results.items():
-    #     if '__' in spin_band_str:
-    #         continue
-    #     is_w_soc = check_soc(data)
-    #     if not is_w_soc:
-    #         continue
-    #     for k in data.keys():
-    #         if 'effmass' in k and 'vb' in k:
-    #             vb_indices.append(spin_band_str)
-    #             break
-    #         if 'effmass' in k and 'cb' in k:
-    #             cb_indices.append(spin_band_str)
-    #             break
-
-    # cb_masses = {}
-    # vb_masses = {}
-
-    # for cb_key in cb_indices:
-    #     data = results[cb_key]
-    #     masses = []
-    #     for k in data.keys():
-    #         if 'effmass' in k:
-    #             masses.append(data[k])
-    #     tuple_key = convert_key_to_tuple(cb_key)
-    #     cb_masses[tuple_key] = masses
-
-    # for vb_key in vb_indices:
-    #     data = results[vb_key]
-    #     masses = []
-    #     for k in data.keys():
-    #         if 'effmass' in k:
-    #             masses.append(data[k])
-    #     tuple_key = convert_key_to_tuple(vb_key)
-    #     vb_masses[tuple_key] = masses
-
-    # erange = 0.05
-    # def get_range(mass, _erange):
-    #     return (2 * mass *_erange / Ha) ** 0.5 / Bohr
-
-    # for direction in range(3):
-    #     y1 = None
-    #     y2 = None
-    #     my_range = None
-    #     # CB plots
-    #     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6.4, 2.8),
-    #                              sharey=True,
-    #                              gridspec_kw={'width_ratios': [1]})
-
-    #     should_plot = True
-    #     for cb_key in cb_indices:
-    #         cb_tuple = convert_key_to_tuple(cb_key)
-    #         # Save something
-    #         data = results[cb_key]
-    #         fit_data_list = data['cb_soc_bzcuts']
-    #         if direction >= len(fit_data_list):
-    #             should_plot = False
-    #             continue
-
-    #         mass = cb_masses[cb_tuple][-1 - direction]
-    #         fit_data = fit_data_list[direction]
-    #         ks = fit_data['kpts_kc']
-    #         cell_cv = fit_data['cell_cv']
-    #         xk, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
-    #         xk -= xk[-1] / 2
-    #         kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
-    #         kpts_kv *= Bohr
-
-    #         e_km = fit_data['e_dft_km']
-    #         sz_km = fit_data['sz_dft_km']
-    #         if e_km.ndim == 2:
-    #             e_k = e_km[:, cb_tuple[1]]
-    #         else:
-    #             e_k = e_km[0, :, cb_tuple[1]]
-    #         if sz_km.ndim == 2:
-    #             sz_k = sz_km[:, cb_tuple[1]]
-    #         else:
-    #             sz_k = sz_km[0, :, cb_tuple[1]]
-
-    #         emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha
-    #         emodel_k += np.min(e_k) - np.min(emodel_k)
-
-    #         things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
-    #         axes.plot(xk, emodel_k, c='r', ls='--')
-
-    #         if y1 is None or y2 is None or my_range is None:
-    #             y1 = np.min(emodel_k) - erange * 0.25
-    #             y2 = np.min(emodel_k) + erange * 0.75
-    #             axes.set_ylim(y1, y2)
-
-    #             my_range = get_range(mass, erange)
-    #             axes.set_xlim(-my_range, my_range)
-
-    #             cbar = fig.colorbar(things, ax=axes)
-    #             cbar.set_label(r'$\langle S_z \rangle$')
-    #             cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-    #             cbar.update_ticks()
-
-    #         fig.tight_layout()
-    #         plt.tight_layout()
-    #     if should_plot:
-    #         fname = 'cb_dir_{}.png'.format(direction)
-    #         cb_fnames.append(fname)
-    #         plt.savefig(fname)
-    #         plt.close()
-
-    #     # axes.clear()
-    #     # VB plots
-    #     y1 = None
-    #     y2 = None
-    #     my_range = None
-    #     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6.4, 2.8),
-    #                              sharey=True,
-    #                              gridspec_kw={'width_ratios': [1]})
-
-    #     for vb_key in vb_indices:
-    #         # Save something
-    #         vb_tuple = convert_key_to_tuple(vb_key)
-    #         data = results[vb_key]
-    #         fit_data_list = data['vb_soc_bzcuts']
-    #         if direction >= len(fit_data_list):
-    #             continue
-
-    #         mass = vb_masses[vb_tuple][direction]
-    #         fit_data = fit_data_list[direction]
-    #         ks = fit_data['kpts_kc']
-    #         cell_cv = fit_data['cell_cv']
-    #         xk2, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
-    #         xk2 -= xk2[-1] / 2
-    #         kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
-    #         kpts_kv *= Bohr
-
-    #         e_km = fit_data['e_dft_km']
-    #         sz_km = fit_data['sz_dft_km']
-    #         if e_km.ndim == 2:
-    #             e_k = e_km[:, vb_tuple[1]]
-    #         else:
-    #             e_k = e_km[0, :, vb_tuple[1]]
-    #         if sz_km.ndim == 2:
-    #             sz_k = sz_km[:, vb_tuple[1]]
-    #         else:
-    #             sz_k = sz_km[0, :, vb_tuple[1]]
-
-    #         emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha
-    #         emodel_k += np.max(e_k) - np.max(emodel_k)
-
-    #         things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
-    #         axes.plot(xk2, emodel_k, c='r', ls='--')
-
-    #         if y1 is None or y2 is None or my_range is None:
-    #             y1 = np.max(emodel_k) - erange * 0.75
-    #             y2 = np.max(emodel_k) + erange * 0.25
-    #             axes.set_ylim(y1, y2)
-
-    #             my_range = get_range(abs(mass), erange)
-    #             axes.set_xlim(-my_range, my_range)
-
-    #             cbar = fig.colorbar(things, ax=axes)
-    #             cbar.set_label(r'$\langle S_z \rangle$')
-    #             cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-    #             cbar.update_ticks()
-
-    #         fig.tight_layout()
-    #         plt.tight_layout()
-    #     if should_plot:
-    #         fname = 'vb_dir_{}.png'.format(direction)
-    #         vb_fnames.append(fname)
-    #         plt.savefig(fname)
-    #         plt.close()
-
-    # # Make final column with table of numerical vals
-
-    # # Make table
-
-    # # Algo:
-    # # Loop through directions, each direction is a column
-    # # For direction i, loop through cbs and plot on fig
-    # # -- Plot also quadratic fit from curvature/effective mass value
-    # # For direction i, loop through vbs and plot on fig
-    # # Make a final column containing a table with the numerical values
-    # # for the effective masses
-    # assert len(cb_fnames) == len(vb_fnames), \
-    #     'Num cb plots: {}\nNum vb plots: {}'.format(len(cb_fnames),
-    #                                                 len(vb_fnames))
-
-    # num_cols = len(cb_fnames)
-
-    # for j in range(num_cols):
-    #     cb_fname = cb_fnames[j]
-    #     vb_fname = vb_fnames[j]
-    #     col = [asrfig(cb_fname), asrfig(vb_fname)]
-    #     columns.append(col)
-
-    # return columns, cb_fnames + vb_fnames
-
-    # for spin_band_str, data in results.items():
-    #     data = results[spin_band_str]
-
-    #     is_w_soc = check_soc(data)
-    #     if not is_w_soc:
-    #         continue
-
-    #     mass = None
-    #     for k in data.keys():
-    #         if 'effmass' in k and 'dir' + str(direction) in k:
-    #             mass = data[k]
-
-    #     if mass is None or np.isnan(mass):
-    #         continue
-
-    #     # Create a column
-    #     # A column should consist of the plots of the eigenvalues
-    #     # and the quadratic fit for all the vbs/cbs for a given dir
-    #     # lastly we should have a column with the numerical values
-    #     #        panel = {'title': 'Effective masses
-
-    # return None
-
 
 def check_soc(spin_band_dict):
     for k in spin_band_dict.keys():
@@ -869,16 +556,18 @@ def check_soc(spin_band_dict):
 @command('asr.emasses',
          requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
                    'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
-                   'dense_k.gpw', 'results-asr.structureinfo.json',
+                   'gs.gpw', 'results-asr.structureinfo.json',
+                   'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.emasses@refine', 'asr.gs@calculate',
-                       'asr.emasses@densify_full_k_grid',
+         dependencies=['asr.emasses@refine',
+                       'asr.gs@calculate',
+                       'asr.gs',
                        'asr.structureinfo',
                        'asr.magnetic_anisotropy'],
          webpanel=webpanel)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename='dense_k.gpw'):
+def main(gpwfilename='gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -908,8 +597,8 @@ def main(gpwfilename='dense_k.gpw'):
             except ValueError:
                 tb = traceback.format_exc()
                 print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
-            else:
-                _savemass(soc=soc, bt=bt, mass=masses)
+            # else:
+            #     _savemass(soc=soc, bt=bt, mass=masses)
 
     bands = 3
     kdescs = {}
@@ -1019,24 +708,26 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
 
         calc_bs = calculate_bs_along_emass_vecs
         masses[b]['bs_along_emasses'] = calc_bs(masses[b],
-                                                soc, bandtype, calc)
+                                                soc, bandtype, calc,
+                                                spin=b[0],
+                                                band=b[1])
 
     return masses
 
 
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
+                                  spin, band,
                                   erange=500e-3, npoints=91):
-    # out = dict(mass_u=masses, eigenvectors_vu=vecs,
-    #            ke_v=kmax,
-    #            c=c,
-    #            r=r)
+    from pathlib import Path
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import read_json
+    from gpaw import GPAW
+    from gpaw.mpi import serial_comm
     import numpy as np
     cell_cv = calc.get_atoms().get_cell()
 
@@ -1044,33 +735,35 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     for u, mass in enumerate(masses_dict['mass_u']):
         if mass is np.nan or np.isnan(mass) or mass is None:
             continue
+        identity = f'em_bs_spin={spin}_band={band}_bt={bt}_dir={u}_soc={soc}'
+        name = f'{identity}.gpw'
 
-        # embzcut stuff
-        kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
-        assert not np.isnan(kmax)
-        kd_v = masses_dict['eigenvectors_vu'][:, u]
-        assert not (np.isnan(kd_v)).any()
-        k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
-        k_kv += masses_dict['ke_v']
-        k_kv /= Bohr
-        assert not (np.isnan(k_kv)).any()
-        k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
-        assert not (np.isnan(k_kc)).any()
-        atoms = calc.get_atoms()
-        for i, pb in enumerate(atoms.pbc):
-            if not pb:
-                k_kc[:, i] = 0
-        assert not (np.isnan(k_kc)).any()
-        calc.set(kpts=k_kc, symmetry='off', txt='temp.txt')
-        atoms.get_potential_energy()
-        name = 'temp.gpw'
-        calc.write(name)
+        if not Path(name).is_file():
+            # embzcut stuff
+            kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+            assert not np.isnan(kmax)
+            kd_v = masses_dict['eigenvectors_vu'][:, u]
+            assert not (np.isnan(kd_v)).any()
+            k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
+            k_kv += masses_dict['ke_v']
+            k_kv /= Bohr
+            assert not (np.isnan(k_kv)).any()
+            k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+            assert not (np.isnan(k_kc)).any()
+            atoms = calc.get_atoms()
+            for i, pb in enumerate(atoms.pbc):
+                if not pb:
+                    k_kc[:, i] = 0
+            assert not (np.isnan(k_kc)).any()
+            calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt')
+            atoms.get_potential_energy()
+            calc.write(name)
 
-        # Start of collect.py stuff
-
+        calc = GPAW(name, txt=None, communicator=serial_comm)
+        k_kc = calc.get_bz_k_points()
         theta, phi = get_spin_axis()
-        e_km, _, s_kvm = gpw2eigs(name, soc=soc, return_spin=True,
-                                  theta=theta, phi=phi)
+        e_km, _, s_kvm = calc2eigs(calc, [0], soc=soc, return_spin=True,
+                                   theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
         from gpaw.symmetry import atoms2symmetry
@@ -1082,11 +775,10 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 magstate == 'AFM'):
                 sz_km[idx, :] = 0.0
 
-        results_dicts.append(dict(kpts_kc=k_kc,
-                                  kpts_kv=k_kv,
-                                  e_dft_km=e_km,
-                                  sz_dft_km=sz_km,
-                                  cell_cv=cell_cv))
+        results_dicts.append(dict(bt=bt,
+                                  kpts_kc=k_kc,
+                                  e_k=e_km[:, band],
+                                  spin_k=sz_km[:, band]))
 
     return results_dicts
 
@@ -1212,12 +904,12 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
     sort_args = np.argsort(mass_u)
 
-    mass_u[sort_args]
+    mass_u = mass_u[sort_args]
     for u, m in enumerate(mass_u):
         if np.isnan(m):
             mass_u[u] = None
 
-    w3_vn[sort_args, :]
+    w3_vn = w3_vn[sort_args, :]
 
     out = dict(mass_u=mass_u,
                eigenvectors_vu=w3_vn,
@@ -1410,160 +1102,39 @@ def model(kpts_kv):
     return A_dp
 
 
-def fit_2d(kpts_kv, eps_k, thirdorder=False):
-    import numpy.linalg as la
-    A_kp = model_2d(kpts_kv)
-    if not thirdorder:
-        A_kp = A_kp[:, :6]
-    c, r, rank, s = la.lstsq(A_kp, eps_k, rcond=-1)
-    return c, r, rank, s
+# def _savemass(soc, bt, mass):
+#     from ase.parallel import world
+#     import numpy as np
+#     fname = get_name(soc, bt) + '.npz'
+#     if world.rank == 0:
+#         mass2 = {}
+#         for k, v in mass.items():
+#             if type(k) == tuple:
+#                 mass2[k] = v
+#             elif k == 'indices':
+#                 mass2[k] = [tuple(vi) for vi in v]
+#             else:
+#                 mass2[k] = v
+#         with open(fname, 'wb') as f:
+#             np.savez(f, data=mass2)
+#     world.barrier()
 
 
-def model_2d(kpts_kv):
-    """ simple third order model
-        Parameters:
-            kpts_kv: (nk, 3)-shape ndarray
-                units of (1 / Bohr)
-    """
-    import numpy as np
-    k_kx, k_ky = kpts_kv[:, 0], kpts_kv[:, 1]
-
-    ones = np.ones(len(k_kx))
-
-    A_dp = np.array([k_kx**2,
-                     k_ky**2,
-                     k_kx * k_ky,
-                     k_kx,
-                     k_ky,
-                     ones,
-                     k_kx**3,
-                     k_ky**3,
-                     k_kx**2 * k_ky,
-                     k_ky**2 * k_kx]).T
-
-    return A_dp
+# def _readmass(soc, bt):
+#     import numpy as np
+#     fname = get_name(soc=soc, bt=bt) + '.npz'
+#     with open(fname, 'rb') as f:
+#         dct = dict(np.load(f))['data'].tolist()
+#     return dct
 
 
-def _savemass(soc, bt, mass):
-    from ase.parallel import world
-    import numpy as np
-    fname = get_name(soc, bt) + '.npz'
-    if world.rank == 0:
-        mass2 = {}
-        for k, v in mass.items():
-            if type(k) == tuple:
-                mass2[k] = v
-            elif k == 'indices':
-                mass2[k] = [tuple(vi) for vi in v]
-            else:
-                mass2[k] = v
-        with open(fname, 'wb') as f:
-            np.savez(f, data=mass2)
-    world.barrier()
-
-
-def _readmass(soc, bt):
-    import numpy as np
-    fname = get_name(soc=soc, bt=bt) + '.npz'
-    with open(fname, 'rb') as f:
-        dct = dict(np.load(f))['data'].tolist()
-    return dct
-
-
-def collect_data(atoms):
-    from pathlib import Path
-    all_data = {}
-    kvp = {}
-    key_descriptions = {}
-    if not list(Path('.').glob('em_circle_*.npz')):
-        return {}, {}, {}
-
-    for soc in [True, False]:
-        keyname = 'soc' if soc else 'nosoc'
-        data = {}
-        for bt in ['cb', 'vb']:
-            temp = _readmass(soc, bt)
-            for key, val in temp.items():
-                if key == 'indices':
-                    continue
-                else:
-                    data[bt] = val
-        all_data[keyname] = data
-
-    descs = [('Conduction Band emasses',
-              'Effective masses for conduction band', '-'),
-             ('Valence Band emasses',
-              'Effective masses for conduction band', '-'),
-             ('Conduction Band emasses with SOC',
-              'Effective masses with spin-orbit coupling for conduction band',
-              '-'),
-             ('Valence Band emasses with SOC',
-              'Effective masses with spin-orbit coupling for valence band',
-              '-')
-             ]
-
-    for socname, socdata in all_data.items():
-        soc = socname == 'soc'
-
-        def namemod(n):
-            return n + '_soc' if soc else n
-        for bt, btdata in socdata.items():
-            key = bt + '_emass'
-            key = namemod(key)
-            kvp[key] = btdata
-
-            if soc:
-                key_descriptions[key] = descs[0] if bt == 'cb' else descs[1]
-            else:
-                key_descriptions[key] = descs[2] if bt == 'cb' else descs[3]
-
-    return kvp, key_descriptions, all_data
-
-
-def evalmodel(kpts_kv, c_p):
-    import numpy as np
-    kpts_kv = np.asarray(kpts_kv)
-    if kpts_kv.ndim == 1:
-        kpts_kv = kpts_kv[np.newaxis]
-    A_kp = model(kpts_kv)
-    return np.dot(A_kp, c_p)
-
-
-def evalmodel_2d(kpts_kv, c_p):
-    import numpy as np
-    kpts_kv = np.asarray(kpts_kv)
-    if kpts_kv.ndim == 1:
-        kpts_kv = kpts_kv[np.newaxis]
-    A_kp = model_2d(kpts_kv)
-    num_ks = kpts_kv.shape[0]
-    assert A_kp.shape == (num_ks, 10)
-    return np.dot(A_kp, c_p)
-
-
-# def webpanel(row, key_descriptions):
-
-#     from asr.browser import fig
-#     add_nosoc = ['D_vbm', 'D_cbm', 'is_metallic', 'is_dir_gap',
-#                  'emass1', 'emass2', 'hmass1', 'hmass2', 'work_function']
-
-#     def nosoc_update(string):
-#         if string.endswith(')'):
-#             return string[:-1] + ', no SOC)'
-#         else:
-#             return string + ' (no SOC)'
-
-#     for key in add_nosoc:
-#         s, l, units = key_descriptions[key]
-#         if l:
-#             key_descriptions[key + "_nosoc"] = (s, nosoc_update(l), units)
-#         else:
-#             key_descriptions[key + "_nosoc"] = (nosoc_update(s), l, units)
-
-#     panel = ('Effective masses (PBE)',
-#              [[fig('pbe-bzcut-cb-bs.png'), fig('pbe-bzcut-vb-bs.png')],
-#               emtables(row)])
-
-#     return panel
+# def evalmodel(kpts_kv, c_p):
+#     import numpy as np
+#     kpts_kv = np.asarray(kpts_kv)
+#     if kpts_kv.ndim == 1:
+#         kpts_kv = kpts_kv[np.newaxis]
+#     A_kp = model(kpts_kv)
+#     return np.dot(A_kp, c_p)
 
 
 if __name__ == '__main__':
