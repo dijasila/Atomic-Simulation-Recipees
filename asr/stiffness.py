@@ -60,7 +60,7 @@ def main(strain_percent=1.0):
             structurefile = folder / 'structure.json'
             if not computemf.done:
                 with chdir(folder):
-                    computemf(silence=True)
+                    computemf()
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
             links[str(folder)] = mf['uid']
