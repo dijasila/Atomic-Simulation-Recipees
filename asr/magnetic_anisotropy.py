@@ -46,10 +46,11 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "browser --only-figures"']}]
 
 
-@command(tests=tests,
-         requires=['gs.gpw'],
+@command('asr.magnetic_anisotropy',
+         tests=tests,
+         requires=['gs.gpw', 'results-asr.structureinfo.json'],
          webpanel=webpanel,
-         dependencies=['asr.gs@calculate'])
+         dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():
     """Calculate the magnetic anisotropy.
     Uses the magnetic anisotropy to calculate the preferred spin orientation
@@ -60,6 +61,7 @@ def main():
         phi: Azimuthal angle in radians
     """
     import numpy as np
+    from asr.core import file_barrier, read_json
     from gpaw.mpi import world
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
@@ -67,7 +69,9 @@ def main():
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 
-    magmom = GPAW('gs.gpw', txt=None).get_magnetic_moment()
+    structureinfo = read_json('results-asr.structureinfo.json')
+    magstate = structureinfo['magstate']
+    # Figure out if material is magnetic
     results = {'__key_descriptions__':
                {'spin_axis': 'KVP: Suggested spin direction for SOC',
                 'E_x': 'KVP: SOC total energy difference in x-direction',
@@ -80,7 +84,7 @@ def main():
                 'dE_zy': ('KVP: Magnetic anisotropy energy '
                           '(zy-component) [meV/formula unit]')}}
 
-    if abs(magmom) < 0.02:
+    if magstate == 'NM':
         results['E_x'] = 0
         results['E_y'] = 0
         results['E_z'] = 0
@@ -90,8 +94,9 @@ def main():
         results['phi'] = 0
         results['spin_axis'] = 'z'
         return results
-    
-    ibz2bz('gs.gpw', 'gs_nosym.gpw')
+
+    with file_barrier(['gs_nosym.gpw']):
+        ibz2bz('gs.gpw', 'gs_nosym.gpw')
     width = 0.001
     nbands = None
     calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)

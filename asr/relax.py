@@ -296,6 +296,11 @@ def main(calculator={'name': 'gpaw',
     # Some calculator specific mumbo jumbo
     nd = int(np.sum(atoms.get_pbc()))
     if calculatorname == 'gpaw':
+        if 'kpts' in calculator:
+            from ase.calculators.calculator import kpts2kpts
+            if 'density' in calculator['kpts']:
+                kpts = kpts2kpts(calculator['kpts'], atoms=atoms)
+                calculator['kpts'] = kpts
         if nd == 2:
             assert not atoms.get_pbc()[2], \
                 ('The third unit cell axis should be aperiodic for '
