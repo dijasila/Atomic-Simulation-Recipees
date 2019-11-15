@@ -196,7 +196,8 @@ def BN_check():
 
 
 tests = []
-testargs = "{'mode':{'ecut':300,...},'kpts':{'density':2,'gamma':True},...}"
+testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
+            "'kpts':{'density':2,'gamma':True},...}")
 tests.append({'description': 'Test relaxation of Si.',
               'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
