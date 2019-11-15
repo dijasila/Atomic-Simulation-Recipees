@@ -196,7 +196,8 @@ def BN_check():
 
 
 tests = []
-testargs = "{'mode':{'ecut':300,...},'kpts':{'density':2,'gamma':True},...}"
+testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
+            "'kpts':{'density':2,'gamma':True},...}")
 tests.append({'description': 'Test relaxation of Si.',
               'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
@@ -235,8 +236,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 def main(calculator={'name': 'gpaw',
-                     'mode': {'name': 'pw', 'ecut': 800,
-                              'dedecut': 'estimate'},
+                     'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
                      'kpts': {'density': 6.0, 'gamma': True},
                      'basis': 'dzp',
