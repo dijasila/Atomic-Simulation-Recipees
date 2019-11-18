@@ -262,8 +262,8 @@ def main(tolerance=1e-3, angle_tolerance=0.1):
                           symmorphic=False,
                           time_reversal=False)
 
-        spgsym.op_scc = np.array([op_cc for op_cc in dataset2['rotations']])
-        spgsym.ft_sc = np.array([t_c for t_c in dataset2['translations']])
+        spgsym.op_scc = np.array([op_cc.T for op_cc in dataset2['rotations']])
+        spgsym.ft_sc = np.array([-t_c for t_c in dataset2['translations']])
         msg += print_symmetries(spgsym)
         raise AssertionError(msg)
 
