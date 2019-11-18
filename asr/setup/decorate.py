@@ -102,7 +102,7 @@ def main(atoms, threshold=0.08, database='decorated.db'):
     ---------
     \b
     Perform likely substitions of atomic structure in structure.json
-        asr run setup.decorate structure.json
+        asr run "setup.decorate structure.json"
     """
     from ase.db import connect
     from ase.io import read

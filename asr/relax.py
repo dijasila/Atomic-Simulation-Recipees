@@ -275,7 +275,7 @@ def main(calculator={'name': 'gpaw',
     Relax using the LDA exchange-correlation functional::
 
       $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --xc LDA"
+      $ asr run "relax --calculator {'xc':'LDA',...}"
     """
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
