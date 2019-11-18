@@ -1,4 +1,0 @@
-{"title": "Atomic Simulation Recipes",
- "alias": "asr",
- "group_descriptions": {"Structure": "Recipes that produce a new atomic structure",
-                        "Property": "Recipes that calculate a property based on an atomic structure"}}
