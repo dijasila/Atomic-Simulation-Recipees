@@ -20,7 +20,7 @@ The first thing we do is to get the database::
 We then use the `unpackdatabase` function of ASR to unpack the database into a
 directory tree::
 
-  $ asr run setup.unpackdatabase oqmd12.db -s u=False --run
+  $ asr run "setup.unpackdatabase oqmd12.db -s u=False --run"
 
 (we have made the selection `u=False` since we are not interested in the DFT+U values).
 This function produces a new folder `~oqmd12/tree/` where you can find the tree. 
@@ -33,7 +33,7 @@ files that contain the unrelaxed atomic structures. Because we don't know the
 magnetic structure of the materials we also want to sample different magnetic structOBures.
 This can be done with the `magnetize` function of asr::
 
-$ asr run setup.magnetize in */*/*/*/
+$ asr run setup.magnetize */*/*/*/
 
 We use the `run` function because that gives us the option to deal with many folders
 at once. You are now ready to run a
@@ -111,9 +111,9 @@ check the parameters of `asr.relax` you can do the following.::
 
   $ mkdir convergence-test && cd convergence-test
   $ asr run setup.materials
-  $ asr run setup.unpackdatabase materials.json --tree-structure materials/{formula:metal} --run
+  $ asr run "setup.unpackdatabase materials.json --tree-structure materials/{formula:metal} --run"
   $ cd materials/
-  $ asr run setup.scanparams asr.relax:ecut 600 700 800 asr.relax:kptdensity 4 5 6 in */
+  $ asr run "setup.scanparams asr.relax:ecut 600 700 800 asr.relax:kptdensity 4 5 6" */
   $ mq submit asr.relax@24:10h */*/
 
 
@@ -121,5 +121,5 @@ When the calculations are done you can collect all results into a database and
 inspect them::
 
   $ cd convergence-test
-  $ asr run collect */*/
+  $ asr run "database.collect */*/"
   $ asr run browser
