@@ -11,8 +11,6 @@ from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase.units import Hartree
-from gpaw.utilities.dos import get_angular_projectors
-from gpaw.spinorbit import get_spinorbit_eigenvalues
 
 from asr.core import magnetic_atoms, read_json
 
@@ -76,6 +74,7 @@ class SOCDescriptor:
         self.v_dknm = []
 
     def calculate_soc_eig(self, theta, phi):
+        from gpaw.spinorbit import get_spinorbit_eigenvalues
         eps_mk, v_knm = get_spinorbit_eigenvalues(self.paw, return_wfs=True,
                                                   theta=theta, phi=phi)
         self.theta_d.append(theta)
@@ -96,7 +95,7 @@ class SOCDescriptor:
 def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
                                     theta=0, phi=0):
     """Hack raw_spinorbit_orbital_LDOS"""
-
+    from gpaw.utilities.dos import get_angular_projectors
     from gpaw.spinorbit import get_spinorbit_projections
 
     # Attach SOCDescriptor to the calculator object
