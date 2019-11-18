@@ -107,7 +107,28 @@ def collect(filename):
     return kvp, key_descriptions, data, links
 
 
-@command('asr.database.fromtree')
+tests = [
+    {'cli': ['asr run setup.materials',
+             ('asr run "database.totree materials.json --run'
+              ' --atomsname structure.json"'),
+             'asr run "database.fromtree tree/*/*/*/"',
+             ('asr run "database.totree database.db '
+              '-t newtree/{formula} --run"')],
+     'results': [{'file': 'newtree/Ag/structure.json'}]},
+    {'cli': ['asr run setup.materials',
+             'asr run "database.totree materials.json -s natoms<2 --run'
+             ' -t tree/{formula} --atomsname structure.json"',
+             'asr run structureinfo tree/*/',
+             'asr run "database.fromtree tree/*/"',
+             'asr run "database.totree database.db '
+             '-t newtree/{formula} --run"'],
+     'results': [{'file': 'newtree/Ag/structure.json'},
+                 {'file': 'newtree/Ag/results-asr.structureinfo.json'}]}
+]
+
+
+@command('asr.database.fromtree',
+         tests=tests)
 @argument('folders', nargs=-1)
 @option('--patterns', help='Only select files matching pattern.')
 @option('--dbname', help='Database name.')
@@ -179,26 +200,6 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                     db.write(atoms, data=data, **kvp)
                     metadata['key_descriptions'].update(key_descriptions)
     db.metadata = metadata
-
-
-tests = [
-    {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json --run'
-             ' --atomsname structure.json',
-             'asr run database.fromtree tree/*/*/*/',
-             'asr run database.totree database.db '
-             '-t newtree/{formula} --run'],
-     'results': [{'file': 'newtree/Ag/unrelaxed.json'}]},
-    {'cli': ['asr run setup.materials',
-             'asr run database.totree materials.json -s "natoms\\<2" --run'
-             ' -t tree/{formula} --atomsname structure.json',
-             'asr run structureinfo in tree/*/',
-             'asr run database.fromtree tree/*/',
-             'asr run database.totree database.db '
-             '-t newtree/{formula} --run --data'],
-     'results': [{'file': 'newtree/Ag/unrelaxed.json'},
-                 {'file': 'newtree/Ag/results-asr-structureinfo@main.json'}]}
-]
 
 
 if __name__ == '__main__':
