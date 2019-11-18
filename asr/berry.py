@@ -1,6 +1,6 @@
 import numpy as np
 from asr.core import command, option, read_json
-from click import Choice
+
 
 @command(module='asr.berry',
          requires=['gs.gpw'],
@@ -42,7 +42,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
                     kpts=(kperp, kpar, 1),
                     fixdensity=True,
                     symmetry='off',
-                    txt='gs_berry.txt') 
+                    txt='gs_berry.txt')
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -63,7 +63,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
                     kpts=(1, kperp, kpar),
                     fixdensity=True,
                     symmetry='off',
-                    txt='gs_berry.txt') 
+                    txt='gs_berry.txt')
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -95,7 +95,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
         results['phi0_km'] = phi_km
         results['s0_km'] = s_km
 
-        """kz = \pi"""
+        r"""kz = \pi"""
         from ase.dft.kpoints import monkhorst_pack
         kpts = monkhorst_pack((kperp, kpar, 1)) + [0, 0, 0.5]
         calc.set(kpts=kpts)
@@ -118,12 +118,14 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
  
                         
 def webpanel(name='0'):
-    import numpy as np
-
-    if Path('topology.dat').is_file():
-        f = paropen('topology.dat', 'r')
-        top = f.readline()
-        f.close()
+    pass
+    # from pathlib import Path
+    # from ase.parallel import paropen
+    
+    # if Path('topology.dat').is_file():
+    #     f = paropen('topology.dat', 'r')
+    #     top = f.readline()
+    #     f.close()
 
 
 def plot_phases(name='0'):
