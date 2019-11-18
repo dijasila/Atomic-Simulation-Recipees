@@ -411,7 +411,9 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        bound_arguments = self.signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+        params = dict(bound_arguments.arguments)
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
             # Default type
