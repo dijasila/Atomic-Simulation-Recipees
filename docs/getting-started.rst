@@ -73,12 +73,12 @@ encountered frequently enough is to want to run a recipe in multiple directories
 
 The asr run command enables this with the following syntax::
 
-  $ asr run relax in folder1/ folder1/
+  $ asr run relax folder1/ folder1/
 
 which makes it easy to run commands in multiple folders. If you want to provide
 arguments for the recipe (the relax recipe in this example) you can use::
 
-  $ asr run relax --ecut 100 in folder1/ folder1/
+  $ asr run "relax --ecut 100" folder1/ folder1/
 
 The last option that the run commands provides is to execute other python modules
 like `ase`. For example, suppose you have a lot of folders with a `structure.traj`
@@ -86,7 +86,7 @@ that you want to convert to `structure.json`. This can be done with the ase comm
 `ase convert structure.traj structure.json`. `run` can run this script in
 many folders for you with::
 
-  $ asr run command ase convert structure.traj structure.json in materials/*/
+  $ asr run --shell "ase convert structure.traj structure.json" materials/*/
 
 where the `command` `asr run command` is used to tell ASR that the command you
 wish to run is not a recipe.
@@ -119,7 +119,7 @@ of their usage.
   sorted after metal atoms first and `uid` is a unique identifier to avoid collisions between
   materials that would otherwise end up in the same folder. For another example of using the 
   unpackdatabase recipe see the "Advanced Example: Make a screening study" section. For more
-  information see `asr help setup.unpackdatabase`.
+  information see `asr run "setup.unpackdatabase -h"`.
 * The `setup.params` recipe is useful as it makes a `params.json` file containing the default
   parameters of all recipes. This makes it possible to modify the input parameters used by each
   recipe. See the "Change default settings in scripts" section for more information on 
@@ -140,7 +140,7 @@ changed to overwrite default settings in scripts. For example:
    {
    "asr.gs": {"gpw": "otherfile.gpw",
               "ecut": 800},
-   "asr.relax": {"states": ["nm", ]}
+   "asr.relax": {"d3": True}
    }
 
 
