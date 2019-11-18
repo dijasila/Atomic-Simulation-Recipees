@@ -291,7 +291,7 @@ def main(calculator={'name': 'gpaw',
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
-    # Some calculator specific mumbo jumbo
+    # Some calculator specific parameters
     nd = int(np.sum(atoms.get_pbc()))
     if calculatorname == 'gpaw':
         if 'kpts' in calculator:
@@ -318,11 +318,6 @@ def main(calculator={'name': 'gpaw',
     # Save atomic structure
     write('structure.json', atoms)
 
-    # Get setup fingerprints
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-
     cellpar = atoms.cell.cellpar()
     results = {'etot': etot,
                'edft': edft,
@@ -344,8 +339,15 @@ def main(calculator={'name': 'gpaw',
                 'c': 'Cell parameter c [Ang]',
                 'alpha': 'Cell parameter alpha [deg]',
                 'beta': 'Cell parameter beta [deg]',
-                'gamma': 'Cell parameter gamma [deg]'},
-               '__setup_fingerprints__': fingerprint}
+                'gamma': 'Cell parameter gamma [deg]'}}
+
+    # Calculator specific metadata
+    if calculatorname == 'gpaw':
+        # Get setup fingerprints
+        fingerprint = {}
+        for setup in calc.setups:
+            fingerprint[setup.symbol] = setup.fingerprint
+        results['__setup_fingerprints__'] = fingerprint
     return results
 
 
