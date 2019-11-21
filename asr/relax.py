@@ -198,7 +198,8 @@ def BN_check():
 
 
 tests = []
-testargs = "{'mode':{'ecut':300,...},'kpts':{'density':2,'gamma':True},...}"
+testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
+            "'kpts':{'density':2,'gamma':True},...}")
 tests.append({'description': 'Test relaxation of Si.',
               'tags': ['gitlab-ci'],
               'cli': ['asr run "setup.materials -s Si2"',
@@ -237,8 +238,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 def main(calculator={'name': 'gpaw',
-                     'mode': {'name': 'pw', 'ecut': 800,
-                              'dedecut': 'estimate'},
+                     'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
                      'kpts': {'density': 6.0, 'gamma': True},
                      'basis': 'dzp',
@@ -277,7 +277,7 @@ def main(calculator={'name': 'gpaw',
     Relax using the LDA exchange-correlation functional::
 
       $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --xc LDA"
+      $ asr run "relax --calculator {'xc':'LDA',...}"
     """
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
@@ -293,7 +293,7 @@ def main(calculator={'name': 'gpaw',
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
-    # Some calculator specific mumbo jumbo
+    # Some calculator specific parameters
     nd = int(np.sum(atoms.get_pbc()))
     if calculatorname == 'gpaw':
         if 'kpts' in calculator:
@@ -328,11 +328,6 @@ def main(calculator={'name': 'gpaw',
     # Save atomic structure
     write('structure.json', atoms)
 
-    # Get setup fingerprints
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-
     cellpar = atoms.cell.cellpar()
     results = {'etot': etot,
                'edft': edft,
@@ -354,8 +349,15 @@ def main(calculator={'name': 'gpaw',
                 'c': 'Cell parameter c [Ang]',
                 'alpha': 'Cell parameter alpha [deg]',
                 'beta': 'Cell parameter beta [deg]',
-                'gamma': 'Cell parameter gamma [deg]'},
-               '__setup_fingerprints__': fingerprint}
+                'gamma': 'Cell parameter gamma [deg]'}}
+
+    # Calculator specific metadata
+    if calculatorname == 'gpaw':
+        # Get setup fingerprints
+        fingerprint = {}
+        for setup in calc.setups:
+            fingerprint[setup.symbol] = setup.fingerprint
+        results['__setup_fingerprints__'] = fingerprint
     return results
 
 
