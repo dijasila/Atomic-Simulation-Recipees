@@ -40,7 +40,7 @@ def webpanel(row, key_descriptions):
 
     panel = {'title': 'Stiffness tensor',
              'columns': [[ctable]],
-             'sort': 3}
+             'sort': 2}
 
     dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'

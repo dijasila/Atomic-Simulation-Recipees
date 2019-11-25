@@ -17,7 +17,7 @@ def webpanel(row, key_descriptions):
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
                                  'rpa-pol-z.png']}],
-             'sort': 10}
+             'sort': 20}
 
     return [panel]
 

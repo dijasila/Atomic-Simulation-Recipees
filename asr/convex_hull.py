@@ -21,7 +21,8 @@ def webpanel(row, key_descriptions):
              'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
-                                    'filenames': ['convex-hull.png']}]}
+                                    'filenames': ['convex-hull.png']}],
+             'sort': 1}
 
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}

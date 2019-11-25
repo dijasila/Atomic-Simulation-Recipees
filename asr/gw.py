@@ -244,7 +244,8 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']},
                                    {'function': plot_renorm_factor,
-                                    'filenames': ['renorm.png']}]}
+                                    'filenames': ['renorm.png']}],
+             'sort': 15}
     return [panel]
 
 

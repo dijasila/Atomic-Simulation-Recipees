@@ -34,7 +34,8 @@ def webpanel(row, key_descriptions):
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'])
     panel = {'title': 'Magnetic properties',
-             'columns': [[magtable], []]}
+             'columns': [[magtable], []],
+             'sort': 6}
     return [panel]
 
 

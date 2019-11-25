@@ -483,7 +483,8 @@ def webpanel(row, key_descriptions):
                                    {'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
-                                    'filenames': ['pbe-bs.html']}]}
+                                    'filenames': ['pbe-bs.html']}],
+             'sort': 14}
     return [panel]
 
 

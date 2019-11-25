@@ -106,7 +106,8 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Phonon bandstructure',
              'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonon_bs.png']}]}
+                                    'filenames': ['phonon_bs.png']}],
+             'sort': 3}
 
     dynstab = row.get('dynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
