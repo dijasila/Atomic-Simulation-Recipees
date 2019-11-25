@@ -70,11 +70,42 @@ tests = [{'description': 'Test ground state of Si.',
                   'asr run "browser --only-figures"']}]
 
 
+def webpanel(row, key_descriptions):
+    from asr.browser import table
+
+    gsresults = row.data.get('results-asr.gs.json')
+    if row.get('evacdiff', 0) < 0.02:
+        t = table(row, 'Property',
+                  ['gap', 'vbm', 'cbm',
+                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
+                  key_descriptions)
+    else:
+        t = table(row, 'Property',
+                  ['gap', 'vbm', 'cbm',
+                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi',
+                   'dipz', 'evacdiff'],
+                  key_descriptions)
+
+    panel = {'title': 'PBE ground state',
+             'columns': [[t]]}
+
+    row = ['Band gap (PBE)', '{:0.3f}'.format(
+        gsresults.get('gaps_soc').get('gap'))]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': [row]}]],
+               'sort': 10}
+
+    return [panel, summary]
+
+
 @command(module='asr.gs',
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
          tests=tests,
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'])
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'],
+         webpanel=webpanel)
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
@@ -309,25 +340,6 @@ def get_evac():
     return evac
 
 
-def webpanel(row, key_descriptions):
-    from asr.browser import table
-
-    if row.get('evacdiff', 0) < 0.02:
-        t = table(row, 'Postprocessing',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
-                  key_descriptions)
-    else:
-        t = table(row, 'Postprocessing',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi',
-                   'dipz', 'evacdiff'],
-                  key_descriptions)
-
-    panel = {'title': 'PBE ground state',
-             'columns': [[t]]}
-
-    return [panel]
 
 
 if __name__ == '__main__':
