@@ -129,12 +129,15 @@ def setup_supercell(structure, max_lattice, is_2D):
     else:
         z_size = 1
 
-    print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
-          x_size, y_size, z_size))
     x_size = max(1, x_size)
     y_size = max(1, y_size)
     z_size = max(1, z_size)
     structure_sc = structure.repeat((x_size, y_size, z_size))
+
+    print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
+          x_size, y_size, z_size))
+
+    print(x_size, y_size, z_size)
 
     return structure_sc, x_size, y_size, z_size
 
@@ -165,7 +168,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc == (0, 0, 0):
+    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
     else:
