@@ -137,8 +137,6 @@ def setup_supercell(structure, max_lattice, is_2D):
     print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
           x_size, y_size, z_size))
 
-    print(x_size, y_size, z_size)
-
     return structure_sc, x_size, y_size, z_size
 
 
