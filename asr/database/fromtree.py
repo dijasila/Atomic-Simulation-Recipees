@@ -89,7 +89,7 @@ def collect(filename):
         file = Path(extrafile)
 
         if not file.is_file():
-            print(f'Warning: Required file {extrafile}'
+            print(f'Warning: Required file {file.absolute()}'
                   ' doesn\'t exist.')
             continue
 
