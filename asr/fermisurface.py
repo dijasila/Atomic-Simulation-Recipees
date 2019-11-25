@@ -62,7 +62,8 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Fermi surface',
              'columns': [[fig('fermi_surface.png')]],
              'plot_descriptions': [{'function': plot_fermi,
-                                    'filenames': ['fermi_surface.png']}]}
+                                    'filenames': ['fermi_surface.png']}],
+             'sort': 13}
 
     return [panel]
 

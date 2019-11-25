@@ -32,10 +32,10 @@ def webpanel(row, key_descriptions):
     from asr.browser import table
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'])
+                      'dE_zx', 'dE_zy'], kd=key_descriptions)
     panel = {'title': 'Magnetic properties',
              'columns': [[magtable], []],
-             'sort': 6}
+             'sort': 10}
     return [panel]
 
 
