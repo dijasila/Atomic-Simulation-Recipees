@@ -115,7 +115,7 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
 def main():
     import numpy as np
     from gpaw import GPAW
-    from c2db.utils import gpw2eigs
+    from asr.utils.gpw2eigs import gpw2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     theta, phi = get_spin_axis()
