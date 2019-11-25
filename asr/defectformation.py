@@ -50,7 +50,7 @@ def main(defect_name=None):
     # Either run for all defect folders or just a specific one
     if defect_name is None:
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
-            and not x.name == 'pristine_sc']
+            and not x.name == 'defects.pristine_sc']
     else:
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
             and x.name == defect_name]
