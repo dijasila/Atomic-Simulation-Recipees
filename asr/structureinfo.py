@@ -72,7 +72,7 @@ def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
     from asr.browser import table
 
-    basictable = table(row, 'Property', [
+    basictable = table(row, 'Structural info', [
         'prototype', 'class', 'spacegroup', 'gap', 'magstate', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
@@ -86,7 +86,7 @@ def webpanel(row, key_descriptions):
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
 
-    doi = row.get('monolayer_doi')
+    doi = row.get('doi')
     if doi:
         rows.append([
             'Monolayer DOI',
@@ -95,7 +95,7 @@ def webpanel(row, key_descriptions):
         ])
 
     panel = {'title': 'Summary',
-             'columns': [[basictable, UNITCELL], [ATOMS]],
+             'columns': [[UNITCELL, basictable], [ATOMS]],
              'sort': 1}
     return [panel]
 

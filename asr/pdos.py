@@ -11,10 +11,8 @@ from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase.units import Hartree
-from gpaw.utilities.dos import get_angular_projectors
-from gpaw.spinorbit import get_spinorbit_eigenvalues
 
-from asr.core import magnetic_atoms
+from asr.core import magnetic_atoms, read_json
 
 
 # ---------- GPAW hacks ---------- #
@@ -35,6 +33,8 @@ class SOCDOS(DOS):
         from gpaw import GPAW
         import gpaw.mpi as mpi
         from asr.utils.gpw2eigs import gpw2eigs
+        from asr.magnetic_anisotropy import get_spin_axis
+
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
         DOS.__init__(self, calc, **kwargs)
 
@@ -42,7 +42,8 @@ class SOCDOS(DOS):
         self.nspins = 1
 
         # Hack the eigenvalues
-        e_skm, ef = gpw2eigs(gpw, optimal_spin_direction=True)
+        theta, phi = get_spin_axis()
+        e_skm, ef = gpw2eigs(gpw, theta=theta, phi=phi)
         if e_skm.ndim == 2:
             e_skm = e_skm[np.newaxis]
         e_skn = e_skm - ef
@@ -73,6 +74,7 @@ class SOCDescriptor:
         self.v_dknm = []
 
     def calculate_soc_eig(self, theta, phi):
+        from gpaw.spinorbit import get_spinorbit_eigenvalues
         eps_mk, v_knm = get_spinorbit_eigenvalues(self.paw, return_wfs=True,
                                                   theta=theta, phi=phi)
         self.theta_d.append(theta)
@@ -93,7 +95,7 @@ class SOCDescriptor:
 def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
                                     theta=0, phi=0):
     """Hack raw_spinorbit_orbital_LDOS"""
-
+    from gpaw.utilities.dos import get_angular_projectors
     from gpaw.spinorbit import get_spinorbit_projections
 
     # Attach SOCDescriptor to the calculator object
@@ -143,7 +145,7 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
 # ---------- Recipe tests ---------- #
 
-params = "+{'mode':{'ecut':200},'kpts':{'density':2.0}}"
+params = "{'mode':{'ecut':200,...},'kpts':{'density':2.0},...}"
 ctests = []
 ctests.append({'description': 'Test the refined ground state of Si',
                'name': 'test_asr.pdos_Si_gpw',
@@ -230,6 +232,7 @@ def calculate(kptdensity=20.0, emptybands=20):
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
+    from asr.core import singleprec_dict
 
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
@@ -237,8 +240,8 @@ def main():
     results = {}
 
     # Calculate pdos
-    results['pdos_nosoc'] = pdos(calc, 'pdos.gpw', soc=False)
-    results['pdos_soc'] = pdos(calc, 'pdos.gpw', soc=True)
+    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Calculate the dos at the Fermi energy
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
@@ -298,7 +301,7 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
     from ase.parallel import parprint
-    from asr.utils.gpw2eigs import get_spin_direction
+    from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
     if soc and world.rank == 0:
@@ -316,9 +319,12 @@ def calculate_pdos(calc, gpw, soc=True):
         ldos = raw_orbital_LDOS
 
     ns = calc.get_number_of_spins()
-    theta, phi = get_spin_direction()
-    # We want to extract the pdos +-10 eV from efermi
-    e_e = np.linspace(-10 + efermi, 10 + efermi, 2000)
+    theta, phi = get_spin_axis()
+    gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
+    e1 = gaps.get('vbm') or gaps.get('efermi')
+    e2 = gaps.get('cbm') or gaps.get('efermi')
+    e_e = np.linspace(e1 - 3, e2 + 3, 500)
+
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
     # species, their pdos are added together.

@@ -115,14 +115,16 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
 def main():
     import numpy as np
     from gpaw import GPAW
-    from c2db.utils import gpw2eigs, spin_axis
+    from c2db.utils import gpw2eigs
     from gpaw.kpt_descriptor import to1bz
+    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
-                                  optimal_spin_direction=True)
+                                  theta=theta, phi=phi)
     eigs_mk = eigs_km.T
     eigs_mk -= ef
     calc = GPAW('gs.gpw', txt=None)
-    s_mk = s_kvm[:, spin_axis()].T
+    s_mk = s_kvm[:, get_spin_index()].T
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
 

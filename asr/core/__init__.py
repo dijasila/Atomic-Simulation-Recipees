@@ -3,7 +3,7 @@ import time
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import click
 import numpy as np
@@ -19,18 +19,30 @@ def parse_dict_string(string, dct=None):
     if dct is None:
         dct = {}
 
-    for tmpstring in string.split(';'):
-        recursive_update(dct, literal_eval(tmpstring))
-    return dct
+    # Locate ellipsis
+    string = string.replace('...', 'None:None')
+    tmpdct = literal_eval(string)
+    recursive_update(tmpdct, dct)
+    return tmpdct
 
 
-def recursive_update(dct, updatedct):
-    for key, value in updatedct.items():
-        if key in dct and isinstance(value, dict) and \
-           isinstance(dct[key], dict):
-            recursive_update(dct[key], updatedct[key])
-        else:
-            dct[key] = value
+def recursive_update(dct, defaultdct):
+    if None in dct:
+        # This marks that we take default values from defaultdct
+        del dct[None]
+        for key in defaultdct:
+            if key not in dct:
+                dct[key] = defaultdct[key]
+
+    for key, value in dct.items():
+        if isinstance(value, dict) and None in value:
+            if key not in defaultdct:
+                del value[None]
+                continue
+            if not isinstance(defaultdct[key], dict):
+                del value[None]
+                continue
+            recursive_update(dct[key], defaultdct[key])
 
 
 def md5sum(filename):
@@ -260,15 +272,20 @@ class ASRCommand:
         return self._diskspace
 
     @property
-    def creates(self):
+    def created_files(self):
         creates = []
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
         if self._creates:
             if callable(self._creates):
                 creates += self._creates()
             else:
                 creates += self._creates
+        return creates
+
+    @property
+    def creates(self):
+        creates = self.created_files
+        if self.save_results_file:
+            creates += [f'results-{self.name}.json']
         return creates
 
     @property
@@ -366,7 +383,12 @@ class ASRCommand:
             # a file that is in __requires__
             for dep in self.dependencies:
                 recipe = get_recipe_from_name(dep)
-                if not recipe.done:
+                if recipe.done:
+                    continue
+
+                filenames = set(self.requires).intersection(recipe.creates)
+                if not all([Path(filename).exists() for filename in
+                            filenames]):
                     recipe()
 
         # Try to run this command
@@ -389,7 +411,9 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        bound_arguments = self.signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+        params = dict(bound_arguments.arguments)
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
             # Default type
@@ -402,11 +426,8 @@ class ASRCommand:
             if tp != type(value):
                 # Dicts has to be treated specially
                 if tp == dict:
-                    if value.startswith('+'):
-                        dct = copy.deepcopy(self.defparams[key])
-                        dct = parse_dict_string(value[1:], dct=dct)
-                    else:
-                        dct = parse_dict_string(value)
+                    dct = copy.deepcopy(self.defparams[key])
+                    dct = parse_dict_string(value, dct=dct)
                     params[key] = dct
                 else:
                     params[key] = tp(value)
@@ -423,7 +444,8 @@ class ASRCommand:
         parprint(f'Running {self.name}({paramstring})')
 
         # Execute the wrapped function
-        results = self._main(**copy.deepcopy(params)) or {}
+        with file_barrier(self.created_files, delete=False):
+            results = self._main(**copy.deepcopy(params)) or {}
         results['__asr_name__'] = self.name
 
         # Do we have to store some digests of previous calculations?
@@ -679,7 +701,7 @@ def write_json(filename, data):
     from ase.io.jsonio import MyEncoder
     from ase.parallel import world
 
-    with file_barrier(filename):
+    with file_barrier([filename]):
         if world.rank == 0:
             Path(filename).write_text(MyEncoder(indent=1).encode(data))
 
@@ -712,30 +734,33 @@ def unlink(path: Union[str, Path], world=None):
 
 
 @contextmanager
-def file_barrier(path: Union[str, Path], world=None):
+def file_barrier(paths: List[Union[str, Path]], world=None,
+                 delete=True):
     """Context manager for writing a file.
 
     After the with-block all cores will be able to read the file.
 
-    >>> with file_barrier('something.txt'):
+    >>> with file_barrier(['something.txt']):
     ...     <write file>
     ...
 
     This will remove the file, write the file and wait for the file.
     """
-
-    if isinstance(path, str):
-        path = Path(path)
     if world is None:
         world = parallel.world
 
-    # Remove file:
-    unlink(path, world)
+    for i, path in enumerate(paths):
+        if isinstance(path, str):
+            path = Path(path)
+            paths[i] = path
+        # Remove file:
+        if delete:
+            unlink(path, world)
 
     yield
 
     # Wait for file:
-    while not path.is_file():
+    while not all([path.is_file() for path in paths]):
         time.sleep(1.0)
     world.barrier()
 

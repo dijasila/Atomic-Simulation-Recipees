@@ -1,8 +1,8 @@
 from asr.core import command, option
 
 tests = []
-params1 = "+{'mode':'lcao','kpts':{'density':2}}"
-params2 = "+{'mode':'lcao','kpts':{'density':2}}"
+params1 = "{'mode':'lcao','kpts':{'density':2,...},...}"
+params2 = "{'mode':'lcao','kpts':{'density':2,...},...}"
 tests.append({'description': 'Test band structure of Si.',
               'name': 'asr.bandstructure_Si',
               'tags': ['gitlab-ci'],
@@ -31,7 +31,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @command('asr.bandstructure',
          requires=['gs.gpw'],
          creates=['bs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          tests=tests)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints')
@@ -61,42 +61,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
-
-
-def is_symmetry_protected(kpt, op_scc):
-    """Calculate electronic band structure"""
-    import numpy as np
-
-    mirror_count = 0
-    for symm in op_scc:
-        # Inversion symmetry forces spin degeneracy and 180 degree rotation
-        # forces the spins to lie in plane
-        if (np.allclose(symm, -1 * np.eye(3))
-                or np.allclose(symm, np.array([-1, -1, 1] * np.eye(3)))):
-            return True
-        vals, vecs = np.linalg.eigh(symm)
-        # A mirror plane
-        if np.allclose(np.abs(vals), 1) and np.allclose(np.prod(vals), -1):
-            # Mapping k -> k, modulo a lattice vector
-            if np.allclose(kpt % 1, (np.dot(symm, kpt)) % 1):
-                mirror_count += 1
-    # If we have two or more mirror planes, then we must have a spin-degenerate
-    # subspace
-    if mirror_count >= 2:
-        return True
-    return False
-
-
-def spin_axis(fname='anisotropy_xy.npz') -> int:
-    import numpy as np
-    from asr.utils.gpw2eigs import get_spin_direction
-    theta, phi = get_spin_direction(fname=fname)
-    if theta == 0:
-        return 2
-    elif np.allclose(phi, np.pi / 2):
-        return 1
-    else:
-        return 0
 
 
 def bs_pbe_html(row,
@@ -165,7 +129,7 @@ def bs_pbe_html(row,
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get('spin_orientation', 'z')
+    sdir = row.get('spin_axis', 'z')
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
@@ -281,7 +245,7 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, **kwargs):
+def add_bs_pbe(row, ax, reference=0, **kwargs):
     """plot pbe with soc on ax"""
     from ase.dft.kpoints import labels_from_kpts
     c = '0.8'  # light grey for pbe with soc plot
@@ -292,10 +256,10 @@ def add_bs_pbe(row, ax, **kwargs):
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
     return ax
 
 
@@ -364,14 +328,14 @@ def bs_pbe(row,
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
-    ef = d['bs_nosoc']['efermi']
-    gaps = row.data.get('gaps_nosoc', {})
+    ef_nosoc = d['bs_nosoc']['efermi']
+    ef_soc = d['bs_soc']['efermi']
+    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
+    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
     if row.get('evac') is not None:
         label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
     else:
         label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
@@ -379,15 +343,15 @@ def bs_pbe(row,
 
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
-        emin = gaps.get('vbm', ef) - 3
+        emin = gaps.get('vbm') - 3
     else:
-        emin = ef - 3
+        emin = ef_nosoc - 3
     if gaps.get('cbm'):
-        emax = gaps.get('cbm', ef) + 3
+        emax = gaps.get('cbm') + 3
     else:
-        emax = ef + 3
+        emax = ef_nosoc + 3
     mpl.rcParams['font.size'] = fontsize
-    bs = BandStructure(path, e_kn - reference, ef - reference)
+    bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # pbe without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
@@ -400,24 +364,24 @@ def bs_pbe(row,
     bsp.plot(
         ax=ax,
         show=False,
-        emin=emin - reference,
-        emax=emax - reference,
+        emin=emin - ref_nosoc,
+        emax=emax - ref_nosoc,
         ylabel=label,
         **nosoc_style)
     # pbe with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
-    sdir = row.get('spin_orientation', 'z')
+    sdir = row.get('spin_axis', 'z')
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
-        energies=e_mk - reference,
+        energies=e_mk - ref_soc,
         colors=sz_mk,
         filename=filename,
         show=False,
-        emin=emin - reference,
-        emax=emax - reference,
+        emin=emin - ref_soc,
+        emax=emax - ref_soc,
         sortcolors=True,
         loc='upper right',
         clabel=r'$\langle S_{} \rangle $'.format(sdir),
@@ -433,7 +397,7 @@ def bs_pbe(row,
     x0 = xlim[1] * 0.01
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
+        xy=(x0, ef_soc - ref_soc),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
@@ -446,119 +410,13 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def bzcut_pbe(row, pathcb, pathvb, figsize=(6.4, 2.8)):
-    from ase.units import Bohr, Ha
-    from c2db.em import evalmodel
-    from ase.dft.kpoints import kpoint_convert
-    from matplotlib import pyplot as plt
-    import numpy as np
-    labels_from_kpts = None  # XXX: Fix pep8
-    sortcolors = True
-    erange = 0.05  # energy window
-    cb = row.get('data', {}).get('effectivemass', {}).get('cb', {})
-    vb = row.get('data', {}).get('effectivemass', {}).get('vb', {})
-
-    def getitsorted(keys, bt):
-        keys = [k for k in keys if 'spin' in k and 'band' in k]
-        return sorted(
-            keys, key=lambda x: int(x.split('_')[1][4:]), reverse=bt == 'vb')
-
-    def get_xkrange(row, erange):
-        xkrange = 0.0
-        for bt in ['cb', 'vb']:
-            xb = row.data.get('effectivemass', {}).get(bt)
-            if xb is None:
-                continue
-            xb0 = xb[getitsorted(xb.keys(), bt)[0]]
-            mass_u = abs(xb0['mass_u'])
-            xkr = max((2 * mass_u * erange / Ha)**0.5 / Bohr)
-            xkrange = max(xkrange, xkr)
-        return xkrange
-
-    for bt, xb, path in [('cb', cb, pathcb), ('vb', vb, pathvb)]:
-        b_u = xb.get('bzcut_u')
-        if b_u is None or b_u == []:
-            continue
-
-        xb0 = xb[getitsorted(xb.keys(), bt)[0]]
-        mass_u = xb0['mass_u']
-        coeff = xb0['c']
-        ke_v = xb0['ke_v']
-        fig, axes = plt.subplots(
-            nrows=1,
-            ncols=2,
-            figsize=figsize,
-            sharey=True,
-            gridspec_kw={'width_ratios': [1, 1.25]})
-        things = None
-        xkrange = get_xkrange(row, erange)
-        for u, b in enumerate(b_u):  # loop over directions
-            ut = u if bt == 'cb' else abs(u - 1)
-            ax = axes[ut]
-            e_mk = b['e_dft_km'].T - row.get('evac', 0)
-            sz_mk = b['sz_dft_km'].T
-            if row.get('has_invsymm', 0) == 1:
-                sz_mk[:] = 0.0
-            kpts_kc = b['kpts_kc']
-            xk, _, _ = labels_from_kpts(kpts=kpts_kc, cell=row.cell)
-            xk -= xk[-1] / 2
-            # fitted model
-            xkmodel = xk.copy()  # xk will be permutated
-            kpts_kv = kpoint_convert(row.cell, skpts_kc=kpts_kc)
-            kpts_kv *= Bohr
-            emodel_k = evalmodel(kpts_kv=kpts_kv, c_p=coeff) * Ha
-            emodel_k -= row.get('evac', 0)
-            # effective mass fit
-            emodel2_k = (xkmodel * Bohr)**2 / (2 * mass_u[u]) * Ha
-            ecbm = evalmodel(ke_v, coeff) * Ha
-            emodel2_k = emodel2_k + ecbm - row.get('evac', 0)
-            # dft plot
-            shape = e_mk.shape
-            x_mk = np.vstack([xk] * shape[0])
-            if sortcolors:
-                shape = e_mk.shape
-                perm = (-sz_mk).argsort(axis=None)
-                e_mk = e_mk.ravel()[perm].reshape(shape)
-                sz_mk = sz_mk.ravel()[perm].reshape(shape)
-                x_mk = x_mk.ravel()[perm].reshape(shape)
-            for i, (e_k, sz_k, x_k) in enumerate(zip(e_mk, sz_mk, x_mk)):
-                things = ax.scatter(x_k, e_k, c=sz_k, vmin=-1, vmax=1)
-            if row.get('evac') is not None:
-                ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
-            else:
-                ax.set_ylabel(r'$E$ [eV]')
-            # ax.plot(xkmodel, emodel_k, c='b', ls='-', label='3rd order')
-            sign = np.sign(mass_u[u])
-            if (bt == 'cb' and sign > 0) or (bt == 'vb' and sign < 0):
-                ax.plot(xkmodel, emodel2_k, c='r', ls='--')
-            ax.set_title('Mass {}, direction {}'.format(bt.upper(), ut + 1))
-            if bt == 'vb':
-                y1 = ecbm - row.get('evac', 0) - erange * 0.75
-                y2 = ecbm - row.get('evac', 0) + erange * 0.25
-            elif bt == 'cb':
-                y1 = ecbm - row.get('evac', 0) - erange * 0.25
-                y2 = ecbm - row.get('evac', 0) + erange * 0.75
-
-            ax.set_ylim(y1, y2)
-            ax.set_xlim(-xkrange, xkrange)
-            ax.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
-        if things is not None:
-            cbar = fig.colorbar(things, ax=axes[1])
-            cbar.set_label(r'$\langle S_z \rangle$')
-            cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-            cbar.update_ticks()
-        fig.tight_layout()
-        plt.tight_layout()
-        plt.savefig(path)
-        plt.close()
-
-
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     lat.plot_bz()
+    plt.tight_layout()
     plt.savefig(fname)
 
 
@@ -631,9 +489,10 @@ def webpanel(row, key_descriptions):
 
 @command('asr.bandstructure',
          requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json'],
+                   'results-asr.structureinfo.json',
+                   'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
-                       'asr.structureinfo'],
+                       'asr.structureinfo', 'asr.magnetic_anisotropy'],
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
@@ -643,6 +502,8 @@ def main():
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.symmetry import is_symmetry_protected
+    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
     calc = GPAW('bs.gpw', txt=None)
@@ -673,8 +534,9 @@ def main():
     # Add spin orbit correction
     bsresults = bs.todict()
 
+    theta, phi = get_spin_axis()
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, optimal_spin_direction=True)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
     bsresults['energies'] = e_km.T
     efermi = gsresults['gaps_soc']['efermi']
     bsresults['efermi'] = efermi
@@ -683,8 +545,9 @@ def main():
     path = bsresults['path']
     npoints = len(path.kpts)
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
+
     if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, spin_axis(), :]  # take x, y or z component
+        sz_mk = s_mvk[:, get_spin_index(), :]  # take x, y or z component
     else:
         sz_mk = s_mvk
 
