@@ -26,8 +26,8 @@ def bs_gw(row,
         label = r'$E - E_\mathrm{F}$ [eV]'
         reference = ef
 
-    emin = row.get('vbm_gw', ef) - 5 - reference
-    emax = row.get('cbm_gw', ef) + 10 - reference
+    emin = row.get('vbm_gw', ef) - 3 - reference
+    emax = row.get('cbm_gw', ef) + 3 - reference
 
     e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = path.get_linear_kpoint_axis()
@@ -216,8 +216,8 @@ def plot_renorm_factor(row, filename):
     plt.figure(figsize=(6.4, 4.8))
     plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
                 s=2)
-    emin = row.get('vbm_gw', row.get('ef')) - 5 - reference
-    emax = row.get('cbm_gw', row.get('ef')) + 10 - reference
+    emin = row.get('vbm_gw', row.get('ef')) - 3 - reference
+    emax = row.get('cbm_gw', row.get('ef')) + 3 - reference
     if row.get('evac') is not None:
         plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
     else:
