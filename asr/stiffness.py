@@ -18,8 +18,9 @@ def webpanel(row, key_descriptions):
                 value = table[i][j]
                 table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
         return table
-
-    c_ij = row.data['results-asr.stiffness.json']['stiffness_tensor']
+    stiffnessdata = row.data['results-asr.stiffness.json']
+    c_ij = stiffnessdata['stiffness_tensor']
+    eigs = stiffnessdata['eigenvalues']
 
     ctable = dict(
         type='table',
@@ -28,7 +29,20 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Stiffness tensor',
              'columns': [[ctable]]}
 
-    return [panel]
+    dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    high = 'Min. Stiffness eig. > 0'
+    low = 'Min. Stiffness eig. < 0'
+    row = ['Stiffness',
+           '<a href="#" data-toggle="tooltip" data-html="true" ' +
+           'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+               low, high, dynstab.upper())]
+
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Stability', 'Category'],
+                             'rows': [row]}]]}
+
+    return [panel, summary]
 
 
 @command(module='asr.stiffness',
