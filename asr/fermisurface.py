@@ -70,14 +70,16 @@ def webpanel(row, key_descriptions):
 
 def plot_fermi(row, fname,
                annotate=True, fontsize=10, svbm=100, scbm=40, lwvbm=2.5,
-               sfs=0.25, dpi=200, scale=None, scalecb=None,
+               sfs=1, dpi=200, scale=None, scalecb=None,
                bbox_to_anchor=None, angle=0):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    ax = lat.plot_bz()
+    plt.figure(figsize=(4, 3))
+    ax = lat.plot_bz(vectors=False)
     add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
+    plt.tight_layout()
     plt.savefig(fname, dpi=dpi)
     plt.close()
 
@@ -112,13 +114,16 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
 
 @command('asr.fermisurface',
          webpanel=webpanel,
-         requires=['gs.gpw'])
+         requires=['gs.gpw', 'results-asr.structureinfo.json'],
+         dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.core import read_json
+    from asr.utils.symmetry import is_symmetry_protected
     theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
                                   theta=theta, phi=phi)
@@ -126,11 +131,21 @@ def main():
     eigs_mk -= ef
     calc = GPAW('gs.gpw', txt=None)
     s_mk = s_kvm[:, get_spin_index()].T
+
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
 
     bzk_kc = calc.wfs.kd.bzk_kc
     bzk_kv = np.dot(bzk_kc, B_cv)
+    from gpaw.symmetry import atoms2symmetry
+    op_scc = atoms2symmetry(calc.atoms).op_scc
+
+    magstate = read_json('results-asr.structureinfo.json')['magstate']
+
+    for idx, kpt in enumerate(bzk_kc):
+        if ((magstate == 'NM' and is_symmetry_protected(kpt, op_scc))
+                or magstate == 'AFM'):
+            s_mk[:, idx] = 0.0
 
     contours = []
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)

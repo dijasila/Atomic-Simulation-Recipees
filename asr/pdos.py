@@ -499,31 +499,17 @@ def plot_pdos(row, filename, soc=True,
     # Extract raw data
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy()
-    ef = data['efermi']
+    e_e = data['energies'].copy() - row.get('evac', 0)
+    ef = data['efermi'] - row.get('evac', 0)
 
     # Find energy range to plot in
-    gsresults = 'results-asr.gs.json'
-    gaps = 'gaps_soc' if soc else 'gaps_nosoc'
-    emin = ef - 3
-    emax = ef + 3
-    if gsresults in row.data and gaps in row.data[gsresults]:
-        vbm = row.data[gsresults][gaps]['vbm']
-        if vbm is not None:
-            emin = vbm - 3
-        cbm = row.data[gsresults][gaps]['cbm']
-        if cbm is not None:
-            emax = cbm + 3
-
-    # Subtract the vacuum energy
-    evac = None
-    if 'evac' in row.data[gsresults]:
-        evac = row.data[gsresults]['evac']
-    if evac is not None:
-        e_e -= evac
-        ef -= evac
-        emin -= evac
-        emax -= evac
+    if soc:
+        emin = row.get('vbm', ef) - 3 - row.get('evac', 0)
+        emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
+    else:
+        nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
+        emin = nosoc_data.get('vbm', ef) - 3 - row.get('evac', 0)
+        emax = nosoc_data.get('', ef) + 3 - row.get('evac', 0)
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()

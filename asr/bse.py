@@ -261,7 +261,7 @@ def main():
 
         gsresults = read_json('results-asr.gs.json')
         if magstate == 'NM':
-            E_B = gsresults['gaps_soc']['gap_dir'] - E
+            E_B = gsresults['gap_dir'] - E
         else:
             E_B = gsresults['gaps_nosoc']['gap_dir'] - E
 

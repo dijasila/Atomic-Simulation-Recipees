@@ -71,9 +71,8 @@ tests = [{'description': 'Test ground state of Si.',
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table
+    from asr.browser import table, fig
 
-    gsresults = row.data.get('results-asr.gs.json')
     if row.get('evacdiff', 0) < 0.02:
         t = table(row, 'Property',
                   ['gap', 'vbm', 'cbm',
@@ -86,18 +85,30 @@ def webpanel(row, key_descriptions):
                    'dipz', 'evacdiff'],
                   key_descriptions)
 
-    panel = {'title': 'PBE ground state',
-             'columns': [[t]]}
+    panel = {'title': 'Ground state data summary',
+             'columns': [[t], [fig('bz-with-gaps.png')]],
+             'sort': 10}
 
-    row = ['Band gap (PBE)', '{:0.3f}'.format(
-        gsresults.get('gaps_soc').get('gap'))]
+    row = ['Band gap (PBE)', f'{row.gap:0.3f}']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
+               'plot_des'
                'sort': 10}
 
     return [panel, summary]
+
+
+def bz_soc(row, fname):
+    from ase.geometry.cell import Cell
+    from matplotlib import pyplot as plt
+    cell = Cell(row.cell)
+    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    plt.figure(figsize=(4, 3))
+    lat.plot_bz(vectors=False)
+    plt.tight_layout()
+    plt.savefig(fname)
 
 
 @command(module='asr.gs',
@@ -143,27 +154,16 @@ def main():
 
     results = {'forces': forces,
                'stresses': stresses,
-               'etot': etot,
-               'gs.gpw': str(Path('gs.gpw').absolute()),
-               '__key_descriptions__':
-               {'forces': 'Forces on atoms [eV/Angstrom]',
-                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'KVP: Total energy (En.) [eV]',
-                'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-                'gap_dir': 'KVP: Direct gap with SOC (Dir. gap w. soc.) [eV]',
-                'gap_dir_nosoc': ('KVP: Direct gap without SOC (Dir. gap wo.'
-                                  ' soc.) [eV]')}}
+               'etot': etot}
 
     results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gaps_soc'] = gaps(calc, soc=True)
-
-    results['gap_dir'] = results['gaps_soc']['gap_dir']
     results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
-
+    results.update(gaps(calc, soc=True))
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:
         vac = vacuumlevels(atoms, calc)
         results['vacuumlevels'] = vac
+        results['dipz'] = vac['dipz']
         results['evac'] = vac['evacmean']
         results['evacdiff'] = vac['evacdiff']
 
@@ -171,6 +171,24 @@ def main():
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
     results['__setup_fingerprints__'] = fingerprint
+    results['__key_descriptions__'] = {
+        # Saved arrays
+        'forces': 'Forces on atoms [eV/Angstrom]',
+        'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+        # Key value pairs
+        'etot': 'KVP: Total energy (Tot. En.) [eV]',
+        'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
+        'gap': 'KVP: Band gap (Band gap) [eV]',
+        'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
+        'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
+        'gap_dir': 'KVP: Direct band gap (Dir. band gap) [eV]',
+        'vbm_dir': ('KVP: Direct valence band maximum '
+                    '(Dir. val. band max.) [eV]'),
+        'cbm_dir': ('KVP: Direct conduction band minimum '
+                    '(Dir. cond. band max.) [eV]'),
+        'gap_dir_nosoc': ('KVP: Direct gap without SOC '
+                          '(Dir. gap wo. soc.) [eV]'),
+        'dipz': 'Out-of-plane dipole moment'}
 
     return results
 
@@ -328,7 +346,6 @@ def evacdiff(atoms):
 
 def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
-    from pathlib import Path
     from asr.core import read_json
 
     evac = None
@@ -338,8 +355,6 @@ def get_evac():
             evac = results['vacuumlevels']['evacmean']
 
     return evac
-
-
 
 
 if __name__ == '__main__':

@@ -415,7 +415,8 @@ def bz_soc(row, fname):
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    lat.plot_bz()
+    plt.figure(figsize=(4, 3))
+    lat.plot_bz(vectors=False)
     plt.tight_layout()
     plt.savefig(fname)
 
@@ -539,7 +540,7 @@ def main():
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
     bsresults['energies'] = e_km.T
-    efermi = gsresults['gaps_soc']['efermi']
+    efermi = gsresults['efermi']
     bsresults['efermi'] = efermi
 
     # Get spin projections for coloring of bandstructure
@@ -558,8 +559,9 @@ def main():
     op_scc = atoms2symmetry(atoms).op_scc
 
     magstate = read_json('results-asr.structureinfo.json')['magstate']
+
     for idx, kpt in enumerate(path.kpts):
-        if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
+        if ((magstate == 'NM' and is_symmetry_protected(kpt, op_scc))
                 or magstate == 'AFM'):
             sz_mk[:, idx] = 0.0
 

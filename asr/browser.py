@@ -120,16 +120,6 @@ def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
-    # Prefix title with a category
-    for panel in page:
-        if 0 < panel.get('sort') < 10:
-            panel['title'] = 'Stability: '.upper() + panel['title']
-        elif 10 <= panel.get('sort') < 20:
-            panel['title'] = ('Electronic properties: '.upper() +
-                              panel['title'])
-        elif 20 <= panel.get('sort') < 30:
-            panel['title'] = 'Optical properties: '.upper() + panel['title']
-
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
     misc_panel = {'title': misc_title,

@@ -236,7 +236,7 @@ def make_the_plots(row, *args):
     from asr.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
-    efermi = row.data.get('results-asr.gs.json')['gaps_soc']['efermi']
+    efermi = row.efermi
     sdir = row.get('spin_axis', 'z')
     cell_cv = row.cell
 
