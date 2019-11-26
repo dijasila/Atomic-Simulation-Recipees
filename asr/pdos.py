@@ -198,7 +198,8 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[], [fig('pbe-pdos.png', link='empty')]],
              'plot_descriptions': [{'function': plot_pdos,
-                                    'filenames': ['pbe-pdos.png']}]}
+                                    'filenames': ['pbe-pdos.png']}],
+             'sort': 13}
     return [panel]
 
 
