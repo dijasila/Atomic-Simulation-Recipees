@@ -65,8 +65,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
 
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
-                figsize=(6.4, 4.8),
-                fontsize=10,
+                figsize=(6.4, 6.4),
                 show_legend=True,
                 s=2):
     import plotly
@@ -315,8 +314,7 @@ def plot_with_colors(bs,
 
 def bs_pbe(row,
            filename='pbe-bs.png',
-           figsize=(6.4, 4.8),
-           fontsize=10,
+           figsize=(5.5, 5),
            show_legend=True,
            s=0.5):
 
@@ -350,7 +348,6 @@ def bs_pbe(row,
         emax = gaps.get('cbm') + 3
     else:
         emax = ef_nosoc + 3
-    mpl.rcParams['font.size'] = fontsize
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # pbe without soc
     nosoc_style = dict(
@@ -359,7 +356,8 @@ def bs_pbe(row,
         ls='-',
         lw=1.0,
         zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
+    plt.figure(figsize=figsize)
+    ax = plt.gca()
     bsp = BandStructurePlot(bs)
     bsp.plot(
         ax=ax,
@@ -371,7 +369,6 @@ def bs_pbe(row,
     # pbe with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     sdir = row.get('spin_axis', 'z')
     ax, cbar = plot_with_colors(
         bsp,
@@ -399,8 +396,8 @@ def bs_pbe(row,
         r'$E_\mathrm{F}$',
         xy=(x0, ef_soc - ref_soc),
         ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
+        va='bottom')
+
     text.set_path_effects([
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
