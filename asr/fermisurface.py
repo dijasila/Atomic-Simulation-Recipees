@@ -123,7 +123,6 @@ def main():
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import read_json
-    from asr.utils.symmetry import is_symmetry_protected
     theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
                                   theta=theta, phi=phi)
@@ -137,15 +136,6 @@ def main():
 
     bzk_kc = calc.wfs.kd.bzk_kc
     bzk_kv = np.dot(bzk_kc, B_cv)
-    from gpaw.symmetry import atoms2symmetry
-    op_scc = atoms2symmetry(calc.atoms).op_scc
-
-    magstate = read_json('results-asr.structureinfo.json')['magstate']
-
-    for idx, kpt in enumerate(bzk_kc):
-        if ((magstate == 'NM' and is_symmetry_protected(kpt, op_scc))
-                or magstate == 'AFM'):
-            s_mk[:, idx] = 0.0
 
     contours = []
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)

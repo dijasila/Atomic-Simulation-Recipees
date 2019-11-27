@@ -504,7 +504,6 @@ def main():
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
@@ -554,16 +553,6 @@ def main():
         sz_mk = s_mvk
 
     assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
-
-    from gpaw.symmetry import atoms2symmetry
-    op_scc = atoms2symmetry(atoms).op_scc
-
-    magstate = read_json('results-asr.structureinfo.json')['magstate']
-
-    for idx, kpt in enumerate(path.kpts):
-        if ((magstate == 'NM' and is_symmetry_protected(kpt, op_scc))
-                or magstate == 'AFM'):
-            sz_mk[:, idx] = 0.0
 
     bsresults['sz_mk'] = sz_mk
 

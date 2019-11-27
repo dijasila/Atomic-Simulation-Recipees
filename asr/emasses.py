@@ -723,7 +723,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import read_json
     from gpaw import GPAW
@@ -766,14 +765,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
-        from gpaw.symmetry import atoms2symmetry
-        op_scc = atoms2symmetry(calc.get_atoms()).op_scc
-
-        magstate = read_json('results-asr.structureinfo.json')['magstate']
-        for idx, kpt in enumerate(calc.get_ibz_k_points()):
-            if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
-                magstate == 'AFM'):
-                sz_km[idx, :] = 0.0
 
         results_dicts.append(dict(bt=bt,
                                   kpts_kc=k_kc,
