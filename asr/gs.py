@@ -171,7 +171,8 @@ def main():
         # Key value pairs
         'etot': 'KVP: Total energy (Tot. En.) [eV]',
         'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-        'evacdiff': 'KVP: Dipole shift (Dipole shift) [eV]',
+        'evacdiff': 'KVP: Vacuum level shift (Vacuum level shift) [eV]',
+        'dipz': 'KVP: Out-of-plane dipole [e * Ang]',
         'efermi': 'KVP: Fermi level (Fermi level) [eV]',
         'gap': 'KVP: Band gap (Band gap) [eV]',
         'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
@@ -182,8 +183,7 @@ def main():
         'cbm_dir': ('KVP: Direct conduction band minimum '
                     '(Dir. cond. band max.) [eV]'),
         'gap_dir_nosoc': ('KVP: Direct gap without SOC '
-                          '(Dir. gap wo. soc.) [eV]'),
-        'dipz': 'Out-of-plane dipole moment'}
+                          '(Dir. gap wo. soc.) [eV]')}
 
     return results
 
