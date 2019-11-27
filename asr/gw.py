@@ -240,11 +240,9 @@ def webpanel(row, key_descriptions):
     for key in keys:
         row[key] += ref
     panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png'), prop], [fig('renorm.png')]],
+             'columns': [[fig('gw-bs.png'), prop]],
              'plot_descriptions': [{'function': bs_gw,
-                                    'filenames': ['gw-bs.png']},
-                                   {'function': plot_renorm_factor,
-                                    'filenames': ['renorm.png']}],
+                                    'filenames': ['gw-bs.png']}],
              'sort': 15}
     return [panel]
 

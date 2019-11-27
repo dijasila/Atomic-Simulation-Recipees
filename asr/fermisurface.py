@@ -79,7 +79,6 @@ def plot_fermi(row, fname,
     plt.figure(figsize=(4, 3))
     ax = lat.plot_bz(vectors=False)
     add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
-    plt.tight_layout()
     plt.savefig(fname, dpi=dpi)
     plt.close()
 

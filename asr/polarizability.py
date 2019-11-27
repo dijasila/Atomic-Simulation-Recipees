@@ -9,7 +9,7 @@ def webpanel(row, key_descriptions):
         'alphax', 'alphay', 'alphaz',
     ], key_descriptions)
 
-    panel = {'title': 'Polarizability (RPA)',
+    panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
                          [fig('rpa-pol-y.png'), opt]],
              'plot_descriptions':

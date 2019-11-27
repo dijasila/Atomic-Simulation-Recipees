@@ -73,19 +73,13 @@ tests = [{'description': 'Test ground state of Si.',
 def webpanel(row, key_descriptions):
     from asr.browser import table, fig
 
-    if row.get('evacdiff', 0) < 0.02:
-        t = table(row, 'Property',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
-                  key_descriptions)
-    else:
-        t = table(row, 'Property',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi',
-                   'dipz', 'evacdiff'],
-                  key_descriptions)
+    t = table(row, 'Property',
+              ['evac', 'efermi', 'gap', 'vbm', 'cbm',
+               'gap_dir', 'vbm_dir', 'cbm_dir',
+               'dipz', 'evacdiff'],
+              key_descriptions)
 
-    panel = {'title': 'Ground state data summary',
+    panel = {'title': 'Basic electronic properties',
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
@@ -94,7 +88,6 @@ def webpanel(row, key_descriptions):
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
-               'plot_des'
                'sort': 10}
 
     return [panel, summary]
@@ -178,6 +171,8 @@ def main():
         # Key value pairs
         'etot': 'KVP: Total energy (Tot. En.) [eV]',
         'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
+        'evacdiff': 'KVP: Dipole shift (Dipole shift) [eV]',
+        'efermi': 'KVP: Fermi level (Fermi level) [eV]',
         'gap': 'KVP: Band gap (Band gap) [eV]',
         'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
         'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
