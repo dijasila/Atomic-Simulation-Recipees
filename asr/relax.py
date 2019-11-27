@@ -277,6 +277,8 @@ def main(calculator={'name': 'gpaw',
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --calculator {'xc':'LDA',...}"
     """
+    from ase.calculators.calculator import get_calculator_class
+
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
            'what the relax recipe is supposed to produce. You should '
@@ -287,7 +289,6 @@ def main(calculator={'name': 'gpaw',
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
 
-    from ase.calculators.calculator import get_calculator_class
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
@@ -315,9 +316,6 @@ def main(calculator={'name': 'gpaw',
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
 
-    # Save atomic structure
-    write('structure.json', atoms)
-
     cellpar = atoms.cell.cellpar()
     results = {'etot': etot,
                'edft': edft,
@@ -328,18 +326,7 @@ def main(calculator={'name': 'gpaw',
                'beta': cellpar[4],
                'gamma': cellpar[5],
                'spos': atoms.get_scaled_positions(),
-               'symbols': atoms.get_chemical_symbols(),
-               '__key_descriptions__':
-               {'etot': 'Total energy [eV]',
-                'edft': 'DFT total energy [eV]',
-                'spos': 'Array: Scaled positions',
-                'symbols': 'Array: Chemical symbols',
-                'a': 'Cell parameter a [Ang]',
-                'b': 'Cell parameter b [Ang]',
-                'c': 'Cell parameter c [Ang]',
-                'alpha': 'Cell parameter alpha [deg]',
-                'beta': 'Cell parameter beta [deg]',
-                'gamma': 'Cell parameter gamma [deg]'}}
+               'symbols': atoms.get_chemical_symbols()}
 
     # Calculator specific metadata
     if calculatorname == 'gpaw':
@@ -348,6 +335,22 @@ def main(calculator={'name': 'gpaw',
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
         results['__setup_fingerprints__'] = fingerprint
+
+    results['__key_descriptions__'] = \
+        {'etot': 'Total energy [eV]',
+         'edft': 'DFT total energy [eV]',
+         'spos': 'Array: Scaled positions',
+         'symbols': 'Array: Chemical symbols',
+         'a': 'Cell parameter a [Ang]',
+         'b': 'Cell parameter b [Ang]',
+         'c': 'Cell parameter c [Ang]',
+         'alpha': 'Cell parameter alpha [deg]',
+         'beta': 'Cell parameter beta [deg]',
+         'gamma': 'Cell parameter gamma [deg]'}
+
+    # Save atomic structure
+    write('structure.json', atoms)
+
     return results
 
 
