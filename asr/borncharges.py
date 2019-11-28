@@ -6,7 +6,7 @@ def get_polarization_phase(calc):
     from gpaw.berryphase import get_berry_phases
     from gpaw.mpi import SerialCommunicator
 
-    assert isinstance(calc.communicator, SerialCommunicator)
+    assert isinstance(calc.world, SerialCommunicator)
 
     phase_c = np.zeros((3,), float)
     # Calculate and save berry phases
@@ -61,9 +61,6 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
-    polfilenames = []
-
     def matrixtable(M, digits=2):
         table = M.tolist()
         shape = M.shape
@@ -74,18 +71,16 @@ def webpanel(row, key_descriptions):
         return table
 
     columns = [[], []]
-    for a, Z_vv in enumerate(row.data.Z_avv):
+    for a, Z_vv in enumerate(
+            row.data['results-asr.borncharges.json']['Z_avv']):
         Zdata = matrixtable(Z_vv)
 
         Ztable = dict(
-            header=[str(a), row.symbols[a], ''],
+            header=[row.symbols[a], '', ''],
             type='table',
             rows=Zdata)
 
-        columns[0].append(Ztable)
-        polname = 'polvsatom{}.png'.format(a)
-        columns[1].append(fig(polname))
-        polfilenames.append(polname)
+        columns[a % 2].append(Ztable)
 
     panel = {'title': 'Born charges',
              'columns': columns}
