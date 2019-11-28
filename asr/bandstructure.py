@@ -318,7 +318,6 @@ def bs_pbe(row,
            show_legend=True,
            s=0.5):
 
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
