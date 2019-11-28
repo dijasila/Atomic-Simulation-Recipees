@@ -65,8 +65,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
 
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
-                figsize=(6.4, 4.8),
-                fontsize=10,
+                figsize=(6.4, 6.4),
                 show_legend=True,
                 s=2):
     import plotly
@@ -315,12 +314,10 @@ def plot_with_colors(bs,
 
 def bs_pbe(row,
            filename='pbe-bs.png',
-           figsize=(6.4, 4.8),
-           fontsize=10,
+           figsize=(5.5, 5),
            show_legend=True,
            s=0.5):
 
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
@@ -350,7 +347,6 @@ def bs_pbe(row,
         emax = gaps.get('cbm') + 3
     else:
         emax = ef_nosoc + 3
-    mpl.rcParams['font.size'] = fontsize
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # pbe without soc
     nosoc_style = dict(
@@ -359,7 +355,8 @@ def bs_pbe(row,
         ls='-',
         lw=1.0,
         zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
+    plt.figure(figsize=figsize)
+    ax = plt.gca()
     bsp = BandStructurePlot(bs)
     bsp.plot(
         ax=ax,
@@ -371,7 +368,6 @@ def bs_pbe(row,
     # pbe with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     sdir = row.get('spin_axis', 'z')
     ax, cbar = plot_with_colors(
         bsp,
@@ -399,8 +395,8 @@ def bs_pbe(row,
         r'$E_\mathrm{F}$',
         xy=(x0, ef_soc - ref_soc),
         ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
+        va='bottom')
+
     text.set_path_effects([
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
@@ -415,7 +411,8 @@ def bz_soc(row, fname):
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    lat.plot_bz()
+    plt.figure(figsize=(4, 3))
+    lat.plot_bz(vectors=False)
     plt.tight_layout()
     plt.savefig(fname)
 
@@ -483,7 +480,8 @@ def webpanel(row, key_descriptions):
                                    {'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
-                                    'filenames': ['pbe-bs.html']}]}
+                                    'filenames': ['pbe-bs.html']}],
+             'sort': 14}
     return [panel]
 
 
@@ -502,7 +500,6 @@ def main():
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ref = GPAW('gs.gpw', txt=None).get_fermi_level()
@@ -538,7 +535,7 @@ def main():
     e_km, _, s_kvm = gpw2eigs(
         'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
     bsresults['energies'] = e_km.T
-    efermi = gsresults['gaps_soc']['efermi']
+    efermi = gsresults['efermi']
     bsresults['efermi'] = efermi
 
     # Get spin projections for coloring of bandstructure
@@ -552,15 +549,6 @@ def main():
         sz_mk = s_mvk
 
     assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
-
-    from gpaw.symmetry import atoms2symmetry
-    op_scc = atoms2symmetry(atoms).op_scc
-
-    magstate = read_json('results-asr.structureinfo.json')['magstate']
-    for idx, kpt in enumerate(path.kpts):
-        if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc)
-                or magstate == 'AFM'):
-            sz_mk[:, idx] = 0.0
 
     bsresults['sz_mk'] = sz_mk
 

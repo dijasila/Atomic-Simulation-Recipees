@@ -67,6 +67,25 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
         eps_km = eps_mk.T
         efermi = fermi_level(calc, eps_km[np.newaxis],
                              nelectrons=2 * calc.get_number_of_electrons())
+        from .symmetry import restrict_spin_projection_2d
+        from gpaw.symmetry import atoms2symmetry
+        symmetry = atoms2symmetry(calc.atoms)
+        ibzk_kc = calc.get_ibz_k_points()
+        # For magnetic systems we know some more about the spin
+        # projections
+        if calc.get_number_of_spins() == 1:
+            # Inversion + time reversal symmetry forces degenerates spins
+            if symmetry.has_inversion:
+                s_kvm[:] = 0.0
+            else:
+                # For 2D we try to find materials where spins are restricted
+                # to inplane spins
+                if np.sum(calc.atoms.pbc).astype(int) == 2:
+                    for ik, kpt in enumerate(ibzk_kc):
+                        s_vm = restrict_spin_projection_2d(kpt,
+                                                           symmetry.op_scc,
+                                                           s_kvm[ik])
+                        s_kvm[ik] = s_vm
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
                'eps_km': eps_km,
                'efermi_nosoc': efermi_nosoc,

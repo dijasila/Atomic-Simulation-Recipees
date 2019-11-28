@@ -236,7 +236,7 @@ def make_the_plots(row, *args):
     from asr.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
-    efermi = row.data.get('results-asr.gs.json')['gaps_soc']['efermi']
+    efermi = row.efermi
     sdir = row.get('spin_axis', 'z')
     cell_cv = row.cell
 
@@ -730,9 +730,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    from asr.core import read_json
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
@@ -773,14 +771,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
-        from gpaw.symmetry import atoms2symmetry
-        op_scc = atoms2symmetry(calc_serial.get_atoms()).op_scc
-
-        magstate = read_json('results-asr.structureinfo.json')['magstate']
-        for idx, kpt in enumerate(calc_serial.get_ibz_k_points()):
-            if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
-                magstate == 'AFM'):
-                sz_km[idx, :] = 0.0
 
         results_dicts.append(dict(bt=bt,
                                   kpts_kc=k_kc,
