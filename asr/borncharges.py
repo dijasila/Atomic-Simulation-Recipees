@@ -39,7 +39,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
     if Path(name).is_file():
         return GPAW(name, communicator=serial_comm, txt=None)
-    
+
     params['kpts'] = {'density': density,
                       'gamma': True}
     # 'even': True}  # Not compatible with ASE atm.
@@ -130,6 +130,7 @@ def main(displacement=0.01, kptdensity=8.0):
     parprint('Atomnum Atom Direction Displacement')
     for a in range(len(atoms)):
         phase_scv = np.zeros((2, 3, 3), float)
+        dipol_svv = np.zeros((2, 3, 3), float)
         for v in range(3):
             for s, sign in enumerate([-1, 1]):
                 if world.rank == 0:
@@ -152,6 +153,7 @@ def main(displacement=0.01, kptdensity=8.0):
                                                  density=kptdensity)
                         phase_c = get_polarization_phase(name)
 
+                dipol_svv[s, :, v] = calc.results['dipole'] / Bohr
                 phase_scv[s, :, v] = phase_c
 
         dphase_cv = (phase_scv[1] - phase_scv[0])
@@ -161,6 +163,8 @@ def main(displacement=0.01, kptdensity=8.0):
         dP_vv = (-np.dot(dphase_cv.T, cell_cv).T /
                  (2 * np.pi * vol))
 
+        pbc = atoms.pbc
+        dP_vv[~pbc] = (dipol_svv[1, ~pbc] - dipol_svv[0, ~pbc]) / vol
         P_svv = (-np.dot(cell_cv.T, phase_scv).transpose(1, 0, 2) /
                  (2 * np.pi * vol))
         Z_vv = dP_vv * vol / (2 * displacement / Bohr)
@@ -170,11 +174,11 @@ def main(displacement=0.01, kptdensity=8.0):
     data = {'Z_avv': Z_avv, 'sym_a': sym_a,
             'P_asvv': P_asvv}
 
-    # world.barrier()
-    # if world.rank == 0:
-    #     files = Path().glob('born-*.gpw')
-    #     for f in files:
-    #         f.unlink()
+    world.barrier()
+    if world.rank == 0:
+        files = Path().glob('born-*.gpw')
+        for f in files:
+            f.unlink()
 
     return data
 
