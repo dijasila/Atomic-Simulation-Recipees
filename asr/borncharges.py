@@ -28,7 +28,7 @@ def get_polarization_phase(calc):
     phase_c = phase_c * 2 / nspins
     phase_c += 2 * np.pi * np.dot(Z_a, calc.spos_ac)
 
-    return phase_c
+    return -phase_c
 
 
 def get_wavefunctions(atoms, name, params, density=6.0,
@@ -61,24 +61,34 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
 
 def webpanel(row, key_descriptions):
-    def matrixtable(M, digits=2):
+    import numpy as np
+
+    def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
         table = M.tolist()
         shape = M.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
+
+        for i in range(skiprow, shape[0]):
+            for j in range(skipcolumn, shape[1]):
                 value = table[i][j]
-                table[i][j] = '{:.{}f}'.format(value, digits)
+                table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
         return table
 
     columns = [[], []]
     for a, Z_vv in enumerate(
             row.data['results-asr.borncharges.json']['Z_avv']):
-        Zdata = matrixtable(Z_vv)
+        table = np.zeros((4, 4))
+        table[1:, 1:] = Z_vv
+        rows = matrixtable(table, skiprow=1, skipcolumn=1)
+        sym = row.symbols[a]
+        rows[0] = [f'Z<sup>{sym}</sup><sub>ij</sub>', 'u<sub>x</sub>',
+                   'u<sub>y</sub>', 'u<sub>z</sub>']
+        rows[1][0] = 'P<sub>x</sub>'
+        rows[2][0] = 'P<sub>y</sub>'
+        rows[3][0] = 'P<sub>y</sub>'
 
         Ztable = dict(
-            header=[row.symbols[a], '', ''],
             type='table',
-            rows=Zdata)
+            rows=rows)
 
         columns[a % 2].append(Ztable)
 
@@ -160,44 +170,13 @@ def main(displacement=0.01, kptdensity=8.0):
     data = {'Z_avv': Z_avv, 'sym_a': sym_a,
             'P_asvv': P_asvv}
 
-    world.barrier()
-    if world.rank == 0:
-        files = Path().glob('born-*.gpw')
-        for f in files:
-            f.unlink()
+    # world.barrier()
+    # if world.rank == 0:
+    #     files = Path().glob('born-*.gpw')
+    #     for f in files:
+    #         f.unlink()
 
     return data
-
-
-def polvsatom(row, *filenames):
-    import numpy as np
-    if 'borndata' not in row.data:
-        return
-
-    from matplotlib import pyplot as plt
-    borndata = row.data['borndata']
-    deltas = borndata[0]
-    P_davv = borndata[1]
-
-    for a, P_dvv in enumerate(P_davv.transpose(1, 0, 2, 3)):
-        fname = 'polvsatom{}.png'.format(a)
-        for fname2 in filenames:
-            if fname in fname2:
-                break
-        else:
-            continue
-
-        Pm_vv = np.mean(P_dvv, axis=0)
-        P_dvv -= Pm_vv
-        plt.plot(deltas, P_dvv[:, 0, 0], '-o', label='xx')
-        plt.plot(deltas, P_dvv[:, 1, 1], '-o', label='yy')
-        plt.plot(deltas, P_dvv[:, 2, 2], '-o', label='zz')
-        plt.xlabel('Displacement (Å)')
-        plt.ylabel('Pol')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(fname2)
-        plt.close()
 
 
 if __name__ == '__main__':
