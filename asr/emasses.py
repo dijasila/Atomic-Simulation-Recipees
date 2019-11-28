@@ -724,7 +724,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    from asr.core import read_json
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
