@@ -17,18 +17,19 @@ def webpanel(row, key_descriptions):
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': 'Convex hull',
+    panel = {'title': 'Thermodynamic stability',
              'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
-                                    'filenames': ['convex-hull.png']}]}
+                                    'filenames': ['convex-hull.png']}],
+             'sort': 1}
 
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermodynamic stability',
+    row = ['Thermal',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]
@@ -36,8 +37,7 @@ def webpanel(row, key_descriptions):
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', ''],
-                             'rows': [row]},
-                            hulltable1]]}
+                             'rows': [row]}]]}
     return [panel, summary]
 
 
@@ -215,9 +215,7 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'sg')
-        ax.plot([xt], [row.hform], 'ko', ms=15, fillstyle='none',
-                label='This material')
+        ax.plot([xt], [row.hform], 'sk')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
@@ -234,7 +232,6 @@ def plot(row, fname):
         A, B, C = pd.symbols
         plt.axis('off')
 
-    plt.legend()
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()

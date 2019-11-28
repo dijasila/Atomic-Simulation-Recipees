@@ -198,7 +198,8 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[], [fig('pbe-pdos.png', link='empty')]],
              'plot_descriptions': [{'function': plot_pdos,
-                                    'filenames': ['pbe-pdos.png']}]}
+                                    'filenames': ['pbe-pdos.png']}],
+             'sort': 13}
     return [panel]
 
 
@@ -478,7 +479,8 @@ def get_yl_colors(dct_syl):
 
 
 def plot_pdos(row, filename, soc=True,
-              figsize=(6.4, 4.8), fontsize=10, lw=2, loc='best'):
+              figsize=(5.5, 5),
+              lw=2, loc='best'):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -491,38 +493,23 @@ def plot_pdos(row, filename, soc=True,
     else:
         return
 
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy()
+    e_e = data['energies'].copy() - row.get('evac', 0)
     ef = data['efermi']
 
     # Find energy range to plot in
-    gsresults = 'results-asr.gs.json'
-    gaps = 'gaps_soc' if soc else 'gaps_nosoc'
-    emin = ef - 3
-    emax = ef + 3
-    if gsresults in row.data and gaps in row.data[gsresults]:
-        vbm = row.data[gsresults][gaps]['vbm']
-        if vbm is not None:
-            emin = vbm - 3
-        cbm = row.data[gsresults][gaps]['cbm']
-        if cbm is not None:
-            emax = cbm + 3
-
-    # Subtract the vacuum energy
-    evac = None
-    if 'evac' in row.data[gsresults]:
-        evac = row.data[gsresults]['evac']
-    if evac is not None:
-        e_e -= evac
-        ef -= evac
-        emin -= evac
-        emax -= evac
+    if soc:
+        emin = row.get('vbm', ef) - 3 - row.get('evac', 0)
+        emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
+    else:
+        nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
+        emin = nosoc_data.get('vbm', ef) - 3 - row.get('evac', 0)
+        emax = nosoc_data.get('cbm', ef) + 3 - row.get('evac', 0)
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
@@ -538,9 +525,8 @@ def plot_pdos(row, filename, soc=True,
             break
 
     # Set up plot
-    mpl.rcParams['font.size'] = fontsize
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
+    plt.figure(figsize=figsize)
+    ax = plt.gca()
 
     # Plot pdos
     pdosint_s = defaultdict(float)
@@ -563,7 +549,7 @@ def plot_pdos(row, filename, soc=True,
                 label=label, color=color_yl[key[2:]], lw=lw)
 
     ax.legend(loc=loc)
-    ax.axhline(ef, color='k', ls=':')
+    ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
 
     # Set up axis limits
     ax.set_ylim(emin, emax)
@@ -576,12 +562,11 @@ def plot_pdos(row, filename, soc=True,
     # Annotate E_F
     xlim = ax.get_xlim()
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, ef),
-        ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
+    text = plt.text(x0, ef - row.get('evac', 0),
+                    r'$E_\mathrm{F}$',
+                    ha='left',
+                    va='bottom')
+
     text.set_path_effects([
         path_effects.Stroke(linewidth=3, foreground='white', alpha=0.5),
         path_effects.Normal()
@@ -596,8 +581,6 @@ def plot_pdos(row, filename, soc=True,
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
 
-
-# ---------- ASR main ---------- #
 
 if __name__ == '__main__':
     main.cli()

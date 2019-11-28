@@ -59,7 +59,7 @@ def get_kvp_kd(resultdct):
         key_descriptions[key] = \
             (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-        if key in resultdct and desc['iskvp']:
+        if key in resultdct and desc['iskvp'] and resultdct[key] is not None:
             kvp[key] = resultdct[key]
 
     return kvp, key_descriptions
@@ -89,7 +89,7 @@ def collect(filename):
         file = Path(extrafile)
 
         if not file.is_file():
-            print(f'Warning: Required file {extrafile}'
+            print(f'Warning: Required file {file.absolute()}'
                   ' doesn\'t exist.')
             continue
 
