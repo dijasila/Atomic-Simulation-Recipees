@@ -406,7 +406,7 @@ class ASRCommand:
         # this is a good place to start
 
         assert self.is_requirements_met(), \
-            (f'Some required files are missing: {self.requires}. '
+            (f'{self.name}: Some required files are missing: {self.requires}. '
              'This could be caused by incorrect dependencies.')
 
         # Use the wrapped functions signature to create dictionary of

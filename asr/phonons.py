@@ -38,7 +38,7 @@ def topckl(filename, dct):
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          creates=creates)
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
