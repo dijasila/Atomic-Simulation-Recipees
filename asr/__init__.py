@@ -1,1 +1,2 @@
-__version__ = '0.1'
+__version__ = '19.11.18'
+name = "asr"

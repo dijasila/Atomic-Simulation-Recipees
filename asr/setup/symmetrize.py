@@ -1,45 +1,4 @@
-from asr.utils import command, option
-
-
-def sfrac(f):
-    from gpaw.symmetry import frac
-    if f == 0:
-        return '0'
-    return '%d/%d' % frac(f, n=2 * 3 * 4 * 5 * 6)
-
-
-def print_symmetries(symmetry):
-    n = len(symmetry.op_scc)
-    nft = symmetry.ft_sc.any(1).sum()
-    lines = ['Symmetries present (total): {0}'.format(n)]
-    if not symmetry.symmorphic:
-        lines.append(
-            'Symmetries with fractional translations: {0}'.format(nft))
-
-    # X-Y grid of symmetry matrices:
-
-    lines.append('')
-    nx = 6 if symmetry.symmorphic else 3
-    ns = len(symmetry.op_scc)
-    y = 0
-    for y in range((ns + nx - 1) // nx):
-        for c in range(3):
-            line = ''
-            for x in range(nx):
-                s = x + y * nx
-                if s == ns:
-                    break
-                op_c = symmetry.op_scc[s, c]
-                ft = symmetry.ft_sc[s, c]
-                line += '  (%2d %2d %2d)' % tuple(op_c)
-                if not symmetry.symmorphic:
-                    try:
-                        line += ' + (%9s)' % sfrac(ft)
-                    except ValueError:
-                        line += f' + ({ft:.3e})'
-            lines.append(line)
-        lines.append('')
-    return '\n'.join(lines)
+from asr.core import command, option
 
 
 def atomstospgcell(atoms, magmoms=None):
@@ -136,20 +95,19 @@ def symmetrize_atoms(atoms, tolerance=None,
         return idealized, origin_c, dataset, newdataset
 
     return idealized, origin_c
-    
 
-@command('asr.setup.symmetrize',
-         save_results_file=False)
-@option('--tolerance', type=float, default=1e-3,
+
+@command('asr.setup.symmetrize')
+@option('--tolerance', type=float,
         help='Tolerance when evaluating symmetries')
-@option('--angle-tolerance', type=float, default=0.1,
+@option('--angle-tolerance', type=float,
         help='Tolerance one angles when evaluating symmetries')
-def main(tolerance, angle_tolerance):
+def main(tolerance=1e-3, angle_tolerance=0.1):
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell
-    of an approximately symmetrical structure into an exactly
-    symmetrical structure.
+    of an approximately symmetric structure into an exactly
+    symmetric structure.
 
     In practice, the spacegroup of the structure located in 'original.json'
     is evaluated using a not-very-strict tolerance, which can be adjusted using
@@ -162,8 +120,9 @@ def main(tolerance, angle_tolerance):
     Examples:
     ---------
     Symmetrize an atomic structure using the default tolerances
-        asr run setup.symmetrize
-    """
+        $ ase build -x diamond C original.json
+        $ asr run setup.symmetrize
+"""
     import numpy as np
     from ase.io import read, write
     atoms = read('original.json')
@@ -200,10 +159,11 @@ def main(tolerance, angle_tolerance):
         msg = 'Reached maximum iteration! Went through ' + ' -> '.join(spgs)
         raise RuntimeError(msg)
     print(f'Idealizing structure into spacegroup {spg2} using SPGLIB.')
+    idealized.set_initial_magnetic_moments(
+        atoms.get_initial_magnetic_moments())
     write('unrelaxed.json', idealized)
 
     # Check that the cell was only slightly perturbed
-    nsym = len(dataset2['rotations'])
     cp = atoms.cell.cellpar()
     idcp = idealized.cell.cellpar()
     deltacp = idcp - cp
@@ -236,38 +196,6 @@ def main(tolerance, angle_tolerance):
     assert (dpos_a < 10 * tolerance).all(), \
         'Some atoms moved too much! See output above.'
 
-    # Check that GPAW indeed does find the same symmetries as
-    # spglib
-    from gpaw.symmetry import Symmetry
-    id_a = idealized.get_atomic_numbers()
-    symmetry = Symmetry(id_a, idealized.cell, idealized.pbc,
-                        symmorphic=False,
-                        time_reversal=False)
-    symmetry.analyze(idealized.get_scaled_positions())
-
-    nsymgpaw = len(symmetry.op_scc)
-
-    if not nsym == nsymgpaw:
-        msg = ('GPAW not finding as many symmetries as SPGLIB.\n'
-               f'nsymgpaw={nsymgpaw} nsymspglib={nsym}\n')
-        
-        msg += 'GPAW symmetries:\n'
-        msg += symmetry.__str__()
-
-        msg += '\nSPGLIB symmetries:\n'
-        # Monkey patch object
-        spgsym = Symmetry(id_a, idealized.cell,
-                          symmorphic=False,
-                          time_reversal=False)
-
-        spgsym.op_scc = np.array([op_cc for op_cc in dataset2['rotations']])
-        spgsym.ft_sc = np.array([t_c for t_c in dataset2['translations']])
-        msg += print_symmetries(spgsym)
-        raise AssertionError(msg)
-
-
-group = 'setup'
-
 
 if __name__ == '__main__':
-    main()
+    main.cli()

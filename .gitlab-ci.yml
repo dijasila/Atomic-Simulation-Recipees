@@ -3,9 +3,20 @@ tests:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - pip install flake8 spglib
-    - pip install -e .
-    - pip install git+https://gitlab.com/ase/ase.git
-    - pip install gpaw
-    - asr test -k test_fast.py
+    - pip install flake8 coverage
+    - pip install -r requirements.txt
     - flake8 asr
+    - pip install gpaw
+    - gpaw install-data paw-datasets --register
+    - tdir=$(mktemp -d /tmp/asr-test-XXXXXXXXX)
+    - coverage run -m asr test --tag gitlab-ci --tmpdir $tdir --raiseexc --run-coverage
+    - coverage combine $tdir/*/.coverage.* .coverage.*
+    - coverage report --include '*/asr/asr/*'
+
+docs_test:
+  image: python:3.6
+  script:
+    - pip install .[docs]
+    - which sphinx-build
+    - cd $CI_PROJECT_DIR/docs
+    - make html

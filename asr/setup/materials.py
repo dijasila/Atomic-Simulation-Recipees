@@ -1,11 +1,11 @@
-from asr.utils import command, option
+from asr.core import command, option
 
 
 @command('asr.setup.materials',
-         save_results_file=False)
+         creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection):
+def main(selection=''):
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and
@@ -18,7 +18,7 @@ def main(selection):
     Examples:
     ---------
     Get all materials from database with ntypes=1 (elementary compounds)
-        asr run setup.materials -s ntypes=1
+        asr run "setup.materials -s ntypes=1"
     """
     from ase.db import connect
     from pathlib import Path
@@ -44,4 +44,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()

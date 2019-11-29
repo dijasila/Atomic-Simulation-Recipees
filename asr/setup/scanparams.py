@@ -1,15 +1,14 @@
 import click
-from asr.utils import command, argument, option
+from asr.core import command, argument, option
 
 
-@command('asr.setup.scanparams',
-         save_results_file=False)
+@command('asr.setup.scanparams')
 @argument('scanparams', nargs=-1,
           metavar='recipe:option arg arg arg recipe:option arg arg arg')
-@option('--symlink/--no-symlink', default=True,
+@option('--symlink/--no-symlink',
         help='Make symbolic link to everything '
         'in this folder (except params.json)')
-def main(scanparams, symlink):
+def main(scanparams, symlink=True):
     """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax
@@ -28,14 +27,14 @@ def main(scanparams, symlink):
     Examples:
     ---------
     Test different kpoint density in the relax recipe
-        asr run setup.scanparams asr.relax:kptdensity 3 4 5
+        asr run "setup.scanparams asr.relax:kptdensity 3 4 5"
     \b
     Test combination of kpoint densities and planewave cutoff in relax:
-        asr run setup.scanparams asr.relax:kptdensity 3 4 5
-            asr.relax:ecut 300 400 500
+        asr run "setup.scanparams asr.relax:kptdensity 3 4 5
+            asr.relax:ecut 300 400 500"
     """
     from pathlib import Path
-    from asr.utils import get_recipes, ASRCommand, read_json, write_json
+    from asr.core import get_recipes, ASRCommand, read_json, write_json
 
     paramdict = {}
     recipes = get_recipes(sort=True)
@@ -148,8 +147,5 @@ def main(scanparams, symlink):
         write_json(str(folder / 'params.json'), params)
 
 
-group = 'setup'
-
-
 if __name__ == '__main__':
-    main()
+    main.cli()

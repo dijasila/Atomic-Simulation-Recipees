@@ -1,14 +1,14 @@
-from asr.utils import command, option
+from click import Choice
+from asr.core import command, option
 
 
-@command('asr.setup.magnetize',
-         save_results_file=False)
-@option('--state', type=str, default='all', help='Choices: all, nm, fm, afm')
-@option('--name', default='unrelaxed.json',
-        help='Atomic structure')
-@option('--copy-params', default=False, is_flag=True,
+@command('asr.setup.magnetize')
+@option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
+        help='Magnetic states to create.')
+@option('--name', help='Atomic structure')
+@option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).')
-def main(state, name, copy_params):
+def main(state='all', name='unrelaxed.json', copy_params=False):
     """Set up folders with magnetic moments.
 
     This recipe can be used to test different magnetic configurations
@@ -46,12 +46,12 @@ def main(state, name, copy_params):
         asr run setup.magnetize
     \b
     Only set up ferromagnetic configuration
-        asr run setup.magnetic --state fm
+        asr run "setup.magnetic --state fm"
     """
     from pathlib import Path
     from ase.io import read, write
     from ase.parallel import world
-    from asr.utils import magnetic_atoms
+    from asr.core import magnetic_atoms
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
 
@@ -120,4 +120,4 @@ group = 'setup'
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()
