@@ -1,151 +1,224 @@
-import json
-from pathlib import Path
-from asr.utils import command, option, read_json
+from asr.core import command, option, read_json
 
 import numpy as np
 
-from ase.units import Hartree, Bohr
-from ase.io import read
 
-@command('asr.infraredpolarizability')
-@option('--frequencies', default=[0.0, 0.4, 100], help='frequency grid')
-@option('--eta', default=1e-4, help='relaxation rate')
-def main(frequencies, eta):
-    # Get relevant atomic structure                                                                                                
-    atoms = read('gs.gpw')
+def webpanel(row, key_descriptions):
+    from asr.browser import fig
+
+    panel = {'title': 'Infrared polarizability',
+             'columns': [[fig('infrax.png'), fig('infraz.png')],
+                         [fig('infray.png')]],
+             'plot_descriptions': [{'function': create_plot,
+                                    'filenames': ['infrax.png',
+                                                  'infray.png',
+                                                  'infraz.png']}]}
+
+    return [panel]
+
+
+def create_plot(row, *fnames):
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import interp1d
+
+    # Get electronic polarizability
+    infrareddct = row.data.get('results-asr.infraredpolarizability.json')
+    omega_w = infrareddct['omega_w']
+    alpha_wvv = infrareddct['alpha_wvv']
+
+    electrondct = row.data.get('results-asr.polarizability.json')
+    alphax_w = electrondct['alphax_w']
+    alphay_w = electrondct['alphay_w']
+    alphaz_w = electrondct['alphaz_w']
+    omegatmp_w = electrondct['frequencies']
+
+    atoms = row.toatoms()
+    cell_cv = atoms.get_cell()
+    pbc_c = atoms.pbc
+    ndim = int(np.sum(pbc_c))
+    if pbc_c.all():
+        norm = 1
+    else:
+        norm = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+
+    alphax = interp1d(omegatmp_w, alphax_w)
+    ax_w = (alphax(omega_w) + alpha_wvv[:, 0, 0] * norm)
+    alphay = interp1d(omegatmp_w, alphay_w)
+    ay_w = (alphay(omega_w) + alpha_wvv[:, 1, 1] * norm)
+    alphaz = interp1d(omegatmp_w, alphaz_w)
+    az_w = (alphaz(omega_w) + alpha_wvv[:, 2, 2] * norm)
+
+    if ndim == 3:
+        epsx_w = 1 + 4 * np.pi * ax_w
+        epsy_w = 1 + 4 * np.pi * ay_w
+        epsz_w = 1 + 4 * np.pi * az_w
+        plt.figure()
+        plt.plot(omega_w, epsx_w)
+        ax = plt.gca()
+        ax.set_title('x-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(r'Dielectric function')
+        plt.tight_layout()
+        plt.savefig(fnames[0])
+
+        plt.figure()
+        plt.plot(omega_w, epsy_w)
+        ax = plt.gca()
+        ax.set_title('y-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(r'Dielectric function')
+        plt.tight_layout()
+        plt.savefig(fnames[1])
+
+        plt.figure()
+        plt.plot(omega_w, epsz_w)
+        ax = plt.gca()
+        ax.set_title('z-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(r'Dielectric function')
+        plt.tight_layout()
+        plt.savefig(fnames[2])
+    elif ndim in [2, 1, 0]:
+        if ndim == 2:
+            unit = r'$\mathrm{\AA}$'
+        elif ndim == 1:
+            unit = r'$\mathrm{\AA}^2$'
+        elif ndim == 0:
+            unit = r'$\mathrm{\AA}^3$'
+        plt.figure()
+        plt.plot(omega_w, ax_w)
+        ax = plt.gca()
+        ax.set_title('x-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(rf'polarizability [{unit}]')
+        plt.tight_layout()
+        plt.savefig(fnames[0])
+
+        plt.figure()
+        plt.plot(omega_w, ay_w)
+        ax = plt.gca()
+        ax.set_title('y-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(rf'polarizability [{unit}]')
+        plt.tight_layout()
+        plt.savefig(fnames[1])
+
+        plt.figure()
+        plt.plot(omega_w, az_w)
+        ax = plt.gca()
+        ax.set_title('z-component')
+        ax.set_xlabel('energy [eV]')
+        ax.set_ylabel(rf'polarizability [{unit}]')
+        plt.tight_layout()
+        plt.savefig(fnames[2])
+
+
+@command('asr.infraredpolarizability',
+         dependencies=['asr.phonons', 'asr.borncharges', 'asr.polarizability'],
+         requires=['structure.json', 'results-asr.phonons.json',
+                   'results-asr.borncharges.json',
+                   'results-asr.polarizability.json'],
+         webpanel=webpanel)
+@option('--fmin', help='Minimum frequency')
+@option('--fmax', help='Maximum frequency')
+@option('--nfreq', help='Number of frequency points')
+@option('--eta', help='Relaxation rate')
+def main(fmin=0.0, fmax=1, nfreq=300, eta=1e-2):
+    from ase.io import read
+
+    # Get relevant atomic structure
+    atoms = read('structure.json')
 
     # Get phonons
-    from asr.phonons import analyse
-    q_qc = [[0, 0, 0], ]
-    omega_ql, u_ql, q_qc = analyse(modes=True, q_qc = q_qc)
+    phresults = read_json('results-asr.phonons.json')
+    u_ql = phresults['modes_kl']
+    q_qc = phresults['q_qc']
+    omega_ql = phresults['omega_kl']
 
-    freqs_l, modes_liv = omega_ql[0] / Hartree, u_ql[0]
+    iq_q = np.argwhere((np.abs(q_qc) < 1e-10).all(axis=1))
+
+    assert len(iq_q), 'Calculated phonons do not contain Gamma point.'
+
+    iq = iq_q[0][0]
+
+    m_a = atoms.get_masses()
+    m_inv_x = np.repeat(m_a**-0.5, 3)
+    freqs_l, modes_liv = omega_ql[iq], u_ql[iq]
     modes_xl = modes_liv.reshape(len(freqs_l), -1).T
-    modes_xl *= (analyse.dct['phonons']['m_inv_x']**(-1))[:, np.newaxis]
+    modes_xl *= 1 / m_inv_x[:, np.newaxis]
 
     # Make frequency grid
-    omega_w = np.linspace(*frequencies) / Hartree
+    omega_w = np.linspace(fmin, fmax, nfreq)
 
     # Read born charges
-    bornchargefile = '/data-borncharges/borncharges-0.01.json'
-    borndct = read_json(bornchargefile)
+    borndct = read_json('results-asr.borncharges.json')
 
     # Get other relevant quantities
-    me = 1822.888
-    m_a = atoms.get_masses() * me
-    cell_cv = atoms.get_cell() / Bohr
+    m_a = atoms.get_masses()
+    cell_cv = atoms.get_cell()
     Z_avv = borndct['Z_avv']
 
     # Get phonon polarizability
     alpha_wvv = get_phonon_pol(omega_w, Z_avv, freqs_l,
                                modes_xl, m_a, cell_cv, eta)
 
-    # Get electronic polarizability
-    eletronicfile = 'polarizability.json'
-    electrondct = read_json(electronicfile)
-    alphax_w = electrondct['alphax_w']
-    alphay_w = electrondct['alphay_w']
-    alphaz_w = electrondct['alphaz_w']
-    omegatmp_w = electrondct['frequencies'] / Hartree
-    from scipy.interpolate import interp1d
+    alphax_lat = alpha_wvv[0, 0, 0].real
+    alphay_lat = alpha_wvv[0, 1, 1].real
+    alphaz_lat = alpha_wvv[0, 2, 2].real
 
-    alphax = interp1d(omegatmp_w, alphax_w)
-    ax = alphax(omega_w) + alpha_wvv[:, 0, 0]
-    epsx_w = 1 + 4 * np.pi * ax
-
-    alphay = interp1d(omegatmp_w, alphay_w)
-    ay = alphay(omega_w) + alpha_wvv[:, 1, 1]
-    epsy_w = 1 + 4 * np.pi * ay
+    elecdict = read_json('results-asr.polarizability.json')
+    alphax_el = elecdict['alphax_el']
+    alphay_el = elecdict['alphay_el']
+    alphaz_el = elecdict['alphaz_el']
     
-    alphaz = interp1d(omegatmp_w, alphaz_w)
-    az = alphaz(omega_w) + alpha_wvv[:, 2, 2]
-    epsz_w = 1 + 4 * np.pi * az
+    results = {'alpha_wvv': alpha_wvv,
+               'omega_w': omega_w,
+               'alphax_lat': alphax_lat,
+               'alphay_lat': alphay_lat,
+               'alphaz_lat': alphaz_lat,
+               'alphax': alphax_lat + alphax_el,
+               'alphay': alphay_lat + alphay_el,
+               'alphaz': alphaz_lat + alphaz_el}
 
-    results = {'alphax': ax,
-               'epsx': epsx_w,
-               'alphay': ay,
-               'epsy': epsy_w,
-               'alphaz': az,
-               'epsz': epsz_w,
-               'omega': omega_w * Hartree}
+    results['__key_descriptions__'] = {
+        'alphax_lat': 'KVP: Static ionic polarizability, x-direction [Ang]',
+        'alphay_lat': 'KVP: Static ionic polarizability, y-direction [Ang]',
+        'alphaz_lat': 'KVP: Static ionic polarizability, z-direction [Ang]',
+        'alphax': 'KVP: Static polarizability, x-direction [Ang]',
+        'alphay': 'KVP: Static polarizability, y-direction [Ang]',
+        'alphaz': 'KVP: Static polarizability, z-direction [Ang]'}
 
     return results
 
 
 def get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta):
-
-    # Get phonons at q=0
+    from ase.units import Hartree, Bohr
     Z_vx = Z_avv.swapaxes(0, 1).reshape((3, -1))
     f2_w, D_xw = (freqs_l / Hartree)**2, modes_xl
 
+    vol = abs(np.linalg.det(cell_cv)) / Bohr**3
+    omega_w = omega_w / Hartree
+    eta = eta / Hartree
+    me = 1822.888
+    m_a = m_a * me
     alpha_wvv = np.zeros((len(omega_w), 3, 3), dtype=complex)
     m_x = np.repeat(m_a, 3)**0.5
-    eta = eta / Hartree
+    eta = eta
 
     for f2, D_x in zip(f2_w, D_xw.T):
+        # Neglect acoustic modes
         if f2 < (1e-3 / Hartree)**2:
             continue
         DM_x = D_x / m_x
         Z_v = np.dot(Z_vx, DM_x)
-        alpha_wvv += (np.outer(Z_v, Z_v)[np.newaxis] / 
-                      ((f2 - omega_w**2) - 
+        alpha_wvv += (np.outer(Z_v, Z_v)[np.newaxis] /
+                      ((f2 - omega_w**2) -
                        1j * eta * omega_w)[:, np.newaxis, np.newaxis])
 
-    vol = abs(np.linalg.det(cell_cv)) / Bohr**3
-    L = np.abs(cell_cv[2, 2] / Bohr)
-    alpha_wvv *= 1 / vol * L
+    alpha_wvv /= vol
     
     return alpha_wvv
 
-# def collect_data(atoms):
-#     path = Path('results_infraredpolarizability.json')
-#     if not path.is_file():
-#         return {}, {}, {}
-
-#     dct = json.loads(path.read_text())
-#     kvp = {'alphax': dct['alphax'][0].real,
-#            'alphay': dct['alphay'][0].real,
-#            'alphaz': dct['alphaz'][0].real}
-#     kd = {'alphax': ('Infrared static polarizability (x-direction)',
-#                      'Infrared static polarizability (x-direction)', 'Ang'),
-#           'alphay': ('Infrared static polarizability (y-direction)',
-#                      'Infrared static polarizability (y-direction)', 'Ang'),
-#           'alphaz': ('Infrared static polarizability (z-direction)',
-#                      'Infrared static polarizability (z-direction)', 'Ang')}
-#     data = {'infraredpolarizability': dct}
-#     return kvp, kd, data
-
-
-# def webpanel(row, key_descriptions):
-#     from asr.utils.custom import fig, table
-
-#     if 'something' not in row.data:
-#         return None, []
-
-#     table1 = table(row,
-#                    'Property',
-#                    ['something'],
-#                    kd=key_descriptions)
-#     panel = ('Title',
-#              [[fig('something.png'), table1]])
-#     things = [(create_plot, ['something.png'])]
-#     return panel, things
-
-
-# def create_plot(row, fname):
-#     import matplotlib.pyplot as plt
-
-#     freqs = row.data.get()
-#     fig = plt.figure()
-#     ax = fig.gca()
-#     ax.plot(data.things)
-#     plt.savefig(fname)
-
-
-group = 'property'
-creates = ['results_infraredpolarizability.json']  # what files are created
-dependencies = ['asr.phonons', 'asr.borncharges', 'asr.polarizability'] 
-resources = '1:10m'  # 1 core for 10 minutes
 
 if __name__ == '__main__':
     main()
