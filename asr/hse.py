@@ -119,7 +119,7 @@ def hse_spinorbit(dct):
                                    bands=np.arange(e_skn.shape[2]),
                                    theta=theta, phi=phi)
         dct_soc['e_hse_mk'] = e_mk
-        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index, :].transpose()
+        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index(), :].transpose()
 
         return dct_soc
 
