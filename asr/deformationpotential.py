@@ -1,15 +1,10 @@
 from asr.core import command, option
 import numpy as np
-from gpaw import GPAW
 
 
 @command()
-@option('--strain-percent')
-def main(gpw='densk.gpw',
-         strains=[-1.0, 1.0],
-         lattice_relax=False,
-         ionic_relax=True,
-         data={}):
+@option('--strains', help='Strain percentages')
+def main(strains=[-1.0, 0.0, 1.0]):
     """
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
@@ -27,17 +22,29 @@ def main(gpw='densk.gpw',
                    [5, 1, 3],
                    [4, 3, 2]]
 
-    strains = [-1.0, 0.0, 1.0]
     # Edges have dimension (3, 6, 2) =
     # (#strains_percentages, #strains, (vbm, cbm))
     # Because np.polyfit likes that
     edges_pin = np.zeros((3, 6, 2), float) + np.nan
     edges_nosoc_pin = np.zeros((3, 6, 2), float) + np.nan
 
+    gsresults = read_json('results-asr.gs.json')
+
+    k0_vbm_c = gsresults['k_vbm_c']
+    k0_cbm_c = gsresults['k_cbm_c']
+
     for i, j in ij:
         for ip, strain in enumerate(strains):
             folder = get_strained_folder_name(strain, i, j)
             gsresults = read_json(folder / 'results-asr.gs.json')
+            k_vbm_c = gsresults['k_vbm_c']
+            k_cbm_c = gsresults['k_cbm_c']
+            assert np.allclose(k_vbm_c, k0_vbm_c, 0.05), \
+                (f'Strain i={i} j={j}: VBM has changed location in '
+                 'reciprocal space upon straining.')
+            assert np.allclose(k_cbm_c, k0_cbm_c, 0.05), \
+                (f'Strain i={i} j={j}: CBM has changed location in '
+                 'reciprocal space upon straining.')
             evac = gsresults['evac']
             edges_pin[ip, ij_to_voigt[i][j], 0] = gsresults['vbm'] - evac
             edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
@@ -64,3 +71,7 @@ def main(gpw='densk.gpw',
                  'deformation_potentials'][soc]] = deformation_potentials
 
     return results
+
+
+if __name__ == '__main__':
+    main.cli()
