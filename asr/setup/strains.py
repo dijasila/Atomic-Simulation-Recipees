@@ -18,6 +18,8 @@ def get_relevant_strains(pbc):
 def get_strained_folder_name(strain_percent, i, j):
     from pathlib import Path
     import numpy as np
+    if strain_percent == 0:
+        return Path('.')
     itov_i = ['x', 'y', 'z']
     name = itov_i[i] + itov_i[j]
     sign = ['', '+', '-'][int(np.sign(strain_percent))]
