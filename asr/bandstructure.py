@@ -583,7 +583,7 @@ def webpanel(row, key_descriptions):
 
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         # fig('pbe-pdos.png', link='empty'),
+                         # fig('pbe-pdos_soc.png', link='empty'),
                          [fig('bz.png'), pbe]],
              'plot_descriptions': [{'function': bz_soc,
                                     'filenames': ['bz.png']},

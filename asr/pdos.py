@@ -197,19 +197,20 @@ def webpanel(row, key_descriptions):
     # PDOS without spin-orbit coupling
     nosoc_panel = {'title': 'Band structure with pdos (PBE)',
                    'columns': [[],
-                               [fig('pbe-pdos.png', link='empty'),
+                               [fig('pbe-pdos_nosoc.png', link='empty'),
                                 table(row, 'Property', ['dos_at_ef_nosoc'],
                                       kd=key_descriptions)]],
-                   'plot_descriptions': [{'function': plot_pdos,
-                                          'filenames': ['pbe-pdos.png']}]}
+                   'plot_descriptions': [{'function': plot_pdos_nosoc,
+                                          'filenames': ['pbe-pdos_nosoc.png']}]
+                   }
 
     # PDOS with spin-orbit coupling
     # Goes to Electronic band structure (PBE) panel, which is defined in the
     # bandstructure recipe
     soc_panel = {'title': 'Electronic band structure (PBE)',
-                 'columns': [[], [fig('pbe-pdos.png', link='empty')]],
-                 'plot_descriptions': [{'function': plot_pdos,
-                                        'filenames': ['pbe-pdos.png']}]}
+                 'columns': [[], [fig('pbe-pdos_soc.png', link='empty')]],
+                 'plot_descriptions': [{'function': plot_pdos_soc,
+                                        'filenames': ['pbe-pdos_soc.png']}]}
 
     return [nosoc_panel, soc_panel]
 
@@ -487,6 +488,14 @@ def get_yl_colors(dct_syl):
             c = c % 10  # only 10 colors available in cycler
 
     return color_yl
+
+
+def plot_pdos_nosoc(*args, **kwargs):
+    return plot_pdos(*args, soc=False, **kwargs)
+
+
+def plot_pdos_soc(*args, **kwargs):
+    return plot_pdos(*args, soc=True, **kwargs)
 
 
 def plot_pdos(row, filename, soc=True,
