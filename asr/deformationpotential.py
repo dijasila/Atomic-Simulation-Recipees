@@ -39,12 +39,16 @@ def main(strains=[-1.0, 0.0, 1.0]):
             gsresults = read_json(folder / 'results-asr.gs.json')
             k_vbm_c = gsresults['k_vbm_c']
             k_cbm_c = gsresults['k_cbm_c']
-            assert np.allclose(k_vbm_c, k0_vbm_c, 0.05), \
+            difference = k_vbm_c - k0_vbm_c
+            difference -= np.round(difference)
+            assert np.allclose(difference, 0, 0.01), \
                 (f'Strain i={i} j={j}: VBM has changed location in '
-                 'reciprocal space upon straining.')
-            assert np.allclose(k_cbm_c, k0_cbm_c, 0.05), \
+                 f'reciprocal space upon straining. {k0_vbm_c} -> {k_vbm_c}')
+            difference = k_cbm_c - k0_cbm_c
+            difference -= np.round(difference)
+            assert np.allclose(difference, 0, 0.01), \
                 (f'Strain i={i} j={j}: CBM has changed location in '
-                 'reciprocal space upon straining.')
+                 f'reciprocal space upon straining. {k0_cbm_c} -> {k_cbm_c}')
             evac = gsresults['evac']
             edges_pin[ip, ij_to_voigt[i][j], 0] = gsresults['vbm'] - evac
             edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
@@ -65,10 +69,10 @@ def main(strains=[-1.0, 0.0, 1.0]):
         deformation_potentials = np.zeros(np.shape(edges_pin)[1:])
         for idx, band_edge in enumerate(['vbm', 'cbm']):
             D = np.polyfit(strains, edges_pin[:, :, idx], 1)[0] * 100
-            D[2] /= 2
             deformation_potentials[:, idx] = D
         results[['deformation_potentials_nosoc',
-                 'deformation_potentials'][soc]] = deformation_potentials
+                 'deformation_potentials'][soc]] = \
+            deformation_potentials.tolist()
 
     return results
 
