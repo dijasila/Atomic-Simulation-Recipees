@@ -236,7 +236,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
-@option('--fmax', is_flag=True, help='Maximum force allowed')
+@option('--fmax', help='Maximum force allowed')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',

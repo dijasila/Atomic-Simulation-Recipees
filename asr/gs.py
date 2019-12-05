@@ -25,7 +25,7 @@ def calculate(calculator={'name': 'gpaw',
                           'kpts': {'density': 12.0, 'gamma': True},
                           'occupations': {'name': 'fermi-dirac',
                                           'width': 0.05},
-                          'convergence': {'bands': -3},
+                          'convergence': {'bands': 'CBM+3.0'},
                           'nbands': -10,
                           'txt': 'gs.txt',
                           'charge': 0}):
