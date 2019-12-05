@@ -1,4 +1,5 @@
 from asr.core import command, option, argument, chdir
+from gpaw.mpi import world
 
 
 def get_kvp_kd(resultdct):
@@ -67,7 +68,7 @@ def get_kvp_kd(resultdct):
 
 def collect(filename):
     from pathlib import Path
-    from asr.core import read_json, md5sum
+    from asr.core import read_json
     data = {}
 
     # resultfile = f'results-{recipe.name}.json'
@@ -96,8 +97,7 @@ def collect(filename):
         if file.suffix == '.json':
             dct = read_json(extrafile)
         else:
-            dct = {'pointer': str(file.absolute()),
-                   '__md5__': md5sum(extrafile)}
+            dct = {'pointer': str(file.absolute())}
         data[extrafile] = dct
 
     links = results.get('__links__', {})
@@ -136,15 +136,12 @@ tests = [
 def main(folders=None, patterns='info.json,results-asr.*.json',
          dbname='database.db', metadata_from_file=None):
     """Collect ASR data from folder tree into an ASE database."""
-    import os
     from ase.db import connect
     from ase.io import read
     from asr.core import read_json
     import glob
     from pathlib import Path
-    from asr.database.material_fingerprint import main as mat_finger
     from fnmatch import fnmatch
-    from click import progressbar
 
     def item_show_func(item):
         return str(item)
@@ -158,47 +155,57 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
             tmpfolders.extend(glob.glob(folder))
         folders = tmpfolders
 
+    folders.sort()
     patterns = patterns.split(',')
-
     # We use absolute path because of chdir below!
-    dbname = os.path.join(os.getcwd(), dbname)
+    dbpath = Path(dbname).absolute()
     metadata = {'key_descriptions': {}}
     if metadata_from_file:
         metadata.update(read_json(metadata_from_file))
 
-    with connect(dbname) as db:
-        with progressbar(folders, label=f'Collecting to {dbname}',
-                         item_show_func=item_show_func) as bar:
-            for folder in bar:
-                with chdir(folder):
-                    kvp = {}
-                    data = {'__links__': {}}
-                    key_descriptions = {}
+    if world.size > 1:
+        dbname = dbpath.parent / f'{dbname}.{world.rank}.db'
+        myfolders = folders[world.rank::world.size]
+    else:
+        dbname = str(dbpath)
+        myfolders = folders
 
-                    if not mat_finger.done:
-                        mat_finger(silence=True)
+    nfolders = len(myfolders)
+    with connect(dbname, serial=True) as db:
+        for ifol, folder in enumerate(myfolders):
+            if world.size > 1:
+                print(f'Collecting folder {folder} on rank {world.rank} '
+                      f'({ifol}/{nfolders})',
+                      flush=True)
+            else:
+                print(f'Collecting folder {folder} ({ifol}/{nfolders})',
+                      flush=True)
+            with chdir(folder):
+                kvp = {}
+                data = {'__links__': {}}
+                key_descriptions = {}
 
-                    if not Path(atomsname).is_file():
+                if not Path(atomsname).is_file():
+                    continue
+
+                atoms = read(atomsname, parallel=False)
+                data[atomsname] = read_json(atomsname)
+                for filename in glob.glob('*'):
+                    for pattern in patterns:
+                        if fnmatch(filename, pattern):
+                            break
+                    else:
                         continue
+                    tmpkvp, tmpkd, tmpdata, tmplinks = \
+                        collect(str(filename))
+                    if tmpkvp or tmpkd or tmpdata or tmplinks:
+                        kvp.update(tmpkvp)
+                        data.update(tmpdata)
+                        key_descriptions.update(tmpkd)
+                        data['__links__'].update(tmplinks)
 
-                    atoms = read(atomsname)
-                    data[atomsname] = read_json(atomsname)
-                    for filename in glob.glob('*'):
-                        for pattern in patterns:
-                            if fnmatch(filename, pattern):
-                                break
-                        else:
-                            continue
-                        tmpkvp, tmpkd, tmpdata, tmplinks = \
-                            collect(str(filename))
-                        if tmpkvp or tmpkd or tmpdata or tmplinks:
-                            kvp.update(tmpkvp)
-                            data.update(tmpdata)
-                            key_descriptions.update(tmpkd)
-                            data['__links__'].update(tmplinks)
-
-                    db.write(atoms, data=data, **kvp)
-                    metadata['key_descriptions'].update(key_descriptions)
+            db.write(atoms, data=data, **kvp)
+            metadata['key_descriptions'].update(key_descriptions)
     db.metadata = metadata
 
 
