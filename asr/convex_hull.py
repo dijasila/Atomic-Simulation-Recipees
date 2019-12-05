@@ -197,8 +197,7 @@ def plot(row, fname):
 
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        names = [ref['label'] for ref in references]
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-b')
         ax.plot(x, e, 'sg')
