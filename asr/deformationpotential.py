@@ -4,7 +4,8 @@ import numpy as np
 
 @command()
 @option('--strains', help='Strain percentages')
-def main(strains=[-1.0, 0.0, 1.0]):
+@option('--ktol', help='Distance that ')
+def main(strains=[-1.0, 0.0, 1.0], ktol=0.1):
     """
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
@@ -41,14 +42,16 @@ def main(strains=[-1.0, 0.0, 1.0]):
             k_cbm_c = gsresults['k_cbm_c']
             difference = k_vbm_c - k0_vbm_c
             difference -= np.round(difference)
-            assert np.allclose(difference, 0, 0.01), \
-                (f'Strain i={i} j={j}: VBM has changed location in '
-                 f'reciprocal space upon straining. {k0_vbm_c} -> {k_vbm_c}')
+            assert (np.abs(difference) < ktol).all(), \
+                (f'{folder}: i={i} j={j} strain={strain}: VBM has '
+                 f'changed location in reciprocal space upon straining. '
+                 f'{k0_vbm_c} -> {k_vbm_c} (Delta_c={difference})')
             difference = k_cbm_c - k0_cbm_c
             difference -= np.round(difference)
-            assert np.allclose(difference, 0, 0.01), \
-                (f'Strain i={i} j={j}: CBM has changed location in '
-                 f'reciprocal space upon straining. {k0_cbm_c} -> {k_cbm_c}')
+            assert (np.abs(difference) < ktol).all(), \
+                (f'{folder}: i={i} j={j} strain={strain}: CBM has '
+                 f'changed location in reciprocal space upon straining. '
+                 f'{k0_cbm_c} -> {k_cbm_c} (Delta_c={difference})')
             evac = gsresults['evac']
             edges_pin[ip, ij_to_voigt[i][j], 0] = gsresults['vbm'] - evac
             edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
