@@ -50,6 +50,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
         params['symmetry'] = {'point_group': True,
                               'time_reversal': True}
     params['convergence']['eigenstates'] = 1e-11
+    params['convergence']['density'] = 1e-7
     tmp = Path(name).with_suffix('').name
     calc = GPAW(txt=tmp + '.txt', **params)
     atoms.set_calculator(calc)

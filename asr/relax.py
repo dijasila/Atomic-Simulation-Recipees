@@ -119,7 +119,8 @@ class myBFGS(BFGS):
 
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
-          fixcell=False, allow_symmetry_breaking=False, dft=None):
+          fixcell=False, allow_symmetry_breaking=False, dft=None,
+          fmax=0.01):
     import spglib
 
     if dftd3:
@@ -180,7 +181,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
+        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
             opt.call_observers()
             break
@@ -235,6 +236,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
+@option('--fmax', help='Maximum force allowed')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
@@ -246,7 +248,8 @@ def main(calculator={'name': 'gpaw',
                      'occupations': {'name': 'fermi-dirac',
                                      'width': 0.05},
                      'charge': 0},
-         d3=False, fixcell=False, allow_symmetry_breaking=False):
+         d3=False, fixcell=False, allow_symmetry_breaking=False,
+         fmax=0.01):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -311,7 +314,7 @@ def main(calculator={'name': 'gpaw',
     atoms = relax(atoms, name='relax', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc)
+                  dft=calc, fmax=fmax)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
@@ -348,6 +351,8 @@ def main(calculator={'name': 'gpaw',
          'beta': 'Cell parameter beta [deg]',
          'gamma': 'Cell parameter gamma [deg]'}
 
+    # For nm set magnetic moments to zero XXX
+    
     # Save atomic structure
     write('structure.json', atoms)
 
