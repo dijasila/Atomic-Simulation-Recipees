@@ -42,9 +42,10 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.convex_hull',
-         requires=['gs.gpw', 'results-asr.structureinfo.json',
+         requires=['results-asr.gs.json', 'results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.structureinfo',
+         dependencies=['asr.gs',
+                       'asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
@@ -58,11 +59,13 @@ def main(databases, standardreferences=None):
     if standardreferences is None:
         standardreferences = databases[0]
 
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
     ref_energies = get_reference_energies(atoms, databases[0])
-    hform = hof(atoms.get_potential_energy(), count, ref_energies)
+    hform = hof(read_json('results-asr.gs.json').get('etot'),
+                count,
+                ref_energies)
     mf = read_json('results-asr.database.material_fingerprint.json')
     uid = mf['uid']
 
@@ -83,12 +86,18 @@ def main(databases, standardreferences=None):
         for row in data['rows']:
             if row.uid == uid:
                 continue
-            hformref = hof(row.energy, row.count_atoms(), ref_energies)
+            # Take the energy from the gs recipe if its calculated
+            # or fall back to row.energy
+            energy = row.data.get('results-asr.gs.json')['etot'] if \
+                'results-asr.gs.json' in row.data else row.energy
+            hformref = hof(energy, row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
                          'natoms': row.natoms}
             reference.update(metadata)
+            if 'name' in reference:
+                reference['name'] = reference['name'].format(row=row)
             if 'label' in reference:
                 reference['label'] = reference['label'].format(row=row)
             if 'link' in reference:
@@ -247,7 +256,7 @@ def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
 
     for reference in sorted(references, reverse=True,
                             key=lambda x: x['hform']):
-        name = '{} ({})'.format(reference['formula'], reference['legend'])
+        name = reference['name']
         matlink = reference['link']
         if reference['uid'] != row.uid:
             name = f'<a href="{matlink}">{name}</a>'
