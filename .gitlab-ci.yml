@@ -6,7 +6,7 @@ tests:
     - pip install flake8 coverage
     - pip install -r requirements.txt
     - flake8 asr
-    - pip install gpaw
+    - pip install git+https://gitlab.com/gpaw/gpaw.git
     - gpaw install-data paw-datasets --register
     - tdir=$(mktemp -d /tmp/asr-test-XXXXXXXXX)
     - coverage run -m asr test --tag gitlab-ci --tmpdir $tdir --raiseexc --run-coverage
