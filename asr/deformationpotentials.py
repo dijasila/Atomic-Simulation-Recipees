@@ -2,7 +2,23 @@ from asr.core import command, option
 import numpy as np
 
 
-@command()
+def webpanel(row, key_descriptions):
+    data = row.data.get('results-asr.deformationpotentials.json')
+
+    defpot = data['deformation_potentials']
+    vbmdef = (defpot[0, 0] + defpot[1, 0]) / 2
+    cbmdef = (defpot[0, 1] + defpot[1, 1]) / 2
+    rows = [['Avg. deformation potential at VBM', f'{cbmdef:0.2f} eV'],
+            ['Avg. deformation potential at CBM', f'{vbmdef:0.2f} eV']]
+    panel = {'title': 'Basic electronic properties',
+             'columns': [[{'type': 'table',
+                           'header': ['Property', ''],
+                           'rows': rows}]],
+             'sort': 11}
+    return [panel]
+
+
+@command(webpanel=webpanel)
 @option('--strains', help='Strain percentages')
 @option('--ktol', help='Distance that ')
 def main(strains=[-1.0, 0.0, 1.0], ktol=0.1):
