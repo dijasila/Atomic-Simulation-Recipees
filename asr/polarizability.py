@@ -6,10 +6,12 @@ def webpanel(row, key_descriptions):
     from asr.browser import fig, table
 
     opt = table(row, 'Property', [
+        'alphax_el', 'alphay_el', 'alphaz_el',
+        'alphax_lat', 'alphay_lat', 'alphaz_lat',
         'alphax', 'alphay', 'alphaz',
     ], key_descriptions)
 
-    panel = {'title': 'Polarizability (RPA)',
+    panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
                          [fig('rpa-pol-y.png'), opt]],
              'plot_descriptions':
@@ -17,7 +19,7 @@ def webpanel(row, key_descriptions):
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
                                  'rpa-pol-z.png']}],
-             'sort': 10}
+             'sort': 20}
 
     return [panel]
 
@@ -42,11 +44,6 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-
-    if Path('polarizability.npz').is_file():
-        data = np.load('polarizability.npz')
-        data = {key: data[key] for key in data}
-        return data
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -134,14 +131,17 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
         'frequencies': frequencies
     }
 
-    data['alphax'] = data['alphax_w'][0].real
-    data['alphay'] = data['alphay_w'][0].real
-    data['alphaz'] = data['alphaz_w'][0].real
+    data['alphax_el'] = data['alphax_w'][0].real
+    data['alphay_el'] = data['alphay_w'][0].real
+    data['alphaz_el'] = data['alphaz_w'][0].real
 
     data['__key_descriptions__'] = {
-        'alphax': 'KVP: Static polarizability (x-direction) [Ang]',
-        'alphay': 'KVP: Static polarizability (y-direction) [Ang]',
-        'alphaz': 'KVP: Static polarizability (z-direction) [Ang]'}
+        'alphax_el': 'KVP: Static electronic polarizability,'
+        ' x-direction [Ang]',
+        'alphay_el': 'KVP: Static electronic polarizability,'
+        ' y-direction [Ang]',
+        'alphaz_el': 'KVP: Static electronic polarizability,'
+        ' z-direction [Ang]'}
 
     return data
 
@@ -171,6 +171,28 @@ def polarizability(row, fx, fy, fz):
     alphax_w = data['alphax_w'][:i2]
     alphay_w = data['alphay_w'][:i2]
     alphaz_w = data['alphaz_w'][:i2]
+
+    infrared = row.data.get('results-asr.infraredpolarizability.json')
+    if infrared:
+        from scipy.interpolate import interp1d
+        atoms = row.toatoms()
+        cell_cv = atoms.get_cell()
+        pbc_c = atoms.pbc
+        if pbc_c.all():
+            norm = 1
+        else:
+            norm = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+        omegatmp_w = infrared['omega_w']
+        alpha_wvv = infrared['alpha_wvv']
+        alphax = interp1d(omegatmp_w, alpha_wvv[:, 0, 0], fill_value=0,
+                          bounds_error=False)
+        alphax_w = (alphax_w + alphax(frequencies) * norm)
+        alphay = interp1d(omegatmp_w, alpha_wvv[:, 1, 1], fill_value=0,
+                          bounds_error=False)
+        alphay_w = (alphay_w + alphay(frequencies) * norm)
+        alphaz = interp1d(omegatmp_w, alpha_wvv[:, 2, 2], fill_value=0,
+                          bounds_error=False)
+        alphaz_w = (alphaz_w + alphaz(frequencies) * norm)
 
     ax = plt.figure().add_subplot(111)
     ax1 = ax

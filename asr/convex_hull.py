@@ -17,18 +17,19 @@ def webpanel(row, key_descriptions):
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': 'Convex hull',
+    panel = {'title': 'Thermodynamic stability',
              'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
-                                    'filenames': ['convex-hull.png']}]}
+                                    'filenames': ['convex-hull.png']}],
+             'sort': 1}
 
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermodynamic stability',
+    row = ['Thermal',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]
@@ -36,15 +37,15 @@ def webpanel(row, key_descriptions):
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', ''],
-                             'rows': [row]},
-                            hulltable1]]}
+                             'rows': [row]}]]}
     return [panel, summary]
 
 
 @command('asr.convex_hull',
-         requires=['gs.gpw', 'results-asr.structureinfo.json',
+         requires=['results-asr.gs.json', 'results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.structureinfo',
+         dependencies=['asr.gs',
+                       'asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
@@ -58,11 +59,13 @@ def main(databases, standardreferences=None):
     if standardreferences is None:
         standardreferences = databases[0]
 
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
     ref_energies = get_reference_energies(atoms, databases[0])
-    hform = hof(atoms.get_potential_energy(), count, ref_energies)
+    hform = hof(read_json('results-asr.gs.json').get('etot'),
+                count,
+                ref_energies)
     mf = read_json('results-asr.database.material_fingerprint.json')
     uid = mf['uid']
 
@@ -83,12 +86,18 @@ def main(databases, standardreferences=None):
         for row in data['rows']:
             if row.uid == uid:
                 continue
-            hformref = hof(row.energy, row.count_atoms(), ref_energies)
+            # Take the energy from the gs recipe if its calculated
+            # or fall back to row.energy
+            energy = row.data.get('results-asr.gs.json')['etot'] if \
+                'results-asr.gs.json' in row.data else row.energy
+            hformref = hof(energy, row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
                          'natoms': row.natoms}
             reference.update(metadata)
+            if 'name' in reference:
+                reference['name'] = reference['name'].format(row=row)
             if 'label' in reference:
                 reference['label'] = reference['label'].format(row=row)
             if 'link' in reference:
@@ -188,8 +197,7 @@ def plot(row, fname):
 
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        names = [ref['label'] for ref in references]
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-b')
         ax.plot(x, e, 'sg')
@@ -215,9 +223,7 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'sg')
-        ax.plot([xt], [row.hform], 'ko', ms=15, fillstyle='none',
-                label='This material')
+        ax.plot([xt], [row.hform], 'sk')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
@@ -234,7 +240,6 @@ def plot(row, fname):
         A, B, C = pd.symbols
         plt.axis('off')
 
-    plt.legend()
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
@@ -250,7 +255,7 @@ def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
 
     for reference in sorted(references, reverse=True,
                             key=lambda x: x['hform']):
-        name = '{} ({})'.format(reference['formula'], reference['legend'])
+        name = reference['name']
         matlink = reference['link']
         if reference['uid'] != row.uid:
             name = f'<a href="{matlink}">{name}</a>'

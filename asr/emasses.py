@@ -236,7 +236,7 @@ def make_the_plots(row, *args):
     from asr.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
-    efermi = row.data.get('results-asr.gs.json')['gaps_soc']['efermi']
+    efermi = row.efermi
     sdir = row.get('spin_axis', 'z')
     cell_cv = row.cell
 
@@ -572,15 +572,18 @@ def main(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
-    socs = [True, False]
+    from ase.parallel import parprint
+    socs = [True]
 
     good_results = {}
     for soc in socs:
+        parprint(f"Soc = {soc}", flush=True)
         theta, phi = get_spin_axis()
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+        parprint("after")
         if not gap > 0:
             continue
         for bt in ['vb', 'cb']:
@@ -660,6 +663,10 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'bzcuts'] = out_dict['bs_along_emasses']
         results_dict[index][prefix + 'fitkpts_kv'] = out_dict['fitkpts_kv']
         results_dict[index][prefix + 'fite_k'] = out_dict['fite_k']
+        results_dict[index][prefix + '2ndOrderr2'] = out_dict['r2']
+        results_dict[index][prefix + '3rdOrderr2'] = out_dict['r']
+        results_dict[index][prefix + '2ndOrderMAE'] = out_dict['mae2']
+        results_dict[index][prefix + '3rdOrderMAE'] = out_dict['mae3']
 
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
@@ -723,9 +730,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.utils.symmetry import is_symmetry_protected
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    from asr.core import read_json
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
@@ -759,21 +764,13 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
             atoms.get_potential_energy()
             calc.write(name)
 
-        calc = GPAW(name, txt=None, communicator=serial_comm)
-        k_kc = calc.get_bz_k_points()
+        calc_serial = GPAW(name, txt=None, communicator=serial_comm)
+        k_kc = calc_serial.get_bz_k_points()
         theta, phi = get_spin_axis()
-        e_km, _, s_kvm = calc2eigs(calc, [0], soc=soc, return_spin=True,
+        e_km, _, s_kvm = calc2eigs(calc_serial, [0], soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
-        from gpaw.symmetry import atoms2symmetry
-        op_scc = atoms2symmetry(calc.get_atoms()).op_scc
-
-        magstate = read_json('results-asr.structureinfo.json')['magstate']
-        for idx, kpt in enumerate(calc.get_ibz_k_points()):
-            if (magstate == 'NM' and is_symmetry_protected(kpt, op_scc) or
-                magstate == 'AFM'):
-                sz_km[idx, :] = 0.0
 
         results_dicts.append(dict(bt=bt,
                                   kpts_kc=k_kc,
@@ -844,10 +841,14 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     dxz = c[4]
     dyz = c[5]
 
+    mae2 = np.mean(np.abs(eps_k - evalmodel(kpts_kv, c, thirdorder=False)))
+
     xm, ym, zm = get_2nd_order_extremum(c, ndim=ndim)
     ke2_v = np.array([xm, ym, zm])
 
     c3, r3, rank3, s3 = fit(kpts_kv, eps_k, thirdorder=True)
+
+    mae3 = np.mean(np.abs(eps_k - evalmodel(kpts_kv, c3, thirdorder=True)))
 
     f3xx, f3yy, f3zz, f3xy = c3[:4]
     f3xz, f3yz, f3x, f3y = c3[4:8]
@@ -922,7 +923,9 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                c2=c,
                r2=r,
                fitkpts_kv=kpts_kv,
-               fite_k=eps_k)
+               fite_k=eps_k,
+               mae2=mae2,
+               mae3=mae3)
 
     return out
 
@@ -1102,39 +1105,15 @@ def model(kpts_kv):
     return A_dp
 
 
-# def _savemass(soc, bt, mass):
-#     from ase.parallel import world
-#     import numpy as np
-#     fname = get_name(soc, bt) + '.npz'
-#     if world.rank == 0:
-#         mass2 = {}
-#         for k, v in mass.items():
-#             if type(k) == tuple:
-#                 mass2[k] = v
-#             elif k == 'indices':
-#                 mass2[k] = [tuple(vi) for vi in v]
-#             else:
-#                 mass2[k] = v
-#         with open(fname, 'wb') as f:
-#             np.savez(f, data=mass2)
-#     world.barrier()
-
-
-# def _readmass(soc, bt):
-#     import numpy as np
-#     fname = get_name(soc=soc, bt=bt) + '.npz'
-#     with open(fname, 'rb') as f:
-#         dct = dict(np.load(f))['data'].tolist()
-#     return dct
-
-
-# def evalmodel(kpts_kv, c_p):
-#     import numpy as np
-#     kpts_kv = np.asarray(kpts_kv)
-#     if kpts_kv.ndim == 1:
-#         kpts_kv = kpts_kv[np.newaxis]
-#     A_kp = model(kpts_kv)
-#     return np.dot(A_kp, c_p)
+def evalmodel(kpts_kv, c_p, thirdorder=True):
+    import numpy as np
+    kpts_kv = np.asarray(kpts_kv)
+    if kpts_kv.ndim == 1:
+        kpts_kv = kpts_kv[np.newaxis]
+    A_kp = model(kpts_kv)
+    if not thirdorder:
+        A_kp = A_kp[:, :10]
+    return np.dot(A_kp, c_p)
 
 
 if __name__ == '__main__':
