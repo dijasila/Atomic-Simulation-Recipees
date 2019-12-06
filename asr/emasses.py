@@ -573,7 +573,7 @@ def main(gpwfilename='gs.gpw'):
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
     from ase.parallel import parprint
-    socs = [False, True]
+    socs = [True]
 
     good_results = {}
     for soc in socs:
