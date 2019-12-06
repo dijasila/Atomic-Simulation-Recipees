@@ -765,7 +765,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
             calc.write(name)
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
-        k_kc = calc.get_bz_k_points()
+        k_kc = calc_serial.get_bz_k_points()
         theta, phi = get_spin_axis()
         e_km, _, s_kvm = calc2eigs(calc_serial, [0], soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
