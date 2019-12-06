@@ -226,10 +226,7 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
               'test': BN_check})
 
 
-@command('asr.relax',
-         tests=tests,
-         resources='24:10h',
-         requires=['unrelaxed.json'],
+@command(requires=['unrelaxed.json'],
          creates=['structure.json'])
 @option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')

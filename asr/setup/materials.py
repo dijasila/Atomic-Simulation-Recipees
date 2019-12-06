@@ -1,8 +1,7 @@
 from asr.core import command, option
 
 
-@command('asr.setup.materials',
-         creates=['materials.json'])
+@command(creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
 def main(selection=''):
@@ -38,9 +37,6 @@ def main(selection=''):
             data = row.data
             newdb.write(atoms, key_value_pairs=kvp, data=data)
     print(f'Created materials.json database containing {nmat} materials')
-
-
-group = 'setup'
 
 
 if __name__ == '__main__':

@@ -174,6 +174,9 @@ class ASRCommand:
         # Tell ASR how to present the data in a webpanel
         self.webpanel = webpanel
 
+        # Add skip option
+        self.add_skip_opt = add_skip_opt
+
         # Commands can have dependencies. This is just a list of
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
@@ -248,8 +251,7 @@ class ASRCommand:
     @property
     def creates(self):
         creates = self.created_files
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
+        creates += [f'results-{self.name}.json']
         return creates
 
     @property
@@ -347,7 +349,7 @@ class ASRCommand:
                     recipe()
 
         # Try to run this command
-        results = self.callback(*args, **kwargs)
+        results = self._main(*args, **kwargs)
 
         return results
 
@@ -450,6 +452,7 @@ class ASRCommand:
 def command(*args, **kwargs):
 
     def decorator(func):
+        print('func, args, kwargs', func, args, kwargs)
         return ASRCommand(func, *args, **kwargs)
 
     return decorator
