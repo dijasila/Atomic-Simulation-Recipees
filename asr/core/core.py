@@ -141,11 +141,16 @@ def get_recipe_name_from_function(function):
             folders.append(folder)
             folder = folder.parent
     folders.reverse()
-    if folders:
-        module = '.'.join([folder.name for folder in folders])
-        return f'{module}.{file.name}@{function.__name__}'
+
+    filenamenoext = file.with_suffix('').name
+    functionname = function.__name__
+
+    assert folders, 'Missing __init__.py file.'
+    module = '.'.join([folder.name for folder in folders])
+    if functionname == 'main':
+        return f'{module}.{filenamenoext}'
     else:
-        return '{file.name}@{function.__name__}'
+        return f'{module}.{filenamenoext}@{function.__name__}'
 
 
 class ASRCommand:

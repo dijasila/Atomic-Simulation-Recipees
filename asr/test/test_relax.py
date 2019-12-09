@@ -1,6 +1,5 @@
 from pathlib import Path
 import contextlib
-import pytest
 import os
 
 
@@ -17,7 +16,6 @@ def isolated_filesystem(tmpdir):
         os.chdir(cwd)
 
 
-@pytest.mark.mpi(min_size=2)
 def test_relax_cli_si(tmpdir):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
@@ -26,21 +24,7 @@ def test_relax_cli_si(tmpdir):
         setupmaterial.cli(["-s", "Si2"])
         Path("materials.json").rename("unrelaxed.json")
         relaxargs = (
-            "{'mode':{'ecut':300,'dedecut':'estimate',...},"
-            "'kpts':{'density':2,'gamma':True},...}"
+            "{'mode':{'ecut':200,'dedecut':'estimate',...},"
+            "'kpts':{'density':1,'gamma':True},...}"
         )
         relax.cli(["--calculator", relaxargs])
-
-
-@pytest.mark.mpi
-def test_size():
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    assert comm.size > 0
-
-
-@pytest.mark.mpi(min_size=2)
-def test_size_2():
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    assert comm.size >= 2
