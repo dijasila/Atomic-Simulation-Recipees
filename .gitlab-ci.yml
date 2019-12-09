@@ -5,13 +5,11 @@ tests:
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - pip install flake8 coverage
     - pip install -r requirements.txt
+    - pip install pytest pytest-cov
     - flake8 asr
     - pip install git+https://gitlab.com/gpaw/gpaw.git
     - gpaw install-data paw-datasets --register
-    - tdir=$(mktemp -d /tmp/asr-test-XXXXXXXXX)
-    - coverage run -m asr test --tag gitlab-ci --tmpdir $tdir --raiseexc --run-coverage
-    - coverage combine $tdir/*/.coverage.* .coverage.*
-    - coverage report --include '*/asr/asr/*'
+    - pytest --pyargs asr --cov=asr
 
 docs_test:
   image: python:3.6
