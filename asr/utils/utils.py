@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def is_magnetic():
     import numpy as np
     from ase.io import read
