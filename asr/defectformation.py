@@ -31,10 +31,10 @@ def main(defect_name=None):
     q, epsilons, path_gs = check_and_get_general_inputs()
     atoms = read('unrelaxed.json')
     nd = int(np.sum(atoms.get_pbc()))
-    gs_dict = read_json('results-asr.gs@calculate.json')
+    gs_dict = read_json('results-asr.gs.json')
     defectformation_dict = {}
-    defectformation_dict['gaps_nosoc'] = gs_dict.get('gaps_nosoc')
-    defectformation_dict['gaps_soc'] = gs_dict.get('gaps_soc')
+    defectformation_dict['gaps_nosoc'] = gs_dict.get('gap')
+    defectformation_dict['gaps_soc'] = gs_dict.get('gap')
 
     sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
     if nd == 3:
@@ -69,22 +69,26 @@ def main(defect_name=None):
             try:
                 charged_file = find_file_in_folder('gs.gpw',
                                                    sub_folder_path)
-                print(path_gs, charged_file, chargestate, sigma, dim)
+                print(path_gs, charged_file, chargestate, dim)
                 elc = ElectrostaticCorrections(pristine=path_gs,
                                                charged=charged_file,
                                                q=chargestate, sigma=sigma,
                                                dimensionality=dim)
                 elc.set_epsilons(epsilon)
                 if chargestate == 0:
-                    e_form.append(elc.calculate_uncorrected_formation_energy())
-                    print('Calculate corrected formation energy')
+                    value = elc.calculate_uncorrected_formation_energy()
+                    e_form.append(value)
+                    print('Calculate uncorrected formation energy: {}'.format(value))
                 else:
-                    e_form.append(elc.calculate_corrected_formation_energy())
-                    print('Calculate uncorrected formation energy')
+                    value = elc.calculate_corrected_formation_energy()
+                    e_form.append(value)
+                    print('Calculate corrected formation energy: {}'.format(value))
                 charges.append(chargestate)
             except BaseException:
                 e_form.append(None)
+                print('Error calculating formation energy')
                 charges.append(chargestate)
+        print('Formation energies: {}'.format(e_form))
         defectformation_dict[folder.name] = {'formation_energies': e_form,
                                              'chargestates': charges}
     write_json('defectformation.json', defectformation_dict)
@@ -192,21 +196,21 @@ def collect_data():
 # This function doesn't exist in the new asr version anymore and has to be   #
 # changed at a later stage, as well as the way the plots are created (db)    #
 # ========================================================================== #
-# def postprocessing():
-#     from asr.core import read_json
-#
-#     formation_dict = read_json('defectformation.json')
-#     transitions_dict = {}
-#     gap = formation_dict.get('gaps_nosoc')
-#     for element in formation_dict:
-#         if element != 'gaps_soc' and element != 'gaps_nosoc':
-#             print(element)
-#             plotname = element
-#             defect_dict = formation_dict[element]
-#             transitions_dict[plotname] = plot_formation_and_transitions(
-#                 defect_dict, plotname, gap)
-#
-#     return transitions_dict
+def postprocessing():
+    from asr.core import read_json
+
+    formation_dict = read_json('defectformation.json')
+    transitions_dict = {}
+    gap = formation_dict.get('gaps_nosoc')
+    for element in formation_dict:
+        if element != 'gaps_soc' and element != 'gaps_nosoc':
+            print(element)
+            plotname = element
+            defect_dict = formation_dict[element]
+            transitions_dict[plotname] = plot_formation_and_transitions(
+                defect_dict, plotname, gap)
+
+    return transitions_dict
 
 
 def line_intersection(line1, line2):
@@ -263,8 +267,9 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     x = []
     y = []
     q = []
-    x = np.array(defect_dict['fermi_energies'])
+    # x = np.array(defect_dict['fermi_energies'])
     y = np.array(defect_dict['formation_energies'])
+    x = np.zeros(len(defect_dict['formation_energies']))
     q = np.array(defect_dict['chargestates'])
 
     # set general parameters
