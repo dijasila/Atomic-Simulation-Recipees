@@ -342,7 +342,6 @@ def make_the_plots(row, *args):
             axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
             axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
-            fig.tight_layout()
             plt.tight_layout()
         if should_plot:
             fname = args[plt_count]
@@ -400,7 +399,6 @@ def make_the_plots(row, *args):
             axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
             axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
-            fig.tight_layout()
             plt.tight_layout()
         if should_plot:
             nplts = len(args)
