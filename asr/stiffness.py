@@ -153,3 +153,7 @@ def main(strain_percent=1.0):
     eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
     return data
+
+
+if __name__ == '__main__':
+    main.cli()
