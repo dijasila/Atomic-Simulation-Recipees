@@ -13,7 +13,6 @@ def test_relax_emt(isolated_filesystem, name):
     relax(calculator={'name': 'emt'})
 
 
-@pytest.mark.clitest
 @pytest.mark.slow
 def test_relax_cli_si(isolated_filesystem):
     from asr.setup.materials import main as setupmaterial
@@ -33,7 +32,6 @@ def test_relax_cli_si(isolated_filesystem):
     assert results == diskresults
 
 
-@pytest.mark.clitest
 @pytest.mark.slow
 def test_relax_cli_bn(isolated_filesystem):
     from asr.setup.materials import main as setupmaterial
