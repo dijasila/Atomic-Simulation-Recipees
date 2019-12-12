@@ -1,5 +1,25 @@
+from asr.relax import BrokenSymmetryError
 from pathlib import Path
 import pytest
+
+
+@pytest.fixture
+def mock_GPAW(monkeypatch):
+    import numpy as np
+    from gpaw import GPAW
+
+    def get_forces(*args, **kwargs):
+        return np.zeros((2, 3), float)
+
+    def get_stress(*args, **kwargs):
+        return np.zeros((3, 3), float)
+
+    def get_potential_energy(*args, **kwargs):
+        return 0
+
+    monkeypatch.setattr(GPAW, 'get_stress', get_stress)
+    monkeypatch.setattr(GPAW, 'get_forces', get_forces)
+    monkeypatch.setattr(GPAW, 'get_potential_energy', get_potential_energy)
 
 
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
@@ -13,8 +33,36 @@ def test_relax_emt(isolated_filesystem, name):
     relax(calculator={'name': 'emt'})
 
 
+@pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
+                                  'Pd', 'Pt', 'C'])
+@pytest.mark.xfail(raises=BrokenSymmetryError)
+def test_relax_emt_fail_broken_symmetry(isolated_filesystem, name,
+                                        monkeypatch):
+    from asr.relax import main as relax
+    from ase.build import bulk
+    import numpy as np
+    from ase.calculators.emt import EMT
+    
+    unrelaxed = bulk(name)
+
+    def get_stress(*args, **kwargs):
+        return np.random.rand(3, 3)
+
+    monkeypatch.setattr(EMT, 'get_stress', get_stress)
+    unrelaxed.write('unrelaxed.json')
+    relax(calculator={'name': 'emt'}, enforce_symmetry=False)
+
+
+def test_relax_gpaw_mock(isolated_filesystem, mock_GPAW):
+    from asr.setup.materials import main as setupmaterial
+    from asr.relax import main as relax
+    setupmaterial.cli(["-s", "BN,natoms=2"])
+    Path("materials.json").rename("unrelaxed.json")
+    relax(calculator={'name': 'gpaw'})
+
+
 @pytest.mark.slow
-def test_relax_cli_si(isolated_filesystem):
+def test_relax_si_gpaw(isolated_filesystem):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     from asr.core import read_json
@@ -33,7 +81,7 @@ def test_relax_cli_si(isolated_filesystem):
 
 
 @pytest.mark.slow
-def test_relax_cli_bn(isolated_filesystem):
+def test_relax_bn_gpaw(isolated_filesystem):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     from asr.core import read_json
