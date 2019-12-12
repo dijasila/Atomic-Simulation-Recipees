@@ -226,11 +226,18 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
               'test': BN_check})
 
 
+def log(*args, **kwargs):
+    atoms = read('unrelaxed.json')
+
+    return {'atoms': atoms.todict()}
+
+
 @command('asr.relax',
          tests=tests,
          resources='24:10h',
          requires=['unrelaxed.json'],
-         creates=['structure.json'])
+         creates=['structure.json'],
+         log=log)
 @option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
@@ -337,7 +344,8 @@ def main(calculator={'name': 'gpaw',
         fingerprint = {}
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
-        results['__setup_fingerprints__'] = fingerprint
+        results['__log__'] = {'nvalence': calc.setups.nvalence,
+                              'setup_fingerprints__': fingerprint}
 
     results['__key_descriptions__'] = \
         {'etot': 'Total energy [eV]',
