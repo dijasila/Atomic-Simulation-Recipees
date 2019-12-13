@@ -592,7 +592,8 @@ def get_recipe_module_names():
     files = list(folder.glob('**/[a-zA-Z]*.py'))
     modulenames = []
     for file in files:
-        if 'utils' in str(file) or 'tests' in str(file):
+        if 'utils' in str(file) or 'tests' in str(file) or \
+           'test' in str(file) or 'core' in str(file):
             continue
         name = str(file.with_suffix(''))[len(str(folder)):]
         modulename = 'asr' + name.replace('/', '.')
