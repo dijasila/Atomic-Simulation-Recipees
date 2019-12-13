@@ -62,20 +62,22 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Fermi surface',
              'columns': [[fig('fermi_surface.png')]],
              'plot_descriptions': [{'function': plot_fermi,
-                                    'filenames': ['fermi_surface.png']}]}
+                                    'filenames': ['fermi_surface.png']}],
+             'sort': 13}
 
     return [panel]
 
 
 def plot_fermi(row, fname,
                annotate=True, fontsize=10, svbm=100, scbm=40, lwvbm=2.5,
-               sfs=0.25, dpi=200, scale=None, scalecb=None,
+               sfs=1, dpi=200, scale=None, scalecb=None,
                bbox_to_anchor=None, angle=0):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    ax = lat.plot_bz()
+    plt.figure(figsize=(4, 3))
+    ax = lat.plot_bz(vectors=False)
     add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
     plt.savefig(fname, dpi=dpi)
     plt.close()
@@ -111,11 +113,12 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
 
 @command('asr.fermisurface',
          webpanel=webpanel,
-         requires=['gs.gpw'])
+         requires=['gs.gpw', 'results-asr.structureinfo.json'],
+         dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():
     import numpy as np
     from gpaw import GPAW
-    from c2db.utils import gpw2eigs
+    from asr.utils.gpw2eigs import gpw2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     theta, phi = get_spin_axis()
@@ -125,6 +128,7 @@ def main():
     eigs_mk -= ef
     calc = GPAW('gs.gpw', txt=None)
     s_mk = s_kvm[:, get_spin_index()].T
+
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
 

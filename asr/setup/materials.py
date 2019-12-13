@@ -18,7 +18,7 @@ def main(selection=''):
     Examples:
     ---------
     Get all materials from database with ntypes=1 (elementary compounds)
-        asr run setup.materials -s ntypes=1
+        asr run "setup.materials -s ntypes=1"
     """
     from ase.db import connect
     from pathlib import Path

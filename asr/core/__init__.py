@@ -139,6 +139,7 @@ class ASRCommand:
                  dependencies=None,
                  creates=None,
                  tests=None,
+                 log=None,
                  resources='1:10m',
                  diskspace=0,
                  restart=0,
@@ -179,6 +180,9 @@ class ASRCommand:
 
         # What files are created?
         self._creates = creates
+
+        # Is there additional information to log about the current execution
+        self.log = log
 
         # Properties of this function
         self._resources = resources
@@ -406,12 +410,14 @@ class ASRCommand:
         # this is a good place to start
 
         assert self.is_requirements_met(), \
-            (f'Some required files are missing: {self.requires}. '
+            (f'{self.name}: Some required files are missing: {self.requires}. '
              'This could be caused by incorrect dependencies.')
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        params = dict(self.signature.bind(*args, **kwargs).arguments)
+        bound_arguments = self.signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+        params = dict(bound_arguments.arguments)
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
             # Default type
@@ -441,10 +447,20 @@ class ASRCommand:
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
+        tstart = time.time()
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
             results = self._main(**copy.deepcopy(params)) or {}
         results['__asr_name__'] = self.name
+        tend = time.time()
+
+        from ase.parallel import world
+        results['__resources__'] = {'time': tstart - tend,
+                                    'ncores': world.size}
+
+        if self.log:
+            log = results.get('__log__', {})
+            log.update(self.log(**copy.deepcopy(params)))
 
         # Do we have to store some digests of previous calculations?
         if self.creates:

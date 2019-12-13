@@ -62,29 +62,29 @@ def main(database, run=False, selection='',
 
     \b
     Unpack database using default parameters:
-      asr run database.totree database.db --run
+      asr run "database.totree database.db --run"
     \b
     Don't actually unpack the database but do a dry-run:
-      asr run database.totree database.db
+      asr run "database.totree database.db"
     \b
     Only select a part of the database to unpack:
-      asr run database.totree database.db --selection "natoms<3" --run
+      asr run "database.totree database.db --selection natoms<3 --run"
     \b
     Set custom folder tree-structure:
-      asr run database.totree database.db --tree-structure
-          tree/{stoi}/{spg}/{formula:metal} --run
+      asr run "database.totree database.db --tree-structure
+          tree/{stoi}/{spg}/{formula:metal} --run"
     \b
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-      asr run database.totree database.db --sort natoms --chunks 2 --run
+      asr run "database.totree database.db --sort natoms --chunks 2 --run"
     """
     from os import makedirs
     from pathlib import Path
     from ase.db import connect
     from ase.io import write
     import spglib
-    from asr.core import chdir, write_json, md5sum
+    from asr.core import chdir, write_json
     import importlib
 
     if selection:
@@ -201,7 +201,6 @@ def main(database, run=False, selection='',
                                            target_is_directory=True)
                 else:
                     path = results.get('pointer')
-                    md5 = results.get('__md5__')
                     srcfile = Path(path)
                     if not srcfile.is_file():
                         print(f'Cannot locate source file: {path}')
@@ -211,10 +210,6 @@ def main(database, run=False, selection='',
                         destfile.write_bytes(srcfile.read_bytes())
                     else:
                         destfile.symlink_to(srcfile)
-                    if not md5sum(filename) == md5:
-                        print('Warning: File {filename} does not match '
-                              'original file. (Difference in '
-                              'checksums).')
 
 
 if __name__ == '__main__':

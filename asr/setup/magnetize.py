@@ -46,7 +46,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
         asr run setup.magnetize
     \b
     Only set up ferromagnetic configuration
-        asr run setup.magnetic --state fm
+        asr run "setup.magnetic --state fm"
     """
     from pathlib import Path
     from ase.io import read, write
