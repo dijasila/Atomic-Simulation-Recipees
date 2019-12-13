@@ -3,27 +3,8 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
-def mock_GPAW(monkeypatch):
-    import numpy as np
-    from gpaw import GPAW
-
-    def get_forces(*args, **kwargs):
-        return np.zeros((2, 3), float)
-
-    def get_stress(*args, **kwargs):
-        return np.zeros((3, 3), float)
-
-    def get_potential_energy(*args, **kwargs):
-        return 0
-
-    monkeypatch.setattr(GPAW, 'get_stress', get_stress)
-    monkeypatch.setattr(GPAW, 'get_forces', get_forces)
-    monkeypatch.setattr(GPAW, 'get_potential_energy', get_potential_energy)
-
-
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
-                                  'Pd', 'Pt', 'C'])
+                                  'Pd', 'Pt', 'C', 'graphene'])
 def test_relax_emt(isolated_filesystem, name):
     from asr.relax import main as relax
     from ase.build import bulk
@@ -35,7 +16,7 @@ def test_relax_emt(isolated_filesystem, name):
 
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-@pytest.mark.xfail(raises=BrokenSymmetryError)
+@pytest.mark.xfail(strict=True, raises=BrokenSymmetryError)
 def test_relax_emt_fail_broken_symmetry(isolated_filesystem, name,
                                         monkeypatch):
     from asr.relax import main as relax
@@ -53,7 +34,7 @@ def test_relax_emt_fail_broken_symmetry(isolated_filesystem, name,
     relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
-def test_relax_gpaw_mock(isolated_filesystem, mock_GPAW):
+def test_relax_gpaw_mock(isolated_filesystem, mock_GPAW_freeelectrons):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     setupmaterial.cli(["-s", "BN,natoms=2"])
