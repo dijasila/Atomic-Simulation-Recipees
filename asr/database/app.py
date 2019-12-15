@@ -37,47 +37,26 @@ def file(project, uid, name):
 
 
 def initialize_project(database):
-    name = Path(database).with_suffix('')
-    print(name)
+    from asr.database import browser
+    db = connect(database)
+    metadata = db.metadata
+    assert 'name' in metadata, \
+        'You must set a database name in database metadata'
+    search = path / 'templates' / 'search.html'
+    row = path / 'templates' / 'row.html'
 
-    proj = {'name': name}
+    name = metadata['name']
 
-    search = path / name / 'search.html'
-    if search.is_file():
-        proj['search_template'] = f'{name}/search.html'
-    else:
-        proj['search_template'] = 'templates/search.html'
-
-    row = path / name / 'row.html'
-    if row.is_file():
-        proj['row_template'] = f'{name}/row.html'
-    else:
-        proj['row_template'] = 'templates/row.html'
-
-    db = connect(path / f'../docs/{name}/{name}.db')
-    proj['database'] = db
-
-    mod = importlib.import_module(f'cmr.{name}.custom')
-    proj['default_columns'] = mod.default_columns
-    proj['title'] = mod.title
-    proj['uid_key'] = getattr(mod, 'uid_key', 'id')
-    proj['key_descriptions'] = create_key_descriptions(mod.key_descriptions)
-
-    if hasattr(mod, 'row_to_dict'):
-        proj['row_to_dict_function'] = mod.row_to_dict
-    else:
-        proj['row_to_dict_function'] = partial(
-            row_to_dict,
-            layout_function=getattr(mod, 'layout', None),
-            tmpdir=tmpdir)
-
-    proj['handle_query_function'] = getattr(mod, 'handle_query',
-                                            handle_query)
-
-    if hasattr(mod, 'connect_endpoints'):
-        mod.connect_endpoints(app, proj)
-
-    projects[name] = proj
+    projects[name] = {
+        'name': name,
+        'uid_key': metadata.get('uid', 'uid'),
+        'key_descriptions': metadata['key_descriptions'],
+        'database': db,
+        'row_to_dict_function': browser.row_to_dict,
+        'default_columns': metadata.get('default_columns'),
+        'search_template': metadata.get('search', search),
+        'row_template': metadata.get('search', row)
+    }
 
 
 @command()
