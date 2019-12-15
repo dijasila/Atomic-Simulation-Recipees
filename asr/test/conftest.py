@@ -43,7 +43,8 @@ class FreeElectronsGPAW(Calculator):
         offsets = np.indices((n, n, n)).T.reshape((n**3, 1, 3)) - n // 2
         eps = 0.5 * (np.dot(self.kpts + offsets, icell)**2).sum(2).T
         eps.sort()
-        if self.parameters.nbands[-1] == '%':
+        if isinstance(self.parameters.nbands, str) and \
+           self.parameters.nbands[-1] == '%':
             self.parameters.nbands = \
                 int(float(self.parameters.nbands[:-1]) / 100 * 20)
         print(self.parameters.nbands)
@@ -68,7 +69,10 @@ class FreeElectronsGPAW(Calculator):
         return 1
 
     def write(self, name):
-        Path(name).write_text('')
+        Path(name).write_text('Test calculation')
+
+    def read(self, name):
+        Path(name).read_text('Test calculation')
 
 
 @pytest.fixture

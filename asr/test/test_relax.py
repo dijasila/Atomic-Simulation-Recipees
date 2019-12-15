@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
-                                  'Pd', 'Pt', 'C', 'graphene'])
+                                  'Pd', 'Pt', 'C'])
 def test_relax_emt(isolated_filesystem, name):
     from asr.relax import main as relax
     from ase.build import bulk
