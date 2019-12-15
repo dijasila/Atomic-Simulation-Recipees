@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple, Any
 
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
-from ase.db.summary import create_table, miscellaneous_section
+from cmr.web import create_table, miscellaneous_section
 assert sys.version_info >= (3, 4)
 
 plotlyjs = (
@@ -87,8 +87,9 @@ def merge_panels(page):
         page[title] = panel
 
 
-def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
-           prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
+def row_to_dict(row: AtomsRow,
+                key_descriptions: 'Dict[str, Tuple[str, str, str]]',
+                prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
     """Page layout."""
     from asr.core import get_recipes
     page = {}
