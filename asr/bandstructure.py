@@ -418,7 +418,7 @@ def bz_soc(row, fname):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',

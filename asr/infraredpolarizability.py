@@ -4,7 +4,7 @@ import numpy as np
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = {'title': 'Infrared polarizability',
              'columns': [[fig('infrax.png'), fig('infraz.png')],

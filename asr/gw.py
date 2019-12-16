@@ -229,7 +229,7 @@ def plot_renorm_factor(row, filename):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     ref = row.get('evac', row.get('ef'))
     keys = ['vbm_gw', 'cbm_gw']
     for key in keys:

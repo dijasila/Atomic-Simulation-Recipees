@@ -10,7 +10,7 @@ from ase.db.row import AtomsRow
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     hulltable1 = table(row,
                        'Stability',

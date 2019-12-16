@@ -71,7 +71,7 @@ tests = [{'description': 'Test ground state of Si.',
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
 
     t = table(row, 'Property',
               ['evac', 'efermi', 'gap', 'vbm', 'cbm',

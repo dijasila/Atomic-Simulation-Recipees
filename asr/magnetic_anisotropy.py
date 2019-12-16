@@ -29,7 +29,7 @@ def spin_axis(theta, phi):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table
+    from asr.database.browser import table
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)

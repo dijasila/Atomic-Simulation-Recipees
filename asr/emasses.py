@@ -233,7 +233,7 @@ def make_the_plots(row, *args):
     from ase.units import Bohr, Ha
     import matplotlib.pyplot as plt
     import numpy as np
-    from asr.browser import fig as asrfig
+    from asr.database.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
     efermi = row.efermi
@@ -445,7 +445,7 @@ def custom_table(values_dict, title):
 
 
 def webpanel(row, key_descriptions):
-    # from asr.browser import table
+    # from asr.database.browser import table
 
     columns, fnames = create_columns_fnames(row)
 
@@ -467,7 +467,7 @@ def webpanel(row, key_descriptions):
 
 
 def create_columns_fnames(row):
-    from asr.browser import fig as asrfig
+    from asr.database.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
 

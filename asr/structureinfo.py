@@ -70,7 +70,7 @@ def has_inversion(atoms, use_spglib=True):
 
 def webpanel(row, key_descriptions):
     from ase.db.summary import ATOMS, UNITCELL
-    from asr.browser import table
+    from asr.database.browser import table
 
     basictable = table(row, 'Structural info', [
         'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',

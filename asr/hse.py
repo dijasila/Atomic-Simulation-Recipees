@@ -259,7 +259,7 @@ def bs_hse(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     
     if row.get('gap_hse', 0) > 0.0:
         ref = row.get('evac', row.get('ef'))

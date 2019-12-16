@@ -192,7 +192,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
     # PDOS plot goes to Electronic band structure (PBE) panel, which is
     # defined in the bandstructure recipe
     panel = {'title': 'Electronic band structure (PBE)',

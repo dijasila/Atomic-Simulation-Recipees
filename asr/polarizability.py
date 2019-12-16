@@ -3,7 +3,7 @@ from click import Choice
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     opt = table(row, 'Property', [
         'alphax_el', 'alphay_el', 'alphaz_el',
