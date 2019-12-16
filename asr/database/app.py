@@ -83,7 +83,7 @@ def handle_query(args):
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
-    from asr.browser import layout
+    from asr.database.browser import layout
     project_name = project['name']
     uid = row.get(project['uid_key'])
     s = Summary(row,
