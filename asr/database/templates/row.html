@@ -1,4 +1,6 @@
-{% extends 'layout.html' %}
+{% extends 'ase/db/templates/layout.html' %}
+
+{% set n1, n2, n3 = d.size %}
 
 {% macro atoms() %}
 {% if row.numbers|length %}
@@ -100,7 +102,7 @@ jmol_isReady = function(applet)
     Jmol._getElement(applet, "appletdiv").style.border="1px solid lightgray";
     Jmol.script(jmolApplet0, "set displaycellparameters false;")
     Jmol.script(jmolApplet0,
-    "load /{{ p.name }}/cif/{{ row.id }}.cif { {{ n1 }} {{ n2 }} {{ n3 }} };");
+    "load /atoms/{{ p.name }}/{{ row.id }}/cif { {{ n1 }} {{ n2 }} {{ n3 }} };");
     }
 </script>
 

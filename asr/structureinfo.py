@@ -69,7 +69,6 @@ def has_inversion(atoms, use_spglib=True):
 
 
 def webpanel(row, key_descriptions):
-    from ase.db.summary import ATOMS, UNITCELL
     from asr.database.browser import table
 
     basictable = table(row, 'Structural info', [
@@ -104,7 +103,7 @@ def webpanel(row, key_descriptions):
                           {'type': 'table', 'header': ['Stability', ''],
                            'rows': []},
                           eltable],
-                         [ATOMS, UNITCELL]],
+                         [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
 
