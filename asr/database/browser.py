@@ -88,8 +88,8 @@ def merge_panels(page):
 
 
 def row_to_dict(row: AtomsRow,
-                key_descriptions: 'Dict[str, Tuple[str, str, str]]',
-                prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
+                key_descriptions: Dict[str, Tuple[str, str, str]],
+                tmpdir: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
     from asr.core import get_recipes
     page = {}
@@ -137,7 +137,7 @@ def row_to_dict(row: AtomsRow,
     for desc in plot_descriptions:
         function = desc['function']
         filenames = desc['filenames']
-        paths = [Path(prefix + filename) for filename in filenames]
+        paths = [tmpdir / filename for filename in filenames]
         for path in paths:
             if not path.is_file():
                 # Create figure(s) only once:
@@ -163,7 +163,7 @@ def row_to_dict(row: AtomsRow,
             return block['rows']
         if block['type'] != 'figure':
             return True
-        if Path(prefix + block['filename']) in missing:
+        if tmpdir / block['filename'] in missing:
             return False
         return True
 

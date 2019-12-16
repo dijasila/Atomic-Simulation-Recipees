@@ -12,21 +12,21 @@ path = Path(__file__).parent
 app.jinja_loader.searchpath.append(str(path / 'templates'))
 
 
-@app.route('/')
-def index():
-    return render_template(
-        'projects.html',
-        projects=sorted([(name,
-                          proj['title'],
-                          proj['database'].count())
-                         for name, proj in projects.items()]))
+def setup_app():
+    @app.route('/')
+    def index():
+        return render_template(
+            'projects.html',
+            projects=sorted([(name,
+                              proj['title'],
+                              proj['database'].count())
+                             for name, proj in projects.items()]))
 
-
-@app.route('/<project>/file/<uid>/<name>')
-def file(project, uid, name):
-    assert project in projects
-    path = tmpdir / f'{project}-{uid}-{name}'  # XXXXXXXXXXX
-    return send_file(str(path))
+    @app.route('/<project>/file/<uid>/<name>')
+    def file(project, uid, name):
+        assert project in projects
+        path = tmpdir / f'{project}-{uid}-{name}'  # XXXXXXXXXXX
+        return send_file(str(path))
 
 
 def handle_query(args):
@@ -36,6 +36,7 @@ def handle_query(args):
 def initialize_project(database):
     from asr.database import browser
     from ase.db.web import create_key_descriptions
+    from functools import partial
     db = connect(database)
     metadata = db.metadata
     name = metadata.get('name', database)
@@ -43,12 +44,12 @@ def initialize_project(database):
     projects[name] = {
         'name': name,
         'title': metadata.get('title', name),
-        'uid_key': metadata.get('uid', 'uid'),
         'key_descriptions': create_key_descriptions(
             metadata['key_descriptions']),
+        'uid_key': metadata.get('uid', 'uid'),
         'database': db,
         'handle_query_function': handle_query,
-        'row_to_dict_function': browser.row_to_dict,
+        'row_to_dict_function': partial(browser.row_to_dict, tmpdir=tmpdir),
         'default_columns': metadata.get('default_columns'),
         'search_template': str(metadata.get('search_template', 'search.html')),
         'row_template': str(metadata.get('row_template', 'row.html'))
@@ -60,6 +61,7 @@ def initialize_project(database):
 @option('--host', help='Host address.')
 def main(database, host='0.0.0.0'):
     initialize_project(database)
+    setup_app()
     app.run(host='0.0.0.0', debug=True)
 
 
