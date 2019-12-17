@@ -122,52 +122,55 @@ jmol_isReady = function(applet)
 {% for title, things in d.layout %}
 
 <div class="panel panel-default">
-    <div class="panel-heading">
-        <h4 class="panel-title">
-        <a class="btn-block" data-toggle="collapse"
-        href="#collapse{{ loop.index0 }}">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a class="btn-block" data-toggle="collapse"
+         href="#collapse{{ loop.index0 }}">
         {{ title }}
-        </a>
-        </h4>
-    </div>
+      </a>
+    </h4>
+  </div>
 
-    <div id="collapse{{ loop.index0 }}"
-    class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
-        <div class="panel-body">
-    {% for column in things %}
-        <div class="col-md-6">
-    {% for data in column %}
-            <div class="row">
-        {% if data.type == 'atoms' %}
+  <div id="collapse{{ loop.index0 }}"
+       class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
+    <div class="panel-body">
+      {% for column in things %}
+
+      <div class="col-md-6">
+        <div class="col-md-12">
+        {% for data in column %}
+        <div class="row">
+          {% if data.type == 'atoms' %}
             {{ atoms() }}
-        {% elif data.type == 'cell' %}
+          {% elif data.type == 'cell' %}
             {{ cell() }}
-        {% elif data.type == 'table' %}
+          {% elif data.type == 'table' %}
             {{ table(data) }}
-        {% else %}
+          {% else %}
             {% if data.link %}
-                {% if data.link == 'empty' %}
-                    <br>
-                {% else %}
-                    <center>
-                      <a target="_blank"
-                         rel="noopener noreferrer"
-                         href="/{{ p.name }}/file/{{ uid }}/{{ data.link }}">
-                        Interactive mode
-                      </a>
-                    </center>
-                {% endif %}
+              {% if data.link == 'empty' %}
+                <br>
+              {% else %}
+                <center>
+                  <a target="_blank"
+                     rel="noopener noreferrer"
+                     href="/{{ p.name }}/file/{{ uid }}/{{ data.link }}">
+                    Interactive mode
+                  </a>
+                </center>
+              {% endif %}
             {% endif %}
-             <img
-                src="/{{ p.name }}/file/{{ uid }}/{{ data.filename }}"
-                width="100%">
-        {% endif %}
-            </div> <!--END ROW-->
-    {% endfor %}
-        </div> <!--END col-md-6-->
-    {% endfor %}
-        </div> <!--END PANEL BODY-->
-    </div> <!--END COLLAPSE-->
+          <img
+            src="/{{ p.name }}/file/{{ uid }}/{{ data.filename }}"
+            width="100%">
+          {% endif %}
+        </div> <!--END ROW-->
+        {% endfor %}
+        </div>
+      </div> <!--END col-md-6-->
+      {% endfor %}
+    </div> <!--END PANEL BODY-->
+  </div> <!--END COLLAPSE-->
 </div> <!--END PANEL-->
 {% endfor %}
 </div> <!--END PANEL GROUP-->

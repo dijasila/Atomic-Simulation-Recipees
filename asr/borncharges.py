@@ -87,6 +87,11 @@ def webpanel(row, key_descriptions):
         rows[2][0] = 'P<sub>y</sub>'
         rows[3][0] = 'P<sub>y</sub>'
 
+        for ir, tmprow in enumerate(rows):
+            for ic, item in enumerate(tmprow):
+                if ir == 0 or ic == 0:
+                    rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
+
         Ztable = dict(
             type='table',
             rows=rows)
