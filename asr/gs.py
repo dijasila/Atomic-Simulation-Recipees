@@ -88,6 +88,8 @@ def webpanel(row, key_descriptions):
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
+               'plot_descriptions': [{'function': bz_soc,
+                                      'filenames': ['bz-with-gaps.png']}],
                'sort': 10}
 
     return [panel, summary]
@@ -96,10 +98,33 @@ def webpanel(row, key_descriptions):
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    import numpy as np
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
+    plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False)
+    gsresults = row.data.get('results-asr.gs.json')
+    cbm_c = gsresults['k_cbm_c']
+    vbm_c = gsresults['k_vbm_c']
+
+    if cbm_c is not None:
+        ax = plt.gca()
+        icell = np.linalg.inv(row.cell).T
+        cbm_v = np.dot(cbm_c, icell)
+        vbm_v = np.dot(vbm_c, icell)
+
+        vbm_style = {'marker': 'o', 'facecolor': 'w',
+                     'edgecolors': 'C0', 's': 100, 'lw': 2.5,
+                     'zorder': 4}
+        cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='CBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='VBM')
+        xlim = np.array(ax.get_xlim()) * 1.2
+        ylim = np.array(ax.get_ylim()) * 1.2
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        plt.legend(loc='upper center', ncol=3)
+
     plt.tight_layout()
     plt.savefig(fname)
 
