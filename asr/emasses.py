@@ -1,5 +1,6 @@
 from asr.core import command, option
 
+
 class NoGapError(Exception):
     pass
 
@@ -570,7 +571,6 @@ def main(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
-    from ase.parallel import parprint
     socs = [True]
 
     good_results = {}
@@ -756,7 +756,8 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 if not pb:
                     k_kc[:, i] = 0
             assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt', fixdensity=True)
+            calc.set(kpts=k_kc, symmetry='off',
+                     txt=f'{identity}.txt', fixdensity=True)
             atoms.get_potential_energy()
             calc.write(name)
 
