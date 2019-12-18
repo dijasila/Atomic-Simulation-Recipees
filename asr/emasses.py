@@ -1,5 +1,8 @@
 from asr.core import command, option
 
+class NoGapError(Exception):
+    pass
+
 
 @command('asr.emasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
@@ -31,10 +34,7 @@ def refine(gpwfilename='gs.gpw'):
             gpw2 = name + '.gpw'
 
             if not gap > 0:
-                from gpaw import GPAW
-                calc = GPAW(gpwfilename, txt=None)
-                calc.write(gpw2)
-                continue
+                raise NoGapError('Gap was zero')
             if os.path.exists(gpw2):
                 continue
             nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
@@ -581,7 +581,7 @@ def main(gpwfilename='gs.gpw'):
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
         if not gap > 0:
-            continue
+            raise NoGapError('Gap was zero')
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
