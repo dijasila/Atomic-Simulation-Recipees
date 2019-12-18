@@ -35,7 +35,7 @@ def webpanel(row, key_descriptions):
     plasmatable = table(row, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
 
-    panel = {'title': 'Polarizability (RPA)',
+    panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}
     return [panel]
 
