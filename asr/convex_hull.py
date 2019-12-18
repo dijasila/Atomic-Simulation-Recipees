@@ -199,8 +199,8 @@ def plot(row, fname):
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         names = [ref['label'] for ref in references]
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-b')
-        ax.plot(x, e, 'sg')
+            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+        ax.scatter(x, e, facecolor='none', marker='o', edgecolor='C1')
         delta = e.ptp() / 30
         for a, b, name, on_hull in zip(x, e, names, hull):
             if on_hull:
@@ -218,8 +218,6 @@ def plot(row, fname):
         A, B = pd.symbols
         ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
-        for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='lightblue')
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
