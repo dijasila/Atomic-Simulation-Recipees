@@ -198,9 +198,12 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig
 
-    E_B = table(row, 'Property', ['E_B'], key_descriptions)
+    E_B = {'type': 'table',
+           'rows': [['<b>Property</b>', '<b>Value</b>'],
+                    ['Exciton binding energy (BSE)',
+                     f'{row.E_B:0.2f} eV']]}
 
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()

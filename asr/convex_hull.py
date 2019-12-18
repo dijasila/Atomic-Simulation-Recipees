@@ -29,7 +29,7 @@ def webpanel(row, key_descriptions):
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermal',
+    row = ['Thermodynamic',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]

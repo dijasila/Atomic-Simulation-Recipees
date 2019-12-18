@@ -244,7 +244,14 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
              'sort': 15}
-    return [panel]
+
+    rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': rows}]],
+               'sort': 11}
+    return [panel, summary]
 
 
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],

@@ -281,7 +281,14 @@ def webpanel(row, key_descriptions):
                          [hse]],
              'plot_descriptions': [{'function': bs_hse,
                                     'filenames': ['hse-bs.png']}]}
-    return [panel]
+
+    rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': rows}]],
+               'sort': 11}
+    return [panel, summary]
 
 
 @command(module='asr.hse',

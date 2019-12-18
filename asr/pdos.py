@@ -480,7 +480,7 @@ def get_yl_colors(dct_syl):
 
 def plot_pdos(row, filename, soc=True,
               figsize=(5.5, 5),
-              lw=2, loc='best'):
+              lw=1, loc='best'):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -546,7 +546,7 @@ def plot_pdos(row, filename, soc=True,
             label = None
 
         ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=color_yl[key[2:]], lw=lw)
+                label=label, color=color_yl[key[2:]])
 
     ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')

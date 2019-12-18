@@ -27,13 +27,18 @@ def webpanel(row, key_descriptions):
 
     c_ij = np.zeros((4, 4))
     c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-    rows = matrixtable(c_ij, unit=' N/m',
+    rows = matrixtable(c_ij, unit='',
                        skiprow=1,
                        skipcolumn=1)
-    rows[0] = ['C<sub>ij</sub>', 'xx', 'yy', 'xy']
+    rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
     rows[1][0] = 'xx'
     rows[2][0] = 'yy'
     rows[3][0] = 'xy'
+    for ir, tmprow in enumerate(rows):
+        for ic, item in enumerate(tmprow):
+            if ir == 0 or ic == 0:
+                rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
+
     ctable = dict(
         type='table',
         rows=rows)
