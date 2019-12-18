@@ -114,7 +114,7 @@ def webpanel(row, key_descriptions):
     high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
     medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
     low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
-    row = ['Phonons',
+    row = ['Dynamical (phonons)',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[dynstab].upper())]

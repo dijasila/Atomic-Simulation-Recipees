@@ -45,7 +45,7 @@ def webpanel(row, key_descriptions):
     dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
-    row = ['Stiffness',
+    row = ['Dynamical (stiffness)',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
                low, high, dynstab.upper())]
