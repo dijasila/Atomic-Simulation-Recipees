@@ -244,21 +244,18 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, **kwargs):
+def add_bs_pbe(row, ax, reference=0, color='C1'):
     """plot pbe with soc on ax"""
     from ase.dft.kpoints import labels_from_kpts
-    c = '0.8'  # light grey for pbe with soc plot
-    ls = '-'
-    lw = kwargs.get('lw', 1.0)
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=0, color=color)
     return ax
 
 

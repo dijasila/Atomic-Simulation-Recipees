@@ -165,20 +165,20 @@ def absorption(row, filename, direction='x'):
     absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
         absbse_w *= wbse_w * alpha / Ha / Bohr * 100
-    ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
+    ax.plot(wbse_w, absbse_w, '-', label='BSE')
 
     data = row.data['results-asr.polarizability.json']
     wrpa_w = data['frequencies'] + delta_rpa
     absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
     if dim == 2:
         absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
-    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+    ax.plot(wrpa_w, absrpa_w, '-', label='RPA')
 
     xmax = wbse_w[-1]
     ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                absrpa_w[wrpa_w < xmax]])) * 1.05
 
-    ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
+    ax.plot([qp_gap, qp_gap], [0, ymax], '--',
             label='Direct QP gap')
 
     ax.set_xlim(0.0, xmax)

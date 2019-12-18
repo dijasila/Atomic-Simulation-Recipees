@@ -213,8 +213,7 @@ def bs_hse(row,
 
     # hse with soc
     hse_style = dict(
-        color='k',
-        # label='HSE',
+        color='C0',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -230,7 +229,7 @@ def bs_hse(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='k', ls=':')
+    ax.axhline(ef - reference, c='C0', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef - reference),
@@ -245,7 +244,8 @@ def bs_hse(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+                        color='C1')
     
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
