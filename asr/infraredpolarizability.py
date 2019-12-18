@@ -12,7 +12,8 @@ def webpanel(row, key_descriptions):
              'plot_descriptions': [{'function': create_plot,
                                     'filenames': ['infrax.png',
                                                   'infray.png',
-                                                  'infraz.png']}]}
+                                                  'infraz.png']}],
+             'sort': 21}
 
     return [panel]
 

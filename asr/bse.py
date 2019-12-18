@@ -234,7 +234,7 @@ def webpanel(row, key_descriptions):
                                         'filenames': ['absy.png']},
                                        {'function': funcz,
                                         'filenames': ['absz.png']}]}
-    panel['sort'] = 21
+    panel['sort'] = 22
     return [panel]
 
 

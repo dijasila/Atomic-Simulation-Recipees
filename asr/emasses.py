@@ -462,7 +462,7 @@ def webpanel(row, key_descriptions):
              [{'function': make_the_plots,
                'filenames': fnames
                }],
-             'sort': 10}
+             'sort': 12}
     return [panel]
 
 

@@ -99,7 +99,8 @@ def webpanel(row, key_descriptions):
         columns[a % 2].append(Ztable)
 
     panel = {'title': 'Born charges',
-             'columns': columns}
+             'columns': columns,
+             'sort': 17}
     return [panel]
 
 

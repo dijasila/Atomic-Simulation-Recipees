@@ -280,7 +280,8 @@ def webpanel(row, key_descriptions):
              'columns': [[fig('hse-bs.png')],
                          [hse]],
              'plot_descriptions': [{'function': bs_hse,
-                                    'filenames': ['hse-bs.png']}]}
+                                    'filenames': ['hse-bs.png']}],
+             'sort': 15}
 
     rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
     summary = {'title': 'Summary',

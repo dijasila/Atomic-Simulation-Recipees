@@ -243,7 +243,7 @@ def webpanel(row, key_descriptions):
              'columns': [[fig('gw-bs.png'), prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
-             'sort': 15}
+             'sort': 16}
 
     rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
     summary = {'title': 'Summary',
