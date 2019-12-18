@@ -575,13 +575,11 @@ def main(gpwfilename='gs.gpw'):
 
     good_results = {}
     for soc in socs:
-        parprint(f"Soc = {soc}", flush=True)
         theta, phi = get_spin_axis()
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
-        parprint("after")
         if not gap > 0:
             continue
         for bt in ['vb', 'cb']:
@@ -758,7 +756,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 if not pb:
                     k_kc[:, i] = 0
             assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt')
+            calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt', fixdensity=True)
             atoms.get_potential_energy()
             calc.write(name)
 
@@ -1008,6 +1006,9 @@ def get_2nd_order_extremum(c, ndim=3):
 
 
 def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
+    if extremum_type == 'saddlepoint':
+        return xm, ym, zm
+
     import numpy as np
     from scipy import optimize
 
