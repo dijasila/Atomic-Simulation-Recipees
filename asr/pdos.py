@@ -159,7 +159,7 @@ ctests.append({'description': 'Test the refined ground state of Si',
                        'asr run gs',
                        'asr run pdos@calculate',
                        'asr run database.fromtree',
-                       'asr run "browser --only-figures"']})
+                       'asr run "database.browser --only-figures"']})
 
 tests = []
 tests.append({'description': 'Test the pdos of Si (cores=1)',
@@ -173,7 +173,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
                       'asr run gs',
                       'asr run pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test the pdos of Si (cores=2)',
               'name': 'test_asr.pdos_Si_parallel',
               'cli': ['asr run "setup.materials -s Si2"',
@@ -185,7 +185,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr run gs',
                       'asr run -p 2 pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 # ---------- Webpanel ---------- #

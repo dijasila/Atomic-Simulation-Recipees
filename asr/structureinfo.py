@@ -115,7 +115,7 @@ tests = [{'description': 'Test SI.',
                   'asr.gs@calculate:kptdensity 2"',
                   'asr run structureinfo',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.structureinfo',

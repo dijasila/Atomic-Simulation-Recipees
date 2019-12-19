@@ -8,7 +8,7 @@ test1 = {'description': 'Test ground state of Si.',
                  "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
                  'asr run gs@calculate',
                  'asr run database.fromtree',
-                 'asr run "browser --only-figures"']}
+                 'asr run "database.browser --only-figures"']}
 
 
 @command(module='asr.gs',
@@ -67,7 +67,7 @@ tests = [{'description': 'Test ground state of Si.',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 def webpanel(row, key_descriptions):

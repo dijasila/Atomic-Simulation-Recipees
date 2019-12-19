@@ -14,7 +14,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test band structure of 2D-BN.',
               'name': 'asr.bandstructure_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
@@ -25,7 +25,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 @command('asr.bandstructure',

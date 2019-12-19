@@ -44,7 +44,7 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   f'asr run "setup.params {params}"',
                   'asr run asr.magnetic_anisotropy',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.magnetic_anisotropy',
