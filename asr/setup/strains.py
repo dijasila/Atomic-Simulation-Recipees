@@ -65,3 +65,7 @@ def main(strain_percent=1, kptdensity=6.0):
                 params.extend(['asr.relax:allow_symmetry_breaking', 'True'])
                 params.extend(['asr.relax:fmax', '0.008'])
                 setup_params(params=params)
+
+
+if __name__ == '__main__':
+    main.cli()
