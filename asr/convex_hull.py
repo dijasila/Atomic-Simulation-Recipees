@@ -66,7 +66,6 @@ def main(databases, standardreferences=None):
     hform = hof(read_json('results-asr.gs.json').get('etot'),
                 count,
                 ref_energies)
-    mf = read_json('results-asr.database.material_fingerprint.json')
 
     # Now compute convex hull
     dbdata = {}
