@@ -185,8 +185,6 @@ def plot(row, fname):
     legends = []
     colors = []
     for reference in references:
-        if row.uid == reference['uid']:
-            continue
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
         if reference['legend'] not in legends:
