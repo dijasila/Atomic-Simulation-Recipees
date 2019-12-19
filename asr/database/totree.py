@@ -181,6 +181,10 @@ def main(database, run=False, selection='',
                     # Unpack any extra files
                     files = results.get('__files__', {})
                     for extrafile, content in files.items():
+                        if not Path(extrafile).is_file():
+                            print(f'{folder}: Unknown extra file:'
+                                  f'{extrafile}')
+                            continue
                         if '__tofile__' in content:
                             tofile = content.pop('__tofile__')
                             mod, func = tofile.split('@')

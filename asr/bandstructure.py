@@ -14,7 +14,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test band structure of 2D-BN.',
               'name': 'asr.bandstructure_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
@@ -25,7 +25,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 @command('asr.bandstructure',
@@ -121,7 +121,7 @@ def bs_pbe_html(row,
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
-    perm = (sz_mk).argsort(axis=None)
+    perm = (-sz_mk).argsort(axis=None)
     e_mk = e_mk.ravel()[perm].reshape(shape)
     sz_mk = sz_mk.ravel()[perm].reshape(shape)
     xcoords = np.vstack([xcoords] * shape[0])
@@ -244,21 +244,18 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, **kwargs):
+def add_bs_pbe(row, ax, reference=0, color='C1'):
     """plot pbe with soc on ax"""
     from ase.dft.kpoints import labels_from_kpts
-    c = '0.8'  # light grey for pbe with soc plot
-    ls = '-'
-    lw = kwargs.get('lw', 1.0)
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=0, color=color)
     return ax
 
 
@@ -472,7 +469,7 @@ def pdos_bs_pbe(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -495,16 +492,15 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm', 'dipz', 'evacdiff'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
                 ],
                 kd=key_descriptions_noxc)
     else:

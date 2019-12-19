@@ -57,7 +57,7 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = {'title': 'Fermi surface',
              'columns': [[fig('fermi_surface.png')]],

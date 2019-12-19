@@ -8,8 +8,8 @@ def webpanel(row, key_descriptions):
     defpot = data['deformation_potentials']
     vbmdef = (defpot[0, 0] + defpot[1, 0]) / 2
     cbmdef = (defpot[0, 1] + defpot[1, 1]) / 2
-    rows = [['Avg. deformation potential at VBM', f'{cbmdef:0.2f} eV'],
-            ['Avg. deformation potential at CBM', f'{vbmdef:0.2f} eV']]
+    rows = [['Uniaxial deformation potential at VBM', f'{cbmdef:0.2f} eV'],
+            ['Uniaxial deformation potential at CBM', f'{vbmdef:0.2f} eV']]
     panel = {'title': 'Basic electronic properties',
              'columns': [[{'type': 'table',
                            'header': ['Property', ''],

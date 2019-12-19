@@ -159,7 +159,7 @@ ctests.append({'description': 'Test the refined ground state of Si',
                        'asr run gs',
                        'asr run pdos@calculate',
                        'asr run database.fromtree',
-                       'asr run "browser --only-figures"']})
+                       'asr run "database.browser --only-figures"']})
 
 tests = []
 tests.append({'description': 'Test the pdos of Si (cores=1)',
@@ -173,7 +173,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
                       'asr run gs',
                       'asr run pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test the pdos of Si (cores=2)',
               'name': 'test_asr.pdos_Si_parallel',
               'cli': ['asr run "setup.materials -s Si2"',
@@ -185,14 +185,14 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr run gs',
                       'asr run -p 2 pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 # ---------- Webpanel ---------- #
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     # PDOS without spin-orbit coupling
     nosoc_panel = {'title': 'Band structure with pdos (PBE)',
                    'columns': [[],
@@ -500,7 +500,7 @@ def plot_pdos_soc(*args, **kwargs):
 
 def plot_pdos(row, filename, soc=True,
               figsize=(5.5, 5),
-              lw=2, loc='best'):
+              lw=1, loc='best'):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -566,7 +566,7 @@ def plot_pdos(row, filename, soc=True,
             label = None
 
         ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=color_yl[key[2:]], lw=lw)
+                label=label, color=color_yl[key[2:]])
 
     ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')

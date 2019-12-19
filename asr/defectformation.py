@@ -392,7 +392,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
 
 
 # def webpanel(row, key_descriptions):
-#    from asr.browser import fig, table
+#    from asr.database.browser import fig, table
 #
 #    if 'something' not in row.data:
 #        return None, []
