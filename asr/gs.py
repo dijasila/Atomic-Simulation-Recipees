@@ -74,8 +74,7 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table, fig
 
     t = table(row, 'Property',
-              ['evac', 'efermi', 'gap', 'vbm', 'cbm',
-               'gap_dir', 'vbm_dir', 'cbm_dir',
+              ['gap', 'gap_dir', 'vbm', 'cbm',
                'dipz', 'evacdiff'],
               key_descriptions)
 

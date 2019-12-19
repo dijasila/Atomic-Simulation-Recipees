@@ -200,10 +200,14 @@ def webpanel(row, key_descriptions):
     from functools import partial
     from asr.database.browser import fig
 
+    if row.get('E_B'):
+        rows = [['<b>Property</b>', '<b>Value</b>'],
+                ['Exciton binding energy (BSE)',
+                 f'{row.E_B:0.2f} eV']]
+    else:
+        rows = [[]]
     E_B = {'type': 'table',
-           'rows': [['<b>Property</b>', '<b>Value</b>'],
-                    ['Exciton binding energy (BSE)',
-                     f'{row.E_B:0.2f} eV']]}
+           'rows': rows}
 
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()

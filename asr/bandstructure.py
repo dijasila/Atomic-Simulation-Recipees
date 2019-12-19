@@ -121,7 +121,7 @@ def bs_pbe_html(row,
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
-    perm = (sz_mk).argsort(axis=None)
+    perm = (-sz_mk).argsort(axis=None)
     e_mk = e_mk.ravel()[perm].reshape(shape)
     sz_mk = sz_mk.ravel()[perm].reshape(shape)
     xcoords = np.vstack([xcoords] * shape[0])
@@ -438,16 +438,15 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm', 'dipz', 'evacdiff'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
                 ],
                 kd=key_descriptions_noxc)
     else:

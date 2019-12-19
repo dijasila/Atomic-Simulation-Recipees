@@ -114,7 +114,7 @@ def initialize_project(database):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
-        "default_columns": metadata.get("default_columns"),
+        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "search_template": str(
             metadata.get(
                 "search_template", "asr/database/templates/search.html"

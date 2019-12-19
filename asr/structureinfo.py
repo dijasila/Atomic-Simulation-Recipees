@@ -71,7 +71,7 @@ def has_inversion(atoms, use_spglib=True):
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
-    basictable = table(row, 'Structural info', [
+    basictable = table(row, 'Structure info', [
         'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
