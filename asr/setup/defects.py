@@ -217,7 +217,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         'txt': 'relax.txt',
                         'occupations': {
                             'name': 'fermi-dirac',
-                            'width': 0.05}}
+                            'width': 0.05},
+                        'spinpol': True}
                     calculator_gs = {'name': 'gpaw',
                                      'mode': {'name': 'pw', 'ecut': 800},
                                      'xc': 'PBE',
@@ -227,7 +228,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                                      'width': 0.05},
                                      'convergence': {'bands': -3},
                                      'nbands': -10,
-                                     'txt': 'gs.txt'}
+                                     'txt': 'gs.txt',
+                                     'spinpol': True}
                     parameters['asr.gs@calculate'] = {
                         'calculator': calculator_gs}
                     parameters['asr.gs@calculate']['calculator']['charge'] = q
@@ -279,7 +281,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'txt': 'relax.txt',
                                 'occupations': {
                                     'name': 'fermi-dirac',
-                                    'width': 0.05}}
+                                    'width': 0.05},
+                                'spinpol': True}
                             calculator_gs = {
                                 'name': 'gpaw',
                                 'mode': {
@@ -296,7 +299,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'convergence': {
                                     'bands': -3},
                                 'nbands': -10,
-                                'txt': 'gs.txt'}
+                                'txt': 'gs.txt',
+                                'spinpol': True}
                             parameters['asr.gs@calculate'] = {
                                 'calculator': calculator_gs}
                             parameters['asr.gs@calculate']['calculator'
