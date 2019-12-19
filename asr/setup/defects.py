@@ -178,8 +178,40 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine = structure.repeat((N_x, N_y, N_z))
     parameters = {}
     string = 'defects.pristine_sc'
-    parameters['asr.relax'] = {}
-    parameters['asr.gs@calculate'] = {}
+    calculator_relax = {
+        'name': 'gpaw',
+        'mode': {
+            'name': 'pw',
+            'ecut': 800,
+            'dedecut': 'estimate'},
+        'xc': 'PBE',
+        'kpts': {
+            'density': 6.0,
+            'gamma': True},
+        'basis': 'dzp',
+        'symmetry': {
+            'symmorphic': False},
+        'convergence': {
+            'forces': 1e-4},
+        'txt': 'relax.txt',
+        'occupations': {
+            'name': 'fermi-dirac',
+            'width': 0.05},
+        'spinpol': True}
+    calculator_gs = {'name': 'gpaw',
+                     'mode': {'name': 'pw', 'ecut': 800},
+                     'xc': 'PBE',
+                     'basis': 'dzp',
+                     'kpts': {'density': 12.0, 'gamma': True},
+                     'occupations': {'name': 'fermi-dirac',
+                                     'width': 0.05},
+                     'convergence': {'bands': -3},
+                     'nbands': -10,
+                     'txt': 'gs.txt',
+                     'spinpol': True}
+    parameters['asr.gs@calculate'] = {
+        'calculator': calculator_gs}
+    parameters['asr.relax'] = {'calculator': calculator_relax}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
