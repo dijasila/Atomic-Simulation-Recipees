@@ -213,7 +213,6 @@ def webpanel(row, key_descriptions):
                  'sort': 13}
 
     return [nosoc_panel, soc_panel]
->>>>>>> asr/pdos.py
 
 
 # ---------- Main functionality ---------- #
