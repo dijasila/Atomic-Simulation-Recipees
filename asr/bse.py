@@ -272,10 +272,10 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command(module='asr.bse_new',
+@command(module='asr.bse',
          requires=['bse_polx.csv', 'results-asr.gs.json',
                    'results-asr.structureinfo.json'],
-         dependencies=['asr.bse_new@calculate', 'asr.gs', 'asr.structureinfo'],
+         dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
          webpanel=webpanel)
 def main():
     alphax_w = np.loadtxt('bse_polx.csv', delimiter=',')
