@@ -252,7 +252,9 @@ def webpanel(row, key_descriptions):
                                  'header': ['Electronic properties', ''],
                                  'rows': rows}]],
                    'sort': 11}
-    return [panel, summary]
+        return [panel, summary]
+
+    return [panel]
 
 
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],

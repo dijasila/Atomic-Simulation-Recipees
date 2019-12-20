@@ -290,7 +290,9 @@ def webpanel(row, key_descriptions):
                                  'header': ['Electronic properties', ''],
                                  'rows': rows}]],
                    'sort': 11}
-    return [panel, summary]
+        return [panel, summary]
+
+    return [panel]
 
 
 @command(module='asr.hse',

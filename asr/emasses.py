@@ -331,7 +331,7 @@ def make_the_plots(row, *args):
                 y2 = np.min(emodel_k) + erange * 0.75
                 axes.set_ylim(y1, y2)
 
-                my_range = get_range(mass, erange)
+                my_range = get_range(abs(mass), erange)
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
