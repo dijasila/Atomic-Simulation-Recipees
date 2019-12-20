@@ -283,12 +283,13 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['hse-bs.png']}],
              'sort': 15}
 
-    rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
-                             'rows': rows}]],
-               'sort': 11}
+    if row.get('gap_hse'):
+        rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+        summary = {'title': 'Summary',
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
+                   'sort': 11}
     return [panel, summary]
 
 

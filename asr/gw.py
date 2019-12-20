@@ -245,12 +245,13 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
 
-    rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
-                             'rows': rows}]],
-               'sort': 11}
+    if row.get('gap.gw'):
+        rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+        summary = {'title': 'Summary',
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
+                   'sort': 11}
     return [panel, summary]
 
 
