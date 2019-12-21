@@ -1,10 +1,10 @@
 import numpy as np
 from asr.core import command, option
+from ase.dft.bandgap import bandgap
 from click import Choice
 
 
-@command(module='asr.bse',
-         creates=['bse_polx.csv', 'bse_eigx.dat',
+@command(creates=['bse_polx.csv', 'bse_eigx.dat',
                   'bse_poly.csv', 'bse_eigy.dat',
                   'bse_polz.csv', 'bse_eigz.dat'],
          requires=['gs.gpw'],
@@ -12,14 +12,14 @@ from click import Choice
 @option('--gs', help='Ground state on which BSE is based')
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
-@option('--nv', help='Valence bands included')
-@option('--nc', help='Conduction bands included')
+@option('--nv_s', help='Valence bands included')
+@option('--nc_s', help='Conduction bands included')
 @option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
-              nv=4, nc=4):
+              nv_s=-2.3, nc_s=2.3):
     """Calculate BSE polarizability"""
     import os
     from ase.io import read
@@ -33,7 +33,6 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
-
     ND = np.sum(pbc)
     if ND == 3:
         eta = 0.1
@@ -62,11 +61,50 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
 
-    calc_old = GPAW(gs, txt=None)
-    spin = calc_old.get_spin_polarized()
-    nval = calc_old.wfs.nvalence
+    calc_gs = GPAW(gs, txt=None)
+    spin = calc_gs.get_spin_polarized()
+    nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
     nbands = bandfactor * nocc
+    Nk = len(calc_gs.get_ibz_k_points())
+    gap, v, c = bandgap(calc_gs, direct=True, output=None)
+
+    if isinstance(nv_s, float):
+        ev = calc_gs.get_eigenvalues(kpt=v[1], spin=v[0])[v[2]]
+        nv_sk = np.zeros((spin + 1, Nk), int)
+        for s in range(spin + 1):
+            for k in range(Nk):
+                e_n = calc_gs.get_eigenvalues(kpt=k, spin=s)
+                e_n -= ev
+                x = e_n[np.where(e_n < 0)]
+                x = x[np.where(x > nv_s)]
+                nv_sk[s, k] = len(x)
+        nv_s = np.max(nv_sk, axis=1)
+    if isinstance(nc_s, float):
+        ec = calc_gs.get_eigenvalues(kpt=c[1], spin=c[0])[c[2]]
+        nc_sk = np.zeros((spin + 1, Nk), int)
+        for s in range(spin + 1):
+            for k in range(Nk):
+                e_n = calc_gs.get_eigenvalues(kpt=k, spin=s)
+                e_n -= ec
+                x = e_n[np.where(e_n > 0)]
+                x = x[np.where(x < nc_s)]
+                nc_sk[s, k] = len(x)
+        nc_s = np.max(nc_sk, axis=1)
+
+    nv_s = [np.max(nv_s), np.max(nv_s)]
+    nc_s = [np.max(nc_s), np.max(nc_s)]
+    print('nv_s, nc_s', nv_s, nc_s)
+    valence_bands = []
+    conduction_bands = []
+    for s in range(spin + 1):
+        gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
+        valence_bands.append(range(c[2] - nv_s[s], c[2]))
+        conduction_bands.append(range(c[2], c[2] + nc_s[s]))
+        
+    print(valence_bands)
+    print(conduction_bands)
+        
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
             gs,
@@ -80,16 +118,16 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         with file_barrier(['gs_bse.gpw']):
             calc.write('gs_bse.gpw', mode='all')
 
-    if spin:
-        f0 = calc.get_occupation_numbers(spin=0)
-        f1 = calc.get_occupation_numbers(spin=1)
-        n0 = np.where(f0 < 1.0e-6)[0][0]
-        n1 = np.where(f1 < 1.0e-6)[0][0]
-        valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
-        conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
-    else:
-        valence_bands = range(nocc - nv, nocc)
-        conduction_bands = range(nocc, nocc + nc)
+    # if spin:
+    #     f0 = calc.get_occupation_numbers(spin=0)
+    #     f1 = calc.get_occupation_numbers(spin=1)
+    #     n0 = np.where(f0 < 1.0e-6)[0][0]
+    #     n1 = np.where(f1 < 1.0e-6)[0][0]
+    #     valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
+    #     conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
+    # else:
+    #     valence_bands = range(nocc - nv, nocc)
+    #     conduction_bands = range(nocc, nocc + nc)
 
     world.barrier()
 
@@ -165,20 +203,20 @@ def absorption(row, filename, direction='x'):
     absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
         absbse_w *= wbse_w * alpha / Ha / Bohr * 100
-    ax.plot(wbse_w, absbse_w, '-', label='BSE')
+    ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
 
     data = row.data['results-asr.polarizability.json']
     wrpa_w = data['frequencies'] + delta_rpa
     absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
     if dim == 2:
         absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
-    ax.plot(wrpa_w, absrpa_w, '-', label='RPA')
+    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
 
     xmax = wbse_w[-1]
     ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                absrpa_w[wrpa_w < xmax]])) * 1.05
 
-    ax.plot([qp_gap, qp_gap], [0, ymax], '--',
+    ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
     ax.set_xlim(0.0, xmax)
@@ -198,16 +236,9 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.database.browser import fig
+    from asr.browser import fig, table
 
-    if row.get('E_B'):
-        rows = [['<b>Property</b>', '<b>Value</b>'],
-                ['Exciton binding energy (BSE)',
-                 f'{row.E_B:0.2f} eV']]
-    else:
-        rows = [[]]
-    E_B = {'type': 'table',
-           'rows': rows}
+    E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
@@ -217,7 +248,7 @@ def webpanel(row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE)',
+        panel = {'title': 'Optical absorption',
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
@@ -229,7 +260,7 @@ def webpanel(row, key_descriptions):
         funcy = partial(absorption, direction='y')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE)',
+        panel = {'title': 'Optical absorption',
                  'columns': [[fig('absx.png'), fig('absz.png')],
                              [fig('absy.png'), E_B]],
                  'plot_descriptions': [{'function': funcx,
@@ -238,7 +269,6 @@ def webpanel(row, key_descriptions):
                                         'filenames': ['absy.png']},
                                        {'function': funcz,
                                         'filenames': ['absz.png']}]}
-    panel['sort'] = 22
     return [panel]
 
 
@@ -267,10 +297,11 @@ def main():
         magstate = info['magstate']
 
         gsresults = read_json('results-asr.gs.json')
+        print(gsresults.keys())
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E
         else:
-            E_B = gsresults['gaps_nosoc']['gap_dir'] - E
+            E_B = gsresults['gaps_dir_nosoc'] - E
 
         data['E_B'] = E_B
         data['__key_descriptions__'] = \
