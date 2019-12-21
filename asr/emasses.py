@@ -1,6 +1,10 @@
 from asr.core import command, option
 
 
+class NoGapError(Exception):
+    pass
+
+
 @command('asr.emasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.structureinfo',
@@ -31,10 +35,7 @@ def refine(gpwfilename='gs.gpw'):
             gpw2 = name + '.gpw'
 
             if not gap > 0:
-                from gpaw import GPAW
-                calc = GPAW(gpwfilename, txt=None)
-                calc.write(gpw2)
-                continue
+                raise NoGapError('Gap was zero')
             if os.path.exists(gpw2):
                 continue
             nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
@@ -570,20 +571,17 @@ def main(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
-    from ase.parallel import parprint
     socs = [True]
 
     good_results = {}
     for soc in socs:
-        parprint(f"Soc = {soc}", flush=True)
         theta, phi = get_spin_axis()
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
-        parprint("after")
         if not gap > 0:
-            continue
+            raise NoGapError('Gap was zero')
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
@@ -758,7 +756,8 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 if not pb:
                     k_kc[:, i] = 0
             assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt')
+            calc.set(kpts=k_kc, symmetry='off',
+                     txt=f'{identity}.txt', fixdensity=True)
             atoms.get_potential_energy()
             calc.write(name)
 
@@ -1008,6 +1007,9 @@ def get_2nd_order_extremum(c, ndim=3):
 
 
 def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
+    if extremum_type == 'saddlepoint':
+        return xm, ym, zm
+
     import numpy as np
     from scipy import optimize
 
