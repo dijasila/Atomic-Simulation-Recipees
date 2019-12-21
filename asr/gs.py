@@ -8,7 +8,7 @@ test1 = {'description': 'Test ground state of Si.',
                  "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
                  'asr run gs@calculate',
                  'asr run database.fromtree',
-                 'asr run "browser --only-figures"']}
+                 'asr run "database.browser --only-figures"']}
 
 
 @command(module='asr.gs',
@@ -67,15 +67,14 @@ tests = [{'description': 'Test ground state of Si.',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
 
     t = table(row, 'Property',
-              ['evac', 'efermi', 'gap', 'vbm', 'cbm',
-               'gap_dir', 'vbm_dir', 'cbm_dir',
+              ['gap', 'gap_dir', 'vbm', 'cbm',
                'dipz', 'evacdiff'],
               key_descriptions)
 
@@ -83,11 +82,13 @@ def webpanel(row, key_descriptions):
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    row = ['Band gap (PBE)', f'{row.gap:0.3f}']
+    row = ['Band gap (PBE)', f'{row.gap:0.3f} eV']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
+               'plot_descriptions': [{'function': bz_soc,
+                                      'filenames': ['bz-with-gaps.png']}],
                'sort': 10}
 
     return [panel, summary]
@@ -96,10 +97,33 @@ def webpanel(row, key_descriptions):
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    import numpy as np
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
+    plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False)
+    gsresults = row.data.get('results-asr.gs.json')
+    cbm_c = gsresults['k_cbm_c']
+    vbm_c = gsresults['k_vbm_c']
+
+    if cbm_c is not None:
+        ax = plt.gca()
+        icell = np.linalg.inv(row.cell).T
+        cbm_v = np.dot(cbm_c, icell)
+        vbm_v = np.dot(vbm_c, icell)
+
+        vbm_style = {'marker': 'o', 'facecolor': 'w',
+                     'edgecolors': 'C0', 's': 100, 'lw': 2.5,
+                     'zorder': 4}
+        cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='CBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='VBM')
+        xlim = np.array(ax.get_xlim()) * 1.2
+        ylim = np.array(ax.get_ylim()) * 1.2
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        plt.legend(loc='upper center', ncol=3)
+
     plt.tight_layout()
     plt.savefig(fname)
 

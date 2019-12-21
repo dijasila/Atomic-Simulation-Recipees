@@ -87,7 +87,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = ('Density of states (PBE)',
              [[fig('dos.png')], []])
