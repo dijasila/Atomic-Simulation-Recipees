@@ -9,10 +9,10 @@ from asr.core import command
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
-    panel = {'title': 'Band structure with pdos (PBE)',
-             'columns': [[fig('pbe-pdos-bs.png', link='empty')], []],
-             'plot_descriptions': [{'function': pdos_bs_pbe,
-                                    'filenames': ['pbe-pdos-bs.png']}]}
+    panel = {'title': 'Band structure with projections (PBE)',
+             'columns': [[fig('pbe-projected-bs.png', link='empty')], []],
+             'plot_descriptions': [{'function': projected_bs_pbe,
+                                    'filenames': ['pbe-projected-bs.png']}]}
 
     return [panel]
 
@@ -20,7 +20,7 @@ def webpanel(row, key_descriptions):
 # ---------- Main functionality ---------- #
 
 
-@command(module='asr.pdos_bandstructure',
+@command(module='asr.projected_bandstructure',
          requires=['results-asr.gs.json', 'bs.gpw',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gs', 'asr.bandstructure'],
@@ -113,10 +113,10 @@ def get_orbital_ldos(calc):
 # ---------- Plotting ---------- #
 
 
-def pdos_bs_pbe(row,
-                filename='pbe-pdos-bs.png',
-                figsize=(6.4, 4.8),
-                fontsize=10):
+def projected_bs_pbe(row,
+                     filename='pbe-projected-bs.png',
+                     figsize=(6.4, 4.8),
+                     fontsize=10):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import numpy as np
