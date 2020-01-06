@@ -37,6 +37,7 @@ def main():
     weight_skni, yl_i = get_orbital_ldos(calc)
     results['weight_skni'] = weight_skni
     results['yl_i'] = yl_i
+    results['symbols'] = calc.atoms.get_chemical_symbols()
     
     return results
 
@@ -113,6 +114,36 @@ def get_orbital_ldos(calc):
 # ---------- Plotting ---------- #
 
 
+def get_yl_ordering(yl_i, symbols):
+    """Get standardized yl ordering of keys
+
+    Parameters
+    ----------
+    yl_i : list
+        see get_orbital_ldos
+    symbols : list
+        Sort symbols after index in this list
+
+    Returns
+    -------
+    c_i : list
+        ordered index for each i
+    """
+
+    # Setup sili (symbol index, angular momentum index) key
+    def sili(yl):
+        y, L = yl.split(',')
+        # Symbols list can have multiple entries of the same symbol
+        # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
+        # 'Fe' will have index 1.
+        si = symbols.index(y)
+        li = ['s', 'p', 'd', 'f'].index(L)
+        return f'{si}{li}'
+
+    i_c = [iyl[0] for iyl in sorted(enumerate(yl_i), key=lambda t: sili(t[1]))]
+    return [i_c.index(i) for i in range(len(yl_i))]
+
+
 def projected_bs_pbe(row,
                      filename='pbe-projected-bs.png',
                      figsize=(6.4, 4.8),
@@ -122,6 +153,15 @@ def projected_bs_pbe(row,
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
+
+    # Extract projections data
+    data = row.data.get('results-asr.projected_bandstructure.json')
+    weight_skni = data['weight_skni']
+    yl_i = data['yl_i']
+
+    # Get color indeces
+    c_i = get_yl_ordering(yl_i, data['symbols'])
+    print(c_i)
 
     # Extract band structure data
     d = row.data.get('results-asr.bandstructure.json')
@@ -151,7 +191,7 @@ def projected_bs_pbe(row,
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    # Use band structure objects to plot
+    # Use band structure objects to plot outline
     bs = BandStructure(path, e_kn - ref, ef - ref)
     style = dict(
         colors=['0.8'] * e_skn.shape[0],
