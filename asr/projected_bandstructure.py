@@ -161,7 +161,6 @@ def projected_bs_pbe(row,
 
     # Get color indeces
     c_i = get_yl_ordering(yl_i, data['symbols'])
-    print(c_i)
 
     # Extract band structure data
     d = row.data.get('results-asr.bandstructure.json')
@@ -202,6 +201,19 @@ def projected_bs_pbe(row,
     bsp = BandStructurePlot(bs)
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
              ylabel=label, **style)
+
+    # Do simple scatter plot for now                                           XXX
+    # Energy and weight arrays
+    ns, nk, nb = e_skn.shape
+    s_u = [s for s in range(ns) for n in range(nb)]
+    n_u = [n for s in range(ns) for n in range(nb)]
+    e_uk = e_skn[s_u, :, n_u] - ref
+    weight_uki = weight_skni[s_u, :, n_u, :]
+    for e_k, weight_ki in zip(e_uk, weight_uki):
+        # marker color depending on largest weight
+        c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
+        for x, e, c in zip(bsp.xcoords, e_k, c_k):
+            ax.scatter(x, e, color='C{}'.format(c), zorder=3)
 
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
