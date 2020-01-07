@@ -40,7 +40,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     from gpaw import GPAW
     from ase.io import read
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
