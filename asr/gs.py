@@ -8,7 +8,7 @@ test1 = {'description': 'Test ground state of Si.',
                  "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
                  'asr run gs@calculate',
                  'asr run database.fromtree',
-                 'asr run "browser --only-figures"']}
+                 'asr run "database.browser --only-figures"']}
 
 
 @command(module='asr.gs',
@@ -25,8 +25,8 @@ def calculate(calculator={'name': 'gpaw',
                           'kpts': {'density': 12.0, 'gamma': True},
                           'occupations': {'name': 'fermi-dirac',
                                           'width': 0.05},
-                          'convergence': {'bands': -3},
-                          'nbands': -10,
+                          'convergence': {'bands': 'CBM+3.0'},
+                          'nbands': '200%',
                           'txt': 'gs.txt',
                           'charge': 0}):
     """Calculate ground state file.
@@ -69,14 +69,73 @@ tests = [{'description': 'Test ground state of Si.',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
+
+
+def webpanel(row, key_descriptions):
+    from asr.database.browser import table, fig
+
+    t = table(row, 'Property',
+              ['gap', 'gap_dir', 'vbm', 'cbm',
+               'dipz', 'evacdiff'],
+              key_descriptions)
+
+    panel = {'title': 'Basic electronic properties',
+             'columns': [[t], [fig('bz-with-gaps.png')]],
+             'sort': 10}
+
+    row = ['Band gap (PBE)', f'{row.gap:0.3f} eV']
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': [row]}]],
+               'plot_descriptions': [{'function': bz_soc,
+                                      'filenames': ['bz-with-gaps.png']}],
+               'sort': 10}
+
+    return [panel, summary]
+
+
+def bz_soc(row, fname):
+    from ase.geometry.cell import Cell
+    from matplotlib import pyplot as plt
+    import numpy as np
+    cell = Cell(row.cell)
+    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    plt.figure(figsize=(4, 4))
+    lat.plot_bz(vectors=False)
+    gsresults = row.data.get('results-asr.gs.json')
+    cbm_c = gsresults['k_cbm_c']
+    vbm_c = gsresults['k_vbm_c']
+
+    if cbm_c is not None:
+        ax = plt.gca()
+        icell = np.linalg.inv(row.cell).T
+        cbm_v = np.dot(cbm_c, icell)
+        vbm_v = np.dot(vbm_c, icell)
+
+        vbm_style = {'marker': 'o', 'facecolor': 'w',
+                     'edgecolors': 'C0', 's': 100, 'lw': 2.5,
+                     'zorder': 4}
+        cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='CBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='VBM')
+        xlim = np.array(ax.get_xlim()) * 1.2
+        ylim = np.array(ax.get_ylim()) * 1.2
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        plt.legend(loc='upper center', ncol=3)
+
+    plt.tight_layout()
+    plt.savefig(fname)
 
 
 @command(module='asr.gs',
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
          tests=tests,
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'])
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'],
+         webpanel=webpanel)
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
@@ -114,27 +173,16 @@ def main():
 
     results = {'forces': forces,
                'stresses': stresses,
-               'etot': etot,
-               'gs.gpw': str(Path('gs.gpw').absolute()),
-               '__key_descriptions__':
-               {'forces': 'Forces on atoms [eV/Angstrom]',
-                'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-                'etot': 'KVP: Total energy (En.) [eV]',
-                'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-                'gap_dir': 'KVP: Direct gap with SOC (Dir. gap w. soc.) [eV]',
-                'gap_dir_nosoc': ('KVP: Direct gap without SOC (Dir. gap wo.'
-                                  ' soc.) [eV]')}}
+               'etot': etot}
 
     results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gaps_soc'] = gaps(calc, soc=True)
-
-    results['gap_dir'] = results['gaps_soc']['gap_dir']
     results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
-
+    results.update(gaps(calc, soc=True))
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:
         vac = vacuumlevels(atoms, calc)
         results['vacuumlevels'] = vac
+        results['dipz'] = vac['dipz']
         results['evac'] = vac['evacmean']
         results['evacdiff'] = vac['evacdiff']
 
@@ -142,6 +190,26 @@ def main():
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
     results['__setup_fingerprints__'] = fingerprint
+    results['__key_descriptions__'] = {
+        # Saved arrays
+        'forces': 'Forces on atoms [eV/Angstrom]',
+        'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
+        # Key value pairs
+        'etot': 'KVP: Total energy (Tot. En.) [eV]',
+        'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
+        'evacdiff': 'KVP: Vacuum level shift (Vacuum level shift) [eV]',
+        'dipz': 'KVP: Out-of-plane dipole [e * Ang]',
+        'efermi': 'KVP: Fermi level (Fermi level) [eV]',
+        'gap': 'KVP: Band gap (Band gap) [eV]',
+        'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
+        'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
+        'gap_dir': 'KVP: Direct band gap (Dir. band gap) [eV]',
+        'vbm_dir': ('KVP: Direct valence band maximum '
+                    '(Dir. val. band max.) [eV]'),
+        'cbm_dir': ('KVP: Direct conduction band minimum '
+                    '(Dir. cond. band max.) [eV]'),
+        'gap_dir_nosoc': ('KVP: Direct gap without SOC '
+                          '(Dir. gap wo. soc.) [eV]')}
 
     return results
 
@@ -188,10 +256,10 @@ def gaps(calc, soc=True):
                   'gap_dir': evbm_ecbm_direct_gap[2],
                   'vbm_dir': evbm_ecbm_direct_gap[0],
                   'cbm_dir': evbm_ecbm_direct_gap[1],
-                  'k1_c': k_vbm_c,
-                  'k2_c': k_cbm_c,
-                  'k1_dir_c': direct_k_vbm_c,
-                  'k2_dir_c': direct_k_cbm_c,
+                  'k_vbm_c': k_vbm_c,
+                  'k_cbm_c': k_cbm_c,
+                  'k_vbm_dir_c': direct_k_vbm_c,
+                  'k_cbm_dir_c': direct_k_cbm_c,
                   'skn1': skn_vbm,
                   'skn2': skn_cbm,
                   'skn1_dir': direct_skn_vbm,
@@ -299,7 +367,6 @@ def evacdiff(atoms):
 
 def get_evac():
     """Get mean vacuum energy, if it has been calculated"""
-    from pathlib import Path
     from asr.core import read_json
 
     evac = None
@@ -309,27 +376,6 @@ def get_evac():
             evac = results['vacuumlevels']['evacmean']
 
     return evac
-
-
-def webpanel(row, key_descriptions):
-    from asr.browser import table
-
-    if row.get('evacdiff', 0) < 0.02:
-        t = table(row, 'Postprocessing',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi'],
-                  key_descriptions)
-    else:
-        t = table(row, 'Postprocessing',
-                  ['gap', 'vbm', 'cbm',
-                   'gap_dir', 'vbm_dir', 'cbm_dir', 'efermi',
-                   'dipz', 'evacdiff'],
-                  key_descriptions)
-
-    panel = {'title': 'PBE ground state',
-             'columns': [[t]]}
-
-    return [panel]
 
 
 if __name__ == '__main__':

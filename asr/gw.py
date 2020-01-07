@@ -26,16 +26,15 @@ def bs_gw(row,
         label = r'$E - E_\mathrm{F}$ [eV]'
         reference = ef
 
-    emin = row.get('vbm_gw', ef) - 5 - reference
-    emax = row.get('cbm_gw', ef) + 10 - reference
+    emin = row.get('vbm_gw', ef) - 3 - reference
+    emax = row.get('cbm_gw', ef) + 3 - reference
 
     e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = path.get_linear_kpoint_axis()
 
     # hse with soc
     style = dict(
-        color='k',
-        # label='HSE',
+        color='C0',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -51,7 +50,7 @@ def bs_gw(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='k', ls=':')
+    ax.axhline(ef - reference, c='C0', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef - reference),
@@ -66,7 +65,8 @@ def bs_gw(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+                        color='C1')
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -216,8 +216,8 @@ def plot_renorm_factor(row, filename):
     plt.figure(figsize=(6.4, 4.8))
     plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
                 s=2)
-    emin = row.get('vbm_gw', row.get('ef')) - 5 - reference
-    emax = row.get('cbm_gw', row.get('ef')) + 10 - reference
+    emin = row.get('vbm_gw', row.get('ef')) - 3 - reference
+    emax = row.get('cbm_gw', row.get('ef')) + 3 - reference
     if row.get('evac') is not None:
         plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
     else:
@@ -229,7 +229,7 @@ def plot_renorm_factor(row, filename):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     ref = row.get('evac', row.get('ef'))
     keys = ['vbm_gw', 'cbm_gw']
     for key in keys:
@@ -240,12 +240,18 @@ def webpanel(row, key_descriptions):
     for key in keys:
         row[key] += ref
     panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png'), prop], [fig('renorm.png')]],
+             'columns': [[fig('gw-bs.png')], [prop]],
              'plot_descriptions': [{'function': bs_gw,
-                                    'filenames': ['gw-bs.png']},
-                                   {'function': plot_renorm_factor,
-                                    'filenames': ['renorm.png']}]}
-    return [panel]
+                                    'filenames': ['gw-bs.png']}],
+             'sort': 16}
+
+    rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': rows}]],
+               'sort': 11}
+    return [panel, summary]
 
 
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],

@@ -38,7 +38,7 @@ def topckl(filename, dct):
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          creates=creates)
 @option('-n', help='Supercell size')
 @option('--ecut', help='Energy cutoff')
@@ -100,27 +100,28 @@ def requires():
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    panel = {'title': 'Phonon bandstructure',
+    panel = {'title': 'Phonons',
              'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonon_bs.png']}]}
+                                    'filenames': ['phonon_bs.png']}],
+             'sort': 3}
 
     dynstab = row.get('dynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
     medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
     low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
-    row = ['Dynamic stability',
+    row = ['Dynamical (phonons)',
            '<a href="#" data-toggle="tooltip" data-html="true" ' +
            'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[dynstab].upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Stability', ''],
+                             'header': ['Stability', 'Category'],
                              'rows': [row]}]]}
     return [panel, summary]
 
@@ -239,7 +240,7 @@ def plot_bandstructure(row, fname):
     bs = BandStructure(path=path,
                        energies=energies[None, :, :],
                        reference=0)
-    bs.plot(label='Interpolated')
+    bs.plot(label='Interpolated', colors=['C0'])
 
     exact_indices = []
     for q_c in data['q_qc']:
@@ -253,7 +254,7 @@ def plot_bandstructure(row, fname):
         en_exact[ind] = energies[ind]
 
     bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(ax=plt.gca(), ls='', marker='o', color='k',
+    bs2.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
              emin=np.min(energies * 1.1), emax=np.max(energies * 1.1),
              ylabel='Phonon frequencies [eV]', label='Exact')
     plt.tight_layout()

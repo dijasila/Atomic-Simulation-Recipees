@@ -18,6 +18,8 @@ def get_relevant_strains(pbc):
 def get_strained_folder_name(strain_percent, i, j):
     from pathlib import Path
     import numpy as np
+    if strain_percent == 0:
+        return Path('.')
     itov_i = ['x', 'y', 'z']
     name = itov_i[i] + itov_i[j]
     sign = ['', '+', '-'][int(np.sign(strain_percent))]
@@ -61,4 +63,9 @@ def main(strain_percent=1, kptdensity=6.0):
                           + "],'gamma':True},...}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
                 params.extend(['asr.relax:allow_symmetry_breaking', 'True'])
+                params.extend(['asr.relax:fmax', '0.008'])
                 setup_params(params=params)
+
+
+if __name__ == '__main__':
+    main.cli()

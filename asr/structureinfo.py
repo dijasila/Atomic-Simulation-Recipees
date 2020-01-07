@@ -69,11 +69,10 @@ def has_inversion(atoms, use_spglib=True):
 
 
 def webpanel(row, key_descriptions):
-    from ase.db.summary import ATOMS, UNITCELL
-    from asr.browser import table
+    from asr.database.browser import table
 
-    basictable = table(row, 'Structural info', [
-        'prototype', 'class', 'spacegroup', 'gap', 'magstate', 'ICSD_id',
+    basictable = table(row, 'Structure info', [
+        'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
     rows = basictable['rows']
@@ -94,9 +93,18 @@ def webpanel(row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
+    row = ['Magnetic state', row.magstate]
+    eltable = {'type': 'table',
+               'header': ['Electronic properties', ''],
+               'rows': [row]}
+
     panel = {'title': 'Summary',
-             'columns': [[UNITCELL, basictable], [ATOMS]],
-             'sort': 1}
+             'columns': [[basictable,
+                          {'type': 'table', 'header': ['Stability', ''],
+                           'rows': []},
+                          eltable],
+                         [{'type': 'atoms'}, {'type': 'cell'}]],
+             'sort': -1}
     return [panel]
 
 
@@ -107,7 +115,7 @@ tests = [{'description': 'Test SI.',
                   'asr.gs@calculate:kptdensity 2"',
                   'asr run structureinfo',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.structureinfo',
@@ -174,9 +182,22 @@ def main():
     symmetry = [(op_cc.tolist(), ft_c.tolist())
                 for op_cc, ft_c in zip(op_scc, ft_sc)]
     info['symmetries'] = symmetry
+
+    # Calculate crystal prototype
     import spglib
-    sg, number = spglib.get_spacegroup(atoms, symprec=1e-4).split()
-    number = int(number[1:-1])
+    formula = atoms.symbols.formula
+    cell = (atoms.cell.array,
+            atoms.get_scaled_positions(),
+            atoms.numbers)
+    stoi = atoms.symbols.formula.stoichiometry()[0]
+    dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3,
+                                          angle_tolerance=0.1)
+    info['spglib_dataset'] = dataset
+    sg = dataset['international']
+    number = dataset['number']
+    w = '-'.join(sorted(set(dataset['wyckoffs'])))
+    crystal_prototype = f'{stoi}-{number}-{w}'
+    info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
     info['spgnum'] = number
 
@@ -195,7 +216,7 @@ def main():
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
         'spgnum': 'KVP: Space group number',
-        'prototype': 'KVP: Prototype'}
+        'crystal_prototype': 'KVP: Crystal prototype'}
 
     return info
 

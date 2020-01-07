@@ -119,7 +119,8 @@ class myBFGS(BFGS):
 
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
-          fixcell=False, allow_symmetry_breaking=False, dft=None):
+          fixcell=False, allow_symmetry_breaking=False, dft=None,
+          fmax=0.01):
     import spglib
 
     if dftd3:
@@ -182,7 +183,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                    'the relaxation.')
             raise AssertionError(msg)
 
-        if is_relax_done(atoms, fmax=0.01, smax=0.002, smask=smask):
+        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
             opt.call_observers()
             break
@@ -211,7 +212,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
                            'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
@@ -219,7 +220,7 @@ tests.append({'description': 'Test relaxation of Si (cores=2).',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run -p 2 "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
                            'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
@@ -228,20 +229,28 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'test': BN_check})
+
+
+def log(*args, **kwargs):
+    atoms = read('unrelaxed.json')
+
+    return {'atoms': atoms.todict()}
 
 
 @command('asr.relax',
          tests=tests,
          resources='24:10h',
          requires=['unrelaxed.json'],
-         creates=['structure.json'])
+         creates=['structure.json'],
+         log=log)
 @option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
+@option('--fmax', help='Maximum force allowed')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
@@ -253,7 +262,8 @@ def main(calculator={'name': 'gpaw',
                      'occupations': {'name': 'fermi-dirac',
                                      'width': 0.05},
                      'charge': 0},
-         d3=False, fixcell=False, allow_symmetry_breaking=False):
+         d3=False, fixcell=False, allow_symmetry_breaking=False,
+         fmax=0.01):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -284,6 +294,8 @@ def main(calculator={'name': 'gpaw',
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --calculator {'xc':'LDA',...}"
     """
+    from ase.calculators.calculator import get_calculator_class
+
     msg = ('You cannot already have a structure.json file '
            'when you relax a structure, because this is '
            'what the relax recipe is supposed to produce. You should '
@@ -294,7 +306,6 @@ def main(calculator={'name': 'gpaw',
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
 
-    from ase.calculators.calculator import get_calculator_class
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
@@ -325,13 +336,10 @@ def main(calculator={'name': 'gpaw',
     atoms = relax(atoms, name='relax', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc)
+                  dft=calc, fmax=fmax)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
-
-    # Save atomic structure
-    write('structure.json', atoms)
 
     cellpar = atoms.cell.cellpar()
     results = {'etot': etot,
@@ -343,18 +351,7 @@ def main(calculator={'name': 'gpaw',
                'beta': cellpar[4],
                'gamma': cellpar[5],
                'spos': atoms.get_scaled_positions(),
-               'symbols': atoms.get_chemical_symbols(),
-               '__key_descriptions__':
-               {'etot': 'Total energy [eV]',
-                'edft': 'DFT total energy [eV]',
-                'spos': 'Array: Scaled positions',
-                'symbols': 'Array: Chemical symbols',
-                'a': 'Cell parameter a [Ang]',
-                'b': 'Cell parameter b [Ang]',
-                'c': 'Cell parameter c [Ang]',
-                'alpha': 'Cell parameter alpha [deg]',
-                'beta': 'Cell parameter beta [deg]',
-                'gamma': 'Cell parameter gamma [deg]'}}
+               'symbols': atoms.get_chemical_symbols()}
 
     # Calculator specific metadata
     if calculatorname == 'gpaw':
@@ -362,7 +359,26 @@ def main(calculator={'name': 'gpaw',
         fingerprint = {}
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
-        results['__setup_fingerprints__'] = fingerprint
+        results['__log__'] = {'nvalence': calc.setups.nvalence,
+                              'setup_fingerprints__': fingerprint}
+
+    results['__key_descriptions__'] = \
+        {'etot': 'Total energy [eV]',
+         'edft': 'DFT total energy [eV]',
+         'spos': 'Array: Scaled positions',
+         'symbols': 'Array: Chemical symbols',
+         'a': 'Cell parameter a [Ang]',
+         'b': 'Cell parameter b [Ang]',
+         'c': 'Cell parameter c [Ang]',
+         'alpha': 'Cell parameter alpha [deg]',
+         'beta': 'Cell parameter beta [deg]',
+         'gamma': 'Cell parameter gamma [deg]'}
+
+    # For nm set magnetic moments to zero XXX
+    
+    # Save atomic structure
+    write('structure.json', atoms)
+
     return results
 
 
