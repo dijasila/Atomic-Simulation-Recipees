@@ -194,8 +194,7 @@ def layout(row: AtomsRow,
     # We convert the page into ASE format
     asepage = []
     for panel in page:
-        asepage.append((panel['title'], panel['columns']))    
-
+        asepage.append((panel['title'], panel['columns']))
 
     def ok(block):
         if block is None:
