@@ -186,6 +186,11 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             opt.log()
             opt.call_observers()
             break
+    cell = atoms.get_cell()
+    cell[~atoms.get_pbc()] = 0
+    cell[:, ~atoms.get_pbc()] = 0
+    cell[[0, 1, 2], [0, 1, 2]] = atoms.get_cell()[[0, 1, 2], [0, 1, 2]]
+    atoms.set_cell(cell)
 
     return atoms
 
