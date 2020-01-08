@@ -255,7 +255,7 @@ def add_bs_pbe(row, ax, reference=0, color='C1'):
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=color)
+    ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
 
 

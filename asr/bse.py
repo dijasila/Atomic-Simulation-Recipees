@@ -186,7 +186,7 @@ def absorption(row, filename, direction='x'):
     ax.set_title(f'{direction}-direction')
     ax.set_xlabel('energy [eV]')
     if dim == 2:
-        ax.set_ylabel('absorbance [%]')
+        ax.set_ylabel('Absorbance [%]')
     else:
         ax.set_ylabel(r'$\varepsilon(\omega)$')
     ax.legend()
