@@ -115,17 +115,6 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     else:
         return
- 
-                        
-def webpanel(name='0'):
-    pass
-    # from pathlib import Path
-    # from ase.parallel import paropen
-    
-    # if Path('topology.dat').is_file():
-    #     f = paropen('topology.dat', 'r')
-    #     top = f.readline()
-    #     f.close()
 
 
 def plot_phases(name='0'):
@@ -171,8 +160,7 @@ def plot_phases(name='0'):
 
 @command(module='asr.berry',
          requires=['results-asr.berry@calculate.json'],
-         dependencies=['asr.berry@calculate'],
-         webpanel=webpanel)
+         dependencies=['asr.berry@calculate'])
 def main():
     from pathlib import Path
     from ase.parallel import paropen
