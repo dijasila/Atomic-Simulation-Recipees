@@ -197,6 +197,43 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     return atoms
 
 
+def BN_check():
+    # Check that 2D-BN doesn't relax to its 3D form
+    from asr.core import read_json
+    results = read_json('results-asr.relax.json')
+    assert results['c'] > 5
+
+
+tests = []
+testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
+            "'kpts':{'density':2,'gamma':True},...}")
+tests.append({'description': 'Test relaxation of Si.',
+              'tags': ['gitlab-ci'],
+              'cli': ['asr run "setup.materials -s Si2"',
+                      'ase convert materials.json unrelaxed.json',
+                      f'asr run "relax -c {testargs}"',
+                      'asr run database.fromtree',
+                      'asr run "database.browser --only-figures"'],
+              'results': [{'file': 'results-asr.relax.json',
+                           'c': (3.88, 0.001)}]})
+tests.append({'description': 'Test relaxation of Si (cores=2).',
+              'cli': ['asr run "setup.materials -s Si2"',
+                      'ase convert materials.json unrelaxed.json',
+                      f'asr run -p 2 "relax -c {testargs}"',
+                      'asr run database.fromtree',
+                      'asr run "database.browser --only-figures"'],
+              'results': [{'file': 'results-asr.relax.json',
+                           'c': (3.88, 0.001)}]})
+tests.append({'description': 'Test relaxation of 2D-BN.',
+              'name': 'test_asr.relax_2DBN',
+              'cli': ['asr run "setup.materials -s BN,natoms=2"',
+                      'ase convert materials.json unrelaxed.json',
+                      f'asr run "relax -c {testargs}"',
+                      'asr run database.fromtree',
+                      'asr run "database.browser --only-figures"'],
+              'test': BN_check})
+
+
 def log(*args, **kwargs):
     atoms = read('unrelaxed.json')
 

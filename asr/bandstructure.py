@@ -14,7 +14,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test band structure of 2D-BN.',
               'name': 'asr.bandstructure_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
@@ -25,7 +25,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 @command('asr.bandstructure',
@@ -121,7 +121,7 @@ def bs_pbe_html(row,
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
-    perm = (sz_mk).argsort(axis=None)
+    perm = (-sz_mk).argsort(axis=None)
     e_mk = e_mk.ravel()[perm].reshape(shape)
     sz_mk = sz_mk.ravel()[perm].reshape(shape)
     xcoords = np.vstack([xcoords] * shape[0])
@@ -244,21 +244,18 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, **kwargs):
+def add_bs_pbe(row, ax, reference=0, color='C1'):
     """plot pbe with soc on ax"""
     from ase.dft.kpoints import labels_from_kpts
-    c = '0.8'  # light grey for pbe with soc plot
-    ls = '-'
-    lw = kwargs.get('lw', 1.0)
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=0, color=color)
     return ax
 
 
@@ -417,8 +414,62 @@ def bz_soc(row, fname):
     plt.savefig(fname)
 
 
+def pdos_bs_pbe(row,
+                filename='pbe-pdos-bs.png',
+                figsize=(6.4, 4.8),
+                fontsize=10):
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    mpl.rcParams['font.size'] = fontsize
+
+    # Extract band structure data
+    d = row.data.get('results-asr.bandstructure.json')
+    path = d['bs_nosoc']['path']
+    ef = d['bs_nosoc']['efermi']
+
+    # If a vacuum energy is available, use it as a reference
+    ref = row.get('evac', d.get('bs_nosoc').get('efermi'))
+    if row.get('evac') is not None:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
+    else:
+        label = r'$E - E_\mathrm{F}$ [eV]'
+
+    # Determine plotting window based on band gap
+    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    if gaps.get('vbm'):
+        emin = gaps.get('vbm') - 3
+    else:
+        emin = ef - 3
+    if gaps.get('cbm'):
+        emax = gaps.get('cbm') + 3
+    else:
+        emax = ef + 3
+
+    # hstack spin index for the BandStructure object
+    e_skn = d['bs_nosoc']['energies']
+    nspins = e_skn.shape[0]
+    e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
+
+    # Use band structure objects to plot
+    bs = BandStructure(path, e_kn - ref, ef - ref)
+    style = dict(
+        colors=['0.8'] * e_skn.shape[0],
+        ls='-',
+        lw=1.0,
+        zorder=0)
+    ax = plt.figure(figsize=figsize).add_subplot(111)
+    bsp = BandStructurePlot(bs)
+    bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
+             ylabel=label, **style)
+
+    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
+    plt.savefig(filename, bbox_inches='tight')
+
+
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -441,16 +492,15 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm', 'dipz', 'evacdiff'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm'
+                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -473,7 +523,7 @@ def webpanel(row, key_descriptions):
 
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         # fig('pbe-pdos.png', link='empty'),
+                         # fig('pbe-pdos_soc.png', link='empty'),
                          [fig('bz.png'), pbe]],
              'plot_descriptions': [{'function': bz_soc,
                                     'filenames': ['bz.png']},
@@ -482,7 +532,13 @@ def webpanel(row, key_descriptions):
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
              'sort': 14}
-    return [panel]
+
+    pdos_panel = {'title': 'Band structure with pdos (PBE)',
+                  'columns': [[fig('pbe-pdos-bs.png', link='empty')], []],
+                  'plot_descriptions': [{'function': pdos_bs_pbe,
+                                         'filenames': ['pbe-pdos-bs.png']}]}
+
+    return [panel, pdos_panel]
 
 
 @command('asr.bandstructure',
