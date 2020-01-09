@@ -142,6 +142,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     import glob
     from pathlib import Path
     from fnmatch import fnmatch
+    from asr.database.material_fingerprint import main as mf
 
     def item_show_func(item):
         return str(item)
@@ -187,6 +188,9 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
 
                 if not Path(atomsname).is_file():
                     continue
+
+                if not mf.done:
+                    mf()
 
                 atoms = read(atomsname, parallel=False)
                 data[atomsname] = read_json(atomsname)

@@ -195,7 +195,7 @@ def main():
     info['spglib_dataset'] = dataset
     sg = dataset['international']
     number = dataset['number']
-    w = '-'.join(sorted(set(dataset['wyckoffs'])))
+    w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_prototype = f'{stoi}-{number}-{w}'
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg

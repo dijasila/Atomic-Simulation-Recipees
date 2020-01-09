@@ -158,9 +158,22 @@ def plot_phases(name='0'):
     plt.show()
 
 
+def webpanel(row, key_descriptions):
+    if row.Topology == 'Not checked':
+        return []
+
+    row = ['Band topology', row.Topology]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', 'Category'],
+                             'rows': [row]}]]}
+    return [summary]
+
+
 @command(module='asr.berry',
          requires=['results-asr.berry@calculate.json'],
-         dependencies=['asr.berry@calculate'])
+         dependencies=['asr.berry@calculate'],
+         webpanel=webpanel)
 def main():
     from pathlib import Path
     from ase.parallel import paropen
