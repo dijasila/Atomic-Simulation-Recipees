@@ -1,5 +1,4 @@
 from asr.core import command, option, argument, chdir
-from gpaw.mpi import world
 
 
 def get_kvp_kd(resultdct):
@@ -143,6 +142,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     from pathlib import Path
     from fnmatch import fnmatch
     from asr.database.material_fingerprint import main as mf
+    from gpaw.mpi import world
 
     def item_show_func(item):
         return str(item)
