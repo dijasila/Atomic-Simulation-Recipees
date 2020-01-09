@@ -82,7 +82,7 @@ def webpanel(row, key_descriptions):
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    row = ['Band gap (PBE)', f'{row.gap:0.3f} eV']
+    row = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
