@@ -165,7 +165,7 @@ def webpanel(row, key_descriptions):
     row = ['Band topology', row.Topology]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', 'Category'],
+                             'header': ['Electronic properties', ''],
                              'rows': [row]}]]}
     return [summary]
 
