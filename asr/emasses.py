@@ -332,16 +332,16 @@ def make_the_plots(row, *args):
                 y2 = np.min(emodel_k) + erange * 0.75
                 axes.set_ylim(y1, y2)
 
-                my_range = get_range(mass, erange)
+                my_range = get_range(abs(mass), erange)
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
-
+            plt.locator_params(axis='x', nbins=3)
             axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
-            axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
+            axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()
         if should_plot:
@@ -396,9 +396,9 @@ def make_the_plots(row, *args):
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
-
+            plt.locator_params(axis='x', nbins=3)
             axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
-            axes.set_title(f'Mass {bt.upper()}, direction {direction + 1}')
+            axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()
         if should_plot:
@@ -472,7 +472,6 @@ def create_columns_fnames(row):
 
     results = row.data.get('results-asr.emasses.json')
 
-    columns = []
     cb_fnames = []
     vb_fnames = []
 
@@ -533,13 +532,15 @@ def create_columns_fnames(row):
         'Num cb plots: {}\nNum vb plots: {}'.format(
         len(cb_fnames), len(vb_fnames))
 
-    num_cols = len(cb_fnames)
+    num_figs = len(cb_fnames)
 
-    for j in range(num_cols):
+    columns = [[], []]
+    for j in range(num_figs):
         cb_fname = cb_fnames[j]
         vb_fname = vb_fnames[j]
-        col = [asrfig(cb_fname), asrfig(vb_fname)]
-        columns.append(col)
+
+        columns[0].append(asrfig(cb_fname))
+        columns[1].append(asrfig(vb_fname))
 
     return columns, cb_fnames + vb_fnames
 
@@ -606,18 +607,18 @@ def main(gpwfilename='gs.gpw'):
             for k in range(3):
                 kdescs['CB, direction {}'.format(k)] = \
                     'KVP: CB, direction {}'.format(
-                    k) + r' [$\mathrm{m_e}$]'
+                    k) + r' [m_e]'
                 kdescs['VB, direction {}'.format(k)] = \
                     'KVP: VB, direction {}'.format(
-                    k) + r' [$\mathrm{m_e}$]'
+                    k) + r' [m_e]'
         else:
             for k in range(3):
                 kdescs['CB + {}, direction {}'.format(j, k)] = \
                     'KVP: CB + {}, direction {}'.format(j, k) \
-                    + r' [$\mathrm{m_e}$]'
+                    + r' [m_e]'
                 kdescs['VB - {}, direction {}'.format(j, k)] = \
                     'KVP: VB - {}, direction {}'.format(j, k) + \
-                    r' [$\mathrm{m_e}$]'
+                    r' [m_e]'
 
     good_results['__key_descriptions__'] = kdescs
 

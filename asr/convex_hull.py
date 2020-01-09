@@ -238,7 +238,7 @@ def plot(row, fname):
         ax.scatter([], [], facecolor='none', marker='o',
                    edgecolor=f'C{it + 2}', label=legend)
         
-    plt.legend(loc='upper left')
+    plt.legend(loc='lower left')
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
@@ -259,7 +259,7 @@ def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
         if reference['uid'] != row.uid:
             name = f'<a href="{matlink}">{name}</a>'
         e = reference['hform']
-        tables[reference['title']].append([name, '{:.3f} eV/atom'.format(e)])
+        tables[reference['title']].append([name, '{:.2f} eV/atom'.format(e)])
 
     final_tables = []
     for title, rows in tables.items():
