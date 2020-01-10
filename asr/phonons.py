@@ -121,7 +121,7 @@ def webpanel(row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Stability', 'Category'],
+                             'header': ['Stability', 'Value'],
                              'rows': [row]}]]}
     return [panel, summary]
 

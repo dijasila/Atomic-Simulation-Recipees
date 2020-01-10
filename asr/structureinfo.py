@@ -76,6 +76,7 @@ def webpanel(row, key_descriptions):
         'COD_id'
     ], key_descriptions, 2)
     rows = basictable['rows']
+    basictable['columnwidth'] = 3
     codid = row.get('COD_id')
     if codid:
         # Monkey patch to make a link
@@ -96,12 +97,14 @@ def webpanel(row, key_descriptions):
     row = ['Magnetic state', row.magstate]
     eltable = {'type': 'table',
                'header': ['Electronic properties', ''],
-               'rows': [row]}
+               'rows': [row],
+               'columnwidth': 2}
 
     panel = {'title': 'Summary',
              'columns': [[basictable,
-                          {'type': 'table', 'header': ['Stability', ''],
-                           'rows': []},
+                          {'type': 'table', 'header': ['Stability', 'Value'],
+                           'rows': [],
+                           'columnwidth': 4},
                           eltable],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}

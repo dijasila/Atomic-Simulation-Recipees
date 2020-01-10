@@ -41,12 +41,14 @@ def webpanel(row, key_descriptions):
 
     ctable = dict(
         type='table',
-        rows=rows)
+        rows=rows,
+        columnwidth=1)
 
     eigrows = [['Stiffness tensor eigenvalues (N/m)', ', '.join(
         f'{eig:0.2f}' for eig in sorted(eigs))]]
     eigtable = dict(
         type='table',
+        header=['Property', 'Value'],
         rows=eigrows)
 
     panel = {'title': 'Stiffness tensor',
@@ -63,7 +65,7 @@ def webpanel(row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Stability', 'Category'],
+                             'header': ['Stability', 'Value'],
                              'rows': [row]}]]}
 
     return [panel, summary]
