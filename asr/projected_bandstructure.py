@@ -144,6 +144,49 @@ def get_yl_ordering(yl_i, symbols):
     return [i_c.index(i) for i in range(len(yl_i))]
 
 
+def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
+    """Get pie markers corresponding to a 2D array of weights.
+
+    Parameters
+    ----------
+    weight_xi : 2d np.array
+    s : float
+        marker size
+    scale_marker : bool
+        using sum of weights as scale for markersize
+    res : int
+        resolution of pie (in points around the circumference)
+
+    Returns
+    -------
+    pie_ki : list of lists of mpl option dictionaries
+    """
+    assert np.all(weight_xi >= 0.)
+
+    pie_xi = []
+    for weight_i in weight_xi:
+        pie_i = []
+        # Normalize by total weight
+        totweight = np.sum(weight_i)
+        r0 = 0.
+        for weight in weight_i:
+            # Weight fraction
+            r1 = weight / totweight
+            rp = np.ceil(r1 * res)
+            # Calculate points of the pie marker
+            x = [0] + np.cos(np.linspace(2 * np.pi * r0,
+                                         2 * np.pi * (r0 + r1), rp)).tolist()
+            y = [0] + np.sin(np.linspace(2 * np.pi * r0,
+                                         2 * np.pi * (r0 + r1), rp)).tolist()
+            xy = np.column_stack([x, y])
+            size = totweight * s * np.abs(xy).max() ** 2
+            pie_i.append({'marker': xy, 's': size, 'linewidths': 0.0})
+            r0 += r1
+        pie_xi.append(pie_i)
+
+    return pie_xi
+
+
 def projected_bs_pbe(row,
                      filename='pbe-projected-bs.png',
                      figsize=(6.4, 4.8),
@@ -209,42 +252,51 @@ def projected_bs_pbe(row,
     n_u = [n for s in range(ns) for n in range(nb)]
     e_uk = e_skn[s_u, :, n_u] - ref
     weight_uki = weight_skni[s_u, :, n_u, :]
+    # Plot projections
+    markersize = 36.
     for e_k, weight_ki in zip(e_uk, weight_uki):
-        markersize = 16.
-        
-        # Marker size depending on each weight
-        for x, e, weight_i in zip(bsp.xcoords, e_k, weight_ki):
-            # Sort orbital after weight
-            i_si = np.argsort(weight_i)
-            # Calculate accumulated weight and use it for area of marker.
-            # Join orbitals with less than 10% weight in a neutral marker
+
+        # Marker size from total weight, weights as pie chart
+        pie_ki = get_pie_markers(weight_ki, s=markersize)
+        for x, e, weight_i, pie_i in zip(bsp.xcoords, e_k, weight_ki, pie_ki):
             totweight = np.sum(weight_i)
-            accweight = 0.
-            neutralweight = 0.
-            c_pi = []
-            a_pi = []
-            for i, weight in zip(i_si, weight_i[i_si]):
-                if weight < 0.1 * totweight:
-                    neutralweight += weight
-                else:
-                    if neutralweight is not None:
-                        # Done with small weights, store neutral marker
-                        a_pi.append(markersize * neutralweight)
-                        c_pi.append('xkcd:grey')
-                        accweight += neutralweight
-                        neutralweight = None
-                    # Add orbital as is
-                    accweight += weight
-                    a_pi.append(markersize * accweight)
-                    c_pi.append('C{}'.format(c_i[i]))
-            # Plot points from largest to smallest
-            for a, c in zip(reversed(a_pi), reversed(c_pi)):
-                ax.scatter(x, e, color=c, s=a, zorder=3)
+            for i, pie in enumerate(pie_i):
+                ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
+                           zorder=3, **pie)
+
+        # Marker size depending on each weight
+        # for x, e, weight_i in zip(bsp.xcoords, e_k, weight_ki):
+        #     # Sort orbital after weight
+        #     i_si = np.argsort(weight_i)
+        #     # Calculate accumulated weight and use it for area of marker.
+        #     # Join orbitals with less than 10% weight in a neutral marker
+        #     totweight = np.sum(weight_i)
+        #     accweight = 0.
+        #     neutralweight = 0.
+        #     c_pi = []
+        #     a_pi = []
+        #     for i, weight in zip(i_si, weight_i[i_si]):
+        #         if weight < 0.1 * totweight:
+        #             neutralweight += weight
+        #         else:
+        #             if neutralweight is not None:
+        #                 # Done with small weights, store neutral marker
+        #                 a_pi.append(markersize * neutralweight)
+        #                 c_pi.append('xkcd:grey')
+        #                 accweight += neutralweight
+        #                 neutralweight = None
+        #             # Add orbital as is
+        #             accweight += weight
+        #             a_pi.append(markersize * accweight)
+        #             c_pi.append('C{}'.format(c_i[i]))
+        #     # Plot points from largest to smallest
+        #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
+        #         ax.scatter(x, e, color=c, s=a, zorder=3)
 
         # Marker color depending on largest weight
         # c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
         # for x, e, c in zip(bsp.xcoords, e_k, c_k):
-        #     ax.scatter(x, e, color='C{}'.format(c), zorder=3)
+        #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
