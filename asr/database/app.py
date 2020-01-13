@@ -89,7 +89,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
     s = Summary(row,
                 create_layout=layout,
                 key_descriptions=project['key_descriptions'],
-                prefix=str(tmpdir / f'{project_name}-{uid}-'))
+                prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
 
 
