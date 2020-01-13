@@ -7,10 +7,8 @@ key_descriptions = {
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
     "gs": {
-        # Saved arrays
         "forces": "Forces on atoms [eV/Angstrom]",
         "stresses": "Stress on unit cell [eV/Angstrom^dim]",
-        # Key value pairs
         "etot": "KVP: Total energy (Tot. En.) [eV]",
         "evac": "KVP: Vacuum level (Vacuum level) [eV]",
         "evacdiff": "KVP: Vacuum level shift (Vacuum level shift) [eV]",
@@ -87,26 +85,16 @@ key_descriptions = {
         ),
     },
     "pdos": {
-        "pdos_nosoc": (
-            "Projected density of states "
-            "without spin-orbit coupling "
-            "(PDOS no soc)"
-        ),
-        "pdos_soc": (
-            "Projected density of states "
-            "with spin-orbit coupling "
-            "(PDOS w. soc)"
-        ),
-        "dos_at_ef_nosoc": (
-            "KVP: Density of states at the Fermi energy "
-            "without spin-orbit coupling "
-            "(DOS at ef no soc) [states/eV]"
-        ),
-        "dos_at_ef_soc": (
-            "KVP: Density of states at the Fermi energy "
-            "with spin-orbit coupling "
-            "(DOS at ef w. soc) [states/eV]"
-        ),
+        "pdos_nosoc": ("Projected density of states without "
+                       "spin-orbit coupling (PDOS no soc)"),
+        "pdos_soc": ("Projected density of states with "
+                     "spin-orbit coupling (PDOS w. soc)"),
+        "dos_at_ef_nosoc": ("KVP: Density of states at the Fermi energy"
+                            " without spin-orbit coupling (DOS at ef no soc) "
+                            "[states/eV]"),
+        "dos_at_ef_soc": ("KVP: Density of states at the Fermi energy "
+                          "with spin-orbit coupling (DOS at ef w. soc) "
+                          "[states/eV]"),
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Ang^2]",
@@ -114,8 +102,10 @@ key_descriptions = {
     },
     "plasmafrequency": {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
-        "plasmafrequency_x": "KVP: 2D plasma frequency, x-direction [eV/Ang^0.5] #2D",
-        "plasmafrequency_y": "KVP: 2D plasma frequency, y-direction [eV/Ang^0.5] #2D",
+        "plasmafrequency_x": "KVP: 2D plasma frequency, x-direction "
+        "[eV/Ang^0.5] #2D",
+        "plasmafrequency_y": "KVP: 2D plasma frequency, y-direction "
+        "[eV/Ang^0.5] #2D",
     },
     "polarizability": {
         "alphax_el": "KVP: Static electronic polarizability,"
@@ -146,7 +136,8 @@ key_descriptions = {
         "c_12": "KVP: Stiffness tensor: 12-component [N/m] #2D",
         "speed_of_sound_x": "KVP: Speed of sound in x direction [m/s] #2D",
         "speed_of_sound_y": "KVP: Speed of sound in y direction [m/s] #2D",
-        "stiffness_tensor": "Stiffness tensor [N/m^2] #3D, Stiffness tensor [N/m] #2D, Stiffness tensor [N] #1D",
+        "stiffness_tensor": ("Stiffness tensor [N/m^2] #3D, Stiffness tensor "
+                             "[N/m] #2D, Stiffness tensor [N] #1D"),
     },
     "structureinfo": {
         "magstate": "KVP: Magnetic state",
