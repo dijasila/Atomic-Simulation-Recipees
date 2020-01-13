@@ -193,6 +193,7 @@ def projected_bs_pbe(row,
                      fontsize=10):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import pylab
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
@@ -257,12 +258,20 @@ def projected_bs_pbe(row,
     for e_k, weight_ki in zip(e_uk, weight_uki):
 
         # Marker size from total weight, weights as pie chart
-        pie_ki = get_pie_markers(weight_ki, s=markersize)
+        res = 126
+        pie_ki = get_pie_markers(weight_ki, s=markersize, res=res)
         for x, e, weight_i, pie_i in zip(bsp.xcoords, e_k, weight_ki, pie_ki):
             totweight = np.sum(weight_i)
             for i, pie in enumerate(pie_i):
                 ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
                            zorder=3, **pie)
+            # # Plot radius = 1 circle for comparison of total weights
+            # cx = np.cos(np.linspace(0., 2 * np.pi, res)).tolist()
+            # cy = np.sin(np.linspace(0., 2 * np.pi, res)).tolist()
+            # xy = np.column_stack([cx, cy])
+            # ax.scatter(x, e, marker=xy, linewidth=.5,
+            #            s=markersize * np.abs(xy).max() ** 2,
+            #            facecolor='none', edgecolor='black', zorder=4)
 
         # Marker size depending on each weight
         # for x, e, weight_i in zip(bsp.xcoords, e_k, weight_ki):
@@ -292,6 +301,9 @@ def projected_bs_pbe(row,
         #     # Plot points from largest to smallest
         #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
         #         ax.scatter(x, e, color=c, s=a, zorder=3)
+        # # Plot radius = 1 circle for comparison of total weights
+        # ax.scatter(bsp.xcoords, e_k, marker='o', s=markersize,
+        #            linewidth=.5, facecolor='none', edgecolor='black', zorder=4)
 
         # Marker color depending on largest weight
         # c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
