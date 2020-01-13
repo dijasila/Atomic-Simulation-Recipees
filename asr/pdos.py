@@ -528,8 +528,17 @@ def plot_pdos(row, filename, soc=True,
         emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
     else:
         nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
-        emin = nosoc_data.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = nosoc_data.get('cbm', ef) + 3 - row.get('evac', 0)
+        vbmnosoc = nosoc_data.get('vbm', ef)
+        cbmnosoc = nosoc_data.get('cbm', ef)
+
+        if vbmnosoc is None:
+            vbmnosoc = ef
+
+        if cbmnosoc is None:
+            cbmnosoc = ef
+
+        emin = vbmnosoc - 3 - row.get('evac', 0)
+        emax = cbmnosoc + 3 - row.get('evac', 0)
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()

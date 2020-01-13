@@ -43,8 +43,14 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
+    eigrows = [['Stiffness tensor eigenvalues (N/m)', ', '.join(
+        f'{eig:0.2f}' for eig in sorted(eigs))]]
+    eigtable = dict(
+        type='table',
+        rows=eigrows)
+
     panel = {'title': 'Stiffness tensor',
-             'columns': [[ctable]],
+             'columns': [[ctable], [eigtable]],
              'sort': 2}
 
     dynstab = ['low', 'high'][int(eigs.min() > 0)]
@@ -84,7 +90,7 @@ def main(strain_percent=1.0):
                    [4, 3, 2]]
 
     links = {}
-    stiffness = np.zeros((6, 6), float) + np.nan
+    stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
