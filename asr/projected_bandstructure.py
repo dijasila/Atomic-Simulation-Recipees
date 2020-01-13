@@ -202,7 +202,7 @@ def projected_bs_pbe(row,
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
              ylabel=label, **style)
 
-    # Do simple scatter plot for now                                           XXX
+    # Choose some plotting format                                              XXX
     # Energy and weight arrays
     ns, nk, nb = e_skn.shape
     s_u = [s for s in range(ns) for n in range(nb)]
@@ -210,10 +210,41 @@ def projected_bs_pbe(row,
     e_uk = e_skn[s_u, :, n_u] - ref
     weight_uki = weight_skni[s_u, :, n_u, :]
     for e_k, weight_ki in zip(e_uk, weight_uki):
-        # marker color depending on largest weight
-        c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
-        for x, e, c in zip(bsp.xcoords, e_k, c_k):
-            ax.scatter(x, e, color='C{}'.format(c), zorder=3)
+        markersize = 16.
+        
+        # Marker size depending on each weight
+        for x, e, weight_i in zip(bsp.xcoords, e_k, weight_ki):
+            # Sort orbital after weight
+            i_si = np.argsort(weight_i)
+            # Calculate accumulated weight and use it for area of marker.
+            # Join orbitals with less than 10% weight in a neutral marker
+            totweight = np.sum(weight_i)
+            accweight = 0.
+            neutralweight = 0.
+            c_pi = []
+            a_pi = []
+            for i, weight in zip(i_si, weight_i[i_si]):
+                if weight < 0.1 * totweight:
+                    neutralweight += weight
+                else:
+                    if neutralweight is not None:
+                        # Done with small weights, store neutral marker
+                        a_pi.append(markersize * neutralweight)
+                        c_pi.append('xkcd:grey')
+                        accweight += neutralweight
+                        neutralweight = None
+                    # Add orbital as is
+                    accweight += weight
+                    a_pi.append(markersize * accweight)
+                    c_pi.append('C{}'.format(c_i[i]))
+            # Plot points from largest to smallest
+            for a, c in zip(reversed(a_pi), reversed(c_pi)):
+                ax.scatter(x, e, color=c, s=a, zorder=3)
+
+        # Marker color depending on largest weight
+        # c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
+        # for x, e, c in zip(bsp.xcoords, e_k, c_k):
+        #     ax.scatter(x, e, color='C{}'.format(c), zorder=3)
 
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
