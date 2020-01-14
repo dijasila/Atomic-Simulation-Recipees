@@ -20,7 +20,7 @@ app.jinja_loader.searchpath.append(str(path))
 
 def create_key_descriptions(db):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import get_kvp_kd
+    from asr.database.fromtree import parse_kd
     from ase.db.web import create_key_descriptions
 
     metadata = db.metadata
@@ -41,7 +41,8 @@ def create_key_descriptions(db):
             raise ValueError(f'Missing key description for {key}')
         kd[key] = description
 
-    _, kd = get_kvp_kd(kd)
+    kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
+          key, desc in parse_kd(kd).items()}
 
     return create_key_descriptions(kd)
 
