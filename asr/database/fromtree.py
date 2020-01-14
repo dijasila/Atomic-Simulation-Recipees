@@ -1,17 +1,14 @@
 from asr.core import command, option, argument, chdir
 
 
-def get_kvp_kd(resultdct):
+def get_kvp_kd(key_descriptions_in):
     import re
+
     kvp = {}
     key_descriptions = {}
-
-    if '__key_descriptions__' not in resultdct:
-        return {}, {}
-
     tmpkd = {}
 
-    for key, desc in resultdct['__key_descriptions__'].items():
+    for key, desc in key_descriptions_in.items():
         descdict = {'type': None,
                     'iskvp': False,
                     'shortdesc': '',
@@ -23,7 +20,7 @@ def get_kvp_kd(resultdct):
             continue
 
         assert isinstance(desc, str), \
-            'Key description has to be dict or str.'
+            f'Key description has to be dict or str. ({desc})'
         # Get key type
         desc, *keytype = desc.split('->')
         if keytype:
@@ -59,8 +56,9 @@ def get_kvp_kd(resultdct):
         key_descriptions[key] = \
             (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-        if key in resultdct and desc['iskvp'] and resultdct[key] is not None:
-            kvp[key] = resultdct[key]
+        if (key in key_descriptions_in and desc['iskvp'] and
+            key_descriptions_in[key] is not None):
+            kvp[key] = key_descriptions_in[key]
 
     return kvp, key_descriptions
 
@@ -102,7 +100,10 @@ def collect(filename):
     links = results.get('__links__', {})
     # Parse key descriptions to get long,
     # short, units and key value pairs
-    kvp, key_descriptions = get_kvp_kd(results)
+    if '__key_descriptions__' not in results:
+        return {}, {}, data, links
+
+    kvp, key_descriptions = get_kvp_kd(results['__key_descriptions__'])
     return kvp, key_descriptions, data, links
 
 
@@ -171,6 +172,8 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
         dbname = str(dbpath)
         myfolders = folders
 
+    tags = set()
+    key_value_pairs = set()
     nfolders = len(myfolders)
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(myfolders):
@@ -184,7 +187,6 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
             with chdir(folder):
                 kvp = {}
                 data = {'__links__': {}}
-                key_descriptions = {}
 
                 if not Path(atomsname).is_file():
                     continue
@@ -205,11 +207,12 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                     if tmpkvp or tmpkd or tmpdata or tmplinks:
                         kvp.update(tmpkvp)
                         data.update(tmpdata)
-                        key_descriptions.update(tmpkd)
                         data['__links__'].update(tmplinks)
 
+            ndim = sum(atoms.get_pbc())
+            tags.add(f'{ndim}D')
             db.write(atoms, data=data, **kvp)
-            metadata['key_descriptions'].update(key_descriptions)
+
     db.metadata = metadata
 
 

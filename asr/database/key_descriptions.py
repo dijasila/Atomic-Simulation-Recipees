@@ -1,14 +1,17 @@
+from asr.core import command, argument
+
+
 key_descriptions = {
-    "berry@main": {"Topology": "KVP: Band topology (Topology)"},
-    "bse@main": {"E_B": "KVP: BSE binding energy (Exc. bind. energy) [eV]"},
-    "convex_hull@main": {
+    "berry": {"Topology": "KVP: Band topology (Topology)"},
+    "bse": {"E_B": "KVP: BSE binding energy (Exc. bind. energy) [eV]"},
+    "convex_hull": {
         "ehull": "KVP: Energy above convex hull [eV/atom]",
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
     "gs": {
         "forces": "Forces on atoms [eV/Angstrom]",
-        "stresses": "Stress on unit cell [eV/Angstrom^dim]",
+        "stresses": "Stress on unit cell [eV/Angstrom^(dim-1)]",
         "etot": "KVP: Total energy (Tot. En.) [eV]",
         "evac": "KVP: Vacuum level (Vacuum level) [eV]",
         "evacdiff": "KVP: Vacuum level shift (Vacuum level shift) [eV]",
@@ -85,16 +88,17 @@ key_descriptions = {
         ),
     },
     "pdos": {
-        "pdos_nosoc": ("Projected density of states without "
-                       "spin-orbit coupling (PDOS no soc)"),
-        "pdos_soc": ("Projected density of states with "
-                     "spin-orbit coupling (PDOS w. soc)"),
-        "dos_at_ef_nosoc": ("KVP: Density of states at the Fermi energy"
-                            " without spin-orbit coupling (DOS at ef no soc) "
-                            "[states/eV]"),
-        "dos_at_ef_soc": ("KVP: Density of states at the Fermi energy "
-                          "with spin-orbit coupling (DOS at ef w. soc) "
-                          "[states/eV]"),
+        "pdos_nosoc":
+        "Projected density of states without spin-orbit coupling (PDOS no "
+        "soc)",
+        "pdos_soc":
+        "Projected density of states with spin-orbit coupling (PDOS w. soc)",
+        "dos_at_ef_nosoc":
+        "KVP: Density of states at the Fermi energy without spin-orbit "
+        "coupling (DOS at ef no soc) [states/eV]",
+        "dos_at_ef_soc":
+        "KVP: Density of states at the Fermi energy with spin-orbit coupling"
+        " (DOS at ef w. soc) [states/eV]",
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Ang^2]",
@@ -128,16 +132,15 @@ key_descriptions = {
         "gamma": "Cell parameter gamma [deg]",
     },
     "stiffness": {
-        "c_11": "KVP: Stiffness tensor: 11-component [N/m] #2D",
-        "c_22": "KVP: Stiffness tensor: 22-component [N/m] #2D",
-        "c_33": "KVP: Stiffness tensor: 33-component [N/m] #2D",
-        "c_23": "KVP: Stiffness tensor: 23-component [N/m] #2D",
-        "c_13": "KVP: Stiffness tensor: 13-component [N/m] #2D",
-        "c_12": "KVP: Stiffness tensor: 12-component [N/m] #2D",
-        "speed_of_sound_x": "KVP: Speed of sound in x direction [m/s] #2D",
-        "speed_of_sound_y": "KVP: Speed of sound in y direction [m/s] #2D",
-        "stiffness_tensor": ("Stiffness tensor [N/m^2] #3D, Stiffness tensor "
-                             "[N/m] #2D, Stiffness tensor [N] #1D"),
+        "c_11": "KVP: Stiffness tensor: 11-component [N/m^(dim-1)]",
+        "c_22": "KVP: Stiffness tensor: 22-component [N/m^(dim-1)]",
+        "c_33": "KVP: Stiffness tensor: 33-component [N/m^(dim-1)]",
+        "c_23": "KVP: Stiffness tensor: 23-component [N/m^(dim-1)]",
+        "c_13": "KVP: Stiffness tensor: 13-component [N/m^(dim-1)]",
+        "c_12": "KVP: Stiffness tensor: 12-component [N/m^(dim-1)]",
+        "speed_of_sound_x": "KVP: Speed of sound in x direction [m/s]",
+        "speed_of_sound_y": "KVP: Speed of sound in y direction [m/s]",
+        "stiffness_tensor": ("Stiffness tensor [N/m^dim]"),
     },
     "structureinfo": {
         "magstate": "KVP: Magnetic state",
@@ -149,6 +152,16 @@ key_descriptions = {
         "spgnum": "KVP: Space group number",
         "crystal_prototype": "KVP: Crystal prototype",
     },
+    "database.material_fingerprint": {
+        'asr_id': 'KVP: Material fingerprint',
+        'uid': 'KVP: Unique identifier'
+    },
+    "info.json": {
+        'class': 'KVP: Material class',
+        'doi': 'KVP: Monolayer DOI',
+        'icsd_id': 'KVP: ICSD id of parent bulk structure',
+        'cod_id': 'KVP: COD id of parent bulk structure'
+    }
 }
 
 bands = 3
@@ -172,3 +185,42 @@ for j in range(bands):
                 )
 
 key_descriptions["emasses"] = kdescs
+
+
+@command()
+@argument('database')
+def main(database):
+    """Analyze database and set metadata.
+
+    This recipe loops through all rows in a database and figures out what keys
+    are present in the database. It also figures our what kind of materials
+    (1D, 2D, 3D) are in the database. Then it saves those values in the
+    database metadata like:
+
+    ase db -m database.db
+
+    {
+    ...
+    'key_value_pairs': ['etot', 'gap', ...],
+    # List of keys for key-value-pairs contained in DB.
+    ...
+    }
+    """
+    from ase.db import connect
+
+    db = connect(database)
+
+    print('Row #')
+    keys = set()
+    for ir, row in enumerate(db.select(include_data=False)):
+        if ir % 100 == 0:
+            print(ir)
+        keys.update(set(row.key_value_pairs.keys()))
+
+    metadata = db.metadata
+    metadata.update({'keys': sorted(list(keys))})
+    db.metadata = metadata
+
+
+if __name__ == '__main__':
+    main.cli()

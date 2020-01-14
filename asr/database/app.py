@@ -18,6 +18,34 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
+def create_key_descriptions(db):
+    from asr.database.key_descriptions import key_descriptions
+    from asr.database.fromtree import get_kvp_kd
+    from ase.db.web import create_key_descriptions
+
+    metadata = db.metadata
+    if 'keys' not in metadata:
+        raise KeyError('Missing list of keys for database. '
+                       'To fix this either: run database.fromtree again. '
+                       'or python -m asr.database.set_metadata DATABASEFILE.')
+
+    keys = metadata.get('keys')
+    flatten = {key: value
+               for recipe, dct in key_descriptions.items()
+               for key, value in dct.items()}
+
+    kd = {}
+    for key in keys:
+        description = flatten.get(key)
+        if description is None:
+            raise ValueError(f'Missing key description for {key}')
+        kd[key] = description
+
+    _, kd = get_kvp_kd(kd)
+
+    return create_key_descriptions(kd)
+
+
 class Summary:
     def __init__(self, row, key_descriptions, create_layout,
                  subscript=None, prefix=''):
@@ -74,7 +102,7 @@ def setup_app():
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}-{uid}-{name}"  # XXXXXXXXXXX
+        path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
 
@@ -95,19 +123,18 @@ def row_to_dict(row, project, layout_function, tmpdir):
 
 def initialize_project(database):
     from asr.database import browser
-    from ase.db.web import create_key_descriptions
     from functools import partial
 
     db = connect(database)
     metadata = db.metadata
     name = metadata.get("name", database)
 
+    # Make temporary directory
+    (tmpdir / name).mkdir()
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(
-            metadata["key_descriptions"]
-        ),
+        "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
