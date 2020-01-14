@@ -144,6 +144,72 @@ def get_yl_ordering(yl_i, symbols):
     return [i_c.index(i) for i in range(len(yl_i))]
 
 
+def get_bs_sampling(bsp, npoints=40):
+    """Sample band structure as evenly as possible.
+    Allways include special points.
+
+    Parameters
+    ----------
+    bsp : obj
+        ase.dft.band_structure.BandStructurePlot object
+    npoints : int
+        number of k-points to sample along band structure
+
+    Returns
+    -------
+    chosenx_x : 1d np.array
+        chosen band structure coordinates
+    k_x : 1d np.array
+        chosen k-point indices
+    """
+    # Get band structure coordinates and unique labels
+    xcoords, label_xcoords, orig_labels = bsp.bs.get_labels()
+    label_xcoords = np.unique(label_xcoords)
+
+    # Reserve one point for each special point
+    nonspoints = npoints - len(label_xcoords)
+    assert nonspoints >= 0
+    assert npoints <= len(xcoords)
+
+    # Slice xcoords into seperate subpaths
+    xcoords_lx = []
+    subpl_l = []
+    lastx = 0.
+    for labelx in label_xcoords:
+        xcoords_x = xcoords[np.logical_and(xcoords >= lastx,
+                                           xcoords <= labelx)]
+        xcoords_lx.append(xcoords_x)
+        subpl_l.append(xcoords_x[-1] - xcoords_x[0])  # Length of subpath
+        lastx = labelx
+
+    # Distribute trivial k-points based on length of slices
+    pathlength = sum(subpl_l)
+    unitlength = pathlength / (nonspoints + 1)
+    # Floor npoints and length remainder for each subpath
+    subpnp_l, subprl_l = np.divmod(subpl_l, unitlength)
+    subpnp_l = subpnp_l.astype(int)
+    # Distribute remainders
+    points_left = nonspoints - np.sum(subpnp_l)
+    subpnp_l[np.argsort(subprl_l)[-points_left:]] += 1
+
+    # Choose points on each sub path
+    chosenx_x = []
+    for subpnp, xcoords_x in zip(subpnp_l, xcoords_lx):
+        # Evenly spaced indices
+        x_p = np.unique(np.round(np.linspace(0, len(xcoords_x) - 1,
+                                             subpnp + 2)).astype(int))
+        chosenx_x += list(xcoords_x[x_p][:-1])  # each subpath includes start
+    chosenx_x.append(xcoords[-1])  # Add end of path
+
+    # Get k-indeces
+    chosenx_x = np.array(chosenx_x)
+    x_y, k_y = np.where(chosenx_x[:, np.newaxis] == xcoords[np.newaxis, :])
+    x_x, y_x = np.unique(x_y, return_index=True)
+    k_x = k_y[y_x]
+
+    return chosenx_x, k_x
+
+
 def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
     """Get pie markers corresponding to a 2D array of weights.
 
@@ -246,26 +312,33 @@ def projected_bs_pbe(row,
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
              ylabel=label, **style)
 
-    # Choose some plotting format                                              XXX
-    # Energy and weight arrays
+    npoints = 40  # input variable?
+    xcoords, k_x = get_bs_sampling(bsp, npoints=npoints)
+
+    # Generate energy and weight arrays based on band structure sampling
     ns, nk, nb = e_skn.shape
-    s_u = [s for s in range(ns) for n in range(nb)]
-    n_u = [n for s in range(ns) for n in range(nb)]
-    e_uk = e_skn[s_u, :, n_u] - ref
-    weight_uki = weight_skni[s_u, :, n_u, :]
+    s_u = np.array([s for s in range(ns) for n in range(nb)])
+    n_u = np.array([n for s in range(ns) for n in range(nb)])
+    e_ux = e_skn[s_u[:, np.newaxis],
+                 k_x[np.newaxis, :],
+                 n_u[:, np.newaxis]] - ref
+    weight_uxi = weight_skni[s_u[:, np.newaxis],
+                             k_x[np.newaxis, :],
+                             n_u[:, np.newaxis], :]
     # Plot projections
+    # Choose some plotting format                                              XXX
     markersize = 36.
-    for e_k, weight_ki in zip(e_uk, weight_uki):
+    for e_x, weight_xi in zip(e_ux, weight_uxi):
 
         # Marker size from total weight, weights as pie chart
         res = 126
-        pie_ki = get_pie_markers(weight_ki, s=markersize, res=res)
-        for x, e, weight_i, pie_i in zip(bsp.xcoords, e_k, weight_ki, pie_ki):
+        pie_xi = get_pie_markers(weight_xi, s=markersize, res=res)
+        for x, e, weight_i, pie_i in zip(xcoords, e_x, weight_xi, pie_xi):
             totweight = np.sum(weight_i)
             for i, pie in enumerate(pie_i):
                 ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
                            zorder=3, **pie)
-            # # Plot radius = 1 circle for comparison of total weights
+            # Plot radius = 1 circle for comparison of total weights
             # cx = np.cos(np.linspace(0., 2 * np.pi, res)).tolist()
             # cy = np.sin(np.linspace(0., 2 * np.pi, res)).tolist()
             # xy = np.column_stack([cx, cy])
@@ -274,7 +347,7 @@ def projected_bs_pbe(row,
             #            facecolor='none', edgecolor='black', zorder=4)
 
         # Marker size depending on each weight
-        # for x, e, weight_i in zip(bsp.xcoords, e_k, weight_ki):
+        # for x, e, weight_i in zip(xcoords, e_x, weight_xi):
         #     # Sort orbital after weight
         #     i_si = np.argsort(weight_i)
         #     # Calculate accumulated weight and use it for area of marker.
@@ -302,12 +375,12 @@ def projected_bs_pbe(row,
         #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
         #         ax.scatter(x, e, color=c, s=a, zorder=3)
         # # Plot radius = 1 circle for comparison of total weights
-        # ax.scatter(bsp.xcoords, e_k, marker='o', s=markersize,
+        # ax.scatter(xcoords, e_x, marker='o', s=markersize,
         #            linewidth=.5, facecolor='none', edgecolor='black', zorder=4)
 
         # Marker color depending on largest weight
-        # c_k = [c_i[i] for i in np.argmax(weight_ki, axis=1)]
-        # for x, e, c in zip(bsp.xcoords, e_k, c_k):
+        # c_x = [c_i[i] for i in np.argmax(weight_xi, axis=1)]
+        # for x, e, c in zip(xcoords, e_x, c_x):
         #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
     ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
