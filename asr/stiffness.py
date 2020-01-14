@@ -43,8 +43,8 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
-    eigrows = ([['Stiffness tensor eigenvalues (N/m)', '']] +
-               [[f'Eigenvalue {ie}', f'{eig:0.2f}']
+    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']] +
+               [[f'Eigenvalue {ie}', f'{eig:0.2f} N/m']
                 for ie, eig in enumerate(sorted(eigs))])
     eigtable = dict(
         type='table',

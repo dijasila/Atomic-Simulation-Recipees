@@ -38,13 +38,13 @@ def parse_kd(key_descriptions):
         desc = desc.replace(f'[{unit}]', '').strip()
 
         # Find short description
-        m = re.search(r"\((.*)\)", desc)
+        m = re.search(r"\!(.*)\!", desc)
         shortdesc = m.group(1) if m else ''
         if shortdesc:
             descdict['shortdesc'] = shortdesc
 
         # Everything remaining is the long description
-        longdesc = desc.replace(f'({shortdesc})', '').strip()
+        longdesc = desc.replace(f'!{shortdesc}!', '').strip()
         if longdesc:
             descdict['longdesc'] = longdesc
             if not shortdesc:

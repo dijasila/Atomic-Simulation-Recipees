@@ -297,7 +297,6 @@ def webpanel(row, key_descriptions):
 
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
-         # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
                    'results-asr.bandstructure.json',
