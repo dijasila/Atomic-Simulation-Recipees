@@ -72,7 +72,7 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
     rows = basictable['rows']

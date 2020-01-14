@@ -11,6 +11,7 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.utils import formula_metal
+import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
@@ -38,7 +39,8 @@ def create_key_descriptions(db):
     for key in keys:
         description = flatten.get(key)
         if description is None:
-            raise ValueError(f'Missing key description for {key}')
+            warnings.warn(f'Missing key description for {key}')
+            continue
         kd[key] = description
 
     kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for

@@ -200,7 +200,12 @@ def plot(row, fname):
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         names = [ref['label'] for ref in references]
-        ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+        if row.hform < 0:
+            mask = e < 0.05
+            ax.scatter(x[mask], e[mask], facecolor='none', marker='o',
+                       edgecolor=colors)
+        else:
+            ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         delta = e.ptp() / 30
@@ -220,6 +225,8 @@ def plot(row, fname):
         ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
         ymin = e.min()
 
+        ymax=max([row.hform + 2.5 * delta, min([ymax, 0.3])])
+        ymax = ax.get_ylim()[1]
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
         x, y, names, hull, simplices = pd.plot2d3()
