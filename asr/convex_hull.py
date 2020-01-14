@@ -225,8 +225,6 @@ def plot(row, fname):
         ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
         ymin = e.min()
 
-        ymax=max([row.hform + 2.5 * delta, min([ymax, 0.3])])
-        ymax = ax.get_ylim()[1]
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
         x, y, names, hull, simplices = pd.plot2d3()
