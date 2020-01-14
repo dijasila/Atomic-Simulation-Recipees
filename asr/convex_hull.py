@@ -199,15 +199,15 @@ def plot(row, fname):
 
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        for i, j in simplices:
+            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
         if row.hform < 0:
             mask = e < 0.05
-            ax.scatter(x[mask], e[mask], facecolor='none', marker='o',
-                       edgecolor=colors)
-        else:
-            ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
-        for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+            e = e[mask]
+            x = x[mask]
+        ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+
         delta = e.ptp() / 30
         for a, b, name, on_hull in zip(x, e, names, hull):
             va = 'center'
