@@ -251,7 +251,7 @@ def make_the_plots(row, *args):
     cb_indices = []
 
     for spin_band_str, data in results.items():
-        if '__' in spin_band_str:
+        if '__' in spin_band_str or not isinstance(data, dict):
             continue
         is_w_soc = check_soc(data)
         if not is_w_soc:
@@ -479,7 +479,7 @@ def create_columns_fnames(row):
     cb_indices = []
 
     for spin_band_str, data in results.items():
-        if '__' in spin_band_str:
+        if '__' in spin_band_str or not isinstance(data, dict):
             continue
         is_w_soc = check_soc(data)
         if not is_w_soc:
@@ -600,28 +600,6 @@ def main(gpwfilename='gs.gpw'):
             # else:
             #     _savemass(soc=soc, bt=bt, mass=masses)
 
-    bands = 3
-    kdescs = {}
-    for j in range(bands):
-        if j == 0:
-            for k in range(3):
-                kdescs['CB, direction {}'.format(k)] = \
-                    'KVP: CB, direction {}'.format(
-                    k) + r' [m_e]'
-                kdescs['VB, direction {}'.format(k)] = \
-                    'KVP: VB, direction {}'.format(
-                    k) + r' [m_e]'
-        else:
-            for k in range(3):
-                kdescs['CB + {}, direction {}'.format(j, k)] = \
-                    'KVP: CB + {}, direction {}'.format(j, k) \
-                    + r' [m_e]'
-                kdescs['VB - {}, direction {}'.format(j, k)] = \
-                    'KVP: VB - {}, direction {}'.format(j, k) + \
-                    r' [m_e]'
-
-    good_results['__key_descriptions__'] = kdescs
-
     return good_results
 
 
@@ -636,17 +614,32 @@ def unpack_masses(masses, soc, bt, results_dict):
     #            r=r)
     # We want to flatten this structure so that results_dict contains
     # the masses directly
+    import numpy as np
+    
     for ind in masses['indices']:
         out_dict = masses[ind]
         index = str(ind)
         socpre = 'soc' if soc else 'nosoc'
         prefix = bt + '_' + socpre + '_'
-
+        offset = out_dict['offset']
+        
         results_dict[index] = {}
 
-        results_dict[index][prefix + 'effmass_dir1'] = out_dict['mass_u'][0]
-        results_dict[index][prefix + 'effmass_dir2'] = out_dict['mass_u'][1]
-        results_dict[index][prefix + 'effmass_dir3'] = out_dict['mass_u'][2]
+        mass_u = list(out_dict['mass_u'])
+
+        for u, m in enumerate(mass_u):
+            if np.isnan(m):
+                mass_u[u] = None
+
+        results_dict[index][prefix + 'effmass_dir1'] = mass_u[0]
+        results_dict[index][prefix + 'effmass_dir2'] = mass_u[1]
+        results_dict[index][prefix + 'effmass_dir3'] = mass_u[2]
+
+        if offset == 0:
+            results_dict[f'emass_{bt}_dir1'] = mass_u[0]
+            results_dict[f'emass_{bt}_dir2'] = mass_u[1]
+            results_dict[f'emass_{bt}_dir3'] = mass_u[2]
+
         vecs = out_dict['eigenvectors_vu']
         results_dict[index][prefix + 'eigenvectors_vdir1'] = vecs[:, 0]
         results_dict[index][prefix + 'eigenvectors_vdir2'] = vecs[:, 1]
@@ -656,7 +649,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'kpt_v'] = out_dict['ke_v']
         results_dict[index][prefix + 'fitcoeff'] = out_dict['c']
         results_dict[index][prefix + '2ndOrderFit'] = out_dict['c2']
-        results_dict[index][prefix + 'mass_u'] = out_dict['mass_u']
+        results_dict[index][prefix + 'mass_u'] = mass_u
         results_dict[index][prefix + 'bzcuts'] = out_dict['bs_along_emasses']
         results_dict[index][prefix + 'fitkpts_kv'] = out_dict['fitkpts_kv']
         results_dict[index][prefix + 'fite_k'] = out_dict['fite_k']
@@ -705,7 +698,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
 
     ibz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ibz_kc)
     masses = {'indices': indices}
-    for b in indices:
+    for offset, b in enumerate(indices):
         e_k = e_skn[b[0], :, b[1]]
         masses[b] = em(kpts_kv=ibz_kv * Bohr,
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
@@ -715,6 +708,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
                                                 soc, bandtype, calc,
                                                 spin=b[0],
                                                 band=b[1])
+        masses[b]['offset'] = offset
 
     return masses
 
@@ -904,10 +898,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     sort_args = np.argsort(mass_u)
 
     mass_u = mass_u[sort_args]
-    for u, m in enumerate(mass_u):
-        if np.isnan(m):
-            mass_u[u] = None
-
     w3_vn = w3_vn[sort_args, :]
 
     out = dict(mass_u=mass_u,

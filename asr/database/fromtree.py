@@ -1,17 +1,13 @@
 from asr.core import command, option, argument, chdir
+from asr.database.key_descriptions import key_descriptions as asr_kd
 
 
-def get_kvp_kd(resultdct):
+def parse_kd(key_descriptions):
     import re
-    kvp = {}
-    key_descriptions = {}
-
-    if '__key_descriptions__' not in resultdct:
-        return {}, {}
 
     tmpkd = {}
 
-    for key, desc in resultdct['__key_descriptions__'].items():
+    for key, desc in key_descriptions.items():
         descdict = {'type': None,
                     'iskvp': False,
                     'shortdesc': '',
@@ -23,7 +19,7 @@ def get_kvp_kd(resultdct):
             continue
 
         assert isinstance(desc, str), \
-            'Key description has to be dict or str.'
+            f'Key description has to be dict or str. ({desc})'
         # Get key type
         desc, *keytype = desc.split('->')
         if keytype:
@@ -42,25 +38,39 @@ def get_kvp_kd(resultdct):
         desc = desc.replace(f'[{unit}]', '').strip()
 
         # Find short description
-        m = re.search(r"\((.*)\)", desc)
+        m = re.search(r"\!(.*)\!", desc)
         shortdesc = m.group(1) if m else ''
         if shortdesc:
             descdict['shortdesc'] = shortdesc
 
         # Everything remaining is the long description
-        longdesc = desc.replace(f'({shortdesc})', '').strip()
+        longdesc = desc.replace(f'!{shortdesc}!', '').strip()
         if longdesc:
             descdict['longdesc'] = longdesc
             if not shortdesc:
                 descdict['shortdesc'] = descdict['longdesc']
         tmpkd[key] = descdict
 
+    return tmpkd
+
+
+tmpkd = parse_kd({key: value
+                  for dct in asr_kd.values()
+                  for key, value in dct.items()})
+
+
+def get_kvp_kd(resultsdct):
+    # Parse key descriptions to get long,
+    # short, units and key value pairs
+    key_descriptions = {}
+    kvp = {}
     for key, desc in tmpkd.items():
         key_descriptions[key] = \
             (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-        if key in resultdct and desc['iskvp'] and resultdct[key] is not None:
-            kvp[key] = resultdct[key]
+        if (key in resultsdct and desc['iskvp'] and
+            resultsdct[key] is not None):
+            kvp[key] = resultsdct[key]
 
     return kvp, key_descriptions
 
@@ -100,8 +110,6 @@ def collect(filename):
         data[extrafile] = dct
 
     links = results.get('__links__', {})
-    # Parse key descriptions to get long,
-    # short, units and key value pairs
     kvp, key_descriptions = get_kvp_kd(results)
     return kvp, key_descriptions, data, links
 
@@ -172,6 +180,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
         myfolders = folders
 
     nfolders = len(myfolders)
+    keys = set()
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(myfolders):
             if world.size > 1:
@@ -184,7 +193,6 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
             with chdir(folder):
                 kvp = {}
                 data = {'__links__': {}}
-                key_descriptions = {}
 
                 if not Path(atomsname).is_file():
                     continue
@@ -205,11 +213,12 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                     if tmpkvp or tmpkd or tmpdata or tmplinks:
                         kvp.update(tmpkvp)
                         data.update(tmpdata)
-                        key_descriptions.update(tmpkd)
                         data['__links__'].update(tmplinks)
 
+            keys.update(kvp.keys())
             db.write(atoms, data=data, **kvp)
-            metadata['key_descriptions'].update(key_descriptions)
+
+    metadata['keys'] = sorted(list(keys))
     db.metadata = metadata
 
 

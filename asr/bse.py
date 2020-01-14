@@ -221,7 +221,7 @@ def absorption(row, filename, direction='x'):
 
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
-    ax.set_title(f'{direction}-direction')
+    ax.set_title(f'{direction}-polarization')
     ax.set_xlabel('energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
@@ -236,7 +236,7 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
