@@ -32,6 +32,9 @@ def calculate(kptdensity=20):
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
+    if row.get('gap', 1) > 0.01:
+        return []
+
     plasmatable = table(row, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
 

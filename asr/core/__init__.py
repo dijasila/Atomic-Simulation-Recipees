@@ -455,7 +455,7 @@ class ASRCommand:
         tend = time.time()
 
         from ase.parallel import world
-        results['__resources__'] = {'time': tstart - tend,
+        results['__resources__'] = {'time': tend - tstart,
                                     'ncores': world.size}
 
         if self.log:
