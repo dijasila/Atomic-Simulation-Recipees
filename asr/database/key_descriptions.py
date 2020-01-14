@@ -3,7 +3,8 @@ from asr.core import command, argument
 
 key_descriptions = {
     "berry": {"Topology": "KVP: Band topology (Topology)"},
-    "bse": {"E_B": "KVP: BSE binding energy (Exc. bind. energy) [eV]"},
+    "bse": {"E_B": "KVP: Exciton binding energy from BSE "
+            "(Exc. bind. energy) [eV]"},
     "convex_hull": {
         "ehull": "KVP: Energy above convex hull [eV/atom]",
         "hform": "KVP: Heat of formation [eV/atom]",
@@ -18,87 +19,81 @@ key_descriptions = {
         "dipz": "KVP: Out-of-plane dipole [e * Ang]",
         "efermi": "KVP: Fermi level (Fermi level) [eV]",
         "gap": "KVP: Band gap (Band gap) [eV]",
-        "vbm": "KVP: Valence band maximum (Val. band max.) [eV]",
-        "cbm": "KVP: Conduction band minimum (Cond. band max.) [eV]",
+        "vbm": "KVP: Valence band maximum (Val. band maximum) [eV]",
+        "cbm": "KVP: Conduction band minimum (Cond. band maximum) [eV]",
         "gap_dir": "KVP: Direct band gap (Dir. band gap) [eV]",
-        "vbm_dir": (
-            "KVP: Direct valence band maximum (Dir. val. band max.) [eV]"
-        ),
-        "cbm_dir": (
-            "KVP: Direct conduction band minimum (Dir. cond. band max.) [eV]"
-        ),
         "gap_dir_nosoc": (
-            "KVP: Direct gap without SOC (Dir. gap wo. soc.) [eV]"
+            "KVP: Direct gap without soc. (Dir. gap wo. soc.) [eV]"
         ),
     },
     "gw": {
-        "vbm_gw_nosoc": "GW valence band max. w/o soc [eV]",
-        "cbm_gw_nosoc": "GW condution band min. w/o soc [eV]",
-        "dir_gap_gw_nosoc": "GW direct gap w/o soc [eV]",
-        "gap_gw_nosoc": "GW gap w/o soc [eV]",
-        "kvbm_nosoc": "k-point of GW valence band max. w/o soc",
-        "kcbm_nosoc": "k-point of GW conduction band min. w/o soc",
-        "vbm_gw": "KVP: GW valence band max. [eV]",
-        "cbm_gw": "KVP: GW conduction band min. [eV]",
+        "vbm_gw_nosoc": "GW valence band maximum w/o soc. [eV]",
+        "cbm_gw_nosoc": "GW condution band minimum w/o soc. [eV]",
+        "dir_gap_gw_nosoc": "GW direct gap w/o soc. [eV]",
+        "gap_gw_nosoc": "GW gap w/o soc. [eV]",
+        "kvbm_nosoc": "k-point of GW valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of GW conduction band minimum w/o soc",
+        "vbm_gw": "KVP: GW valence band maximum [eV]",
+        "cbm_gw": "KVP: GW conduction band minimum [eV]",
         "dir_gap_gw": "KVP: GW direct gap [eV]",
         "gap_gw": "KVP: GW gap [eV]",
-        "kvbm": "k-point of GW valence band max.",
-        "kcbm": "k-point of GW conduction band min.",
-        "efermi_gw_nosoc": "GW Fermi energy w/o soc [eV]",
+        "kvbm": "k-point of GW valence band maximum",
+        "kcbm": "k-point of GW conduction band minimum",
+        "efermi_gw_nosoc": "GW Fermi energy w/o soc. [eV]",
         "efermi_gw_soc": "GW Fermi energy [eV]",
     },
     "hse": {
-        "vbm_hse_nosoc": "HSE valence band max. w/o soc [eV]",
-        "cbm_hse_nosoc": "HSE condution band min. w/o soc [eV]",
-        "dir_gap_hse_nosoc": "HSE direct gap w/o soc [eV]",
-        "gap_hse_nosoc": "HSE gap w/o soc [eV]",
-        "kvbm_nosoc": "k-point of HSE valence band max. w/o soc",
-        "kcbm_nosoc": "k-point of HSE conduction band min. w/o soc",
-        "vbm_hse": "KVP: HSE valence band max. [eV]",
-        "cbm_hse": "KVP: HSE conduction band min. [eV]",
+        "vbm_hse_nosoc": "HSE valence band maximum w/o soc. [eV]",
+        "cbm_hse_nosoc": "HSE condution band minimum w/o soc. [eV]",
+        "dir_gap_hse_nosoc": "HSE direct gap w/o soc. [eV]",
+        "gap_hse_nosoc": "HSE gap w/o soc. [eV]",
+        "kvbm_nosoc": "k-point of HSE valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of HSE conduction band minimum w/o soc",
+        "vbm_hse": "KVP: HSE valence band maximum [eV]",
+        "cbm_hse": "KVP: HSE conduction band minimum [eV]",
         "dir_gap_hse": "KVP: HSE direct gap [eV]",
         "gap_hse": "KVP: HSE gap [eV]",
-        "kvbm": "k-point of HSE valence band max.",
-        "kcbm": "k-point of HSE conduction band min.",
-        "efermi_hse_nosoc": "HSE Fermi energy w/o soc [eV]",
+        "kvbm": "k-point of HSE valence band maximum",
+        "kcbm": "k-point of HSE conduction band minimum",
+        "efermi_hse_nosoc": "HSE Fermi energy w/o soc. [eV]",
         "efermi_hse_soc": "HSE Fermi energy [eV]",
     },
     "infraredpolarizability": {
-        "alphax_lat": "KVP: Static ionic polarizability, x-direction [Ang]",
-        "alphay_lat": "KVP: Static ionic polarizability, y-direction [Ang]",
-        "alphaz_lat": "KVP: Static ionic polarizability, z-direction [Ang]",
+        "alphax_lat": "KVP: Static lattice polarizability, x-direction [Ang]",
+        "alphay_lat": "KVP: Static lattice polarizability, y-direction [Ang]",
+        "alphaz_lat": "KVP: Static lattice polarizability, z-direction [Ang]",
         "alphax": "KVP: Static total polarizability, x-direction [Ang]",
         "alphay": "KVP: Static total polarizability, y-direction [Ang]",
         "alphaz": "KVP: Static total polarizability, z-direction [Ang]",
     },
     "magnetic_anisotropy": {
-        "spin_axis": "KVP: Suggested spin direction for SOC",
-        "E_x": "KVP: SOC total energy difference in x-direction",
-        "E_y": "KVP: SOC total energy difference in y-direction",
-        "E_z": "KVP: SOC total energy difference in z-direction",
-        "theta": "Spin direction, theta, polar coordinates [radians]",
-        "phi": "Spin direction, phi, polar coordinates [radians]",
+        "spin_axis": "KVP: Magnetic easy axis",
+        "E_x": "KVP: Soc. total energy, x-direction [eV/formula unit]",
+        "E_y": "KVP: Soc. total energy, y-direction [eV/formula unit]",
+        "E_z": "KVP: Soc. total energy, z-direction [eV/formula unit]",
+        "theta": "Easy axis, polar coordinates, theta [radians]",
+        "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx": (
-            "KVP: Magnetic anisotropy energy "
-            "(zx-component) [meV/formula unit]"
+            "KVP: Magnetic anisotropy energy between x and z axis"
+            " [meV/formula unit]"
         ),
         "dE_zy": (
-            "KVP: Magnetic anisotropy energy "
-            "(zy-component) [meV/formula unit]"
+            "KVP: Magnetic anisotropy energy y and z axis"
+            " [meV/formula unit]"
         ),
     },
     "pdos": {
         "pdos_nosoc":
-        "Projected density of states without spin-orbit coupling (PDOS no "
+        "Projected density of states w/o soc. (PDOS no "
         "soc)",
         "pdos_soc":
-        "Projected density of states with spin-orbit coupling (PDOS w. soc)",
+        "Projected density of states with soc. (PDOS w. soc.)",
         "dos_at_ef_nosoc":
-        "KVP: Density of states at the Fermi energy without spin-orbit "
-        "coupling (DOS at ef no soc) [states/eV]",
+        "KVP: Density of states at the Fermi energy w/o soc."
+        "(DOS at ef no soc.) [states/eV]",
         "dos_at_ef_soc":
-        "KVP: Density of states at the Fermi energy with spin-orbit coupling"
-        " (DOS at ef w. soc) [states/eV]",
+        "KVP: Density of states at the Fermi energy with soc."
+        " (DOS at ef w. soc.) [states/eV]",
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Ang^2]",
@@ -121,7 +116,7 @@ key_descriptions = {
     },
     "relax": {
         "etot": "Total energy [eV]",
-        "edft": "DFT total energy [eV]",
+        "edft": "DFT total enrgy [eV]",
         "spos": "Array: Scaled positions",
         "symbols": "Array: Chemical symbols",
         "a": "Cell parameter a [Ang]",
@@ -132,14 +127,14 @@ key_descriptions = {
         "gamma": "Cell parameter gamma [deg]",
     },
     "stiffness": {
-        "c_11": "KVP: Stiffness tensor: 11-component [N/m^(dim-1)]",
-        "c_22": "KVP: Stiffness tensor: 22-component [N/m^(dim-1)]",
-        "c_33": "KVP: Stiffness tensor: 33-component [N/m^(dim-1)]",
-        "c_23": "KVP: Stiffness tensor: 23-component [N/m^(dim-1)]",
-        "c_13": "KVP: Stiffness tensor: 13-component [N/m^(dim-1)]",
-        "c_12": "KVP: Stiffness tensor: 12-component [N/m^(dim-1)]",
-        "speed_of_sound_x": "KVP: Speed of sound in x direction [m/s]",
-        "speed_of_sound_y": "KVP: Speed of sound in y direction [m/s]",
+        "c_11": "KVP: Stiffness tensor, 11-component [N/m^(dim-1)]",
+        "c_22": "KVP: Stiffness tensor, 22-component [N/m^(dim-1)]",
+        "c_33": "KVP: Stiffness tensor, 33-component [N/m^(dim-1)]",
+        "c_23": "KVP: Stiffness tensor, 23-component [N/m^(dim-1)]",
+        "c_13": "KVP: Stiffness tensor, 13-component [N/m^(dim-1)]",
+        "c_12": "KVP: Stiffness tensor, 12-component [N/m^(dim-1)]",
+        "speed_of_sound_x": "KVP: Speed of sound, x direction [m/s]",
+        "speed_of_sound_y": "KVP: Speed of sound, y direction [m/s]",
         "stiffness_tensor": ("Stiffness tensor [N/m^dim]"),
     },
     "structureinfo": {
@@ -153,12 +148,12 @@ key_descriptions = {
         "crystal_prototype": "KVP: Crystal prototype",
     },
     "database.material_fingerprint": {
-        'asr_id': 'KVP: Material fingerprint',
+        'asr_id': 'KVP: Material unique ID',
         'uid': 'KVP: Unique identifier'
     },
     "info.json": {
         'class': 'KVP: Material class',
-        'doi': 'KVP: Monolayer DOI',
+        'doi': 'KVP: Monolayer reported DOI',
         'icsd_id': 'KVP: ICSD id of parent bulk structure',
         'cod_id': 'KVP: COD id of parent bulk structure'
     },
