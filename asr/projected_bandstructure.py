@@ -3,6 +3,12 @@ import numpy as np
 from asr.core import command
 
 
+# ---------- Recipe tests ---------- #
+
+
+# Add test(s)                                                                  XXX
+
+
 # ---------- Webpanel ---------- #
 
 
@@ -258,7 +264,7 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
 def projected_bs_pbe(row,
                      filename='pbe-projected-bs.png',
                      figsize=(6.4, 4.8),
-                     fontsize=10):
+                     fontsize=10):  # Choose input parameters                  XXX
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import pylab
