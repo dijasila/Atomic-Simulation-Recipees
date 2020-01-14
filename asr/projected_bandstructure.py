@@ -245,7 +245,9 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
             y = [0] + np.sin(np.linspace(2 * np.pi * r0,
                                          2 * np.pi * (r0 + r1), rp)).tolist()
             xy = np.column_stack([x, y])
-            size = totweight * s * np.abs(xy).max() ** 2
+            size = s * np.abs(xy).max() ** 2
+            if scale_marker:
+                size *= totweight
             pie_i.append({'marker': xy, 's': size, 'linewidths': 0.0})
             r0 += r1
         pie_xi.append(pie_i)
@@ -330,9 +332,10 @@ def projected_bs_pbe(row,
     markersize = 36.
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
-        # Marker size from total weight, weights as pie chart
+        # Weights as pie chart
         res = 126
-        pie_xi = get_pie_markers(weight_xi, s=markersize, res=res)
+        pie_xi = get_pie_markers(weight_xi, s=markersize,
+                                 scale_marker=False, res=res)
         for x, e, weight_i, pie_i in zip(xcoords, e_x, weight_xi, pie_xi):
             totweight = np.sum(weight_i)
             for i, pie in enumerate(pie_i):
