@@ -1,14 +1,13 @@
 from asr.core import command, option, argument, chdir
+from asr.database.key_descriptions import key_descriptions as asr_kd
 
 
-def get_kvp_kd(key_descriptions_in):
+def parse_kd(key_descriptions):
     import re
 
-    kvp = {}
-    key_descriptions = {}
     tmpkd = {}
 
-    for key, desc in key_descriptions_in.items():
+    for key, desc in key_descriptions.items():
         descdict = {'type': None,
                     'iskvp': False,
                     'shortdesc': '',
@@ -52,13 +51,26 @@ def get_kvp_kd(key_descriptions_in):
                 descdict['shortdesc'] = descdict['longdesc']
         tmpkd[key] = descdict
 
+    return tmpkd
+
+
+tmpkd = parse_kd({key: value
+                  for dct in asr_kd.values()
+                  for key, value in dct.items()})
+
+
+def get_kvp_kd(resultsdct):
+    # Parse key descriptions to get long,
+    # short, units and key value pairs
+    key_descriptions = {}
+    kvp = {}
     for key, desc in tmpkd.items():
         key_descriptions[key] = \
             (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-        if (key in key_descriptions_in and desc['iskvp'] and
-            key_descriptions_in[key] is not None):
-            kvp[key] = key_descriptions_in[key]
+        if (key in resultsdct and desc['iskvp'] and
+            resultsdct[key] is not None):
+            kvp[key] = resultsdct[key]
 
     return kvp, key_descriptions
 
@@ -98,12 +110,7 @@ def collect(filename):
         data[extrafile] = dct
 
     links = results.get('__links__', {})
-    # Parse key descriptions to get long,
-    # short, units and key value pairs
-    if '__key_descriptions__' not in results:
-        return {}, {}, data, links
-
-    kvp, key_descriptions = get_kvp_kd(results['__key_descriptions__'])
+    kvp, key_descriptions = get_kvp_kd(results)
     return kvp, key_descriptions, data, links
 
 
@@ -172,9 +179,8 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
         dbname = str(dbpath)
         myfolders = folders
 
-    tags = set()
-    key_value_pairs = set()
     nfolders = len(myfolders)
+    keys = set()
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(myfolders):
             if world.size > 1:
@@ -209,10 +215,10 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                         data.update(tmpdata)
                         data['__links__'].update(tmplinks)
 
-            ndim = sum(atoms.get_pbc())
-            tags.add(f'{ndim}D')
+            keys.update(kvp.keys())
             db.write(atoms, data=data, **kvp)
 
+    metadata['keys'] = sorted(list(keys))
     db.metadata = metadata
 
 

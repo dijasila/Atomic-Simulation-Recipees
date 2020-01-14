@@ -161,30 +161,22 @@ key_descriptions = {
         'doi': 'KVP: Monolayer DOI',
         'icsd_id': 'KVP: ICSD id of parent bulk structure',
         'cod_id': 'KVP: COD id of parent bulk structure'
+    },
+    "emasses": {
+        'emass_vb_dir1':
+        'KVP: Valence band effective mass in direction 1 [m_e]',
+        'emass_vb_dir2':
+        'KVP: Valence band effective mass in direction 2 [m_e]',
+        'emass_vb_dir3':
+        'KVP: Valence band effective mass in direction 3 [m_e]',
+        'emass_cb_dir1':
+        'KVP: Conduction band effective mass in direction 1 [m_e]',
+        'emass_cb_dir2':
+        'KVP: Conduction band effective mass in direction 2 [m_e]',
+        'emass_cb_dir3':
+        'KVP: Conduction band effective mass in direction 3 [m_e]',
     }
 }
-
-bands = 3
-kdescs = {}
-for j in range(bands):
-    if j == 0:
-        for k in range(3):
-            kdescs["CB, direction {}".format(k)] = (
-                "KVP: CB, direction {}".format(k) + r" [m_e]"
-            )
-            kdescs["VB, direction {}".format(k)] = (
-                "KVP: VB, direction {}".format(k) + r" [m_e]"
-            )
-        else:
-            for k in range(3):
-                kdescs["CB + {}, direction {}".format(j, k)] = (
-                    "KVP: CB + {}, direction {}".format(j, k) + r" [m_e]"
-                )
-                kdescs["VB - {}, direction {}".format(j, k)] = (
-                    "KVP: VB - {}, direction {}".format(j, k) + r" [m_e]"
-                )
-
-key_descriptions["emasses"] = kdescs
 
 
 @command()
@@ -215,6 +207,7 @@ def main(database):
     for ir, row in enumerate(db.select(include_data=False)):
         if ir % 100 == 0:
             print(ir)
+        print(row.key_value_pairs.keys())
         keys.update(set(row.key_value_pairs.keys()))
 
     metadata = db.metadata
