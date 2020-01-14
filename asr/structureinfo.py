@@ -88,7 +88,7 @@ def webpanel(row, key_descriptions):
     doi = row.get('doi')
     if doi:
         rows.append([
-            'Monolayer DOI',
+            'Monolayer reported DOI',
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
