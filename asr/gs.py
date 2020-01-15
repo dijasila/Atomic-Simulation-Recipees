@@ -75,7 +75,7 @@ def webpanel(row, key_descriptions):
 
     t = table(row, 'Property',
               ['gap', 'gap_dir',
-               'dipz', 'evacdiff'],
+               'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
     if row.get('evac'):
