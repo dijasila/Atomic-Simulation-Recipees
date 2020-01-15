@@ -37,7 +37,8 @@ def webpanel(row, key_descriptions):
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', ''],
-                             'rows': [row]}]]}
+                             'rows': [row],
+                             'columnwidth': 3}]]}
     return [panel, summary]
 
 
