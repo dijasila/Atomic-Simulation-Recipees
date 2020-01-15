@@ -173,15 +173,15 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
         metadata.update(read_json(metadata_from_file))
 
     if world.size > 1:
-        dbname = dbpath.parent / f'{dbname}.{world.rank}.db'
+        mydbname = dbpath.parent / f'{dbname}.{world.rank}.db'
         myfolders = folders[world.rank::world.size]
     else:
-        dbname = str(dbpath)
+        mydbname = str(dbpath)
         myfolders = folders
 
     nfolders = len(myfolders)
     keys = set()
-    with connect(dbname, serial=True) as db:
+    with connect(mydbname, serial=True) as db:
         for ifol, folder in enumerate(myfolders):
             if world.size > 1:
                 print(f'Collecting folder {folder} on rank {world.rank} '
@@ -220,6 +220,21 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
 
     metadata['keys'] = sorted(list(keys))
     db.metadata = metadata
+
+    if world.size > 1:
+        # Then we have to collect the separately collected databases
+        # to a single final database file.
+        world.barrier()
+        if world.rank == 0:
+            print(f'Collecting to a separate dabase files to {dbname}')
+            with connect(dbname) as db2:
+                for rank in range(world.size):
+                    dbrankname = f'{dbname}.{rank}.db'
+                    print(f'Collecting {dbrankname}')
+                    db = connect(f'{dbrankname}')
+                    for row in db.select():
+                        kvp = row.get('key_value_pairs', {})
+                        db2.write(row, data=row.get('data'), **kvp)
 
 
 if __name__ == '__main__':
