@@ -109,13 +109,16 @@ def main(databases, standardreferences=None):
     results = {'hform': hform,
                'references': references}
 
-    if len(count) > 1:
+    if len(count) == 1:
+        ehull = hform
+    else:
         pd = PhaseDiagram(pdrefs)
         e0, indices, coefs = pd.decompose(formula)
         ehull = hform - e0 / len(atoms)
-        results['ehull'] = ehull
         results['indices'] = indices.tolist()
         results['coefs'] = coefs.tolist()
+
+    results['ehull'] = ehull
     results['__key_descriptions__'] = {
         'hform': 'KVP: Heat of formation [eV/atom]',
         'ehull': 'KVP: Energy above convex hull [eV/atom]',
