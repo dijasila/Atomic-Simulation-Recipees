@@ -168,7 +168,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     patterns = patterns.split(',')
     # We use absolute path because of chdir below!
     dbpath = Path(dbname).absolute()
-    metadata = {'keys': []}
+    metadata = {}
     if metadata_from_file:
         metadata.update(read_json(metadata_from_file))
 
@@ -185,7 +185,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
         for ifol, folder in enumerate(myfolders):
             if world.size > 1:
                 print(f'Collecting folder {folder} on rank {world.rank} '
-                      f'({ifol}/{nfolders})',
+                      f'({ifol + 1}/{nfolders})',
                       flush=True)
             else:
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
@@ -239,14 +239,15 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                             kvp = row.get('key_value_pairs', {})
                             db2.write(row, data=row.get('data'), **kvp)
                             nmat += 1
-                        keys.update(set(db.metadata['keys']))
+                    keys.update(set(db.metadata['keys']))
 
-                metadata['keys'] = {'keys': sorted(list(keys))}
-                db2.metadata = metadata
-                nmatdb = len(db2)
-                assert nmatdb == nmat, \
-                    ('Merging of databases went wrong, '
-                     f'number of materials changed: {nmatdb} != {nmat}')
+            print('Done. Setting metadata.', flush=True)
+            metadata['keys'] = {'keys': sorted(list(keys))}
+            db2.metadata = metadata
+            nmatdb = len(db2)
+            assert nmatdb == nmat, \
+                ('Merging of databases went wrong, '
+                 f'number of materials changed: {nmatdb} != {nmat}')
 
 
 if __name__ == '__main__':
