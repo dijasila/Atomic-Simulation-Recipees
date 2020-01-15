@@ -262,7 +262,6 @@ def plot_bandstructure(row, fname):
     plt.legend(ncol=2, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
-    plt.close()
 
 
 def mingocorrection(Cin_NVV, atoms, supercell):
