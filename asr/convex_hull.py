@@ -106,18 +106,19 @@ def main(databases, standardreferences=None):
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
 
-    pd = PhaseDiagram(pdrefs)
-    e0, indices, coefs = pd.decompose(formula)
-
     results = {'hform': hform,
                'references': references}
-    ehull = hform - e0 / len(atoms)
-    results['ehull'] = ehull
-    results['indices'] = indices.tolist()
-    results['coefs'] = coefs.tolist()
+
+    if len(count) > 1:
+        pd = PhaseDiagram(pdrefs)
+        e0, indices, coefs = pd.decompose(formula)
+        ehull = hform - e0 / len(atoms)
+        results['ehull'] = ehull
+        results['indices'] = indices.tolist()
+        results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'hform': 'KVP: Heat of formation [eV/atom]',
+        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
