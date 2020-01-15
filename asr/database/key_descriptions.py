@@ -87,10 +87,10 @@ key_descriptions = {
         "Projected density of states with soc. !PDOS w. soc.!",
         "dos_at_ef_nosoc":
         "KVP: Density of states at the Fermi energy w/o soc."
-        "!DOS at ef no soc.! [states/eV]",
+        "!DOS at ef no soc.! [states/eV * unit cell]",
         "dos_at_ef_soc":
         "KVP: Density of states at the Fermi energy with soc."
-        " !DOS at ef w. soc.! [states/eV]",
+        " !DOS at ef w. soc.! [states/eV * unit cell]",
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
@@ -104,12 +104,9 @@ key_descriptions = {
         "[`eV/Ang^0.5`]",
     },
     "polarizability": {
-        "alphax_el": "KVP: Static electronic polarizability,"
-        " x-direction [Ang]",
-        "alphay_el": "KVP: Static electronic polarizability,"
-        " y-direction [Ang]",
-        "alphaz_el": "KVP: Static electronic polarizability,"
-        " z-direction [Ang]",
+        "alphax_el": "KVP: Static electronic polarizability (x) [Ang]",
+        "alphay_el": "KVP: Static electronic polarizability (y) [Ang]",
+        "alphaz_el": "KVP: Static electronic polarizability (z) [Ang]",
     },
     "relax": {
         "etot": "Total energy [eV]",
@@ -130,8 +127,8 @@ key_descriptions = {
         "c_23": "KVP: Stiffness tensor, 23-component [`N/m^{dim-1}`]",
         "c_13": "KVP: Stiffness tensor, 13-component [`N/m^{dim-1}`]",
         "c_12": "KVP: Stiffness tensor, 12-component [`N/m^{dim-1}`]",
-        "speed_of_sound_x": "KVP: Speed of sound, x direction [m/s]",
-        "speed_of_sound_y": "KVP: Speed of sound, y direction [m/s]",
+        "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
+        "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
     },
     "structureinfo": {
