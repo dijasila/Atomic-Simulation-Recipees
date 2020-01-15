@@ -242,7 +242,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                     keys.update(set(db.metadata['keys']))
 
             print('Done. Setting metadata.', flush=True)
-            metadata['keys'] = {'keys': sorted(list(keys))}
+            metadata['keys'] = sorted(list(keys))
             db2.metadata = metadata
             nmatdb = len(db2)
             assert nmatdb == nmat, \
