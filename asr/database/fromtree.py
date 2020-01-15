@@ -168,24 +168,24 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     patterns = patterns.split(',')
     # We use absolute path because of chdir below!
     dbpath = Path(dbname).absolute()
-    metadata = {'key_descriptions': {}}
+    metadata = {}
     if metadata_from_file:
         metadata.update(read_json(metadata_from_file))
 
     if world.size > 1:
-        dbname = dbpath.parent / f'{dbname}.{world.rank}.db'
+        mydbname = dbpath.parent / f'{dbname}.{world.rank}.db'
         myfolders = folders[world.rank::world.size]
     else:
-        dbname = str(dbpath)
+        mydbname = str(dbpath)
         myfolders = folders
 
     nfolders = len(myfolders)
     keys = set()
-    with connect(dbname, serial=True) as db:
+    with connect(mydbname, serial=True) as db:
         for ifol, folder in enumerate(myfolders):
             if world.size > 1:
                 print(f'Collecting folder {folder} on rank {world.rank} '
-                      f'({ifol}/{nfolders})',
+                      f'({ifol + 1}/{nfolders})',
                       flush=True)
             else:
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
@@ -220,6 +220,34 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
 
     metadata['keys'] = sorted(list(keys))
     db.metadata = metadata
+
+    if world.size > 1:
+        # Then we have to collect the separately collected databases
+        # to a single final database file.
+        world.barrier()
+        if world.rank == 0:
+            print(f'Merging separate database files to {dbname}',
+                  flush=True)
+            nmat = 0
+            keys = set()
+            with connect(dbname, serial=True) as db2:
+                for rank in range(world.size):
+                    dbrankname = f'{dbname}.{rank}.db'
+                    print(f'Merging {dbrankname} into {dbname}', flush=True)
+                    with connect(f'{dbrankname}', serial=True) as db:
+                        for row in db.select():
+                            kvp = row.get('key_value_pairs', {})
+                            db2.write(row, data=row.get('data'), **kvp)
+                            nmat += 1
+                    keys.update(set(db.metadata['keys']))
+
+            print('Done. Setting metadata.', flush=True)
+            metadata['keys'] = {'keys': sorted(list(keys))}
+            db2.metadata = metadata
+            nmatdb = len(db2)
+            assert nmatdb == nmat, \
+                ('Merging of databases went wrong, '
+                 f'number of materials changed: {nmatdb} != {nmat}')
 
 
 if __name__ == '__main__':
