@@ -204,18 +204,20 @@ def absorption(row, filename, direction='x'):
     if dim == 2:
         absbse_w *= wbse_w * alpha / Ha / Bohr * 100
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
-
-    data = row.data['results-asr.polarizability.json']
-    wrpa_w = data['frequencies'] + delta_rpa
-    absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
-    if dim == 2:
-        absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
-    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
-
     xmax = wbse_w[-1]
-    ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
-                               absrpa_w[wrpa_w < xmax]])) * 1.05
 
+    # TODO: Sometimes RPA pol doesn't exist, what to do?
+    data = row.data.get('results-asr.polarizability.json')
+    if data:
+        wrpa_w = data['frequencies'] + delta_rpa
+        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+        if dim == 2:
+            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+        ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+        ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+                                   absrpa_w[wrpa_w < xmax]])) * 1.05
+    else:
+        ymax = max(absbse_w[wbse_w < xmax]) * 1.05
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
