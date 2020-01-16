@@ -509,18 +509,20 @@ def webpanel(row, key_descriptions):
                 ],
                 kd=key_descriptions_noxc)
 
-    if row.get('evac'):
-        pbe['rows'].extend(
-            [['Valence band maximum wrt. vacuum level',
-              f'{row.vbm - row.evac:.2f} eV'],
-             ['Conduction band minimum wrt. vacuum level',
-              f'{row.cbm - row.evac:.2f} eV']])
-    else:
-        pbe['rows'].extend(
-            [['Valence band maximum wrt. Fermi level',
-              f'{row.vbm - row.efermi:.2f} eV'],
-             ['Conduction band minimum wrt. Fermi level',
-              f'{row.cbm - row.efermi:.2f} eV']])
+    gap = row.get('gap')
+    if gap > 0:
+        if row.get('evac'):
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
 
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],

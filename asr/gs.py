@@ -78,18 +78,21 @@ def webpanel(row, key_descriptions):
                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
-    if row.get('evac'):
-        t['rows'].extend(
-            [['Valence band maximum wrt. vacuum level',
-              f'{row.vbm - row.evac:.2f} eV'],
-             ['Conduction band minimum wrt. vacuum level',
-              f'{row.cbm - row.evac:.2f} eV']])
-    else:
-        t['rows'].extend(
-            [['Valence band maximum wrt. Fermi level',
-              f'{row.vbm - row.efermi:.2f} eV'],
-             ['Conduction band minimum wrt. Fermi level',
-              f'{row.cbm - row.efermi:.2f} eV']])
+    gap = row.get('gap')
+
+    if gap > 0:
+        if row.get('evac'):
+            t['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            t['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
     panel = {'title': 'Basic electronic properties (PBE)',
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
