@@ -75,7 +75,7 @@ def webpanel(row, key_descriptions):
         'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
-    basictable['columnwidth'] = 3
+    basictable['columnwidth'] = 4
     rows = basictable['rows']
     codid = row.get('COD_id')
     if codid:
@@ -98,13 +98,13 @@ def webpanel(row, key_descriptions):
     eltable = {'type': 'table',
                'header': ['Electronic properties', ''],
                'rows': [row],
-               'columnwidth': 3}
+               'columnwidth': 4}
 
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
                            'rows': [],
-                           'columnwidth': 3},
+                           'columnwidth': 4},
                           eltable],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
