@@ -164,6 +164,10 @@ key_descriptions = {
         'KVP: Conduction band effective mass in direction 2 [`m_e`]',
         'emass_cb_dir3':
         'KVP: Conduction band effective mass in direction 3 [`m_e`]',
+    },
+    "database.fromtree": {
+        "folder": "KVP: Relative path to original folder",
+        "absfolder": "KVP: Absolute path to original folder",
     }
 }
 
