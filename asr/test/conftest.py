@@ -8,18 +8,9 @@ from pathlib import Path
 
 
 class GPAWMock():
-    """Mock of GPAW calcualtor
+    """Mock of GPAW calculator.
 
-    Parameters:
-
-    nvalence: int
-        Number of electrons
-    kpts: dict
-        K-point specification.
-
-    Example:
-
-    >>> calc = FreeElectrons(nvalence=1, kpts={'path': 'GXL'})
+    Sets up a free electron like gpaw calculator.
     """
 
     implemented_properties = ['energy', 'forces', 'stress', 'dipole',
@@ -89,7 +80,7 @@ class GPAWMock():
         Path(name).write_text('Test calculation')
 
     def read(self, name):
-        Path(name).read_text()
+        pass
 
     def get_electrostatic_potential():
         pass
