@@ -1,4 +1,4 @@
-def test_gs_calculate_gpaw_mock(isolated_filesystem, mock_GPAW_freeelectrons):
+def test_gs_calculate_gpaw_mock(isolated_filesystem, mock_GPAW):
     from ase.build import bulk
     from asr.gs import calculate
     structure = bulk('C')
@@ -6,7 +6,7 @@ def test_gs_calculate_gpaw_mock(isolated_filesystem, mock_GPAW_freeelectrons):
     calculate()
 
 
-def test_gs_gpaw_mock(isolated_filesystem, mock_GPAW_freeelectrons):
+def test_gs_gpaw_mock(isolated_filesystem, mock_GPAW):
     from ase.build import bulk
     from asr.gs import main
     structure = bulk('C')

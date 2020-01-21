@@ -49,7 +49,7 @@ def calculate(calculator={'name': 'gpaw',
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
     
-    atoms.calc = calc
+    atoms.set_calculator(calc)
     atoms.get_forces()
     try:
         atoms.get_stress()
@@ -142,7 +142,7 @@ def main():
     from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     calc = get_calculator()('gs.gpw', txt=None,
                             communicator=serial_comm)
     pbc = atoms.pbc
