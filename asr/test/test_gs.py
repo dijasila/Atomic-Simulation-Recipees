@@ -12,3 +12,4 @@ def test_gs_gpaw_mock(isolated_filesystem, mock_GPAW):
     structure = bulk('C')
     structure.write('structure.json')
     main()
+    # TODO: Test bandgap
