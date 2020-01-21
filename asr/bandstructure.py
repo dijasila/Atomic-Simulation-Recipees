@@ -40,7 +40,7 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     from gpaw import GPAW
     from ase.io import read
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
@@ -57,7 +57,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
-    atoms = read('gs.gpw')
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
@@ -562,15 +561,16 @@ def main():
     calc = GPAW('bs.gpw', txt=None)
     atoms = calc.atoms
     path = calc.parameters.kpts
-    if 'kpts' in path:
-        # In this case path comes from a bandpath object
-        path = BandPath(kpts=path['kpts'], cell=path['cell'],
-                        special_points=path['special_points'],
-                        path=path['labelseq'])
-    else:
-        path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
-                                        path=path['path'],
-                                        npoints=path['npoints'])
+    if not isinstance(path, BandPath):
+        if 'kpts' in path:
+            # In this case path comes from a bandpath object
+            path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                            special_points=path['special_points'],
+                            path=path['labelseq'])
+        else:
+            path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
+                                            path=path['path'],
+                                            npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}

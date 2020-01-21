@@ -93,10 +93,32 @@ class GPAWMock(Calculator):
         return self.parameters.nvalence
 
     def write(self, name):
-        Path(name).write_text('Test calculation')
+        from asr.core import write_json
+        write_json(name, self.parameters)
 
     def read(self, name):
-        pass
+        from asr.core import read_json
+        
+        class Parameters(dict):
+            """Dictionary for parameters.
+            
+            Special feature: If param is a Parameters instance, then param.xc
+            is a shorthand for param['xc'].
+            """
+            
+            def __getattr__(self, key):
+                if key not in self:
+                    return dict.__getattribute__(self, key)
+                return self[key]
+
+            def __setattr__(self, key, value):
+                self[key] = value
+
+        parameters = Parameters(**read_json(name))
+        self.parameters = parameters
+        from ase.io import read
+        self.atoms = read('structure.json')
+        self.calculate(self.atoms)
 
     def set_atoms(self, atoms):
         self.atoms = atoms
