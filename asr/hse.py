@@ -34,7 +34,7 @@ def hse(kptdensity, emptybands):
     from gpaw.xc.tools import vxc
 
     convbands = int(emptybands / 2)
-    if not os.path.isfile('hse.gpw'):
+    if 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111:
         calc = GPAW('gs.gpw', txt=None)
         atoms = calc.get_atoms()
         pbc = atoms.pbc.tolist()
@@ -65,25 +65,34 @@ def hse(kptdensity, emptybands):
                  convergence={'bands': -convbands},
                  txt='hse.txt')
         calc.get_potential_energy()
-        calc.write('hse.gpw', 'all')
         calc.write('hse_nowfs.gpw')
-    mpi.world.barrier()
-    
-    calc = GPAW('hse.gpw', txt=None)
-    ns = calc.get_number_of_spins()
-    nk = len(calc.get_ibz_k_points())
-    nb = calc.get_number_of_bands()
+        from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
+        # calc = GPAW('hse.gpw', txt=None)  # , paralle)
+        nb = calc.get_number_of_bands()
+        result = non_self_consistent_eigenvalues(calc,
+                                                 'HSE06',
+                                                 n1=0,
+                                                 n2=nb - convbands,
+                                                 restart='hse-restart.json')
+        e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
+        for x in result:
+            print(x.shape)
+    else:
+        calc = GPAW('hse.gpw', txt=None)
+        ns = calc.get_number_of_spins()
+        nk = len(calc.get_ibz_k_points())
+        nb = calc.get_number_of_bands()
 
-    hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
-    hse_calc.calculate(restart='hse-restart.json')
-    vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
+        hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
+        hse_calc.calculate(restart='hse-restart.json')
+        vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
 
-    vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
-    e_pbe_skn = np.zeros((ns, nk, nb))
-    for s in range(ns):
-        for k in range(nk):
-            e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
-    e_pbe_skn = e_pbe_skn[:, :, :-convbands]
+        vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
+        e_pbe_skn = np.zeros((ns, nk, nb))
+        for s in range(ns):
+            for k in range(nk):
+                e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
+        e_pbe_skn = e_pbe_skn[:, :, :-convbands]
 
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
@@ -103,7 +112,7 @@ def hse_spinorbit(dct):
     from gpaw import GPAW
     from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    
+
     if not os.path.isfile('hse_nowfs.gpw'):
         return
 
@@ -114,7 +123,7 @@ def hse_spinorbit(dct):
         e_skn = dct.get('e_hse_skn')
         dct_soc = {}
         theta, phi = get_spin_axis()
-        
+
         e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
                                    bands=np.arange(e_skn.shape[2]),
                                    theta=theta, phi=phi)
@@ -174,7 +183,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 def cleanup(*files):
     import os
     import gpaw.mpi as mpi
-    
+
     try:
         yield
     finally:
@@ -240,19 +249,19 @@ def bs_hse(row,
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
-    
+
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
         ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
                         color=[0.8, 0.8, 0.8])
-    
+
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
     ax.plot([], [], **hse_style, label='HSE')
     plt.legend(loc='upper right')
-   
+
     if not show_legend:
         ax.legend_.remove()
     plt.savefig(filename, bbox_inches='tight')
@@ -260,7 +269,7 @@ def bs_hse(row,
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
-    
+
     if row.get('gap_hse', 0) > 0.0:
         ref = row.get('evac', row.get('ef'))
         keys = ['vbm_hse', 'cbm_hse']
@@ -297,6 +306,7 @@ def webpanel(row, key_descriptions):
 
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
+         # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
                    'results-asr.bandstructure.json',
@@ -384,7 +394,7 @@ def main():
           'efermi_hse_soc': 'HSE Fermi energy [eV]'}
     results.update(subresults)
     results['__key_descriptions__'].update(kd)
-    
+
     return results
 
 
