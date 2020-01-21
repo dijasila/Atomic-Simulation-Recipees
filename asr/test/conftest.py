@@ -17,12 +17,10 @@ class GPAWMock(Calculator):
                               'stress', 'dipole',
                               'magmom', 'magmoms']
 
-    default_parameters = {'kpts': np.zeros((1, 3)),
-                          # kpts=Dummy variable, is overwritten
-                          # in self.calculate
-                          'nvalence': 4.0,
-                          'nbands': 20,
+    default_parameters = {'kpts': (20, 20, 20),
+                          'nvalence': 1.0,
                           'gridsize': 7,
+                          'nbands': 20,
                           'nspins': 1}
 
     class Occupations:
