@@ -6,7 +6,7 @@ from asr.core import command
 # ---------- Recipe tests ---------- #
 
 
-# Add test(s)                                                                  XXX
+# Add test(s)                                                               XXX
 
 
 # ---------- Webpanel ---------- #
@@ -264,10 +264,10 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
 def projected_bs_pbe(row,
                      filename='pbe-projected-bs.png',
                      figsize=(6.4, 4.8),
-                     fontsize=10):  # Choose input parameters                  XXX
+                     fontsize=10):  # Choose input parameters               XXX
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import pylab
+    # import pylab
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
@@ -334,7 +334,7 @@ def projected_bs_pbe(row,
                              k_x[np.newaxis, :],
                              n_u[:, np.newaxis], :]
     # Plot projections
-    # Choose some plotting format                                              XXX
+    # Choose some plotting format                                           XXX
     markersize = 36.
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
@@ -343,7 +343,7 @@ def projected_bs_pbe(row,
         pie_xi = get_pie_markers(weight_xi, s=markersize,
                                  scale_marker=False, res=res)
         for x, e, weight_i, pie_i in zip(xcoords, e_x, weight_xi, pie_xi):
-            totweight = np.sum(weight_i)
+            # totweight = np.sum(weight_i)
             for i, pie in enumerate(pie_i):
                 ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
                            zorder=3, **pie)
@@ -384,8 +384,8 @@ def projected_bs_pbe(row,
         #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
         #         ax.scatter(x, e, color=c, s=a, zorder=3)
         # # Plot radius = 1 circle for comparison of total weights
-        # ax.scatter(xcoords, e_x, marker='o', s=markersize,
-        #            linewidth=.5, facecolor='none', edgecolor='black', zorder=4)
+        # ax.scatter(xcoords, e_x, marker='o', s=markersize, linewidth=.5,
+        #            facecolor='none', edgecolor='black', zorder=4)
 
         # Marker color depending on largest weight
         # c_x = [c_i[i] for i in np.argmax(weight_xi, axis=1)]
