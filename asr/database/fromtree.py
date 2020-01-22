@@ -192,7 +192,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                       flush=True)
             with chdir(folder):
                 kvp = {'folder': str(folder),
-                       'absfolder': str(folder.resolve())}
+                       'absfolder': str(Path(folder).resolve())}
                 data = {'__links__': {}}
 
                 if not Path(atomsname).is_file():
