@@ -10,7 +10,7 @@ def webpanel(row, key_descriptions):
     cbmdef = (defpot[0, 1] + defpot[1, 1]) / 2
     rows = [['Uniaxial deformation potential at VBM', f'{cbmdef:0.2f} eV'],
             ['Uniaxial deformation potential at CBM', f'{vbmdef:0.2f} eV']]
-    panel = {'title': 'Basic electronic properties',
+    panel = {'title': 'Basic electronic properties (PBE)',
              'columns': [[{'type': 'table',
                            'header': ['Property', ''],
                            'rows': rows}]],
@@ -42,8 +42,8 @@ def main(strains=[-1.0, 0.0, 1.0], ktol=0.1):
     # Edges have dimension (3, 6, 2) =
     # (#strains_percentages, #strains, (vbm, cbm))
     # Because np.polyfit likes that
-    edges_pin = np.zeros((3, 6, 2), float) + np.nan
-    edges_nosoc_pin = np.zeros((3, 6, 2), float) + np.nan
+    edges_pin = np.zeros((3, 6, 2), float)
+    edges_nosoc_pin = np.zeros((3, 6, 2), float)
 
     gsresults = read_json('results-asr.gs.json')
 

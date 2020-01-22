@@ -194,7 +194,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     # PDOS without spin-orbit coupling
-    nosoc_panel = {'title': 'Band structure with pdos (PBE)',
+    nosoc_panel = {'title': 'Band structure with projections (PBE)',
                    'columns': [[],
                                [fig('pbe-pdos_nosoc.png', link='empty'),
                                 table(row, 'Property', ['dos_at_ef_nosoc'],
@@ -451,11 +451,11 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
     # Setup ssili (spin, symbol index, angular momentum index) key
     def ssili(syl):
-        s, a, L = syl.split(',')
+        s, y, L = syl.split(',')
         # Symbols list can have multiple entries of the same symbol
         # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
         # 'Fe' will have index 1.
-        si = symbols.index(a)
+        si = symbols.index(y)
         li = ['s', 'p', 'd', 'f'].index(L)
         return f'{s}{si}{li}'
 
@@ -463,7 +463,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
 
 def get_yl_colors(dct_syl):
-    """Get the color indices corresponding for each symbol and angular momentum
+    """Get the color indices corresponding to each symbol and angular momentum
     
     Parameters
     ----------
@@ -528,8 +528,17 @@ def plot_pdos(row, filename, soc=True,
         emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
     else:
         nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
-        emin = nosoc_data.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = nosoc_data.get('cbm', ef) + 3 - row.get('evac', 0)
+        vbmnosoc = nosoc_data.get('vbm', ef)
+        cbmnosoc = nosoc_data.get('cbm', ef)
+
+        if vbmnosoc is None:
+            vbmnosoc = ef
+
+        if cbmnosoc is None:
+            cbmnosoc = ef
+
+        emin = vbmnosoc - 3 - row.get('evac', 0)
+        emax = cbmnosoc + 3 - row.get('evac', 0)
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()

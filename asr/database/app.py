@@ -11,11 +11,42 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.utils import formula_metal
+import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
 path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
+
+
+def create_key_descriptions(db):
+    from asr.database.key_descriptions import key_descriptions
+    from asr.database.fromtree import parse_kd
+    from ase.db.web import create_key_descriptions
+
+    metadata = db.metadata
+    if 'keys' not in metadata:
+        raise KeyError('Missing list of keys for database. '
+                       'To fix this either: run database.fromtree again. '
+                       'or python -m asr.database.set_metadata DATABASEFILE.')
+
+    keys = metadata.get('keys')
+    flatten = {key: value
+               for recipe, dct in key_descriptions.items()
+               for key, value in dct.items()}
+
+    kd = {}
+    for key in keys:
+        description = flatten.get(key)
+        if description is None:
+            warnings.warn(f'Missing key description for {key}')
+            continue
+        kd[key] = description
+
+    kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
+          key, desc in parse_kd(kd).items()}
+
+    return create_key_descriptions(kd)
 
 
 class Summary:
@@ -74,7 +105,7 @@ def setup_app():
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}-{uid}-{name}"  # XXXXXXXXXXX
+        path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
 
@@ -89,25 +120,24 @@ def row_to_dict(row, project, layout_function, tmpdir):
     s = Summary(row,
                 create_layout=layout,
                 key_descriptions=project['key_descriptions'],
-                prefix=str(tmpdir / f'{project_name}-{uid}-'))
+                prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
 
 
 def initialize_project(database):
     from asr.database import browser
-    from ase.db.web import create_key_descriptions
     from functools import partial
 
     db = connect(database)
     metadata = db.metadata
     name = metadata.get("name", database)
 
+    # Make temporary directory
+    (tmpdir / name).mkdir()
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(
-            metadata["key_descriptions"]
-        ),
+        "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,

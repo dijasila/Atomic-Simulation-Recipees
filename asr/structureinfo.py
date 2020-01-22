@@ -72,7 +72,7 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
     rows = basictable['rows']
@@ -88,7 +88,7 @@ def webpanel(row, key_descriptions):
     doi = row.get('doi')
     if doi:
         rows.append([
-            'Monolayer DOI',
+            'Monolayer reported DOI',
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
@@ -195,7 +195,7 @@ def main():
     info['spglib_dataset'] = dataset
     sg = dataset['international']
     number = dataset['number']
-    w = '-'.join(sorted(set(dataset['wyckoffs'])))
+    w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_prototype = f'{stoi}-{number}-{w}'
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
