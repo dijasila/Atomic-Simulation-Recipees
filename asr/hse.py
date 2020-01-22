@@ -1,5 +1,4 @@
 from asr.core import command, option, read_json
-from contextlib import contextmanager
 
 
 @command(module='asr.hse',
