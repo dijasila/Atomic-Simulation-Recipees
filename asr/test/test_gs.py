@@ -2,13 +2,12 @@ import pytest
 from pytest import approx
 
 
-@pytest.mark.parametrize("efermi", [0, 0.25, 0.99])
+@pytest.mark.parametrize("efermi", [0, 0.25, 0.49])
 @pytest.mark.parametrize("gap", [1, 2])
 def test_gs_main(isolated_filesystem, mock_GPAW, gap, efermi):
     mock_GPAW.set_property(gap=gap, fermi_level=efermi)
     from asr.database.fromtree import main as fromtree
     from asr.gs import calculate, main
-    from asr.database.app import main as app
 
     calculate(calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
@@ -30,4 +29,33 @@ def test_gs_main(isolated_filesystem, mock_GPAW, gap, efermi):
     assert results.get('gaps_nosoc').get('efermi') == approx(efermi)
     assert results.get('efermi') == approx(efermi)
     fromtree()
-    app(databases=['database.db'])
+
+    from asr.database import app as appmodule
+    from pathlib import Path
+    from asr.database.app import app, initialize_project, projects
+    tmpdir = Path('tmp/')
+    tmpdir.mkdir()
+    appmodule.tmpdir = tmpdir
+    initialize_project('database.db')
+
+    if True:
+        app.testing = True
+        with app.test_client() as c:
+            content = c.get(f'/database.db/').data.decode()
+
+            assert "Fermi level" in content
+            assert "Band gap" in content
+
+            project = projects['database.db']
+            db = project['database']
+            uid_key = project['uid_key']
+            uids = []
+            for row in db.select(include_data=False):
+                uids.append(row.get(uid_key))
+
+            for i, uid in enumerate(uids):
+                url = f'/database.db/row/{uid}'
+                content = c.get(url).data.decode()
+
+                assert f"{gap:0.3f} eV" in content, content
+                assert f"{efermi:0.3f} eV" in content, content
