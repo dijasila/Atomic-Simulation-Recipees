@@ -6,8 +6,9 @@ from pytest import approx
 @pytest.mark.parametrize("gap", [1, 2])
 def test_gs_main(isolated_filesystem, mock_GPAW, gap, efermi):
     mock_GPAW.set_property(gap=gap, fermi_level=efermi)
-
+    from asr.database.fromtree import main as fromtree
     from asr.gs import calculate, main
+    from asr.database.app import main as app
 
     calculate(calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
@@ -28,3 +29,5 @@ def test_gs_main(isolated_filesystem, mock_GPAW, gap, efermi):
         assert results.get('gap') == approx(0)
     assert results.get('gaps_nosoc').get('efermi') == approx(efermi)
     assert results.get('efermi') == approx(efermi)
+    fromtree()
+    app(databases=['database.db'])
