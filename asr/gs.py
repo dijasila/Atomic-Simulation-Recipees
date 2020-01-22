@@ -78,11 +78,11 @@ def webpanel(row, key_descriptions):
                'dipz', 'evacdiff'],
               key_descriptions)
 
-    panel = {'title': 'Basic electronic properties',
+    panel = {'title': 'Basic electronic properties (PBE)',
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    row = ['Band gap (PBE)', f'{row.gap:0.3f} eV']
+    row = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
@@ -113,11 +113,11 @@ def bz_soc(row, fname):
         vbm_v = np.dot(vbm_c, icell)
 
         vbm_style = {'marker': 'o', 'facecolor': 'w',
-                     'edgecolors': 'C0', 's': 100, 'lw': 2.5,
+                     'edgecolors': 'C0', 's': 100, 'lw': 2,
                      'zorder': 4}
         cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
-        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='CBM')
-        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='VBM')
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
         xlim = np.array(ax.get_xlim()) * 1.2
         ylim = np.array(ax.get_ylim()) * 1.2
         ax.set_xlim(xlim)
@@ -183,6 +183,7 @@ def main():
         results['dipz'] = vac['dipz']
         results['evac'] = vac['evacmean']
         results['evacdiff'] = vac['evacdiff']
+        results['workfunction'] = results['evac'] - results['efermi']
 
     fingerprint = {}
     for setup in calc.setups:

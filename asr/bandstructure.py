@@ -255,7 +255,7 @@ def add_bs_pbe(row, ax, reference=0, color='C1'):
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=color)
+    ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
 
 
@@ -403,17 +403,6 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def bz_soc(row, fname):
-    from ase.geometry.cell import Cell
-    from matplotlib import pyplot as plt
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
-    lat.plot_bz(vectors=False)
-    plt.tight_layout()
-    plt.savefig(fname)
-
-
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     from typing import Tuple, List
@@ -438,7 +427,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
                     'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
@@ -446,7 +435,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -454,26 +443,23 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
+                    'cbm', 'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
+                    'cbm',
                 ],
                 kd=key_descriptions_noxc)
 
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         # fig('pbe-pdos_soc.png', link='empty'),
-                         [fig('bz.png'), pbe]],
-             'plot_descriptions': [{'function': bz_soc,
-                                    'filenames': ['bz.png']},
-                                   {'function': bs_pbe,
+                         [fig('bz-with-gaps.png'), pbe]],
+             'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
