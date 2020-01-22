@@ -194,7 +194,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     # PDOS without spin-orbit coupling
-    nosoc_panel = {'title': 'Band structure with pdos (PBE)',
+    nosoc_panel = {'title': 'Band structure with projections (PBE)',
                    'columns': [[],
                                [fig('pbe-pdos_nosoc.png', link='empty'),
                                 table(row, 'Property', ['dos_at_ef_nosoc'],
@@ -451,11 +451,11 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
     # Setup ssili (spin, symbol index, angular momentum index) key
     def ssili(syl):
-        s, a, L = syl.split(',')
+        s, y, L = syl.split(',')
         # Symbols list can have multiple entries of the same symbol
         # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
         # 'Fe' will have index 1.
-        si = symbols.index(a)
+        si = symbols.index(y)
         li = ['s', 'p', 'd', 'f'].index(L)
         return f'{s}{si}{li}'
 
@@ -463,7 +463,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
 
 def get_yl_colors(dct_syl):
-    """Get the color indices corresponding for each symbol and angular momentum
+    """Get the color indices corresponding to each symbol and angular momentum
     
     Parameters
     ----------
