@@ -3,4 +3,4 @@ def test_bandstructure_gpaw_mock(isolated_filesystem, mock_GPAW):
     from asr.bandstructure import main
     structure = bulk('C')
     structure.write('structure.json')
-    main()
+    main(skip_deps=True)
