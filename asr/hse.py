@@ -15,85 +15,60 @@ def calculate(kptdensity=12, emptybands=20):
     """Calculate HSE band structure"""
     import gpaw.mpi as mpi
 
-    with cleanup('hse.gpw'):
-        eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
-        mpi.world.barrier()
-        eigs_soc = hse_spinorbit(eigs)
-        mpi.world.barrier()
-        results = {'hse_eigenvalues': eigs,
-                   'hse_eigenvalues_soc': eigs_soc}
-        return results
+    eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
+    mpi.world.barrier()
+    eigs_soc = hse_spinorbit(eigs)
+    mpi.world.barrier()
+    results = {'hse_eigenvalues': eigs,
+               'hse_eigenvalues_soc': eigs_soc}
+    return results
 
 
 def hse(kptdensity, emptybands):
-    import os
     import numpy as np
     import gpaw.mpi as mpi
     from gpaw import GPAW
-    from gpaw.xc.exx import EXX
-    from gpaw.xc.tools import vxc
+    from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)
-    if 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111:
-        calc = GPAW('gs.gpw', txt=None)
-        atoms = calc.get_atoms()
-        pbc = atoms.pbc.tolist()
-        ND = np.sum(pbc)
-        if ND == 3 or ND == 1:
-            kpts = {'density': kptdensity, 'gamma': True, 'even': False}
-        elif ND == 2:
+    calc = GPAW('gs.gpw', txt=None, parallel={'band': 1, 'kpt': 1})
+    atoms = calc.get_atoms()
+    pbc = atoms.pbc.tolist()
+    ND = np.sum(pbc)
+    if ND == 3 or ND == 1:
+        kpts = {'density': kptdensity, 'gamma': True, 'even': False}
+    elif ND == 2:
 
-            # XXX move to utils? [also in asr.polarizability]
-            def get_kpts_size(atoms, kptdensity):
-                """trying to get a reasonable monkhorst size which hits high
-                symmetry points
-                """
-                from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-                size, offset = k2so(atoms=atoms, density=kptdensity)
-                size[2] = 1
-                for i in range(2):
-                    if size[i] % 6 != 0:
-                        size[i] = 6 * (size[i] // 6 + 1)
-                kpts = {'size': size, 'gamma': True}
-                return kpts
+        # XXX move to utils? [also in asr.polarizability]
+        def get_kpts_size(atoms, kptdensity):
+            """trying to get a reasonable monkhorst size which hits high
+            symmetry points
+            """
+            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+            size, offset = k2so(atoms=atoms, density=kptdensity)
+            size[2] = 1
+            for i in range(2):
+                if size[i] % 6 != 0:
+                    size[i] = 6 * (size[i] // 6 + 1)
+            kpts = {'size': size, 'gamma': True}
+            return kpts
 
-            kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
 
-        calc.set(nbands=-emptybands,
-                 fixdensity=True,
-                 kpts=kpts,
-                 convergence={'bands': -convbands},
-                 txt='hse.txt')
-        calc.get_potential_energy()
-        calc.write('hse_nowfs.gpw')
-        from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
-        # calc = GPAW('hse.gpw', txt=None)  # , paralle)
-        nb = calc.get_number_of_bands()
-        result = non_self_consistent_eigenvalues(calc,
-                                                 'HSE06',
-                                                 n1=0,
-                                                 n2=nb - convbands,
-                                                 restart='hse-restart.json')
-        e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
-        for x in result:
-            print(x.shape)
-    else:
-        calc = GPAW('hse.gpw', txt=None)
-        ns = calc.get_number_of_spins()
-        nk = len(calc.get_ibz_k_points())
-        nb = calc.get_number_of_bands()
-
-        hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
-        hse_calc.calculate(restart='hse-restart.json')
-        vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
-
-        vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
-        e_pbe_skn = np.zeros((ns, nk, nb))
-        for s in range(ns):
-            for k in range(nk):
-                e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
-        e_pbe_skn = e_pbe_skn[:, :, :-convbands]
-
+    calc.set(nbands=-emptybands,
+             fixdensity=True,
+             kpts=kpts,
+             convergence={'bands': -convbands},
+             txt='hse.txt')
+    calc.get_potential_energy()
+    calc.write('hse_nowfs.gpw')
+    nb = calc.get_number_of_bands()
+    result = non_self_consistent_eigenvalues(calc,
+                                             'HSE06',
+                                             n1=0,
+                                             n2=nb - convbands,
+                                             restart='hse-restart.json')
+    e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
     dct = {}
@@ -176,22 +151,6 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     results['bandstructure'] = singleprec_dict(dct)
 
     return results
-
-
-# XXX move to utils?
-@contextmanager
-def cleanup(*files):
-    import os
-    import gpaw.mpi as mpi
-
-    try:
-        yield
-    finally:
-        mpi.world.barrier()
-        if mpi.world.rank == 0:
-            for f in files:
-                if os.path.isfile(f):
-                    os.remove(f)
 
 
 def bs_hse(row,
