@@ -160,9 +160,11 @@ jmol_isReady = function(applet)
                 </center>
               {% endif %}
             {% endif %}
-          <img
-            src="/{{ p.name }}/file/{{ uid }}/{{ data.filename }}"
-            width="100%">
+            <a href="/{{ p.name }}/file/{{ uid }}/{{ data.filename }}">
+              <img
+                src="/{{ p.name }}/file/{{ uid }}/{{ data.filename }}"
+                width="100%">
+            </a>
           {% endif %}
         </div> <!--END ROW-->
         {% endfor %}

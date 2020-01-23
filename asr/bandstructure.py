@@ -427,7 +427,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                     'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
@@ -435,7 +435,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -443,18 +443,32 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
-                    'cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
-                    'cbm',
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
+
+    gap = row.get('gap')
+    if gap > 0:
+        if row.get('evac'):
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
 
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],

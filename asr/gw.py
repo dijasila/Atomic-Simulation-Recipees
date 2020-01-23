@@ -231,6 +231,8 @@ def plot_renorm_factor(row, filename):
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     ref = row.get('evac', row.get('ef'))
+    if not row.get('gap_gw', 0) > 0:
+        return []
     keys = ['vbm_gw', 'cbm_gw']
     for key in keys:
         row[key] -= ref
@@ -245,7 +247,7 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
 
-    if row.get('gap.gw'):
+    if row.get('gap_gw'):
         rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
         summary = {'title': 'Summary',
                    'columns': [[{'type': 'table',
