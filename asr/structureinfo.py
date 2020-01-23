@@ -48,24 +48,14 @@ def has_inversion(atoms, use_spglib=True):
         out: bool
     """
     import numpy as np
-    try:
-        import spglib
-    except ImportError as x:
-        import warnings
-        warnings.warn('using gpaw symmetry for inversion instead: {}'
-                      .format(x))
-        use_spglib = False
+    import spglib
 
     atoms2 = atoms.copy()
     atoms2.pbc[:] = True
     atoms2.center(axis=2)
-    if use_spglib:
-        R = -np.identity(3, dtype=int)
-        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
-        return np.any([np.all(r == R) for r in r_n])
-    else:
-        from gpaw.symmetry import atoms2symmetry
-        return atoms2symmetry(atoms2).has_inversion
+    R = -np.identity(3, dtype=int)
+    r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
+    return np.any([np.all(r == R) for r in r_n])
 
 
 def webpanel(row, key_descriptions):
@@ -167,24 +157,6 @@ def main():
     info['formula'] = formula
     info['stoichiometry'] = stoichimetry
     info['has_inversion_symmetry'] = has_inversion(atoms)
-
-    def coarsesymmetries(a):
-        from gpaw.symmetry import Symmetry
-        cell_cv = a.get_cell()
-        tol = 0.01  # Tolerance for coarse symmetries
-        coarsesymmetry = Symmetry(
-            a.get_atomic_numbers(),
-            cell_cv,
-            tolerance=tol,
-            symmorphic=False,
-            time_reversal=True)
-        coarsesymmetry.analyze(a.get_scaled_positions())
-        return (coarsesymmetry.op_scc, coarsesymmetry.ft_sc)
-
-    op_scc, ft_sc = coarsesymmetries(atoms)
-    symmetry = [(op_cc.tolist(), ft_c.tolist())
-                for op_cc, ft_c in zip(op_scc, ft_sc)]
-    info['symmetries'] = symmetry
 
     # Calculate crystal prototype
     import spglib

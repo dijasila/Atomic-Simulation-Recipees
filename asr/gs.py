@@ -379,18 +379,5 @@ def evacdiff(atoms):
     return evacsplit
 
 
-def get_evac():
-    """Get mean vacuum energy, if it has been calculated"""
-    from asr.core import read_json
-
-    evac = None
-    if Path('results-asr.gs.json').is_file():
-        results = read_json('results-asr.gs.json')
-        if 'vacuumlevels' in results.keys():
-            evac = results['vacuumlevels']['evacmean']
-
-    return evac
-
-
 if __name__ == '__main__':
     main.cli()
