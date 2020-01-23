@@ -28,7 +28,7 @@ def main(databases, databaseout, identifier='asr_id'):
         tmpdest.unlink()
 
     # First merge rows common in both databases
-    metadata = {'key_descriptions': {}}
+    metadata = {'keys': set()}
     for database in databases:
         # Database for looking up existing materials
         tmpdestsearch = Path('_' + str(tmpdest))
@@ -38,7 +38,7 @@ def main(databases, databaseout, identifier='asr_id'):
         if tmpdest.is_file():
             tmpdest.rename(tmpdestsearch)
 
-        print(f'Connecting to {database}', flush=True)
+        print(f'Connecting to {database} (may take a while)', flush=True)
         db = connect(database)
         dbsearch = connect(str(tmpdestsearch))
         dbmerged = connect(str(tmpdest))
@@ -85,9 +85,9 @@ def main(databases, databaseout, identifier='asr_id'):
                                    data=row2.data)
 
         # Update metadata
-        metadata['key_descriptions'].update(db.metadata.get('key_descriptions',
-                                                            {}))
+        metadata['keys'].update(set(db.metadata.get('keys', [])))
 
+    metadata['keys'] = sorted(list(metadata['keys']))
     dbmerged.metadata = metadata
 
     # Remove lookup db

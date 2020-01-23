@@ -14,7 +14,7 @@ key_descriptions = {
     },
     "gs": {
         "forces": "Forces on atoms [eV/Angstrom]",
-        "stresses": "Stress on unit cell [eV/Angstrom^(dim-1)]",
+        "stresses": "Stress on unit cell [`eV/Angstrom^{dim-1}`]",
         "etot": "KVP: Total energy !Tot. En.! [eV]",
         "evac": "KVP: Vacuum level !Vacuum level! [eV]",
         "evacdiff": "KVP: Vacuum level shift !Vacuum level shift! [eV]",
@@ -87,29 +87,26 @@ key_descriptions = {
         "Projected density of states with soc. !PDOS w. soc.!",
         "dos_at_ef_nosoc":
         "KVP: Density of states at the Fermi energy w/o soc."
-        "!DOS at ef no soc.! [states/eV]",
+        "!DOS at ef no soc.! [states/eV * unit cell]",
         "dos_at_ef_soc":
         "KVP: Density of states at the Fermi energy with soc."
-        " !DOS at ef w. soc.! [states/eV]",
+        " !DOS at ef w. soc.! [states/eV * unit cell]",
     },
     "phonons": {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Ang^2]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
         "dynamic_stability_level": "KVP: Dynamic stability level",
     },
     "plasmafrequency": {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
         "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[eV/Ang^0.5]",
+        "[`eV/Ang^0.5`]",
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[eV/Ang^0.5]",
+        "[`eV/Ang^0.5`]",
     },
     "polarizability": {
-        "alphax_el": "KVP: Static electronic polarizability,"
-        " x-direction [Ang]",
-        "alphay_el": "KVP: Static electronic polarizability,"
-        " y-direction [Ang]",
-        "alphaz_el": "KVP: Static electronic polarizability,"
-        " z-direction [Ang]",
+        "alphax_el": "KVP: Static electronic polarizability (x) [Ang]",
+        "alphay_el": "KVP: Static electronic polarizability (y) [Ang]",
+        "alphaz_el": "KVP: Static electronic polarizability (z) [Ang]",
     },
     "relax": {
         "etot": "Total energy [eV]",
@@ -124,20 +121,20 @@ key_descriptions = {
         "gamma": "Cell parameter gamma [deg]",
     },
     "stiffness": {
-        "c_11": "KVP: Stiffness tensor, 11-component [N/m^(dim-1)]",
-        "c_22": "KVP: Stiffness tensor, 22-component [N/m^(dim-1)]",
-        "c_33": "KVP: Stiffness tensor, 33-component [N/m^(dim-1)]",
-        "c_23": "KVP: Stiffness tensor, 23-component [N/m^(dim-1)]",
-        "c_13": "KVP: Stiffness tensor, 13-component [N/m^(dim-1)]",
-        "c_12": "KVP: Stiffness tensor, 12-component [N/m^(dim-1)]",
-        "speed_of_sound_x": "KVP: Speed of sound, x direction [m/s]",
-        "speed_of_sound_y": "KVP: Speed of sound, y direction [m/s]",
-        "stiffness_tensor": "Stiffness tensor [N/m^dim]",
+        "c_11": "KVP: Stiffness tensor, 11-component [`N/m^{dim-1}`]",
+        "c_22": "KVP: Stiffness tensor, 22-component [`N/m^{dim-1}`]",
+        "c_33": "KVP: Stiffness tensor, 33-component [`N/m^{dim-1}`]",
+        "c_23": "KVP: Stiffness tensor, 23-component [`N/m^{dim-1}`]",
+        "c_13": "KVP: Stiffness tensor, 13-component [`N/m^{dim-1}`]",
+        "c_12": "KVP: Stiffness tensor, 12-component [`N/m^{dim-1}`]",
+        "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
+        "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
+        "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
     },
     "structureinfo": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
-        "cell_area": "KVP: Area of unit-cell [Ang^2]",
+        "cell_area": "KVP: Area of unit-cell [`Ang^2`]",
         "has_invsymm": "KVP: Inversion symmetry",
         "stoichiometry": "KVP: Stoichiometry",
         "spacegroup": "KVP: Space group",
@@ -156,17 +153,21 @@ key_descriptions = {
     },
     "emasses": {
         'emass_vb_dir1':
-        'KVP: Valence band effective mass in direction 1 [m_e]',
+        'KVP: Valence band effective mass in direction 1 [`m_e`]',
         'emass_vb_dir2':
-        'KVP: Valence band effective mass in direction 2 [m_e]',
+        'KVP: Valence band effective mass in direction 2 [`m_e`]',
         'emass_vb_dir3':
-        'KVP: Valence band effective mass in direction 3 [m_e]',
+        'KVP: Valence band effective mass in direction 3 [`m_e`]',
         'emass_cb_dir1':
-        'KVP: Conduction band effective mass in direction 1 [m_e]',
+        'KVP: Conduction band effective mass in direction 1 [`m_e`]',
         'emass_cb_dir2':
-        'KVP: Conduction band effective mass in direction 2 [m_e]',
+        'KVP: Conduction band effective mass in direction 2 [`m_e`]',
         'emass_cb_dir3':
-        'KVP: Conduction band effective mass in direction 3 [m_e]',
+        'KVP: Conduction band effective mass in direction 3 [`m_e`]',
+    },
+    "database.fromtree": {
+        "folder": "KVP: Relative path to original folder",
+        "absfolder": "KVP: Absolute path to original folder",
     }
 }
 
