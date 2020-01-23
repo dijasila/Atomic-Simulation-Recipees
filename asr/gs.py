@@ -74,11 +74,26 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table, fig
 
     t = table(row, 'Property',
-              ['gap', 'gap_dir', 'vbm', 'cbm',
-               'dipz', 'evacdiff'],
+              ['gap', 'gap_dir',
+               'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
-    panel = {'title': 'Basic electronic properties',
+    gap = row.get('gap')
+
+    if gap > 0:
+        if row.get('evac'):
+            t['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            t['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
+    panel = {'title': 'Basic electronic properties (PBE)',
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
@@ -113,11 +128,11 @@ def bz_soc(row, fname):
         vbm_v = np.dot(vbm_c, icell)
 
         vbm_style = {'marker': 'o', 'facecolor': 'w',
-                     'edgecolors': 'C0', 's': 100, 'lw': 2.5,
+                     'edgecolors': 'C0', 's': 100, 'lw': 2,
                      'zorder': 4}
         cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
-        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='CBM')
-        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='VBM')
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
         xlim = np.array(ax.get_xlim()) * 1.2
         ylim = np.array(ax.get_ylim()) * 1.2
         ax.set_xlim(xlim)
@@ -183,6 +198,7 @@ def main():
         results['dipz'] = vac['dipz']
         results['evac'] = vac['evacmean']
         results['evacdiff'] = vac['evacdiff']
+        results['workfunction'] = results['evac'] - results['efermi']
 
     fingerprint = {}
     for setup in calc.setups:

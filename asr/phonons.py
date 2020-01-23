@@ -122,7 +122,8 @@ def webpanel(row, key_descriptions):
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', 'Category'],
-                             'rows': [row]}]]}
+                             'rows': [row]}]],
+               'sort': 2}
     return [panel, summary]
 
 
@@ -236,7 +237,7 @@ def plot_bandstructure(row, fname):
     from ase.dft.band_structure import BandStructure
     data = row.data.get('results-asr.phonons.json')
     path = data['path']
-    energies = data['interp_freqs_kl']
+    energies = data['interp_freqs_kl'] * 1e3
     bs = BandStructure(path=path,
                        energies=energies[None, :, :],
                        reference=0)
@@ -255,13 +256,12 @@ def plot_bandstructure(row, fname):
 
     bs2 = BandStructure(path=path, energies=en_exact[None])
     bs2.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
-             emin=np.min(energies * 1.1), emax=np.max(energies * 1.1),
-             ylabel='Phonon frequencies [eV]')
-    plt.plot([], [], label='Exact', color='C1', marker='o', ls='')
+             emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
+             ylabel='Phonon frequencies [meV]')
+    plt.plot([], [], label='Calculated', color='C1', marker='o', ls='')
     plt.legend(ncol=2, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
-    plt.close()
 
 
 def mingocorrection(Cin_NVV, atoms, supercell):
