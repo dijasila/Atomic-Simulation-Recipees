@@ -666,6 +666,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + '3rdOrderMAE'] = out_dict['mae3']
 
 
+
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
     Parameters:
@@ -705,7 +706,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
 
     ibz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ibz_kc)
     masses = {'indices': indices}
-    for b in indices:
+    for offset, b in enumerate(indices):
         e_k = e_skn[b[0], :, b[1]]
         masses[b] = em(kpts_kv=ibz_kv * Bohr,
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
@@ -715,7 +716,6 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
                                                 soc, bandtype, calc,
                                                 spin=b[0],
                                                 band=b[1])
-
     return masses
 
 
@@ -1054,6 +1054,13 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     x0 = np.array([xm, ym, zm])
     x, y, z = optimize.fmin(func, x0=x0,
                             xtol=1.0e-15, ftol=1.0e-15, disp=False)
+
+    model_deltaE = np.abs(func(np.array([x, y, z])) - func(x0))
+
+    if model_deltaE > 1e-3:
+        x = xm
+        y = ym
+        z = zm
 
     if ndim == 2:
         return x, y, 0
