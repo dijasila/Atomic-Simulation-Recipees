@@ -38,10 +38,12 @@ def get_webcontent(name='database.db'):
 
 
 @pytest.mark.parametrize("atoms", test_materials)
-@pytest.mark.parametrize("efermi", [0.5])
+@pytest.mark.parametrize("fermi_level", [0.5])
 @pytest.mark.parametrize("gap", [0, 1.0])
-def test_gs_main(isolated_filesystem, mock_gpaw, gap, efermi, atoms):
-    mock_gpaw.set_property(gap=gap, fermi_level=efermi)
+def test_gs_main(isolated_filesystem, mock_gpaw, gap, fermi_level, atoms):
+    from gpaw import GPAW as GPAWMOCK
+    GPAWMOCK.set_property(gap=gap, fermi_level=fermi_level)
+
     from asr.gs import calculate, main
     from ase.io import write
 
@@ -63,13 +65,13 @@ def test_gs_main(isolated_filesystem, mock_gpaw, gap, efermi, atoms):
     )
 
     results = main()
-    if gap > efermi:
+    if gap > fermi_level:
         assert results.get("gap") == approx(gap)
     else:
         assert results.get("gap") == approx(0)
-    assert results.get("gaps_nosoc").get("efermi") == approx(efermi)
-    assert results.get("efermi") == approx(efermi)
+    assert results.get("efermi") == approx(fermi_level)
+    assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
 
     content = get_webcontent('database.db')
     assert f"Bandgap{gap:0.3f}eV" in content, content
-    assert f"Fermilevel{efermi:0.3f}eV" in content, content
+    assert f"Fermilevel{fermi_level:0.3f}eV" in content, content

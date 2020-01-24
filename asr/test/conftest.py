@@ -8,18 +8,8 @@ from ase.build import bulk
 
 @pytest.fixture
 def mock_gpaw(monkeypatch):
-    from .mocks.gpaw import GPAW
     from pathlib import Path
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
-
-    # monkeypatch.setattr(gpaw, "GPAW", GPAWMock)
-    # monkeypatch.setattr(
-    #     gpaw.spinorbit, "get_spinorbit_eigenvalues", get_spinorbit_eigenvalues
-    # )
-    # monkeypatch.setattr(
-    #     gpaw.occupations, "occupation_numbers", occupation_numbers
-    # )
-    return GPAW
 
 
 C = bulk("Si")

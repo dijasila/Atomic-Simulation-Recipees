@@ -60,11 +60,8 @@ class GPAW(Calculator):
 
     wfs = WaveFunctions()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from ase.io import read
-
-        self.atoms = read("structure.json")
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
     @classmethod
     def set_property(cls, **kwargs):
