@@ -7,11 +7,12 @@ from ase.build import bulk
 
 
 @pytest.fixture
-def mock_gpaw(monkeypatch):
+def usemocks(monkeypatch):
     from pathlib import Path
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
 
 
+# Make some 1D, 2D and 3D test materials
 C = bulk("Si")
 abn = 2.51
 BN = Atoms(
@@ -24,7 +25,17 @@ BN = Atoms(
     ],
     pbc=[True, True, False],
 )
-test_materials = [C, BN]
+Agchain = Atoms(
+    "Ag",
+    scaled_positions=[[0.5, 0.5, 0]],
+    cell=[
+        [15.0, 0.0, 0.0],
+        [0.0, 15.0, 0.0],
+        [0.0, 0.0, 2],
+    ],
+    pbc=[False, False, True],
+)
+test_materials = [C, BN, Agchain]
 
 
 @pytest.fixture()

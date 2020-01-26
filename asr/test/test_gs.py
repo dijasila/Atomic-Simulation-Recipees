@@ -40,7 +40,7 @@ def get_webcontent(name='database.db'):
 @pytest.mark.parametrize("atoms", test_materials)
 @pytest.mark.parametrize("fermi_level", [0.5])
 @pytest.mark.parametrize("gap", [0, 1.0])
-def test_gs_main(isolated_filesystem, mock_gpaw, gap, fermi_level, atoms):
+def test_gs_main(isolated_filesystem, usemocks, gap, fermi_level, atoms):
     from gpaw import GPAW as GPAWMOCK
     GPAWMOCK.set_property(gap=gap, fermi_level=fermi_level)
 
