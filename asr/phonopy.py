@@ -214,7 +214,7 @@ def main():
     C_N = phonon.get_force_constants()
     print(C_N.shape)
     C_N = C_N.swapaxes(0, 1).reshape(-1,3*len(atoms),3*len(atoms))
-    print(C_N.shape)
+    #print(C_N.shape)
     eigs = []
 
     for q_c in q_qc:
