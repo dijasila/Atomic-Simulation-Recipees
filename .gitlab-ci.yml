@@ -5,7 +5,7 @@ tests:
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - pip install flake8 coverage
     - pip install -r requirements.txt
-    - pip install pytest pytest-cov
+    - pip install .[tests]
     - flake8 asr
     - pip install git+https://gitlab.com/gpaw/gpaw.git
     - gpaw install-data paw-datasets --register

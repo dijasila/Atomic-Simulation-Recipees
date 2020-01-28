@@ -22,7 +22,8 @@ setup(
                       'spglib', 'plotly', 'flask'],
     extras_require={'docs': ['sphinx', 'sphinx-autoapi',
                              'sphinxcontrib-programoutput'],
-                    'test': ['pytest', 'hypothesis']},
+                    'tests': ['pytest', 'pytest-cov', 'hypothesis',
+                              'pyfakefs']},
     entry_points='''
         [console_scripts]
         asr=asr.core.cli:cli
