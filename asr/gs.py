@@ -1,5 +1,4 @@
 from asr.core import command, option
-from pathlib import Path
 
 test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',

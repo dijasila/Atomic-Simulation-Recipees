@@ -70,7 +70,6 @@ def test_pdos():
 
         calc2.write('Li2.gpw')
 
-
     # Part 2: density of states at the fermi level
 
     # Dump json file to fake magnetic_anisotropy recipe
@@ -94,7 +93,6 @@ def test_pdos():
     # spin-polarized
     dosef_nosoc2 = dos_at_ef(calc2, 'Li2.gpw', soc=False)
     dosef_soc2 = dos_at_ef(calc2, 'Li2.gpw', soc=True)
-
 
     # Part 3: test output values
 
