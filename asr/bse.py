@@ -299,11 +299,10 @@ def main():
         magstate = info['magstate']
 
         gsresults = read_json('results-asr.gs.json')
-        print(gsresults.keys())
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E
         else:
-            E_B = gsresults['gaps_dir_nosoc'] - E
+            E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
         data['__key_descriptions__'] = \
