@@ -119,15 +119,15 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
             calc.write('gs_bse.gpw', mode='all')
 
     # if spin:
-    #    f0 = calc.get_occupation_numbers(spin=0)
-    #    f1 = calc.get_occupation_numbers(spin=1)
-    #    n0 = np.where(f0 < 1.0e-6)[0][0]
-    #    n1 = np.where(f1 < 1.0e-6)[0][0]
-    #    valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
-    #    conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
+    #     f0 = calc.get_occupation_numbers(spin=0)
+    #     f1 = calc.get_occupation_numbers(spin=1)
+    #     n0 = np.where(f0 < 1.0e-6)[0][0]
+    #     n1 = np.where(f1 < 1.0e-6)[0][0]
+    #     valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
+    #     conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
     # else:
-    #    valence_bands = range(nocc - nv, nocc)
-    #    conduction_bands = range(nocc, nocc + nc)
+    #     valence_bands = range(nocc - nv, nocc)
+    #     conduction_bands = range(nocc, nocc + nc)
 
     world.barrier()
 
@@ -204,27 +204,29 @@ def absorption(row, filename, direction='x'):
     if dim == 2:
         absbse_w *= wbse_w * alpha / Ha / Bohr * 100
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
-
-    data = row.data['results-asr.polarizability.json']
-    wrpa_w = data['frequencies'] + delta_rpa
-    absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
-    if dim == 2:
-        absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
-    ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
-
     xmax = wbse_w[-1]
-    ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
-                               absrpa_w[wrpa_w < xmax]])) * 1.05
 
+    # TODO: Sometimes RPA pol doesn't exist, what to do?
+    data = row.data.get('results-asr.polarizability.json')
+    if data:
+        wrpa_w = data['frequencies'] + delta_rpa
+        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+        if dim == 2:
+            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+        ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+        ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+                                   absrpa_w[wrpa_w < xmax]])) * 1.05
+    else:
+        ymax = max(absbse_w[wbse_w < xmax]) * 1.05
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
-    ax.set_title(f'{direction}-direction')
+    ax.set_title(f'{direction}-polarization')
     ax.set_xlabel('energy [eV]')
     if dim == 2:
-        ax.set_ylabel('absorbance [%]')
+        ax.set_ylabel('Absorbance [%]')
     else:
         ax.set_ylabel(r'$\varepsilon(\omega)$')
     ax.legend()
@@ -236,7 +238,7 @@ def absorption(row, filename, direction='x'):
 
 def webpanel(row, key_descriptions):
     from functools import partial
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 

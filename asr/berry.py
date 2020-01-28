@@ -115,17 +115,6 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     else:
         return
- 
-                        
-def webpanel(name='0'):
-    pass
-    # from pathlib import Path
-    # from ase.parallel import paropen
-    
-    # if Path('topology.dat').is_file():
-    #     f = paropen('topology.dat', 'r')
-    #     top = f.readline()
-    #     f.close()
 
 
 def plot_phases(name='0'):
@@ -167,6 +156,18 @@ def plot_phases(name='0'):
     plt.axis([0, Nk, 0, 2 * np.pi])
     plt.tight_layout()
     plt.show()
+
+
+def webpanel(row, key_descriptions):
+    if row.Topology == 'Not checked':
+        return []
+
+    row = ['Band topology', row.Topology]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': [row]}]]}
+    return [summary]
 
 
 @command(module='asr.berry',
