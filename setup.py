@@ -21,7 +21,8 @@ setup(
     install_requires=['ase', 'Click', 'matplotlib',
                       'spglib', 'plotly', 'flask'],
     extras_require={'docs': ['sphinx', 'sphinx-autoapi',
-                             'sphinxcontrib-programoutput']},
+                             'sphinxcontrib-programoutput'],
+                    'test': ['pytest', 'hypothesis']},
     entry_points='''
         [console_scripts]
         asr=asr.core.cli:cli

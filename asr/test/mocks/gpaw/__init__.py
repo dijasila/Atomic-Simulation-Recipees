@@ -71,7 +71,6 @@ class GPAW(Calculator):
         if atoms is not None:
             self.atoms = atoms
 
-        print(f"Mocked GPAW parameters {self.parameters}")
         if isinstance(self.parameters.nbands, str):
             self.parameters.nbands = int(
                 float(self.parameters.nbands[:-1])

@@ -264,7 +264,6 @@ def gaps(calc, soc=True):
     else:
         efermi = calc.get_fermi_level()
 
-    assert efermi == 0.5, (calc.parameters, calc.default_parameters)
     subresults = {'gap': evbm_ecbm_gap[2],
                   'vbm': evbm_ecbm_gap[0],
                   'cbm': evbm_ecbm_gap[1],

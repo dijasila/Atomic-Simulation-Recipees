@@ -1,6 +1,8 @@
 import pytest
 import os
 import numpy as np
+import contextlib
+from pathlib import Path
 
 from ase import Atoms
 from ase.build import bulk
@@ -38,15 +40,34 @@ Agchain = Atoms(
 test_materials = [C, BN, Agchain]
 
 
+@contextlib.contextmanager
+def create_new_working_directory(path='workdir', unique=False):
+    """Changes working directory and returns to previous on exit."""
+    i = 0
+    if unique:
+        while Path(f'{path}-{i}').is_dir():
+            i += 1
+        path = f'{path}-{i}'
+
+    Path(path).mkdir()
+    prev_cwd = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)
+
+
 @pytest.fixture()
-def isolated_filesystem(tmpdir):
+def separate_folder(tmpdir):
     """A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
     cwd = os.getcwd()
     os.chdir(str(tmpdir))
+
     try:
-        yield
+        yield create_new_working_directory
     finally:
         os.chdir(cwd)
 
