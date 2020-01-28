@@ -100,7 +100,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
-        conduction_bands.append(range(c[2], c[2]  + nc_s[s]))
+        conduction_bands.append(range(c[2], c[2] + nc_s[s]))
         
     print(valence_bands)
     print(conduction_bands)
@@ -118,14 +118,14 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         with file_barrier(['gs_bse.gpw']):
             calc.write('gs_bse.gpw', mode='all')
 
-    #if spin:
+    # if spin:
     #    f0 = calc.get_occupation_numbers(spin=0)
     #    f1 = calc.get_occupation_numbers(spin=1)
     #    n0 = np.where(f0 < 1.0e-6)[0][0]
     #    n1 = np.where(f1 < 1.0e-6)[0][0]
     #    valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
     #    conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
-    #else:
+    # else:
     #    valence_bands = range(nocc - nv, nocc)
     #    conduction_bands = range(nocc, nocc + nc)
 
