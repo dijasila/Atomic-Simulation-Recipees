@@ -659,7 +659,6 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + '3rdOrderMAE'] = out_dict['mae3']
 
 
-
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """effective masses for bands within delta of extrema
     Parameters:
