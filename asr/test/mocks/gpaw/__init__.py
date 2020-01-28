@@ -77,7 +77,9 @@ class GPAW(Calculator):
                 / 100
                 * self.parameters.nelectrons
             )
-        self.kpts = kpts2ndarray(self.parameters.kpts, atoms)
+
+        kpts = kpts2ndarray(self.parameters.kpts, atoms)
+        self.parameters.kpts = self.kpts = kpts
         icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
 
         # Simple parabolic band
@@ -97,7 +99,8 @@ class GPAW(Calculator):
         self.setups.nvalence = self.parameters.nelectrons
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
         self.eigenvalues = eps_kn[:, : self.parameters.nbands] * Ha
-        assert self.eigenvalues.shape[0] == len(self.kpts)
+        assert self.eigenvalues.shape[0] == len(self.kpts), \
+            (self.eigenvalues.shape, self.kpts.shape)
         assert self.eigenvalues.shape[1] == self.parameters.nbands
 
         self.results = {

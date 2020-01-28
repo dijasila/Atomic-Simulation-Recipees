@@ -1,7 +1,7 @@
 import pytest
 from pytest import approx
 from .conftest import test_materials
-from hypothesis import given
+from hypothesis import given, example
 from hypothesis.strategies import floats
 
 
@@ -41,9 +41,9 @@ def get_webcontent(name='database.db'):
 
 run_no = 0
 @pytest.mark.parametrize("atoms", test_materials)
-@given(gap=floats(min_value=0, max_value=10),
+@given(gap=floats(min_value=0, max_value=1),
        fermi_level=floats(min_value=0, max_value=1))
-def test_gs_main(separate_folder, usemocks, atoms, gap, fermi_level):
+def test_gs_main(separate_folder, usemocks, fs, atoms, gap, fermi_level):
     global run_no
     run_no += 1
     with separate_folder(path=f'run-{run_no}'):
@@ -57,27 +57,18 @@ def test_gs_main(separate_folder, usemocks, atoms, gap, fermi_level):
         calculate(
             calculator={
                 "name": "gpaw",
-                "mode": {"name": "pw", "ecut": 800},
-                "xc": "PBE",
-                "basis": "dzp",
                 "kpts": {"density": 2, "gamma": True},
-                "occupations": {"name": "fermi-dirac", "width": 0.05},
-                "convergence": {"bands": "CBM+3.0"},
-                "nbands": "200%",
-                "txt": "gs.txt",
-                "charge": 0,
             },
-            # skip_deps=True
         )
 
         results = main()
-        if gap > fermi_level:
+        if gap >= fermi_level:
             assert results.get("gap") == approx(gap)
         else:
             assert results.get("gap") == approx(0)
         assert results.get("efermi") == approx(fermi_level)
         assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
 
-        content = get_webcontent('database.db')
-        assert f"Bandgap{gap:0.3f}eV" in content, content
-        assert f"Fermilevel{fermi_level:0.3f}eV" in content, content
+        # content = get_webcontent('database.db')
+        # assert f"Bandgap{gap:0.3f}eV" in content, content
+        # assert f"Fermilevel{fermi_level:0.3f}eV" in content, content

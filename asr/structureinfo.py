@@ -16,7 +16,7 @@ def get_reduced_formula(formula, stoichiometry=False):
         A string containing the reduced formula
     """
     from functools import reduce
-    from fractions import gcd
+    from math import gcd
     import string
     import re
     split = re.findall('[A-Z][^A-Z]*', formula)
@@ -53,8 +53,11 @@ def has_inversion(atoms, use_spglib=True):
     atoms2 = atoms.copy()
     atoms2.pbc[:] = True
     atoms2.center(axis=2)
+    cell = (atoms2.cell.array,
+            atoms2.get_scaled_positions(),
+            atoms2.numbers)
     R = -np.identity(3, dtype=int)
-    r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
+    r_n = spglib.get_symmetry(cell, symprec=1.0e-3)['rotations']
     return np.any([np.all(r == R) for r in r_n])
 
 
