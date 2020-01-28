@@ -8,10 +8,6 @@ from ase.io import read
 from asr.core import command, option
 from asr.core import write_json
 
-from phonopy import Phonopy
-from phonopy.structure.atoms import PhonopyAtoms
-from phonopy.units import THzToEv
-
 
 def lattice_vectors(N_c):
     """Return lattice vectors for cells in the supercell."""
@@ -38,6 +34,9 @@ def lattice_vectors(N_c):
 def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
+
+    from phonopy import Phonopy
+    from phonopy.structure.atoms import PhonopyAtoms
 
     # Remove empty files:
     if world.rank == 0:
@@ -170,6 +169,10 @@ def webpanel(row, key_descriptions):
 def main():
     from asr.core import read_json
     from asr.core import get_dimensionality
+
+    from phonopy import Phonopy
+    from phonopy.structure.atoms import PhonopyAtoms
+    from phonopy.units import THzToEv
 
     dct = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
