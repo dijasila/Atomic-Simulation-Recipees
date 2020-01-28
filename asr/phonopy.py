@@ -4,14 +4,14 @@ import numpy as np
 
 from ase.parallel import world
 from ase.io import read
-from ase.phonons import Phonons
 
 from asr.core import command, option
-from asr.core import read_json, write_json
+from asr.core import write_json
 
 from phonopy import Phonopy
 from phonopy.structure.atoms import PhonopyAtoms
 from phonopy.units import THzToEv
+
 
 def lattice_vectors(N_c):
     """Return lattice vectors for cells in the supercell."""
@@ -24,75 +24,83 @@ def lattice_vectors(N_c):
 
     return R_cN
 
-@command('asr.phonopy',
-         requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'])
-@option('--n', type=int, help='Supercell size')
-@option('--d', type=float, help='Displacement size')
-@option('--ecut', type=float, help='Energy cutoff')
-@option('--kptdensity', type=int, help='Kpoint density')
-@option('--fconverge', type=float, help='Force convergence criterium')
+
+@command(
+    "asr.phonopy",
+    requires=["structure.json", "gs.gpw"],
+    dependencies=["asr.gs@calculate"],
+)
+@option("--n", type=int, help="Supercell size")
+@option("--d", type=float, help="Displacement size")
+@option("--ecut", type=float, help="Energy cutoff")
+@option("--kptdensity", type=int, help="Kpoint density")
+@option("--fconverge", type=float, help="Force convergence criterium")
 def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
-    #Remove empty files:
+
+    # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob('phonon.*.json'):
+        for f in Path().glob("phonon.*.json"):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
 
-    params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdensity, 'gamma': True}}
+    params = {
+        "mode": {"name": "pw", "ecut": ecut},
+        "kpts": {"density": kptdensity, "gamma": True},
+    }
 
     # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False}
+    params["symmetry"] = {"point_group": False}
     # Make sure to converge forces! Can be important
-    params['convergence'] = {'forces': fconverge}
+    params["convergence"] = {"forces": fconverge}
 
-    atoms = read('structure.json')
-    fd = open('phonons.txt'.format(n), 'a')
+    atoms = read("structure.json")
+    fd = open("phonons.txt".format(n), "a")
     calc = get_calculator()(txt=fd, **params)
 
     # Set initial magnetic moments
     from asr.core import is_magnetic
+
     if is_magnetic():
-        gsold = get_calculator()('gs.gpw', txt=None)
+        gsold = get_calculator()("gs.gpw", txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     from asr.core import get_dimensionality
+
     nd = get_dimensionality()
     if nd == 3:
-        supercell = [[n,0,0], [0,n,0], [0,0,n]]
-        atoms_N = atoms * (n,n,n)
+        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
+        atoms_N = atoms * (n, n, n)
     elif nd == 2:
-        supercell = [[n,0,0], [0,n,0], [0,0,1]]
-        atoms_N = atoms * (n,n,1)
+        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
+        atoms_N = atoms * (n, n, 1)
     elif nd == 1:
-        supercell = [[n,0,0], [0,1,0], [0,0,1]]
-        atoms_N = atoms * (n,1,1)
-    
+        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
+        atoms_N = atoms * (n, 1, 1)
 
-    phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
-                                 cell=atoms.get_cell(),
-                                 scaled_positions= atoms.get_scaled_positions())
+    phonopy_atoms = PhonopyAtoms(
+        symbols=atoms.symbols,
+        cell=atoms.get_cell(),
+        scaled_positions=atoms.get_scaled_positions(),
+    )
     atoms_N.set_calculator(calc)
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
-    phonon.generate_displacements(distance=d,is_plusminus=True)
-    displacements = phonon.get_displacements()
+    phonon.generate_displacements(distance=d, is_plusminus=True)
+    # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
-
     for n, cell in enumerate(displaced_sc):
-        #Displacement number
+        # Displacement number
         a = n // 2
-        #Sign of the displacement
-        sign = ['+','-'][n % 2]
+        # Sign of the displacement
+        sign = ["+", "-"][n % 2]
 
-        filename = 'phonons.{0}{1}.json'.format(a, sign)
+        filename = "phonons.{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
             continue
@@ -104,117 +112,140 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
         for force in forces:
             force -= drift_force / forces.shape[0]
 
-        write_json(filename,{"force":forces})
+        write_json(filename, {"force": forces})
 
 
 def requires():
-    return ['results-asr.phonopy@calculate.json']
+    return ["results-asr.phonopy@calculate.json"]
 
 
 def webpanel(row, key_descriptions):
     from asr.browser import table, fig
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    panel = {'title': 'Phonon bandstructure',
-             'columns': [[fig('phonon_bs.png')], [phonontable]],
-             'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonon_bs.png']}],
-             'sort': 3}
+    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
 
-    dynstab = row.get('dynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    high = 'Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0'
-    medium = 'Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0'
-    low = 'Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0'
-    row = ['Phonons',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[dynstab].upper())]
+    panel = {
+        "title": "Phonon bandstructure",
+        "columns": [[fig("phonon_bs.png")], [phonontable]],
+        "plot_descriptions": [
+            {"function": plot_bandstructure, "filenames": ["phonon_bs.png"]}
+        ],
+        "sort": 3,
+    }
 
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Stability', 'Category'],
-                             'rows': [row]}]]}
+    dynstab = row.get("dynamic_stability_level")
+    stabilities = {1: "low", 2: "medium", 3: "high"}
+    high = "Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0"
+    medium = "Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0"
+    low = "Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0"
+    row = [
+        "Phonons",
+        '<a href="#" data-toggle="tooltip" data-html="true" '
+        + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+            low, medium, high, stabilities[dynstab].upper()
+        ),
+    ]
+
+    summary = {
+        "title": "Summary",
+        "columns": [
+            [
+                {
+                    "type": "table",
+                    "header": ["Stability", "Category"],
+                    "rows": [row],
+                }
+            ]
+        ],
+    }
     return [panel, summary]
 
 
-@command('asr.phonopy',
-         requires=requires,
-         webpanel=webpanel,
-         dependencies=['asr.phonopy@calculate'])
+@command(
+    "asr.phonopy",
+    requires=requires,
+    webpanel=webpanel,
+    dependencies=["asr.phonopy@calculate"],
+)
 def main():
-    from asr.core import read_json, write_json
+    from asr.core import read_json
     from asr.core import get_dimensionality
-    dct = read_json('results-asr.phonopy@calculate.json')
-    atoms = read('structure.json')
-    n = dct['__params__']['n']
-    d = dct['__params__']['d']
+
+    dct = read_json("results-asr.phonopy@calculate.json")
+    atoms = read("structure.json")
+    n = dct["__params__"]["n"]
+    d = dct["__params__"]["d"]
 
     nd = get_dimensionality()
     if nd == 3:
-        supercell = [[n,0,0], [0,n,0], [0,0,n]]
-        N_c = (n,n,n)
+        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
+        N_c = (n, n, n)
     elif nd == 2:
-        supercell = [[n,0,0], [0,n,0], [0,0,1]]
-        N_c = (n,n,1)
+        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
+        N_c = (n, n, 1)
     elif nd == 1:
-        supercell = [[n,0,0], [0,1,0], [0,0,1]]
-        N_c = (n,1,1)
-    
+        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
+        N_c = (n, 1, 1)
 
-    phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
-                                 cell=atoms.get_cell(),
-                                 scaled_positions= atoms.get_scaled_positions())
+    phonopy_atoms = PhonopyAtoms(
+        symbols=atoms.symbols,
+        cell=atoms.get_cell(),
+        scaled_positions=atoms.get_scaled_positions(),
+    )
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
-    phonon.generate_displacements(distance=d,is_plusminus=True)
-    displacements = phonon.get_displacements()
+    phonon.generate_displacements(distance=d, is_plusminus=True)
+    # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
-    #for displace in displacements:
+    # for displace in displacements:
     #    print("[Phonopy] %d %s" % (displace[0], displace[1:]))
 
     set_of_forces = []
 
     for i, cell in enumerate(displaced_sc):
-        #Displacement index
+        # Displacement index
         a = i // 2
-        #Sign of the diplacement
-        sign = ['+','-'][i % 2]
+        # Sign of the diplacement
+        sign = ["+", "-"][i % 2]
 
-        filename = 'phonons.{0}{1}.json'.format(a, sign)
+        filename = "phonons.{0}{1}.json".format(a, sign)
 
         forces = read_json(filename)["force"]
-        #Number of forces equals to the number of atoms in the supercell
-        assert len(forces) == len(atoms) * n**nd, "Wrong supercell size!"
+        # Number of forces equals to the number of atoms in the supercell
+        assert len(forces) == len(atoms) * n ** nd, "Wrong supercell size!"
 
         set_of_forces.append(forces)
 
-    phonon.produce_force_constants(forces=set_of_forces,calculate_full_force_constants=False)
+    phonon.produce_force_constants(
+        forces=set_of_forces, calculate_full_force_constants=False
+    )
     phonon.symmetrize_force_constants()
 
     q_qc = np.indices(N_c).reshape(3, -1).T / N_c
 
-    omega_kl = np.zeros((len(q_qc),3*len(atoms)))
-    u_klav = np.zeros((len(q_qc),3*len(atoms),len(atoms),3))
+    omega_kl = np.zeros((len(q_qc), 3 * len(atoms)))
+    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
 
     for q, q_c in enumerate(q_qc):
         omega_l, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
-        omega_kl[q] = omega_l*THzToEv
-        u_klav[q] = u_ll.reshape(3*len(atoms),len(atoms),3)
-        if q_c.any() == 0.:
-            phonon.set_irreps(q_c) 
+        omega_kl[q] = omega_l * THzToEv
+        u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
+        if q_c.any() == 0.0:
+            phonon.set_irreps(q_c)
             ob = phonon._irreps
             irreps = []
-            for nr, (deg, irr) in enumerate(zip(ob._degenerate_sets, ob._ir_labels)):
-                irreps += [irr]*len(deg)
+            for nr, (deg, irr) in enumerate(
+                zip(ob._degenerate_sets, ob._ir_labels)
+            ):
+                irreps += [irr] * len(deg)
 
     R_cN = lattice_vectors(N_c)
     C_N = phonon.get_force_constants()
     print(C_N.shape)
-    C_N = C_N.swapaxes(0, 1).reshape(-1,3*len(atoms),3*len(atoms))
-    #print(C_N.shape)
+    C_N = C_N.swapaxes(0, 1).reshape(-1, 3 * len(atoms), 3 * len(atoms))
+    # print(C_N.shape)
     eigs = []
 
     for q_c in q_qc:
@@ -232,37 +263,42 @@ def main():
     else:
         dynamic_stability = 3
 
-    results = {'omega_kl': omega_kl,
-               'irr_l': np.array(irreps),
-               'q_qc': q_qc,
-               'u_klav': u_klav,
-               'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
-               
+    results = {
+        "omega_kl": omega_kl,
+        "irr_l": np.array(irreps),
+        "q_qc": q_qc,
+        "u_klav": u_klav,
+        "minhessianeig": mineig,
+        "dynamic_stability_level": dynamic_stability,
+    }
+
     return results
 
 
 def plot_phonons(row, fname):
     import matplotlib.pyplot as plt
 
-    data = row.data.get('results-asr.phonopy.json')
+    data = row.data.get("results-asr.phonopy.json")
     if data is None:
         return
 
-    omega_kl = data['omega_kl']
+    omega_kl = data["omega_kl"]
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
 
     x0 = -0.0005  # eV
-    for x, color in [(gamma[gamma < x0], 'r'),
-                     (gamma[gamma >= x0], 'b')]:
+    for x, color in [(gamma[gamma < x0], "r"), (gamma[gamma >= x0], "b")]:
         if len(x) > 0:
-            markerline, _, _ = ax.stem(x * 1000, np.ones_like(x), bottom=-1,
-                                       markerfmt=color + 'o',
-                                       linefmt=color + '-')
+            markerline, _, _ = ax.stem(
+                x * 1000,
+                np.ones_like(x),
+                bottom=-1,
+                markerfmt=color + "o",
+                linefmt=color + "-",
+            )
             plt.setp(markerline, alpha=0.4)
-    ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
+    ax.set_xlabel(r"phonon frequency at $\Gamma$ [meV]")
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
     plt.savefig(fname)
@@ -272,16 +308,15 @@ def plot_phonons(row, fname):
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
     from ase.dft.band_structure import BandStructure
-    data = row.data.get('results-asr.phonopy.json')
-    path = data['path']
-    energies = data['interp_freqs_kl']
-    bs = BandStructure(path=path,
-                       energies=energies[None, :, :],
-                       reference=0)
-    bs.plot(label='Interpolated')
+
+    data = row.data.get("results-asr.phonopy.json")
+    path = data["path"]
+    energies = data["interp_freqs_kl"]
+    bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)
+    bs.plot(label="Interpolated")
 
     exact_indices = []
-    for q_c in data['q_qc']:
+    for q_c in data["q_qc"]:
         diff_kc = path.kpts - q_c
         diff_kc -= np.round(diff_kc)
         inds = np.argwhere(np.all(np.abs(diff_kc) < 1e-3, 1))
@@ -292,12 +327,20 @@ def plot_bandstructure(row, fname):
         en_exact[ind] = energies[ind]
 
     bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(ax=plt.gca(), ls='', marker='o', color='k',
-             emin=np.min(energies * 1.1), emax=np.max(energies * 1.1),
-             ylabel='Phonon frequencies [eV]', label='Exact')
+    bs2.plot(
+        ax=plt.gca(),
+        ls="",
+        marker="o",
+        color="k",
+        emin=np.min(energies * 1.1),
+        emax=np.max(energies * 1.1),
+        ylabel="Phonon frequencies [eV]",
+        label="Exact",
+    )
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main.cli()
