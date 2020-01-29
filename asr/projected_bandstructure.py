@@ -245,7 +245,7 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
         for weight in weight_i:
             # Weight fraction
             r1 = weight / totweight
-            rp = np.ceil(r1 * res)
+            rp = int(np.ceil(r1 * res))
             # Calculate points of the pie marker
             x = [0] + np.cos(np.linspace(2 * np.pi * r0,
                                          2 * np.pi * (r0 + r1), rp)).tolist()
