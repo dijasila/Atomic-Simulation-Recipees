@@ -78,11 +78,13 @@ def main(defect_name=None):
                 if chargestate == 0:
                     value = elc.calculate_uncorrected_formation_energy()
                     e_form.append(value)
-                    print('Calculate uncorrected formation energy: {}'.format(value))
+                    print('Calculate uncorrected formation energy: {}'.format(
+                        value))
                 else:
                     value = elc.calculate_corrected_formation_energy()
                     e_form.append(value)
-                    print('Calculate corrected formation energy: {}'.format(value))
+                    print('Calculate corrected formation energy: {}'.format(
+                        value))
                 charges.append(chargestate)
             except BaseException:
                 e_form.append(None)
