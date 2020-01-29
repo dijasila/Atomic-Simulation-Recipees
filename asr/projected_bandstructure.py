@@ -15,7 +15,8 @@ from asr.core import command
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
-    panel = {'title': 'Band structure with projections (PBE)',
+    panel = {'title': ('Projected density of states and '
+                       'projected band structure (PBE)'),
              'columns': [[fig('pbe-projected-bs.png', link='empty')], []],
              'plot_descriptions': [{'function': projected_bs_pbe,
                                     'filenames': ['pbe-projected-bs.png']}]}

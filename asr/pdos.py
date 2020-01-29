@@ -203,16 +203,7 @@ def webpanel(row, key_descriptions):
                                           'filenames': ['pbe-pdos_nosoc.png']}]
                    }
 
-    # PDOS with spin-orbit coupling
-    # Goes to Electronic band structure (PBE) panel, which is defined in the
-    # bandstructure recipe
-    soc_panel = {'title': 'Electronic band structure (PBE)',
-                 'columns': [[], [fig('pbe-pdos_soc.png', link='empty')]],
-                 'plot_descriptions': [{'function': plot_pdos_soc,
-                                        'filenames': ['pbe-pdos_soc.png']}],
-                 'sort': 13}
-
-    return [nosoc_panel, soc_panel]
+    return [nosoc_panel]
 
 
 # ---------- Main functionality ---------- #
