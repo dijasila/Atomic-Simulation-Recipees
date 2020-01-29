@@ -213,8 +213,11 @@ def main():
     R_cN = lattice_vectors(N_c)
     C_N = phonon.get_force_constants()
     print(C_N.shape)
-    C_N = C_N.swapaxes(0, 1).reshape(-1,3*len(atoms),3*len(atoms))
-    #print(C_N.shape)
+    N = n**nd
+    C_N = C_N.reshape(len(atoms),N,len(atoms),3,3)
+    C_N = C_N.transpose(1,2,3,0,4)
+    C_N = C_N.reshape(N,3*len(atoms),3*len(atoms))
+    print(C_N.shape)
     eigs = []
 
     for q_c in q_qc:
