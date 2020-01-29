@@ -216,11 +216,12 @@ def get_emass_dict_from_row(row):
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
                             my_dict[f'{name}, direction {direction}'] = \
-                                '{}'.format(mass_str)
+                                f'{mass_str} m<sub>e</sub>'
                         else:
                             my_dict['{} {} {}, direction {}'.format(
                                 name, offset_sym,
-                                offset_num, direction)] = mass_str
+                                offset_num, direction)] = \
+                                f'{mass_str} m<sub>e</sub>'
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')

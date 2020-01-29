@@ -167,7 +167,6 @@ key_descriptions = {
     },
     "database.fromtree": {
         "folder": "KVP: Relative path to original folder",
-        "absfolder": "KVP: Absolute path to original folder",
     }
 }
 

@@ -191,8 +191,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
                       flush=True)
             with chdir(folder):
-                kvp = {'folder': str(folder),
-                       'absfolder': str(Path(folder).resolve())}
+                kvp = {'folder': str(folder)}
                 data = {'__links__': {}}
 
                 if not Path(atomsname).is_file():
