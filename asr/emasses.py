@@ -1046,6 +1046,13 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     x, y, z = optimize.fmin(func, x0=x0,
                             xtol=1.0e-15, ftol=1.0e-15, disp=False)
 
+    model_deltaE = np.abs(func(np.array([x, y, z])) - func(x0))
+
+    if model_deltaE > 1e-3:
+        x = xm
+        y = ym
+        z = zm
+
     if ndim == 2:
         return x, y, 0
     elif ndim == 1:
