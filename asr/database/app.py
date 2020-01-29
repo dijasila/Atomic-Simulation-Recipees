@@ -11,11 +11,42 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.utils import formula_metal
+import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
 path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
+
+
+def create_key_descriptions(db):
+    from asr.database.key_descriptions import key_descriptions
+    from asr.database.fromtree import parse_kd
+    from ase.db.web import create_key_descriptions
+
+    metadata = db.metadata
+    if 'keys' not in metadata:
+        raise KeyError('Missing list of keys for database. '
+                       'To fix this either: run database.fromtree again. '
+                       'or python -m asr.database.set_metadata DATABASEFILE.')
+
+    keys = metadata.get('keys')
+    flatten = {key: value
+               for recipe, dct in key_descriptions.items()
+               for key, value in dct.items()}
+
+    kd = {}
+    for key in keys:
+        description = flatten.get(key)
+        if description is None:
+            warnings.warn(f'Missing key description for {key}')
+            continue
+        kd[key] = description
+
+    kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
+          key, desc in parse_kd(kd).items()}
+
+    return create_key_descriptions(kd)
 
 
 class Summary:
@@ -74,7 +105,7 @@ def setup_app():
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}-{uid}-{name}"  # XXXXXXXXXXX
+        path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
 
@@ -89,25 +120,24 @@ def row_to_dict(row, project, layout_function, tmpdir):
     s = Summary(row,
                 create_layout=layout,
                 key_descriptions=project['key_descriptions'],
-                prefix=str(tmpdir / f'{project_name}-{uid}-'))
+                prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
 
 
 def initialize_project(database):
     from asr.database import browser
-    from ase.db.web import create_key_descriptions
     from functools import partial
 
     db = connect(database)
     metadata = db.metadata
     name = metadata.get("name", database)
 
+    # Make temporary directory
+    (tmpdir / name).mkdir()
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(
-            metadata["key_descriptions"]
-        ),
+        "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
@@ -129,11 +159,48 @@ def initialize_project(database):
 @command()
 @argument("databases", nargs=-1)
 @option("--host", help="Host address.")
-def main(databases, host="0.0.0.0"):
+@option("--test", is_flag=True, help="Test the app.")
+def main(databases, host="0.0.0.0", test=False):
     for database in databases:
         initialize_project(database)
     setup_app()
-    app.run(host="0.0.0.0", debug=True)
+    if test:
+        import traceback
+        app.testing = True
+        c = app.test_client()
+        for name in projects:
+            print(f'Testing {name}')
+            c.get(f'/{name}/').data.decode()
+            project = projects[name]
+            db = project['database']
+            uid_key = project['uid_key']
+            n = len(db)
+            uids = []
+            for row in db.select(include_data=False):
+                uids.append(row.get(uid_key))
+                if len(uids) == n:
+                    break
+            print(len(uids))
+            for i, uid in enumerate(uids):
+                url = f'/{name}/row/{uid}'
+                print(f'\rRows: {i + 1}/{len(uids)} {url}', end='', flush=True)
+                try:
+                    c.get(url).data.decode()
+                except KeyboardInterrupt:
+                    raise
+                except Exception:
+                    print()
+                    row = db.get(uid=uid)
+                    exc = traceback.format_exc()
+                    exc += (f'Problem with {uid}: '
+                            f'Formula={row.formula} '
+                            f'Prototype={row.crystal_prototype}\n' +
+                            '-' * 20 + '\n')
+                    with Path('errors.txt').open(mode='a') as fid:
+                        fid.write(exc)
+                    print(exc)
+    else:
+        app.run(host="0.0.0.0", debug=True)
 
 
 if __name__ == "__main__":

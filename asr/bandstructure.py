@@ -40,8 +40,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
     """Calculate electronic band structure"""
     from gpaw import GPAW
     from ase.io import read
-    import numpy as np
-    from ase.cell import Cell
     atoms = read('gs.gpw')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
@@ -497,7 +495,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                     'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
@@ -505,7 +503,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -513,37 +511,43 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
 
+    gap = row.get('gap')
+    if gap > 0:
+        if row.get('evac'):
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
+
     panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         # fig('pbe-pdos_soc.png', link='empty'),
-                         [fig('bz.png'), pbe]],
-             'plot_descriptions': [{'function': bz_soc,
-                                    'filenames': ['bz.png']},
-                                   {'function': bs_pbe,
+                         [fig('bz-with-gaps.png'), pbe]],
+             'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
              'sort': 14}
 
-    pdos_panel = {'title': 'Band structure with pdos (PBE)',
-                  'columns': [[fig('pbe-pdos-bs.png', link='empty')], []],
-                  'plot_descriptions': [{'function': pdos_bs_pbe,
-                                         'filenames': ['pbe-pdos-bs.png']}]}
-
-    return [panel, pdos_panel]
+    return [panel]
 
 
 @command('asr.bandstructure',
