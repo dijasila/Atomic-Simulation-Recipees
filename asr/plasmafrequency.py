@@ -30,12 +30,15 @@ def calculate(kptdensity=20):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table
+    from asr.database.browser import table
+
+    if row.get('gap', 1) > 0.01:
+        return []
 
     plasmatable = table(row, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
 
-    panel = {'title': 'Polarizability (RPA)',
+    panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}
     return [panel]
 
@@ -89,9 +92,9 @@ def main(tetra=True):
         data['plasmafrequency_y'] = plasmafreq_v[1].real
 
         data['__key_descriptions__']['plasmafrequency_x'] = \
-            'KVP: 2D Plasma frequency, x-direction [eV/Ang^0.5]'
+            'KVP: 2D plasma frequency, x-direction [eV/Ang^0.5]'
         data['__key_descriptions__']['plasmafrequency_y'] = \
-            'KVP: 2D Plasma frequency, y-direction [eV/Ang^0.5]'
+            'KVP: 2D plasma frequency, y-direction [eV/Ang^0.5]'
 
     return data
 

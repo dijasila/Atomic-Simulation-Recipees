@@ -119,7 +119,7 @@ def hse_spinorbit(dct):
                                    bands=np.arange(e_skn.shape[2]),
                                    theta=theta, phi=phi)
         dct_soc['e_hse_mk'] = e_mk
-        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index, :].transpose()
+        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index(), :].transpose()
 
         return dct_soc
 
@@ -213,8 +213,7 @@ def bs_hse(row,
 
     # hse with soc
     hse_style = dict(
-        color='k',
-        # label='HSE',
+        color='C1',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -230,7 +229,7 @@ def bs_hse(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='k', ls=':')
+    ax.axhline(ef - reference, c='C1', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef - reference),
@@ -245,7 +244,8 @@ def bs_hse(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+                        color=[0.8, 0.8, 0.8])
     
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -259,7 +259,7 @@ def bs_hse(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     
     if row.get('gap_hse', 0) > 0.0:
         ref = row.get('evac', row.get('ef'))
@@ -280,13 +280,23 @@ def webpanel(row, key_descriptions):
              'columns': [[fig('hse-bs.png')],
                          [hse]],
              'plot_descriptions': [{'function': bs_hse,
-                                    'filenames': ['hse-bs.png']}]}
+                                    'filenames': ['hse-bs.png']}],
+             'sort': 15}
+
+    if row.get('gap_hse'):
+        rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+        summary = {'title': 'Summary',
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
+                   'sort': 11}
+        return [panel, summary]
+
     return [panel]
 
 
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
-         # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
                    'results-asr.bandstructure.json',

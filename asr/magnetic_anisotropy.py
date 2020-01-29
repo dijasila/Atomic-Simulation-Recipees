@@ -29,12 +29,13 @@ def spin_axis(theta, phi):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table
+    from asr.database.browser import table
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'])
-    panel = {'title': 'Magnetic properties',
-             'columns': [[magtable], []]}
+                      'dE_zx', 'dE_zy'], kd=key_descriptions)
+    panel = {'title': 'Basic magnetic properties (PBE)',
+             'columns': [[magtable], []],
+             'sort': 11}
     return [panel]
 
 
@@ -43,7 +44,7 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   f'asr run "setup.params {params}"',
                   'asr run asr.magnetic_anisotropy',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.magnetic_anisotropy',
@@ -124,11 +125,11 @@ def main():
     results.update({'spin_axis': axis,
                     'theta': theta,
                     'phi': phi,
-                    'E_x': E_x,
-                    'E_y': E_y,
-                    'E_z': E_z,
-                    'dE_zx': dE_zx,
-                    'dE_zy': dE_zy})
+                    'E_x': E_x * 1e3,
+                    'E_y': E_y * 1e3,
+                    'E_z': E_z * 1e3,
+                    'dE_zx': dE_zx * 1e3,
+                    'dE_zy': dE_zy * 1e3})
     world.barrier()
     if world.rank == 0:
         Path('gs_nosym.gpw').unlink()
