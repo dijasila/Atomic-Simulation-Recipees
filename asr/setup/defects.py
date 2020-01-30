@@ -149,7 +149,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure, vacuum, is_2D):
+def apply_vacuum(structure_sc, vacuum, is_2D):
     """
     Either sets the vacuum automatically for the 2D case (in such a way that
     L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
@@ -164,8 +164,18 @@ def apply_vacuum(structure, vacuum, is_2D):
     :return supercell_final: supercell structure with suitable vacuum size
                              applied
     """
+    import numpy as np
     if is_2D:
-        print('INFO: apply vacuum size to the supercell of the 2D structure.')
+        cell = structure_sc.get_cell()
+        a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
+        a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
+        a = (a1 + a2) / 2.
+        if vacuum is None:
+            vacuum = a
+        cell[2][2] = vacuum
+        structure_sc.set_cell(cell)
+        print('INFO: apply vacuum size to the supercell of the 2D structure'
+              'with {} Å.'.format(vacuum))
     elif not is_2D:
         print('INFO: no vacuum to be applied since this is a 3D structure.')
 
