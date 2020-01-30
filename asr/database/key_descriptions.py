@@ -136,7 +136,7 @@ key_descriptions = {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
         "cell_area": "KVP: Area of unit-cell [`Ang^2`]",
-        "has_invsymm": "KVP: Inversion symmetry",
+        "has_inversion_symmetry": "KVP: Material has inversion symmetry",
         "stoichiometry": "KVP: Stoichiometry",
         "spacegroup": "KVP: Space group",
         "spgnum": "KVP: Space group number",
