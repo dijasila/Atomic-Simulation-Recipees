@@ -88,10 +88,10 @@ key_descriptions = {
         "Projected density of states !PDOS!",
         "dos_at_ef_nosoc":
         "KVP: Density of states at the Fermi energy w/o soc."
-        "!DOS at ef no soc.! [states/eV * unit cell]",
+        "!DOS at ef no soc.! [states/(eV * unit cell)]",
         "dos_at_ef_soc":
         "KVP: Density of states at the Fermi energy"
-        " !DOS at ef! [states/eV * unit cell]",
+        " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
