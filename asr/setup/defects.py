@@ -17,8 +17,11 @@ import click
         help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
+@option('--vacuum', type=float,
+        help='Pass some float value to choose vacuum for 2D case manually, '
+        ' it will be chosen automatically otherwise.')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True):
+         maxsize=8, intrinsic=True, vacancies=True, vacuum=None):
     """
     Sets up defect structures for a given host.
 
@@ -70,6 +73,12 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     structure = read(atomfile)
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
+
+    if vacuum is None:
+        print('INFO: no vacuum specified. Choose it accordingly to L_z ~ '
+              'L_xy automatically.'.format(vacuum))
+    elif type(vacuum) is float:
+        print('Vacuum is: {}'.format(vacuum))
 
     # check dimensionality of initial parent structure
     nd = int(np.sum(structure.get_pbc()))
@@ -138,6 +147,27 @@ def setup_supercell(structure, max_lattice, is_2D):
           x_size, y_size, z_size))
 
     return structure_sc, x_size, y_size, z_size
+
+
+def apply_vacuum(structure, vacuum, is_2D):
+    """
+    Either sets the vacuum automatically for the 2D case (in such a way that
+    L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
+    passes in case one is dealing with a 3D structure.
+
+    :param structure_sc: supercell structure without defects incorporated
+    :param vacuum: either None (automatic adjustment of the vacuum size) or
+                   some float value for manual adjustment of the vacuum for
+                   2D structure
+    :param is_2D: dimensionality of the structure
+
+    :return supercell_final: supercell structure with suitable vacuum size
+                             applied
+    """
+    if is_2D:
+        print('INFO: apply vacuum size to the supercell of the 2D structure.')
+    elif not is_2D:
+        print('INFO: no vacuum to be applied since this is a 3D structure.')
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
