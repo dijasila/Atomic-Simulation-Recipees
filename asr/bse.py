@@ -250,7 +250,7 @@ def webpanel(row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
@@ -262,7 +262,7 @@ def webpanel(row, key_descriptions):
         funcy = partial(absorption, direction='y')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), fig('absz.png')],
                              [fig('absy.png'), E_B]],
                  'plot_descriptions': [{'function': funcx,
