@@ -4,11 +4,15 @@ import numpy as np
 
 
 def webpanel(row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import fig, table
+
+    opt = table(row, 'Property', [
+        'alphax_lat', 'alphay_lat', 'alphaz_lat',
+    ], key_descriptions)
 
     panel = {'title': 'Infrared polarizability (RPA)',
              'columns': [[fig('infrax.png'), fig('infraz.png')],
-                         [fig('infray.png')]],
+                         [fig('infray.png'), opt]],
              'plot_descriptions': [{'function': create_plot,
                                     'filenames': ['infrax.png',
                                                   'infray.png',
