@@ -477,14 +477,14 @@ def webpanel(row, key_descriptions):
                  ['Conduction band minimum wrt. Fermi level',
                   f'{row.cbm - row.efermi:.2f} eV']])
 
-    panel = {'title': 'Electronic band structure (PBE)',
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
                          [fig('bz-with-gaps.png'), pbe]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14}
+             'sort': 14.5}
 
     return [panel]
 
