@@ -94,7 +94,8 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                    charge_states=chargestates,
                                    vacancies=vacancies, sc=supercell,
-                                   max_lattice=maxsize, is_2D=is2d)
+                                   max_lattice=maxsize, is_2D=is2d,
+                                   vacuum=vacuum)
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
@@ -167,21 +168,27 @@ def apply_vacuum(structure_sc, vacuum, is_2D):
     import numpy as np
     if is_2D:
         cell = structure_sc.get_cell()
+        oldvac = cell[2][2]
+        pos = structure_sc.get_positions()
         a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
         a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
         a = (a1 + a2) / 2.
         if vacuum is None:
             vacuum = a
         cell[2][2] = vacuum
+        pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
         structure_sc.set_cell(cell)
+        structure_sc.set_positions(pos)
         print('INFO: apply vacuum size to the supercell of the 2D structure'
               'with {} Å.'.format(vacuum))
     elif not is_2D:
         print('INFO: no vacuum to be applied since this is a 3D structure.')
 
+    return structure_sc
+
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
-                  max_lattice, is_2D):
+                  max_lattice, is_2D, vacuum):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -209,6 +216,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     if sc[0] == 0 and sc[1] == 0 and sc[2] == 0:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
+        pristine = apply_vacuum(pristine, vacuum, is_2D)
     else:
         N_x = sc[0]
         N_y = sc[1]
@@ -216,6 +224,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
               N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))
+        pristine = apply_vacuum(pristine, vacuum, is_2D)
     parameters = {}
     string = 'defects.pristine_sc'
     calculator_relax = {
