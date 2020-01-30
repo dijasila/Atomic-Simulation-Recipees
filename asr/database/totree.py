@@ -24,11 +24,14 @@ tests = [
 @option('--copy', is_flag=True, help='Copy pointer tagged files')
 @option('--atomsname', help='Filename to unpack atomic structure to')
 @option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
+@option('--patterns',
+        help="Comma separated patterns. Only unpack files matching patterns")
 def main(database, run=False, selection='',
          tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
                          '{spg}-{wyck}-{uid}'),
          sort=None, atomsname='structure.json',
-         chunks=1, copy=False):
+         chunks=1, copy=False,
+         patterns='*'):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -86,6 +89,7 @@ def main(database, run=False, selection='',
     import spglib
     from asr.core import chdir, write_json
     import importlib
+    from fnmatch import fnmatch
 
     if selection:
         print(f'Selecting {selection}')
@@ -98,6 +102,7 @@ def main(database, run=False, selection='',
     db = connect(database)
     rows = list(db.select(selection, sort=sort))
 
+    patterns = patterns.split(',')
     folders = {}
     folderlist = []
     err = []
@@ -126,7 +131,7 @@ def main(database, run=False, selection='',
                 folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
                                                formula=formula,
                                                mag=magstate,
-                                               uid=uid)
+                                               uid=uid, row=row)
                 if folder not in folderlist:
                     break
             else:
@@ -139,7 +144,8 @@ def main(database, run=False, selection='',
         else:
             folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
                                            formula=formula,
-                                           mag=magstate)
+                                           mag=magstate,
+                                           row=row)
         assert folder not in folderlist, f'Collision in folder: {folder}!'
         folderlist.append(folder)
         identifier = row.get('uid', row.id)
@@ -172,8 +178,17 @@ def main(database, run=False, selection='',
         makedirs(folder)
         folder = Path(folder)
         with chdir(folder):
-            write(atomsname, row.toatoms())
+            for pattern in patterns:
+                if fnmatch(atomsname, pattern):
+                    write(atomsname, row.toatoms())
+                    break
+
             for filename, results in row.data.items():
+                for pattern in patterns:
+                    if fnmatch(filename, pattern):
+                        break
+                else:
+                    continue
                 # We treat json differently
                 if filename.endswith('.json'):
                     write_json(filename, results)
