@@ -3,7 +3,7 @@ from click import Choice
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     opt = table(row, 'Property', [
         'alphax_el', 'alphay_el', 'alphaz_el',
@@ -218,9 +218,9 @@ def polarizability(row, fx, fy, fz):
     except AttributeError:
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
-    ax.set_title('x-direction')
+    ax.set_title('x-polarization')
     ax.set_xlabel('energy [eV]')
-    ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
+    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
     ax.set_xlim(xlim())
@@ -251,9 +251,9 @@ def polarizability(row, fx, fy, fz):
     except AttributeError:
         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-    ax.set_title('y-component')
+    ax.set_title('y-polarization')
     ax.set_xlabel('energy [eV]')
-    ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
+    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
     ax.set_xlim(xlim())
@@ -264,9 +264,9 @@ def polarizability(row, fx, fy, fz):
     ax3 = ax
     ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
-    ax.set_title('z-component')
+    ax.set_title('z-polarization')
     ax.set_xlabel('energy [eV]')
-    ax.set_ylabel(r'polarizability [$\mathrm{\AA}$]')
+    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
     ax.legend()
     ax.set_xlim(xlim())

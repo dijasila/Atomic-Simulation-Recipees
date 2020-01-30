@@ -14,8 +14,7 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command('asr.raman',
-         webpanel=webpanel)
+@command("asr.raman", webpanel=webpanel)
 def main():
     raise NotImplementedError
 
@@ -65,7 +64,7 @@ def raman(row, filename):
 
     # Make a latex type formula
     def getformula(matstr):
-        matformula = r''
+        matformula = r""
         for ch in matstr:
             if ch.isdigit():
                 matformula += '$_' + ch + '$'
@@ -74,11 +73,11 @@ def raman(row, filename):
         return matformula
 
     # Set the variables and parameters
-    wavelength_w = data['wavelength_w']
-    freqs_l = data['freqs_l']
-    amplitudes_vvwl = data['amplitudes_vvwl']
-    selpol = params['polarization']
-    gamma = params['broadening']
+    wavelength_w = data["wavelength_w"]
+    freqs_l = data["freqs_l"]
+    amplitudes_vvwl = data["amplitudes_vvwl"]
+    selpol = params["polarization"]
+    gamma = params["broadening"]
 
     # If the wavelength was not found, return
     waveind = int(np.where(wavelength_w == params['wavelength'])[0])
@@ -108,7 +107,7 @@ def raman(row, filename):
 
     # Make the figure panel and add y=0 axis
     ax = plt.figure().add_subplot(111)
-    ax.axhline(y=0, color='k')
+    ax.axhline(y=0, color="k")
 
     # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):

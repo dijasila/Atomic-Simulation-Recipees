@@ -34,8 +34,7 @@ def bs_gw(row,
 
     # hse with soc
     style = dict(
-        color='k',
-        # label='HSE',
+        color='C1',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -51,7 +50,7 @@ def bs_gw(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='k', ls=':')
+    ax.axhline(ef - reference, c='C1', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef - reference),
@@ -66,7 +65,8 @@ def bs_gw(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+                        color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -229,8 +229,10 @@ def plot_renorm_factor(row, filename):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     ref = row.get('evac', row.get('ef'))
+    if not row.get('gap_gw', 0) > 0:
+        return []
     keys = ['vbm_gw', 'cbm_gw']
     for key in keys:
         row[key] -= ref
@@ -240,10 +242,20 @@ def webpanel(row, key_descriptions):
     for key in keys:
         row[key] += ref
     panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png'), prop]],
+             'columns': [[fig('gw-bs.png')], [prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
-             'sort': 15}
+             'sort': 16}
+
+    if row.get('gap_gw'):
+        rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+        summary = {'title': 'Summary',
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
+                   'sort': 11}
+        return [panel, summary]
+
     return [panel]
 
 

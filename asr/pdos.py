@@ -54,7 +54,7 @@ class SOCDOS(DOS):
         self.e_skn = e_skn[:, bz2ibz].reshape(shape)
 
     def get_dos(self):
-        return DOS.get_dos(self) / 2
+        return DOS.get_dos(self, spin=0)
 
 
 # Hack the local density of states to keep spin-orbit results and not
@@ -159,7 +159,7 @@ ctests.append({'description': 'Test the refined ground state of Si',
                        'asr run gs',
                        'asr run pdos@calculate',
                        'asr run database.fromtree',
-                       'asr run "browser --only-figures"']})
+                       'asr run "database.browser --only-figures"']})
 
 tests = []
 tests.append({'description': 'Test the pdos of Si (cores=1)',
@@ -173,7 +173,7 @@ tests.append({'description': 'Test the pdos of Si (cores=1)',
                       'asr run gs',
                       'asr run pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test the pdos of Si (cores=2)',
               'name': 'test_asr.pdos_Si_parallel',
               'cli': ['asr run "setup.materials -s Si2"',
@@ -185,22 +185,34 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr run gs',
                       'asr run -p 2 pdos',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 # ---------- Webpanel ---------- #
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
-    # PDOS plot goes to Electronic band structure (PBE) panel, which is
-    # defined in the bandstructure recipe
-    panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[], [fig('pbe-pdos.png', link='empty')]],
-             'plot_descriptions': [{'function': plot_pdos,
-                                    'filenames': ['pbe-pdos.png']}],
-             'sort': 13}
-    return [panel]
+    from asr.database.browser import fig, table
+    # PDOS without spin-orbit coupling
+    nosoc_panel = {'title': 'Band structure with projections (PBE)',
+                   'columns': [[],
+                               [fig('pbe-pdos_nosoc.png', link='empty'),
+                                table(row, 'Property', ['dos_at_ef_nosoc'],
+                                      kd=key_descriptions)]],
+                   'plot_descriptions': [{'function': plot_pdos_nosoc,
+                                          'filenames': ['pbe-pdos_nosoc.png']}]
+                   }
+
+    # PDOS with spin-orbit coupling
+    # Goes to Electronic band structure (PBE) panel, which is defined in the
+    # bandstructure recipe
+    soc_panel = {'title': 'Electronic band structure (PBE)',
+                 'columns': [[], [fig('pbe-pdos_soc.png', link='empty')]],
+                 'plot_descriptions': [{'function': plot_pdos_soc,
+                                        'filenames': ['pbe-pdos_soc.png']}],
+                 'sort': 13}
+
+    return [nosoc_panel, soc_panel]
 
 
 # ---------- Main functionality ---------- #
@@ -439,11 +451,11 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
     # Setup ssili (spin, symbol index, angular momentum index) key
     def ssili(syl):
-        s, a, L = syl.split(',')
+        s, y, L = syl.split(',')
         # Symbols list can have multiple entries of the same symbol
         # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
         # 'Fe' will have index 1.
-        si = symbols.index(a)
+        si = symbols.index(y)
         li = ['s', 'p', 'd', 'f'].index(L)
         return f'{s}{si}{li}'
 
@@ -451,7 +463,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
 
 def get_yl_colors(dct_syl):
-    """Get the color indices corresponding for each symbol and angular momentum
+    """Get the color indices corresponding to each symbol and angular momentum
     
     Parameters
     ----------
@@ -478,9 +490,17 @@ def get_yl_colors(dct_syl):
     return color_yl
 
 
+def plot_pdos_nosoc(*args, **kwargs):
+    return plot_pdos(*args, soc=False, **kwargs)
+
+
+def plot_pdos_soc(*args, **kwargs):
+    return plot_pdos(*args, soc=True, **kwargs)
+
+
 def plot_pdos(row, filename, soc=True,
               figsize=(5.5, 5),
-              lw=2, loc='best'):
+              lw=1, loc='best'):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -508,8 +528,17 @@ def plot_pdos(row, filename, soc=True,
         emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
     else:
         nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
-        emin = nosoc_data.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = nosoc_data.get('cbm', ef) + 3 - row.get('evac', 0)
+        vbmnosoc = nosoc_data.get('vbm', ef)
+        cbmnosoc = nosoc_data.get('cbm', ef)
+
+        if vbmnosoc is None:
+            vbmnosoc = ef
+
+        if cbmnosoc is None:
+            cbmnosoc = ef
+
+        emin = vbmnosoc - 3 - row.get('evac', 0)
+        emax = cbmnosoc + 3 - row.get('evac', 0)
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
@@ -546,7 +575,7 @@ def plot_pdos(row, filename, soc=True,
             label = None
 
         ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=color_yl[key[2:]], lw=lw)
+                label=label, color=color_yl[key[2:]])
 
     ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')

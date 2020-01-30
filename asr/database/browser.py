@@ -5,7 +5,8 @@ from typing import List, Dict, Tuple, Any
 
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
-from ase.db.summary import create_table, miscellaneous_section
+from ase.db.core import float_to_time_string, now
+
 assert sys.version_info >= (3, 4)
 
 plotlyjs = (
@@ -21,6 +22,45 @@ params = {'legend.fontsize': 'large',
           'ytick.labelsize': 'large',
           'savefig.dpi': 200}
 plt.rcParams.update(**params)
+
+
+def create_table(row,  # AtomsRow
+                 header,  # List[str]
+                 keys,  # List[str]
+                 key_descriptions,  # Dict[str, Tuple[str, str, str]]
+                 digits=3  # int
+                 ):  # -> Dict[str, Any]
+    """Create table-dict from row."""
+    table = []
+    for key in keys:
+        if key == 'age':
+            age = float_to_time_string(now() - row.ctime, True)
+            table.append(('Age', age))
+            continue
+        value = row.get(key)
+        if value is not None:
+            if isinstance(value, float):
+                value = '{:.{}f}'.format(value, digits)
+            elif not isinstance(value, str):
+                value = str(value)
+            desc, unit = key_descriptions.get(key, ['', key, ''])[1:]
+            if unit:
+                value += ' ' + unit
+            table.append((desc, value))
+    return {'type': 'table',
+            'header': header,
+            'rows': table}
+
+
+def miscellaneous_section(row, key_descriptions, exclude):
+    """Helper function for adding a "miscellaneous" section.
+
+    Create table with all keys except those in exclude.
+    """
+    misckeys = (set(key_descriptions) |
+                set(row.key_value_pairs)) - set(exclude)
+    misc = create_table(row, ['Items', ''], sorted(misckeys), key_descriptions)
+    return ('Miscellaneous', [[misc]])
 
 
 def val2str(row, key: str, digits=2) -> str:
@@ -87,8 +127,9 @@ def merge_panels(page):
         page[title] = panel
 
 
-def layout(row: AtomsRow, key_descriptions: 'Dict[str, Tuple[str, str, str]]',
-           prefix: str) -> 'List[Tuple[str, List[List[Dict[str, Any]]]]]':
+def layout(row: AtomsRow,
+           key_descriptions: Dict[str, Tuple[str, str, str]],
+           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
     from asr.core import get_recipes
     page = {}

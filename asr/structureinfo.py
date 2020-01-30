@@ -69,13 +69,13 @@ def has_inversion(atoms, use_spglib=True):
 
 
 def webpanel(row, key_descriptions):
-    from ase.db.summary import ATOMS, UNITCELL
-    from asr.browser import table
+    from asr.database.browser import table
 
-    basictable = table(row, 'Structural info', [
-        'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
+    basictable = table(row, 'Structure info', [
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
+    basictable['columnwidth'] = 4
     rows = basictable['rows']
     codid = row.get('COD_id')
     if codid:
@@ -89,7 +89,7 @@ def webpanel(row, key_descriptions):
     doi = row.get('doi')
     if doi:
         rows.append([
-            'Monolayer DOI',
+            'Monolayer reported DOI',
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
@@ -97,14 +97,16 @@ def webpanel(row, key_descriptions):
     row = ['Magnetic state', row.magstate]
     eltable = {'type': 'table',
                'header': ['Electronic properties', ''],
-               'rows': [row]}
+               'rows': [row],
+               'columnwidth': 4}
 
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
-                           'rows': []},
+                           'rows': [],
+                           'columnwidth': 4},
                           eltable],
-                         [ATOMS, UNITCELL]],
+                         [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
 
@@ -116,7 +118,7 @@ tests = [{'description': 'Test SI.',
                   'asr.gs@calculate:kptdensity 2"',
                   'asr run structureinfo',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.structureinfo',
@@ -196,7 +198,7 @@ def main():
     info['spglib_dataset'] = dataset
     sg = dataset['international']
     number = dataset['number']
-    w = '-'.join(sorted(set(dataset['wyckoffs'])))
+    w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_prototype = f'{stoi}-{number}-{w}'
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
