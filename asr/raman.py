@@ -108,19 +108,6 @@ def raman(row, filename):
         )
         maxr[ii] = np.max(rr[pol])
 
-    # Set the defaults for plot
-    plt.rcParams["font.family"] = "serif"
-    plt.rcParams["font.serif"] = ["Times New Roman"] + plt.rcParams[
-        "font.serif"
-    ]
-    plt.rcParams["mathtext.fontset"] = "cm"
-    plt.rcParams["axes.linewidth"] = 0.5
-    plt.rcParams["font.size"] = 11
-    plt.rcParams["lines.markersize"] = 5
-    plt.rcParams["lines.markeredgecolor"] = "k"
-    plt.rcParams["lines.markeredgewidth"] = 0.5
-    plt.style.use("seaborn-bright")
-
     # Make the figure panel and add y=0 axis
     ax = plt.figure().add_subplot(111)
     ax.axhline(y=0, color="k")
