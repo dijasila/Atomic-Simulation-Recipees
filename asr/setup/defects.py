@@ -20,8 +20,12 @@ import click
 @option('--vacuum', type=float,
         help='Pass some float value to choose vacuum for 2D case manually, '
         ' it will be chosen automatically otherwise.')
+@option('--nopbc', is_flag=True,
+        help='Keep the periodic boundary conditions as they are. If this '
+        'option is not used, pbc will be enforced for correct defect '
+        'calculations')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True, vacuum=None):
+         maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False):
     """
     Sets up defect structures for a given host.
 
@@ -90,7 +94,7 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
                                    charge_states=chargestates,
                                    vacancies=vacancies, sc=supercell,
                                    max_lattice=maxsize, is_2D=is2d,
-                                   vacuum=vacuum)
+                                   vacuum=vacuum, nopbc=nopbc)
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
@@ -145,7 +149,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure_sc, vacuum, is_2D):
+def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     """
     Either sets the vacuum automatically for the 2D case (in such a way that
     L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
@@ -178,12 +182,16 @@ def apply_vacuum(structure_sc, vacuum, is_2D):
               'with {} Å.'.format(vacuum))
     elif not is_2D:
         print('INFO: no vacuum to be applied since this is a 3D structure.')
+    if not nopbc:
+        structure_sc.set_pbc([True, True, True])
+        print('INFO: overwrite pbc and apply them in all three directions for'
+              ' subsequent defect calculations.')
 
     return structure_sc
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
-                  max_lattice, is_2D, vacuum):
+                  max_lattice, is_2D, vacuum, nopbc):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -211,7 +219,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     if sc[0] == 0 and sc[1] == 0 and sc[2] == 0:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
-        pristine = apply_vacuum(pristine, vacuum, is_2D)
+        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     else:
         N_x = sc[0]
         N_y = sc[1]
@@ -219,7 +227,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
               N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))
-        pristine = apply_vacuum(pristine, vacuum, is_2D)
+        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     parameters = {}
     string = 'defects.pristine_sc'
     calculator_relax = {
