@@ -26,9 +26,10 @@ def raman(row, filename):
     from matplotlib import colors as mcolors
 
     # All required settings
-    params = {'broadening': 10.0, # in cm^-1
+    params = {'broadening': 3.0, # in cm^-1
               'wavelength': 532.0, # in nm
-              'polarization': ['xx', 'yy', 'zz']}
+              'polarization': ['xx', 'yy', 'zz'],
+              'temperature': 300}
               #'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz']}
 
     # Read the data from the disk
@@ -42,17 +43,24 @@ def raman(row, filename):
     def lor(w, g):
         lor = 0.5*g/(np.pi*((w.real)**2+0.25*g**2))
         return lor
+    from math import pi, sqrt
+    def gauss(w, g):
+        gauss = 1/(g*sqrt(2*pi))*np.exp(-0.5*w**2/g**2)
+        gauss[gauss<1e-16] = 0
+        return gauss
 
     # Compute spectrum based on a set of resonances
-    def calcspectrum(wlist, rlist, ww, gamma=10, shift=0):
+    from ase.units import kB
+    cm = 1/8065.544
+    kbT = kB*params['temperature']/cm 
+    def calcspectrum(wlist, rlist, ww, gamma=10, shift=0, kbT=kbT):
         rr = np.zeros(np.size(ww))
         for wi, ri in zip(wlist, rlist):
-            # Only add the modes with positive frequencies (stable)
-            if wi>=0:
-                rr = rr+np.abs(ri)**2*lor(ww-wi-shift, gamma)
-
-        # Normalize it to 1 and return it
-        #rr = rr/np.max(rr)
+            if wi>1e-1:
+                nw = 1/(np.exp(wi/kbT)-1)
+                curr = (1+nw)*np.abs(ri)**2
+                rr = rr+curr*gauss(ww-wi-shift, gamma)
+                # rr = rr+curr*lor(ww-wi-shift, gamma)
         return rr
 
     # Make a latex type formula
@@ -71,6 +79,7 @@ def raman(row, filename):
     amplitudes_vvwl = data['amplitudes_vvwl']
     selpol = params['polarization']
     gamma = params['broadening']
+    #print(gamma)
 
     # If the wavelength was not found, return
     waveind = int(np.where(wavelength_w==params['wavelength'])[0])
@@ -105,7 +114,7 @@ def raman(row, filename):
     plt.rcParams['lines.markersize'] = 5
     plt.rcParams['lines.markeredgecolor'] = 'k'
     plt.rcParams['lines.markeredgewidth'] = 0.5
-    plt.style.use('seaborn-bright')
+    # plt.style.use('seaborn-bright')
 
     # Make the figure panel and add y=0 axis
     ax = plt.figure().add_subplot(111)
@@ -118,8 +127,8 @@ def raman(row, filename):
     ax.set_title(figtitle)
     ax.set_xlabel('Raman shift (cm$^{-1}$)')
     ax.set_ylabel('Raman intensity (a.u.)')
-    ax.set_ylim((-0.2, 1.1))
-    ax.set_yticks([])
+    ax.set_ylim((-0.1, 1.1))
+    ax.set_yticks([0, 0.5, 1.0])
     ax.set_xlim((minw, maxw))
 
     # Add the legend to figure
@@ -140,9 +149,9 @@ def raman(row, filename):
     rep_l = np.array(rep_l)
 
     # Add the phonon bars to the figure with showing their degeneracy factors
-    pltbar = plt.bar(w_l, -0.1, width=maxw/100, color='b')
+    pltbar = plt.bar(w_l, -0.04, width=maxw/100, color='k')
     for idx, rect in enumerate(pltbar):
-        ax.text(rect.get_x()+rect.get_width()/2., -0.17, str(int(rep_l[idx])), ha='center', va='bottom', rotation=0)
+        ax.text(rect.get_x()+rect.get_width()/2., -0.1, str(int(rep_l[idx])), ha='center', va='bottom', rotation=0)
 
     # Remove the extra space and save the figure
     plt.tight_layout()
