@@ -40,7 +40,7 @@ def create_plot(row, *fnames):
     # Get max phonon freq
     phonondata = row.data.get("results-asr.phonons.json")
     maxphononfreq = phonondata.get("omega_kl")[0].max() * 1e3
-    maxomega = maxphononfreq * 1.1
+    maxomega = maxphononfreq * 1.5
 
     atoms = row.toatoms()
     cell_cv = atoms.get_cell()
