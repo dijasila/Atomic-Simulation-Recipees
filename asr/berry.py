@@ -167,7 +167,14 @@ def webpanel(row, key_descriptions):
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]]}
-    return [summary]
+
+    basicelec = {'title': 'Basic electronic properties (PBE)',
+                 'columns': [[{'type': 'table',
+                               'header': ['Property', ''],
+                               'rows': [row]}]],
+                 'sort': 15}
+
+    return [summary, basicelec]
 
 
 @command(module='asr.berry',
