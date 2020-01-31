@@ -175,7 +175,7 @@ def main(nfreq=300, eta=1e-2):
 
     # Make frequency grid
     fmin = 0
-    fmax = omega_ql[0].max() * 1e3 * 3
+    fmax = omega_ql[0].max() * 1e3 * 3  # Factor of 3 should be enough
     omega_w = np.linspace(fmin, fmax, nfreq)
 
     # Read born charges
