@@ -215,6 +215,11 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                         data.update(tmpdata)
                         data['__links__'].update(tmplinks)
 
+            for key in filter(lambda x: x.startswith('results-'), data.keys()):
+                recipe = key[8:-5].replace('.', '_')
+                name = f'has_{recipe}'
+                kvp[name] = True
+
             keys.update(kvp.keys())
             db.write(atoms, data=data, **kvp)
 
