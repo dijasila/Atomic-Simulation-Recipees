@@ -370,7 +370,7 @@ def bs_pbe(row,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
-    colorbar = row.magstate == 'NM' and row.has_inversion_symmetry
+    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
