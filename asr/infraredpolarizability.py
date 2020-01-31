@@ -28,14 +28,19 @@ def create_plot(row, *fnames):
 
     # Get electronic polarizability
     infrareddct = row.data.get('results-asr.infraredpolarizability.json')
-    omega_w = infrareddct['omega_w']
+    omega_w = infrareddct['omega_w'] * 1e3
     alpha_wvv = infrareddct['alpha_wvv']
 
     electrondct = row.data.get('results-asr.polarizability.json')
     alphax_w = electrondct['alphax_w']
     alphay_w = electrondct['alphay_w']
     alphaz_w = electrondct['alphaz_w']
-    omegatmp_w = electrondct['frequencies']
+    omegatmp_w = electrondct['frequencies'] * 1e3
+
+    # Get max phonon freq
+    phonondata = row.data.get("results-asr.phonons.json")
+    maxphononfreq = phonondata.get("omega_kl")[0].max() * 1e3
+    maxomega = maxphononfreq * 1.1
 
     atoms = row.toatoms()
     cell_cv = atoms.get_cell()
@@ -68,9 +73,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsx_w.real)
         ax = plt.gca()
         ax.set_title('x-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(r'Dielectric function')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[0])
 
@@ -79,9 +84,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsy_w.real)
         ax = plt.gca()
         ax.set_title('y-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(r'Dielectric function')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[1])
 
@@ -90,9 +95,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsz_w.real)
         ax = plt.gca()
         ax.set_title('z-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(r'Dielectric function')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[2])
     elif ndim in [2, 1, 0]:
@@ -107,9 +112,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ax_w.real)
         ax = plt.gca()
         ax.set_title('x-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(rf'polarizability [{unit}]')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[0])
 
@@ -118,9 +123,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ay_w.real)
         ax = plt.gca()
         ax.set_title('y-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(rf'polarizability [{unit}]')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[1])
 
@@ -129,9 +134,9 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, az_w.real)
         ax = plt.gca()
         ax.set_title('z-polarization')
-        ax.set_xlabel('energy [eV]')
+        ax.set_xlabel('energy [meV]')
         ax.set_ylabel(rf'polarizability [{unit}]')
-        ax.set_xlim(0, )
+        ax.set_xlim(0, maxomega)
         plt.tight_layout()
         plt.savefig(fnames[2])
 
@@ -142,11 +147,9 @@ def create_plot(row, *fnames):
                    'results-asr.borncharges.json',
                    'results-asr.polarizability.json'],
          webpanel=webpanel)
-@option('--fmin', help='Minimum frequency')
-@option('--fmax', help='Maximum frequency')
 @option('--nfreq', help='Number of frequency points')
 @option('--eta', help='Relaxation rate')
-def main(fmin=0.0, fmax=1, nfreq=300, eta=1e-2):
+def main(nfreq=300, eta=1e-2):
     from ase.io import read
 
     # Get relevant atomic structure
@@ -171,6 +174,8 @@ def main(fmin=0.0, fmax=1, nfreq=300, eta=1e-2):
     modes_xl *= 1 / m_inv_x[:, np.newaxis]
 
     # Make frequency grid
+    fmin = 0
+    fmax = omega_ql[0].max() * 1e3 * 3
     omega_w = np.linspace(fmin, fmax, nfreq)
 
     # Read born charges
