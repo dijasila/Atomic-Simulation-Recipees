@@ -9,7 +9,7 @@ from asr.pdos import dos_at_ef
 from asr.core import write_json
 
 
-def test_pdos():
+def test_pdos(separate_folder):
     from gpaw import GPAW, PW
 
     # ------------------- Inputs ------------------- #

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
 def test_relax(separate_folder, usemocks, atoms):
     from asr.relax import main as relax
@@ -16,6 +17,7 @@ def test_relax(separate_folder, usemocks, atoms):
     })
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
 def test_relax_emt(separate_folder, name):
@@ -27,6 +29,7 @@ def test_relax_emt(separate_folder, name):
     relax(calculator={'name': 'emt'})
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
 @pytest.mark.xfail(strict=True, raises=BrokenSymmetryError)

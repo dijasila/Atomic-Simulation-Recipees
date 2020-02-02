@@ -6,6 +6,7 @@ from hypothesis.strategies import floats
 
 
 run_no = 0
+@pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
 @given(gap=floats(min_value=0, max_value=1),
        fermi_level=floats(min_value=0, max_value=1))

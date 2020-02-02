@@ -6,8 +6,8 @@ tests:
     - pip install flake8 coverage
     - pip install -r requirements.txt
     - pip install .[tests]
-    - flake8 asr
-    - pytest --pyargs asr --cov=asr
+    - pytest --pyargs asr --cov=asr -k ci
+    - flake8
 
 docs_test:
   image: python:3.6
