@@ -33,7 +33,7 @@ class GPAW(Calculator):
         "stress": None,
         "magmom": None,
         "magmoms": None,
-        "dipole": [0, 0, 0],
+        "dipole": np.array([0, 0, 0], float),
         "electrostatic_potential": None,
         "gap": 0,
     }
@@ -70,16 +70,10 @@ class GPAW(Calculator):
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
             self.atoms = atoms
-
-        if isinstance(self.parameters.nbands, str):
-            self.parameters.nbands = int(
-                float(self.parameters.nbands[:-1])
-                / 100
-                * self.parameters.nelectrons
-            )
-
+            
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
-        self.parameters.kpts = self.kpts = kpts
+        # self.parameters.kpts = self.kpts = kpts
+        self.kpts = kpts
         icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
 
         # Simple parabolic band
@@ -98,10 +92,11 @@ class GPAW(Calculator):
 
         self.setups.nvalence = self.parameters.nelectrons
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
-        self.eigenvalues = eps_kn[:, : self.parameters.nbands] * Ha
+        nbands = self.get_number_of_bands()
+        self.eigenvalues = eps_kn[:, : nbands] * Ha
         assert self.eigenvalues.shape[0] == len(self.kpts), \
             (self.eigenvalues.shape, self.kpts.shape)
-        assert self.eigenvalues.shape[1] == self.parameters.nbands
+        assert self.eigenvalues.shape[1] == nbands
 
         self.results = {
             "energy": self.parameters.energy
@@ -132,7 +127,17 @@ class GPAW(Calculator):
         return self.parameters.nspins
 
     def get_number_of_bands(self):
-        return self.parameters.nbands
+        if isinstance(self.parameters.nbands, str):
+            return int(
+                float(self.parameters.nbands[:-1])
+                / 100
+                * self.parameters.nelectrons
+            )
+        elif self.parameters.nbands < 0:
+            return (self.parameters.nelectrons -
+                    self.parameters.nbands)
+        else:
+            return self.parameters.nbands
 
     def get_number_of_electrons(self):
         return self.parameters.nelectrons

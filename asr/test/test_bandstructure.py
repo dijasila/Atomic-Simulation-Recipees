@@ -1,6 +1,10 @@
-def test_bandstructure_gpaw_mock(isolated_filesystem, mock_GPAW):
-    from ase.build import bulk
+from .conftest import test_materials
+import pytest
+
+
+@pytest.mark.parametrize("atoms", test_materials)
+def test_bandstructure_main(separate_folder, usemocks, fs, atoms):
+    from ase.io import write
     from asr.bandstructure import main
-    structure = bulk('C')
-    structure.write('structure.json')
-    main(skip_deps=True)
+    write('structure.json', atoms)
+    main()

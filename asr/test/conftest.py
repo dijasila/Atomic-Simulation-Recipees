@@ -8,10 +8,16 @@ from ase import Atoms
 from ase.build import bulk
 
 
-@pytest.fixture
+@pytest.fixture()
 def usemocks(monkeypatch):
     from pathlib import Path
+    import sys
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
+    if 'gpaw' in sys.modules:
+        sys.modules.pop('gpaw')
+    yield
+    if 'gpaw' in sys.modules:
+        sys.modules.pop('gpaw')
 
 
 # Make some 1D, 2D and 3D test materials

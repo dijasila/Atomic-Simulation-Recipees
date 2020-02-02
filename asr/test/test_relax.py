@@ -1,11 +1,24 @@
+from .conftest import test_materials
 from asr.relax import BrokenSymmetryError
 from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize("atoms", test_materials)
+def test_relax(separate_folder, usemocks, atoms):
+    from asr.relax import main as relax
+    from ase.io import write
+
+    write('unrelaxed.json', atoms)
+    relax(calculator={
+        "name": "gpaw",
+        "kpts": {"density": 2, "gamma": True},
+    })
+
+
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-def test_relax_emt(separate_folder, name, usemocks):
+def test_relax_emt(separate_folder, name):
     from asr.relax import main as relax
     from ase.build import bulk
 
@@ -18,7 +31,8 @@ def test_relax_emt(separate_folder, name, usemocks):
                                   'Pd', 'Pt', 'C'])
 @pytest.mark.xfail(strict=True, raises=BrokenSymmetryError)
 def test_relax_emt_fail_broken_symmetry(separate_folder, name,
-                                        monkeypatch, usemocks):
+                                        monkeypatch):
+    """Test that a broken symmetry raises an error."""
     from asr.relax import main as relax
     from ase.build import bulk
     import numpy as np
@@ -34,20 +48,11 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
     relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
-def test_relax_gpaw_mock(separate_folder, usemocks):
-    from asr.setup.materials import main as setupmaterial
-    from asr.relax import main as relax
-    setupmaterial.cli(["-s", "BN,natoms=2"])
-    Path("materials.json").rename("unrelaxed.json")
-    relax(calculator={'name': 'gpaw'})
-
-
-@pytest.mark.slow
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(separate_folder):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
-    from asr.core import read_json
-
     setupmaterial.cli(["-s", "Si2"])
     Path("materials.json").rename("unrelaxed.json")
     relaxargs = (
@@ -57,11 +62,9 @@ def test_relax_si_gpaw(separate_folder):
     results = relax.cli(["--calculator", relaxargs])
     assert abs(results["c"] - 3.978) < 0.001
 
-    diskresults = read_json("results-asr.relax.json")
-    assert results == diskresults
 
-
-@pytest.mark.slow
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
 def test_relax_bn_gpaw(separate_folder):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax

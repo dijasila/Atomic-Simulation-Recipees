@@ -142,8 +142,9 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            msg = 'Relax recipe not implemented for 1D structures'
-            raise NotImplementedError(msg)
+            pbc = atoms.get_pbc()
+            assert pbc[2], "1D periodic axis should be the last one."
+            smask = [0, 0, 1, 0, 0, 0]
 
     from asr.setup.symmetrize import atomstospgcell as ats
     dataset = spglib.get_symmetry_dataset(ats(atoms),
