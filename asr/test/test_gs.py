@@ -1,7 +1,7 @@
 import pytest
 from pytest import approx
 from .conftest import test_materials
-from hypothesis import given, example
+from hypothesis import given
 from hypothesis.strategies import floats
 
 
