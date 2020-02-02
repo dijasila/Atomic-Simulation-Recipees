@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-def test_relax_emt(isolated_filesystem, name, usemocks):
+def test_relax_emt(separate_folder, name, usemocks):
     from asr.relax import main as relax
     from ase.build import bulk
 
@@ -17,7 +17,7 @@ def test_relax_emt(isolated_filesystem, name, usemocks):
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
 @pytest.mark.xfail(strict=True, raises=BrokenSymmetryError)
-def test_relax_emt_fail_broken_symmetry(isolated_filesystem, name,
+def test_relax_emt_fail_broken_symmetry(separate_folder, name,
                                         monkeypatch, usemocks):
     from asr.relax import main as relax
     from ase.build import bulk
@@ -34,7 +34,7 @@ def test_relax_emt_fail_broken_symmetry(isolated_filesystem, name,
     relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
-def test_relax_gpaw_mock(isolated_filesystem, usemocks):
+def test_relax_gpaw_mock(separate_folder, usemocks):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     setupmaterial.cli(["-s", "BN,natoms=2"])
@@ -43,7 +43,7 @@ def test_relax_gpaw_mock(isolated_filesystem, usemocks):
 
 
 @pytest.mark.slow
-def test_relax_si_gpaw(isolated_filesystem):
+def test_relax_si_gpaw(separate_folder):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     from asr.core import read_json
@@ -62,7 +62,7 @@ def test_relax_si_gpaw(isolated_filesystem):
 
 
 @pytest.mark.slow
-def test_relax_bn_gpaw(isolated_filesystem):
+def test_relax_bn_gpaw(separate_folder):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     from asr.core import read_json
