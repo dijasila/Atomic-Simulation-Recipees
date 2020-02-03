@@ -1,0 +1,18 @@
+tests:
+  image:  python:3.6
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - pip install flake8 coverage
+    - pip install -r requirements.txt
+    - pip install .[tests]
+    - pytest --pyargs asr --cov=asr -k ci
+    - flake8
+
+docs_test:
+  image: python:3.6
+  script:
+    - pip install .[docs]
+    - which sphinx-build
+    - cd $CI_PROJECT_DIR/docs
+    - make html

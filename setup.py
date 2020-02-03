@@ -2,6 +2,8 @@
 
 """The setup script."""
 
+import re
+from pathlib import Path
 from setuptools import setup, find_packages
 
 with open('README.rst') as readme_file:
@@ -10,11 +12,20 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click>=7.0', ]
+requirements = ['Click>=7.0', 'ase', 'matplotlib',
+                'spglib', 'plotly', 'flask']
 
 setup_requirements = ['pytest-runner', ]
 
-test_requirements = ['pytest>=3', ]
+test_requirements = ['pytest>=3', 'pytest', 'pytest-cov', 'hypothesis',
+                     'pyfakefs']
+
+extras_require = {'docs': ['sphinx', 'sphinx-autoapi',
+                           'sphinxcontrib-programoutput']}
+
+txt = Path('asr/__init__.py').read_text()
+version = re.search("__version__ = '(.*)'", txt).group(1)
+
 
 setup(
     author="Morten Niklas Gjerding",
@@ -34,7 +45,7 @@ setup(
     description="ASE recipes for calculating material properties",
     entry_points={
         'console_scripts': [
-            'asr=asr.cli:main',
+            'asr=asr.core.cli:cli',
         ],
     },
     install_requires=requirements,
@@ -48,6 +59,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://gitlab.com/mortengjerding/asr',
-    version='0.1.0',
+    version=version,
     zip_safe=False,
 )
