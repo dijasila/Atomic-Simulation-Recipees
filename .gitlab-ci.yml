@@ -3,11 +3,8 @@ tests:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - pip install flake8 coverage
-    - pip install -r requirements.txt
-    - pip install .[tests]
-    - pytest --pyargs asr --cov=asr -k ci
-    - flake8
+    - pip install tox
+    - tox
 
 docs_test:
   image: python:3.6
