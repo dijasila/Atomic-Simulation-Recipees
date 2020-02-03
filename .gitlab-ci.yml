@@ -1,15 +1,67 @@
-tests:
-  image:  python:3.6
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - pip install tox
-    - tox
+image: python
 
-docs_test:
+stages:
+- test
+- integrationtest
+- build
+- release
+
+python36:
   image: python:3.6
-  script:
-    - pip install .[docs]
-    - which sphinx-build
-    - cd $CI_PROJECT_DIR/docs
-    - make html
+  stage: test
+  script: tox -e py36 -- -k ci
+
+python37:
+  image: python:3.7
+  stage: test
+  script: tox -e py37 -- -k ci
+
+python38:
+  image: python:3.8
+  stage: test
+  script: tox -e py38 -- -k ci
+
+linters:
+  image: python:3.7
+  stage: test
+  script: tox -e linters -- -k ci
+
+docs:
+  stage: test
+  script: tox -e docs
+
+# -------------- Integration tests --------------
+python36-gpaw:
+  image: python:3.6
+  stage: test
+  script: tox -e py36-gpaw -- -k integration_test_gpaw
+
+python37-gpaw:
+  image: python:3.7
+  stage: test
+  script: tox -e py37-gpaw -- -k integration_test_gpaw
+
+python38-gpaw:
+  image: python:3.8
+  stage: test
+  script: tox -e py38-gpaw -- -k integration_test_gpaw
+
+# -------------- Build --------------
+build:
+  stage: build
+  script: tox -e build
+  artifacts:
+    paths:
+    - dist/
+    expire_in: 1 week
+
+# -------------- Release --------------
+# (Only on git tagged commit)
+release:
+  stage: release
+  script: tox -e build
+  artifacts:
+    paths:
+    - dist
+  only:
+  - tags
