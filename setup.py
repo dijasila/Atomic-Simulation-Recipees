@@ -56,7 +56,7 @@ setup(
     name='asr',
     packages=find_packages(include=['asr', 'asr.*']),
     setup_requires=setup_requirements,
-    test_suite='tests',
+    test_suite='asr.test',
     tests_require=test_requirements,
     url='https://gitlab.com/mortengjerding/asr',
     version=version,
