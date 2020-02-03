@@ -503,7 +503,10 @@ class ASRCommand:
         modnames = self.package_dependencies
         versions = {}
         for modname in modnames:
-            mod = import_module(modname)
+            try:
+                mod = import_module(modname)
+            except ModuleNotFoundError:
+                continue
             githash = search_current_git_hash(mod)
             version = mod.__version__
             if githash:
