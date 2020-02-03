@@ -6,6 +6,10 @@ stages:
 - build
 - release
 
+before_script:
+- pip install pip --upgrade
+- pip install -r dev-requirements.txt
+
 python36:
   image: python:3.6
   stage: test
