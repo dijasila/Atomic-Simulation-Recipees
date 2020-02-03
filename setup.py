@@ -13,12 +13,9 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = ['Click>=7.0', 'ase', 'matplotlib',
-                'spglib', 'plotly', 'flask']
+                'spglib', 'plotly', 'flask', 'tox']
 
-setup_requirements = ['pytest-runner', ]
-
-test_requirements = ['pytest>=3', 'pytest', 'pytest-cov', 'hypothesis',
-                     'pyfakefs']
+setup_requirements = []
 
 extras_require = {'docs': ['sphinx', 'sphinx-autoapi',
                            'sphinxcontrib-programoutput']}
@@ -56,8 +53,6 @@ setup(
     name='asr',
     packages=find_packages(include=['asr', 'asr.*']),
     setup_requires=setup_requirements,
-    test_suite='asr.test',
-    tests_require=test_requirements,
     url='https://gitlab.com/mortengjerding/asr',
     version=version,
     zip_safe=False,
