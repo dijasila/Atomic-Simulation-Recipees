@@ -3,8 +3,8 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = python -msphinx
-SPHINXPROJ    = asr
+SPHINXBUILD   = sphinx-build
+SPHINXPROJ    = AtomicSimulationRecipes
 SOURCEDIR     = .
 BUILDDIR      = _build
 

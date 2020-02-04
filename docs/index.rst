@@ -1,3 +1,8 @@
+.. Atomic Simulation Recipes documentation master file, created by
+   sphinx-quickstart on Thu Sep  5 12:35:32 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
 Welcome to Atomic Simulation Recipes's documentation!
 =====================================================
 Recipes for Atomic Scale Materials Research.
@@ -12,20 +17,15 @@ structures, calculating dielectric functions and so on.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :hidden:
 
-   readme
-   installation
-   usage
-   modules
-   contributing
-   authors
-   history
+   install
+   getting-started
+   tutorials
+   developing
    autoapi/index
 
-
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+..
+   :ref:`genindex`
+   :ref:`modindex`
+   :ref:`search`
