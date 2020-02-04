@@ -2,7 +2,7 @@ image: python
 
 stages:
 - test
-- integrationtest
+- functionaltest
 - build
 - release
 
@@ -54,17 +54,37 @@ docs:
 python36-gpaw:
   image: python:3.6
   stage: test
-  script: tox -e py36-gpaw -- -k integration_test_gpaw
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py36-gpaw -- -k integration_test_gpaw
 
 python37-gpaw:
   image: python:3.7
   stage: test
-  script: tox -e py37-gpaw -- -k integration_test_gpaw
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py76-gpaw -- -k integration_test_gpaw
 
 python38-gpaw:
   image: python:3.8
   stage: test
-  script: tox -e py38-gpaw -- -k integration_test_gpaw
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py38-gpaw -- -k integration_test_gpaw
+
+# -------------- Functional tests --------------
+
+python36-gpaw-mpi:
+  image: python:3.6
+  stage: funtionaltest
+  script: tox -e py36-gpaw-mpi -- -k functional_test_gpaw
+  tags:
+    - long
+    - gpaw
+    - linux
 
 # -------------- Build --------------
 build:
