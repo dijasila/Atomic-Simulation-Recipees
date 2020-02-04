@@ -26,10 +26,25 @@ python38:
   stage: test
   script: tox -e py38 -- -k ci
 
-linters:
+flake8:
   image: python:3.7
   stage: test
-  script: tox -e linters -- -k ci
+  script: tox -e flake8
+
+bandit:
+  image: python:3.7
+  stage: test
+  script: tox -e bandit
+
+doc8:
+  image: python:3.7
+  stage: test
+  script: tox -e doc8
+
+readme:
+  image: python:3.7
+  stage: test
+  script: tox -e readme
 
 docs:
   stage: test
