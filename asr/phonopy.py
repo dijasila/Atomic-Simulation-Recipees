@@ -65,19 +65,15 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     nd = get_dimensionality()
     if nd == 3:
         supercell = [[n,0,0], [0,n,0], [0,0,n]]
-        atoms_N = atoms * (n,n,n)
     elif nd == 2:
         supercell = [[n,0,0], [0,n,0], [0,0,1]]
-        atoms_N = atoms * (n,n,1)
     elif nd == 1:
         supercell = [[n,0,0], [0,1,0], [0,0,1]]
-        atoms_N = atoms * (n,1,1)
     
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
                                  scaled_positions= atoms.get_scaled_positions())
-    atoms_N.set_calculator(calc)
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
@@ -85,6 +81,11 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
+    from ase.atoms import Atoms
+    scell = displaced_sc[0]
+    atoms_N = Atoms(symbols=scell.get_chemical_symbols(),
+                 scaled_positions=scell.get_scaled_positions(),
+                 cell=scell.get_cell())
 
     for n, cell in enumerate(displaced_sc):
         #Displacement number
@@ -97,7 +98,8 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
         if Path(filename).is_file():
             continue
 
-        atoms_N.positions = cell.positions
+        atoms_N.positions = cell.get_positions()
+        atoms_N.set_calculator(calc)
         forces = atoms_N.get_forces()
 
         drift_force = forces.sum(axis=0)
@@ -212,12 +214,10 @@ def main():
 
     R_cN = lattice_vectors(N_c)
     C_N = phonon.get_force_constants()
-    print(C_N.shape)
-    N = n**nd
-    C_N = C_N.reshape(len(atoms),N,len(atoms),3,3)
-    C_N = C_N.transpose(1,2,3,0,4)
-    C_N = C_N.reshape(N,3*len(atoms),3*len(atoms))
-    print(C_N.shape)
+    C_N = C_N.reshape(len(atoms),len(atoms),n**nd,3,3)
+    C_N = C_N.transpose(2,0,3,1,4)
+    C_N = C_N.reshape(n**nd,3*len(atoms),3*len(atoms))
+
     eigs = []
 
     for q_c in q_qc:
@@ -241,7 +241,22 @@ def main():
                'u_klav': u_klav,
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
-               
+
+    # Next calculate an approximate phonon band structure
+    nqpts = 100
+    freqs_kl = np.zeros((nqpts,3*len(atoms)))
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
+
+    for q, q_c in enumerate(path.kpts):
+        freqs = phonon.get_frequencies(q_c)*THzToEv
+        freqs_kl[q] = freqs
+
+    results['interp_freqs_kl'] = freqs_kl
+    results['path'] = path
+    results['__key_descriptions__'] = \
+        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
+         'dynamic_stability_level': 'KVP: Dynamic stability level'}
+
     return results
 
 
