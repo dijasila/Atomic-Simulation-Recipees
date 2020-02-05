@@ -5,6 +5,10 @@ class MaterialNotFoundError(Exception):
     pass
 
 
+class DBAlreadyExistsError(Exception):
+    pass
+
+
 def where(pred, ls):
     return list(filter(pred, ls))
 
@@ -49,6 +53,8 @@ def safe_get(db, prod):
             
     if result is None:
         raise MaterialNotFoundError("Could not find {} in db".format(prod))
+
+    return result
 
 
 def get_dE_alpha(db, reactions, refs):
@@ -96,13 +102,15 @@ def create_corrected_db(newname, db, reactions, els_dMu):
     
     for row in db.select():
         formula = Formula(row.formula)
+        num_atoms = sum(formula.count().values())
         dde = 0
         for el, dMu in els_dMu:
-            dde += formula.count().get(el, 0) * dMu
+            dde += formula.count().get(el, 0) * dMu / num_atoms
         row.de += dde
         
         newdb.write(row)
-    
+
+
 @command('asr.fere',
          resources='1:1h')
 @option('--newdbname', help='Name of the new db file')
@@ -117,6 +125,9 @@ def main(newdbname="newdb.db",
          reactionsname='reactions.npy',
          referencesname='references.npy'):
     from ase.db import connect
+    import os
+    if os.path.exists(newdbname):
+        raise DBAlreadyExistsError
     reactions, refs = load_data(reactionsname, referencesname)
 
     db = connect(dbname)
