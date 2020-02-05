@@ -57,7 +57,7 @@ python37-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py76-gpaw -- -k integration_test_gpaw
+    - tox -e py37-gpaw -- -k integration_test_gpaw
 
 python38-gpaw:
   image: python:3.8
