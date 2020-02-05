@@ -1,4 +1,4 @@
-from asr.core import command, argument
+from asr.core import command, argument, get_recipes
 
 
 # Style: "KVP: Long description !short description! [unit]
@@ -170,6 +170,13 @@ key_descriptions = {
         "folder": "KVP: Relative path to original folder",
     }
 }
+
+extras = {}
+for recipe in get_recipes():
+    key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
+    extras[key] = f'{recipe.name} is calculated'
+
+key_descriptions['extra'] = extras
 
 
 @command()
