@@ -72,7 +72,10 @@ python38-gpaw:
 python36-gpaw-2dsystem:
   image: python:3.6
   stage: systemtest
-  script: tox -e 2dsystem
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e 2dsystem
   timeout: 1h
 
 # -------------- Build --------------
