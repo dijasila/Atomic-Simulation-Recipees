@@ -17,11 +17,6 @@ flake8:
   stage: test
   script: tox -e flake8
 
-bandit:
-  image: python:3.7
-  stage: test
-  script: tox -e bandit
-
 readme:
   image: python:3.7
   stage: test
