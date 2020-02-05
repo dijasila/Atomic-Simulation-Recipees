@@ -69,13 +69,11 @@ python38-gpaw:
 
 # -------------- System tests --------------
 
-python36-gpaw-mpi:
+python36-gpaw-2dsystem:
   image: python:3.6
   stage: systemtest
-  script: tox -e py36-gpaw-mpi -- -k system_test_gpaw
-  tags:
-    - long
-    - gpaw
+  script: tox -e 2dsystem
+  timeout: 1h
 
 # -------------- Build --------------
 build:
