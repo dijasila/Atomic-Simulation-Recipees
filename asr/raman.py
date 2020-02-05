@@ -2,7 +2,7 @@ from asr.core import command
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = {
         "title": "Raman spectrum (RPA)",
@@ -107,19 +107,6 @@ def raman(row, filename):
             shift=0,
         )
         maxr[ii] = np.max(rr[pol])
-
-    # Set the defaults for plot
-    plt.rcParams["font.family"] = "serif"
-    plt.rcParams["font.serif"] = ["Times New Roman"] + plt.rcParams[
-        "font.serif"
-    ]
-    plt.rcParams["mathtext.fontset"] = "cm"
-    plt.rcParams["axes.linewidth"] = 0.5
-    plt.rcParams["font.size"] = 11
-    plt.rcParams["lines.markersize"] = 5
-    plt.rcParams["lines.markeredgecolor"] = "k"
-    plt.rcParams["lines.markeredgewidth"] = 0.5
-    plt.style.use("seaborn-bright")
 
     # Make the figure panel and add y=0 axis
     ax = plt.figure().add_subplot(111)
