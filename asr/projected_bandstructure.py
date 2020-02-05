@@ -15,10 +15,11 @@ from asr.core import command
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
-    panel = {'title': 'Band structure with projections (PBE)',
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
              'columns': [[fig('pbe-projected-bs.png', link='empty')], []],
              'plot_descriptions': [{'function': projected_bs_pbe,
-                                    'filenames': ['pbe-projected-bs.png']}]}
+                                    'filenames': ['pbe-projected-bs.png']}],
+             'sort': 14}
 
     return [panel]
 
