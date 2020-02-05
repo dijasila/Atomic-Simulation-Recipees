@@ -3,7 +3,7 @@ image: python
 stages:
 - test
 - integrationtest
-- functionaltest
+- systemtest
 - build
 - release
 
@@ -67,11 +67,11 @@ python38-gpaw:
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py38-gpaw -- -k integration_test_gpaw
 
-# -------------- Functional tests --------------
+# -------------- System tests --------------
 
 python36-gpaw-mpi:
   image: python:3.6
-  stage: functionaltest
+  stage: systemtest
   script: tox -e py36-gpaw-mpi -- -k functional_test_gpaw
   tags:
     - long
