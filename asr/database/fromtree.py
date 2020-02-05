@@ -216,7 +216,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                         data['__links__'].update(tmplinks)
 
             for key in filter(lambda x: x.startswith('results-'), data.keys()):
-                recipe = key[8:-5].replace('.', '_')
+                recipe = key[8:-5].replace('.', '_').replace('@', '_')
                 name = f'has_{recipe}'
                 kvp[name] = True
 
