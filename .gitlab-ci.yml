@@ -2,6 +2,7 @@ image: python
 
 stages:
 - test
+- integrationtest
 - functionaltest
 - build
 - release
@@ -10,6 +11,27 @@ before_script:
 - pip install pip --upgrade
 - pip install -r dev-requirements.txt
 
+# -------------- Style tests --------------
+flake8:
+  image: python:3.7
+  stage: test
+  script: tox -e flake8
+
+bandit:
+  image: python:3.7
+  stage: test
+  script: tox -e bandit
+
+readme:
+  image: python:3.7
+  stage: test
+  script: tox -e readme
+
+docs:
+  stage: test
+  script: tox -e docs
+
+# -------------- Unit tests --------------
 python36:
   image: python:3.6
   stage: test
@@ -25,34 +47,10 @@ python38:
   stage: test
   script: tox -e py38 -- -k ci
 
-flake8:
-  image: python:3.7
-  stage: test
-  script: tox -e flake8
-
-bandit:
-  image: python:3.7
-  stage: test
-  script: tox -e bandit
-
-doc8:
-  image: python:3.7
-  stage: test
-  script: tox -e doc8
-
-readme:
-  image: python:3.7
-  stage: test
-  script: tox -e readme
-
-docs:
-  stage: test
-  script: tox -e docs
-
 # -------------- Integration tests --------------
 python36-gpaw:
   image: python:3.6
-  stage: test
+  stage: integrationtest
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
@@ -60,7 +58,7 @@ python36-gpaw:
 
 python37-gpaw:
   image: python:3.7
-  stage: test
+  stage: integrationtest
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
@@ -68,7 +66,7 @@ python37-gpaw:
 
 python38-gpaw:
   image: python:3.8
-  stage: test
+  stage: integrationtest
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
