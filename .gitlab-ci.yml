@@ -9,7 +9,6 @@ stages:
 before_script:
 - pip install pip --upgrade
 - pip install -r dev-requirements.txt
-- tox -e clean
 
 python36:
   image: python:3.6
