@@ -116,7 +116,7 @@ def bz_soc(row, fname):
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
-    lat.plot_bz(vectors=False)
+    lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
@@ -133,8 +133,8 @@ def bz_soc(row, fname):
         cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
         ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
         ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
-        xlim = np.array(ax.get_xlim()) * 1.2
-        ylim = np.array(ax.get_ylim()) * 1.2
+        xlim = np.array(ax.get_xlim()) * 1.4
+        ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         plt.legend(loc='upper center', ncol=3)

@@ -5,7 +5,7 @@ from asr.core import command, argument, option
 @argument('databaseout', nargs=1)
 @argument('databases', nargs=-1)
 @option('--identifier', help='Identifier for matching database entries.')
-def main(databases, databaseout, identifier='asr_id'):
+def main(databases, databaseout, identifier='uid'):
     """Merge two ASE databases."""
     from ase.db import connect
     from pathlib import Path
