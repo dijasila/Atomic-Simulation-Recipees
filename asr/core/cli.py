@@ -120,6 +120,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
+    import time
     from pathlib import Path
     from ase.parallel import parprint
     from asr.core import chdir
@@ -137,6 +138,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
 
     if jobs:
         assert jobs <= nfolders, 'Too many jobs and too few folders!'
+        processes = []
         for job in range(jobs):
             cmd = 'asr run'
             myfolders = folders[job::jobs]
@@ -150,7 +152,11 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
                 cmd += ' --dry-run'
             cmd += f' "{command}" '
             cmd += ' '.join(myfolders)
-            subprocess.Popen(cmd, shell=True)
+            process = subprocess.Popen(cmd, shell=True)
+            processes.append(process)
+
+        for process in processes:
+            process.wait()
         return
 
     # Identify function that should be executed
