@@ -177,7 +177,6 @@ def select_references(db, symbols):
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram
-    import re
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
@@ -212,6 +211,8 @@ def plot(row, fname):
             mask = e < 0.05
             e = e[mask]
             x = x[mask]
+            hull = hull[mask]
+            names = [name for name, m in zip(names, mask) if m]
         ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
         delta = e.ptp() / 30
@@ -233,9 +234,8 @@ def plot(row, fname):
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
-        x, y, names, hull, simplices = pd.plot2d3()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        x, y, _, hull, simplices = pd.plot2d3()
+        names = [ref['label'] for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
