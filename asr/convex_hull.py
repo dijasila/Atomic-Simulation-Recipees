@@ -212,6 +212,8 @@ def plot(row, fname):
             mask = e < 0.05
             e = e[mask]
             x = x[mask]
+            hull = hull[mask]
+            names = [name for name, m in zip(names, mask) if m]
         ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
         delta = e.ptp() / 30
