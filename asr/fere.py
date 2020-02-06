@@ -165,7 +165,7 @@ def get_hof(db, formula):
 def get_dE_alpha(db, reactions, refs):
     from ase.formula import Formula
     from scipy import sparse
-    
+
     alpha = sparse.lil_matrix((len(reactions), len(refs)))
     DE = sparse.lil_matrix((len(reactions), 1))
     
@@ -187,7 +187,8 @@ def get_dE_alpha(db, reactions, refs):
 
 def minimize_error(dE, alpha):
     from scipy.sparse.linalg import spsolve
-    
+    import numpy as np
+
     b = -alpha.T.dot(dE)
     A = alpha.T.dot(alpha)
     
@@ -195,7 +196,8 @@ def minimize_error(dE, alpha):
     
     d = alpha.dot(dMu)
     error = dE.T.dot(dE) + 2 * dE.T.dot(alpha.dot(dMu)) + d.T.dot(d)
-    
+    error = np.sqrt(error / dE.shape[0])
+
     return dMu, error
 
 
@@ -240,6 +242,8 @@ def main(newdbname='newdb.db',
          referencesname='references.txt'):
     from ase.db import connect
     import os
+    import numpy as np
+
     if os.path.exists(newdbname):
         raise DBAlreadyExistsError
     reactions, refs = load_data(reactionsname, referencesname)
@@ -256,10 +260,10 @@ def main(newdbname='newdb.db',
                'newdbname': newdbname,
                'reactions': reactions,
                'refs': refs,
-               'dE': str(dE),
+               'dE': np.array(dE.todense()),
                'alpha': str(alpha),
-               'dMu': str(dMu),
-               'error': str(error)}
+               'dMu': dMu,
+               'error': error}
 
     results['__key_descriptions__'] = \
         {'dbname': 'Name of base db',
@@ -269,7 +273,7 @@ def main(newdbname='newdb.db',
          'dE': 'Difference between target and initial HoFs',
          'alpha': 'Alpha matrix',
          'dMu': 'Adjustment of reference energies',
-         'error': 'Error after adjustment'}
+         'error': 'RMSE after adjustment'}
     
     return results
 
