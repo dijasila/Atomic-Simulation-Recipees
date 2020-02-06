@@ -12,6 +12,7 @@ class DBAlreadyExistsError(Exception):
 class ParseError(Exception):
     pass
 
+
 def where(pred, ls):
     return list(filter(pred, ls))
 
@@ -31,12 +32,15 @@ def single(pred, ls):
     else:
         return None
 
+
 def select(pred, ls):
     return list(map(pred, ls))
+
 
 def count(pred, ls):
     rs = select(pred, ls)
     return sum(rs)
+
 
 def unique(ls, selector=None):
     if selector:
@@ -44,16 +48,15 @@ def unique(ls, selector=None):
     else:
         rs = ls
 
-    return all(count(lambda x: x == y, rs) == 1 for y in rs )
+    return all(count(lambda x: x == y, rs) == 1 for y in rs)
     
-
 
 def parse_reactions(reactionsstr):
     import re
     with open(reactionsstr, 'r') as f:
         data = f.read()
 
-    lines = [l for l in data.split('\n') if l != '']
+    lines = [line for line in data.split('\n') if line != '']
     reactions = []
     
     splitter_re = r'(([A-Z]+[a-z]*[0-9]*)+)(\s)+([-+]?[0-9]+(\.[0-9]*)?)'
@@ -65,11 +68,15 @@ def parse_reactions(reactionsstr):
             energy = float(match.group(4))
             reactions.append((form, energy))
         else:
-            raise ParseError('Could not parse line "{}" in {}'.format(line, reactionsstr))
+            raise ParseError('Could not parse line' +
+                             ' "{}" in {}'.format(line, reactionsstr))
 
     if not unique(reactions, lambda t: t[0]):
-        bad = where(lambda y: count(lambda x: x[0] == y[1][0], reactions) > 1, enumerate(reactions))
-        raise ParseError('Same reaction was entered multiple times: {}'.format(bad))
+        bad = where(
+            lambda y: count(lambda x: x[0] == y[1][0], reactions) > 1,
+            enumerate(reactions))
+        raise ParseError('Same reaction was entered' +
+                         'multiple times: {}'.format(bad))
     return reactions
 
 
@@ -78,7 +85,7 @@ def parse_refs(refsstr):
     with open(refsstr, 'r') as f:
         data = f.read()
 
-    lines = [l for l in data.split('\n') if l != '']
+    lines = [line for line in data.split('\n') if line != '']
     refs = []
 
     parser_re = r'(^[A-Z]+[a-z]*[0-9]*$)'
@@ -89,11 +96,15 @@ def parse_refs(refsstr):
             form = match.group(1)
             refs.append(form)
         else:
-            raise ParseError('Could not parse line "{}" in {}'.format(line, refsstr))
+            raise ParseError('Could not parse line' +
+                             ' "{}" in {}'.format(line, refsstr))
     
     if not unique(refs):
-        bad = where(lambda y: count(lambda x: x == y[1], refs) > 1, enumerate(refs))
-        raise ParseError('Same reference was entered multiple times: {}'.format(bad))
+        bad = where(
+            lambda y: count(lambda x: x == y[1], refs) > 1,
+            enumerate(refs))
+        raise ParseError('Same reference' +
+                         'was entered multiple times: {}'.format(bad))
     return refs
 
 
