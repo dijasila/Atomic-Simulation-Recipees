@@ -9,6 +9,9 @@ class DBAlreadyExistsError(Exception):
     pass
 
 
+class ParseError(Exception):
+    pass
+
 def where(pred, ls):
     return list(filter(pred, ls))
 
@@ -19,10 +22,84 @@ def only(pred, ls):
     return rs[0]
 
 
+def single(pred, ls):
+    rs = where(pred, ls)
+    N = len(rs)
+    assert N == 0 or N == 1
+    if N == 1:
+        return rs[0]
+    else:
+        return None
+
+def select(pred, ls):
+    return list(map(pred, ls))
+
+def count(pred, ls):
+    rs = select(pred, ls)
+    return sum(rs)
+
+def unique(ls, selector=None):
+    if selector:
+        rs = select(selector, ls)
+    else:
+        rs = ls
+
+    return all(count(lambda x: x == y, rs) == 1 for y in rs )
+    
+
+
+def parse_reactions(reactionsstr):
+    import re
+    with open(reactionsstr, 'r') as f:
+        data = f.read()
+
+    lines = [l for l in data.split('\n') if l != '']
+    reactions = []
+    
+    splitter_re = r'(([A-Z]+[a-z]*[0-9]*)+)(\s)+([-+]?[0-9]+(\.[0-9]*)?)'
+    for line in lines:
+        tline = line.strip()
+        match = re.match(splitter_re, tline)
+        if match:
+            form = match.group(1)
+            energy = float(match.group(4))
+            reactions.append((form, energy))
+        else:
+            raise ParseError('Could not parse line "{}" in {}'.format(line, reactionsstr))
+
+    if not unique(reactions, lambda t: t[0]):
+        bad = where(lambda y: count(lambda x: x[0] == y[1][0], reactions) > 1, enumerate(reactions))
+        raise ParseError('Same reaction was entered multiple times: {}'.format(bad))
+    return reactions
+
+
+def parse_refs(refsstr):
+    import re
+    with open(refsstr, 'r') as f:
+        data = f.read()
+
+    lines = [l for l in data.split('\n') if l != '']
+    refs = []
+
+    parser_re = r'(^[A-Z]+[a-z]*[0-9]*$)'
+    for line in lines:
+        tline = line.strip()
+        match = re.match(parser_re, tline)
+        if match:
+            form = match.group(1)
+            refs.append(form)
+        else:
+            raise ParseError('Could not parse line "{}" in {}'.format(line, refsstr))
+    
+    if not unique(refs):
+        bad = where(lambda y: count(lambda x: x == y[1], refs) > 1, enumerate(refs))
+        raise ParseError('Same reference was entered multiple times: {}'.format(bad))
+    return refs
+
+
 def load_data(reactionsstr, refsstr):
-    import numpy as np
-    reacts = [(x[0], float(x[1])) for x in np.load(reactionsstr)]
-    refs = list(np.load(refsstr))
+    reacts = parse_reactions(reactionsstr)
+    refs = parse_refs(refsstr)
     return reacts, refs
 
 
@@ -46,15 +123,32 @@ def safe_get(db, prod):
     for j in range(20):
         formula = multiply_formula(prod, j + 1)
         try:
-            result = db.get("formula={}".format(formula))
+            result = db.get('formula={}'.format(formula))
             break
         except KeyError:
             continue
-            
+
     if result is None:
-        raise MaterialNotFoundError("Could not find {} in db".format(prod))
+        raise MaterialNotFoundError('Could not find {} in db'.format(prod))
 
     return result
+
+
+def get_hof(db, formula):
+    from ase.formula import Formula
+    elements = list(formula.count().keys())
+    row = safe_get(db, str(formula))
+    dbformula = Formula(str(row.formula))
+    hof = row.energy
+    for el in elements:
+        elrow = safe_get(db, el)
+        elformula = Formula(elrow.formula)
+        number_el = only(lambda t: True, elformula.count().values())
+        factor = dbformula.count()[el] / number_el
+        hof -= factor * elrow.energy
+
+    num_atoms = sum(dbformula.count().values())
+    return hof / num_atoms
 
 
 def get_dE_alpha(db, reactions, refs):
@@ -65,11 +159,11 @@ def get_dE_alpha(db, reactions, refs):
     DE = sparse.lil_matrix((len(reactions), 1))
     
     for i1, (form, eexp) in enumerate(reactions):
-        row = safe_get(db, form)
-        e = row.de
-        DE[i1, 0] = eexp - e
-        
         formula = Formula(form)
+        hof = get_hof(db, formula)
+
+        DE[i1, 0] = eexp - hof
+        
         num_atoms = sum(formula.count().values())
         for i2, ref in enumerate(refs):
             reff = Formula(ref)
@@ -83,15 +177,25 @@ def get_dE_alpha(db, reactions, refs):
 def minimize_error(dE, alpha):
     from scipy.sparse.linalg import spsolve
     
-    b = alpha.T.dot(dE)
+    b = -alpha.T.dot(dE)
     A = alpha.T.dot(alpha)
     
     dMu = spsolve(A, b)
     
     d = alpha.dot(dMu)
-    error = dE.T.dot(dE) - 2 * dE.T.dot(alpha.dot(dMu)) + d.T.dot(d)
+    error = dE.T.dot(dE) + 2 * dE.T.dot(alpha.dot(dMu)) + d.T.dot(d)
     
     return dMu, error
+
+
+def formulas_eq(form1, form2):
+    if type(form1) == str:
+        from ase.formula import Formula
+        form1 = Formula(form1)
+    if type(form2) == str:
+        from ase.formula import Formula
+        form2 = Formula(form2)
+    return form1.stoichiometry()[:-1] == form2.stoichiometry()[:-1]
 
 
 def create_corrected_db(newname, db, reactions, els_dMu):
@@ -102,12 +206,11 @@ def create_corrected_db(newname, db, reactions, els_dMu):
     
     for row in db.select():
         formula = Formula(row.formula)
-        num_atoms = sum(formula.count().values())
-        dde = 0
-        for el, dMu in els_dMu:
-            dde += formula.count().get(el, 0) * dMu / num_atoms
-        row.de += dde
-        
+        el_dmu = single(lambda t: formulas_eq(t[0], formula), els_dMu)
+        if el_dmu:
+            el, dmu = el_dmu
+            row.energy += formula.count()[el] * dmu
+            
         newdb.write(row)
 
 
@@ -120,10 +223,10 @@ def create_corrected_db(newname, db, reactions, els_dMu):
 @option('--referencesname',
         help='File containing the elements' +
         ' whose references energies should be adjusted')
-def main(newdbname="newdb.db",
-         dbname="db.db",
-         reactionsname='reactions.npy',
-         referencesname='references.npy'):
+def main(newdbname='newdb.db',
+         dbname='db.db',
+         reactionsname='reactions.txt',
+         referencesname='references.txt'):
     from ase.db import connect
     import os
     if os.path.exists(newdbname):
