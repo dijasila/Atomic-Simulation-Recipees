@@ -177,7 +177,6 @@ def select_references(db, symbols):
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram
-    import re
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
