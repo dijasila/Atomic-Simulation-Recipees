@@ -235,9 +235,8 @@ def plot(row, fname):
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
-        x, y, names, hull, simplices = pd.plot2d3()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        x, y, _, hull, simplices = pd.plot2d3()
+        names = [ref['label'] for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
