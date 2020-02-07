@@ -30,17 +30,17 @@ docs:
 python36:
   image: python:3.6
   stage: test
-  script: tox -e py36 -- -k ci
+  script: tox -e py36-unit
 
 python37:
   image: python:3.7
   stage: test
-  script: tox -e py37 -- -k ci
+  script: tox -e py37-unit
 
 python38:
   image: python:3.8
   stage: test
-  script: tox -e py38 -- -k ci
+  script: tox -e py38-unit
 
 # -------------- Integration tests --------------
 python36-gpaw:
@@ -49,7 +49,7 @@ python36-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py36-gpaw -- -k integration_test_gpaw
+    - tox -e py36-gpaw
 
 python37-gpaw:
   image: python:3.7
@@ -57,7 +57,7 @@ python37-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py37-gpaw -- -k integration_test_gpaw
+    - tox -e py37-gpaw
 
 python38-gpaw:
   image: python:3.8
@@ -65,7 +65,7 @@ python38-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py38-gpaw -- -k integration_test_gpaw
+    - tox -e py38-gpaw
 
 # -------------- System tests --------------
 
