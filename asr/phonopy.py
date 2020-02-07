@@ -105,7 +105,9 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
         if Path(filename).is_file():
             continue
 
-        atoms_N.positions = cell.get_positions()
+        atoms_N.set_scaled_positions(cell.get_scaled_positions())
+        atoms_N.wrap()
+        atoms_N.wrap()
         atoms_N.set_calculator(calc)
         forces = atoms_N.get_forces()
 
