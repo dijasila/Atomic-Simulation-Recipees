@@ -122,7 +122,7 @@ def requires():
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
 
     phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
 
@@ -271,7 +271,7 @@ def main():
         dynamic_stability = 3
 
     results = {'omega_kl': omega_kl,
-               'irr_l': np.array(irreps),
+               'irr_l': irreps,
                'q_qc': q_qc,
                'u_klav': u_klav,
                'minhessianeig': mineig,
