@@ -264,10 +264,11 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
 
 def projected_bs_pbe(row,
                      filename='pbe-projected-bs.png',
-                     figsize=(6.4, 4.8),
+                     figsize=(5.5, 5),
                      fontsize=10):  # Choose input parameters               XXX
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
     # import pylab
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
@@ -337,10 +338,10 @@ def projected_bs_pbe(row,
     # Plot projections
     # Choose some plotting format                                           XXX
     markersize = 36.
+    res = 126
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
         # Weights as pie chart
-        res = 126
         pie_xi = get_pie_markers(weight_xi, s=markersize,
                                  scale_marker=False, res=res)
         for x, e, weight_i, pie_i in zip(xcoords, e_x, weight_xi, pie_xi):
@@ -393,7 +394,27 @@ def projected_bs_pbe(row,
         # for x, e, c in zip(xcoords, e_x, c_x):
         #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
+    # Set legend
+    # Calculate points of the label pie marker
+    angles = np.linspace(np.pi / 4., 7. * np.pi / 4., np.ceil(res * 3. / 4.))
+    x = [0] + np.cos(angles).tolist()
+    y = [0] + np.sin(angles).tolist()
+    xy = np.column_stack([x, y])
+    size = markersize * np.abs(xy).max() ** 2
+    # Generate markers for legend
+    legend_markers = []
+    for i, yl in enumerate(yl_i):
+        legend_markers.append(Line2D([0], [0],
+                                     mfc='C{}'.format(c_i[i]), mew=0.0,
+                                     marker=xy, ms=3. * np.pi,
+                                     linewidth=0.0))
+    # Generate legend
+    plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
+               title='Fraction of orbital projection weights:',
+               bbox_to_anchor=(0., -0.22, 1., .102), loc='lower left',
+               ncol=3, mode="expand", borderaxespad=0.)
+
+    # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
 
 
