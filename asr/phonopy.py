@@ -4,7 +4,6 @@ import numpy as np
 
 from ase.parallel import world
 from ase.io import read
-from ase.phonons import Phonons
 
 from asr.core import command, option
 from asr.core import read_json, write_json
