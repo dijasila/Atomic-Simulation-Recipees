@@ -140,23 +140,24 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         assert jobs <= nfolders, 'Too many jobs and too few folders!'
         processes = []
         for job in range(jobs):
-            cmd = 'python3 -m asr run'
+            cmd = 'python3 -m asr run'.split()
             myfolders = folders[job::jobs]
             if skip_if_done:
-                cmd += ' --skip-if-done'
+                cmd.append('--skip-if-done')
             if dont_raise:
-                cmd += ' --dont-raise'
+                cmd.append('--dont-raise')
             if shell:
-                cmd += ' --shell'
+                cmd.append('--shell')
             if dry_run:
-                cmd += ' --dry-run'
-            cmd += f' "{command}" '
-            cmd += ' '.join(myfolders)
-            process = subprocess.Popen(cmd.split())
+                cmd.append('--dry-run')
+            cmd.append(command)
+            cmd.extend(myfolders)
+            process = subprocess.Popen(cmd)
             processes.append(process)
 
         for process in processes:
-            process.wait()
+            returncode = process.wait()
+            assert returncode == 0
         return
 
     # Identify function that should be executed

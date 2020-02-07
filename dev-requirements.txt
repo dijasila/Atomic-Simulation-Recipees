@@ -1,7 +1,2 @@
 tox
-pytest
-coverage
-pytest-cov
-hypothesis
-pyfakefs
-git+https://gitlab.com/ase/ase.git
+tox-venv
