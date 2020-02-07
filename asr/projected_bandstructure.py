@@ -411,7 +411,7 @@ def projected_bs_pbe(row,
     # Generate legend
     plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
                title='Fraction of orbital projection weights:',
-               bbox_to_anchor=(0., -0.22, 1., .102), loc='lower left',
+               bbox_to_anchor=(0., -0.08, 1., 0.), loc='upper left',
                ncol=3, mode="expand", borderaxespad=0.)
 
     # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
