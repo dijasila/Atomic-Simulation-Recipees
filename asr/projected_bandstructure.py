@@ -369,7 +369,7 @@ def projected_bs_pbe(row,
     # Plot projections
     # Choose some plotting format                                           XXX
     markersize = 36.
-    res = 126
+    res = 64  # input variable?                                             XXX
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
         # Weights as pie chart
