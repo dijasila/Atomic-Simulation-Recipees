@@ -140,7 +140,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         assert jobs <= nfolders, 'Too many jobs and too few folders!'
         processes = []
         for job in range(jobs):
-            cmd = 'asr run'
+            cmd = 'python3 -m asr run'
             myfolders = folders[job::jobs]
             if skip_if_done:
                 cmd += ' --skip-if-done'
@@ -152,7 +152,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
                 cmd += ' --dry-run'
             cmd += f' "{command}" '
             cmd += ' '.join(myfolders)
-            process = subprocess.Popen(cmd, shell=True)
+            process = subprocess.Popen(cmd.split())
             processes.append(process)
 
         for process in processes:
@@ -170,7 +170,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         for i, folder in enumerate(folders):
             with chdir(Path(folder)):
                 prt(f'Running {command} in {folder} ({i + 1}/{nfolders})')
-                subprocess.run(command, shell=True)
+                subprocess.run(command.split())
         return
 
     # If not shell then we assume that the command is a call

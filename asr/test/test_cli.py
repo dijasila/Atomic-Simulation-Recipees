@@ -59,8 +59,8 @@ def test_asr_run(separate_folder):
                                  'setup.params asr.relax:d3 True',
                                  'folder3', 'folder4'])
     assert result.exit_code == 0
-    assert pathlib.Path("folder3", "params.json").is_file()
-    assert pathlib.Path("folder4", "params.json").is_file()
+    assert pathlib.Path("folder3", "params.json").is_file(), result
+    assert pathlib.Path("folder4", "params.json").is_file(), result
 
 
 @pytest.mark.ci
