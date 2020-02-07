@@ -217,22 +217,50 @@ def get_bs_sampling(bsp, npoints=40):
     return chosenx_x, k_x
 
 
-def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
-    """Get pie markers corresponding to a 2D array of weights.
+def get_pie_slice(theta0, theta, s=36., res=126):
+    """Get a single pie slice marker.
 
     Parameters
     ----------
-    weight_xi : 2d np.array
+    theta0 : float
+        angle in which to start slice
+    theta : float
+        angle that pie slice should cover
     s : float
         marker size
-    scale_marker : bool
-        using sum of weights as scale for markersize
     res : int
         resolution of pie (in points around the circumference)
 
     Returns
     -------
-    pie_ki : list of lists of mpl option dictionaries
+    pie : matplotlib.pyplot.scatter option dictionary
+    """
+    assert 0. <= theta0 and theta0 <= 2. * np.pi
+    assert 0. <= theta and theta <= 2. * np.pi
+
+    angles = np.linspace(theta0, theta0 + theta,
+                         np.ceil(res * theta / (2 * np.pi)))
+    x = [0] + np.cos(angles).tolist()
+    y = [0] + np.sin(angles).tolist()
+    xy = np.column_stack([x, y])
+    size = s * np.abs(xy).max() ** 2
+
+    return {'marker': xy, 's': size, 'linewidths': 0.0}
+
+
+def get_pie_markers(weight_xi, scale_marker=True, s=36., res=126):
+    """Get pie markers corresponding to a 2D array of weights.
+
+    Parameters
+    ----------
+    weight_xi : 2d np.array
+    scale_marker : bool
+        using sum of weights as scale for markersize
+    s, res : see get_pie_slice
+
+    Returns
+    -------
+    pie_xi : list of lists of mpl option dictionaries
     """
     assert np.all(weight_xi >= 0.)
 
@@ -245,17 +273,14 @@ def get_pie_markers(weight_xi, s=36., scale_marker=True, res=126):
         for weight in weight_i:
             # Weight fraction
             r1 = weight / totweight
-            rp = int(np.ceil(r1 * res))
-            # Calculate points of the pie marker
-            x = [0] + np.cos(np.linspace(2 * np.pi * r0,
-                                         2 * np.pi * (r0 + r1), rp)).tolist()
-            y = [0] + np.sin(np.linspace(2 * np.pi * r0,
-                                         2 * np.pi * (r0 + r1), rp)).tolist()
-            xy = np.column_stack([x, y])
-            size = s * np.abs(xy).max() ** 2
+
+            # Get slice
+            pie = get_pie_slice(2 * np.pi * r0,
+                                2 * np.pi * r1, s=s, res=res)
             if scale_marker:
-                size *= totweight
-            pie_i.append({'marker': xy, 's': size, 'linewidths': 0.0})
+                pie['s'] *= totweight
+
+            pie_i.append(pie)
             r0 += r1
         pie_xi.append(pie_i)
 
@@ -401,18 +426,15 @@ def projected_bs_pbe(row,
         #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
     # Set legend
-    # Calculate points of the label pie marker
-    angles = np.linspace(np.pi / 4., 7. * np.pi / 4., np.ceil(res * 3. / 4.))
-    x = [0] + np.cos(angles).tolist()
-    y = [0] + np.sin(angles).tolist()
-    xy = np.column_stack([x, y])
-    size = markersize * np.abs(xy).max() ** 2
+    # Get "pac-man" style pie slice marker
+    pie = get_pie_slice(1. * np.pi / 4.,
+                        3. * np.pi / 2., s=markersize, res=res)
     # Generate markers for legend
     legend_markers = []
     for i, yl in enumerate(yl_i):
         legend_markers.append(Line2D([0], [0],
                                      mfc='C{}'.format(c_i[i]), mew=0.0,
-                                     marker=xy, ms=3. * np.pi,
+                                     marker=pie['marker'], ms=3. * np.pi,
                                      linewidth=0.0))
     # Generate legend
     plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
