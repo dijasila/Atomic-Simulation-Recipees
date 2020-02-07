@@ -1,17 +1,17 @@
-from pathlib import Path
-import numpy as np
+import pytest
 
-from ase.build import bulk
-from ase.dft.kpoints import monkhorst_pack
-from ase.dft.dos import DOS
-
-from asr.pdos import dos_at_ef
-from asr.core import write_json
-
-
+@pytest.mark.integration_test_gpaw
 def test_pdos(separate_folder):
-    from gpaw import GPAW, PW
+    from pathlib import Path
+    import numpy as np
 
+    from ase.build import bulk
+    from ase.dft.kpoints import monkhorst_pack
+    from ase.dft.dos import DOS
+
+    from asr.pdos import dos_at_ef
+    from asr.core import write_json
+    from gpaw import GPAW, PW
     # ------------------- Inputs ------------------- #
 
     # Part 1: ground state calculation
