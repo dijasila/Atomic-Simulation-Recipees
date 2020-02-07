@@ -305,8 +305,14 @@ def projected_bs_pbe(row,
     else:
         emax = ef + 3
 
-    # hstack spin index for the BandStructure object
+    # Take bands with energies in range
     e_skn = d['bs_nosoc']['energies']
+    inrange_skn = np.logical_and(e_skn > emin, e_skn < emax)
+    inrange_n = np.any(np.any(inrange_skn, axis=1), axis=0)
+    e_skn = e_skn[:, :, inrange_n]
+    weight_skni = weight_skni[:, :, inrange_n, :]
+
+    # hstack spin index for the BandStructure object
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
