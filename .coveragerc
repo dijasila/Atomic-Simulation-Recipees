@@ -1,3 +1,4 @@
 # .coveragerc to control coverage.py
 [run]
 omit = asr/test/*
+include = asr/*

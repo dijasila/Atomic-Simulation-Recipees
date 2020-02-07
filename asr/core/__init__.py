@@ -778,8 +778,15 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
     yield
 
     # Wait for file:
+    i = 0
     while not all([path.is_file() for path in paths]):
+        filenames = ', '.join([path.name for path in paths
+                               if not path.is_file()])
+        if i > 0:
+            print(f'Waiting for ~{i}sec on existence of {filenames}'
+                  ' on all ranks')
         time.sleep(1.0)
+        i += 1
     world.barrier()
 
 
