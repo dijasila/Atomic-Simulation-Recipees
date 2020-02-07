@@ -22,6 +22,8 @@ def usemocks(monkeypatch):
 
 # Make some 1D, 2D and 3D test materials
 C = bulk("Si")
+Ag = bulk("Ag")
+Ag2 = bulk("Ag").repeat((2, 1, 1))
 abn = 2.51
 BN = Atoms(
     "BN",
