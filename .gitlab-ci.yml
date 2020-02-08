@@ -1,15 +1,24 @@
 image: python
 
 stages:
+- build
 - test
 - integrationtest
 - systemtest
-- build
 - release
 
 before_script:
 - pip install pip --upgrade
 - pip install -r dev-requirements.txt
+
+# -------------- Build --------------
+build:
+  stage: build
+  script: tox -e build
+  artifacts:
+    paths:
+    - dist/
+    expire_in: 1 week
 
 # -------------- Style tests --------------
 flake8:
@@ -78,23 +87,15 @@ python36-gpaw-2dsystem:
     - tox -e 2dsystem
   timeout: 1h
   when: manual
-
-# -------------- Build --------------
-build:
-  stage: build
-  script: tox -e build
-  artifacts:
-    paths:
-    - dist/
-    expire_in: 1 week
+  allow_failure: false
 
 # -------------- Release --------------
 # (Only on git tagged commit)
 release:
   stage: release
-  script: tox -e build
+  script: tox -e release
   artifacts:
     paths:
     - dist
   only:
-  - tags
+    - tags
