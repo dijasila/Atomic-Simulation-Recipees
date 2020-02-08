@@ -464,7 +464,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
 def get_yl_colors(dct_syl):
     """Get the color indices corresponding to each symbol and angular momentum
-    
+
     Parameters
     ----------
     dct_syl : OrderedDict

@@ -20,7 +20,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
-    
+
     """Find the easy axis of magnetic materials"""
     theta = 0.0
     phi = 0.0

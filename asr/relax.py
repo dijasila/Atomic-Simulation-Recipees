@@ -369,7 +369,6 @@ def main(calculator={'name': 'gpaw',
          'gamma': 'Cell parameter gamma [deg]'}
 
     # For nm set magnetic moments to zero XXX
-    
     # Save atomic structure
     write('structure.json', atoms)
 

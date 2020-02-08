@@ -615,14 +615,14 @@ def unpack_masses(masses, soc, bt, results_dict):
     # We want to flatten this structure so that results_dict contains
     # the masses directly
     import numpy as np
-    
+
     for ind in masses['indices']:
         out_dict = masses[ind]
         index = str(ind)
         socpre = 'soc' if soc else 'nosoc'
         prefix = bt + '_' + socpre + '_'
         offset = out_dict['offset']
-        
+
         results_dict[index] = {}
 
         mass_u = list(out_dict['mass_u'])

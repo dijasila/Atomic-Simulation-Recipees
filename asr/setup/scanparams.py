@@ -1,4 +1,3 @@
-import click
 from asr.core import command, argument, option
 
 

@@ -269,7 +269,7 @@ def main():
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
-    
+
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
     gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
 

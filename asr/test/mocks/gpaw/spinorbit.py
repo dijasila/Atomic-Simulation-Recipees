@@ -16,7 +16,7 @@ def get_spinorbit_eigenvalues(
     nspins = 2
     nbands = calc.get_number_of_bands()
     bands = list(range(nbands))
-    
+
     e_ksn = np.array(
         [
             [

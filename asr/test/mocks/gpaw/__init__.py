@@ -70,7 +70,7 @@ class GPAW(Calculator):
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
             self.atoms = atoms
-            
+
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
         # self.parameters.kpts = self.kpts = kpts
         self.kpts = kpts
@@ -152,7 +152,7 @@ class GPAW(Calculator):
 
         class Parameters(dict):
             """Dictionary for parameters.
-            
+
             Special feature: If param is a Parameters instance, then param.xc
             is a shorthand for param['xc'].
             """

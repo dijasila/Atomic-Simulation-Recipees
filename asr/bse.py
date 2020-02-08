@@ -56,7 +56,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
 
         kpts = get_kpts_size(atoms=atoms, kptdensity=20)
         truncation = '2D'
-        
+
     else:
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
@@ -101,10 +101,10 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-        
+
     print(valence_bands)
     print(conduction_bands)
-        
+
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
             gs,
@@ -149,7 +149,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
                                            write_eig='bse_eigx.dat',
                                            pbc=pbc,
                                            w_w=w_w)
-    
+
     w_w, alphay_w = bse.get_polarizability(eta=eta,
                                            filename='bse_poly.csv',
                                            direction=1,
@@ -167,7 +167,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         os.system('rm gs_bse.gpw')
         os.system('rm gs_nosym.gpw')
 
-                         
+
 def absorption(row, filename, direction='x'):
     import numpy as np
     import matplotlib.pyplot as plt
@@ -291,7 +291,7 @@ def main():
         alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
     from asr.core import read_json
-                         
+
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
 

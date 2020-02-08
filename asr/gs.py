@@ -47,7 +47,7 @@ def calculate(calculator={'name': 'gpaw',
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
-    
+
     atoms.set_calculator(calc)
     atoms.get_forces()
     try:

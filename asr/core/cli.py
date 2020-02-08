@@ -1,5 +1,4 @@
 import click
-from click import argument, option
 
 
 stdlist = list
@@ -120,12 +119,10 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
-    import time
     from pathlib import Path
     from ase.parallel import parprint
     from asr.core import chdir
     from functools import partial
-    import os
 
     prt = partial(parprint, flush=True)
 
@@ -287,7 +284,7 @@ def status():
             panel.insert(0, status)
         else:
             panel.append(status)
-    
+
     print(format(panel, title="--- Status ---"))
 
 

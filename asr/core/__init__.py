@@ -125,7 +125,7 @@ def argument(name, **kwargs):
         param.update(kwargs)
         add_param(func, param)
         return func
-        
+
     return decorator
 
 
@@ -357,7 +357,7 @@ class ASRCommand:
             else:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
-                
+
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
                          help='Skip execution of dependencies.')(command)

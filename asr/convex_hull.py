@@ -248,7 +248,7 @@ def plot(row, fname):
     for it, legend in enumerate(legends):
         ax.scatter([], [], facecolor='none', marker='o',
                    edgecolor=f'C{it + 2}', label=legend)
-        
+
     plt.legend(loc='lower left')
     plt.tight_layout()
     plt.savefig(fname)

@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.integration_test_gpaw
 def test_pdos(separate_folder):
     from pathlib import Path

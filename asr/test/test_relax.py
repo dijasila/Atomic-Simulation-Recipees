@@ -40,7 +40,7 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
     from ase.build import bulk
     import numpy as np
     from ase.calculators.emt import EMT
-    
+
     unrelaxed = bulk(name)
 
     def get_stress(*args, **kwargs):
