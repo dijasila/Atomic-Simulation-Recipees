@@ -21,9 +21,11 @@ def usemocks(monkeypatch):
 
 
 # Make some 1D, 2D and 3D test materials
-C = bulk("Si")
+Si = bulk("Si")
 Ag = bulk("Ag")
 Ag2 = bulk("Ag").repeat((2, 1, 1))
+Fe = bulk("Fe")
+Fe.set_initial_magnetic_moments([1])
 abn = 2.51
 BN = Atoms(
     "BN",
@@ -45,7 +47,7 @@ Agchain = Atoms(
     ],
     pbc=[False, False, True],
 )
-test_materials = [C, BN, Agchain]
+test_materials = [Si, BN, Agchain]
 
 
 @contextlib.contextmanager
