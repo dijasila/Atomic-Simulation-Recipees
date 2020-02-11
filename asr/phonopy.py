@@ -247,6 +247,8 @@ def main():
             ):
                 irreps += [irr] * len(deg)
 
+    irreps = list(irreps)
+
     R_cN = lattice_vectors(N_c)
     C_N = phonon.get_force_constants()
     C_N = C_N.reshape(len(atoms), len(atoms), n**nd, 3, 3)
