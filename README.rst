@@ -25,7 +25,7 @@ ASE recipes for calculating material properties
 
 * Free software: GNU General Public License v3
 * Documentation: https://asr.readthedocs.io.
-
+* Code: https://gitlab.com/mortengjerding/asr.git
 
 Features
 --------
