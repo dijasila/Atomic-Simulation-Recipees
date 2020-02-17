@@ -216,11 +216,12 @@ def get_emass_dict_from_row(row):
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
                             my_dict[f'{name}, direction {direction}'] = \
-                                '{}'.format(mass_str)
+                                f'{mass_str} m<sub>e</sub>'
                         else:
                             my_dict['{} {} {}, direction {}'.format(
                                 name, offset_sym,
-                                offset_num, direction)] = mass_str
+                                offset_num, direction)] = \
+                                f'{mass_str} m<sub>e</sub>'
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -1044,6 +1045,13 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     x0 = np.array([xm, ym, zm])
     x, y, z = optimize.fmin(func, x0=x0,
                             xtol=1.0e-15, ftol=1.0e-15, disp=False)
+
+    model_deltaE = np.abs(func(np.array([x, y, z])) - func(x0))
+
+    if model_deltaE > 1e-3:
+        x = xm
+        y = ym
+        z = zm
 
     if ndim == 2:
         return x, y, 0

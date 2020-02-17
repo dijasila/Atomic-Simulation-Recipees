@@ -250,7 +250,7 @@ def webpanel(row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
@@ -262,7 +262,7 @@ def webpanel(row, key_descriptions):
         funcy = partial(absorption, direction='y')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), fig('absz.png')],
                              [fig('absy.png'), E_B]],
                  'plot_descriptions': [{'function': funcx,
@@ -299,11 +299,10 @@ def main():
         magstate = info['magstate']
 
         gsresults = read_json('results-asr.gs.json')
-        print(gsresults.keys())
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E
         else:
-            E_B = gsresults['gaps_dir_nosoc'] - E
+            E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
         data['__key_descriptions__'] = \

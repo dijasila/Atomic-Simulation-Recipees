@@ -191,8 +191,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
                       flush=True)
             with chdir(folder):
-                kvp = {'folder': str(folder),
-                       'absfolder': str(Path(folder).resolve())}
+                kvp = {'folder': str(folder)}
                 data = {'__links__': {}}
 
                 if not Path(atomsname).is_file():
@@ -215,6 +214,11 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                         kvp.update(tmpkvp)
                         data.update(tmpdata)
                         data['__links__'].update(tmplinks)
+
+            for key in filter(lambda x: x.startswith('results-'), data.keys()):
+                recipe = key[8:-5].replace('.', '_').replace('@', '_')
+                name = f'has_{recipe}'
+                kvp[name] = True
 
             keys.update(kvp.keys())
             db.write(atoms, data=data, **kvp)

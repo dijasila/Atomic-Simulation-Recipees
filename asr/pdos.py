@@ -194,25 +194,20 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     # PDOS without spin-orbit coupling
-    nosoc_panel = {'title': 'Band structure with projections (PBE)',
-                   'columns': [[],
-                               [fig('pbe-pdos_nosoc.png', link='empty'),
-                                table(row, 'Property', ['dos_at_ef_nosoc'],
-                                      kd=key_descriptions)]],
-                   'plot_descriptions': [{'function': plot_pdos_nosoc,
-                                          'filenames': ['pbe-pdos_nosoc.png']}]
-                   }
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+             'columns': [[],
+                         [fig('pbe-pdos_nosoc.png', link='empty')]],
+             'plot_descriptions': [{'function': plot_pdos_nosoc,
+                                    'filenames': ['pbe-pdos_nosoc.png']}],
+             'sort': 14}
 
-    # PDOS with spin-orbit coupling
-    # Goes to Electronic band structure (PBE) panel, which is defined in the
-    # bandstructure recipe
-    soc_panel = {'title': 'Electronic band structure (PBE)',
-                 'columns': [[], [fig('pbe-pdos_soc.png', link='empty')]],
-                 'plot_descriptions': [{'function': plot_pdos_soc,
-                                        'filenames': ['pbe-pdos_soc.png']}],
-                 'sort': 13}
+    # Another panel to make sure sorting is correct
+    panel2 = {'title': 'Electronic band structure and projected DOS (PBE)',
+              'columns': [[],
+                          [table(row, 'Property', ['dos_at_ef_nosoc'],
+                                 kd=key_descriptions)]]}
 
-    return [nosoc_panel, soc_panel]
+    return [panel, panel2]
 
 
 # ---------- Main functionality ---------- #

@@ -30,6 +30,9 @@ def spin_axis(theta, phi):
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
+    if row.get('magstate', 'NM') == 'NM':
+        return []
+
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
@@ -124,11 +127,11 @@ def main():
     results.update({'spin_axis': axis,
                     'theta': theta,
                     'phi': phi,
-                    'E_x': E_x,
-                    'E_y': E_y,
-                    'E_z': E_z,
-                    'dE_zx': dE_zx,
-                    'dE_zy': dE_zy})
+                    'E_x': E_x * 1e3,
+                    'E_y': E_y * 1e3,
+                    'E_z': E_z * 1e3,
+                    'dE_zx': dE_zx * 1e3,
+                    'dE_zy': dE_zy * 1e3})
     world.barrier()
     if world.rank == 0:
         Path('gs_nosym.gpw').unlink()
