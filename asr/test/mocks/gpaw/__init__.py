@@ -57,6 +57,7 @@ class GPAW(Calculator):
             pass
 
         gd = GridDescriptor()
+        nvalence = None
 
     wfs = WaveFunctions()
 
@@ -91,6 +92,7 @@ class GPAW(Calculator):
         )
 
         self.setups.nvalence = self.parameters.nelectrons
+        self.wfs.nvalence = self.parameters.nelectrons
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
         nbands = self.get_number_of_bands()
         self.eigenvalues = eps_kn[:, : nbands] * Ha
@@ -142,7 +144,7 @@ class GPAW(Calculator):
     def get_number_of_electrons(self):
         return self.parameters.nelectrons
 
-    def write(self, name):
+    def write(self, name, mode=None):
         from asr.core import write_json
 
         write_json(name, self.parameters)
