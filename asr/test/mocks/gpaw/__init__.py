@@ -83,7 +83,6 @@ class GPAW(Calculator):
         eps_kn = 0.5 * (np.dot(self.kpts + offsets, icell) ** 2).sum(2).T
         eps_kn.sort()
 
-        # If gap is finite we add another bunch of valence bands
         gap = self.parameters.gap
         eps_kn = np.concatenate(
             (-eps_kn[:, ::-1][:, -self.parameters.nelectrons:],
