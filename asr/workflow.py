@@ -1,8 +1,10 @@
-from asr.core import command
+from asr.core import command, option
 
 
 @command('asr.workflow')
-def main():
+@option("include", help="Comma separated list of includes.")
+@option("exclude", help="Comma separated list of exludes.")
+def main(include=None, exclude=None):
     """Run a full material property workflow."""
 
     import urllib.request
@@ -36,7 +38,17 @@ def main():
     urllib.request.urlretrieve(url, "oqmd12.db")
 
     extra_args = {"asr.convex_hull": {"databases": ["oqmd12.db"]}}
-    recipes = filter(lambda x: x in order, recipes)
+
+    def filterfunc(x):
+        if exclude and x.name in exclude:
+            return False
+        if include and x.name not in include:
+            return False
+        if x.name not in order:
+            return False
+        return True
+
+    recipes = filter(filterfunc, recipes)
     recipes = sorted(recipes, key=order.index)
     for recipe in recipes:
         kwargs = extra_args.get(recipe.name, {})
