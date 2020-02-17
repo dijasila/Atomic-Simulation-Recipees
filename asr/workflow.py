@@ -2,8 +2,8 @@ from asr.core import command, option
 
 
 @command('asr.workflow')
-@option("include", help="Comma separated list of includes.")
-@option("exclude", help="Comma separated list of exludes.")
+@option("--include", help="Comma separated list of includes.")
+@option("--exclude", help="Comma separated list of exludes.")
 def main(include=None, exclude=None):
     """Run a full material property workflow."""
 
