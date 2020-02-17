@@ -1,6 +1,6 @@
 import pytest
 from pytest import approx
-from .conftest import test_materials
+from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
@@ -35,36 +35,3 @@ def test_gs(separate_folder, usemocks, atoms, gap, fermi_level):
     assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
     assert f"<td>Fermilevel</td><td>{fermi_level:0.3f}eV</td>" in \
         content, content
-
-
-def get_webcontent(name='database.db'):
-    from asr.database.fromtree import main as fromtree
-    fromtree()
-
-    from asr.database import app as appmodule
-    from pathlib import Path
-    from asr.database.app import app, initialize_project, projects
-
-    tmpdir = Path("tmp/")
-    tmpdir.mkdir()
-    appmodule.tmpdir = tmpdir
-    initialize_project(name)
-
-    app.testing = True
-    with app.test_client() as c:
-        content = c.get(f"/database.db/").data.decode()
-        assert "Fermi level" in content
-        assert "Band gap" in content
-        project = projects["database.db"]
-        db = project["database"]
-        uid_key = project["uid_key"]
-        row = db.get(id=1)
-        uid = row.get(uid_key)
-        url = f"/database.db/row/{uid}"
-        content = c.get(url).data.decode()
-        content = (
-            content
-            .replace("\n", "")
-            .replace(" ", "")
-        )
-    return content

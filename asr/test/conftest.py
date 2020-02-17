@@ -8,6 +8,39 @@ from ase import Atoms
 from ase.build import bulk
 
 
+def get_webcontent(name='database.db'):
+    from asr.database.fromtree import main as fromtree
+    fromtree()
+
+    from asr.database import app as appmodule
+    from pathlib import Path
+    from asr.database.app import app, initialize_project, projects
+
+    tmpdir = Path("tmp/")
+    tmpdir.mkdir()
+    appmodule.tmpdir = tmpdir
+    initialize_project(name)
+
+    app.testing = True
+    with app.test_client() as c:
+        content = c.get(f"/database.db/").data.decode()
+        assert "Fermi level" in content
+        assert "Band gap" in content
+        project = projects["database.db"]
+        db = project["database"]
+        uid_key = project["uid_key"]
+        row = db.get(id=1)
+        uid = row.get(uid_key)
+        url = f"/database.db/row/{uid}"
+        content = c.get(url).data.decode()
+        content = (
+            content
+            .replace("\n", "")
+            .replace(" ", "")
+        )
+    return content
+
+
 @pytest.fixture()
 def usemocks(monkeypatch):
     from pathlib import Path
