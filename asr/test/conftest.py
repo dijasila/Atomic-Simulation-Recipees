@@ -24,8 +24,6 @@ def get_webcontent(name='database.db'):
     app.testing = True
     with app.test_client() as c:
         content = c.get(f"/database.db/").data.decode()
-        assert "Fermi level" in content
-        assert "Band gap" in content
         project = projects["database.db"]
         db = project["database"]
         uid_key = project["uid_key"]

@@ -1,5 +1,5 @@
 import pytest
-from .conftest import test_materials
+from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
@@ -8,3 +8,5 @@ def test_polarizability(separate_folder, usemocks, atoms):
     from asr.polarizability import main
     atoms.write('structure.json')
     main()
+    content = get_webcontent()
+    assert "polarizability" in content, content
