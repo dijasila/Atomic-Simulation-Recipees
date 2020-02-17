@@ -1,5 +1,4 @@
 from asr.core import command, option
-from pathlib import Path
 
 test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',
@@ -48,8 +47,8 @@ def calculate(calculator={'name': 'gpaw',
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
-    
-    atoms.calc = calc
+
+    atoms.set_calculator(calc)
     atoms.get_forces()
     try:
         atoms.get_stress()
@@ -157,7 +156,7 @@ def main():
     from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     calc = get_calculator()('gs.gpw', txt=None,
                             communicator=serial_comm)
     pbc = atoms.pbc
@@ -377,19 +376,6 @@ def evacdiff(atoms):
     evacsplit = 4 * np.pi * dipz / A * Hartree
 
     return evacsplit
-
-
-def get_evac():
-    """Get mean vacuum energy, if it has been calculated"""
-    from asr.core import read_json
-
-    evac = None
-    if Path('results-asr.gs.json').is_file():
-        results = read_json('results-asr.gs.json')
-        if 'vacuumlevels' in results.keys():
-            evac = results['vacuumlevels']['evacmean']
-
-    return evac
 
 
 if __name__ == '__main__':

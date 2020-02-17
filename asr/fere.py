@@ -49,7 +49,7 @@ def unique(ls, selector=None):
         rs = ls
 
     return all(count(lambda x: x == y, rs) == 1 for y in rs)
-    
+
 
 def parse_reactions(reactionsstr):
     import re
@@ -58,7 +58,7 @@ def parse_reactions(reactionsstr):
 
     lines = [line for line in data.split('\n') if line != '']
     reactions = []
-    
+
     splitter_re = r'(([A-Z]+[a-z]*[0-9]*)+)(\s)+([-+]?[0-9]+(\.[0-9]*)?)'
     for line in lines:
         tline = line.strip()
@@ -98,7 +98,7 @@ def parse_refs(refsstr):
         else:
             raise ParseError('Could not parse line' +
                              ' "{}" in {}'.format(line, refsstr))
-    
+
     if not unique(refs):
         bad = where(
             lambda y: count(lambda x: x == y[1], refs) > 1,
@@ -168,20 +168,20 @@ def get_dE_alpha(db, reactions, refs):
 
     alpha = sparse.lil_matrix((len(reactions), len(refs)))
     DE = sparse.lil_matrix((len(reactions), 1))
-    
+
     for i1, (form, eexp) in enumerate(reactions):
         formula = Formula(form)
         hof = get_hof(db, formula)
 
         DE[i1, 0] = eexp - hof
-        
+
         num_atoms = sum(formula.count().values())
         for i2, ref in enumerate(refs):
             reff = Formula(ref)
             el = only(lambda t: True, reff.count().keys())
             if el in formula.count().keys():
                 alpha[i1, i2] = formula.count()[el] / num_atoms
-                
+
     return DE, alpha
 
 
@@ -191,9 +191,9 @@ def minimize_error(dE, alpha):
 
     b = -alpha.T.dot(dE)
     A = alpha.T.dot(alpha)
-    
+
     dMu = spsolve(A, b)
-    
+
     d = alpha.dot(dMu)
     error = dE.T.dot(dE) + 2 * dE.T.dot(alpha.dot(dMu)) + d.T.dot(d)
     error = np.sqrt(error / dE.shape[0])
@@ -216,14 +216,13 @@ def create_corrected_db(newname, db, reactions, els_dMu):
     from ase.db import connect
 
     newdb = connect(newname)
-    
+
     for row in db.select():
         formula = Formula(row.formula)
         el_dmu = single(lambda t: formulas_eq(t[0], formula), els_dMu)
         if el_dmu:
             el, dmu = el_dmu
             row.energy += formula.count()[el] * dmu
-            
         newdb.write(row)
 
 
@@ -252,7 +251,7 @@ def main(newdbname='newdb.db',
     dE, alpha = get_dE_alpha(db, reactions, refs)
 
     dMu, error = minimize_error(dE, alpha)
-    
+
     elements = elements_from_refs(refs)
     create_corrected_db(newdbname, db, reactions, list(zip(elements, dMu)))
 
@@ -274,7 +273,7 @@ def main(newdbname='newdb.db',
          'alpha': 'Alpha matrix',
          'dMu': 'Adjustment of reference energies',
          'error': 'RMSE after adjustment'}
-    
+
     return results
 
 

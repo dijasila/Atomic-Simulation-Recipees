@@ -54,7 +54,7 @@ def print():
     fname = 'data-bader/ACF.dat'
     if not op.isfile(fname):
         return
-    
+
     with open(fname) as f:
         dat = f.read()
     print(dat)

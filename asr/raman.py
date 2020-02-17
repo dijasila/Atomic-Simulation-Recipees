@@ -157,3 +157,7 @@ def raman(row, filename):
     # Remove the extra space and save the figure
     plt.tight_layout()
     plt.savefig(filename)
+
+
+if __name__ == '__main__':
+    main.cli()

@@ -66,10 +66,9 @@ def main():
     """
     import numpy as np
     from asr.core import file_barrier, read_json
-    from gpaw.mpi import world
+    from gpaw.mpi import world, serial_comm
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 

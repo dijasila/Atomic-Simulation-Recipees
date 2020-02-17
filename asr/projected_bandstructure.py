@@ -45,7 +45,6 @@ def main():
     results['weight_skni'] = weight_skni
     results['yl_i'] = yl_i
     results['symbols'] = calc.atoms.get_chemical_symbols()
-    
     return results
 
 

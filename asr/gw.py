@@ -249,7 +249,7 @@ def webpanel(row, key_descriptions):
               f'{row.vbm_gw - row.efermi:.2f} eV'],
              ['Conduction band minimum wrt. Fermi level (G0W0)',
               f'{row.cbm_gw - row.efermi:.2f} eV']])
-    
+
     panel = {'title': 'Electronic band structure (GW)',
              'columns': [[fig('gw-bs.png')], [prop]],
              'plot_descriptions': [{'function': bs_gw,
@@ -280,7 +280,7 @@ def main():
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
-    
+
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
     gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
 

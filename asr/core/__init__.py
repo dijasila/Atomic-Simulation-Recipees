@@ -125,7 +125,7 @@ def argument(name, **kwargs):
         param.update(kwargs)
         add_param(func, param)
         return func
-        
+
     return decorator
 
 
@@ -357,7 +357,7 @@ class ASRCommand:
             else:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
-                
+
         if self.add_skip_opt:
             command = co('--skip-deps', is_flag=True, default=False,
                          help='Skip execution of dependencies.')(command)
@@ -503,7 +503,10 @@ class ASRCommand:
         modnames = self.package_dependencies
         versions = {}
         for modname in modnames:
-            mod = import_module(modname)
+            try:
+                mod = import_module(modname)
+            except ModuleNotFoundError:
+                continue
             githash = search_current_git_hash(mod)
             version = mod.__version__
             if githash:
@@ -775,8 +778,15 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
     yield
 
     # Wait for file:
+    i = 0
     while not all([path.is_file() for path in paths]):
+        filenames = ', '.join([path.name for path in paths
+                               if not path.is_file()])
+        if i > 0:
+            print(f'Waiting for ~{i}sec on existence of {filenames}'
+                  ' on all ranks')
         time.sleep(1.0)
+        i += 1
     world.barrier()
 
 

@@ -198,7 +198,7 @@ def main(nfreq=300, eta=1e-2):
     alphax_el = elecdict['alphax_el']
     alphay_el = elecdict['alphay_el']
     alphaz_el = elecdict['alphaz_el']
-    
+
     results = {'alpha_wvv': alpha_wvv,
                'omega_w': omega_w,
                'alphax_lat': alphax_lat,
@@ -244,7 +244,6 @@ def get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta):
                        1j * eta * omega_w)[:, np.newaxis, np.newaxis])
 
     alpha_wvv /= vol
-    
     return alpha_wvv
 
 
