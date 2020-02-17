@@ -1,15 +1,13 @@
 import pytest
 from pytest import approx
 from .conftest import test_materials
-from hypothesis import given
-from hypothesis.strategies import floats
 
 
 run_no = 0
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-@given(gap=floats(min_value=0, max_value=1),
-       fermi_level=floats(min_value=0, max_value=1))
+@pytest.mark.parametrize("gap", [0, 1])
+@pytest.mark.parametrize("fermi_level", [0.5, 1.5])
 def test_gs_main(separate_folder, usemocks, fs, atoms, gap, fermi_level):
     global run_no
     run_no += 1
