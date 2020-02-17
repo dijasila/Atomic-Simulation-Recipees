@@ -10,6 +10,12 @@ def main(include=None, exclude=None):
     import urllib.request
     from asr.core import get_recipes
 
+    if include is not None:
+        include = include.split(",")
+
+    if exclude is not None:
+        exclude = exclude.split(",")
+
     recipes = get_recipes()
     order = [
         "asr.relax",
