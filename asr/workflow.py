@@ -1,19 +1,23 @@
 from asr.core import command
 
 
-@command()
+@command('asr.workflow')
 def main():
     from asr.core import get_recipes
 
     recipes = get_recipes()
-    recipes = filter(lambda x: (x.name.count('.') == 1
-                                and '@' not in x.name),
+    recipes = filter(lambda x: ('database' not in x.name
+                                and '@' not in x.name
+                                and x.name != 'asr.workflow'),
                      recipes)
-    for recipe in recipes:
-        if recipe.name == 'asr.workflow':
-            continue
-        if not recipe.done:
-            recipe()
+
+    while any(not recipe.done for recipe in recipes):
+        for recipe in recipes:
+            try:
+                if recipe.is_requirements_met() and not recipe.done:
+                    recipe()
+            except Exception as e:
+                print(e)
 
 
 if __name__ == '__main__':
