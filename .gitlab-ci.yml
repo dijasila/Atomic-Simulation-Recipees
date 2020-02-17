@@ -87,7 +87,7 @@ python36-gpaw-2dsystem:
     - tox -e 2dsystem
   timeout: 1h
   when: manual
-  allow_failure: false
+# allow_failure: false
 
 # -------------- Release --------------
 # (Only on git tagged commit)
