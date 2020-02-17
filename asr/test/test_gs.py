@@ -5,9 +5,9 @@ from .conftest import test_materials
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-@pytest.mark.parametrize("fermi_level", [0.5, 1.5])
 @pytest.mark.parametrize("gap", [0, 1])
-def test_gs_main(separate_folder, usemocks, atoms, gap, fermi_level):
+@pytest.mark.parametrize("fermi_level", [0.5, 1.5])
+def test_gs(separate_folder, usemocks, atoms, gap, fermi_level):
     from gpaw import GPAW as GPAWMOCK
     GPAWMOCK.set_property(gap=gap, fermi_level=fermi_level)
 
@@ -31,8 +31,10 @@ def test_gs_main(separate_folder, usemocks, atoms, gap, fermi_level):
         assert results.get("gap") == approx(0)
 
     content = get_webcontent('database.db')
-    assert f"Bandgap{gap:0.3f}eV" in content, content
-    assert f"Fermilevel{fermi_level:0.3f}eV" in content, content
+    resultgap = results.get("gap")
+    assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
+    assert f"<td>Fermilevel</td><td>{fermi_level:0.3f}eV</td>" in \
+        content, content
 
 
 def get_webcontent(name='database.db'):
@@ -61,9 +63,8 @@ def get_webcontent(name='database.db'):
         url = f"/database.db/row/{uid}"
         content = c.get(url).data.decode()
         content = (
-            content.replace(" ", "")
-            .replace("<td>", "")
-            .replace("</td>", "")
+            content
             .replace("\n", "")
+            .replace(" ", "")
         )
     return content
