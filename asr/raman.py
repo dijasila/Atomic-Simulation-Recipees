@@ -2,7 +2,7 @@ from asr.core import command
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = {'title': 'Raman spectrum (RPA)',
              'columns': [[fig('Raman.png')], []],
@@ -147,3 +147,7 @@ def raman(row, filename):
     # Remove the extra space and save the figure
     plt.tight_layout()
     plt.savefig(filename)
+
+
+if __name__ == '__main__':
+    main.cli()

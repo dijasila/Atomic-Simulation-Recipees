@@ -85,7 +85,7 @@ def webpanel(row, key_descriptions):
                    'u<sub>y</sub>', 'u<sub>z</sub>']
         rows[1][0] = 'P<sub>x</sub>'
         rows[2][0] = 'P<sub>y</sub>'
-        rows[3][0] = 'P<sub>y</sub>'
+        rows[3][0] = 'P<sub>z</sub>'
 
         for ir, tmprow in enumerate(rows):
             for ic, item in enumerate(tmprow):

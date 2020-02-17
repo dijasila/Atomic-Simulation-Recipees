@@ -116,8 +116,5 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
                   'state for 2 magnetic atoms.')
 
 
-group = 'setup'
-
-
 if __name__ == '__main__':
     main.cli()

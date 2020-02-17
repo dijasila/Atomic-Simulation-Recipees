@@ -85,7 +85,7 @@ def main(strain_percent=1.0):
     from asr.core import read_json, chdir
     from asr.database.material_fingerprint import main as computemf
     import numpy as np
-    
+
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 

@@ -2,17 +2,9 @@ from asr.core import command, option
 
 
 def atomstospgcell(atoms, magmoms=None):
-    from ase.calculators.calculator import PropertyNotImplementedError
     lattice = atoms.get_cell().array
     positions = atoms.get_scaled_positions(wrap=False)
     numbers = atoms.get_atomic_numbers()
-    if magmoms is None:
-        try:
-            magmoms = atoms.get_magnetic_moments()
-        except (RuntimeError, PropertyNotImplementedError):
-            magmoms = None
-    if magmoms is not None:
-        return (lattice, positions, numbers, magmoms)
     return (lattice, positions, numbers)
 
 

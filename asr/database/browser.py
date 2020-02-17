@@ -217,7 +217,7 @@ def layout(row: AtomsRow,
     return final_page
 
 
-@command('asr.browser')
+@command('asr.database.browser')
 @option('--database')
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')

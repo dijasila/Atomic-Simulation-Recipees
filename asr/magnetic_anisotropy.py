@@ -30,6 +30,9 @@ def spin_axis(theta, phi):
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
+    if row.get('magstate', 'NM') == 'NM':
+        return []
+
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
@@ -63,10 +66,9 @@ def main():
     """
     import numpy as np
     from asr.core import file_barrier, read_json
-    from gpaw.mpi import world
+    from gpaw.mpi import world, serial_comm
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 

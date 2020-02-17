@@ -225,8 +225,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                  wyckoffs[i], i)
                         charge_dict = {}
                         for q in range(
-                            (-1) * charge_states,
-                            charge_states + 1):
+                                (-1) * charge_states,
+                                charge_states + 1):
                             parameters = {}
                             parameters['asr.relax'] = {'chargestate': q}
                             parameters['asr.gs@calculate'] = {'chargestate': q}
