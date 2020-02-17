@@ -25,7 +25,8 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.polarizability',
-         dependencies=['asr.structureinfo', 'asr.gs'],
+         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
+         requires=['gs.gpw'],
          webpanel=webpanel)
 @option(
     '--gs', help='Ground state on which response is based')
@@ -41,7 +42,6 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
-    from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
 
@@ -101,7 +101,8 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
             fixdensity=True,
             nbands=(bandfactor + 1) * nval,
             convergence={'bands': bandfactor * nval},
-            occupations=FermiDirac(width=1e-4),
+            occupations={'name': 'fermi-dirac',
+                         'width': 1e-4},
             kpts=kpts)
         calc.get_potential_energy()
         calc.write('es.gpw', mode='all')
