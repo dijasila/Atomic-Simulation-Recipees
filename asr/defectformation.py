@@ -36,9 +36,19 @@ def main(defect_name=None):
     defectformation_dict['gaps_nosoc'] = gs_dict.get('gap')
     defectformation_dict['gaps_soc'] = gs_dict.get('gap')
 
-    sigma = 2 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    newvac = atoms.get_cell()[2][2]
+    print('INFO: vacuum is: {}'.format(newvac))
+    # TODO: read out polarizabilities as epsilons op in the
+    # 'check_and_get_general_inputs_() function
+    epsilons[0] = 1 + 4*np.pi*epsilons[0]/newvac
+    epsilons[1] = 1 + 4*np.pi*epsilons[1]/newvac
+    epsilons[2] = 1 + 4*np.pi*epsilons[2]/newvac
+    print('INFO: rescaled epsilons: {}'.format(epsilons))
+
+    # TODO: implement automatic fit to density difference for sigma
+    sigma = 1.0
     if nd == 3:
-        epsilon = (epsilons[0] + epsilons[1] + epsilons[2]) / 3.
+        epsilon = (epsilons[0] + epsilons[1])*2./3. + epsilons[2]*1./3.
         dim = '3d'
     elif nd == 2:
         epsilon = [(epsilons[0] + epsilons[1]) / 2., epsilons[2]]
@@ -55,6 +65,9 @@ def main(defect_name=None):
         [folder_list.append(x) for x in p.iterdir() if x.is_dir()
             and x.name == defect_name]
 
+    # TODO: implement flag to decide whether electrostatic data should be
+    # printed out or not
+    # TODO: improve error handling
     for folder in folder_list:
         s = Path(folder.name)
         sub_folder_list = []
@@ -80,11 +93,20 @@ def main(defect_name=None):
                     e_form.append(value)
                     print('Calculate uncorrected formation energy: {}'.format(
                         value))
+                    data = elc.collect_electrostatic_data()
+                    np.savez('electrostatic_data.npz', **data)
+                    print('Saved electrostatic data file!')
                 else:
                     value = elc.calculate_corrected_formation_energy()
                     e_form.append(value)
                     print('Calculate corrected formation energy: {}'.format(
                         value))
+                    # newval = elc.calculate_uncorrected_formation_energy()
+                    # print('Calculate uncorrected formation energy: {}'.format(
+                    #     newval))
+                    data = elc.collect_electrostatic_data()
+                    np.savez('electrostatic_data.npz', **data)
+                    print('Saved electrostatic data file!')
                 charges.append(chargestate)
             except BaseException:
                 e_form.append(None)
