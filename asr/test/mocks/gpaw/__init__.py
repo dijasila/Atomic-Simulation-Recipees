@@ -24,7 +24,7 @@ class GPAW(Calculator):
     default_parameters = {
         "kpts": (4, 4, 4),
         "gridsize": 3,
-        "nbands": 8,
+        "nbands": 12,
         "nspins": 1,
         "nelectrons": 4,
         "fermi_level": 0,
@@ -61,9 +61,6 @@ class GPAW(Calculator):
 
     wfs = WaveFunctions()
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-
     @classmethod
     def set_property(cls, **kwargs):
         cls.default_parameters.update(kwargs)
@@ -84,6 +81,7 @@ class GPAW(Calculator):
         eps_kn.sort()
 
         gap = self.parameters.gap
+
         eps_kn = np.concatenate(
             (-eps_kn[:, ::-1][:, -self.parameters.nelectrons:],
              eps_kn + gap / Ha),
@@ -113,7 +111,7 @@ class GPAW(Calculator):
         }
 
     def get_fermi_level(self):
-        return self.parameters.fermi_level
+        pass
 
     def get_eigenvalues(self, kpt, spin=0):
         return self.eigenvalues[kpt]
@@ -123,6 +121,12 @@ class GPAW(Calculator):
 
     def get_ibz_k_points(self):
         return self.kpts.copy()
+
+    def get_bz_k_points(self):
+        return self.kpts.copy()
+
+    def get_bz_to_ibz_map(self):
+        return np.arange(len(self.kpts))
 
     def get_number_of_spins(self):
         return self.parameters.nspins
@@ -176,3 +180,6 @@ class GPAW(Calculator):
     def get_electrostatic_potential(self):
         return (self.parameters.electrostatic_potential
                 or np.zeros((20, 20, 20)))
+
+    def diagonalize_full_hamiltonian(self, ecut=None):
+        pass

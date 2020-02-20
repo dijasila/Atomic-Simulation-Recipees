@@ -5,7 +5,7 @@ Si = bulk('Si')
 
 
 @pytest.mark.ci
-def test_setup_decorate_si(separate_folder, usemocks):
+def test_setup_decorate_si(separate_folder, mockcalculator):
     from asr.setup.decorate import main
     from ase.io import write
     from ase.db import connect
