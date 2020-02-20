@@ -3,6 +3,7 @@ import pytest
 from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
 def test_gw(separate_folder, atoms, mockcalculator, mocker):
     import numpy as np
