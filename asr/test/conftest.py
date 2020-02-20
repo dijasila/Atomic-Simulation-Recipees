@@ -40,7 +40,7 @@ def get_webcontent(name='database.db'):
 
 
 @pytest.fixture()
-def usemocks(monkeypatch):
+def usemocks2(monkeypatch):
     from pathlib import Path
     import sys
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
@@ -49,6 +49,17 @@ def usemocks(monkeypatch):
     yield
     if 'gpaw' in sys.modules:
         sys.modules.pop('gpaw')
+
+
+@pytest.fixture()
+def mockcalculator(mocker):
+    from sys import modules
+    from .mocks import gpaw
+    mocker.patch.dict(
+        modules,
+        {
+            "gpaw": gpaw,
+        })
 
 
 # Make some 1D, 2D and 3D test materials
@@ -128,3 +139,34 @@ def pytest_configure(config):
         "markers",
         """ci: Mark a test for running in continuous integration""",
     )
+
+
+def freeelectroneigenvalues(atoms, gap=0):
+    def get_eigenvalues(self, kpt, spin=0):
+        from ase.calculators.calculator import kpts2ndarray
+        from ase.units import Bohr, Ha
+        import numpy as np
+
+        if hasattr(self, "tmpeigenvalues"):
+            return self.tmpeigenvalues[kpt]
+        nelectrons = self.parameters.nelectrons
+        kpts = kpts2ndarray(self.parameters.kpts, atoms)
+        nbands = self.get_number_of_bands()
+
+        icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+
+        # Simple parabolic band
+        n = 3
+        offsets = np.indices((n, n, n)).T.reshape((n ** 3, 1, 3)) - n // 2
+        eps_kn = 0.5 * (np.dot(kpts + offsets, icell) ** 2).sum(2).T
+        eps_kn.sort()
+
+        eps_kn = np.concatenate(
+            (-eps_kn[:, ::-1][:, -nelectrons:],
+             eps_kn + gap / Ha),
+            axis=1,
+        )
+
+        self.tmpeigenvalues = eps_kn[:, : nbands] * Ha
+        return self.tmpeigenvalues[kpt]
+    return get_eigenvalues

@@ -1,6 +1,6 @@
 import pytest
 
-from .conftest import test_materials, freeelectroneigenvalues
+from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
 
 
 @pytest.mark.parametrize("atoms", test_materials)
@@ -29,6 +29,7 @@ def test_gw(separate_folder, atoms, mockcalculator, mocker):
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
         main()
+        get_webcontent('database.db')
     else:
         with pytest.raises(NotImplementedError):
             main()
