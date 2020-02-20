@@ -156,7 +156,7 @@ def gw(ecut=200.0, mode='G0W0'):
     import numpy as np
 
     # check that the system is a semiconductor
-    calc = GPAW(gs, txt=None)
+    calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = " +
@@ -270,8 +270,9 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs'],
+@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+                   'results-asr.bandstructure.json'],
+         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
          webpanel=webpanel)
 def main():
     import numpy as np
