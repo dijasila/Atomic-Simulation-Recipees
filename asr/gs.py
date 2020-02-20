@@ -1,5 +1,4 @@
 from asr.core import command, option
-from pathlib import Path
 
 test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',
@@ -48,8 +47,8 @@ def calculate(calculator={'name': 'gpaw',
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
-    
-    atoms.calc = calc
+
+    atoms.set_calculator(calc)
     atoms.get_forces()
     try:
         atoms.get_stress()
@@ -116,7 +115,7 @@ def bz_soc(row, fname):
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
-    lat.plot_bz(vectors=False)
+    lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
@@ -133,8 +132,8 @@ def bz_soc(row, fname):
         cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
         ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
         ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
-        xlim = np.array(ax.get_xlim()) * 1.2
-        ylim = np.array(ax.get_ylim()) * 1.2
+        xlim = np.array(ax.get_xlim()) * 1.4
+        ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         plt.legend(loc='upper center', ncol=3)
@@ -157,7 +156,7 @@ def main():
     from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     calc = get_calculator()('gs.gpw', txt=None,
                             communicator=serial_comm)
     pbc = atoms.pbc
@@ -377,19 +376,6 @@ def evacdiff(atoms):
     evacsplit = 4 * np.pi * dipz / A * Hartree
 
     return evacsplit
-
-
-def get_evac():
-    """Get mean vacuum energy, if it has been calculated"""
-    from asr.core import read_json
-
-    evac = None
-    if Path('results-asr.gs.json').is_file():
-        results = read_json('results-asr.gs.json')
-        if 'vacuumlevels' in results.keys():
-            evac = results['vacuumlevels']['evacmean']
-
-    return evac
 
 
 if __name__ == '__main__':

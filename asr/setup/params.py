@@ -31,7 +31,6 @@ def main(params=None):
     import copy
 
     defparamdict = {}
-    
     recipes = get_recipes()
     for recipe in recipes:
         defparams = recipe.defparams

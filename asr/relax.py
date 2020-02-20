@@ -9,6 +9,11 @@ from asr.core import command, option
 from math import sqrt
 import time
 
+
+class BrokenSymmetryError(Exception):
+    pass
+
+
 Uvalues = {}
 
 # From [acs comb sci 2.011, 13, 383-390, Setyawan et al.]
@@ -37,7 +42,9 @@ class SpgAtoms(Atoms):
     def from_atoms(cls, atoms):
         # Due to technicalities we cannot mess with the __init__ constructor
         # -> therefore we make our own
-        return cls(atoms)
+        a = cls(atoms)
+        a.set_symmetries([np.eye(3)], [[0, 0, 0]])
+        return a
 
     def set_symmetries(self, symmetries, translations):
         self.t_sc = translations
@@ -120,7 +127,7 @@ class myBFGS(BFGS):
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
-          fmax=0.01):
+          fmax=0.01, enforce_symmetry=False):
     import spglib
 
     if dftd3:
@@ -135,16 +142,18 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            msg = 'Relax recipe not implemented for 1D structures'
-            raise NotImplementedError(msg)
+            pbc = atoms.get_pbc()
+            assert pbc[2], "1D periodic axis should be the last one."
+            smask = [0, 0, 1, 0, 0, 0]
 
     from asr.setup.symmetrize import atomstospgcell as ats
     dataset = spglib.get_symmetry_dataset(ats(atoms),
                                           symprec=1e-4,
                                           angle_tolerance=0.1)
     atoms = SpgAtoms.from_atoms(atoms)
-    atoms.set_symmetries(symmetries=dataset['rotations'],
-                         translations=dataset['translations'])
+    if enforce_symmetry:
+        atoms.set_symmetries(symmetries=dataset['rotations'],
+                             translations=dataset['translations'])
     if dftd3:
         calc = DFTD3(dft=dft)
     else:
@@ -179,7 +188,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                    f'The initial spacegroup was {spgname} {number} '
                    f'but it changed to {spgname2} {number2} during '
                    'the relaxation.')
-            raise AssertionError(msg)
+            raise BrokenSymmetryError(msg)
 
         if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
@@ -233,8 +242,6 @@ def log(*args, **kwargs):
 
 
 @command('asr.relax',
-         tests=tests,
-         resources='24:10h',
          requires=['unrelaxed.json'],
          creates=['structure.json'],
          log=log)
@@ -244,6 +251,8 @@ def log(*args, **kwargs):
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 @option('--fmax', help='Maximum force allowed')
+@option('--enforce-symmetry', is_flag=True,
+        help='Symmetrize forces and stresses.')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
@@ -256,7 +265,7 @@ def main(calculator={'name': 'gpaw',
                                      'width': 0.05},
                      'charge': 0},
          d3=False, fixcell=False, allow_symmetry_breaking=False,
-         fmax=0.01):
+         fmax=0.01, enforce_symmetry=True):
     """Relax atomic positions and unit cell.
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
@@ -321,7 +330,7 @@ def main(calculator={'name': 'gpaw',
     atoms = relax(atoms, name='relax', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc, fmax=fmax)
+                  dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
@@ -360,7 +369,6 @@ def main(calculator={'name': 'gpaw',
          'gamma': 'Cell parameter gamma [deg]'}
 
     # For nm set magnetic moments to zero XXX
-    
     # Save atomic structure
     write('structure.json', atoms)
 

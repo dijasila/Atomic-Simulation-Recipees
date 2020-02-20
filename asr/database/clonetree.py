@@ -41,7 +41,7 @@ def main(source, destination, patterns,
 
     if not patterns:
         patterns = ['*']
-    
+
     log: List[Tuple[Path, Path]] = []
     mkdir: List[Path] = []
     errors = []

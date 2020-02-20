@@ -17,7 +17,7 @@ def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
         calc.get_potential_energy()
         calc.write(name)
         del calc
-    
+
     calc = GPAW(name, txt=None)
     from ase.dft.dos import DOS
     dos = DOS(calc, width=0.0, window=(-5, 5), npts=1000)
@@ -35,7 +35,7 @@ def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
         data['dosspin1_e'] = dosspin1_e.tolist()
 
     import json
-    
+
     from ase.parallel import paropen
     with paropen(filename, 'w') as fd:
         json.dump(data, fd)
@@ -45,7 +45,7 @@ def collect_data(atoms):
     """Band structure PBE and GW +- SOC."""
     from ase.io.jsonio import read_json
     from pathlib import Path
-        
+
     if not Path('dos.json').is_file():
         return {}, {}, {}
 
@@ -69,7 +69,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
         if 'dos' not in row.data:
             return
         dos = row.data['dos']
-    
+
     # Otherwise from from file
     file = file or 'dos.json'
     if not dos:
@@ -96,10 +96,6 @@ def webpanel(row, key_descriptions):
 
     return panel, things
 
-
-group = 'property'
-dependencies = ['asr.structureinfo', 'asr.gs']
-creates = ['dos.json']
 
 if __name__ == '__main__':
     main.cli()

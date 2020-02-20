@@ -60,7 +60,7 @@ def main(tetra=True):
     nd = sum(atoms.pbc)
     if not nd == 2:
         raise AssertionError('Plasmafrequency recipe only implemented for 2D')
-    
+
     if tetra:
         kwargs = {'truncation': '2D',
                   'eta': 0.05,

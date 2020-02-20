@@ -216,11 +216,12 @@ def get_emass_dict_from_row(row):
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
                             my_dict[f'{name}, direction {direction}'] = \
-                                '{}'.format(mass_str)
+                                f'{mass_str} m<sub>e</sub>'
                         else:
                             my_dict['{} {} {}, direction {}'.format(
                                 name, offset_sym,
-                                offset_num, direction)] = mass_str
+                                offset_num, direction)] = \
+                                f'{mass_str} m<sub>e</sub>'
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -615,14 +616,14 @@ def unpack_masses(masses, soc, bt, results_dict):
     # We want to flatten this structure so that results_dict contains
     # the masses directly
     import numpy as np
-    
+
     for ind in masses['indices']:
         out_dict = masses[ind]
         index = str(ind)
         socpre = 'soc' if soc else 'nosoc'
         prefix = bt + '_' + socpre + '_'
         offset = out_dict['offset']
-        
+
         results_dict[index] = {}
 
         mass_u = list(out_dict['mass_u'])
