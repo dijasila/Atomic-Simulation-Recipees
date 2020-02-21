@@ -5,7 +5,7 @@ from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-def test_gw(separate_folder, atoms, mockcalculator, mocker):
+def test_gw(separate_folder, atoms, mockgpaw, mocker):
     import numpy as np
     import gpaw
     from gpaw.response.g0w0 import G0W0

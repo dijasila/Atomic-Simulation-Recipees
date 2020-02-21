@@ -7,7 +7,7 @@ from .conftest import test_materials, get_webcontent, freeelectroneigenvalues
 @pytest.mark.parametrize("atoms", test_materials)
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(separate_folder, mockcalculator, mocker, atoms, gap, fermi_level):
+def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
     from asr.gs import calculate, main
     from ase.io import write
     from ase.units import Ha
