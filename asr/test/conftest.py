@@ -41,12 +41,14 @@ def get_webcontent(name='database.db'):
 
 @pytest.fixture()
 def mockgpaw(monkeypatch):
-    from pathlib import Path
+    import sys
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
+    for module in list(sys.modules):
+        if "gpaw" in module:
+            sys.modules.pop(module)
 
     yield
 
-    import sys
     for module in list(sys.modules):
         if "gpaw" in module:
             sys.modules.pop(module)
