@@ -111,7 +111,7 @@ class GPAW(Calculator):
         }
 
     def get_fermi_level(self):
-        pass
+        return 0.0
 
     def get_eigenvalues(self, kpt, spin=0):
         return self.eigenvalues[kpt]

@@ -10,7 +10,6 @@ def test_hse(separate_folder, atoms, mockgpaw, mocker):
     from gpaw import GPAW
     from pathlib import Path
     atoms.write("structure.json")
-    ndim = sum(atoms.pbc)
 
     class EXX:
         def __init__(self, name, xc, bands):
@@ -31,9 +30,5 @@ def test_hse(separate_folder, atoms, mockgpaw, mocker):
 
     mocker.patch("gpaw.xc.tools.vxc", create=True, new=vxc)
     from asr.hse import main
-    if ndim > 1:
-        main()
-        get_webcontent('database.db')
-    else:
-        with pytest.raises(NotImplementedError):
-            main()
+    main()
+    get_webcontent('database.db')
