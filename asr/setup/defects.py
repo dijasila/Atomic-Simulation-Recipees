@@ -278,6 +278,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
                 vacancy.pop(i)
+                vacancy.rattle()
                 string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 charge_dict = {}
@@ -339,6 +340,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
                         defect[i].symbol = element
+                        defect.rattle()
                         string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
                                  formula, N_x, N_y, N_z, element,
                                  wyckoffs[i], i)
