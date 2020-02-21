@@ -64,10 +64,6 @@ class GPAW(Calculator):
 
     wfs = WaveFunctions()
 
-    @classmethod
-    def set_property(cls, **kwargs):
-        cls.default_parameters.update(kwargs)
-
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
             self.atoms = atoms
