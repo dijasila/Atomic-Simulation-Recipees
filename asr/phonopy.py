@@ -28,10 +28,17 @@ def lattice_vectors(N_c):
 )
 @option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
-@option("--ecut", type=float, help="Energy cutoff")
-@option("--kptdensity", type=int, help="Kpoint density")
-@option("--fconverge", type=float, help="Force convergence criterium")
-def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
+@option('-c', '--calculator', help='Calculator params.')
+def calculate(n=2, d=0.05,
+              calculator={'name': 'gpaw',
+                          'mode': {'name': 'pw', 'ecut': 800},
+                          'xc': 'PBE',
+                          'basis': 'dzp',
+                          'kpts': {'density': 6.0, 'gamma': True},
+                          'convergence': {'forces': 1.0e-4},
+                          'symmetry': {'point_group': False},
+                          'txt': 'phonons.txt',
+                          'charge': 0}):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
@@ -45,19 +52,11 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
                 f.unlink()
     world.barrier()
 
-    params = {
-        "mode": {"name": "pw", "ecut": ecut},
-        "kpts": {"density": kptdensity, "gamma": True},
-    }
-
-    # Set essential parameters for phonons
-    params["symmetry"] = {"point_group": False}
-    # Make sure to converge forces! Can be important
-    params["convergence"] = {"forces": fconverge}
-
     atoms = read("structure.json")
-    fd = open("phonons.txt".format(n), "a")
-    calc = get_calculator()(txt=fd, **params)
+
+    from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
 
     # Set initial magnetic moments
     from asr.core import is_magnetic
@@ -91,7 +90,8 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     scell = displaced_sc[0]
     atoms_N = Atoms(symbols=scell.get_chemical_symbols(),
                     scaled_positions=scell.get_scaled_positions(),
-                    cell=scell.get_cell())
+                    cell=scell.get_cell(),
+                    pbc=atoms.pbc)
 
     for n, cell in enumerate(displaced_sc):
         # Displacement number
