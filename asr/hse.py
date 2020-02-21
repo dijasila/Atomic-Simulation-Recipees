@@ -3,10 +3,9 @@ from contextlib import contextmanager
 
 
 @command(module='asr.hse',
-         dependencies=['asr.structureinfo', 'asr.gs'],
+         dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
          creates=['hse_nowfs.gpw', 'hse-restart.json'],
-         # tests=...,
-         requires=['gs.gpw'],
+         requires=['gs.gpw', 'results-asr.gs.json'],
          resources='24:10h',
          restart=2)
 @option('--kptdensity', help='K-point density')
@@ -200,7 +199,7 @@ def bs_hse(row,
     mpl.rcParams['font.size'] = fontsize
     ef = data['efermi_hse_soc']
 
-    reference = row.get('evac', row.get('ef'))
+    reference = row.get('evac', row.get('efermi'))
     if row.get('evac') is not None:
         label = r'$E - E_\mathrm{vac}$ [eV]'
     else:

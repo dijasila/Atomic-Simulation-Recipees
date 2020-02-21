@@ -22,7 +22,7 @@ def test_setup_strains_get_relevant_strains(separate_folder, pbc):
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-def test_setup_strains(separate_folder, mockcalculator, atoms):
+def test_setup_strains(separate_folder, mockgpaw, atoms):
     from asr.setup.strains import (main,
                                    get_strained_folder_name,
                                    get_relevant_strains)

@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-def test_relax(separate_folder, mockcalculator, atoms):
+def test_relax(separate_folder, mockgpaw, atoms):
     from asr.relax import main as relax
     from ase.io import write
 

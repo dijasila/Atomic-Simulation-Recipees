@@ -40,26 +40,28 @@ def get_webcontent(name='database.db'):
 
 
 @pytest.fixture()
-def usemocks2(monkeypatch):
-    from pathlib import Path
+def mockgpaw(monkeypatch):
     import sys
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
-    if 'gpaw' in sys.modules:
-        sys.modules.pop('gpaw')
+    for module in list(sys.modules):
+        if "gpaw" in module:
+            sys.modules.pop(module)
+
     yield
-    if 'gpaw' in sys.modules:
-        sys.modules.pop('gpaw')
 
+    for module in list(sys.modules):
+        if "gpaw" in module:
+            sys.modules.pop(module)
 
-@pytest.fixture()
-def mockcalculator(mocker):
-    from sys import modules
-    from .mocks import gpaw
-    mocker.patch.dict(
-        modules,
-        {
-            "gpaw": gpaw,
-        })
+# @pytest.fixture()
+# def mockgpaw(mocker):
+#     from sys import modules
+#     from .mocks import gpaw
+#     mocker.patch.dict(
+#         modules,
+#         {
+#             "gpaw": gpaw,
+#         })
 
 
 # Make some 1D, 2D and 3D test materials
