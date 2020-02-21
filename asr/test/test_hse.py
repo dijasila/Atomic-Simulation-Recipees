@@ -1,6 +1,6 @@
 import pytest
 
-from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
+from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci

@@ -31,3 +31,16 @@ def test_setup_params(separate_folder):
     for value in params.values():
         if 'kptdensity' in value:
             assert value['kptdensity'] == 12
+
+
+@pytest.mark.ci
+def test_setup_params_recurse_dict(separate_folder):
+    from asr.setup.params import main
+    from asr.core import read_json
+    main(params=['asr.gs@calculate:calculator',
+                 '{"name": "testname", "mode": {"ecut": 400, ...}, ...}'])
+
+    params = read_json('params.json')
+    assert params['asr.gs@calculate']['calculator']['name'] == 'testname'
+    assert params['asr.gs@calculate']['calculator']['mode']['name'] == 'pw'
+    assert params['asr.gs@calculate']['calculator']['mode']['ecut'] == 400
