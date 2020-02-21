@@ -207,27 +207,6 @@ def gw(ecut=200.0, mode='G0W0'):
     return results
 
 
-def plot_renorm_factor(row, filename):
-    from matplotlib import pyplot as plt
-    data = row.data.get('results-asr.gw@gw.json')
-    q_skn = data['qp']
-    Z_skn = data['Z']
-    reference = row.get('evac', row.get('ef'))
-    plt.figure(figsize=(6.4, 4.8))
-    plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
-                s=2)
-    emin = row.get('vbm_gw', row.get('ef')) - 3 - reference
-    emax = row.get('cbm_gw', row.get('ef')) + 3 - reference
-    if row.get('evac') is not None:
-        plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
-    else:
-        plt.ylabel(r'$E - E_\mathrm{F}$ [eV]')
-    plt.ylim(emin, emax)
-    plt.xlabel('Renormalization factor Z')
-    plt.tight_layout()
-    plt.savefig(filename)
-
-
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     if not row.get('gap_gw', 0) > 0:

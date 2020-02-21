@@ -56,14 +56,13 @@ class GPAW(Calculator):
         class GridDescriptor:
             pass
 
+        class KPointDescriptor:
+            pass
         gd = GridDescriptor()
         nvalence = None
+        kd = KPointDescriptor()
 
     wfs = WaveFunctions()
-
-    @classmethod
-    def set_property(cls, **kwargs):
-        cls.default_parameters.update(kwargs)
 
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
@@ -111,7 +110,7 @@ class GPAW(Calculator):
         }
 
     def get_fermi_level(self):
-        pass
+        return 0.0
 
     def get_eigenvalues(self, kpt, spin=0):
         return self.eigenvalues[kpt]
