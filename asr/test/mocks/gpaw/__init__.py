@@ -56,8 +56,11 @@ class GPAW(Calculator):
         class GridDescriptor:
             pass
 
+        class KPointDescriptor:
+            pass
         gd = GridDescriptor()
         nvalence = None
+        kd = KPointDescriptor()
 
     wfs = WaveFunctions()
 
