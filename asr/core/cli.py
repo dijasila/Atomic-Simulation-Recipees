@@ -243,24 +243,19 @@ def list(search):
     panel = [['Name', 'Description'],
              ['----', '-----------']]
 
-    for state in ['tested', 'untested']:
-        for recipe in recipes:
-            if not recipe.state == state.strip():
-                continue
-            longhelp = recipe._main.__doc__
-            if not longhelp:
-                longhelp = ''
+    for recipe in recipes:
+        longhelp = recipe._main.__doc__
+        if not longhelp:
+            longhelp = ''
 
-            shorthelp, *_ = longhelp.split('\n')
+        shorthelp, *_ = longhelp.split('\n')
 
-            if state == 'untested':
-                shorthelp = '(Untested) ' + shorthelp
-            if search and (search not in longhelp
-                           and search not in recipe.name):
-                continue
-            status = [recipe.name[4:], shorthelp]
-            panel += [status]
-        panel += ['\n']
+        if search and (search not in longhelp
+                       and search not in recipe.name):
+            continue
+        status = [recipe.name[4:], shorthelp]
+        panel += [status]
+    panel += ['\n']
 
     print(format(panel))
 
