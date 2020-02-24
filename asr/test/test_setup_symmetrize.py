@@ -22,7 +22,7 @@ def test_setup_symmetrize(separate_folder, inputatoms):
     symmetrizedatoms = read('unrelaxed.json')
 
     assert symmetrizedatoms.cell.cellpar() == approx(inputatoms.cell.cellpar())
-    assert (symmetrizedatoms.get_scaled_positions() ==
-            approx(inputatoms.get_scaled_positions()))
-    assert (symmetrizedatoms.get_initial_magnetic_moments() ==
-            approx(inputatoms.get_initial_magnetic_moments()))
+    assert (symmetrizedatoms.get_scaled_positions()
+            == approx(inputatoms.get_scaled_positions()))
+    assert (symmetrizedatoms.get_initial_magnetic_moments()
+            == approx(inputatoms.get_initial_magnetic_moments()))

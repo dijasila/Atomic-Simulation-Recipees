@@ -114,8 +114,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
              theta=0, phi=0):
-    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
-    fermi energy
+    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
     Parameters:
         gpw (str): gpw filename

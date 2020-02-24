@@ -108,13 +108,13 @@ def main(tolerance=1e-3, angle_tolerance=0.1):
     an average of these atomic positions we generate an exactly symmetric
     atomic structure.
 
-    \b
     Examples:
     ---------
     Symmetrize an atomic structure using the default tolerances
-        $ ase build -x diamond C original.json
-        $ asr run setup.symmetrize
-"""
+    >>> ase build -x diamond C original.json
+    >>> asr run setup.symmetrize
+
+    """
     import numpy as np
     from ase.io import read, write
     atoms = read('original.json')

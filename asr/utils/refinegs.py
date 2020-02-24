@@ -6,7 +6,7 @@ from asr.utils.kpts import get_kpts_size
 
 
 def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
-    """Non self-consistent calculation based on the density in gs.gpw"""
+    """Non self-consistent calculation based on the density in gs.gpw."""
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
 
@@ -27,7 +27,7 @@ def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
 
 
 def get_filenames(gpw, txt, selfc=False, **kwargs):
-    """Get file names as specified by intput"""
+    """Get file names as specified by input."""
     parstr = get_parstr(selfc=selfc, **kwargs)
 
     if isinstance(gpw, str):
@@ -57,7 +57,7 @@ def get_parstr(selfc=False, **kwargs):
 
 
 def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
-    """Refine the ground state calculation
+    """Refine the ground state calculation.
 
     Parameters:
     -----------
