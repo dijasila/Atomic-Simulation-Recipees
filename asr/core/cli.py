@@ -58,7 +58,7 @@ def cli():
 @click.pass_context
 def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         skip_if_done, dont_raise):
-    """Run recipe, python function or shell command in multiple folders.
+    r"""Run recipe, python function or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
