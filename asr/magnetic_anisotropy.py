@@ -61,7 +61,8 @@ def main():
     Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
-    Returns:
+    Returns
+    -------
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """

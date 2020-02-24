@@ -8,13 +8,17 @@ def get_reduced_formula(formula, stoichiometry=False):
     in the same order as the original formula
     E.g. Cu2S4 -> CuS2
 
-    Parameters:
-        formula (str)
-        stoichiometry (bool): if True, return the stoichiometry ignoring the
-          elements appearing in the formula, so for example "AB2" rather than
-          "MoS2"
-    Returns:
-        A string containing the reduced formula
+    Parameters
+    ----------
+    formula : str
+    stoichiometry : bool
+        If True, return the stoichiometry ignoring the
+        elements appearing in the formula, so for example "AB2" rather than
+        "MoS2"
+
+    Returns
+    -------
+        A string containing the reduced formula.
     """
     from functools import reduce
     from math import gcd
@@ -41,12 +45,15 @@ def get_reduced_formula(formula, stoichiometry=False):
 def has_inversion(atoms, use_spglib=True):
     """Determine if atoms has inversion symmetry.
 
-    Parameters:
-        atoms: Atoms object
-            atoms
-        use_spglib: bool
-            use spglib
-    Returns:
+    Parameters
+    ----------
+    atoms: Atoms object
+           atoms
+    use_spglib: bool
+           use spglib
+
+    Returns
+    -------
         out: bool
     """
     import numpy as np

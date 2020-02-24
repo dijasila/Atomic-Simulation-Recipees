@@ -59,8 +59,8 @@ def get_parstr(selfc=False, **kwargs):
 def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
     """Refine the ground state calculation.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     selfc : bool
         Perform new self-consistency cycle to refine also the density
     gpw : str
@@ -72,8 +72,8 @@ def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
         If 'default' is specified, use f'refinedgs_{parstr}.txt' as file name.
         If another string is specified, use that as file name.
 
-    Returns:
-    --------
+    Returns
+    -------
     calc : obj
         GPAW calculator object
     gpw : str

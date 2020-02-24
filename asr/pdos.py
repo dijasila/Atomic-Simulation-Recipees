@@ -23,8 +23,8 @@ class SOCDOS(DOS):
     def __init__(self, gpw, **kwargs):
         """Hack to make DOS class work with spin orbit coupling.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         gpw : str
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
@@ -296,8 +296,8 @@ def pdos(calc, gpw, soc=True):
 def calculate_pdos(calc, gpw, soc=True):
     """Calculate the projected density of states.
 
-    Returns:
-    --------
+    Returns
+    -------
     energies : nd.array
         energies 10 eV under and above Fermi energy
     pdos_syl : defaultdict
@@ -388,13 +388,13 @@ def calculate_pdos(calc, gpw, soc=True):
 def get_l_a(zs):
     """Define which atoms and angular momentum to project onto.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     zs : [z1, z2, ...]-list or array
         list of atomic numbers (zi: int)
 
-    Returns:
-    --------
+    Returns
+    -------
     l_a : {int: str, ...}-dict
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a

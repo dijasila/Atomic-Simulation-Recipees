@@ -30,7 +30,8 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
 
     - There has to be a 'unrelaxed.json' file with the primitive structure
       of the desired system in the folder you run setup.defects. The tree
-      structure will then look like this:
+      structure will then look like this
+
     .                                                                        '
     ├── general_parameters.json                                              '
     ├── MoS2_231.v_at_b0                                                     '
@@ -63,6 +64,7 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     - In the resulting folders you can find the unrelaxed structures, as
       well as a 'params.json' file which contains the charge states of the
       different defect structures.
+
     """
     from ase.io import read
     import numpy as np
@@ -103,11 +105,19 @@ def setup_supercell(structure, max_lattice, is_2D):
     Set up the supercell of a given structure depending on a
     maximum supercell lattice vector length for 2D or 3D structures.
 
-    :param structure: input structure (primitive cell)
-    :param max_lattice (float): maximum supercell lattice vector length in Å
-    :param is_2D (bool): choose 2D or 3D supercell (is_2D=False)
+    Parameters
+    ----------
+    structure
+        input structure (primitive cell)
+    max_lattice : float
+        maximum supercell lattice vector length in Å
+    is_2D : bool
+        choose 2D or 3D supercell (is_2D=False)
 
-    :return structure_sc: supercell structure
+    Returns
+    -------
+    structure_sc
+        supercell structure
     """
     for x in range(1, 50):
         struc_temp = structure.repeat((x, 1, 1))
@@ -148,14 +158,22 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
 
-    :param structure: input structure (primitive cell)
-    :param intrinsic (bool): incorporate intrinsic point defects
-    :param vacancies (bool): incorporate vacancies
+    Parameters
+    ----------
+    structure
+        input structure (primitive cell)
+    intrinsic : bool
+        incorporate intrinsic point defects
+    vacancies : bool
+        incorporate vacancies
 
-    :return structure_dict: dictionary of all possible defect configurations
-                            of the given structure with different charge
-                            states. The dictionary is built up in the
-                            following way: see folder structure in 'main()'.
+    Returns
+    -------
+    structure_dict : dict
+        dictionary of all possible defect configurations
+        of the given structure with different charge
+        states. The dictionary is built up in the
+        following way: see folder structure in 'main()'.
     """
     import spglib
 
@@ -255,12 +273,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
 
     Creates a folder for every configuration of the defect supercell in
     the following way:
-        - see example directory tree in 'main()'
-        - these each contain two files: 'unrelaxed.json' (the defect
-          supercell structure), 'params.json' (the non-general parameters
-          of each system)
-        - the content of those folders can then be used to do further
-          processing (e.g. relax the defect structure)
+
+    - see example directory tree in 'main()'
+    - these each contain two files: 'unrelaxed.json' (the defect
+      supercell structure), 'params.json' (the non-general parameters
+      of each system)
+    - the content of those folders can then be used to do further
+      processing (e.g. relax the defect structure)
     """
     from ase.io import write
     from asr.core import write_json

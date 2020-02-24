@@ -36,11 +36,11 @@
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.napoleon',
-              # 'autoapi.extension',
+              'autoapi.extension',
               'sphinxcontrib.programoutput',
               ]
-# autoapi_type = 'python'
-# autoapi_dirs = ['../asr']
+autoapi_type = 'python'
+autoapi_dirs = ['../asr']
 napoleon_numpy_docstring = True
 
 # Add any paths that contain templates here, relative to this directory.

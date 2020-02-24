@@ -45,19 +45,22 @@ def get_name(soc, bt):
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
-    writes the files:
-        em_circle_vb_soc.gpw
-        em_circle_cb_soc.gpw
-        em_circle_vb_nosoc.gpw
-        em_circle_cb_nosoc.gpw
-    Parameters:
-        gpw: str
-            gpw filename
-        soc: bool
-            spinorbit coupling
-        bandtype: None or 'cb' or 'vb'
-            which bandtype do we do calculations for, if None is done for
-            for both cb and vb
+    Writes the files:
+
+    * em_circle_vb_soc.gpw
+    * em_circle_cb_soc.gpw
+    * em_circle_vb_nosoc.gpw
+    * em_circle_cb_nosoc.gpw
+
+    Parameters
+    ----------
+    gpw: str
+        gpw filename
+    soc: bool
+        spinorbit coupling
+    bandtype: None or 'cb' or 'vb'
+        Which bandtype do we do calculations for, if None is done for
+        for both cb and vb
     """
     from gpaw import GPAW
     import numpy as np
@@ -659,7 +662,8 @@ def unpack_masses(masses, soc, bt, results_dict):
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
-    Parameters:
+    Parameters
+    ----------
         gpw: str
             name of gpw filename
         soc: bool
@@ -774,14 +778,16 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 def get_vb_cb_indices(e_skn, efermi, delta):
     """Find CB and VB within a distance of delta of the CB and VB extrema.
 
-    Parameters:
+    Parameters
+    ----------
         e_skn: (ns, nk, nb)-shape ndarray
             eigenvalues
         efermi: float
             fermi level
         delta: float
             bands within delta of the extrema are included
-    Returns:
+    Returns
+    -------
         vb_indices, cb_indices: [(spin, band), ..], [(spin, band), ...]
             spin and band indices (aka as SBandex) for VB and CB, respectively
 
@@ -813,12 +819,14 @@ def get_vb_cb_indices(e_skn, efermi, delta):
 def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     """TODO: Do me.
 
-    Parameters:
+    Parameters
+    ----------
         kpts_kv: (nk, 3)-shape ndarray
             k-points in cartesian coordinates (in units of 1 / Bohr)
         eps_k: (nk,)-shape ndarray
             eigenvalues (in units of Hartree)
-    Returns:
+    Returns
+    -------
         out: dct
             - effective masses in units of m_e
             - eigenvectors in cartesian coordinates
@@ -1072,7 +1080,8 @@ def fit(kpts_kv, eps_k, thirdorder=False):
 def model(kpts_kv):
     """Calculate simple third order model.
 
-    Parameters:
+    Parameters
+    ----------
         kpts_kv: (nk, 3)-shape ndarray
             units of (1 / Bohr)
 

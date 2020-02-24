@@ -78,37 +78,37 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
     If you dont actually wan't to run the command, i.e., if it is a
     dangerous command, then use the "asr run --dry-run ..." syntax
     where ... could be any of the above commands. For example,
-    'asr run --dry-run --shell "echo Hello!" */' would run "echo Hello!"
+    'asr run --dry-run --shell "echo Hello!" \\*/' would run "echo Hello!"
     in all folders of the current directory.
 
     Examples
     --------
     Run the relax recipe
-        $ asr run relax
+    >>> asr run relax
 
     Run the calculate function in the gs module
-        $ asr run gs@calculate
+    >>> asr run gs@calculate
 
     Get help for a recipe
-        $ asr run "relax -h"
+    >>> asr run "relax -h"
 
     Specify an argument
-        $ asr run "relax --ecut 600"
+    >>> asr run "relax --ecut 600"
 
     Run a recipe in parallel with an argument
-        $ asr run -p 2 "relax --ecut 600"
+    >>> asr run -p 2 "relax --ecut 600"
 
     Run relax recipe in two folders sequentially
-        $ asr run relax folder1/ folder2/
+    >>> asr run relax folder1/ folder2/
 
     Run a shell command in this folder
-        $ asr run --shell "ase convert gs.gpw structure.json"
+    >>> asr run --shell "ase convert gs.gpw structure.json"
 
     Run a shell command in "folder1/"
-        $ asr run --shell "ase convert gs.gpw structure.json" folder1/
+    >>> asr run --shell "ase convert gs.gpw structure.json" folder1/
 
     Don't actually do anything just show what would be done
-        $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
+    >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
     from pathlib import Path

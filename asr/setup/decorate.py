@@ -97,8 +97,8 @@ def main(atoms, threshold=0.08, database='decorated.db'):
     database which can be unpacked into a folder structure using the
     "setup.unpackdatabase" recipe.
 
-    Examples:
-    ---------
+    Examples
+    --------
     Perform likely substitions of atomic structure in structure.json
         asr run "setup.decorate structure.json"
     """

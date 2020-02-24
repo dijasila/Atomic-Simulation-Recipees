@@ -23,6 +23,8 @@ structures, calculating dielectric functions and so on.
    getting-started
    tutorials
    developing
+   autoapi/index
+
 
 Indices and tables
 ==================
