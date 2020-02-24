@@ -11,7 +11,7 @@ from contextlib import contextmanager
 @option('--kptdensity', help='K-point density')
 @option('--emptybands', help='number of empty bands to include')
 def calculate(kptdensity=12, emptybands=20):
-    """Calculate HSE band structure"""
+    """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
     with cleanup('hse.gpw'):
@@ -22,6 +22,19 @@ def calculate(kptdensity=12, emptybands=20):
         results = {'hse_eigenvalues': eigs,
                    'hse_eigenvalues_soc': eigs_soc}
         return results
+
+
+# XXX move to utils? [also in asr.polarizability]
+def get_kpts_size(atoms, kptdensity):
+    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+    size, offset = k2so(atoms=atoms, density=kptdensity)
+    size[2] = 1
+    for i in range(2):
+        if size[i] % 6 != 0:
+            size[i] = 6 * (size[i] // 6 + 1)
+    kpts = {'size': size, 'gamma': True}
+    return kpts
 
 
 def hse(kptdensity, emptybands):
@@ -41,21 +54,6 @@ def hse(kptdensity, emptybands):
         if ND == 3 or ND == 1:
             kpts = {'density': kptdensity, 'gamma': True, 'even': False}
         elif ND == 2:
-
-            # XXX move to utils? [also in asr.polarizability]
-            def get_kpts_size(atoms, kptdensity):
-                """trying to get a reasonable monkhorst size which hits high
-                symmetry points
-                """
-                from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-                size, offset = k2so(atoms=atoms, density=kptdensity)
-                size[2] = 1
-                for i in range(2):
-                    if size[i] % 6 != 0:
-                        size[i] = 6 * (size[i] // 6 + 1)
-                kpts = {'size': size, 'gamma': True}
-                return kpts
-
             kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
 
         calc.set(nbands=-emptybands,
@@ -124,8 +122,11 @@ def hse_spinorbit(dct):
 
 
 def MP_interpolate(calc, delta_skn, lb, ub):
-    """Calculates band stucture along the same band path used for PBE
-    by interpolating a correction onto the PBE band structure."""
+    """Interpolate corrections to band patch.
+
+    Calculates band stucture along the same band path used for PBE
+    by interpolating a correction onto the PBE band structure.
+    """
     import numpy as np
     import gpaw.mpi as mpi
     from gpaw import GPAW
@@ -311,7 +312,7 @@ def webpanel(row, key_descriptions):
          restart=1,
          webpanel=webpanel)
 def main():
-    """Interpolate HSE band structure along a given path"""
+    """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import fermi_level

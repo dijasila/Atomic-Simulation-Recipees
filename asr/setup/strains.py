@@ -58,8 +58,8 @@ def main(strain_percent=1, kptdensity=6.0):
             atoms.write(str(folder / 'unrelaxed.json'))
 
             with chdir(folder):
-                params = ("asr.relax:calculator {'kpts':{'size':[" +
-                          '{},{},{}'.format(*size)
+                params = ("asr.relax:calculator {'kpts':{'size':["
+                          + '{},{},{}'.format(*size)
                           + "],'gamma':True},...}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
                 params.extend(['asr.relax:allow_symmetry_breaking', 'True'])

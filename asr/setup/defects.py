@@ -19,20 +19,21 @@ import click
         help='Specify whether you want to incorporate vacancies.')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
          maxsize=8, intrinsic=True, vacancies=True):
-    """
-    Sets up defect structures for a given host.
+    """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
     well as the respective pristine system for a given input structure.
     Defects include: vacancies, anti-site defects. For a given primitive input
     structure this recipe will create a directory tree in the following way:
-    For the example of MoS2:\n
+
+    For the example of MoS2:
+
     - There has to be a 'unrelaxed.json' file with the primitive structure
       of the desired system in the folder you run setup.defects. The tree
-      structure will then look like this:\n
+      structure will then look like this:
     .                                                                        '
     ├── general_parameters.json                                              '
-    ├── MoS2_231.v_at_b0                                                    '
+    ├── MoS2_231.v_at_b0                                                     '
     │   ├── charge_0                                                         '
     │   │   ├── params.json                                                  '
     │   │   └── unrelaxed.json                                               '
@@ -97,8 +98,9 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
 
 
 def setup_supercell(structure, max_lattice, is_2D):
-    """
-    Sets up the supercell of a given structure depending on a
+    """Set up the supercell of a given structure depending.
+
+    Set up the supercell of a given structure depending on a
     maximum supercell lattice vector length for 2D or 3D structures.
 
     :param structure: input structure (primitive cell)
@@ -141,7 +143,8 @@ def setup_supercell(structure, max_lattice, is_2D):
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                   max_lattice, is_2D):
-    """
+    """Set up all possible defects.
+
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
 
@@ -248,7 +251,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
 
 def create_folder_structure(structure, structure_dict, chargestates,
                             intrinsic, vacancies, sc, max_lattice, is_2D):
-    """
+    """Create folder for all configurations.
+
     Creates a folder for every configuration of the defect supercell in
     the following way:
         - see example directory tree in 'main()'

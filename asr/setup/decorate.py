@@ -56,7 +56,8 @@ def generate_structures(prototype, p_ab, threshold=0.08):
 
 
 def get_p_ab():
-    """
+    """Get similarity matrix.
+
     The data is saved as a matrix of counts, so that s_ab gives the number of
     times that a can substitute for b in the icsd. This is be normalized,
     to give a probability of succesful substitution. See
@@ -96,10 +97,8 @@ def main(atoms, threshold=0.08, database='decorated.db'):
     database which can be unpacked into a folder structure using the
     "setup.unpackdatabase" recipe.
 
-    \b
     Examples:
     ---------
-    \b
     Perform likely substitions of atomic structure in structure.json
         asr run "setup.decorate structure.json"
     """

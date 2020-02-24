@@ -235,7 +235,8 @@ def list(search):
     """List and search for recipes.
 
     If SEARCH is specified: list only recipes containing SEARCH in their
-    description."""
+    description.
+    """
     from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
@@ -254,8 +255,8 @@ def list(search):
 
             if state == 'untested':
                 shorthelp = '(Untested) ' + shorthelp
-            if search and (search not in longhelp and
-                           search not in recipe.name):
+            if search and (search not in longhelp
+                           and search not in recipe.name):
                 continue
             status = [recipe.name[4:], shorthelp]
             panel += [status]
@@ -266,7 +267,7 @@ def list(search):
 
 @cli.command()
 def status():
-    """Show the status of the current folder for all ASR recipes"""
+    """Show the status of the current folder for all ASR recipes."""
     from asr.core import get_recipes
     recipes = get_recipes()
     panel = []
