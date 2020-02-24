@@ -274,8 +274,6 @@ def main(calculator={'name': 'gpaw',
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
 
-    Installation
-    ------------
     To install DFTD3 do::
 
       $ mkdir ~/DFTD3 && cd ~/DFTD3

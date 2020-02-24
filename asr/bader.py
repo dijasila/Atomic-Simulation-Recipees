@@ -6,11 +6,9 @@ from asr.core import command
 def main():
     """Calculate bader charges.
 
-    Installation
-    ------------
     To make Bader analysis we use another program. Download the executable
     for Bader analysis and put in path (this is for Linux, find the
-    appropriate executable for you own OS)::
+    appropriate executable for you own OS)
 
         $ mkdir baderext && cd baderext
         $ wget theory.cm.utexas.edu/henkelman/code/bader/download/
