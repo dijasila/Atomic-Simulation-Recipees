@@ -30,8 +30,8 @@ def webpanel(row, key_descriptions):
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
     row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]
 
     summary = {'title': 'Summary',
@@ -54,9 +54,10 @@ def webpanel(row, key_descriptions):
 @option('--standardreferences',
         help='Database containing standard references.')
 def main(databases, standardreferences=None):
-    """Calculate convex hull energies
+    """Calculate convex hull energies.
 
-    The reference database has to have a type column indicating"""
+    The reference database has to have a type column indicating.
+    """
     from asr.core import read_json
     if standardreferences is None:
         standardreferences = databases[0]

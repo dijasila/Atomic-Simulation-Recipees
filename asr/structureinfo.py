@@ -2,7 +2,8 @@ from asr.core import command
 
 
 def get_reduced_formula(formula, stoichiometry=False):
-    """
+    """Get reduced formula from formula.
+
     Returns the reduced formula corresponding to a chemical formula,
     in the same order as the original formula
     E.g. Cu2S4 -> CuS2
@@ -38,7 +39,8 @@ def get_reduced_formula(formula, stoichiometry=False):
 
 
 def has_inversion(atoms, use_spglib=True):
-    """
+    """Determine if atoms has inversion symmetry.
+
     Parameters:
         atoms: Atoms object
             atoms
@@ -74,8 +76,8 @@ def webpanel(row, key_descriptions):
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            href = ('<a href="http://www.crystallography.net/cod/' +
-                    '{id}.html">{id}</a>'.format(id=codid))
+            href = ('<a href="http://www.crystallography.net/cod/'
+                    + '{id}.html">{id}</a>'.format(id=codid))
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
 
@@ -125,7 +127,6 @@ def main():
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-
     import numpy as np
     from ase.io import read
     from pathlib import Path

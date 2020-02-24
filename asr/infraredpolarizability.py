@@ -7,7 +7,7 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(
-        row, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat",], key_descriptions
+        row, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"], key_descriptions
     )
 
     panel = {

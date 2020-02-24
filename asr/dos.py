@@ -6,7 +6,7 @@ from asr.core import command, option
 @option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity')
 def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
-    """Calculate DOS"""
+    """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
     if not Path(name).is_file():
@@ -57,7 +57,8 @@ def collect_data(atoms):
 def plot(row=None, filename='dos.png', file=None, show=False):
     """Plot DOS.
 
-    Defaults to dos.json"""
+    Defaults to dos.json.
+    """
     import json
     import matplotlib.pyplot as plt
     import numpy as np

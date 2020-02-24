@@ -49,7 +49,7 @@ def main():
 
 
 def print():
-    """Print Bader charges"""
+    """Print Bader charges."""
     import os.path as op
     fname = 'data-bader/ACF.dat'
     if not op.isfile(fname):
