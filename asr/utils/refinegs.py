@@ -78,6 +78,7 @@ def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
     gpw : str
         filename of written GPAW calculator object
     """
+    from gpaw import GPAW
     gpw, txt = get_filenames(gpw, txt, selfc=selfc, **kwargs)
     if gpw and Path(gpw).is_file():
         calc = GPAW(gpw, txt=None)
