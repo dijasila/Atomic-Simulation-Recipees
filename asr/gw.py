@@ -156,7 +156,7 @@ def gw(ecut=200.0, mode='G0W0'):
     import numpy as np
 
     # check that the system is a semiconductor
-    calc = GPAW(gs, txt=None)
+    calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = " +
@@ -207,40 +207,28 @@ def gw(ecut=200.0, mode='G0W0'):
     return results
 
 
-def plot_renorm_factor(row, filename):
-    from matplotlib import pyplot as plt
-    data = row.data.get('results-asr.gw@gw.json')
-    q_skn = data['qp']
-    Z_skn = data['Z']
-    reference = row.get('evac', row.get('ef'))
-    plt.figure(figsize=(6.4, 4.8))
-    plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
-                s=2)
-    emin = row.get('vbm_gw', row.get('ef')) - 3 - reference
-    emax = row.get('cbm_gw', row.get('ef')) + 3 - reference
-    if row.get('evac') is not None:
-        plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
-    else:
-        plt.ylabel(r'$E - E_\mathrm{F}$ [eV]')
-    plt.ylim(emin, emax)
-    plt.xlabel('Renormalization factor Z')
-    plt.tight_layout()
-    plt.savefig(filename)
-
-
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
-    ref = row.get('evac', row.get('ef'))
     if not row.get('gap_gw', 0) > 0:
         return []
-    keys = ['vbm_gw', 'cbm_gw']
-    for key in keys:
-        row[key] -= ref
+
     prop = table(row, 'Property', [
-        'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
+        'gap_gw', 'gap_dir_gw',
     ], key_descriptions)
-    for key in keys:
-        row[key] += ref
+
+    if row.get('evac'):
+        prop['rows'].extend(
+            [['Valence band maximum wrt. vacuum level (G0W0)',
+              f'{row.vbm_gw - row.evac:.2f} eV'],
+             ['Conduction band minimum wrt. vacuum level (G0W0)',
+              f'{row.cbm_gw - row.evac:.2f} eV']])
+    else:
+        prop['rows'].extend(
+            [['Valence band maximum wrt. Fermi level (G0W0)',
+              f'{row.vbm_gw - row.efermi:.2f} eV'],
+             ['Conduction band minimum wrt. Fermi level (G0W0)',
+              f'{row.cbm_gw - row.efermi:.2f} eV']])
+
     panel = {'title': 'Electronic band structure (GW)',
              'columns': [[fig('gw-bs.png')], [prop]],
              'plot_descriptions': [{'function': bs_gw,
@@ -249,18 +237,21 @@ def webpanel(row, key_descriptions):
 
     if row.get('gap_gw'):
         rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+
         summary = {'title': 'Summary',
                    'columns': [[{'type': 'table',
                                  'header': ['Electronic properties', ''],
                                  'rows': rows}]],
-                   'sort': 11}
+                   'sort': 12}
+
         return [panel, summary]
 
     return [panel]
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs'],
+@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+                   'results-asr.bandstructure.json'],
+         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
          webpanel=webpanel)
 def main():
     import numpy as np
@@ -269,7 +260,7 @@ def main():
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
-    
+
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
     gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
 
@@ -299,14 +290,14 @@ def main():
         cbm = eps_skn[p2]
         subresults = {'vbm_gw_nosoc': vbm,
                       'cbm_gw_nosoc': cbm,
-                      'dir_gap_gw_nosoc': gapd,
+                      'gap_dir_gw_nosoc': gapd,
                       'gap_gw_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
 
         kd.update({'vbm_gw_nosoc': 'GW valence band max. w/o soc [eV]',
                    'cbm_gw_nosoc': 'GW condution band min. w/o soc [eV]',
-                   'dir_gap_gw_nosoc': 'GW direct gap w/o soc [eV]',
+                   'gap_dir_gw_nosoc': 'GW direct gap w/o soc [eV]',
                    'gap_gw_nosoc': 'GW gap w/o soc [eV]',
                    'kvbm_nosoc': 'k-point of GW valence band max. w/o soc',
                    'kcbm_nosoc': 'k-point of GW conduction band min. w/o soc'})
@@ -338,13 +329,13 @@ def main():
         cbm = eps[p2]
         subresults = {'vbm_gw': vbm,
                       'cbm_gw': cbm,
-                      'dir_gap_gw': gapd,
+                      'gap_dir_gw': gapd,
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
         kd.update({'vbm_gw': 'KVP: GW valence band max. [eV]',
                    'cbm_gw': 'KVP: GW conduction band min. [eV]',
-                   'dir_gap_gw': 'KVP: GW direct gap [eV]',
+                   'gap_dir_gw': 'KVP: GW direct gap [eV]',
                    'gap_gw': 'KVP: GW gap [eV]',
                    'kvbm': 'k-point of GW valence band max.',
                    'kcbm': 'k-point of GW conduction band min.'})
