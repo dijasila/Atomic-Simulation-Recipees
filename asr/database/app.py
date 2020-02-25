@@ -156,9 +156,6 @@ def initialize_project(database):
     }
 
 
-setup_app()
-
-
 @command()
 @argument("databases", nargs=-1)
 @option("--host", help="Host address.")
@@ -166,6 +163,8 @@ setup_app()
 def main(databases, host="0.0.0.0", test=False):
     for database in databases:
         initialize_project(database)
+
+    setup_app()
 
     if test:
         import traceback
