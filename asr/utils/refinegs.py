@@ -1,12 +1,11 @@
 from pathlib import Path
 
-from gpaw import GPAW
-
 from asr.utils.kpts import get_kpts_size
 
 
 def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw."""
+    from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
     spinpol = calc.get_spin_polarized()
 
