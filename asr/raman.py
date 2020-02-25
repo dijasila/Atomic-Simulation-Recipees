@@ -47,8 +47,6 @@ def main():
 def raman(row, filename):
     # Import the required modules
     import matplotlib.pyplot as plt
-    import matplotlib
-    matplotlib.use('agg')
 
     # All required settings
     params = {'broadening': 3.0,  # in cm^-1
