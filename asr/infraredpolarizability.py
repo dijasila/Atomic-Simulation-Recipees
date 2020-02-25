@@ -43,26 +43,21 @@ def create_plot(row, *fnames):
     maxomega = maxphononfreq * 1.5
 
     atoms = row.toatoms()
-    cell_cv = atoms.get_cell()
     pbc_c = atoms.pbc
     ndim = int(np.sum(pbc_c))
-    if pbc_c.all():
-        norm = 1
-    else:
-        norm = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
 
     realphax = interp1d(omegatmp_w, alphax_w.real)
     imalphax = interp1d(omegatmp_w, alphax_w.imag)
     ax_w = (realphax(omega_w) + 1j * imalphax(omega_w) +
-            alpha_wvv[:, 0, 0] * norm)
+            alpha_wvv[:, 0, 0])
     realphay = interp1d(omegatmp_w, alphay_w.real)
     imalphay = interp1d(omegatmp_w, alphay_w.imag)
     ay_w = (realphay(omega_w) + 1j * imalphay(omega_w) +
-            alpha_wvv[:, 0, 0] * norm)
+            alpha_wvv[:, 1, 1])
     realphaz = interp1d(omegatmp_w, alphaz_w.real)
     imalphaz = interp1d(omegatmp_w, alphaz_w.imag)
     az_w = (realphaz(omega_w) + 1j * imalphaz(omega_w) +
-            alpha_wvv[:, 0, 0] * norm)
+            alpha_wvv[:, 2, 2])
 
     if ndim == 3:
         epsx_w = 1 + 4 * np.pi * ax_w
@@ -189,6 +184,14 @@ def main(nfreq=300, eta=1e-2):
     # Get phonon polarizability
     alpha_wvv = get_phonon_pol(omega_w, Z_avv, freqs_l,
                                modes_xl, m_a, cell_cv, eta)
+
+    # Normalize according to dimensionality
+    pbc_c = atoms.pbc
+    if pbc_c.all():
+        norm = 1
+    else:
+        norm = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+    alpha_wvv *= norm
 
     alphax_lat = alpha_wvv[0, 0, 0].real
     alphay_lat = alpha_wvv[0, 1, 1].real
