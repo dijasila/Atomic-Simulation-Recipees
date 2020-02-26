@@ -39,7 +39,7 @@ docs:
 python36:
   image: python:3.6
   stage: test
-  script: tox -e py36-unit
+  script: tox -e py36-unit,coverage-report
 
 python37:
   image: python:3.7
