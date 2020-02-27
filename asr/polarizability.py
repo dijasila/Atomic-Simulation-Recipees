@@ -176,24 +176,17 @@ def polarizability(row, fx, fy, fz):
     infrared = row.data.get('results-asr.infraredpolarizability.json')
     if infrared:
         from scipy.interpolate import interp1d
-        atoms = row.toatoms()
-        cell_cv = atoms.get_cell()
-        pbc_c = atoms.pbc
-        if pbc_c.all():
-            norm = 1
-        else:
-            norm = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
         omegatmp_w = infrared['omega_w']
         alpha_wvv = infrared['alpha_wvv']
         alphax = interp1d(omegatmp_w, alpha_wvv[:, 0, 0], fill_value=0,
                           bounds_error=False)
-        alphax_w = (alphax_w + alphax(frequencies) * norm)
+        alphax_w = (alphax_w + alphax(frequencies))
         alphay = interp1d(omegatmp_w, alpha_wvv[:, 1, 1], fill_value=0,
                           bounds_error=False)
-        alphay_w = (alphay_w + alphay(frequencies) * norm)
+        alphay_w = (alphay_w + alphay(frequencies))
         alphaz = interp1d(omegatmp_w, alpha_wvv[:, 2, 2], fill_value=0,
                           bounds_error=False)
-        alphaz_w = (alphaz_w + alphaz(frequencies) * norm)
+        alphaz_w = (alphaz_w + alphaz(frequencies))
 
     ax = plt.figure().add_subplot(111)
     ax1 = ax
