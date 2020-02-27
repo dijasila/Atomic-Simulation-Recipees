@@ -234,8 +234,8 @@ def get_pie_slice(theta0, theta, s=36., res=126):
     -------
     pie : matplotlib.pyplot.scatter option dictionary
     """
-    assert 0. <= theta0 and theta0 <= 2. * np.pi
-    assert 0. <= theta and theta <= 2. * np.pi
+    assert -np.pi / res <= theta0 and theta0 <= 2. * np.pi + np.pi / res
+    assert -np.pi / res <= theta and theta <= 2. * np.pi + np.pi / res
 
     angles = np.linspace(theta0, theta0 + theta,
                          np.ceil(res * theta / (2 * np.pi)))
