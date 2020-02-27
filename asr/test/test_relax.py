@@ -10,6 +10,10 @@ def test_relax(separate_folder, mockgpaw, atoms):
     from asr.relax import main as relax
     from ase.io import write
 
+    import sys
+    print('sys.path', sys.path)
+    import gpaw  # noqa
+
     write('unrelaxed.json', atoms)
     relax(calculator={
         "name": "gpaw",
