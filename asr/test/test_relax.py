@@ -9,9 +9,11 @@ import pytest
 def test_relax(separate_folder, mockgpaw, atoms):
     from asr.relax import main as relax
     from ase.io import write
+    from pathlib import Path
 
     import sys
     print('sys.path', sys.path)
+    print('glob sys.path[0]', list(Path(sys.path[0]).glob('*')))
     import gpaw  # noqa
 
     write('unrelaxed.json', atoms)
