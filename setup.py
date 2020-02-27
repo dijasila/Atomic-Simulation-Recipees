@@ -24,6 +24,10 @@ extras_require = {'docs': ['sphinx', 'sphinx-autoapi',
 txt = Path('asr/__init__.py').read_text()
 version = re.search("__version__ = '(.*)'", txt).group(1)
 
+package_data = {'asr': ['database/templates/*.html',
+                        'setup/substitution.dat',
+                        'setup/testsystems.dat']}
+
 
 setup(
     author="Morten Niklas Gjerding",
@@ -41,6 +45,7 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     description="ASE recipes for calculating material properties",
+    package_data=package_data,
     entry_points={
         'console_scripts': [
             'asr=asr.core.cli:cli',

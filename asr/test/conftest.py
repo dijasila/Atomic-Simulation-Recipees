@@ -47,7 +47,7 @@ def mockgpaw(monkeypatch):
         if "gpaw" in module:
             sys.modules.pop(module)
 
-    yield
+    yield sys.path
 
     for module in list(sys.modules):
         if "gpaw" in module:
