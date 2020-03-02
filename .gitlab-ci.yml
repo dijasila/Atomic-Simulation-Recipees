@@ -44,7 +44,8 @@ python36:
   stage: test
   script: tox -e py36-unit
   artifacts:
-    - .tox/.coverage*
+    paths:
+      - .tox/.coverage*
 
 python37:
   image: python:3.7
