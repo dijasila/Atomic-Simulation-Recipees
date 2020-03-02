@@ -37,7 +37,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @option('--npoints')
 @option('--emptybands')
 def calculate(kptpath=None, npoints=400, emptybands=20):
-    """Calculate electronic band structure"""
+    """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
     atoms = read('structure.json')
@@ -231,8 +231,7 @@ def bs_pbe_html(row,
         '</script>').format(id=plotdivid)
 
     # Insert plotly.js
-    plotlyjs = ('<script src="https://cdn.plot.ly/plotly-latest.min.js">' +
-                '</script>')
+    plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
     html = ''.join([
         '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
@@ -244,7 +243,7 @@ def bs_pbe_html(row,
 
 
 def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """plot pbe with soc on ax"""
+    """Plot pbe with soc on ax."""
     from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']

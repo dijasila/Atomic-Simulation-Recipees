@@ -79,13 +79,25 @@ def bs_gw(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
+def get_kpts_size(atoms, kptdensity):
+    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+    size, offset = k2so(atoms=atoms, density=kptdensity)
+    size[2] = 1
+    for i in range(2):
+        if size[i] % 6 != 0:
+            size[i] = 6 * (size[i] // 6 + 1)
+    kpts = {'size': size, 'gamma': True}
+    return kpts
+
+
 @command(requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
 def gs(kptdensity=5.0, ecut=200.0):
-    """Calculate GW"""
+    """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     import numpy as np
@@ -94,33 +106,20 @@ def gs(kptdensity=5.0, ecut=200.0):
     calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = " +
-                        str(pbe_gap) + " eV is too small!")
+        raise Exception("GW: Only for semiconductors, PBE gap = "
+                        + str(pbe_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
     if len(atoms) > 4:
-        raise Exception("GW: Only for small systems, " +
-                        str(len(atoms)) + " > 4 atoms!")
+        raise Exception("GW: Only for small systems, "
+                        + str(len(atoms)) + " > 4 atoms!")
 
     # setup k points/parameters
     dim = np.sum(atoms.pbc.tolist())
     if dim == 3:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
     elif dim == 2:
-        def get_kpts_size(atoms, kptdensity):
-            """trying to get a reasonable monkhorst size which hits high
-            symmetry points
-            """
-            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=kptdensity)
-            size[2] = 1
-            for i in range(2):
-                if size[i] % 6 != 0:
-                    size[i] = 6 * (size[i] // 6 + 1)
-            kpts = {'size': size, 'gamma': True}
-            return kpts
-
         kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
     elif dim == 1:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
@@ -149,7 +148,7 @@ def gs(kptdensity=5.0, ecut=200.0):
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
 def gw(ecut=200.0, mode='G0W0'):
-    """Calculate GW"""
+    """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
@@ -159,14 +158,14 @@ def gw(ecut=200.0, mode='G0W0'):
     calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = " +
-                        str(pbe_gap) + " eV is too small!")
+        raise Exception("GW: Only for semiconductors, PBE gap = "
+                        + str(pbe_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
     if len(atoms) > 4:
-        raise Exception("GW: Only for small systems, " +
-                        str(len(atoms)) + " > 4 atoms!")
+        raise Exception("GW: Only for small systems, "
+                        + str(len(atoms)) + " > 4 atoms!")
 
     # Setup parameters
     dim = np.sum(atoms.pbc.tolist())
@@ -276,8 +275,8 @@ def main():
     # First get stuff without SOC
     eps_skn = gwresults.qp
     efermi_nosoc = fermi_level(calc, eps_skn=eps_skn,
-                               nelectrons=(calc.get_number_of_electrons() -
-                                           2 * lb))
+                               nelectrons=(calc.get_number_of_electrons()
+                                           - 2 * lb))
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -315,9 +314,8 @@ def main():
 
     eps = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=(2 *
-                                         (calc.get_number_of_electrons() -
-                                          2 * lb)))
+                             nelectrons=(2 * (calc.get_number_of_electrons()
+                                              - 2 * lb)))
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,

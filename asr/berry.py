@@ -10,8 +10,7 @@ from asr.core import command, option, read_json
 @option('--kpar', help='K-points along path')
 @option('--kperp', help='K-points orthogonal to path')
 def calculate(gs='gs.gpw', kpar=120, kperp=7):
-
-    """Calculate ground state on specified k-point grid"""
+    """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
     from gpaw import GPAW

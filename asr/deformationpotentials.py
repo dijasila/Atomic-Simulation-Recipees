@@ -22,7 +22,8 @@ def webpanel(row, key_descriptions):
 @option('--strains', help='Strain percentages')
 @option('--ktol', help='Distance that ')
 def main(strains=[-1.0, 0.0, 1.0], ktol=0.1):
-    """
+    """Calculate deformation potentials.
+
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.

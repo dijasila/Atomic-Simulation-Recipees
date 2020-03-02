@@ -43,10 +43,10 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
-    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']] +
-               [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
-                for ie, eig in enumerate(sorted(eigs,
-                                                key=lambda x: x.real))])
+    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
+                  for ie, eig in enumerate(sorted(eigs,
+                                                  key=lambda x: x.real))])
     eigtable = dict(
         type='table',
         rows=eigrows)
@@ -59,8 +59,8 @@ def webpanel(row, key_descriptions):
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
                low, high, dynstab.upper())]
 
     summary = {'title': 'Summary',

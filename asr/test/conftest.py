@@ -47,7 +47,7 @@ def mockgpaw(monkeypatch):
         if "gpaw" in module:
             sys.modules.pop(module)
 
-    yield
+    yield sys.path
 
     for module in list(sys.modules):
         if "gpaw" in module:
@@ -96,7 +96,7 @@ test_materials = [Si, BN, Agchain]
 
 @contextlib.contextmanager
 def create_new_working_directory(path='workdir', unique=False):
-    """Changes working directory and returns to previous on exit."""
+    """Change working directory and returns to previous on exit."""
     i = 0
     if unique:
         while Path(f'{path}-{i}').is_dir():
@@ -114,7 +114,9 @@ def create_new_working_directory(path='workdir', unique=False):
 
 @pytest.fixture()
 def separate_folder(tmpdir):
-    """A context manager that creates a temporary folder and changes
+    """Create temp folder and change directory to that folder.
+
+    A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
     cwd = os.getcwd()

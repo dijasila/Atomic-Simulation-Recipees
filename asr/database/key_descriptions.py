@@ -187,17 +187,7 @@ def main(database):
     This recipe loops through all rows in a database and figures out what keys
     are present in the database. It also figures our what kind of materials
     (1D, 2D, 3D) are in the database. Then it saves those values in the
-    database metadata like:
-
-
-    ase db -m database.db
-
-    {
-    ...
-    'key_value_pairs': ['etot', 'gap', ...],
-    # List of keys for key-value-pairs contained in DB.
-    ...
-    }
+    database metadata under {"keys": ["etot", "gap", ...]}
     """
     from ase.db import connect
 

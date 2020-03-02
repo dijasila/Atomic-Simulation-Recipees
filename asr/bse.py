@@ -4,6 +4,18 @@ from ase.dft.bandgap import bandgap
 from click import Choice
 
 
+def get_kpts_size(atoms, kptdensity):
+    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+    size, offset = k2so(atoms=atoms, density=kptdensity)
+    size[2] = 1
+    for i in range(2):
+        if size[i] % 6 != 0:
+            size[i] = 6 * (size[i] // 6 + 1)
+    kpts = {'size': size, 'gamma': True}
+    return kpts
+
+
 @command(creates=['bse_polx.csv', 'bse_eigx.dat',
                   'bse_poly.csv', 'bse_eigy.dat',
                   'bse_polz.csv', 'bse_eigz.dat'],
@@ -20,7 +32,7 @@ from click import Choice
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
               nv_s=-2.3, nc_s=2.3):
-    """Calculate BSE polarizability"""
+    """Calculate BSE polarizability."""
     import os
     from ase.io import read
     from gpaw import GPAW
@@ -40,20 +52,6 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         truncation = None
     elif ND == 2:
         eta = 0.05
-
-        def get_kpts_size(atoms, kptdensity):
-            """trying to get a reasonable monkhorst size which hits high
-            symmetry points
-            """
-            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=kptdensity)
-            size[2] = 1
-            for i in range(2):
-                if size[i] % 6 != 0:
-                    size[i] = 6 * (size[i] // 6 + 1)
-            kpts = {'size': size, 'gamma': True}
-            return kpts
-
         kpts = get_kpts_size(atoms=atoms, kptdensity=20)
         truncation = '2D'
 

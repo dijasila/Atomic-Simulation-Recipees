@@ -140,7 +140,7 @@ changed to overwrite default settings in scripts. For example:
    {
    "asr.gs": {"gpw": "otherfile.gpw",
               "ecut": 800},
-   "asr.relax": {"d3": True}
+   "asr.relax": {"d3": true}
    }
 
 

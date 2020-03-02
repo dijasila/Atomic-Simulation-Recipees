@@ -58,7 +58,7 @@ def cli():
 @click.pass_context
 def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         skip_if_done, dont_raise):
-    """Run recipe, python function or shell command in multiple folders.
+    r"""Run recipe, python function or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
@@ -78,45 +78,37 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
     If you dont actually wan't to run the command, i.e., if it is a
     dangerous command, then use the "asr run --dry-run ..." syntax
     where ... could be any of the above commands. For example,
-    'asr run --dry-run --shell "echo Hello!" */' would run "echo Hello!"
+    'asr run --dry-run --shell "echo Hello!" \\*/' would run "echo Hello!"
     in all folders of the current directory.
 
     Examples
     --------
-    Run the relax recipe::
+    Run the relax recipe
+    >>> asr run relax
 
-        $ asr run relax
+    Run the calculate function in the gs module
+    >>> asr run gs@calculate
 
-    Run the calculate function in the gs module::
-        $ asr run gs@calculate
+    Get help for a recipe
+    >>> asr run "relax -h"
 
-    Get help for a recipe::
+    Specify an argument
+    >>> asr run "relax --ecut 600"
 
-        $ asr run "relax -h"
+    Run a recipe in parallel with an argument
+    >>> asr run -p 2 "relax --ecut 600"
 
-    Specify an argument::
+    Run relax recipe in two folders sequentially
+    >>> asr run relax folder1/ folder2/
 
-        $ asr run "relax --ecut 600"
+    Run a shell command in this folder
+    >>> asr run --shell "ase convert gs.gpw structure.json"
 
-    Run a recipe in parallel with an argument::
+    Run a shell command in "folder1/"
+    >>> asr run --shell "ase convert gs.gpw structure.json" folder1/
 
-        $ asr run -p 2 "relax --ecut 600"
-
-    Run relax recipe in two folders sequentially::
-
-        $ asr run relax folder1/ folder2/
-
-    Run a shell command in this folder::
-
-        $ asr run --shell "ase convert gs.gpw structure.json"
-
-    Run a shell command in "folder1/"::
-
-        $ asr run --shell "ase convert gs.gpw structure.json" folder1/
-
-    Don't actually do anything just show what would be done::
-
-        $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
+    Don't actually do anything just show what would be done
+    >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
     from pathlib import Path
@@ -235,38 +227,34 @@ def list(search):
     """List and search for recipes.
 
     If SEARCH is specified: list only recipes containing SEARCH in their
-    description."""
+    description.
+    """
     from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
              ['----', '-----------']]
 
-    for state in ['tested', 'untested']:
-        for recipe in recipes:
-            if not recipe.state == state.strip():
-                continue
-            longhelp = recipe._main.__doc__
-            if not longhelp:
-                longhelp = ''
+    for recipe in recipes:
+        longhelp = recipe._main.__doc__
+        if not longhelp:
+            longhelp = ''
 
-            shorthelp, *_ = longhelp.split('\n')
+        shorthelp, *_ = longhelp.split('\n')
 
-            if state == 'untested':
-                shorthelp = '(Untested) ' + shorthelp
-            if search and (search not in longhelp and
-                           search not in recipe.name):
-                continue
-            status = [recipe.name[4:], shorthelp]
-            panel += [status]
-        panel += ['\n']
+        if search and (search not in longhelp
+                       and search not in recipe.name):
+            continue
+        status = [recipe.name[4:], shorthelp]
+        panel += [status]
+    panel += ['\n']
 
     print(format(panel))
 
 
 @cli.command()
 def status():
-    """Show the status of the current folder for all ASR recipes"""
+    """Show the status of the current folder for all ASR recipes."""
     from asr.core import get_recipes
     recipes = get_recipes()
     panel = []

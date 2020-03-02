@@ -14,8 +14,8 @@ def main(selection=''):
     The created materials will be saved into the database
     "materials.json".
 
-    Examples:
-    ---------
+    Examples
+    --------
     Get all materials from database
     >>> asr run setup.materials
     In folder: . (1/1)
