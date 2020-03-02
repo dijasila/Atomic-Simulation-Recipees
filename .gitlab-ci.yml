@@ -51,11 +51,17 @@ python37:
   image: python:3.7
   stage: test
   script: tox -e py37-unit
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
 python38:
   image: python:3.8
   stage: test
   script: tox -e py38-unit
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
 # -------------- Integration tests --------------
 python36-gpaw:
@@ -65,6 +71,9 @@ python36-gpaw:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py36-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
 python37-gpaw:
   image: python:3.7
@@ -73,6 +82,9 @@ python37-gpaw:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py37-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
 python38-gpaw:
   image: python:3.8
@@ -81,6 +93,9 @@ python38-gpaw:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py38-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
 # -------------- System tests --------------
 python36-gpaw-2dsystem:
@@ -92,6 +107,9 @@ python36-gpaw-2dsystem:
     - tox -e 2dsystem
   timeout: 1h
   when: manual
+  artifacts:
+    paths:
+      - .tox/.coverage*
 # allow_failure: false
 
 # -------------- Coverage --------------
