@@ -138,8 +138,8 @@ class GPAW(Calculator):
                 * self.parameters.nelectrons
             )
         elif self.parameters.nbands < 0:
-            return (self.parameters.nelectrons -
-                    self.parameters.nbands)
+            return (self.parameters.nelectrons
+                    - self.parameters.nbands)
         else:
             return self.parameters.nbands
 

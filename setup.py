@@ -24,7 +24,9 @@ extras_require = {'docs': ['sphinx', 'sphinx-autoapi',
 txt = Path('asr/__init__.py').read_text()
 version = re.search("__version__ = '(.*)'", txt).group(1)
 
-package_data = {'asr': ['database/templates/*.html']}
+package_data = {'asr': ['database/templates/*.html',
+                        'setup/substitution.dat',
+                        'setup/testsystems.dat']}
 
 
 setup(

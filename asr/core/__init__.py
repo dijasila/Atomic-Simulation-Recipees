@@ -241,14 +241,6 @@ class ASRCommand:
         return self._known_exceptions
 
     @property
-    def state(self):
-        """The state of tests of this recipe.
-        Currently only supports 'tested' and 'untested'"""
-        if not self.tests:
-            return 'untested'
-        return 'tested'
-
-    @property
     def requires(self):
         if self._requires:
             if callable(self._requires):
@@ -326,8 +318,8 @@ class ASRCommand:
                         clickdoc.extend([bb, line, bb])
                     else:
                         clickdoc.extend([line, bb])
-                elif ('-' in line and
-                      (spaces + '-' * (len(line) - lspaces)) == line):
+                elif ('-' in line
+                      and (spaces + '-' * (len(line) - lspaces)) == line):
                     clickdoc.insert(-1, bb)
                     clickdoc.append(line)
                 else:
@@ -497,7 +489,7 @@ class ASRCommand:
         return results
 
     def get_execution_info(self):
-        """Get parameter and software version information as a dictionary"""
+        """Get parameter and software version information as a dictionary."""
         from ase.utils import search_current_git_hash
         exeinfo = {}
         modnames = self.package_dependencies
@@ -522,55 +514,6 @@ def command(*args, **kwargs):
 
     def decorator(func):
         return ASRCommand(func, *args, **kwargs)
-
-    return decorator
-
-
-class ASRSubResult:
-    def __init__(self, asr_name, calculator):
-        self._asr_name = asr_name[4:]
-        self.calculator = calculator
-        self._asr_key = calculator.__name__
-
-        self.results = {}
-
-    def __call__(self, params, *args, **kwargs):
-        # Try to read sub-result from previous calculation
-        subresult = self.read_subresult()
-        if subresult is None:
-            subresult = self.calculate(params, *args, **kwargs)
-
-        return subresult
-
-    def read_subresult(self):
-        """Read sub-result from tmpresults file if possible"""
-        subresult = None
-        path = Path(f'tmpresults_{self._asr_name}.json')
-        if path.exists():
-            self.results = jsonio.decode(path.read_text())
-            # Get subcommand sub-result, if available
-            if self._asr_key in self.results.keys():
-                subresult = self.results[self._asr_key]
-
-        return subresult
-
-    def calculate(self, params, *args, **kwargs):
-        """Do the actual calculation"""
-        subresult = self.calculator.__call__(*args, **kwargs)
-        assert isinstance(subresult, dict)
-
-        subresult.update(self.get_execution_info(params))
-        self.results[self._asr_key] = subresult
-
-        write_json(f'tmpresults_{self._asr_name}.json', self.results)
-
-        return subresult
-
-
-def subresult(name):
-    """Decorator pattern for sub-result"""
-    def decorator(calculator):
-        return ASRSubResult(name, calculator)
 
     return decorator
 
@@ -732,7 +675,6 @@ def read_json(filename):
 
 def unlink(path: Union[str, Path], world=None):
     """Safely unlink path (delete file or symbolic link)."""
-
     if isinstance(path, str):
         path = Path(path)
     if world is None:

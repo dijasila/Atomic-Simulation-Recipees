@@ -14,13 +14,12 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     This recipe can be used to test different magnetic configurations
     of an atomic structure. The recipe creates new folder using acronyms
     for the magnetic configutions. Supported magnetic configurations at the
-    moment
+    moment:
 
-    \b
-    nm/  <- non-magnetic
-    fm/  <- ferro-magnetic
-    afm/ <- anti-ferro-magnetic (only works with exactly two-magnetic
-            atoms in the unit cell)
+    * nm/  <- non-magnetic
+    * fm/  <- ferro-magnetic
+    * afm/ <- anti-ferro-magnetic (only works with exactly two-magnetic atoms
+      in the unit cell)
 
     To test a specific magnetic configution, for example ferromagnetic,
     simply use the --state switch: --state fm.
@@ -38,15 +37,14 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     If you also want to copy the params.json file in the current directory into
     all newly created directories use the --copy-params switch.
 
-    \b
-    Examples:
-    ---------
-    Set up all known magnetic configurations (assuming existence of
-    'unrelaxed.json')
-        asr run setup.magnetize
-    \b
+    Examples
+    --------
+    Set up all known magnetic configurations (assuming existence of 'unrelaxed.json')
+    >>> asr run setup.magnetize
+
     Only set up ferromagnetic configuration
-        asr run "setup.magnetic --state fm"
+    >>> asr run "setup.magnetic --state fm"
+
     """
     from pathlib import Path
     from ase.io import read, write

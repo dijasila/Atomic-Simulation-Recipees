@@ -109,12 +109,12 @@ class myBFGS(BFGS):
         if self.logfile is not None:
             name = self.__class__.__name__
             if self.nsteps == 0:
-                self.logfile.write(' ' * len(name) +
-                                   '  {:<4} {:<8} {:<10} '.format('Step',
-                                                                  'Time',
-                                                                  'Energy') +
-                                   '{:<10} {:<10}\n'.format('fmax',
-                                                            'smax'))
+                self.logfile.write(' ' * len(name)
+                                   + '  {:<4} {:<8} {:<10} '.format('Step',
+                                                                    'Time',
+                                                                    'Energy')
+                                   + '{:<10} {:<10}\n'.format('fmax',
+                                                              'smax'))
                 if self.force_consistent:
                     self.logfile.write(
                         '*Force-consistent energies used in optimization.\n')
@@ -267,14 +267,13 @@ def main(calculator={'name': 'gpaw',
          d3=False, fixcell=False, allow_symmetry_breaking=False,
          fmax=0.01, enforce_symmetry=True):
     """Relax atomic positions and unit cell.
+
     By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
     and relaxes the structure including the DFTD3 van der Waals
     correction. The relaxed structure is saved to `structure.json` which can be
     processed by other recipes.
 
-    Installation
-    ------------
     To install DFTD3 do::
 
       $ mkdir ~/DFTD3 && cd ~/DFTD3

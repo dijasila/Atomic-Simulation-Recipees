@@ -115,8 +115,8 @@ def webpanel(row, key_descriptions):
     medium = 'Min. Hessian eig. > -2 eV/Ang^2'
     low = 'Min. Hessian eig.  < -2 eV/Ang^2'
     row = ['Dynamical (phonons)',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[dynstab].upper())]
 
     summary = {'title': 'Summary',

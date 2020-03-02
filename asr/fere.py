@@ -53,13 +53,14 @@ def unique(ls, selector=None):
 
 def parse_reactions(reactionsstr):
     import re
-    with open(reactionsstr, 'r') as f:
+
+    with open(reactionsstr, "r") as f:
         data = f.read()
 
-    lines = [line for line in data.split('\n') if line != '']
+    lines = [line for line in data.split("\n") if line != ""]
     reactions = []
 
-    splitter_re = r'(([A-Z]+[a-z]*[0-9]*)+)(\s)+([-+]?[0-9]+(\.[0-9]*)?)'
+    splitter_re = r"(([A-Z]+[a-z]*[0-9]*)+)(\s)+([-+]?[0-9]+(\.[0-9]*)?)"
     for line in lines:
         tline = line.strip()
         match = re.match(splitter_re, tline)
@@ -68,27 +69,29 @@ def parse_reactions(reactionsstr):
             energy = float(match.group(4))
             reactions.append((form, energy))
         else:
-            raise ParseError('Could not parse line' +
-                             ' "{}" in {}'.format(line, reactionsstr))
+            raise ParseError(
+                "Could not parse line" + ' "{}" in {}'.format(line, reactionsstr)
+            )
 
     if not unique(reactions, lambda t: t[0]):
         bad = where(
             lambda y: count(lambda x: x[0] == y[1][0], reactions) > 1,
-            enumerate(reactions))
-        raise ParseError('Same reaction was entered' +
-                         'multiple times: {}'.format(bad))
+            enumerate(reactions),
+        )
+        raise ParseError("Same reaction was entered" + "multiple times: {}".format(bad))
     return reactions
 
 
 def parse_refs(refsstr):
     import re
-    with open(refsstr, 'r') as f:
+
+    with open(refsstr, "r") as f:
         data = f.read()
 
-    lines = [line for line in data.split('\n') if line != '']
+    lines = [line for line in data.split("\n") if line != ""]
     refs = []
 
-    parser_re = r'(^[A-Z]+[a-z]*[0-9]*$)'
+    parser_re = r"(^[A-Z]+[a-z]*[0-9]*$)"
     for line in lines:
         tline = line.strip()
         match = re.match(parser_re, tline)
@@ -96,15 +99,15 @@ def parse_refs(refsstr):
             form = match.group(1)
             refs.append(form)
         else:
-            raise ParseError('Could not parse line' +
-                             ' "{}" in {}'.format(line, refsstr))
+            raise ParseError(
+                "Could not parse line" + ' "{}" in {}'.format(line, refsstr)
+            )
 
     if not unique(refs):
-        bad = where(
-            lambda y: count(lambda x: x == y[1], refs) > 1,
-            enumerate(refs))
-        raise ParseError('Same reference' +
-                         'was entered multiple times: {}'.format(bad))
+        bad = where(lambda y: count(lambda x: x == y[1], refs) > 1, enumerate(refs))
+        raise ParseError(
+            "Same reference" + "was entered multiple times: {}".format(bad)
+        )
     return refs
 
 
@@ -116,6 +119,7 @@ def load_data(reactionsstr, refsstr):
 
 def elements_from_refs(refs):
     from ase.formula import Formula
+
     els = []
     for ref in refs:
         el = only(lambda t: True, Formula(ref).count().keys())
@@ -125,6 +129,7 @@ def elements_from_refs(refs):
 
 def multiply_formula(prod, j):
     from ase.formula import Formula
+
     form = Formula(prod)
     return Formula.from_dict({k: v * j for k, v in form.count().items()})
 
@@ -134,19 +139,20 @@ def safe_get(db, prod):
     for j in range(20):
         formula = multiply_formula(prod, j + 1)
         try:
-            result = db.get('formula={}'.format(formula))
+            result = db.get("formula={}".format(formula))
             break
         except KeyError:
             continue
 
     if result is None:
-        raise MaterialNotFoundError('Could not find {} in db'.format(prod))
+        raise MaterialNotFoundError("Could not find {} in db".format(prod))
 
     return result
 
 
 def get_hof(db, formula):
     from ase.formula import Formula
+
     elements = list(formula.count().keys())
     row = safe_get(db, str(formula))
     dbformula = Formula(str(row.formula))
@@ -204,9 +210,11 @@ def minimize_error(dE, alpha):
 def formulas_eq(form1, form2):
     if type(form1) == str:
         from ase.formula import Formula
+
         form1 = Formula(form1)
     if type(form2) == str:
         from ase.formula import Formula
+
         form2 = Formula(form2)
     return form1.stoichiometry()[:-1] == form2.stoichiometry()[:-1]
 
@@ -226,19 +234,23 @@ def create_corrected_db(newname, db, reactions, els_dMu):
         newdb.write(row)
 
 
-@command('asr.fere',
-         resources='1:1h')
-@option('--newdbname', help='Name of the new db file')
-@option('--dbname', help='Name of the base db file')
-@option('--reactionsname',
-        help='File containing reactions and energies with which to fit')
-@option('--referencesname',
-        help='File containing the elements' +
-        ' whose references energies should be adjusted')
-def main(newdbname='newdb.db',
-         dbname='db.db',
-         reactionsname='reactions.txt',
-         referencesname='references.txt'):
+@command("asr.fere", resources="1:1h")
+@option("--newdbname", help="Name of the new db file")
+@option("--dbname", help="Name of the base db file")
+@option(
+    "--reactionsname", help="File containing reactions and energies with which to fit"
+)
+@option(
+    "--referencesname",
+    help="File containing the elements"
+    + " whose references energies should be adjusted",
+)
+def main(
+    newdbname="newdb.db",
+    dbname="db.db",
+    reactionsname="reactions.txt",
+    referencesname="references.txt",
+):
     from ase.db import connect
     import os
     import numpy as np
@@ -255,27 +267,30 @@ def main(newdbname='newdb.db',
     elements = elements_from_refs(refs)
     create_corrected_db(newdbname, db, reactions, list(zip(elements, dMu)))
 
-    results = {'dbname': dbname,
-               'newdbname': newdbname,
-               'reactions': reactions,
-               'refs': refs,
-               'dE': np.array(dE.todense()),
-               'alpha': str(alpha),
-               'dMu': dMu,
-               'error': error}
+    results = {
+        "dbname": dbname,
+        "newdbname": newdbname,
+        "reactions": reactions,
+        "refs": refs,
+        "dE": np.array(dE.todense()),
+        "alpha": str(alpha),
+        "dMu": dMu,
+        "error": error,
+    }
 
-    results['__key_descriptions__'] = \
-        {'dbname': 'Name of base db',
-         'newdbname': 'Name of corrected db',
-         'reactions': 'Reactions and energies used to correct',
-         'refs': 'References that were adjusted',
-         'dE': 'Difference between target and initial HoFs',
-         'alpha': 'Alpha matrix',
-         'dMu': 'Adjustment of reference energies',
-         'error': 'RMSE after adjustment'}
+    results["__key_descriptions__"] = {
+        "dbname": "Name of base db",
+        "newdbname": "Name of corrected db",
+        "reactions": "Reactions and energies used to correct",
+        "refs": "References that were adjusted",
+        "dE": "Difference between target and initial HoFs",
+        "alpha": "Alpha matrix",
+        "dMu": "Adjustment of reference energies",
+        "error": "RMSE after adjustment",
+    }
 
     return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main.cli()
