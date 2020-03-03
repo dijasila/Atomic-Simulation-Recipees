@@ -169,7 +169,8 @@ def webpanel(row, key_descriptions):
     webpanel=webpanel,
     dependencies=["asr.phonopy@calculate"],
 )
-def main():
+@option("--rc", type=float, help="Cutoff force constants matrix")
+def main(rc=None):
     from asr.core import read_json
     from asr.core import get_dimensionality
 
@@ -227,6 +228,8 @@ def main():
     phonon.produce_force_constants(
         forces=set_of_forces, calculate_full_force_constants=False
     )
+    if rc is not None:
+        phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
     q_qc = np.indices(N_c).reshape(3, -1).T / N_c
