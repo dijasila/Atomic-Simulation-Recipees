@@ -58,7 +58,7 @@ templates_path = []
 source_suffix = '.rst'
 
 # The master toctree document.
-master_doc = 'src/index'
+master_doc = 'index'
 
 # General information about the project.
 project = 'Atomic Simulation Recipes'
