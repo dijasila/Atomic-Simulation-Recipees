@@ -4,6 +4,8 @@ The tools of ASR can be combined to perform complicated tasks with little
 effort. Below you will find the recommended procedures to perform common
 tasks within the ASR framework.
 
+.. toctree::
+   :maxdepth: 2
 
 How-to: Make a screening study
 ------------------------------
@@ -97,3 +99,6 @@ And open a local web server with::
 
   $ asr run "database.app database.db"
 
+Now browse it with::
+
+  $ firefox localhost:5000
