@@ -25,6 +25,7 @@ structures, calculating dielectric functions and so on.
    howtoguides
    topic-guides
    api
+   recipes
    developing
 
 
