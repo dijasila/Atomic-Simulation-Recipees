@@ -6,7 +6,7 @@ from click import Choice
 # probably be refactored
 def bs_gw(row,
           filename='gw-bs.png',
-          figsize=(6.4, 4.8),
+          figsize=(5.5, 5),
           fontsize=10,
           show_legend=True,
           s=0.5):
