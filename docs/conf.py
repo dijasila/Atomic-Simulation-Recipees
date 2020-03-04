@@ -19,7 +19,7 @@
 #
 # import os
 # import sys
-# sys.path.insert(0, os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- General configuration ------------------------------------------------
@@ -34,13 +34,18 @@
 
 
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.viewcode',
               'sphinx.ext.intersphinx',
               'sphinx.ext.napoleon',
-              'autoapi.extension',
               'sphinxcontrib.programoutput',
+              # 'autoapi.extension',
               ]
-autoapi_type = 'python'
-autoapi_dirs = ['../asr']
+# autoapi_type = 'python'
+# autoapi_dirs = ['../asr']
+# autoapi_root = 'src/autoapi'
+# autoapi_keep_files = True
+# autoapi_add_toctree_entry = False
+
 napoleon_numpy_docstring = True
 
 # Add any paths that contain templates here, relative to this directory.

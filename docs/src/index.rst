@@ -22,8 +22,10 @@ structures, calculating dielectric functions and so on.
    install
    getting-started
    tutorials
+   howtoguides
+   topic-guides
+   api
    developing
-   autoapi/index
 
 
 Indices and tables
