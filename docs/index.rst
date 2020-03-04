@@ -19,14 +19,14 @@ structures, calculating dielectric functions and so on.
    :maxdepth: 2
    :hidden:
 
-   install
-   getting-started
-   tutorials
-   howtoguides
-   topic-guides
-   api
-   recipes
-   developing
+   src/install
+   src/getting-started
+   src/tutorials
+   src/howtoguides
+   src/topic-guides
+   src/api
+   src/recipes
+   src/developing
 
 
 Indices and tables
