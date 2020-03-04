@@ -4,8 +4,7 @@ The tools of ASR can be combined to perform complicated tasks with little
 effort. Below you will find the recommended procedures to perform common
 tasks within the ASR framework.
 
-.. toctree::
-   :maxdepth: 2
+.. contents:: List of available how-to guides
 
 How-to: Make a screening study
 ------------------------------
