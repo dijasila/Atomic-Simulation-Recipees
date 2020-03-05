@@ -123,7 +123,7 @@ def separate_folder(tmpdir):
     os.chdir(str(tmpdir))
 
     try:
-        yield create_new_working_directory
+        yield str(tmpdir)
     finally:
         os.chdir(cwd)
 
