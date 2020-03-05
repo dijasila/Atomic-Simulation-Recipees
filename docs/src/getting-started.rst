@@ -1,8 +1,26 @@
 Getting started
 ===============
 
+.. highlight:: bash
+
 
 ASR comes with some built in functions. To see these simply write
+
+.. doctest::
+
+   >>> import asr
+   >>> from asr.core.cli import cli
+   >>> cli(args=[], prog_name="asr", standalone_mode=False)
+   Usage: asr [OPTIONS] COMMAND [ARGS]...
+   <BLANKLINE>
+   Options:
+     -h, --help  Show this message and exit.
+   <BLANKLINE>
+   Commands:
+     list    List and search for recipes.
+     run     Run recipe, python function or shell command in multiple folders.
+     status  Show the status of the current folder for all ASR recipes.
+   0
 
 .. command-output:: asr
 
@@ -18,7 +36,7 @@ subset of this list
 .. command-output:: asr list relax
 
 from which is clear that we will probably want to use the `relax` recipe. To see
-more details about this recipe we can use the `help` function:
+more details about this recipe we can use:
 
 .. command-output:: asr run "relax -h"
 
