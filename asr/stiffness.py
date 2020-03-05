@@ -100,8 +100,8 @@ def main(strain_percent=1.0):
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             structurefile = folder / 'structure.json'
-            if not computemf.done:
-                with chdir(folder):
+            with chdir(folder):
+                if not computemf.done:
                     computemf()
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
