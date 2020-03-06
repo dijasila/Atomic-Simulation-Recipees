@@ -534,14 +534,15 @@ def chdir(folder, create=False, empty=False):
 def get_recipe_module_names():
     # Find all modules containing recipes
     from pathlib import Path
-    folder = Path(__file__).parent.parent
-    files = list(folder.glob('**/[a-zA-Z]*.py'))
+    asrfolder = Path(__file__).parent.parent
+    folders_with_recipes = [asrfolder / '.',
+                            asrfolder / 'setup',
+                            asrfolder / 'database']
+    files = [filename for folder in folders_with_recipes
+             for filename in folder.glob("[a-zA-Z]*.py")]
     modulenames = []
     for file in files:
-        if 'utils' in str(file) or 'tests' in str(file) or \
-           'test' in str(file) or 'core' in str(file):
-            continue
-        name = str(file.with_suffix(''))[len(str(folder)):]
+        name = str(file.with_suffix(''))[len(str(asrfolder)):]
         modulename = 'asr' + name.replace('/', '.')
         modulenames.append(modulename)
     return modulenames
