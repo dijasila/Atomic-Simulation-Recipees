@@ -37,7 +37,7 @@ First time here: :ref:`Getting started`
    * :ref:`Tutorials`: Lessons that take the reader by the hand though a
      series of steps to complete a project.
    * :ref:`How to guides`: Concrete solutions to common tasks
-   * :ref:`Topical dicussions`: Topical discussions
+   * :ref:`Topical discussions`: Topical discussions
    * :ref:`API Reference`:
 
    See also Daniele Procida's PyCon 2017 talk `How documentation
