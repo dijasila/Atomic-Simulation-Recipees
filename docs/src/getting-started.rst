@@ -1,12 +1,10 @@
-Getting started
-===============
+Getting started: The ASR command-line interface
+===============================================
 
-.. highlight:: bash
-
-
-ASR comes with some built in functions. To see these simply write
+ASR comes with a simple command-line interface which can be invoked using
 
 .. doctest::
+   :hide:
 
    >>> import asr
    >>> from asr.core.cli import cli
@@ -17,70 +15,96 @@ ASR comes with some built in functions. To see these simply write
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
+     list  List and search for recipes.
+     run   Run recipe, python function or shell command in multiple folders.
+   ...
+
+.. code-block:: console
+
+   $ asr
+   Usage: asr [OPTIONS] COMMAND [ARGS]...
+
+   Options:
+     -h, --help  Show this message and exit.
+
+   Commands:
      list    List and search for recipes.
      run     Run recipe, python function or shell command in multiple folders.
-     status  Show the status of the current folder for all ASR recipes.
-   0
 
-.. command-output:: asr
+From this output it is clear that the ``asr`` command has two
+sub-commands: ``list`` and ``run``. The ``list`` subcommand can be
+used to show a list of all known recipes. To show the help for the ``list``
+sub-command do
 
-Let's put these functions into use by calculating some properties of 
-Silicon. To get an overview of the possible recipes we can use the `list`
-command to list the known recipes
+.. doctest::
+   :hide:
 
-.. command-output:: asr list
+   >>> from asr.core.cli import cli
+   >>> cli(args=['list', '-h'], prog_name="asr", standalone_mode=False)
+   Usage: asr list [OPTIONS] [SEARCH]
+   <BLANKLINE>
+     List and search for recipes.
+   <BLANKLINE>
+     If SEARCH is specified: list only recipes containing SEARCH in their
+     description.
+   <BLANKLINE>
+   Options:
+     -h, --help  Show this message and exit.
+   ...
 
-Let's say we want to relax a structure. We can search for `relax` and only get a
-subset of this list
+.. code-block:: console
 
-.. command-output:: asr list relax
+   $ asr list -h
+   Usage: asr list [OPTIONS] [SEARCH]
 
-from which is clear that we will probably want to use the `relax` recipe. To see
-more details about this recipe we can use:
+     List and search for recipes.
 
-.. command-output:: asr run "relax -h"
+     If SEARCH is specified: list only recipes containing SEARCH in their
+     description.
 
-So to relax a structure, we start by creating
-a new folder and put an `unrelaxed.json` file into the directory containing
-the atomic structure of Silicon.::
+   Options:
+     -h, --help  Show this message and exit.
 
-  $ mkdir ~/silicon && cd ~/silicon
-  $ ase build -x diamond Si unrelaxed.json
+So we can see a list of all recipes using
 
-We can relax the structure by using the `asr run` command.::
+.. doctest:: console
+   :hide:
 
-  $ asr run relax
-
-To see what happened we can use the `status` command::
-
-  $ asr status
-  asr.relax           Done -> ['results_relax.json']
-  asr.gs              Todo
-  asr.dos             Todo
-  ...
-
-which shows that we have run the relax recipe and that the results have been 
-stored to the `results_relax.json` file. In the process of looking for
-interesting recipes we also found the `structureinfo` recipe which computes
-some information about the atomic structure of the materials. Let's run that::
-
-  $ asr run structureinfo
+   >>> from asr.core.cli import cli
+   >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
+   Name ... Description ...
+   ...
+   relax ... Relax atomic positions and unit cell...
+   ...
 
 
-ASR lets us save all data to a database by running the `collect` recipe. The 
-database is saved to a file `database.db`. This database is an ASE database and
-can be browsed using the `ase db` module::
+.. code-block:: console
 
-  $ asr run collect
-  $ ase db database.db
-  id|age|user |formula|calculator| energy| fmax|pbc|volume|charge|  mass| smax
-   1| 7s|mogje|Si2    |dftd3     |-10.738|0.000|TTT|41.204| 0.000|56.170|0.001
-  Rows: 1
+   $ asr list
+   Name                           Description
+   ----                           -----------
+   ...
+   relax                          Relax atomic positions and unit cell.
+   ...
 
-We can also browse this database by using the `browser` recipe which starts a
-local server and lets you browse the database interactively::
 
-  $ asr run browser
+To run a recipe we use the ``run`` sub-command
+
+.. doctest::
+   :hide:
+
+   >>> from asr.core.cli import cli
+   >>> cli(args=['run', '-h'], prog_name="asr", standalone_mode=False)
+   Usage: asr run [OPTIONS] COMMAND [FOLDERS]...
+   <BLANKLINE>
+     Run recipe, python function or shell command in multiple folders.
+   ...
+
+For example to run the above ``relax`` recipe we would do
+
+.. code-block:: console
+
+   $ asr run relax
 
 The ASR run command
 -------------------
