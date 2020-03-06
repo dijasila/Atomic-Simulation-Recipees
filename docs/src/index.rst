@@ -22,7 +22,7 @@ structures, calculating dielectric functions and so on.
    install
    tutorials/tutorials
    howtoguides/howtoguides
-   topicaldiscussions/topical-discussions
+   topical-discussions/topical-discussions
    recipes/recipes
    api
    developing
