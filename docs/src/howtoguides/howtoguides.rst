@@ -1,3 +1,5 @@
+.. _How to guides:
+
 How-to guides
 =============
 The tools of ASR can be combined to perform complicated tasks with little

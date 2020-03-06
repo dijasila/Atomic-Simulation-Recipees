@@ -1,5 +1,7 @@
-Getting started: The ASR command-line interface
-===============================================
+.. _Getting started:
+
+Getting started
+===============
 
 ASR comes with a simple command-line interface which can be invoked using
 
@@ -88,7 +90,8 @@ So we can see a list of all recipes using
    ...
 
 
-To run a recipe we use the ``run`` sub-command
+To run a recipe we use the ``run`` sub-command. For example to run the
+above ``relax`` recipe we would do
 
 .. doctest::
    :hide:
@@ -99,8 +102,6 @@ To run a recipe we use the ``run`` sub-command
    <BLANKLINE>
      Run recipe, python function or shell command in multiple folders.
    ...
-
-For example to run the above ``relax`` recipe we would do
 
 .. code-block:: console
 
