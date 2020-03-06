@@ -187,7 +187,7 @@ def cleanup(*files):
 
 def bs_hse(row,
            filename='hse-bs.png',
-           figsize=(6.4, 4.8),
+           figsize=(5.5, 5),
            fontsize=10,
            show_legend=True,
            s=0.5):

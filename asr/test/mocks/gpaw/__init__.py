@@ -58,9 +58,14 @@ class GPAW(Calculator):
 
         class KPointDescriptor:
             pass
+
+        class BandDescriptor:
+            pass
+
         gd = GridDescriptor()
-        nvalence = None
+        bd = BandDescriptor()
         kd = KPointDescriptor()
+        nvalence = None
 
     wfs = WaveFunctions()
 
@@ -69,8 +74,9 @@ class GPAW(Calculator):
             self.atoms = atoms
 
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
-        # self.parameters.kpts = self.kpts = kpts
         self.kpts = kpts
+        self.wfs.kd.nibzkpts = len(kpts)
+        self.wfs.kd.weight_k = np.array(self.get_k_point_weights())
         icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
 
         # Simple parabolic band
@@ -91,6 +97,7 @@ class GPAW(Calculator):
         self.wfs.nvalence = self.parameters.nelectrons
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
         nbands = self.get_number_of_bands()
+        self.wfs.bd.nbands = nbands
         self.eigenvalues = eps_kn[:, : nbands] * Ha
         assert self.eigenvalues.shape[0] == len(self.kpts), \
             (self.eigenvalues.shape, self.kpts.shape)

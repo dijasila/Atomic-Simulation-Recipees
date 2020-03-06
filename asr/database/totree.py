@@ -37,7 +37,7 @@ def main(database, run=False, selection='',
          sort=None, atomsname='structure.json',
          chunks=1, copy=False,
          patterns='*', dont_create_folders=False,
-         write_atoms_file=False):
+         write_atoms_file=True):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -179,8 +179,9 @@ def main(database, run=False, selection='',
         folder_has_been_created = False
 
         if write_atoms_file:
-            makedirs(folder)
-            folder_has_been_created = True
+            if not folder_has_been_created:
+                makedirs(folder)
+                folder_has_been_created = True
             write(folder / atomsname, row.toatoms())
 
         for filename, results in row.data.items():
