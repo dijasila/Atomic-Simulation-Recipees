@@ -141,6 +141,9 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
         'alphaz_el': 'KVP: Static electronic polarizability,'
         ' z-direction [Ang]'}
 
+    es_file = Path("es.gpw")
+    es_file.unlink()
+
     return data
 
 
@@ -261,6 +264,8 @@ def polarizability(row, fx, fy, fz):
     ax.set_xlim(xlim())
     plt.tight_layout()
     plt.savefig(fz)
+
+
 
     return ax1, ax2, ax3
 
