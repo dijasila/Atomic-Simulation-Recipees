@@ -403,6 +403,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     # put together structure dict
     structure_dict['defects'] = temp_dict
 
+    print('INFO: rattled atoms to make sure defect systems do not get stuck at'
+          ' a saddle point.')
+
     print('INFO: setting up {0} different defect supercell systems in '
           'charge states -{1}, ..., +{1}, as well as the pristine supercell '
           'system.'.format(len(structure_dict['defects']), charge_states))
