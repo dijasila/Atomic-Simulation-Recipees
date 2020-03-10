@@ -276,6 +276,7 @@ def main(rc=None):
         dynamic_stability = 3
 
     results = {'omega_kl': omega_kl,
+               'eigs_kl': eigs_kl,
                'irr_l': irreps,
                'q_qc': q_qc,
                'u_klav': u_klav,
