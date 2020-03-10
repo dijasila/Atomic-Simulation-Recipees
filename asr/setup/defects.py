@@ -24,8 +24,14 @@ import click
         help='Keep the periodic boundary conditions as they are. If this '
         'option is not used, pbc will be enforced for correct defect '
         'calculations')
+@option('--halfinteger', type=bool,
+        help='Sets up half integer folders within one full integer folder. '
+        'It has to be launched within the specific charge folders and needs '
+        'both a structure.json file as well as a params.json in order to '
+        'work properly')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False):
+         maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False,
+         halfinteger=False):
     """
     Sets up defect structures for a given host.
 
@@ -72,39 +78,43 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     from ase.io import read
     import numpy as np
 
-    # first, read input atomic structure and store it in ase's atoms object
-    structure = read(atomfile)
-    print('INFO: starting recipe for setting up defect systems of '
-          '{} host system.'.format(structure.symbols))
 
-    if vacuum is None:
-        print('INFO: no vacuum specified. Choose it accordingly to L_z ~ '
-              'L_xy automatically.'.format(vacuum))
-    elif type(vacuum) is float:
-        print('Vacuum is: {}'.format(vacuum))
+    if halfinteger:
+        setup_halfinteger()
+    elif not halfinteger:
+        # first, read input atomic structure and store it in ase's atoms object
+        structure = read(atomfile)
+        print('INFO: starting recipe for setting up defect systems of '
+              '{} host system.'.format(structure.symbols))
 
-    # check dimensionality of initial parent structure
-    nd = int(np.sum(structure.get_pbc()))
-    if nd == 3:
-        is2d = False
-    elif nd == 2:
-        is2d = True
-    elif nd == 1:
-        raise NotImplementedError('Setup defects not implemented for 1D '
-                                  f'structures')
-    # set up the different defect systems and store their properties
-    # in a dictionary
-    structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
-                                   charge_states=chargestates,
-                                   vacancies=vacancies, sc=supercell,
-                                   max_lattice=maxsize, is_2D=is2d,
-                                   vacuum=vacuum, nopbc=nopbc)
+        if vacuum is None:
+            print('INFO: no vacuum specified. Choose it accordingly to L_z ~ '
+                  'L_xy automatically.'.format(vacuum))
+        elif type(vacuum) is float:
+            print('Vacuum is: {}'.format(vacuum))
 
-    # based on this dictionary, create a folder structure for all defects
-    # and respective charge states
-    create_folder_structure(structure, structure_dict, chargestates,
-                            intrinsic=intrinsic, vacancies=vacancies,
-                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
+        # check dimensionality of initial parent structure
+        nd = int(np.sum(structure.get_pbc()))
+        if nd == 3:
+            is2d = False
+        elif nd == 2:
+            is2d = True
+        elif nd == 1:
+            raise NotImplementedError('Setup defects not implemented for 1D '
+                                      f'structures')
+        # set up the different defect systems and store their properties
+        # in a dictionary
+        structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
+                                       charge_states=chargestates,
+                                       vacancies=vacancies, sc=supercell,
+                                       max_lattice=maxsize, is_2D=is2d,
+                                       vacuum=vacuum, nopbc=nopbc)
+
+        # based on this dictionary, create a folder structure for all defects
+        # and respective charge states
+        create_folder_structure(structure, structure_dict, chargestates,
+                                intrinsic=intrinsic, vacancies=vacancies,
+                                sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return None
 
