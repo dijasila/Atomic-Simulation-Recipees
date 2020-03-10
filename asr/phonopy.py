@@ -28,8 +28,9 @@ def lattice_vectors(N_c):
 )
 @option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
+@option("--name", help="Name for forces file")
 @option('-c', '--calculator', help='Calculator params.')
-def calculate(n=2, d=0.05,
+def calculate(n=2, d=0.05, name='phonons',
               calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
                           'xc': 'PBE',
@@ -49,7 +50,7 @@ def calculate(n=2, d=0.05,
 
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob("phonon.*.json"):
+        for f in Path().glob(name + ".*.json"):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
@@ -101,7 +102,7 @@ def calculate(n=2, d=0.05,
         # Sign of the displacement
         sign = ["+", "-"][n % 2]
 
-        filename = "phonons.{0}{1}.json".format(a, sign)
+        filename = name + "{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
             continue
@@ -170,7 +171,8 @@ def webpanel(row, key_descriptions):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc=None):
+@option("--name", help="Name for forces file")
+def main(rc=None, name="phonons"):
     from asr.core import read_json
     from asr.core import get_dimensionality
 
@@ -217,7 +219,7 @@ def main(rc=None):
         # Sign of the diplacement
         sign = ["+", "-"][i % 2]
 
-        filename = "phonons.{0}{1}.json".format(a, sign)
+        filename = name + ".{0}{1}.json".format(a, sign)
 
         forces = read_json(filename)["force"]
         # Number of forces equals to the number of atoms in the supercell
@@ -258,15 +260,15 @@ def main(rc=None):
     C_N = C_N.transpose(2, 0, 3, 1, 4)
     C_N = C_N.reshape(n**nd, 3 * len(atoms), 3 * len(atoms))
 
-    eigs = []
+    eigs_kl = []
 
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
         C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
-        eigs.append(np.linalg.eigvalsh(C_q))
+        eigs_kl.append(np.linalg.eigvalsh(C_q))
 
-    eigs = np.array(eigs)
-    mineig = np.min(eigs)
+    eigs_kl = np.array(eigs_kl)
+    mineig = np.min(eigs_kl)
 
     if mineig < -2:
         dynamic_stability = 1
