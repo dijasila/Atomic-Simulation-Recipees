@@ -27,7 +27,7 @@ def get_spinorbit_eigenvalues(
         ]
     )
 
-    s_kvm = np.zeros((nk, 3, nbands), float)
+    s_kvm = np.zeros((nk, 3, nbands * 2), float)
     s_kvm[:, 2, ::2] = 1
     s_kvm[:, 2, ::2] = -1
     e_km = e_ksn.reshape((nk, -1))

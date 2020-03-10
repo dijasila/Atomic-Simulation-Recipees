@@ -19,13 +19,18 @@ structures, calculating dielectric functions and so on.
    :maxdepth: 2
    :hidden:
 
-   install
-   getting-started
-   tutorials
-   developing
-   autoapi/index
+   src/install
+   src/getting-started
+   src/tutorials
+   src/howtoguides
+   src/topic-guides
+   src/api
+   src/recipes
+   src/developing
 
-..
-   :ref:`genindex`
-   :ref:`modindex`
-   :ref:`search`
+
+Indices and tables
+==================
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -37,7 +37,7 @@ def main(database, run=False, selection='',
          sort=None, atomsname='structure.json',
          chunks=1, copy=False,
          patterns='*', dont_create_folders=False,
-         write_atoms_file=False):
+         write_atoms_file=True):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -48,45 +48,39 @@ def main(database, run=False, selection='',
     The specific tree structure is given by the --tree-structure
     option which can be customized according to the following table
 
-    \b
-    {stoi}: Material stoichiometry
-    {spg}: Material spacegroup number
-    {formula}: Chemical formula. A possible variant is {formula:metal}
-        in which case the formula will be sorted by metal atoms
-    {wyck}: Unique wyckoff positions. The unique alphabetically sorted
-        Wyckoff positions.
-    {uid}: This is a unique identifier which starts at 0 and adds 1 if
-        collisions (cases where two materials would go to the same folder)
-        occur. In practice, if two materials would be unpacked in A-0/
-        they would now be unpacked in A-0/ and A-1/.
+    * {stoi}: Material stoichiometry
+    * {spg}: Material spacegroup number
+    * {formula}: Chemical formula. A possible variant is {formula:metal}
+      in which case the formula will be sorted by metal atoms
+    * {wyck}: Unique wyckoff positions. The unique alphabetically
+      sorted Wyckoff positions.
+    * {uid}: This is a unique identifier which starts at 0 and adds 1 if
+      collisions (cases where two materials would go to the same folder)
+      occur. In practice, if two materials would be unpacked in A-0/
+      they would now be unpacked in A-0/ and A-1/.
 
     By default, the atomic structures will be saved into an unrelaxed.json
     file which is be ready to be relaxed. This filename can be changed with
     the --atomsname switch.
 
-    \b
-    Examples:
-    ---------
+    Examples
+    --------
     For all these examples, suppose you have a database named "database.db".
 
-    \b
     Unpack database using default parameters:
-      asr run "database.totree database.db --run"
-    \b
+    >>> asr run "database.totree database.db --run"
     Don't actually unpack the database but do a dry-run:
-      asr run "database.totree database.db"
-    \b
+    >>> asr run "database.totree database.db"
     Only select a part of the database to unpack:
-      asr run "database.totree database.db --selection natoms<3 --run"
-    \b
+    >>> asr run "database.totree database.db --selection natoms<3 --run"
     Set custom folder tree-structure:
-      asr run "database.totree database.db --tree-structure
-          tree/{stoi}/{spg}/{formula:metal} --run"
-    \b
+    >>> asr run "database.totree database.db
+    >>> ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
+
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-      asr run "database.totree database.db --sort natoms --chunks 2 --run"
+    >>> asr run "database.totree database.db --sort natoms --chunks 2 --run"
     """
     from os import makedirs
     from pathlib import Path
@@ -185,8 +179,9 @@ def main(database, run=False, selection='',
         folder_has_been_created = False
 
         if write_atoms_file:
-            makedirs(folder)
-            folder_has_been_created = True
+            if not folder_has_been_created:
+                makedirs(folder)
+                folder_has_been_created = True
             write(folder / atomsname, row.toatoms())
 
         for filename, results in row.data.items():

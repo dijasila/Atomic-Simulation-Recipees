@@ -52,7 +52,7 @@ def main():
 
 
 def get_orbital_ldos(calc):
-    """Get the projection weights on different orbitals
+    """Get the projection weights on different orbitals.
 
     Returns
     -------
@@ -121,7 +121,7 @@ def get_orbital_ldos(calc):
 
 
 def get_yl_ordering(yl_i, symbols):
-    """Get standardized yl ordering of keys
+    """Get standardized yl ordering of keys.
 
     Parameters
     ----------
@@ -135,7 +135,6 @@ def get_yl_ordering(yl_i, symbols):
     c_i : list
         ordered index for each i
     """
-
     # Setup sili (symbol index, angular momentum index) key
     def sili(yl):
         y, L = yl.split(',')
@@ -152,6 +151,7 @@ def get_yl_ordering(yl_i, symbols):
 
 def get_bs_sampling(bsp, npoints=40):
     """Sample band structure as evenly as possible.
+
     Allways include special points.
 
     Parameters
@@ -234,11 +234,11 @@ def get_pie_slice(theta0, theta, s=36., res=126):
     -------
     pie : matplotlib.pyplot.scatter option dictionary
     """
-    assert 0. <= theta0 and theta0 <= 2. * np.pi
-    assert 0. <= theta and theta <= 2. * np.pi
+    assert -np.pi / res <= theta0 and theta0 <= 2. * np.pi + np.pi / res
+    assert -np.pi / res <= theta and theta <= 2. * np.pi + np.pi / res
 
     angles = np.linspace(theta0, theta0 + theta,
-                         np.ceil(res * theta / (2 * np.pi)))
+                         int(np.ceil(res * theta / (2 * np.pi))))
     x = [0] + np.cos(angles).tolist()
     y = [0] + np.sin(angles).tolist()
     xy = np.column_stack([x, y])

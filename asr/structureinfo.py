@@ -2,18 +2,23 @@ from asr.core import command
 
 
 def get_reduced_formula(formula, stoichiometry=False):
-    """
+    """Get reduced formula from formula.
+
     Returns the reduced formula corresponding to a chemical formula,
     in the same order as the original formula
     E.g. Cu2S4 -> CuS2
 
-    Parameters:
-        formula (str)
-        stoichiometry (bool): if True, return the stoichiometry ignoring the
-          elements appearing in the formula, so for example "AB2" rather than
-          "MoS2"
-    Returns:
-        A string containing the reduced formula
+    Parameters
+    ----------
+    formula : str
+    stoichiometry : bool
+        If True, return the stoichiometry ignoring the
+        elements appearing in the formula, so for example "AB2" rather than
+        "MoS2"
+
+    Returns
+    -------
+        A string containing the reduced formula.
     """
     from functools import reduce
     from math import gcd
@@ -38,13 +43,17 @@ def get_reduced_formula(formula, stoichiometry=False):
 
 
 def has_inversion(atoms, use_spglib=True):
-    """
-    Parameters:
-        atoms: Atoms object
-            atoms
-        use_spglib: bool
-            use spglib
-    Returns:
+    """Determine if atoms has inversion symmetry.
+
+    Parameters
+    ----------
+    atoms: Atoms object
+           atoms
+    use_spglib: bool
+           use spglib
+
+    Returns
+    -------
         out: bool
     """
     import numpy as np
@@ -74,8 +83,8 @@ def webpanel(row, key_descriptions):
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            href = ('<a href="http://www.crystallography.net/cod/' +
-                    '{id}.html">{id}</a>'.format(id=codid))
+            href = ('<a href="http://www.crystallography.net/cod/'
+                    + '{id}.html">{id}</a>'.format(id=codid))
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
 
@@ -125,7 +134,6 @@ def main():
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-
     import numpy as np
     from ase.io import read
     from pathlib import Path

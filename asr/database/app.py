@@ -156,9 +156,6 @@ def initialize_project(database):
     }
 
 
-setup_app()
-
-
 @command()
 @argument("databases", nargs=-1)
 @option("--host", help="Host address.")
@@ -166,6 +163,8 @@ setup_app()
 def main(databases, host="0.0.0.0", test=False):
     for database in databases:
         initialize_project(database)
+
+    setup_app()
 
     if test:
         import traceback
@@ -199,8 +198,8 @@ def main(databases, host="0.0.0.0", test=False):
                         exc = traceback.format_exc()
                         exc += (f'Problem with {uid}: '
                                 f'Formula={row.formula} '
-                                f'Prototype={row.crystal_prototype}\n' +
-                                '-' * 20 + '\n')
+                                f'Prototype={row.crystal_prototype}\n'
+                                + '-' * 20 + '\n')
                         with Path('errors.txt').open(mode='a') as fid:
                             fid.write(exc)
                             print(exc)

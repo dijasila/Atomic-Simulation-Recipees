@@ -24,7 +24,7 @@ class GPAW(Calculator):
     default_parameters = {
         "kpts": (4, 4, 4),
         "gridsize": 3,
-        "nbands": 8,
+        "nbands": 12,
         "nspins": 1,
         "nelectrons": 4,
         "fermi_level": 0,
@@ -56,25 +56,27 @@ class GPAW(Calculator):
         class GridDescriptor:
             pass
 
+        class KPointDescriptor:
+            pass
+
+        class BandDescriptor:
+            pass
+
         gd = GridDescriptor()
+        bd = BandDescriptor()
+        kd = KPointDescriptor()
         nvalence = None
 
     wfs = WaveFunctions()
-
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-
-    @classmethod
-    def set_property(cls, **kwargs):
-        cls.default_parameters.update(kwargs)
 
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
             self.atoms = atoms
 
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
-        # self.parameters.kpts = self.kpts = kpts
         self.kpts = kpts
+        self.wfs.kd.nibzkpts = len(kpts)
+        self.wfs.kd.weight_k = np.array(self.get_k_point_weights())
         icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
 
         # Simple parabolic band
@@ -84,6 +86,7 @@ class GPAW(Calculator):
         eps_kn.sort()
 
         gap = self.parameters.gap
+
         eps_kn = np.concatenate(
             (-eps_kn[:, ::-1][:, -self.parameters.nelectrons:],
              eps_kn + gap / Ha),
@@ -94,6 +97,7 @@ class GPAW(Calculator):
         self.wfs.nvalence = self.parameters.nelectrons
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
         nbands = self.get_number_of_bands()
+        self.wfs.bd.nbands = nbands
         self.eigenvalues = eps_kn[:, : nbands] * Ha
         assert self.eigenvalues.shape[0] == len(self.kpts), \
             (self.eigenvalues.shape, self.kpts.shape)
@@ -113,7 +117,7 @@ class GPAW(Calculator):
         }
 
     def get_fermi_level(self):
-        return self.parameters.fermi_level
+        return 0.0
 
     def get_eigenvalues(self, kpt, spin=0):
         return self.eigenvalues[kpt]
@@ -123,6 +127,12 @@ class GPAW(Calculator):
 
     def get_ibz_k_points(self):
         return self.kpts.copy()
+
+    def get_bz_k_points(self):
+        return self.kpts.copy()
+
+    def get_bz_to_ibz_map(self):
+        return np.arange(len(self.kpts))
 
     def get_number_of_spins(self):
         return self.parameters.nspins
@@ -135,8 +145,8 @@ class GPAW(Calculator):
                 * self.parameters.nelectrons
             )
         elif self.parameters.nbands < 0:
-            return (self.parameters.nelectrons -
-                    self.parameters.nbands)
+            return (self.parameters.nelectrons
+                    - self.parameters.nbands)
         else:
             return self.parameters.nbands
 
@@ -176,3 +186,6 @@ class GPAW(Calculator):
     def get_electrostatic_potential(self):
         return (self.parameters.electrostatic_potential
                 or np.zeros((20, 20, 20)))
+
+    def diagonalize_full_hamiltonian(self, ecut=None):
+        pass

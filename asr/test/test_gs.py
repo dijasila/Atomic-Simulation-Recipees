@@ -1,18 +1,28 @@
 import pytest
 from pytest import approx
-from .conftest import test_materials, get_webcontent
+from .conftest import test_materials, get_webcontent, freeelectroneigenvalues
 
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(separate_folder, usemocks, atoms, gap, fermi_level):
-    from gpaw import GPAW as GPAWMOCK
-    GPAWMOCK.set_property(gap=gap, fermi_level=fermi_level)
-
+def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
     from asr.gs import calculate, main
     from ase.io import write
+    from ase.units import Ha
+    import gpaw
+    import gpaw.occupations
+    get_eigenvalues = freeelectroneigenvalues(atoms, gap=gap)
+
+    mocker.patch.object(gpaw.GPAW, "get_eigenvalues", new=get_eigenvalues)
+    mocker.patch.object(gpaw.GPAW, "get_fermi_level")
+    mocker.patch("gpaw.occupations.occupation_numbers")
+    gpaw.GPAW.get_fermi_level.return_value = fermi_level
+    gpaw.occupations.occupation_numbers.return_value = [0,
+                                                        fermi_level / Ha,
+                                                        0,
+                                                        0]
 
     write('structure.json', atoms)
     calculate(

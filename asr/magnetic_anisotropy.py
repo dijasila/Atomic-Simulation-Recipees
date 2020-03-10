@@ -57,10 +57,12 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():
     """Calculate the magnetic anisotropy.
+
     Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
-    Returns:
+    Returns
+    -------
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """

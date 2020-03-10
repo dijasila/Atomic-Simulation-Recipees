@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.ci
 @pytest.mark.parametrize("atoms", test_materials)
-def test_relax(separate_folder, usemocks, atoms):
+def test_relax(separate_folder, mockgpaw, atoms):
     from asr.relax import main as relax
     from ase.io import write
 
@@ -32,7 +32,6 @@ def test_relax_emt(separate_folder, name):
 @pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-@pytest.mark.xfail(strict=True, raises=BrokenSymmetryError)
 def test_relax_emt_fail_broken_symmetry(separate_folder, name,
                                         monkeypatch):
     """Test that a broken symmetry raises an error."""
@@ -48,7 +47,8 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
     unrelaxed.write('unrelaxed.json')
-    relax(calculator={'name': 'emt'}, enforce_symmetry=False)
+    with pytest.raises(BrokenSymmetryError):
+        relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
 @pytest.mark.integration_test

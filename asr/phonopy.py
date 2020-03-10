@@ -28,10 +28,19 @@ def lattice_vectors(N_c):
 )
 @option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
-@option("--ecut", type=float, help="Energy cutoff")
-@option("--kptdensity", type=int, help="Kpoint density")
-@option("--fconverge", type=float, help="Force convergence criterium")
-def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
+@option('-c', '--calculator', help='Calculator params.')
+def calculate(n=2, d=0.05,
+              calculator={'name': 'gpaw',
+                          'mode': {'name': 'pw', 'ecut': 800},
+                          'xc': 'PBE',
+                          'basis': 'dzp',
+                          'kpts': {'density': 6.0, 'gamma': True},
+                          'occupations': {'name': 'fermi-dirac',
+                                          'width': 0.05},
+                          'convergence': {'forces': 1.0e-4},
+                          'symmetry': {'point_group': False},
+                          'txt': 'phonons.txt',
+                          'charge': 0}):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
@@ -45,19 +54,11 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
                 f.unlink()
     world.barrier()
 
-    params = {
-        "mode": {"name": "pw", "ecut": ecut},
-        "kpts": {"density": kptdensity, "gamma": True},
-    }
-
-    # Set essential parameters for phonons
-    params["symmetry"] = {"point_group": False}
-    # Make sure to converge forces! Can be important
-    params["convergence"] = {"forces": fconverge}
-
     atoms = read("structure.json")
-    fd = open("phonons.txt".format(n), "a")
-    calc = get_calculator()(txt=fd, **params)
+
+    from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
 
     # Set initial magnetic moments
     from asr.core import is_magnetic
@@ -72,26 +73,27 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
     nd = get_dimensionality()
     if nd == 3:
         supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
-        atoms_N = atoms * (n, n, n)
     elif nd == 2:
         supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
-        atoms_N = atoms * (n, n, 1)
     elif nd == 1:
         supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
-        atoms_N = atoms * (n, 1, 1)
 
-    phonopy_atoms = PhonopyAtoms(
-        symbols=atoms.symbols,
-        cell=atoms.get_cell(),
-        scaled_positions=atoms.get_scaled_positions(),
-    )
-    atoms_N.set_calculator(calc)
+    phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
+                                 cell=atoms.get_cell(),
+                                 scaled_positions=atoms.get_scaled_positions())
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
     phonon.generate_displacements(distance=d, is_plusminus=True)
     # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
+
+    from ase.atoms import Atoms
+    scell = displaced_sc[0]
+    atoms_N = Atoms(symbols=scell.get_chemical_symbols(),
+                    scaled_positions=scell.get_scaled_positions(),
+                    cell=scell.get_cell(),
+                    pbc=atoms.pbc)
 
     for n, cell in enumerate(displaced_sc):
         # Displacement number
@@ -104,7 +106,8 @@ def calculate(n=2, d=0.05, ecut=800, kptdensity=6.0, fconverge=1e-4):
         if Path(filename).is_file():
             continue
 
-        atoms_N.positions = cell.positions
+        atoms_N.set_scaled_positions(cell.get_scaled_positions())
+        atoms_N.set_calculator(calc)
         forces = atoms_N.get_forces()
 
         drift_force = forces.sum(axis=0)
@@ -119,7 +122,7 @@ def requires():
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
 
     phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
 
@@ -244,11 +247,14 @@ def main():
             ):
                 irreps += [irr] * len(deg)
 
+    irreps = list(irreps)
+
     R_cN = lattice_vectors(N_c)
     C_N = phonon.get_force_constants()
-    print(C_N.shape)
-    C_N = C_N.swapaxes(0, 1).reshape(-1, 3 * len(atoms), 3 * len(atoms))
-    # print(C_N.shape)
+    C_N = C_N.reshape(len(atoms), len(atoms), n**nd, 3, 3)
+    C_N = C_N.transpose(2, 0, 3, 1, 4)
+    C_N = C_N.reshape(n**nd, 3 * len(atoms), 3 * len(atoms))
+
     eigs = []
 
     for q_c in q_qc:
@@ -266,14 +272,27 @@ def main():
     else:
         dynamic_stability = 3
 
-    results = {
-        "omega_kl": omega_kl,
-        "irr_l": np.array(irreps),
-        "q_qc": q_qc,
-        "u_klav": u_klav,
-        "minhessianeig": mineig,
-        "dynamic_stability_level": dynamic_stability,
-    }
+    results = {'omega_kl': omega_kl,
+               'irr_l': irreps,
+               'q_qc': q_qc,
+               'u_klav': u_klav,
+               'minhessianeig': mineig,
+               'dynamic_stability_level': dynamic_stability}
+
+    # Next calculate an approximate phonon band structure
+    nqpts = 100
+    freqs_kl = np.zeros((nqpts, 3 * len(atoms)))
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
+
+    for q, q_c in enumerate(path.kpts):
+        freqs = phonon.get_frequencies(q_c) * THzToEv
+        freqs_kl[q] = freqs
+
+    results['interp_freqs_kl'] = freqs_kl
+    results['path'] = path
+    results['__key_descriptions__'] = \
+        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
+         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 
