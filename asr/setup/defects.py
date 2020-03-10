@@ -536,6 +536,7 @@ def setup_halfinteger():
     keyword as well as copying the relaxed structure into those folders.
     """
     from asr.core import read_json, write_json
+    import shutil
 
     print('INFO: set up half integer folders and parameter sets for '
           'a subsequent Slater-Janach calculation')
@@ -544,6 +545,24 @@ def setup_halfinteger():
     params_m05 = params.copy()
     charge = params.get('asr.gs@calculate').get('calculator').get('charge')
     print('INFO: initial charge {}'.format(charge))
+    params_p05['asr.gs@calculate']['calculator']['charge'] = charge + 0.5
+    params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
+    params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
+    params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
+    print('INFO: changed parameters: {}'.format(params_m05))
+
+    Path('sj_-0.5').mkdir()
+    Path('sj_+0.5').mkdir()
+    folderpath = Path('.')
+    foldername = str(folderpath)
+
+    write_json('sj_-0.5/params.json', params_m05)
+    write_json('sj_+0.5/params.json', params_p05)
+
+    shutil.copyfile(foldername+'/structure.json',
+                    foldername+'/sj_-0.5/structure.json')
+    shutil.copyfile(foldername+'/structure.json',
+                    foldername+'/sj_+0.5/structure.json')
 
     return None
 
