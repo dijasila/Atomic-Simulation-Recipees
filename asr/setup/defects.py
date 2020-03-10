@@ -3,8 +3,8 @@ from asr.core import command, option
 import click
 
 
-@command('asr.setup.defects',
-         creates=['general_parameters.json'])
+@command('asr.setup.defects')
+         # creates=['general_parameters.json'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
@@ -527,6 +527,23 @@ def create_folder_structure(structure, structure_dict, chargestates,
                         charge_name).get('parameters')
                     write(charge_folder_name + '/unrelaxed.json', struc)
                     write_json(charge_folder_name + '/params.json', params)
+
+    return None
+
+def setup_halfinteger():
+    """
+    Sets up halfinteger folder which copies params.json and changes the q
+    keyword as well as copying the relaxed structure into those folders.
+    """
+    from asr.core import read_json, write_json
+
+    print('INFO: set up half integer folders and parameter sets for '
+          'a subsequent Slater-Janach calculation')
+    params = read_json('params.json')
+    params_p05 = params.copy()
+    params_m05 = params.copy()
+    charge = params.get('asr.gs@calculate').get('calculator').get('charge')
+    print('INFO: initial charge {}'.format(charge))
 
     return None
 
