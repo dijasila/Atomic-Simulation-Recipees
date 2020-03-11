@@ -18,9 +18,21 @@ asr.gs
 .. autofunction:: asr.gs.main
 
 
+asr.bandstructure
+~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.bandstructure.calculate
+.. autofunction:: asr.bandstructure.main
+
+
+asr.polarizability
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.polarizability.main
+
+
+
 Core API
 --------
 
 
 .. autoclass:: asr.core.__init__.ASRCommand
-   :members: callback
+   :members:
