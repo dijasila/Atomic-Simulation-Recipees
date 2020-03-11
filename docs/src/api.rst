@@ -8,35 +8,14 @@ API reference
 Recipes
 -------
 
-asr.relax
+asr.bader
 ~~~~~~~~~
-.. autofunction:: asr.relax.main
-
-asr.gs
-~~~~~~
-.. autofunction:: asr.gs.calculate
-.. autofunction:: asr.gs.main
-
-asr.convex_hull
-~~~~~~~~~~~~~~~
-.. autofunction:: asr.convex_hull.main
+.. autofunction:: asr.bader.main
 
 asr.bandstructure
 ~~~~~~~~~~~~~~~~~
 .. autofunction:: asr.bandstructure.calculate
 .. autofunction:: asr.bandstructure.main
-
-asr.polarizability
-~~~~~~~~~~~~~~~~~~
-.. autofunction:: asr.polarizability.main
-
-asr.structureinfo
-~~~~~~~~~~~~~~~~~
-.. autofunction:: asr.structureinfo.main
-
-asr.bader
-~~~~~~~~~
-.. autofunction:: asr.bader.main
 
 asr.berry
 ~~~~~~~~~
@@ -49,6 +28,10 @@ asr.borncharges
 asr.bse
 ~~~~~~~
 .. autofunction:: asr.bse.main
+
+asr.convex_hull
+~~~~~~~~~~~~~~~
+.. autofunction:: asr.convex_hull.main
 
 asr.defectformation
 ~~~~~~~~~~~~~~~~~~~
@@ -74,6 +57,10 @@ asr.fermisurface
 ~~~~~~~~~~~~~~~~
 .. autofunction:: asr.fermisurface.main
 
+asr.gs
+~~~~~~
+.. autofunction:: asr.gs.calculate
+.. autofunction:: asr.gs.main
 
 asr.gw
 ~~~~~~
@@ -131,6 +118,10 @@ asr.relax
 asr.stiffness
 ~~~~~~~~~~~~~
 .. autofunction:: asr.stiffness.main
+
+asr.structureinfo
+~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.structureinfo.main
 
 asr.workflow
 ~~~~~~~~~~~~
