@@ -140,8 +140,7 @@ class ASRCommand:
     defined using the :func:`asr.core.__init__.argument` and
     :func:`asr.core.__init__.option` functions in the core sub-package.
 
-    The ASRCommand
-
+    The ASRCommand... XXX
     """
 
     package_dependencies = ('asr', 'ase', 'gpaw')
@@ -486,12 +485,8 @@ class ASRCommand:
 def command(*args, **kwargs):
 
     def decorator(func):
+        return ASRCommand(func, *args, **kwargs)
 
-        @wraps(func)
-        def wrapper():
-            return ASRCommand(func, *args, **kwargs)
-
-        return wrapper
     return decorator
 
 
