@@ -16,7 +16,7 @@ asr.gs
 ~~~~~~
 .. autofunction:: asr.gs.calculate
 .. autofunction:: asr.gs.main
-                  
+
 
 Core API
 --------
