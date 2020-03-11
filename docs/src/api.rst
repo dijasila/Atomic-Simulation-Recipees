@@ -136,8 +136,45 @@ asr.workflow
 ~~~~~~~~~~~~
 .. autofunction:: asr.workflow.main
 
-Database module
----------------
+Setup recipes
+-------------
+
+asr.setup.decorate
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.decorate.main
+
+asr.setup.defects
+~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.defects.main
+
+
+asr.setup.magnetize
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.magnetize.main
+
+asr.setup.materials
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.materials.main
+
+asr.setup.params
+~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.params.main
+
+asr.setup.scanparams
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.scanparams.main
+
+asr.setup.strains
+~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.strains.main
+
+asr.setup.symmetrize
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.setup.symmetrize.main
+
+                  
+Database sub-package
+--------------------
 
 asr.database.app
 ~~~~~~~~~~~~~~~~
