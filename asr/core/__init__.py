@@ -13,7 +13,7 @@ import ase.parallel as parallel
 import inspect
 import copy
 from ast import literal_eval
-from functools import wraps
+from functools import wraps, update_wrapper
 
 
 def parse_dict_string(string, dct=None):
@@ -230,8 +230,7 @@ class ASRCommand:
 
         # Setup the CLI
         self.setup_cli()
-
-        self.__doc__ = self._main.__doc__
+        update_wrapper(self, self._main)
 
     @property
     def requires(self):
@@ -382,6 +381,7 @@ class ASRCommand:
         # parameters
         bound_arguments = self.signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
+
         params = dict(bound_arguments.arguments)
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
@@ -488,11 +488,10 @@ def command(*args, **kwargs):
     def decorator(func):
 
         @wraps(func)
-        def wrapper(func2):
-            return ASRCommand(func2, *args, **kwargs)
+        def wrapper():
+            return ASRCommand(func, *args, **kwargs)
 
-        return wrapper(func)
-
+        return wrapper
     return decorator
 
 
@@ -727,3 +726,16 @@ def singleprec_dict(dct):
             dct[key] = singleprec_dict(value)
 
     return dct
+
+
+class TestClass:
+    """Test docstring."""
+    def __init__(self, arg1, arg2):
+        """__init__ docstring."""
+        pass
+
+    def __call__(self):
+        """Call docstring."""
+
+
+test_object = TestClass(1, 2)  # noqa
