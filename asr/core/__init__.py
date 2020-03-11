@@ -131,6 +131,18 @@ def argument(name, **kwargs):
 
 
 class ASRCommand:
+    """Wrapper class for constructing recipes.
+
+    This class implements the behaviour of an ASR recipe.
+
+    This class wrappes a callable `func` and automatically endows the function
+    with a command-line interface (CLI) through `cli` method. The CLI is
+    defined using the :func:`asr.core.__init__.argument` and
+    :func:`asr.core.__init__.option` functions in the core sub-package.
+
+    The ASRCommand
+
+    """
 
     package_dependencies = ('asr', 'ase', 'gpaw')
 
@@ -139,17 +151,19 @@ class ASRCommand:
                  requires=None,
                  dependencies=None,
                  creates=None,
-                 tests=None,
                  log=None,
-                 resources='1:10m',
-                 diskspace=0,
-                 restart=0,
                  webpanel=None,
-                 overwrite_defaults=None,
-                 known_exceptions=None,
                  save_results_file=True,
-                 pass_params=False,
-                 add_skip_opt=True):
+                 tests=None,
+                 resources=None):
+        """Construct an instance of an ASRCommand.
+
+        Parameters
+        ----------
+        func : callable
+            Wrapped function that
+
+        """
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -169,15 +183,8 @@ class ASRCommand:
         self._main = main
         self.name = name
 
-        # We can handle these exceptions
-        self._known_exceptions = known_exceptions or {}
-
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
-
-        # Pass a dictionary with all params to the function for
-        # convenience?
-        self.pass_params = pass_params
 
         # What files are created?
         self._creates = creates
@@ -186,13 +193,7 @@ class ASRCommand:
         self.log = log
 
         # Properties of this function
-        self._resources = resources
-        self._diskspace = diskspace
         self._requires = requires
-        self.restart = restart
-
-        # Add skip dependencies option to control this?
-        self.add_skip_opt = add_skip_opt
 
         # Tell ASR how to present the data in a webpanel
         self.webpanel = webpanel
@@ -201,9 +202,6 @@ class ASRCommand:
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
         self.dependencies = dependencies or []
-
-        # Our function can also have tests
-        self.tests = tests
 
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
@@ -236,12 +234,6 @@ class ASRCommand:
         self.__doc__ = self._main.__doc__
 
     @property
-    def known_exceptions(self):
-        if callable(self._known_exceptions):
-            return self._known_exceptions()
-        return self._known_exceptions
-
-    @property
     def requires(self):
         if self._requires:
             if callable(self._requires):
@@ -255,12 +247,6 @@ class ASRCommand:
             if not Path(filename).is_file():
                 return False
         return True
-
-    @property
-    def resources(self):
-        if callable(self._resources):
-            return self._resources()
-        return self._resources
 
     @property
     def diskspace(self):
@@ -351,17 +337,19 @@ class ASRCommand:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
 
-        if self.add_skip_opt:
-            command = co('--skip-deps', is_flag=True, default=False,
-                         help='Skip execution of dependencies.')(command)
-        command = co('--silence', is_flag=True, default=False,
-                     help='Silence output.')(command)
-
         self._cli = command
 
-    def cli(self, *args, **kwargs):
+    def cli(self, args=None):
+        """Parse parameters from command line and call wrapped function.
+
+        Parameters
+        ----------
+        args : List of strings or None
+            List of command line arguments. If None: Read arguments from
+            sys.argv.
+        """
         return self._cli(standalone_mode=False,
-                         prog_name=f'asr run {self.name}', *args, **kwargs)
+                         prog_name=f'asr run {self.name}', args=args)
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
@@ -500,10 +488,10 @@ def command(*args, **kwargs):
     def decorator(func):
 
         @wraps(func)
-        def wrapper(func):
-            return ASRCommand(func, *args, **kwargs)
+        def wrapper(func2):
+            return ASRCommand(func2, *args, **kwargs)
 
-        return wrapper
+        return wrapper(func)
 
     return decorator
 

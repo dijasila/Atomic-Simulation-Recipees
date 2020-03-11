@@ -203,4 +203,3 @@ Core API
 
 .. autoclass:: asr.core.__init__.ASRCommand
    :members:
-   :undoc-members:
