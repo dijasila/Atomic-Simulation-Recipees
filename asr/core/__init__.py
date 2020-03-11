@@ -367,7 +367,13 @@ class ASRCommand:
         return self.main(*args, **kwargs)
 
     def main(self, *args, **kwargs):
+        """Return results from wrapped function.
 
+        This is the main function of an ASRCommand. It takes care of reading
+        parameters, creating metadata, checksums etc. If you want to
+        understand what happens when you execute an ASRCommand this is a good
+        place to start.
+        """
         # Run this recipes dependencies but only if it actually creates
         # a file that is in __requires__
         for dep in self.dependencies:
@@ -379,17 +385,6 @@ class ASRCommand:
             if not all([Path(filename).exists() for filename in
                         filenames]):
                 recipe()
-
-        # Try to run this command
-        results = self.callback(*args, **kwargs)
-
-        return results
-
-    def callback(self, *args, **kwargs):
-        # This is the main function of an ASRCommand. It takes care of reading
-        # parameters, creating metadata, checksums etc. If you want to
-        # understand what happens when you execute an ASRCommand this is a good
-        # place to start
 
         assert self.is_requirements_met(), \
             (f'{self.name}: Some required files are missing: {self.requires}. '
