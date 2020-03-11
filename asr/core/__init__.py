@@ -13,6 +13,7 @@ import ase.parallel as parallel
 import inspect
 import copy
 from ast import literal_eval
+from functools import wraps
 
 
 def parse_dict_string(string, dct=None):
@@ -365,41 +366,30 @@ class ASRCommand:
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
 
-    def main(self, skip_deps=False, catch_exceptions=True, silence=False,
-             *args, **kwargs):
+    def main(self, *args, **kwargs):
 
-        if silence:
-            import sys
-            f = open(os.devnull, 'w')
-            _stdout = sys.stdout
-            sys.stdout = f
+        # Run this recipes dependencies but only if it actually creates
+        # a file that is in __requires__
+        for dep in self.dependencies:
+            recipe = get_recipe_from_name(dep)
+            if recipe.done:
+                continue
 
-        if not skip_deps:
-            # Run this recipes dependencies but only if it actually creates
-            # a file that is in __requires__
-            for dep in self.dependencies:
-                recipe = get_recipe_from_name(dep)
-                if recipe.done:
-                    continue
-
-                filenames = set(self.requires).intersection(recipe.creates)
-                if not all([Path(filename).exists() for filename in
-                            filenames]):
-                    recipe()
+            filenames = set(self.requires).intersection(recipe.creates)
+            if not all([Path(filename).exists() for filename in
+                        filenames]):
+                recipe()
 
         # Try to run this command
         results = self.callback(*args, **kwargs)
 
-        if silence:
-            sys.stdout = _stdout
-
         return results
 
     def callback(self, *args, **kwargs):
-        # This is the main function of an ASRCommand. It takes care of
-        # reading parameters can creating metadata, checksums.
-        # If you to understand what happens when you execute an ASRCommand
-        # this is a good place to start
+        # This is the main function of an ASRCommand. It takes care of reading
+        # parameters, creating metadata, checksums etc. If you want to
+        # understand what happens when you execute an ASRCommand this is a good
+        # place to start
 
         assert self.is_requirements_met(), \
             (f'{self.name}: Some required files are missing: {self.requires}. '
@@ -513,7 +503,12 @@ class ASRCommand:
 def command(*args, **kwargs):
 
     def decorator(func):
-        return ASRCommand(func, *args, **kwargs)
+
+        @wraps(func)
+        def wrapper(func):
+            return ASRCommand(func, *args, **kwargs)
+
+        return wrapper
 
     return decorator
 
