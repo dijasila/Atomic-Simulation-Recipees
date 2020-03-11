@@ -114,7 +114,6 @@ asr.relax
 ~~~~~~~~~
 .. autofunction:: asr.relax.main
 
-
 asr.stiffness
 ~~~~~~~~~~~~~
 .. autofunction:: asr.stiffness.main
