@@ -1,3 +1,5 @@
+.. _How to guides:
+
 How-to guides
 =============
 The tools of ASR can be combined to perform complicated tasks with little
@@ -101,3 +103,13 @@ And open a local web server with::
 Now browse it with::
 
   $ firefox localhost:5000
+
+
+How-to: Submit a recipe with `MyQueue`
+--------------------------------------
+It is also recommended to use these recipes together with the `myqueue`
+job managing package. We assume that you have installed the `myqueue`-package
+and are familiar with its usage. If you are not, then take a look at its excellent
+documentation. To submit a job that relaxes a structure simply do::
+
+  $ mq submit asr.relax@24:10h
