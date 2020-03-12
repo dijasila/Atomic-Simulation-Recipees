@@ -6,7 +6,9 @@ from ase.parallel import world
 from ase.io import read
 
 from asr.core import command, option
-from asr.core import write_json
+from asr.core import read_json, write_json
+
+import click
 
 
 def lattice_vectors(N_c):
@@ -26,11 +28,13 @@ def lattice_vectors(N_c):
     requires=["structure.json", "gs.gpw"],
     dependencies=["asr.gs@calculate"],
 )
-@option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
 @option("--fsname", help="Name for forces file")
+@option('--sc', nargs=3, type=click.Tuple([int, int, int]),
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.')
-def calculate(n=2, d=0.05, fsname='phonons',
+
+def calculate(d=0.05, fsname='phonons', sc=[2,2,2],
               calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
                           'xc': 'PBE',
@@ -73,11 +77,11 @@ def calculate(n=2, d=0.05, fsname='phonons',
 
     nd = get_dimensionality()
     if nd == 3:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
     elif nd == 1:
-        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
+        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
@@ -105,6 +109,9 @@ def calculate(n=2, d=0.05, fsname='phonons',
         filename = fsname + ".{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
+            forces = read_json(filename)["force"]
+            # Number of forces equals to the number of atoms in the supercell
+            assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
@@ -172,7 +179,6 @@ def webpanel(row, key_descriptions):
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
 def main(rc=None):
-    from asr.core import read_json
     from asr.core import get_dimensionality
 
     from phonopy import Phonopy
@@ -181,20 +187,18 @@ def main(rc=None):
 
     dct = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
-    n = dct["__params__"]["n"]
+    sc = dct["__params__"]["sc"]
     d = dct["__params__"]["d"]
     fsname = dct["__params__"]["fsname"]
 
     nd = get_dimensionality()
+
     if nd == 3:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
-        N_c = (n, n, n)
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
-        N_c = (n, n, 1)
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
     elif nd == 1:
-        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
-        N_c = (n, 1, 1)
+        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
 
     phonopy_atoms = PhonopyAtoms(
         symbols=atoms.symbols,
@@ -223,7 +227,7 @@ def main(rc=None):
 
         forces = read_json(filename)["force"]
         # Number of forces equals to the number of atoms in the supercell
-        assert len(forces) == len(atoms) * n ** nd, "Wrong supercell size!"
+        assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 
         set_of_forces.append(forces)
 
@@ -234,7 +238,7 @@ def main(rc=None):
         phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
-    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
+    q_qc = np.indices(sc).reshape(3, -1).T / sc
 
     omega_kl = np.zeros((len(q_qc), 3 * len(atoms)))
     u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
@@ -254,11 +258,11 @@ def main(rc=None):
 
     irreps = list(irreps)
 
-    R_cN = lattice_vectors(N_c)
+    R_cN = lattice_vectors(sc)
     C_N = phonon.get_force_constants()
-    C_N = C_N.reshape(len(atoms), len(atoms), n**nd, 3, 3)
+    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(sc), 3, 3)
     C_N = C_N.transpose(2, 0, 3, 1, 4)
-    C_N = C_N.reshape(n**nd, 3 * len(atoms), 3 * len(atoms))
+    C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
 
     eigs_kl = []
 
