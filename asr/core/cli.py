@@ -252,16 +252,88 @@ def list(search):
     print(format(panel))
 
 
-clitests = [{'cli': ['asr run -h'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run setup.params'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['mkdir folder1',
-                     'mkdir folder2',
-                     'asr run setup.params folder1 folder2'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['touch str1.json',
-                     'asr run --shell "mv str1.json str2.json"'],
-             'tags': ['gitlab-ci']}]
+@cli.command()
+@click.argument('name')
+def results(name):
+    """Show results for a specific recipe with NAME.
+
+    Parameters
+    ----------
+    NAME : str
+        Name of recipe. For example, asr.relax or asr.gs@calculate.
+
+    Examples
+    --------
+    Display results for the asr.relax recipe
+        $ asr results asr.relax
+    """
+    from asr.core import get_recipe_from_name
+    recipe = get_recipe_from_name(name)
+
+    if recipe.webpanel is None:
+        print('{recipe.name} does not have any results to present!')
+        return
+
+    def material_from_folder(folder='.'):
+        """Return a material with properties from folder.
+
+        Parameters
+        ----------
+        folder : str
+            Where to collect material from.
+        """
+        from asr.database.fromtree import collect
+        from pathlib import Path
+        from ase.io import read
+        kvp = {}
+        data = {}
+        for filename in Path(folder).glob('results-*.json'):
+            tmpkvp, tmpkd, tmpdata, tmplinks = collect(str(filename))
+            if tmpkvp or tmpkd or tmpdata or tmplinks:
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
+
+        atoms = read('structure.json', parallel=False)
+
+        class Material:
+            def __init__(self, atoms, kvp, data):
+                self.atoms = atoms
+                self.data = data
+                self.kvp = kvp
+                self.cell = atoms.get_cell()
+                self.pbc = atoms.get_pbc()
+
+            def get(self, key, default=None):
+                return self.kvp.get(key, default)
+
+            def __getattr__(self, key):
+                if key == "data":
+                    return self.data
+                return self.kvp[key]
+
+            def toatoms(self):
+                return self.atoms
+
+        material = Material(atoms, kvp, data)
+
+        return material
+
+    def display_panel(panel):
+        pass
+
+    from asr.database.app import create_key_descriptions
+    kd = create_key_descriptions()
+    material = material_from_folder('.')
+    panels = recipe.webpanel(material, kd)
+    import json
+    pds = []
+    for panel in panels:
+        pd = panel.get('plot_descriptions', [])
+        if pd:
+            pds.extend(pd)
+            panel.pop('plot_descriptions')
+        print(json.dumps(panel, indent=1))
+
+    for pd in pds:
+        print(pd)
+        pd['function'](material, *pd['filenames'])
