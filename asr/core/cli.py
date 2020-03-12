@@ -252,30 +252,6 @@ def list(search):
     print(format(panel))
 
 
-@cli.command()
-def status():
-    """Show the status of the current folder for all ASR recipes."""
-    from asr.core import get_recipes
-    recipes = get_recipes()
-    panel = []
-    for recipe in recipes:
-        status = [recipe.name]
-        done = recipe.done
-        if done:
-            if recipe.creates:
-                status.append(f'Done -> {recipe.creates}')
-            else:
-                status.append(f'Done.')
-        else:
-            status.append(f'Todo')
-        if done:
-            panel.insert(0, status)
-        else:
-            panel.append(status)
-
-    print(format(panel, title="--- Status ---"))
-
-
 clitests = [{'cli': ['asr run -h'],
              'tags': ['gitlab-ci']},
             {'cli': ['asr run "setup.params asr.relax:fixcell True"'],

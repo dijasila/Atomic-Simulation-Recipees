@@ -71,10 +71,3 @@ def test_asr_list():
     assert result.exit_code == 0
     assert 'Name' in result.output
     assert 'Description' in result.output
-
-
-@pytest.mark.ci
-def test_asr_status():
-    runner = CliRunner()
-    result = runner.invoke(cli, ['status'])
-    assert result.exit_code == 0
