@@ -256,7 +256,7 @@ def list(search):
 @click.argument('name')
 @click.option('--show/--dont-show', default=True, is_flag=True)
 def results(name, show):
-    """Show results for a specific recipe.
+    r"""Show results for a specific recipe.
 
     \b
     Parameters

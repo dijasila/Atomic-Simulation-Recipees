@@ -32,7 +32,8 @@ class Material:
         return self.kvp.get(key, default)
 
     def __getattr__(self, key):
-        if key == "data":
+        """Return attribute."""
+        if key in ["data", "cell", "pbc"]:
             return self.data
         return self.kvp[key]
 
