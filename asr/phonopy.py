@@ -28,9 +28,9 @@ def lattice_vectors(N_c):
 )
 @option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
-@option("--name", help="Name for forces file")
+@option("--fsname", help="Name for forces file")
 @option('-c', '--calculator', help='Calculator params.')
-def calculate(n=2, d=0.05, name='phonons',
+def calculate(n=2, d=0.05, fsname='phonons',
               calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
                           'xc': 'PBE',
@@ -50,7 +50,7 @@ def calculate(n=2, d=0.05, name='phonons',
 
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob(name + ".*.json"):
+        for f in Path().glob(fsname + ".*.json"):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
@@ -102,7 +102,7 @@ def calculate(n=2, d=0.05, name='phonons',
         # Sign of the displacement
         sign = ["+", "-"][n % 2]
 
-        filename = name + "{0}{1}.json".format(a, sign)
+        filename = fsname + ".{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
             continue
@@ -171,8 +171,7 @@ def webpanel(row, key_descriptions):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-@option("--name", help="Name for forces file")
-def main(rc=None, name="phonons"):
+def main(rc=None):
     from asr.core import read_json
     from asr.core import get_dimensionality
 
@@ -184,6 +183,7 @@ def main(rc=None, name="phonons"):
     atoms = read("structure.json")
     n = dct["__params__"]["n"]
     d = dct["__params__"]["d"]
+    fsname = dct["__params__"]["fsname"]
 
     nd = get_dimensionality()
     if nd == 3:
@@ -219,7 +219,7 @@ def main(rc=None, name="phonons"):
         # Sign of the diplacement
         sign = ["+", "-"][i % 2]
 
-        filename = name + ".{0}{1}.json".format(a, sign)
+        filename = fsname + ".{0}{1}.json".format(a, sign)
 
         forces = read_json(filename)["force"]
         # Number of forces equals to the number of atoms in the supercell
