@@ -254,7 +254,7 @@ def list(search):
 
 @cli.command()
 @click.argument('name')
-@click.option('--show/--dont-show', default=False, is_flag=True)
+@click.option('--show/--dont-show', default=True, is_flag=True)
 def results(name, show):
     """Show results for a specific recipe.
 
