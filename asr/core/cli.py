@@ -259,7 +259,7 @@ def list(search):
 def results(name, show):
     """Show results for a specific recipe.
 
-    Generate and save figures relating to recipe with NAME. Examples,
+    Generate and save figures relating to recipe with NAME. Examples
     of valid names are asr.bandstructure, asr.gs etc.
 
     """
