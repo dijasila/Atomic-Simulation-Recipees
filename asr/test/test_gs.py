@@ -45,3 +45,20 @@ def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
     assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
     assert f"<td>Fermilevel</td><td>{fermi_level:0.3f}eV</td>" in \
         content, content
+
+
+@pytest.mark.ci
+def test_gs_asr_cli_results_figures(separate_folder, mockgpaw):
+    from pathlib import Path
+    from asr.gs import main
+    from asr.core.material import (get_material_from_folder,
+                                   get_webpanels_from_material,
+                                   make_panel_figures)
+    atoms = test_materials[0]
+    atoms.write('structure.json')
+
+    main()
+    material = get_material_from_folder()
+    panel = get_webpanels_from_material(material, main)
+    make_panel_figures(material, panel)
+    assert Path('bz-with-gaps.png').is_file()

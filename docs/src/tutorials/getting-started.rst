@@ -17,8 +17,9 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
-     list  List and search for recipes.
-     run   Run recipe, python function or shell command in multiple folders.
+     list     List and search for recipes.
+     results  Show results for a specific recipe.
+     run      Run recipe, python function or shell command in multiple folders.
    ...
 
 .. code-block:: console
@@ -30,13 +31,14 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
 
    Commands:
-     list    List and search for recipes.
-     run     Run recipe, python function or shell command in multiple folders.
+     list     List and search for recipes.
+     results  Show results for a specific recipe.
+     run      Run recipe, python function or shell command in multiple folders.
 
-From this output it is clear that the ``asr`` command has two
-sub-commands: ``list`` and ``run``. The ``list`` subcommand can be
-used to show a list of all known recipes. To show the help for the ``list``
-sub-command do
+From this output it is clear that the ``asr`` command has multiple
+sub-commands, but let's highlight a couple: ``list`` and ``run``. The
+``list`` subcommand can be used to show a list of all known
+recipes. To show the help for the ``list`` sub-command do
 
 .. doctest::
    :hide:

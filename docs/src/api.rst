@@ -199,6 +199,12 @@ asr.database.totree
 Core API
 --------
 
-
+asr.core
+~~~~~~~~
 .. autoclass:: asr.core.__init__.ASRCommand
+   :members:
+
+asr.core.material
+~~~~~~~~~~~~~~~~~
+.. automodule:: asr.core.material
    :members:
