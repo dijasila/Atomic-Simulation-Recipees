@@ -255,24 +255,30 @@ def list(search):
 @cli.command()
 @click.argument('name')
 def results(name):
-    """Show results for a specific recipe with NAME.
+    """Show results for a specific recipe.
 
+    \b
     Parameters
     ----------
     NAME : str
         Name of recipe. For example, asr.relax or asr.gs@calculate.
 
+    \b
     Examples
     --------
     Display results for the asr.relax recipe
         $ asr results asr.relax
     """
     from asr.core import get_recipe_from_name
+    from pathlib import Path
     recipe = get_recipe_from_name(name)
 
     if recipe.webpanel is None:
         print('{recipe.name} does not have any results to present!')
         return
+
+    assert Path(f"results-{recipe.name}.json").is_file(), \
+        'No results file for {recipe.name}, so I cannot show the results!'
 
     def material_from_folder(folder='.'):
         """Return a material with properties from folder.
@@ -283,7 +289,6 @@ def results(name):
             Where to collect material from.
         """
         from asr.database.fromtree import collect
-        from pathlib import Path
         from ase.io import read
         kvp = {}
         data = {}
@@ -317,9 +322,6 @@ def results(name):
         material = Material(atoms, kvp, data)
 
         return material
-
-    def display_panel(panel):
-        pass
 
     from asr.database.app import create_key_descriptions
     kd = create_key_descriptions()
