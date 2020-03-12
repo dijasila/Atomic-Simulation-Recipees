@@ -43,8 +43,8 @@ class Material:
 def get_material_from_folder(folder='.'):
     """Contruct a material from ASR structure folder.
 
-    Constructs an :ref:`asr.core.material.Material` object from the
-    data available in `folder`.
+    Constructs an :class:`asr.core.material.Material` instance from
+    the data available in `folder`.
 
     Parameters
     ----------
@@ -53,8 +53,9 @@ def get_material_from_folder(folder='.'):
 
     Returns
     -------
-    material : :ref:`asr.core.material.Material`-instance
+    material : :class:`asr.core.material.Material`
         Output material instance
+
     """
     from asr.database.fromtree import collect
     from ase.io import read
@@ -77,9 +78,9 @@ def get_webpanels_from_material(material, recipe):
 
     Parameters
     ----------
-    material : :ref:`asr.core.material.Material`-instance
+    material : :class:`asr.core.material.Material`
         Material on which the webpanel should be evaluated
-    recipe : :ref:`asr.core.__init__.ASRCommand`-instance
+    recipe : :class:`asr.core.ASRCommand`
         Recipe instance
 
     Returns
@@ -97,7 +98,7 @@ def make_panel_figures(material, panels):
 
     Parameters
     ----------
-    material : :ref:`asr.core.material.Material`-instance
+    material : :class:`asr.core.material.Material`
         Material of interest
     panels : list
         List of panels and contents

@@ -113,3 +113,13 @@ and are familiar with its usage. If you are not, then take a look at its excelle
 documentation. To submit a job that relaxes a structure simply do::
 
   $ mq submit asr.relax@24:10h
+
+
+How-to: Generate figures from a certain recipe
+----------------------------------------------
+
+Let's assume that the bandstructure has been calculated and you want
+to display the results. Then it's as simple as using the `asr results`
+cli sub-command::
+
+  $ asr results asr.bandstructure
