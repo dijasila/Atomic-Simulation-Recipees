@@ -254,7 +254,8 @@ def list(search):
 
 @cli.command()
 @click.argument('name')
-def results(name):
+@click.option('--show/--dont-show', default=False, is_flag=True)
+def results(name, show):
     """Show results for a specific recipe.
 
     \b
@@ -269,7 +270,11 @@ def results(name):
     Display results for the asr.relax recipe
         $ asr results asr.relax
     """
+    from matplotlib import pyplot as plt
     from asr.core import get_recipe_from_name
+    from asr.core.material import (get_material_from_folder,
+                                   get_webpanels_from_material,
+                                   make_panel_figures)
     from pathlib import Path
     recipe = get_recipe_from_name(name)
 
@@ -280,62 +285,8 @@ def results(name):
     assert Path(f"results-{recipe.name}.json").is_file(), \
         'No results file for {recipe.name}, so I cannot show the results!'
 
-    def material_from_folder(folder='.'):
-        """Return a material with properties from folder.
-
-        Parameters
-        ----------
-        folder : str
-            Where to collect material from.
-        """
-        from asr.database.fromtree import collect
-        from ase.io import read
-        kvp = {}
-        data = {}
-        for filename in Path(folder).glob('results-*.json'):
-            tmpkvp, tmpkd, tmpdata, tmplinks = collect(str(filename))
-            if tmpkvp or tmpkd or tmpdata or tmplinks:
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
-
-        atoms = read('structure.json', parallel=False)
-
-        class Material:
-            def __init__(self, atoms, kvp, data):
-                self.atoms = atoms
-                self.data = data
-                self.kvp = kvp
-                self.cell = atoms.get_cell()
-                self.pbc = atoms.get_pbc()
-
-            def get(self, key, default=None):
-                return self.kvp.get(key, default)
-
-            def __getattr__(self, key):
-                if key == "data":
-                    return self.data
-                return self.kvp[key]
-
-            def toatoms(self):
-                return self.atoms
-
-        material = Material(atoms, kvp, data)
-
-        return material
-
-    from asr.database.app import create_key_descriptions
-    kd = create_key_descriptions()
-    material = material_from_folder('.')
-    panels = recipe.webpanel(material, kd)
-    import json
-    pds = []
-    for panel in panels:
-        pd = panel.get('plot_descriptions', [])
-        if pd:
-            pds.extend(pd)
-            panel.pop('plot_descriptions')
-        print(json.dumps(panel, indent=1))
-
-    for pd in pds:
-        print(pd)
-        pd['function'](material, *pd['filenames'])
+    material = get_material_from_folder('.')
+    panels = get_webpanels_from_material(material, recipe)
+    make_panel_figures(material, panels)
+    if show:
+        plt.show()

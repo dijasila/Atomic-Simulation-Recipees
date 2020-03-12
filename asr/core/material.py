@@ -40,7 +40,7 @@ class Material:
         return self.atoms
 
 
-def material_from_folder(folder='.'):
+def get_material_from_folder(folder='.'):
     """Contruct a material from ASR structure folder.
 
     Constructs an :ref:`asr.core.material.Material` object from the
@@ -50,6 +50,11 @@ def material_from_folder(folder='.'):
     ----------
     folder : str
         Where to collect material from.
+
+    Returns
+    -------
+    material : :ref:`asr.core.material.Material`-instance
+        Output material instance
     """
     from asr.database.fromtree import collect
     from ase.io import read
@@ -65,3 +70,49 @@ def material_from_folder(folder='.'):
     material = Material(atoms, kvp, data)
 
     return material
+
+
+def get_webpanels_from_material(material, recipe):
+    """Return web-panels of recipe.
+
+    Parameters
+    ----------
+    material : :ref:`asr.core.material.Material`-instance
+        Material on which the webpanel should be evaluated
+    recipe : :ref:`asr.core.__init__.ASRCommand`-instance
+        Recipe instance
+
+    Returns
+    -------
+    panels : list
+        List of panels and contents.
+    """
+    from asr.database.app import create_key_descriptions
+    kd = create_key_descriptions()
+    return recipe.webpanel(material, kd)
+
+
+def make_panel_figures(material, panels):
+    """Make figures in list of panels.
+
+    Parameters
+    ----------
+    material : :ref:`asr.core.material.Material`-instance
+        Material of interest
+    panels : list
+        List of panels and contents
+    Returns
+    -------
+    None
+    """
+    pds = []
+    for panel in panels:
+        pd = panel.get('plot_descriptions', [])
+        if pd:
+            pds.extend(pd)
+            panel.pop('plot_descriptions')
+
+    for pd in pds:
+        pd['function'](material, *pd['filenames'])
+        figures = ','.join(pd['filenames'])
+        print(f'Saved figures: {figures}')
