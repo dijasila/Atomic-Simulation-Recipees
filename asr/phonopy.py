@@ -33,8 +33,7 @@ def lattice_vectors(N_c):
 @option('--sc', nargs=3, type=click.Tuple([int, int, int]),
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.')
-
-def calculate(d=0.05, fsname='phonons', sc=[2,2,2],
+def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
               calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
                           'xc': 'PBE',
@@ -111,7 +110,8 @@ def calculate(d=0.05, fsname='phonons', sc=[2,2,2],
         if Path(filename).is_file():
             forces = read_json(filename)["force"]
             # Number of forces equals to the number of atoms in the supercell
-            assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
+            assert len(forces) == len(atoms) * np.prod(sc), (
+                "Wrong supercell size!")
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
