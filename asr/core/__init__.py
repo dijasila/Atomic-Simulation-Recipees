@@ -13,7 +13,7 @@ import ase.parallel as parallel
 import inspect
 import copy
 from ast import literal_eval
-from functools import wraps, update_wrapper
+from functools import update_wrapper
 
 
 def parse_dict_string(string, dct=None):
@@ -721,16 +721,3 @@ def singleprec_dict(dct):
             dct[key] = singleprec_dict(value)
 
     return dct
-
-
-class TestClass:
-    """Test docstring."""
-    def __init__(self, arg1, arg2):
-        """__init__ docstring."""
-        pass
-
-    def __call__(self):
-        """Call docstring."""
-
-
-test_object = TestClass(1, 2)  # noqa

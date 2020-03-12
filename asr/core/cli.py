@@ -252,16 +252,41 @@ def list(search):
     print(format(panel))
 
 
-clitests = [{'cli': ['asr run -h'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run setup.params'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['mkdir folder1',
-                     'mkdir folder2',
-                     'asr run setup.params folder1 folder2'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['touch str1.json',
-                     'asr run --shell "mv str1.json str2.json"'],
-             'tags': ['gitlab-ci']}]
+@cli.command()
+@click.argument('name')
+@click.option('--show/--dont-show', default=True, is_flag=True)
+def results(name, show):
+    r"""Show results for a specific recipe.
+
+    \b
+    Parameters
+    ----------
+    NAME : str
+        Name of recipe. For example, asr.relax or asr.gs@calculate.
+
+    \b
+    Examples
+    --------
+    Display results for the asr.relax recipe
+        $ asr results asr.relax
+    """
+    from matplotlib import pyplot as plt
+    from asr.core import get_recipe_from_name
+    from asr.core.material import (get_material_from_folder,
+                                   get_webpanels_from_material,
+                                   make_panel_figures)
+    from pathlib import Path
+    recipe = get_recipe_from_name(name)
+
+    if recipe.webpanel is None:
+        print('{recipe.name} does not have any results to present!')
+        return
+
+    assert Path(f"results-{recipe.name}.json").is_file(), \
+        'No results file for {recipe.name}, so I cannot show the results!'
+
+    material = get_material_from_folder('.')
+    panels = get_webpanels_from_material(material, recipe)
+    make_panel_figures(material, panels)
+    if show:
+        plt.show()

@@ -38,9 +38,9 @@ This can be done with the `magnetize` function of asr::
 
   $ asr run --dry-run setup.magnetize */*/*/*/
 
-We use the `run` function because that gives us the option to deal with many folders
-at once. You are now ready to run a
-workflow on the entire tree.
+We use the `run` function because that gives us the option to deal
+with many folders at once. You are now ready to run a workflow on the
+entire tree.
 
 XXX Set up workflow.
 
@@ -112,4 +112,14 @@ job managing package. We assume that you have installed the `myqueue`-package
 and are familiar with its usage. If you are not, then take a look at its excellent
 documentation. To submit a job that relaxes a structure simply do::
 
-  $ mq submit asr.relax@24:10h
+  $ mq submit asr.relax -R 24:10h
+
+
+How-to: Generate figures from a certain recipe
+----------------------------------------------
+
+Let's assume that the bandstructure has been calculated and you want
+to display the results. Then it's as simple as using the `asr results`
+cli sub-command::
+
+  $ asr results asr.bandstructure
