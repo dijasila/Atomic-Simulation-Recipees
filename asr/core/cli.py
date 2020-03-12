@@ -254,21 +254,14 @@ def list(search):
 
 @cli.command()
 @click.argument('name')
-@click.option('--show/--dont-show', default=True, is_flag=True)
+@click.option('--show/--dont-show', default=True, is_flag=True,
+              help='Show generated figures')
 def results(name, show):
-    r"""Show results for a specific recipe.
+    """Show results for a specific recipe.
 
-    \b
-    Parameters
-    ----------
-    NAME : str
-        Name of recipe. For example, asr.relax or asr.gs@calculate.
+    Generate and save figures relating to recipe with NAME. Examples,
+    of valid names are asr.bandstructure, asr.gs etc.
 
-    \b
-    Examples
-    --------
-    Display results for the asr.relax recipe
-        $ asr results asr.relax
     """
     from matplotlib import pyplot as plt
     from asr.core import get_recipe_from_name
