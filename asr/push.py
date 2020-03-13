@@ -18,7 +18,7 @@ def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
     from asr.core import read_json
     atoms = read('structure.json')
     data = read_json("results-asr.phonopy.json")
-    
+
     u_klav = data["u_klav"]
 
     q_qc = data["q_qc"]
