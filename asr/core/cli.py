@@ -253,39 +253,33 @@ def list(search):
 
 
 @cli.command()
-def status():
-    """Show the status of the current folder for all ASR recipes."""
-    from asr.core import get_recipes
-    recipes = get_recipes()
-    panel = []
-    for recipe in recipes:
-        status = [recipe.name]
-        done = recipe.done
-        if done:
-            if recipe.creates:
-                status.append(f'Done -> {recipe.creates}')
-            else:
-                status.append(f'Done.')
-        else:
-            status.append(f'Todo')
-        if done:
-            panel.insert(0, status)
-        else:
-            panel.append(status)
+@click.argument('name')
+@click.option('--show/--dont-show', default=True, is_flag=True,
+              help='Show generated figures')
+def results(name, show):
+    """Show results for a specific recipe.
 
-    print(format(panel, title="--- Status ---"))
+    Generate and save figures relating to recipe with NAME. Examples
+    of valid names are asr.bandstructure, asr.gs etc.
 
+    """
+    from matplotlib import pyplot as plt
+    from asr.core import get_recipe_from_name
+    from asr.core.material import (get_material_from_folder,
+                                   get_webpanels_from_material,
+                                   make_panel_figures)
+    from pathlib import Path
+    recipe = get_recipe_from_name(name)
 
-clitests = [{'cli': ['asr run -h'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run setup.params'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['mkdir folder1',
-                     'mkdir folder2',
-                     'asr run setup.params folder1 folder2'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['touch str1.json',
-                     'asr run --shell "mv str1.json str2.json"'],
-             'tags': ['gitlab-ci']}]
+    if recipe.webpanel is None:
+        print('{recipe.name} does not have any results to present!')
+        return
+
+    assert Path(f"results-{recipe.name}.json").is_file(), \
+        'No results file for {recipe.name}, so I cannot show the results!'
+
+    material = get_material_from_folder('.')
+    panels = get_webpanels_from_material(material, recipe)
+    make_panel_figures(material, panels)
+    if show:
+        plt.show()

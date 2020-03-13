@@ -14,8 +14,7 @@ test1 = {'description': 'Test ground state of Si.',
          creates=['gs.gpw'],
          tests=[test1],
          requires=['structure.json'],
-         resources='8:10h',
-         restart=1)
+         resources='8:10h')
 @option('-c', '--calculator', help='Calculator params.')
 def calculate(calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},

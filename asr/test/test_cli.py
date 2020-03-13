@@ -74,7 +74,8 @@ def test_asr_list():
 
 
 @pytest.mark.ci
-def test_asr_status():
+def test_asr_results():
     runner = CliRunner()
-    result = runner.invoke(cli, ['status'])
+    result = runner.invoke(cli, ['results', '-h'])
     assert result.exit_code == 0
+    assert 'Usage: cli results [OPTIONS] NAME' in result.output
