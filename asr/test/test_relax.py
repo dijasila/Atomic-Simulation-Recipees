@@ -51,6 +51,35 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
         relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
+@pytest.mark.ci
+def test_relax_find_higher_symmetry(separate_folder, monkeypatch):
+    """Test that a structure is allowed to find a higher symmetry without failing."""
+    from ase.build import bulk
+    from ase.atoms import Atoms
+    from asr.relax import main
+    from ase.calculators.emt import EMT
+    import numpy as np
+
+    diamond = bulk('C')
+    sposoriginal_ac = diamond.get_scaled_positions()
+    spos_ac = diamond.get_scaled_positions()
+    spos_ac[1][2] += 0.1
+    diamond.set_scaled_positions(spos_ac)
+
+    def get_stress(*args, **kwargs):
+        return np.zeros((3, 3), float)
+
+    monkeypatch.setattr(EMT, 'get_stress', get_stress)
+
+    def set_positions(self, *args, **kwargs):
+        return self.set_scaled_positions(sposoriginal_ac)
+
+    monkeypatch.setattr(Atoms, 'set_positions', set_positions)
+
+    diamond.write('unrelaxed.json')
+    main(calculator={'name': 'emt'})
+
+
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(separate_folder):
