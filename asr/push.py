@@ -10,20 +10,24 @@ from asr.core import command, option
         help='Maximum distance an atom will be displaced')
 def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
     """Push structure along some phonon mode and relax structure."""
-    from asr.phonons import analyse
     import numpy as np
     q_c = momentum
 
     # Get modes
     from ase.io import read
+    from asr.core import read_json
     atoms = read('structure.json')
-    omega_kl, u_klav, q_qc = analyse(modes=True, q_qc=[q_c])
+    data = read_json("results-asr.phonopy.json")
+    
+    u_klav = data["u_klav"]
 
+    q_qc = data["q_qc"]
+    assert momentum in q_qc.tolist(), "No momentum in calculated q-points"
     # Repeat atoms
     from fractions import Fraction
-    repeat_c = [Fraction(qc).denominator if qc > 1e-3 else 1 for qc in q_qc[0]]
+    repeat_c = [Fraction(qc).limit_denominator(10).denominator for qc in q_c]
     newatoms = atoms * repeat_c
-
+    print(repeat_c)
     # Here ``Na`` refers to a composite unit cell/atom dimension
     pos_Nav = newatoms.get_positions()
 
