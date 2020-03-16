@@ -336,14 +336,15 @@ def projected_bs_pbe(row,
     e_skn = e_skn[:, :, inrange_n]
     weight_skni = weight_skni[:, :, inrange_n, :]
 
-    # hstack spin index for the BandStructure object
-    nspins = e_skn.shape[0]
-    e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-
     # Use band structure objects to plot outline
-    bs = BandStructure(path, e_kn - ref, ef - ref)
+    bs = BandStructure(path, e_skn - ref, ef - ref)
+    # Use colors if spin-polarized
+    if e_skn.shape[0] == 2:
+        spincolors = ['0.8', '0.4']
+    else:
+        spincolors = ['0.8'] * e_skn.shape[0]
     style = dict(
-        colors=['0.8'] * e_skn.shape[0],
+        colors=spincolors,
         ls='-',
         lw=1.0,
         zorder=0)
