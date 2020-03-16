@@ -178,9 +178,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
+    trajfile = Trajectory(name + '.traj', 'a', atoms)
     opt = myBFGS(filter,
                  logfile=name + '.log',
-                 trajectory=Trajectory(name + '.traj', 'a', atoms))
+                 trajectory=trajfile)
 
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
@@ -202,11 +203,13 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             errmsg = 'The symmetry was broken during the relaxation! ' + msg
             raise BrokenSymmetryError(errmsg)
         elif number < number2:
-            outmsg = ('Not an error: The spacegroup has changed during relaxation. '
-                      + msg)
+            print('Not an error: The spacegroup has changed during relaxation. '
+                  + msg)
             spgname = spgname2
             number = number2
-            print(outmsg)
+            if enforce_symmetry:
+                atoms.set_symmetries(symmetries=newdataset['rotations'],
+                                     translations=newdataset['translations'])
 
         if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
