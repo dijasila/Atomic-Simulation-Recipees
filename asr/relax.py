@@ -107,53 +107,6 @@ class SpgAtoms(Atoms):
         return f_av
 
 
-def find_common_symmetries(sym1, sym2):
-    """Compare symmetries of two atomic structures.
-
-    Determines the difference in symmetries between structures
-
-    Parameters
-    ----------
-    sym1 : list of :class:`numpy.array`
-        List containing symmetry operators
-    sym2 : list of :class:`numpy.array`
-        List containing symmetry operators
-
-    Returns
-    -------
-    commonsymmetries : list
-        List of symmetries common to sym1 and sym2
-    index_exclusive1 : set
-        Set of indices into sym1 of symmetries exclusively in sym1
-    index_exclusive2 : set
-        Set of indices into sym2 of symmetries exclusively in sym2
-
-    """
-    commonsymmetries = []
-    sym1_scc = np.array(sym1, float)
-    sym2_scc = np.array(sym2, float)
-
-    index_exclusive1 = set()
-    index_exclusive2 = set(range(len(sym2_scc)))
-    for s, sym_cc in enumerate(sym1_scc):
-        diff_scc = sym2_scc - sym_cc
-        # First column corresponds to fractional translations
-        diff_scc[:, :, 0] -= np.round(diff_scc[:, :, 0])
-
-        index_s = np.isclose(diff_scc, 0).all(2).all(1)
-        assert np.sum(index_s) < 2
-        if index_s.any():
-            index_exclusive2.remove(np.argwhere(index_s)[0][0])
-        else:
-            index_exclusive1.add(s)
-
-    for s, sym_cc in enumerate(sym1_scc):
-        if s not in index_exclusive1:
-            commonsymmetries.append(sym_cc)
-
-    return commonsymmetries, index_exclusive1, index_exclusive2
-
-
 class myBFGS(BFGS):
 
     def log(self, forces=None, stress=None):
@@ -183,18 +136,6 @@ class myBFGS(BFGS):
                                f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
                                f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
             self.logfile.flush()
-
-
-def _spglib_dataset_to_symmetries(dataset):
-    syms = []
-    for rotation, translation in zip(dataset['rotations'],
-                                     dataset['translations']):
-        sym = np.zeros((4, 4), float)
-        sym[0, 0] = 1
-        sym[1:, 0] = translation
-        sym[1:, 1:] = rotation
-        syms.append(sym)
-    return syms
 
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
