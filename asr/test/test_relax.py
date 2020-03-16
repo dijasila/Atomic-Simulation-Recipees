@@ -2,6 +2,7 @@ from .conftest import test_materials
 from asr.relax import BrokenSymmetryError
 from pathlib import Path
 import pytest
+import numpy as np
 
 
 @pytest.mark.ci
@@ -51,16 +52,71 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
         relax(calculator={'name': 'emt'}, enforce_symmetry=False)
 
 
+generators = [
+    [[1, 0, 0],
+     [0, -1, 0],
+     [0, 0, 1]],
+    [[0, 1, 0],
+     [1, 0, 0],
+     [0, 0, 1]]
+]
+fractrans_generators = [[0, 0, 0], [0, 0, 0.5]]
+@pytest.mark.ci
+@pytest.mark.unittest
+@pytest.mark.parametrize("generator", generators)
+@pytest.mark.parametrize("fractrans_generator", fractrans_generators)
+def test_relax_find_common_symmetries(generator, fractrans_generator):
+    from asr.relax import find_common_symmetries
+
+    gen = np.zeros((4, 4), float)
+    gen[0, 0] = 1
+    gen[1:, 0] = fractrans_generator
+    gen[1:, 1:] = generator
+
+    def generate_symmetry_list(inputsym):
+        # Only works for cyclic group of order < 10
+        allsyms = []
+        for n in range(1, 10):
+            sym = np.linalg.matrix_power(inputsym, n)
+            allsyms.append(sym.copy())
+            sym[1:, 0] -= np.round(sym[1:, 0])
+            if np.allclose(sym, np.eye(4)):
+                break
+        return allsyms
+
+    syms = generate_symmetry_list(gen)
+    print(syms)
+    nsyms = len(syms)
+    print(nsyms)
+
+    common_symmetries, index1, index2 = find_common_symmetries(syms, syms)
+    assert not index1
+    assert not index2
+    assert len(common_symmetries) == nsyms
+
+    common_symmetries, index1, index2 = find_common_symmetries(syms, [np.eye(4)])
+    assert len(common_symmetries) == 1
+    assert nsyms - 1 not in index1
+    assert len(index1) == nsyms - 1
+    assert not index2
+
+    common_symmetries, index1, index2 = find_common_symmetries([np.eye(4)], syms)
+    assert len(common_symmetries) == 1
+    assert nsyms - 1 not in index2
+    assert len(index2) == nsyms - 1
+    assert not index1
+
+
 @pytest.mark.ci
 def test_relax_find_higher_symmetry(separate_folder, monkeypatch):
     """Test that a structure is allowed to find a higher symmetry without failing."""
     from ase.build import bulk
     from ase.atoms import Atoms
     from asr.relax import main
-    from ase.calculators.emt import EMT
     import numpy as np
 
     diamond = bulk('C')
+    natoms = len(diamond)
     sposoriginal_ac = diamond.get_scaled_positions()
     spos_ac = diamond.get_scaled_positions()
     spos_ac[1][2] += 0.1
@@ -69,11 +125,14 @@ def test_relax_find_higher_symmetry(separate_folder, monkeypatch):
     def get_stress(*args, **kwargs):
         return np.zeros((3, 3), float)
 
-    monkeypatch.setattr(EMT, 'get_stress', get_stress)
+    def get_forces(*args, **kwargs):
+        return np.zeros((natoms, 3), float)
 
     def set_positions(self, *args, **kwargs):
         return self.set_scaled_positions(sposoriginal_ac)
 
+    monkeypatch.setattr(Atoms, 'get_forces', get_forces)
+    monkeypatch.setattr(Atoms, 'get_stress', get_stress)
     monkeypatch.setattr(Atoms, 'set_positions', set_positions)
 
     diamond.write('unrelaxed.json')

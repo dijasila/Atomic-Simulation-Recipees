@@ -1,3 +1,16 @@
+"""Relax an atomic structure.
+
+By defaults read from "unrelaxed.json" from disk and relaxes
+structures and saves the final relaxed structure in "structure.json".
+
+The relax recipe has a couple of note-worthy features::
+
+  - It automatically handles structures of any dimensionality
+  - It tries to enforce symmetries
+  - It continously checks after each step that no symmetries are broken,
+    and raises an error if this happens.
+"""
+
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
@@ -94,6 +107,53 @@ class SpgAtoms(Atoms):
         return f_av
 
 
+def find_common_symmetries(sym1, sym2):
+    """Compare symmetries of two atomic structures.
+
+    Determines the difference in symmetries between structures
+
+    Parameters
+    ----------
+    sym1 : list of :class:`numpy.array`
+        List containing symmetry operators
+    sym2 : list of :class:`numpy.array`
+        List containing symmetry operators
+
+    Returns
+    -------
+    commonsymmetries : list
+        List of symmetries common to sym1 and sym2
+    index_exclusive1 : set
+        Set of indices into sym1 of symmetries exclusively in sym1
+    index_exclusive2 : set
+        Set of indices into sym2 of symmetries exclusively in sym2
+
+    """
+    commonsymmetries = []
+    sym1_scc = np.array(sym1, float)
+    sym2_scc = np.array(sym2, float)
+
+    index_exclusive1 = set()
+    index_exclusive2 = set(range(len(sym2_scc)))
+    for s, sym_cc in enumerate(sym1_scc):
+        diff_scc = sym2_scc - sym_cc
+        # First column corresponds to fractional translations
+        diff_scc[:, :, 0] -= np.round(diff_scc[:, :, 0])
+
+        index_s = np.isclose(diff_scc, 0).all(2).all(1)
+        assert np.sum(index_s) < 2
+        if index_s.any():
+            index_exclusive2.remove(np.argwhere(index_s)[0][0])
+        else:
+            index_exclusive1.add(s)
+
+    for s, sym_cc in enumerate(sym1_scc):
+        if s not in index_exclusive1:
+            commonsymmetries.append(sym_cc)
+
+    return commonsymmetries, index_exclusive1, index_exclusive2
+
+
 class myBFGS(BFGS):
 
     def log(self, forces=None, stress=None):
@@ -123,6 +183,18 @@ class myBFGS(BFGS):
                                f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
                                f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
             self.logfile.flush()
+
+
+def _spglib_dataset_to_symmetries(dataset):
+    syms = []
+    for rotation, translation in zip(dataset['rotations'],
+                                     dataset['translations']):
+        sym = np.zeros((4, 4), float)
+        sym[0, 0] = 1
+        sym[1:, 0] = translation
+        sym[1:, 1:] = rotation
+        syms.append(sym)
+    return syms
 
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
@@ -174,13 +246,23 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
 
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
+
+    syms = _spglib_dataset_to_symmetries(dataset)
     for _ in runner:
         # Check that the symmetry has not been broken
-        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
-                                                  symprec=1e-4,
-                                                  angle_tolerance=0.1).split()
-
-        if not (allow_symmetry_breaking or number == number2):
+        newdataset = spglib.get_symmetry_dataset(ats(atoms),
+                                                 symprec=1e-4,
+                                                 angle_tolerance=0.1)
+        newsyms = _spglib_dataset_to_symmetries(newdataset)
+        common_symmetries, index1, index2 = find_common_symmetries(syms, newsyms)
+        # If index1 is empty this mean that all syms are contained
+        # in newsyms which is allowed
+        if not allow_symmetry_breaking and index1:
+            spgname = dataset['international']
+            number = dataset['number']
+            spgname2 = newdataset['international']
+            number2 = newdataset['number']
+            assert number != number2
             # Log the last step
             opt.log()
             opt.call_observers()
@@ -268,11 +350,10 @@ def main(calculator={'name': 'gpaw',
          fmax=0.01, enforce_symmetry=True):
     """Relax atomic positions and unit cell.
 
-    By default, this recipe takes the atomic structure in 'unrelaxed.json'
-
-    and relaxes the structure including the DFTD3 van der Waals
-    correction. The relaxed structure is saved to `structure.json` which can be
-    processed by other recipes.
+    By default, this recipe takes the atomic structure in
+    'unrelaxed.json' and relaxes the structure including the DFTD3 van
+    der Waals correction. The relaxed structure is saved to
+    `structure.json` which can be processed by other recipes.
 
     To install DFTD3 do::
 
@@ -294,6 +375,7 @@ def main(calculator={'name': 'gpaw',
 
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --calculator {'xc':'LDA',...}"
+
     """
     from ase.calculators.calculator import get_calculator_class
 
