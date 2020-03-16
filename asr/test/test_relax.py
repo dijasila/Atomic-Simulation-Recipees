@@ -34,7 +34,7 @@ def test_relax_emt(separate_folder, name):
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
 def test_relax_emt_fail_broken_symmetry(separate_folder, name,
-                                        monkeypatch):
+                                        monkeypatch, capsys):
     """Test that a broken symmetry raises an error."""
     from asr.relax import main as relax
     from ase.build import bulk
@@ -48,8 +48,10 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
     unrelaxed.write('unrelaxed.json')
-    with pytest.raises(BrokenSymmetryError):
+    with pytest.raises(BrokenSymmetryError) as excinfo:
         relax(calculator={'name': 'emt'}, enforce_symmetry=False)
+
+    assert 'The symmetry was broken during the relaxation!' in str(excinfo.value)
 
 
 generators = [
@@ -108,11 +110,10 @@ def test_relax_find_common_symmetries(generator, fractrans_generator):
 
 
 @pytest.mark.ci
-def test_relax_find_higher_symmetry(separate_folder, monkeypatch):
+def test_relax_find_higher_symmetry(separate_folder, monkeypatch, capsys):
     """Test that a structure is allowed to find a higher symmetry without failing."""
     from ase.build import bulk
-    from ase.atoms import Atoms
-    from asr.relax import main
+    from asr.relax import main, SpgAtoms, myBFGS
     import numpy as np
 
     diamond = bulk('C')
@@ -123,20 +124,25 @@ def test_relax_find_higher_symmetry(separate_folder, monkeypatch):
     diamond.set_scaled_positions(spos_ac)
 
     def get_stress(*args, **kwargs):
-        return np.zeros((3, 3), float)
+        return np.zeros((6,), float)
 
     def get_forces(*args, **kwargs):
-        return np.zeros((natoms, 3), float)
+        return 1 + np.zeros((natoms, 3), float)
 
-    def set_positions(self, *args, **kwargs):
-        return self.set_scaled_positions(sposoriginal_ac)
-
-    monkeypatch.setattr(Atoms, 'get_forces', get_forces)
-    monkeypatch.setattr(Atoms, 'get_stress', get_stress)
-    monkeypatch.setattr(Atoms, 'set_positions', set_positions)
+    def irun(self, *args, **kwargs):
+        yield False
+        self.atoms.atoms.set_scaled_positions(sposoriginal_ac)
+        yield False
 
     diamond.write('unrelaxed.json')
+
+    monkeypatch.setattr(SpgAtoms, 'get_forces', get_forces)
+    monkeypatch.setattr(SpgAtoms, 'get_stress', get_stress)
+    monkeypatch.setattr(myBFGS, 'irun', irun)
     main(calculator={'name': 'emt'})
+
+    captured = capsys.readouterr()
+    assert "The spacegroup has changed during relaxation. " in captured.out
 
 
 @pytest.mark.integration_test
