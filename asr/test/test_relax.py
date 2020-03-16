@@ -38,7 +38,6 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
     """Test that a broken symmetry raises an error."""
     from asr.relax import main as relax
     from ase.build import bulk
-    import numpy as np
     from ase.calculators.emt import EMT
 
     unrelaxed = bulk(name)
@@ -54,67 +53,11 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
     assert 'The symmetry was broken during the relaxation!' in str(excinfo.value)
 
 
-generators = [
-    [[1, 0, 0],
-     [0, -1, 0],
-     [0, 0, 1]],
-    [[0, 1, 0],
-     [1, 0, 0],
-     [0, 0, 1]]
-]
-fractrans_generators = [[0, 0, 0], [0, 0, 0.5]]
-@pytest.mark.ci
-@pytest.mark.unittest
-@pytest.mark.parametrize("generator", generators)
-@pytest.mark.parametrize("fractrans_generator", fractrans_generators)
-def test_relax_find_common_symmetries(generator, fractrans_generator):
-    from asr.relax import find_common_symmetries
-
-    gen = np.zeros((4, 4), float)
-    gen[0, 0] = 1
-    gen[1:, 0] = fractrans_generator
-    gen[1:, 1:] = generator
-
-    def generate_symmetry_list(inputsym):
-        # Only works for cyclic group of order < 10
-        allsyms = []
-        for n in range(1, 10):
-            sym = np.linalg.matrix_power(inputsym, n)
-            allsyms.append(sym.copy())
-            sym[1:, 0] -= np.round(sym[1:, 0])
-            if np.allclose(sym, np.eye(4)):
-                break
-        return allsyms
-
-    syms = generate_symmetry_list(gen)
-    print(syms)
-    nsyms = len(syms)
-    print(nsyms)
-
-    common_symmetries, index1, index2 = find_common_symmetries(syms, syms)
-    assert not index1
-    assert not index2
-    assert len(common_symmetries) == nsyms
-
-    common_symmetries, index1, index2 = find_common_symmetries(syms, [np.eye(4)])
-    assert len(common_symmetries) == 1
-    assert nsyms - 1 not in index1
-    assert len(index1) == nsyms - 1
-    assert not index2
-
-    common_symmetries, index1, index2 = find_common_symmetries([np.eye(4)], syms)
-    assert len(common_symmetries) == 1
-    assert nsyms - 1 not in index2
-    assert len(index2) == nsyms - 1
-    assert not index1
-
-
 @pytest.mark.ci
 def test_relax_find_higher_symmetry(separate_folder, monkeypatch, capsys):
     """Test that a structure is allowed to find a higher symmetry without failing."""
     from ase.build import bulk
     from asr.relax import main, SpgAtoms, myBFGS
-    import numpy as np
 
     diamond = bulk('C')
     natoms = len(diamond)
