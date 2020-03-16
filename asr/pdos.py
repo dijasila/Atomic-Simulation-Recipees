@@ -20,11 +20,11 @@ from asr.core import magnetic_atoms, read_json
 
 # Hack the density of states
 class SOCDOS(DOS):
-    """Hack to make DOS class work with spin orbit coupling"""
     def __init__(self, gpw, **kwargs):
-        """
-        Parameters:
-        -----------
+        """Hack to make DOS class work with spin orbit coupling.
+
+        Parameters
+        ----------
         gpw : str
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
@@ -61,6 +61,7 @@ class SOCDOS(DOS):
 # compute them repeatedly
 class SOCDescriptor:
     """Descriptor for spin-orbit corrections.
+
     [Developed and tested for raw_spinorbit_orbital_LDOS only]
     """
 
@@ -94,7 +95,7 @@ class SOCDescriptor:
 
 def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
                                     theta=0, phi=0):
-    """Hack raw_spinorbit_orbital_LDOS"""
+    """Hack raw_spinorbit_orbital_LDOS."""
     from gpaw.utilities.dos import get_angular_projectors
     from gpaw.spinorbit import get_spinorbit_projections
 
@@ -194,25 +195,20 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
     # PDOS without spin-orbit coupling
-    nosoc_panel = {'title': 'Band structure with projections (PBE)',
-                   'columns': [[],
-                               [fig('pbe-pdos_nosoc.png', link='empty'),
-                                table(row, 'Property', ['dos_at_ef_nosoc'],
-                                      kd=key_descriptions)]],
-                   'plot_descriptions': [{'function': plot_pdos_nosoc,
-                                          'filenames': ['pbe-pdos_nosoc.png']}]
-                   }
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+             'columns': [[],
+                         [fig('pbe-pdos_nosoc.png', link='empty')]],
+             'plot_descriptions': [{'function': plot_pdos_nosoc,
+                                    'filenames': ['pbe-pdos_nosoc.png']}],
+             'sort': 14}
 
-    # PDOS with spin-orbit coupling
-    # Goes to Electronic band structure (PBE) panel, which is defined in the
-    # bandstructure recipe
-    soc_panel = {'title': 'Electronic band structure (PBE)',
-                 'columns': [[], [fig('pbe-pdos_soc.png', link='empty')]],
-                 'plot_descriptions': [{'function': plot_pdos_soc,
-                                        'filenames': ['pbe-pdos_soc.png']}],
-                 'sort': 13}
+    # Another panel to make sure sorting is correct
+    panel2 = {'title': 'Electronic band structure and projected DOS (PBE)',
+              'columns': [[],
+                          [table(row, 'Property', ['dos_at_ef_nosoc'],
+                                 kd=key_descriptions)]]}
 
-    return [nosoc_panel, soc_panel]
+    return [panel, panel2]
 
 
 # ---------- Main functionality ---------- #
@@ -286,7 +282,10 @@ def main():
 
 
 def pdos(calc, gpw, soc=True):
-    """Main functionality to do a single pdos calculation"""
+    """Do a single pdos calculation.
+
+    Main functionality to do a single pdos calculation.
+    """
     # Do calculation
     e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
 
@@ -295,10 +294,10 @@ def pdos(calc, gpw, soc=True):
 
 
 def calculate_pdos(calc, gpw, soc=True):
-    """Calculate the projected density of states
+    """Calculate the projected density of states.
 
-    Returns:
-    --------
+    Returns
+    -------
     energies : nd.array
         energies 10 eV under and above Fermi energy
     pdos_syl : defaultdict
@@ -387,15 +386,15 @@ def calculate_pdos(calc, gpw, soc=True):
 
 
 def get_l_a(zs):
-    """Defines which atoms and angular momentum to project onto.
+    """Define which atoms and angular momentum to project onto.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     zs : [z1, z2, ...]-list or array
         list of atomic numbers (zi: int)
 
-    Returns:
-    --------
+    Returns
+    -------
     l_a : {int: str, ...}-dict
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a
@@ -420,7 +419,7 @@ def get_l_a(zs):
 
 
 def dos_at_ef(calc, gpw, soc=True):
-    """Get dos at the Fermi energy"""
+    """Get dos at the Fermi energy."""
     if soc:
         dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
     else:
@@ -432,7 +431,7 @@ def dos_at_ef(calc, gpw, soc=True):
 
 
 def get_ordered_syl_dict(dct_syl, symbols):
-    """Order a dictionary with syl keys
+    """Order a dictionary with syl keys.
 
     Parameters
     ----------
@@ -463,8 +462,8 @@ def get_ordered_syl_dict(dct_syl, symbols):
 
 
 def get_yl_colors(dct_syl):
-    """Get the color indices corresponding to each symbol and angular momentum
-    
+    """Get the color indices corresponding to each symbol and angular momentum.
+
     Parameters
     ----------
     dct_syl : OrderedDict
