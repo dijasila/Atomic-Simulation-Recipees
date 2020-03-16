@@ -165,6 +165,7 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                                           angle_tolerance=0.1)
     spgname = dataset['international']
     number = dataset['number']
+    nsym = len(dataset['rotations'])
     atoms = SpgAtoms.from_atoms(atoms)
     if enforce_symmetry:
         atoms.set_symmetries(symmetries=dataset['rotations'],
@@ -194,20 +195,23 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                                                      angle_tolerance=0.1)
             spgname2 = newdataset['international']
             number2 = newdataset['number']
+            nsym2 = len(newdataset['rotations'])
             msg = (f'The initial spacegroup was {spgname} {number} '
                    f'but it changed to {spgname2} {number2} during '
                    'the relaxation.')
-            if not allow_symmetry_breaking and number > number2:
+            if (not allow_symmetry_breaking
+               and number != number2 and nsym > nsym2):
                 # Log the last step
                 opt.log()
                 opt.call_observers()
                 errmsg = 'The symmetry was broken during the relaxation! ' + msg
                 raise BrokenSymmetryError(errmsg)
-            elif number < number2:
+            elif number != number2:
                 print('Not an error: The spacegroup has changed during relaxation. '
                       + msg)
                 spgname = spgname2
                 number = number2
+                nsym = nsym2
                 if enforce_symmetry:
                     atoms.set_symmetries(symmetries=newdataset['rotations'],
                                          translations=newdataset['translations'])
