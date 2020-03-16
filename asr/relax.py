@@ -222,6 +222,8 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     dataset = spglib.get_symmetry_dataset(ats(atoms),
                                           symprec=1e-4,
                                           angle_tolerance=0.1)
+    spgname = dataset['international']
+    number = dataset['number']
     atoms = SpgAtoms.from_atoms(atoms)
     if enforce_symmetry:
         atoms.set_symmetries(symmetries=dataset['rotations'],
@@ -231,11 +233,6 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     else:
         calc = dft
     atoms.calc = calc
-
-    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
-                                                     parallel=False)),
-                                            symprec=1e-4,
-                                            angle_tolerance=0.1).split()
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
@@ -247,30 +244,28 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     # fmax=0 here because we have implemented our own convergence criteria
     runner = opt.irun(fmax=0)
 
-    syms = _spglib_dataset_to_symmetries(dataset)
     for _ in runner:
         # Check that the symmetry has not been broken
         newdataset = spglib.get_symmetry_dataset(ats(atoms),
                                                  symprec=1e-4,
                                                  angle_tolerance=0.1)
-        newsyms = _spglib_dataset_to_symmetries(newdataset)
-        common_symmetries, index1, index2 = find_common_symmetries(syms, newsyms)
-        # If index1 is empty this mean that all syms are contained
-        # in newsyms which is allowed
-        if not allow_symmetry_breaking and index1:
-            spgname = dataset['international']
-            number = dataset['number']
-            spgname2 = newdataset['international']
-            number2 = newdataset['number']
-            assert number != number2
+        spgname2 = newdataset['international']
+        number2 = newdataset['number']
+        msg = (f'The initial spacegroup was {spgname} {number} '
+               f'but it changed to {spgname2} {number2} during '
+               'the relaxation.')
+        if not allow_symmetry_breaking and number > number2:
             # Log the last step
             opt.log()
             opt.call_observers()
-            msg = ('The symmetry was broken during the relaxation! '
-                   f'The initial spacegroup was {spgname} {number} '
-                   f'but it changed to {spgname2} {number2} during '
-                   'the relaxation.')
-            raise BrokenSymmetryError(msg)
+            errmsg = 'The symmetry was broken during the relaxation! ' + msg
+            raise BrokenSymmetryError(errmsg)
+        elif number < number2:
+            outmsg = ('Not an error: The spacegroup has changed during relaxation. '
+                      + msg)
+            spgname = spgname2
+            number = number2
+            print(outmsg)
 
         if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
             opt.log()
