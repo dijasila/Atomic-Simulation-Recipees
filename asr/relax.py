@@ -178,44 +178,47 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
-    trajfile = Trajectory(name + '.traj', 'a', atoms)
-    opt = myBFGS(filter,
-                 logfile=name + '.log',
-                 trajectory=trajfile)
+    try:
+        trajfile = Trajectory(name + '.traj', 'a', atoms)
+        opt = myBFGS(filter,
+                     logfile=name + '.log',
+                     trajectory=trajfile)
 
-    # fmax=0 here because we have implemented our own convergence criteria
-    runner = opt.irun(fmax=0)
+        # fmax=0 here because we have implemented our own convergence criteria
+        runner = opt.irun(fmax=0)
 
-    for _ in runner:
-        # Check that the symmetry has not been broken
-        newdataset = spglib.get_symmetry_dataset(ats(atoms),
-                                                 symprec=1e-4,
-                                                 angle_tolerance=0.1)
-        spgname2 = newdataset['international']
-        number2 = newdataset['number']
-        msg = (f'The initial spacegroup was {spgname} {number} '
-               f'but it changed to {spgname2} {number2} during '
-               'the relaxation.')
-        if not allow_symmetry_breaking and number > number2:
-            # Log the last step
-            opt.log()
-            opt.call_observers()
-            errmsg = 'The symmetry was broken during the relaxation! ' + msg
-            raise BrokenSymmetryError(errmsg)
-        elif number < number2:
-            print('Not an error: The spacegroup has changed during relaxation. '
-                  + msg)
-            spgname = spgname2
-            number = number2
-            if enforce_symmetry:
-                atoms.set_symmetries(symmetries=newdataset['rotations'],
-                                     translations=newdataset['translations'])
+        for _ in runner:
+            # Check that the symmetry has not been broken
+            newdataset = spglib.get_symmetry_dataset(ats(atoms),
+                                                     symprec=1e-4,
+                                                     angle_tolerance=0.1)
+            spgname2 = newdataset['international']
+            number2 = newdataset['number']
+            msg = (f'The initial spacegroup was {spgname} {number} '
+                   f'but it changed to {spgname2} {number2} during '
+                   'the relaxation.')
+            if not allow_symmetry_breaking and number > number2:
+                # Log the last step
+                opt.log()
+                opt.call_observers()
+                errmsg = 'The symmetry was broken during the relaxation! ' + msg
+                raise BrokenSymmetryError(errmsg)
+            elif number < number2:
+                print('Not an error: The spacegroup has changed during relaxation. '
+                      + msg)
+                spgname = spgname2
+                number = number2
+                if enforce_symmetry:
+                    atoms.set_symmetries(symmetries=newdataset['rotations'],
+                                         translations=newdataset['translations'])
 
-        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
-            opt.log()
-            opt.call_observers()
-            break
-
+            if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
+                opt.log()
+                opt.call_observers()
+                break
+    finally:
+        trajfile.close()
+        opt.logfile.close()
     return atoms
 
 
