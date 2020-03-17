@@ -57,6 +57,11 @@ asr.fermisurface
 ~~~~~~~~~~~~~~~~
 .. autofunction:: asr.fermisurface.main
 
+asr.formalpolarization
+~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: asr.formalpolarization
+.. autofunction:: asr.formalpolarization.main
+
 asr.gs
 ~~~~~~
 .. autofunction:: asr.gs.calculate
