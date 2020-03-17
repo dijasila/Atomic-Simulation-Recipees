@@ -22,7 +22,7 @@ for key, value in UTM.items():
     Uvalues[key] = ':d,{},0'.format(value)
 
 
-def is_relax_done(atoms, fmax=0.01, smax=0.002,
+def is_relax_done(atoms, fmax=0.02, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
     s = atoms.get_stress() * smask
