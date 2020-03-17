@@ -1,3 +1,14 @@
+"""Calculate formal polarization for a structure.
+
+Module for calculating formal polarization as defined in the Modern
+Theory of Polarization. The calculated formal polarization can then be
+used to calculate several other properties like:
+
+  - Piezoelectric tensors
+  - Ferroelectric properties
+
+"""
+
 from asr.core import command, option
 
 
