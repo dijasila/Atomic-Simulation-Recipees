@@ -50,7 +50,6 @@ def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
 
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
-
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob(fsname + ".*.json"):
@@ -75,6 +74,7 @@ def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
     from asr.core import get_dimensionality
 
     nd = get_dimensionality()
+    sc = list(map(int, sc))
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
@@ -192,6 +192,7 @@ def main(rc=None):
     fsname = dct["__params__"]["fsname"]
 
     nd = get_dimensionality()
+    sc = list(map(int, sc))
 
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
@@ -281,8 +282,11 @@ def main(rc=None):
     else:
         dynamic_stability = 3
 
+    phi_anv = phonon.get_force_constants()
+
     results = {'omega_kl': omega_kl,
                'eigs_kl': eigs_kl,
+               'phi_anv': phi_anv,
                'irr_l': irreps,
                'q_qc': q_qc,
                'u_klav': u_klav,
