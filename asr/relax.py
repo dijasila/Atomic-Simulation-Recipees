@@ -1,3 +1,16 @@
+"""Relax an atomic structure.
+
+By defaults read from "unrelaxed.json" from disk and relaxes
+structures and saves the final relaxed structure in "structure.json".
+
+The relax recipe has a couple of note-worthy features::
+
+  - It automatically handles structures of any dimensionality
+  - It tries to enforce symmetries
+  - It continously checks after each step that no symmetries are broken,
+    and raises an error if this happens.
+"""
+
 from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
@@ -8,6 +21,11 @@ from ase.optimize.bfgs import BFGS
 from asr.core import command, option
 from math import sqrt
 import time
+
+
+class BrokenSymmetryError(Exception):
+    pass
+
 
 Uvalues = {}
 
@@ -37,7 +55,9 @@ class SpgAtoms(Atoms):
     def from_atoms(cls, atoms):
         # Due to technicalities we cannot mess with the __init__ constructor
         # -> therefore we make our own
-        return cls(atoms)
+        a = cls(atoms)
+        a.set_symmetries([np.eye(3)], [[0, 0, 0]])
+        return a
 
     def set_symmetries(self, symmetries, translations):
         self.t_sc = translations
@@ -102,12 +122,12 @@ class myBFGS(BFGS):
         if self.logfile is not None:
             name = self.__class__.__name__
             if self.nsteps == 0:
-                self.logfile.write(' ' * len(name) +
-                                   '  {:<4} {:<8} {:<10} '.format('Step',
-                                                                  'Time',
-                                                                  'Energy') +
-                                   '{:<10} {:<10}\n'.format('fmax',
-                                                            'smax'))
+                self.logfile.write(' ' * len(name)
+                                   + '  {:<4} {:<8} {:<10} '.format('Step',
+                                                                    'Time',
+                                                                    'Energy')
+                                   + '{:<10} {:<10}\n'.format('fmax',
+                                                              'smax'))
                 if self.force_consistent:
                     self.logfile.write(
                         '*Force-consistent energies used in optimization.\n')
@@ -120,7 +140,7 @@ class myBFGS(BFGS):
 
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
-          fmax=0.01):
+          fmax=0.01, enforce_symmetry=False):
     import spglib
 
     if dftd3:
@@ -135,57 +155,74 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            msg = 'Relax recipe not implemented for 1D structures'
-            raise NotImplementedError(msg)
+            pbc = atoms.get_pbc()
+            assert pbc[2], "1D periodic axis should be the last one."
+            smask = [0, 0, 1, 0, 0, 0]
 
     from asr.setup.symmetrize import atomstospgcell as ats
     dataset = spglib.get_symmetry_dataset(ats(atoms),
                                           symprec=1e-4,
                                           angle_tolerance=0.1)
+    spgname = dataset['international']
+    number = dataset['number']
+    nsym = len(dataset['rotations'])
     atoms = SpgAtoms.from_atoms(atoms)
-    atoms.set_symmetries(symmetries=dataset['rotations'],
-                         translations=dataset['translations'])
+    if enforce_symmetry:
+        atoms.set_symmetries(symmetries=dataset['rotations'],
+                             translations=dataset['translations'])
     if dftd3:
         calc = DFTD3(dft=dft)
     else:
         calc = dft
     atoms.calc = calc
 
-    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
-                                                     parallel=False)),
-                                            symprec=1e-4,
-                                            angle_tolerance=0.1).split()
-
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
-    opt = myBFGS(filter,
-                 logfile=name + '.log',
-                 trajectory=Trajectory(name + '.traj', 'a', atoms))
+    try:
+        trajfile = Trajectory(name + '.traj', 'a', atoms)
+        opt = myBFGS(filter,
+                     logfile=name + '.log',
+                     trajectory=trajfile)
 
-    # fmax=0 here because we have implemented our own convergence criteria
-    runner = opt.irun(fmax=0)
-    for _ in runner:
-        # Check that the symmetry has not been broken
-        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
-                                                  symprec=1e-4,
-                                                  angle_tolerance=0.1).split()
+        # fmax=0 here because we have implemented our own convergence criteria
+        runner = opt.irun(fmax=0)
 
-        if not (allow_symmetry_breaking or number == number2):
-            # Log the last step
-            opt.log()
-            opt.call_observers()
-            msg = ('The symmetry was broken during the relaxation! '
-                   f'The initial spacegroup was {spgname} {number} '
+        for _ in runner:
+            # Check that the symmetry has not been broken
+            newdataset = spglib.get_symmetry_dataset(ats(atoms),
+                                                     symprec=1e-4,
+                                                     angle_tolerance=0.1)
+            spgname2 = newdataset['international']
+            number2 = newdataset['number']
+            nsym2 = len(newdataset['rotations'])
+            msg = (f'The initial spacegroup was {spgname} {number} '
                    f'but it changed to {spgname2} {number2} during '
                    'the relaxation.')
-            raise AssertionError(msg)
+            if (not allow_symmetry_breaking
+               and number != number2 and nsym > nsym2):
+                # Log the last step
+                opt.log()
+                opt.call_observers()
+                errmsg = 'The symmetry was broken during the relaxation! ' + msg
+                raise BrokenSymmetryError(errmsg)
+            elif number != number2:
+                print('Not an error: The spacegroup has changed during relaxation. '
+                      + msg)
+                spgname = spgname2
+                number = number2
+                nsym = nsym2
+                if enforce_symmetry:
+                    atoms.set_symmetries(symmetries=newdataset['rotations'],
+                                         translations=newdataset['translations'])
 
-        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
-            opt.log()
-            opt.call_observers()
-            break
-
+            if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
+                opt.log()
+                opt.call_observers()
+                break
+    finally:
+        trajfile.close()
+        opt.logfile.close()
     return atoms
 
 
@@ -205,7 +242,7 @@ tests.append({'description': 'Test relaxation of Si.',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
                            'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of Si (cores=2).',
@@ -213,7 +250,7 @@ tests.append({'description': 'Test relaxation of Si (cores=2).',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run -p 2 "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'results': [{'file': 'results-asr.relax.json',
                            'c': (3.88, 0.001)}]})
 tests.append({'description': 'Test relaxation of 2D-BN.',
@@ -222,21 +259,28 @@ tests.append({'description': 'Test relaxation of 2D-BN.',
                       'ase convert materials.json unrelaxed.json',
                       f'asr run "relax -c {testargs}"',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"'],
+                      'asr run "database.browser --only-figures"'],
               'test': BN_check})
 
 
+def log(*args, **kwargs):
+    atoms = read('unrelaxed.json')
+
+    return {'atoms': atoms.todict()}
+
+
 @command('asr.relax',
-         tests=tests,
-         resources='24:10h',
          requires=['unrelaxed.json'],
-         creates=['structure.json'])
+         creates=['structure.json'],
+         log=log)
 @option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3')
 @option('--fixcell', is_flag=True, help='Don\'t relax stresses')
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 @option('--fmax', help='Maximum force allowed')
+@option('--enforce-symmetry', is_flag=True,
+        help='Symmetrize forces and stresses.')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
@@ -249,16 +293,14 @@ def main(calculator={'name': 'gpaw',
                                      'width': 0.05},
                      'charge': 0},
          d3=False, fixcell=False, allow_symmetry_breaking=False,
-         fmax=0.01):
+         fmax=0.01, enforce_symmetry=True):
     """Relax atomic positions and unit cell.
-    By default, this recipe takes the atomic structure in 'unrelaxed.json'
 
-    and relaxes the structure including the DFTD3 van der Waals
-    correction. The relaxed structure is saved to `structure.json` which can be
-    processed by other recipes.
+    By default, this recipe takes the atomic structure in
+    'unrelaxed.json' and relaxes the structure including the DFTD3 van
+    der Waals correction. The relaxed structure is saved to
+    `structure.json` which can be processed by other recipes.
 
-    Installation
-    ------------
     To install DFTD3 do::
 
       $ mkdir ~/DFTD3 && cd ~/DFTD3
@@ -279,6 +321,7 @@ def main(calculator={'name': 'gpaw',
 
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --calculator {'xc':'LDA',...}"
+
     """
     from ase.calculators.calculator import get_calculator_class
 
@@ -314,7 +357,7 @@ def main(calculator={'name': 'gpaw',
     atoms = relax(atoms, name='relax', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc, fmax=fmax)
+                  dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
@@ -337,7 +380,8 @@ def main(calculator={'name': 'gpaw',
         fingerprint = {}
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
-        results['__setup_fingerprints__'] = fingerprint
+        results['__log__'] = {'nvalence': calc.setups.nvalence,
+                              'setup_fingerprints__': fingerprint}
 
     results['__key_descriptions__'] = \
         {'etot': 'Total energy [eV]',
@@ -352,7 +396,6 @@ def main(calculator={'name': 'gpaw',
          'gamma': 'Cell parameter gamma [deg]'}
 
     # For nm set magnetic moments to zero XXX
-    
     # Save atomic structure
     write('structure.json', atoms)
 

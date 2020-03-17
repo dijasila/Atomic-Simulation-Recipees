@@ -44,7 +44,7 @@ def webpanel(row, key_descriptions):
             rows=matrixtable(e0_ij))
 
         columns = [[etable, e0table], []]
-        
+
         panel = [('Piezoelectric tensor', columns)]
     else:
         panel = ()

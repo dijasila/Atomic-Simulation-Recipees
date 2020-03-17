@@ -57,7 +57,7 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig
+    from asr.database.browser import fig
 
     panel = {'title': 'Fermi surface',
              'columns': [[fig('fermi_surface.png')]],
@@ -105,8 +105,8 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
     cbar.set_label('$\\langle S_z \\rangle$')
-    ax.annotate('Fermi surface', xy=(0.5, 1), ha='center',
-                va='top', xycoords='axes fraction')
+    # ax.annotate('Fermi surface', xy=(0.5, 1), ha='center',
+    #             va='top', xycoords='axes fraction')
 
     return cbaxes
 

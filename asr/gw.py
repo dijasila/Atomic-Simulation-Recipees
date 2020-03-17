@@ -6,7 +6,7 @@ from click import Choice
 # probably be refactored
 def bs_gw(row,
           filename='gw-bs.png',
-          figsize=(6.4, 4.8),
+          figsize=(5.5, 5),
           fontsize=10,
           show_legend=True,
           s=0.5):
@@ -34,8 +34,7 @@ def bs_gw(row,
 
     # hse with soc
     style = dict(
-        color='k',
-        # label='HSE',
+        color='C1',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -51,7 +50,7 @@ def bs_gw(row,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='k', ls=':')
+    ax.axhline(ef - reference, c='C1', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef - reference),
@@ -66,7 +65,8 @@ def bs_gw(row,
     # add PBE band structure with soc
     from asr.bandstructure import add_bs_pbe
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')))
+        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+                        color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -79,13 +79,25 @@ def bs_gw(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
+def get_kpts_size(atoms, kptdensity):
+    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+    size, offset = k2so(atoms=atoms, density=kptdensity)
+    size[2] = 1
+    for i in range(2):
+        if size[i] % 6 != 0:
+            size[i] = 6 * (size[i] // 6 + 1)
+    kpts = {'size': size, 'gamma': True}
+    return kpts
+
+
 @command(requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
 @option('--kptdensity', help='K-point density')
 @option('--ecut', help='Plane wave cutoff')
 def gs(kptdensity=5.0, ecut=200.0):
-    """Calculate GW"""
+    """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     import numpy as np
@@ -94,33 +106,20 @@ def gs(kptdensity=5.0, ecut=200.0):
     calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = " +
-                        str(pbe_gap) + " eV is too small!")
+        raise Exception("GW: Only for semiconductors, PBE gap = "
+                        + str(pbe_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
     if len(atoms) > 4:
-        raise Exception("GW: Only for small systems, " +
-                        str(len(atoms)) + " > 4 atoms!")
+        raise Exception("GW: Only for small systems, "
+                        + str(len(atoms)) + " > 4 atoms!")
 
     # setup k points/parameters
     dim = np.sum(atoms.pbc.tolist())
     if dim == 3:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
     elif dim == 2:
-        def get_kpts_size(atoms, kptdensity):
-            """trying to get a reasonable monkhorst size which hits high
-            symmetry points
-            """
-            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=kptdensity)
-            size[2] = 1
-            for i in range(2):
-                if size[i] % 6 != 0:
-                    size[i] = 6 * (size[i] // 6 + 1)
-            kpts = {'size': size, 'gamma': True}
-            return kpts
-
         kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
     elif dim == 1:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
@@ -149,24 +148,24 @@ def gs(kptdensity=5.0, ecut=200.0):
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
 def gw(ecut=200.0, mode='G0W0'):
-    """Calculate GW"""
+    """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
     import numpy as np
 
     # check that the system is a semiconductor
-    calc = GPAW(gs, txt=None)
+    calc = GPAW('gs.gpw', txt=None)
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = " +
-                        str(pbe_gap) + " eV is too small!")
+        raise Exception("GW: Only for semiconductors, PBE gap = "
+                        + str(pbe_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
     if len(atoms) > 4:
-        raise Exception("GW: Only for small systems, " +
-                        str(len(atoms)) + " > 4 atoms!")
+        raise Exception("GW: Only for small systems, "
+                        + str(len(atoms)) + " > 4 atoms!")
 
     # Setup parameters
     dim = np.sum(atoms.pbc.tolist())
@@ -207,48 +206,51 @@ def gw(ecut=200.0, mode='G0W0'):
     return results
 
 
-def plot_renorm_factor(row, filename):
-    from matplotlib import pyplot as plt
-    data = row.data.get('results-asr.gw@gw.json')
-    q_skn = data['qp']
-    Z_skn = data['Z']
-    reference = row.get('evac', row.get('ef'))
-    plt.figure(figsize=(6.4, 4.8))
-    plt.scatter(Z_skn.ravel(), q_skn.ravel() - reference,
-                s=2)
-    emin = row.get('vbm_gw', row.get('ef')) - 3 - reference
-    emax = row.get('cbm_gw', row.get('ef')) + 3 - reference
-    if row.get('evac') is not None:
-        plt.ylabel(r'$E - E_\mathrm{vac}$ [eV]')
-    else:
-        plt.ylabel(r'$E - E_\mathrm{F}$ [eV]')
-    plt.ylim(emin, emax)
-    plt.xlabel('Renormalization factor Z')
-    plt.tight_layout()
-    plt.savefig(filename)
-
-
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
-    ref = row.get('evac', row.get('ef'))
-    keys = ['vbm_gw', 'cbm_gw']
-    for key in keys:
-        row[key] -= ref
+    from asr.database.browser import fig, table
+    if not row.get('gap_gw', 0) > 0:
+        return []
+
     prop = table(row, 'Property', [
-        'gap_gw', 'dir_gap_gw', 'vbm_gw', 'cbm_gw'
+        'gap_gw', 'gap_dir_gw',
     ], key_descriptions)
-    for key in keys:
-        row[key] += ref
+
+    if row.get('evac'):
+        prop['rows'].extend(
+            [['Valence band maximum wrt. vacuum level (G0W0)',
+              f'{row.vbm_gw - row.evac:.2f} eV'],
+             ['Conduction band minimum wrt. vacuum level (G0W0)',
+              f'{row.cbm_gw - row.evac:.2f} eV']])
+    else:
+        prop['rows'].extend(
+            [['Valence band maximum wrt. Fermi level (G0W0)',
+              f'{row.vbm_gw - row.efermi:.2f} eV'],
+             ['Conduction band minimum wrt. Fermi level (G0W0)',
+              f'{row.cbm_gw - row.efermi:.2f} eV']])
+
     panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png'), prop]],
+             'columns': [[fig('gw-bs.png')], [prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
-             'sort': 15}
+             'sort': 16}
+
+    if row.get('gap_gw'):
+        rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+
+        summary = {'title': 'Summary',
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
+                   'sort': 12}
+
+        return [panel, summary]
+
     return [panel]
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs'],
+@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+                   'results-asr.bandstructure.json'],
+         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
          webpanel=webpanel)
 def main():
     import numpy as np
@@ -257,7 +259,7 @@ def main():
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
-    
+
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
     gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
 
@@ -273,8 +275,8 @@ def main():
     # First get stuff without SOC
     eps_skn = gwresults.qp
     efermi_nosoc = fermi_level(calc, eps_skn=eps_skn,
-                               nelectrons=(calc.get_number_of_electrons() -
-                                           2 * lb))
+                               nelectrons=(calc.get_number_of_electrons()
+                                           - 2 * lb))
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -287,14 +289,14 @@ def main():
         cbm = eps_skn[p2]
         subresults = {'vbm_gw_nosoc': vbm,
                       'cbm_gw_nosoc': cbm,
-                      'dir_gap_gw_nosoc': gapd,
+                      'gap_dir_gw_nosoc': gapd,
                       'gap_gw_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
 
         kd.update({'vbm_gw_nosoc': 'GW valence band max. w/o soc [eV]',
                    'cbm_gw_nosoc': 'GW condution band min. w/o soc [eV]',
-                   'dir_gap_gw_nosoc': 'GW direct gap w/o soc [eV]',
+                   'gap_dir_gw_nosoc': 'GW direct gap w/o soc [eV]',
                    'gap_gw_nosoc': 'GW gap w/o soc [eV]',
                    'kvbm_nosoc': 'k-point of GW valence band max. w/o soc',
                    'kcbm_nosoc': 'k-point of GW conduction band min. w/o soc'})
@@ -312,9 +314,8 @@ def main():
 
     eps = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=(2 *
-                                         (calc.get_number_of_electrons() -
-                                          2 * lb)))
+                             nelectrons=(2 * (calc.get_number_of_electrons()
+                                              - 2 * lb)))
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
@@ -326,13 +327,13 @@ def main():
         cbm = eps[p2]
         subresults = {'vbm_gw': vbm,
                       'cbm_gw': cbm,
-                      'dir_gap_gw': gapd,
+                      'gap_dir_gw': gapd,
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
         kd.update({'vbm_gw': 'KVP: GW valence band max. [eV]',
                    'cbm_gw': 'KVP: GW conduction band min. [eV]',
-                   'dir_gap_gw': 'KVP: GW direct gap [eV]',
+                   'gap_dir_gw': 'KVP: GW direct gap [eV]',
                    'gap_gw': 'KVP: GW gap [eV]',
                    'kvbm': 'k-point of GW valence band max.',
                    'kcbm': 'k-point of GW conduction band min.'})

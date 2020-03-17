@@ -9,7 +9,7 @@ from asr.core import command, option
 @option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
 def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
-    """Push structure along some phonon mode and relax structure"""
+    """Push structure along some phonon mode and relax structure."""
     from asr.phonons import analyse
     import numpy as np
     q_c = momentum

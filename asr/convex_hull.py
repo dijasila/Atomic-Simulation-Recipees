@@ -10,7 +10,7 @@ from ase.db.row import AtomsRow
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
 
     hulltable1 = table(row,
                        'Stability',
@@ -29,15 +29,17 @@ def webpanel(row, key_descriptions):
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermal',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+    row = ['Thermodynamic',
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', ''],
-                             'rows': [row]}]]}
+                             'rows': [row],
+                             'columnwidth': 3}]],
+               'sort': 1}
     return [panel, summary]
 
 
@@ -52,9 +54,10 @@ def webpanel(row, key_descriptions):
 @option('--standardreferences',
         help='Database containing standard references.')
 def main(databases, standardreferences=None):
-    """Calculate convex hull energies
+    """Calculate convex hull energies.
 
-    The reference database has to have a type column indicating"""
+    The reference database has to have a type column indicating.
+    """
     from asr.core import read_json
     if standardreferences is None:
         standardreferences = databases[0]
@@ -66,8 +69,6 @@ def main(databases, standardreferences=None):
     hform = hof(read_json('results-asr.gs.json').get('etot'),
                 count,
                 ref_energies)
-    mf = read_json('results-asr.database.material_fingerprint.json')
-    uid = mf['uid']
 
     # Now compute convex hull
     dbdata = {}
@@ -84,8 +85,6 @@ def main(databases, standardreferences=None):
     for data in dbdata.values():
         metadata = data['metadata']
         for row in data['rows']:
-            if row.uid == uid:
-                continue
             # Take the energy from the gs recipe if its calculated
             # or fall back to row.energy
             energy = row.data.get('results-asr.gs.json')['etot'] if \
@@ -109,18 +108,22 @@ def main(databases, standardreferences=None):
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
 
-    pd = PhaseDiagram(pdrefs)
-    e0, indices, coefs = pd.decompose(formula)
-
     results = {'hform': hform,
                'references': references}
-    ehull = hform - e0 / len(atoms)
+
+    if len(count) == 1:
+        ehull = hform
+    else:
+        pd = PhaseDiagram(pdrefs)
+        e0, indices, coefs = pd.decompose(formula)
+        ehull = hform - e0 / len(atoms)
+        results['indices'] = indices.tolist()
+        results['coefs'] = coefs.tolist()
+
     results['ehull'] = ehull
-    results['indices'] = indices.tolist()
-    results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'hform': 'KVP: Heat of formation [eV/atom]',
+        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
@@ -175,7 +178,6 @@ def select_references(db, symbols):
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram
-    import re
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
@@ -186,9 +188,15 @@ def plot(row, fname):
 
     references = data['references']
     pdrefs = []
+    legends = []
+    colors = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
+        if reference['legend'] not in legends:
+            legends.append(reference['legend'])
+        idlegend = legends.index(reference['legend'])
+        colors.append(f'C{idlegend + 2}')
 
     pd = PhaseDiagram(pdrefs, verbose=False)
 
@@ -197,40 +205,38 @@ def plot(row, fname):
 
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        names = [ref['label'] for ref in references]
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-b')
-        ax.plot(x, e, 'sg')
+            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+        names = [ref['label'] for ref in references]
+        if row.hform < 0:
+            mask = e < 0.05
+            e = e[mask]
+            x = x[mask]
+            hull = hull[mask]
+            names = [name for name, m in zip(names, mask) if m]
+        ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+
         delta = e.ptp() / 30
         for a, b, name, on_hull in zip(x, e, names, hull):
-            if on_hull:
-                va = 'top'
-                ha = 'center'
-                dy = - delta
-                dx = 0
-            else:
-                va = 'center'
-                ha = 'left'
-                dy = 0
-                dx = 0.02
+            va = 'center'
+            ha = 'left'
+            dy = 0
+            dx = 0.02
             ax.text(a + dx, b + dy, name, ha=ha, va=va)
 
         A, B = pd.symbols
         ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
-        for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='lightblue')
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'sk')
+        ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
-        x, y, names, hull, simplices = pd.plot2d3()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        x, y, _, hull, simplices = pd.plot2d3()
+        names = [ref['label'] for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
@@ -240,6 +246,11 @@ def plot(row, fname):
         A, B, C = pd.symbols
         plt.axis('off')
 
+    for it, legend in enumerate(legends):
+        ax.scatter([], [], facecolor='none', marker='o',
+                   edgecolor=f'C{it + 2}', label=legend)
+
+    plt.legend(loc='lower left')
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
@@ -260,7 +271,7 @@ def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
         if reference['uid'] != row.uid:
             name = f'<a href="{matlink}">{name}</a>'
         e = reference['hform']
-        tables[reference['title']].append([name, '{:.3f} eV/atom'.format(e)])
+        tables[reference['title']].append([name, '{:.2f} eV/atom'.format(e)])
 
     final_tables = []
     for title, rows in tables.items():

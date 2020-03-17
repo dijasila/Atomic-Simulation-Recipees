@@ -10,8 +10,7 @@ from asr.core import command, option, read_json
 @option('--kpar', help='K-points along path')
 @option('--kperp', help='K-points orthogonal to path')
 def calculate(gs='gs.gpw', kpar=120, kperp=7):
-
-    """Calculate ground state on specified k-point grid"""
+    """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
     from gpaw import GPAW
@@ -20,7 +19,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
-    
+
     """Find the easy axis of magnetic materials"""
     theta = 0.0
     phi = 0.0
@@ -115,17 +114,6 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     else:
         return
- 
-                        
-def webpanel(name='0'):
-    pass
-    # from pathlib import Path
-    # from ase.parallel import paropen
-    
-    # if Path('topology.dat').is_file():
-    #     f = paropen('topology.dat', 'r')
-    #     top = f.readline()
-    #     f.close()
 
 
 def plot_phases(name='0'):
@@ -167,6 +155,25 @@ def plot_phases(name='0'):
     plt.axis([0, Nk, 0, 2 * np.pi])
     plt.tight_layout()
     plt.show()
+
+
+def webpanel(row, key_descriptions):
+    if row.Topology == 'Not checked':
+        return []
+
+    row = ['Band topology', row.Topology]
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Electronic properties', ''],
+                             'rows': [row]}]]}
+
+    basicelec = {'title': 'Basic electronic properties (PBE)',
+                 'columns': [[{'type': 'table',
+                               'header': ['Property', ''],
+                               'rows': [row]}]],
+                 'sort': 15}
+
+    return [summary, basicelec]
 
 
 @command(module='asr.berry',

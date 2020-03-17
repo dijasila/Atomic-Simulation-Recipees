@@ -27,33 +27,48 @@ def webpanel(row, key_descriptions):
 
     c_ij = np.zeros((4, 4))
     c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-    rows = matrixtable(c_ij, unit=' N/m',
+    rows = matrixtable(c_ij, unit='',
                        skiprow=1,
                        skipcolumn=1)
-    rows[0] = ['C<sub>ij</sub>', 'xx', 'yy', 'xy']
+    rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
     rows[1][0] = 'xx'
     rows[2][0] = 'yy'
     rows[3][0] = 'xy'
+    for ir, tmprow in enumerate(rows):
+        for ic, item in enumerate(tmprow):
+            if ir == 0 or ic == 0:
+                rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
+
     ctable = dict(
         type='table',
         rows=rows)
 
+    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
+                  for ie, eig in enumerate(sorted(eigs,
+                                                  key=lambda x: x.real))])
+    eigtable = dict(
+        type='table',
+        rows=eigrows)
+
     panel = {'title': 'Stiffness tensor',
-             'columns': [[ctable]],
+             'columns': [[ctable], [eigtable]],
              'sort': 2}
 
     dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
-    row = ['Stiffness',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+    row = ['Dynamical (stiffness)',
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
                low, high, dynstab.upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', 'Category'],
-                             'rows': [row]}]]}
+                             'rows': [row],
+                             }]],
+               'sort': 3}
 
     return [panel, summary]
 
@@ -70,7 +85,7 @@ def main(strain_percent=1.0):
     from asr.core import read_json, chdir
     from asr.database.material_fingerprint import main as computemf
     import numpy as np
-    
+
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
@@ -79,14 +94,14 @@ def main(strain_percent=1.0):
                    [4, 3, 2]]
 
     links = {}
-    stiffness = np.zeros((6, 6), float) + np.nan
+    stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             structurefile = folder / 'structure.json'
-            if not computemf.done:
-                with chdir(folder):
+            with chdir(folder):
+                if not computemf.done:
                     computemf()
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
@@ -153,3 +168,7 @@ def main(strain_percent=1.0):
     eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
     return data
+
+
+if __name__ == '__main__':
+    main.cli()

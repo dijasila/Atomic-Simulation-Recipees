@@ -1,5 +1,4 @@
 from asr.core import command, option
-from pathlib import Path
 
 test1 = {'description': 'Test ground state of Si.',
          'cli': ['asr run "setup.materials -s Si2"',
@@ -8,15 +7,14 @@ test1 = {'description': 'Test ground state of Si.',
                  "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
                  'asr run gs@calculate',
                  'asr run database.fromtree',
-                 'asr run "browser --only-figures"']}
+                 'asr run "database.browser --only-figures"']}
 
 
 @command(module='asr.gs',
          creates=['gs.gpw'],
          tests=[test1],
          requires=['structure.json'],
-         resources='8:10h',
-         restart=1)
+         resources='8:10h')
 @option('-c', '--calculator', help='Calculator params.')
 def calculate(calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
@@ -30,10 +28,12 @@ def calculate(calculator={'name': 'gpaw',
                           'txt': 'gs.txt',
                           'charge': 0}):
     """Calculate ground state file.
+
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
     for storing any derived quantities. See asr.gs@postprocessing for more
-    information."""
+    information.
+    """
     import numpy as np
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
@@ -48,8 +48,8 @@ def calculate(calculator={'name': 'gpaw',
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
-    
-    atoms.calc = calc
+
+    atoms.set_calculator(calc)
     atoms.get_forces()
     try:
         atoms.get_stress()
@@ -67,27 +67,43 @@ tests = [{'description': 'Test ground state of Si.',
                   'ase convert materials.json structure.json',
                   'asr run gs',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 def webpanel(row, key_descriptions):
-    from asr.browser import table, fig
+    from asr.database.browser import table, fig
 
     t = table(row, 'Property',
-              ['evac', 'efermi', 'gap', 'vbm', 'cbm',
-               'gap_dir', 'vbm_dir', 'cbm_dir',
-               'dipz', 'evacdiff'],
+              ['gap', 'gap_dir',
+               'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
-    panel = {'title': 'Basic electronic properties',
+    gap = row.get('gap')
+
+    if gap > 0:
+        if row.get('evac'):
+            t['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            t['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
+    panel = {'title': 'Basic electronic properties (PBE)',
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    row = ['Band gap (PBE)', f'{row.gap:0.3f}']
+    row = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
+               'plot_descriptions': [{'function': bz_soc,
+                                      'filenames': ['bz-with-gaps.png']}],
                'sort': 10}
 
     return [panel, summary]
@@ -96,10 +112,33 @@ def webpanel(row, key_descriptions):
 def bz_soc(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    import numpy as np
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
-    lat.plot_bz(vectors=False)
+    plt.figure(figsize=(4, 4))
+    lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
+    gsresults = row.data.get('results-asr.gs.json')
+    cbm_c = gsresults['k_cbm_c']
+    vbm_c = gsresults['k_vbm_c']
+
+    if cbm_c is not None:
+        ax = plt.gca()
+        icell = np.linalg.inv(row.cell).T
+        cbm_v = np.dot(cbm_c, icell)
+        vbm_v = np.dot(vbm_c, icell)
+
+        vbm_style = {'marker': 'o', 'facecolor': 'w',
+                     'edgecolors': 'C0', 's': 100, 'lw': 2,
+                     'zorder': 4}
+        cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
+        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
+        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
+        xlim = np.array(ax.get_xlim()) * 1.4
+        ylim = np.array(ax.get_ylim()) * 1.4
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        plt.legend(loc='upper center', ncol=3)
+
     plt.tight_layout()
     plt.savefig(fname)
 
@@ -118,7 +157,7 @@ def main():
     from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     calc = get_calculator()('gs.gpw', txt=None,
                             communicator=serial_comm)
     pbc = atoms.pbc
@@ -159,6 +198,7 @@ def main():
         results['dipz'] = vac['dipz']
         results['evac'] = vac['evacmean']
         results['evacdiff'] = vac['evacdiff']
+        results['workfunction'] = results['evac'] - results['efermi']
 
     fingerprint = {}
     for setup in calc.setups:
@@ -189,9 +229,6 @@ def main():
 
 
 def gaps(calc, soc=True):
-    """Could use some documentation!!! XXX
-    Who is in charge of this thing??
-    """
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -281,7 +318,9 @@ def get_gap_info(soc, direct, calc):
 
 
 def vacuumlevels(atoms, calc, n=8):
-    """Get the vacuumlevels on both sides of a 2D material. Will
+    """Get the vacuumlevels on both sides of a 2D material.
+
+    Get the vacuumlevels on both sides of a 2D material. Will
     do a dipole corrected dft calculation, if needed (Janus structures).
     Assumes the 2D material periodic directions are x and y.
     Assumes that the 2D material is centered in the z-direction of
@@ -321,7 +360,9 @@ def vacuumlevels(atoms, calc, n=8):
 
 
 def evacdiff(atoms):
-    """Calculate vacuum energy level difference from the dipole moment of
+    """Derive vacuum energy level difference from the dipole moment.
+
+    Calculate vacuum energy level difference from the dipole moment of
     a slab assumed to be in the xy plane
 
     Returns
@@ -337,19 +378,6 @@ def evacdiff(atoms):
     evacsplit = 4 * np.pi * dipz / A * Hartree
 
     return evacsplit
-
-
-def get_evac():
-    """Get mean vacuum energy, if it has been calculated"""
-    from asr.core import read_json
-
-    evac = None
-    if Path('results-asr.gs.json').is_file():
-        results = read_json('results-asr.gs.json')
-        if 'vacuumlevels' in results.keys():
-            evac = results['vacuumlevels']['evacmean']
-
-    return evac
 
 
 if __name__ == '__main__':

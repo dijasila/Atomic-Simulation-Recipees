@@ -2,21 +2,26 @@ from asr.core import command
 
 
 def get_reduced_formula(formula, stoichiometry=False):
-    """
+    """Get reduced formula from formula.
+
     Returns the reduced formula corresponding to a chemical formula,
     in the same order as the original formula
     E.g. Cu2S4 -> CuS2
 
-    Parameters:
-        formula (str)
-        stoichiometry (bool): if True, return the stoichiometry ignoring the
-          elements appearing in the formula, so for example "AB2" rather than
-          "MoS2"
-    Returns:
-        A string containing the reduced formula
+    Parameters
+    ----------
+    formula : str
+    stoichiometry : bool
+        If True, return the stoichiometry ignoring the
+        elements appearing in the formula, so for example "AB2" rather than
+        "MoS2"
+
+    Returns
+    -------
+        A string containing the reduced formula.
     """
     from functools import reduce
-    from fractions import gcd
+    from math import gcd
     import string
     import re
     split = re.findall('[A-Z][^A-Z]*', formula)
@@ -38,58 +43,55 @@ def get_reduced_formula(formula, stoichiometry=False):
 
 
 def has_inversion(atoms, use_spglib=True):
-    """
-    Parameters:
-        atoms: Atoms object
-            atoms
-        use_spglib: bool
-            use spglib
-    Returns:
+    """Determine if atoms has inversion symmetry.
+
+    Parameters
+    ----------
+    atoms: Atoms object
+           atoms
+    use_spglib: bool
+           use spglib
+
+    Returns
+    -------
         out: bool
     """
     import numpy as np
-    try:
-        import spglib
-    except ImportError as x:
-        import warnings
-        warnings.warn('using gpaw symmetry for inversion instead: {}'
-                      .format(x))
-        use_spglib = False
+    import spglib
 
     atoms2 = atoms.copy()
     atoms2.pbc[:] = True
     atoms2.center(axis=2)
-    if use_spglib:
-        R = -np.identity(3, dtype=int)
-        r_n = spglib.get_symmetry(atoms2, symprec=1.0e-3)['rotations']
-        return np.any([np.all(r == R) for r in r_n])
-    else:
-        from gpaw.symmetry import atoms2symmetry
-        return atoms2symmetry(atoms2).has_inversion
+    cell = (atoms2.cell.array,
+            atoms2.get_scaled_positions(),
+            atoms2.numbers)
+    R = -np.identity(3, dtype=int)
+    r_n = spglib.get_symmetry(cell, symprec=1.0e-3)['rotations']
+    return np.any([np.all(r == R) for r in r_n])
 
 
 def webpanel(row, key_descriptions):
-    from ase.db.summary import ATOMS, UNITCELL
-    from asr.browser import table
+    from asr.database.browser import table
 
-    basictable = table(row, 'Structural info', [
-        'crystal_prototype', 'class', 'spacegroup', 'ICSD_id',
+    basictable = table(row, 'Structure info', [
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
         'COD_id'
     ], key_descriptions, 2)
+    basictable['columnwidth'] = 4
     rows = basictable['rows']
     codid = row.get('COD_id')
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            href = ('<a href="http://www.crystallography.net/cod/' +
-                    '{id}.html">{id}</a>'.format(id=codid))
+            href = ('<a href="http://www.crystallography.net/cod/'
+                    + '{id}.html">{id}</a>'.format(id=codid))
             if 'COD' in tmprow[0]:
                 tmprow[1] = href
 
     doi = row.get('doi')
     if doi:
         rows.append([
-            'Monolayer DOI',
+            'Monolayer reported DOI',
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
@@ -97,14 +99,16 @@ def webpanel(row, key_descriptions):
     row = ['Magnetic state', row.magstate]
     eltable = {'type': 'table',
                'header': ['Electronic properties', ''],
-               'rows': [row]}
+               'rows': [row],
+               'columnwidth': 4}
 
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
-                           'rows': []},
+                           'rows': [],
+                           'columnwidth': 4},
                           eltable],
-                         [ATOMS, UNITCELL]],
+                         [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
 
@@ -116,7 +120,7 @@ tests = [{'description': 'Test SI.',
                   'asr.gs@calculate:kptdensity 2"',
                   'asr run structureinfo',
                   'asr run database.fromtree',
-                  'asr run "browser --only-figures"']}]
+                  'asr run "database.browser --only-figures"']}]
 
 
 @command('asr.structureinfo',
@@ -130,7 +134,6 @@ def main():
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-
     import numpy as np
     from ase.io import read
     from pathlib import Path
@@ -166,24 +169,6 @@ def main():
     info['stoichiometry'] = stoichimetry
     info['has_inversion_symmetry'] = has_inversion(atoms)
 
-    def coarsesymmetries(a):
-        from gpaw.symmetry import Symmetry
-        cell_cv = a.get_cell()
-        tol = 0.01  # Tolerance for coarse symmetries
-        coarsesymmetry = Symmetry(
-            a.get_atomic_numbers(),
-            cell_cv,
-            tolerance=tol,
-            symmorphic=False,
-            time_reversal=True)
-        coarsesymmetry.analyze(a.get_scaled_positions())
-        return (coarsesymmetry.op_scc, coarsesymmetry.ft_sc)
-
-    op_scc, ft_sc = coarsesymmetries(atoms)
-    symmetry = [(op_cc.tolist(), ft_c.tolist())
-                for op_cc, ft_c in zip(op_scc, ft_sc)]
-    info['symmetries'] = symmetry
-
     # Calculate crystal prototype
     import spglib
     formula = atoms.symbols.formula
@@ -196,7 +181,7 @@ def main():
     info['spglib_dataset'] = dataset
     sg = dataset['international']
     number = dataset['number']
-    w = '-'.join(sorted(set(dataset['wyckoffs'])))
+    w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_prototype = f'{stoi}-{number}-{w}'
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg

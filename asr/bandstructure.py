@@ -14,7 +14,7 @@ tests.append({'description': 'Test band structure of Si.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 tests.append({'description': 'Test band structure of 2D-BN.',
               'name': 'asr.bandstructure_2DBN',
               'cli': ['asr run "setup.materials -s BN,natoms=2"',
@@ -25,7 +25,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
                       'asr.bandstructure@calculate:emptybands 5"',
                       'asr run bandstructure',
                       'asr run database.fromtree',
-                      'asr run "browser --only-figures"']})
+                      'asr run "database.browser --only-figures"']})
 
 
 @command('asr.bandstructure',
@@ -37,10 +37,10 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @option('--npoints')
 @option('--emptybands')
 def calculate(kptpath=None, npoints=400, emptybands=20):
-    """Calculate electronic band structure"""
+    """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
@@ -57,7 +57,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
-    atoms = read('gs.gpw')
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
@@ -121,7 +120,7 @@ def bs_pbe_html(row,
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
-    perm = (sz_mk).argsort(axis=None)
+    perm = (-sz_mk).argsort(axis=None)
     e_mk = e_mk.ravel()[perm].reshape(shape)
     sz_mk = sz_mk.ravel()[perm].reshape(shape)
     xcoords = np.vstack([xcoords] * shape[0])
@@ -232,8 +231,7 @@ def bs_pbe_html(row,
         '</script>').format(id=plotdivid)
 
     # Insert plotly.js
-    plotlyjs = ('<script src="https://cdn.plot.ly/plotly-latest.min.js">' +
-                '</script>')
+    plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
     html = ''.join([
         '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
@@ -244,21 +242,18 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, **kwargs):
-    """plot pbe with soc on ax"""
+def add_bs_pbe(row, ax, reference=0, color='C1'):
+    """Plot pbe with soc on ax."""
     from ase.dft.kpoints import labels_from_kpts
-    c = '0.8'  # light grey for pbe with soc plot
-    ls = '-'
-    lw = kwargs.get('lw', 1.0)
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k - reference, color=c, ls=ls, lw=lw, zorder=-2)
+        ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
     ax.lines[-1].set_label('PBE')
     ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=0, color=c, lw=lw)
+    ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
 
 
@@ -270,6 +265,7 @@ def plot_with_colors(bs,
                      show=None,
                      energies=None,
                      colors=None,
+                     colorbar=True,
                      ylabel=None,
                      clabel='$s_z$',
                      cmin=-1.0,
@@ -304,8 +300,11 @@ def plot_with_colors(bs,
     for e_k, c_k, x_k in zip(energies, colors, xcoords):
         things = ax.scatter(x_k, e_k, c=c_k, s=s, vmin=cmin, vmax=cmax)
 
-    cbar = plt.colorbar(things)
-    cbar.set_label(clabel)
+    if colorbar:
+        cbar = plt.colorbar(things)
+        cbar.set_label(clabel)
+    else:
+        cbar = None
 
     bs.finish_plot(filename, show, loc)
 
@@ -369,11 +368,13 @@ def bs_pbe(row,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
+    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
         energies=e_mk - ref_soc,
         colors=sz_mk,
+        colorbar=colorbar,
         filename=filename,
         show=False,
         emin=emin - ref_soc,
@@ -383,8 +384,9 @@ def bs_pbe(row,
         clabel=r'$\langle S_{} \rangle $'.format(sdir),
         s=s)
 
-    cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-    cbar.update_ticks()
+    if cbar:
+        cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+        cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
     ax.set_xlabel('$k$-points')
@@ -406,19 +408,8 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def bz_soc(row, fname):
-    from ase.geometry.cell import Cell
-    from matplotlib import pyplot as plt
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
-    lat.plot_bz(vectors=False)
-    plt.tight_layout()
-    plt.savefig(fname)
-
-
 def webpanel(row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, table
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -441,16 +432,15 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'gap', 'gap_dir',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'gap', 'dir_gap', 'vbm', 'cbm', 'D_vbm',
-                    'D_cbm'
+                    'workfunction', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -458,30 +448,42 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'work_function', 'dos_at_ef_soc', 'gap', 'dir_gap', 'vbm',
-                    'cbm', 'D_vbm', 'D_cbm'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
 
-    panel = {'title': 'Electronic band structure (PBE)',
+    gap = row.get('gap')
+    if gap > 0:
+        if row.get('evac'):
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
+
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         # fig('pbe-pdos.png', link='empty'),
-                         [fig('bz.png'), pbe]],
-             'plot_descriptions': [{'function': bz_soc,
-                                    'filenames': ['bz.png']},
-                                   {'function': bs_pbe,
+                         [fig('bz-with-gaps.png'), pbe]],
+             'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14}
+             'sort': 14.5}
+
     return [panel]
 
 
@@ -506,15 +508,16 @@ def main():
     calc = GPAW('bs.gpw', txt=None)
     atoms = calc.atoms
     path = calc.parameters.kpts
-    if 'kpts' in path:
-        # In this case path comes from a bandpath object
-        path = BandPath(kpts=path['kpts'], cell=path['cell'],
-                        special_points=path['special_points'],
-                        path=path['labelseq'])
-    else:
-        path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
-                                        path=path['path'],
-                                        npoints=path['npoints'])
+    if not isinstance(path, BandPath):
+        if 'kpts' in path:
+            # In this case path comes from a bandpath object
+            path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                            special_points=path['special_points'],
+                            path=path['labelseq'])
+        else:
+            path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
+                                            path=path['path'],
+                                            npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}

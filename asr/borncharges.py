@@ -85,7 +85,12 @@ def webpanel(row, key_descriptions):
                    'u<sub>y</sub>', 'u<sub>z</sub>']
         rows[1][0] = 'P<sub>x</sub>'
         rows[2][0] = 'P<sub>y</sub>'
-        rows[3][0] = 'P<sub>y</sub>'
+        rows[3][0] = 'P<sub>z</sub>'
+
+        for ir, tmprow in enumerate(rows):
+            for ic, item in enumerate(tmprow):
+                if ir == 0 or ic == 0:
+                    rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
 
         Ztable = dict(
             type='table',
@@ -94,7 +99,8 @@ def webpanel(row, key_descriptions):
         columns[a % 2].append(Ztable)
 
     panel = {'title': 'Born charges',
-             'columns': columns}
+             'columns': columns,
+             'sort': 17}
     return [panel]
 
 
@@ -105,7 +111,7 @@ def webpanel(row, key_descriptions):
 @option('--displacement', help='Atomic displacement (Å)')
 @option('--kptdensity')
 def main(displacement=0.01, kptdensity=8.0):
-    """Calculate Born charges"""
+    """Calculate Born charges."""
     from pathlib import Path
 
     import numpy as np
@@ -161,13 +167,13 @@ def main(displacement=0.01, kptdensity=8.0):
         mod_cv = np.round(dphase_cv / (2 * np.pi)) * 2 * np.pi
         dphase_cv -= mod_cv
         phase_scv[1] -= mod_cv
-        dP_vv = (-np.dot(dphase_cv.T, cell_cv).T /
-                 (2 * np.pi * vol))
+        dP_vv = (-np.dot(dphase_cv.T, cell_cv).T
+                 / (2 * np.pi * vol))
 
         pbc = atoms.pbc
         dP_vv[~pbc] = (dipol_svv[1, ~pbc] - dipol_svv[0, ~pbc]) / vol
-        P_svv = (-np.dot(cell_cv.T, phase_scv).transpose(1, 0, 2) /
-                 (2 * np.pi * vol))
+        P_svv = (-np.dot(cell_cv.T, phase_scv).transpose(1, 0, 2)
+                 / (2 * np.pi * vol))
         Z_vv = dP_vv * vol / (2 * displacement / Bohr)
         P_asvv.append(P_svv)
         Z_avv.append(Z_vv)
