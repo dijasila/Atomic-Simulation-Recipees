@@ -13,7 +13,7 @@ def get_polarization_phase(calc):
     nspins = calc.get_number_of_spins()
     for c in [0, 1, 2]:
         for spin in range(nspins):
-            indices_kk, phases = get_berry_phases(calc, dir=c, spin=spin)
+            _, phases = get_berry_phases(calc, dir=c, spin=spin)
             phase_c[c] += np.sum(phases) / len(phases)
 
     # Ionic contribution
@@ -76,9 +76,7 @@ def main(gpwname='formalpol.gpw', kptdensity=12.0):
     calc = get_wavefunctions(atoms=atoms, name=gpwname,
                              params=params, density=kptdensity)
     phase_c = get_polarization_phase(calc)
-
     results = {'phase_c': phase_c}
-
     world.barrier()
     if world.rank == 0:
         f = Path(gpwname)
