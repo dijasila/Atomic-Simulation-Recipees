@@ -1,7 +1,7 @@
 from ase.calculators.calculator import kpts2ndarray, Calculator
 from ase.units import Bohr, Ha
 import numpy as np
-
+from .mpi import world
 
 __version__ = 'Dummy GPAW version'
 
@@ -36,6 +36,7 @@ class GPAW(Calculator):
         "dipole": np.array([0, 0, 0], float),
         "electrostatic_potential": None,
         "gap": 0,
+        "txt": None
     }
 
     class Occupations:
@@ -47,10 +48,13 @@ class GPAW(Calculator):
     class Setups(list):
         nvalence = None
 
+        id_a = [(0, 'paw', None), ]
+
     from types import SimpleNamespace
 
     setups = Setups()
-    setups.append(SimpleNamespace(symbol="MySymbol", fingerprint="asdf1234"))
+    setups.append(SimpleNamespace(symbol="MySymbol", fingerprint="asdf1234",
+                                  Nv=1))
 
     class WaveFunctions:
         class GridDescriptor:
@@ -69,10 +73,13 @@ class GPAW(Calculator):
 
     wfs = WaveFunctions()
 
+    world = world
+
     def calculate(self, atoms, *args, **kwargs):
         if atoms is not None:
             self.atoms = atoms
 
+        self.spos_ac = atoms.get_scaled_positions(wrap=True)
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
         self.kpts = kpts
         self.wfs.kd.nibzkpts = len(kpts)

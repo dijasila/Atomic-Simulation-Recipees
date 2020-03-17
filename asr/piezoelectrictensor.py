@@ -112,6 +112,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     return calc
 
 @command()
+@option('--delta', help='Strain fraction.')
 def main(delta=0.01):
     import numpy as np
     from gpaw import GPAW
