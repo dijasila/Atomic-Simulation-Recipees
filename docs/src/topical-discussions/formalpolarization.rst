@@ -21,3 +21,8 @@ periodic systems. To learn more about this please consider
   Polarization as a Geometric Quantum Phase",
   Eur. Phys. Lett. 22 (1993)
   133–138. <https://doi.org/10.1209/0295-5075/22/2/010>`_
+
+In short, the polarization density is not well-defined in periodic
+systems, only changes in the polarization density. It turns out, that
+the polarization density can be related to a geometric phase which is
+what the :py:func:`asr.formalpolarization.main` recipe returns.
