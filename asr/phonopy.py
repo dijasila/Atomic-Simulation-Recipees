@@ -30,7 +30,7 @@ def lattice_vectors(N_c):
 )
 @option("--d", type=float, help="Displacement size")
 @option("--fsname", help="Name for forces file")
-@option('--sc', nargs=3, type=click.Tuple([int, int, int]),
+@option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.')
 def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
