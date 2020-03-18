@@ -18,7 +18,7 @@ To calculate the polarization phase simply do::
 
 See also
 --------
-:func:`asr.piezoelectrictensor.main`
+:mod:`asr.piezoelectrictensor`
 
 """
 

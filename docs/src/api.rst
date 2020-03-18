@@ -1,10 +1,16 @@
 .. _API reference:
 
+=============
 API reference
 =============
 
+.. contents::
+   :local:
+
 .. currentmodule:: asr
 
+Recipes
+=======
 .. autosummary::
    :toctree: generated
 
@@ -39,3 +45,45 @@ API reference
    stiffness
    structureinfo
    workflow
+
+Setup sub-package
+=================
+.. currentmodule:: asr.setup
+
+.. autosummary::
+   :toctree: generated
+
+   decorate
+   defects
+   magnetize
+   materials
+   params
+   scanparams
+   strains
+   symmetrize
+
+Database sub-package
+====================
+.. currentmodule:: asr.database
+
+.. autosummary::
+   :toctree: generated
+
+   app
+   clonetree
+   fromtree
+   material_fingerprint
+   merge
+   totree
+
+
+Core sub-package
+================
+.. currentmodule:: asr
+
+.. autosummary::
+   :toctree: generated
+
+   core
+   core.cli
+   core.material
