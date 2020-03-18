@@ -1,7 +1,14 @@
-"""Calculate formal polarization for a structure.
+"""Module for calculating formal polarization for a structure.
 
 Module for calculating formal polarization as defined in the Modern
-Theory of Polarization. The calculated formal polarization can then be
+Theory of Polarization. In the Modern theory of Polarization it is
+demonstrated that the standard definition of the Polarization density
+is not well-defined in periodic systems. To learn more see more about
+this please consider
+
+:ref:`Modern theory of polarization`
+
+The calculated formal polarization can then be
 used to calculate several other properties like:
 
   - Piezoelectric tensors
