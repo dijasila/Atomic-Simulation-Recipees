@@ -111,6 +111,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     calc = GPAW(name, communicator=serial_comm, txt=None)
     return calc
 
+
 @command()
 @option('--delta', help='Strain fraction.')
 def main(delta=0.01):
