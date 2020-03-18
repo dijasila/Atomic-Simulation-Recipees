@@ -52,6 +52,7 @@ Setup sub-package
 .. currentmodule:: asr.setup
 
 .. autosummary::
+   :template: autosummary/mytemplate.rst
    :toctree: generated
 
    decorate
@@ -68,6 +69,7 @@ Database sub-package
 .. currentmodule:: asr.database
 
 .. autosummary::
+   :template: autosummary/mytemplate.rst
    :toctree: generated
 
    app
@@ -83,6 +85,7 @@ Core sub-package
 .. currentmodule:: asr
 
 .. autosummary::
+   :template: autosummary/mytemplate.rst
    :toctree: generated
 
    core

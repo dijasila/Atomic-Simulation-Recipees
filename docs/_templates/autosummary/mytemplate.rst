@@ -6,9 +6,8 @@
    {% if functions %}
    .. rubric:: Functions
 
-   .. autosummary::
    {% for item in functions %}
-      {{ item }}
+   .. autofunction:: {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
@@ -17,9 +16,8 @@
    {% if classes %}
    .. rubric:: Classes
 
-   .. autosummary::
    {% for item in classes %}
-      {{ item }}
+   .. autoclass:: {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
@@ -28,9 +26,8 @@
    {% if exceptions %}
    .. rubric:: Exceptions
 
-   .. autosummary::
    {% for item in exceptions %}
-      {{ item }}
+   .. autoexception:: {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
