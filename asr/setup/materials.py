@@ -14,11 +14,15 @@ def main(selection=''):
     The created materials will be saved into the database
     "materials.json".
 
-    \b
-    Examples:
-    ---------
-    Get all materials from database with ntypes=1 (elementary compounds)
-        asr run setup.materials -s ntypes=1
+    Examples
+    --------
+    Get all materials from database
+    >>> asr run setup.materials
+    In folder: . (1/1)
+    Running asr.setup.materials(selection='')
+    PWD /scratch/mogje/asr
+    Created materials.json database containing 136 materials
+
     """
     from ase.db import connect
     from pathlib import Path
@@ -31,12 +35,13 @@ def main(selection=''):
     assert not Path('materials.json').is_file(), \
         'Database materials.json already exists!'
 
-    with connect('materials.json') as newdb:
-        for row in rows:
-            atoms = row.toatoms()
-            kvp = row.key_value_pairs
-            data = row.data
-            newdb.write(atoms, key_value_pairs=kvp, data=data)
+    print('PWD', Path().resolve())
+    newdb = connect('materials.json')
+    for row in rows:
+        atoms = row.toatoms()
+        kvp = row.key_value_pairs
+        data = row.data
+        newdb.write(atoms, key_value_pairs=kvp, data=data)
     print(f'Created materials.json database containing {nmat} materials')
 
 

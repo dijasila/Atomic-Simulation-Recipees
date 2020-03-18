@@ -1,29 +1,3 @@
-def get_spin_direction(fname="anisotropy_xy.npz"):
-    """Uses the magnetic anisotropy to calculate the preferred spin orientation
-    for magnetic (FM/AFM) systems.
-
-    Parameters:
-        fname: The filename of a datafile containing the xz and yz
-            anisotropy energies.
-
-    Returns:
-        theta: Polar angle in radians
-        phi: Azimuthal angle in radians
-    """
-    import os
-    import numpy as np
-    theta = 0
-    phi = 0
-    if os.path.isfile(fname):
-        data = np.load(fname)
-        DE = max(data["dE_zx"], data["dE_zy"])
-        if DE > 0:
-            theta = np.pi / 2
-            if data["dE_zy"] > data["dE_zx"]:
-                phi = np.pi / 2
-    return theta, phi
-
-
 def eigenvalues(calc):
     """Get eigenvalues from calculator.
 
@@ -72,64 +46,87 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
 
 
 def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
-              optimal_spin_direction=False):
+              theta=0, phi=0):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
+    from .symmetry import restrict_spin_projection_2d
+    from gpaw.symmetry import atoms2symmetry
+
     dct = None
     if mpi.world.rank in ranks:
-        theta = 0
-        phi = 0
-        if optimal_spin_direction:
-            theta, phi = get_spin_direction()
         if bands is None:
             n2 = calc.todict().get("convergence", {}).get("bands")
+            if isinstance(n2, str):
+                assert n2.startswith('CBM')
+                n2 = calc.get_number_of_bands()
             bands = slice(0, n2)
         if isinstance(bands, slice):
             bands = range(calc.get_number_of_bands())[bands]
         eps_nosoc_skn = eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
-        eps_mk, s_kvm = get_spinorbit_eigenvalues(calc, bands=bands,
-                                                  theta=theta,
-                                                  phi=phi,
-                                                  return_spin=True)
-        eps_km = eps_mk.T
-        efermi = fermi_level(calc, eps_km[np.newaxis],
-                             nelectrons=2 * calc.get_number_of_electrons())
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
-               'eps_km': eps_km,
-               'efermi_nosoc': efermi_nosoc,
-               'efermi': efermi,
-               's_kvm': s_kvm}
+               'efermi_nosoc': efermi_nosoc}
+        if soc:
+            eps_mk, s_kvm = get_spinorbit_eigenvalues(calc, bands=bands,
+                                                      theta=theta,
+                                                      phi=phi,
+                                                      return_spin=True)
+            eps_km = eps_mk.T
+            efermi = fermi_level(calc, eps_km[np.newaxis],
+                                 nelectrons=2 * calc.get_number_of_electrons())
+            symmetry = atoms2symmetry(calc.atoms)
+            ibzk_kc = calc.get_ibz_k_points()
+            # For magnetic systems we know some more about the spin
+            # projections
+            if calc.get_number_of_spins() == 1:
+                # Inversion + time reversal symmetry forces degenerates spins
+                if symmetry.has_inversion:
+                    s_kvm[:] = 0.0
+                else:
+                    # For 2D we try to find materials where
+                    # spins are restricted to inplane spins
+                    if np.sum(calc.atoms.pbc).astype(int) == 2:
+                        for ik, kpt in enumerate(ibzk_kc):
+                            s_vm = restrict_spin_projection_2d(kpt,
+                                                               symmetry.op_scc,
+                                                               s_kvm[ik])
+                            s_kvm[ik] = s_vm
+            dct.update({'eps_km': eps_km,
+                        'efermi': efermi,
+                        's_kvm': s_kvm})
+
     dct = broadcast(dct, root=0, comm=mpi.world)
     if soc is None:
-        return dct
-    elif soc:
+        raise NotImplementedError('soc=None is not implemented')
+
+    if soc:
         out = (dct['eps_km'], dct['efermi'], dct['s_kvm'])
         if not return_spin:
             out = out[:2]
         return out
     else:
-        return dct['eps_nosoc_skn'], dct['efermi_nosoc']
+        if not return_spin:
+            return dct['eps_nosoc_skn'], dct['efermi_nosoc']
+        return dct['eps_nosoc_skn'], dct['efermi_nosoc'], dct['s_kvm']
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
-             optimal_spin_direction=False):
-    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
-    fermi energy
+             theta=0, phi=0):
+    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
-    Parameters:
+    Parameters
+    ----------
         gpw (str): gpw filename
         soc : None, bool
             use spinorbit coupling if None it returns both w and w/o
-        optimal_spin_direction : bool
-            If True, use get_spin_direction to calculate the spin direction
-            for the SOC
         bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
 
-    Returns : dict or e_skn, efermi
+    Returns
+    -------
+    dict or e_skn, efermi
         containg eigenvalues and fermi levels w and w/o spinorbit coupling
     """
     from gpaw import GPAW
@@ -137,5 +134,5 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     ranks = [0]
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
     return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
-                     optimal_spin_direction=optimal_spin_direction,
+                     theta=theta, phi=phi,
                      ranks=ranks)

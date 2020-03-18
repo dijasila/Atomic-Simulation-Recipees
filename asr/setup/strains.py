@@ -11,13 +11,15 @@ def get_relevant_strains(pbc):
     elif np.sum(pbc) == 2:
         ij = ((0, 0), (1, 1), (0, 1))
     elif np.sum(pbc) == 1:
-        ij = ((2, 2))
+        ij = ((2, 2), )
     return ij
 
 
 def get_strained_folder_name(strain_percent, i, j):
     from pathlib import Path
     import numpy as np
+    if strain_percent == 0:
+        return Path('.')
     itov_i = ['x', 'y', 'z']
     name = itov_i[i] + itov_i[j]
     sign = ['', '+', '-'][int(np.sign(strain_percent))]
@@ -56,8 +58,14 @@ def main(strain_percent=1, kptdensity=6.0):
             atoms.write(str(folder / 'unrelaxed.json'))
 
             with chdir(folder):
-                params = ("asr.relax:calculator +{'kpts':{'size':[" +
-                          '{},{},{}'.format(*size)
-                          + "],'gamma':True}}").split()
+                params = ("asr.relax:calculator {'kpts':{'size':["
+                          + '{},{},{}'.format(*size)
+                          + "],'gamma':True},...}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
+                params.extend(['asr.relax:allow_symmetry_breaking', 'True'])
+                params.extend(['asr.relax:fmax', '0.008'])
                 setup_params(params=params)
+
+
+if __name__ == '__main__':
+    main.cli()

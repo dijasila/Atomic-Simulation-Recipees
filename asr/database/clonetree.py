@@ -10,9 +10,10 @@ from asr.core import command, option, argument
 @option('--dont-contain')
 @option('--must-contain')
 @option('--dry-run')
+@option('--glob-pattern')
 def main(source, destination, patterns,
          copy=False, map_files=None, dont_contain=None,
-         must_contain=None, dry_run=False):
+         must_contain=None, dry_run=False, glob_pattern='**/'):
     """Tool for copying or symlinking a tree of files."""
     import fnmatch
     from pathlib import Path
@@ -40,7 +41,7 @@ def main(source, destination, patterns,
 
     if not patterns:
         patterns = ['*']
-    
+
     log: List[Tuple[Path, Path]] = []
     mkdir: List[Path] = []
     errors = []
@@ -48,7 +49,7 @@ def main(source, destination, patterns,
     def item_show_func(item):
         return str(item)
 
-    with progressbar(source.glob('**/'),
+    with progressbar(source.glob(glob_pattern),
                      label='Searching for files and folders',
                      item_show_func=item_show_func) as bar:
         for srcdir in bar:

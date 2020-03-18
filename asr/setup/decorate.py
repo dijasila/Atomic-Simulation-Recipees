@@ -25,15 +25,14 @@ def find_substitutions(number, data, threshold):
     from ase.data import atomic_numbers
     row = data[number]
     substitutions = np.where(row > threshold)[0]
-    
     allowed_elements = [
         'H', 'He',
         'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
         'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar',
-        
+
         'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
         'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
-        
+
         'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd',
         'In', 'Sn', 'Sb', 'Te', 'I', 'Xe',
         # 6
@@ -57,7 +56,8 @@ def generate_structures(prototype, p_ab, threshold=0.08):
 
 
 def get_p_ab():
-    """
+    """Get similarity matrix.
+
     The data is saved as a matrix of counts, so that s_ab gives the number of
     times that a can substitute for b in the icsd. This is be normalized,
     to give a probability of succesful substitution. See
@@ -97,12 +97,10 @@ def main(atoms, threshold=0.08, database='decorated.db'):
     database which can be unpacked into a folder structure using the
     "setup.unpackdatabase" recipe.
 
-    \b
-    Examples:
-    ---------
-    \b
+    Examples
+    --------
     Perform likely substitions of atomic structure in structure.json
-        asr run setup.decorate structure.json
+        asr run "setup.decorate structure.json"
     """
     from ase.db import connect
     from ase.io import read

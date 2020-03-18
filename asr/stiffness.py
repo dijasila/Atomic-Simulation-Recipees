@@ -3,32 +3,74 @@ from asr.core import command, option
 tests = [{'cli': ['ase build -x diamond Si structure.json',
                   'asr run "setup.strains --kptdensity 2.0"',
                   'asr run "setup.params asr.relax:calculator '
-                  '''+{'mode':{'ecut':200},'kpts':(1,1,1)}" strains*/''',
+                  '''{'mode':{'ecut':200},'kpts':(1,1,1),...}" strains*/''',
                   'asr run relax strains*/',
                   'asr run database.material_fingerprint strains*/',
                   'asr run stiffness']}]
 
 
 def webpanel(row, key_descriptions):
-    def matrixtable(M, digits=2, unit=''):
+    import numpy as np
+
+    def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
         table = M.tolist()
         shape = M.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
+
+        for i in range(skiprow, shape[0]):
+            for j in range(skipcolumn, shape[1]):
                 value = table[i][j]
                 table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
         return table
+    stiffnessdata = row.data['results-asr.stiffness.json']
+    c_ij = stiffnessdata['stiffness_tensor']
+    eigs = stiffnessdata['eigenvalues']
 
-    c_ij = row.data['results-asr.stiffness.json']['stiffness_tensor']
+    c_ij = np.zeros((4, 4))
+    c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
+    rows = matrixtable(c_ij, unit='',
+                       skiprow=1,
+                       skipcolumn=1)
+    rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
+    rows[1][0] = 'xx'
+    rows[2][0] = 'yy'
+    rows[3][0] = 'xy'
+    for ir, tmprow in enumerate(rows):
+        for ic, item in enumerate(tmprow):
+            if ir == 0 or ic == 0:
+                rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
 
     ctable = dict(
         type='table',
-        rows=matrixtable(c_ij, unit=' N/m'))
+        rows=rows)
+
+    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
+                  for ie, eig in enumerate(sorted(eigs,
+                                                  key=lambda x: x.real))])
+    eigtable = dict(
+        type='table',
+        rows=eigrows)
 
     panel = {'title': 'Stiffness tensor',
-             'columns': [[ctable]]}
+             'columns': [[ctable], [eigtable]],
+             'sort': 2}
 
-    return [panel]
+    dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    high = 'Min. Stiffness eig. > 0'
+    low = 'Min. Stiffness eig. < 0'
+    row = ['Dynamical (stiffness)',
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+               low, high, dynstab.upper())]
+
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Stability', 'Category'],
+                             'rows': [row],
+                             }]],
+               'sort': 3}
+
+    return [panel, summary]
 
 
 @command(module='asr.stiffness',
@@ -40,9 +82,10 @@ def main(strain_percent=1.0):
                                    get_relevant_strains)
     from ase.io import read
     from ase.units import J
-    from asr.core import read_json
+    from asr.core import read_json, chdir
+    from asr.database.material_fingerprint import main as computemf
     import numpy as np
-    
+
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
@@ -51,16 +94,15 @@ def main(strain_percent=1.0):
                    [4, 3, 2]]
 
     links = {}
-    stiffness = np.zeros((6, 6), float) + np.nan
+    stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
-        completed = True
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             structurefile = folder / 'structure.json'
-            if not structurefile.is_file():
-                completed = False
-                continue
+            with chdir(folder):
+                if not computemf.done:
+                    computemf()
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
             links[str(folder)] = mf['uid']
@@ -69,8 +111,6 @@ def main(strain_percent=1.0):
             # calculated
             stress = structure.get_stress(voigt=True)
             dstress += stress * sign
-        if not completed:
-            continue
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 
     stiffness = np.array(stiffness, float)
@@ -123,6 +163,12 @@ def main(strain_percent=1.0):
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
 
     data['__links__'] = links
-    data['stiffness_tensor'] = stiffness.tolist()
+    data['stiffness_tensor'] = stiffness
 
+    eigs = np.linalg.eigvals(stiffness)
+    data['eigenvalues'] = eigs
     return data
+
+
+if __name__ == '__main__':
+    main.cli()
