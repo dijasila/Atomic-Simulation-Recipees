@@ -1,17 +1,22 @@
-"""Module for calculating formal polarization for a structure.
+"""Module for calculating formal polarization phase for a structure.
 
-Module for calculating formal polarization as defined in the Modern
-Theory of Polarization. In the Modern theory of Polarization it is
-demonstrated that the standard definition of the Polarization density
-is not well-defined in periodic systems. To learn more see more about
-this please see our explanation of the :ref:`Modern theory of
-polarization`
+Module for calculating formal polarization phase as defined in the
+Modern Theory of Polarization. To learn more see more about this
+please see our explanation of the :ref:`Modern theory of
+polarization`, in particular to see the definition of the polarization
+phase.
 
-The calculated formal polarization can then be
-used to calculate several other properties like:
+To calculate the polarization phase simply do::
 
-  - Piezoelectric tensors
-  - Ferroelectric properties
+  $ asr run formalpolarization
+
+The central recipe of this module is
+
+.. autofunction:: asr.formalpolarization.main
+
+Related recipes
+---------------
+.. function:: asr.piezoelectrictensor.main
 
 """
 

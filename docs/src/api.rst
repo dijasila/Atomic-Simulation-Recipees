@@ -3,6 +3,7 @@
 API reference
 =============
 .. contents:: Overview
+   :depth: 2
    :local:
 
 Recipes
@@ -60,7 +61,6 @@ asr.fermisurface
 asr.formalpolarization
 ~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: asr.formalpolarization
-.. autofunction:: asr.formalpolarization.main
 
 asr.gs
 ~~~~~~
