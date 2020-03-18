@@ -95,6 +95,10 @@ asr.phonopy
 ~~~~~~~~~~~
 .. autofunction:: asr.phonopy.main
 
+asr.piezoelectrictensor
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: asr.piezoelectrictensor.main
+
 asr.plasmafrequency
 ~~~~~~~~~~~~~~~~~~~
 .. autofunction:: asr.plasmafrequency.main
