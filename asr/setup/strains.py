@@ -11,7 +11,7 @@ def get_relevant_strains(pbc):
     elif np.sum(pbc) == 2:
         ij = ((0, 0), (1, 1), (0, 1))
     elif np.sum(pbc) == 1:
-        ij = ((2, 2))
+        ij = ((2, 2), )
     return ij
 
 
@@ -58,8 +58,8 @@ def main(strain_percent=1, kptdensity=6.0):
             atoms.write(str(folder / 'unrelaxed.json'))
 
             with chdir(folder):
-                params = ("asr.relax:calculator {'kpts':{'size':[" +
-                          '{},{},{}'.format(*size)
+                params = ("asr.relax:calculator {'kpts':{'size':["
+                          + '{},{},{}'.format(*size)
                           + "],'gamma':True},...}").split()
                 params.extend(['asr.relax:fixcell', 'True'])
                 params.extend(['asr.relax:allow_symmetry_breaking', 'True'])

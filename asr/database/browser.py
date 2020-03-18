@@ -53,12 +53,12 @@ def create_table(row,  # AtomsRow
 
 
 def miscellaneous_section(row, key_descriptions, exclude):
-    """Helper function for adding a "miscellaneous" section.
+    """Make help function for adding a "miscellaneous" section.
 
     Create table with all keys except those in exclude.
     """
-    misckeys = (set(key_descriptions) |
-                set(row.key_value_pairs)) - set(exclude)
+    misckeys = (set(key_descriptions)
+                | set(row.key_value_pairs)) - set(exclude)
     misc = create_table(row, ['Items', ''], sorted(misckeys), key_descriptions)
     return ('Miscellaneous', [[misc]])
 
@@ -90,7 +90,8 @@ def table(row, title, keys, kd={}, digits=2):
 def merge_panels(page):
     """Merge panels which have the same title.
 
-    Also merge tables with same first entry in header."""
+    Also merge tables with same first entry in header.
+    """
     # Update panels
     for title, panels in page.items():
         panels = sorted(panels, key=lambda x: x['sort'])
@@ -143,7 +144,11 @@ def layout(row: AtomsRow,
         # We assume that there should be a results file in
         if f'results-{recipe.name}.json' not in row.data:
             continue
-        panels = recipe.webpanel(row, key_descriptions)
+        try:
+            panels = recipe.webpanel(row, key_descriptions)
+        except Exception as e:
+            print(e)
+            panels = []
         for thispanel in panels:
             assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
             panel = {'columns': [[], []],
@@ -181,7 +186,10 @@ def layout(row: AtomsRow,
         for path in paths:
             if not path.is_file():
                 # Create figure(s) only once:
-                function(row, *(str(path) for path in paths))
+                try:
+                    function(row, *(str(path) for path in paths))
+                except Exception as e:
+                    print(e)
                 plt.close('all')
                 for path in paths:
                     if not path.is_file():
@@ -217,12 +225,12 @@ def layout(row: AtomsRow,
     return final_page
 
 
-@command('asr.browser')
+@command('asr.database.browser')
 @option('--database')
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
 def main(database='database.db', only_figures=False):
-    """Open results in web browser"""
+    """Open results in web browser."""
     import subprocess
     from pathlib import Path
 
