@@ -6,17 +6,19 @@ please see our explanation of the :ref:`Modern theory of
 polarization`, in particular to see the definition of the polarization
 phase.
 
-To calculate the polarization phase simply do::
-
-  $ asr run formalpolarization
-
 The central recipe of this module is
 
 .. autofunction:: asr.formalpolarization.main
 
-Related recipes
----------------
-.. function:: asr.piezoelectrictensor.main
+Examples
+--------
+To calculate the polarization phase simply do::
+
+  $ asr run formalpolarization
+
+See also
+--------
+:func:`asr.piezoelectrictensor.main`
 
 """
 
@@ -89,6 +91,16 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 @option('--gpwname', help='Formal polarization gpw file name')
 @option('--kptdensity', help='Kpoint density for gpw file')
 def main(gpwname='formalpol.gpw', kptdensity=12.0):
+    """Calculate the formal polarization phase.
+
+    Calculate the formal polarization geometric phase necesarry for in
+    the modern theory of polarization.
+
+    .. math::
+
+       a^2 + b^2
+
+    """
     from pathlib import Path
     from gpaw import GPAW
     from gpaw.mpi import world
