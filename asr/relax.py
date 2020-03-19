@@ -225,7 +225,8 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
                 break
     finally:
         trajfile.close()
-        opt.logfile.close()
+        if opt.logfile is not None:
+            opt.logfile.close()
     return atoms
 
 
