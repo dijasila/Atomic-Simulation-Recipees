@@ -70,6 +70,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False}
+
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
