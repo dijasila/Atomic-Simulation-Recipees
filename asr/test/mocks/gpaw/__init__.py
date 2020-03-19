@@ -1,9 +1,20 @@
 from ase.calculators.calculator import kpts2ndarray, Calculator
 from ase.units import Bohr, Ha
+from ase.symbols import Symbols
 import numpy as np
 from .mpi import world
+from types import SimpleNamespace
 
 __version__ = 'Dummy GPAW version'
+
+
+class Setups(list):
+    nvalence = None
+
+    @property
+    def id_a(self):
+        for setup in self:
+            yield setup.Nv, 'paw', None
 
 
 class GPAW(Calculator):
@@ -33,7 +44,7 @@ class GPAW(Calculator):
         "stress": None,
         "magmom": None,
         "magmoms": None,
-        "dipole": np.array([0, 0, 0], float),
+        "dipole": None,
         "electrostatic_potential": None,
         "gap": 0,
         "txt": None
@@ -44,17 +55,6 @@ class GPAW(Calculator):
             return {"name": "fermi-dirac", "width": 0.05}
 
     occupations = Occupations()
-
-    class Setups(list):
-        nvalence = None
-
-        id_a = [(0, 'paw', None), ]
-
-    from types import SimpleNamespace
-
-    setups = Setups()
-    setups.append(SimpleNamespace(symbol="MySymbol", fingerprint="asdf1234",
-                                  Nv=1))
 
     class WaveFunctions:
         class GridDescriptor:
@@ -76,8 +76,17 @@ class GPAW(Calculator):
     world = world
 
     def calculate(self, atoms, *args, **kwargs):
+        """Calculate eigenvalue and setup Mock calculator."""
         if atoms is not None:
             self.atoms = atoms
+
+        # Setup some instance variables
+        setups = Setups()
+        for num in atoms.get_atomic_numbers():
+            setups.append(SimpleNamespace(symbol=str(Symbols([num])),
+                                          fingerprint="asdf1234",
+                                          Nv=1))
+        self.setups = setups
 
         self.spos_ac = atoms.get_scaled_positions(wrap=True)
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
@@ -117,7 +126,7 @@ class GPAW(Calculator):
             or np.zeros((len(self.atoms), 3), float),
             "stress": self.parameters.stress
             or np.zeros((3, 3), float),
-            "dipole": self.parameters.dipole,
+            "dipole": self.get_dipole_moment(),
             "magmom": self.parameters.magmom or 0.0,
             "magmoms": self.parameters.magmoms
             or np.zeros((len(self.atoms), 3), float),
@@ -144,6 +153,15 @@ class GPAW(Calculator):
     def get_number_of_spins(self):
         return self.parameters.nspins
 
+    def get_dipole_moment(self):
+        if self.parameters.dipole:
+            return self.parameters.dipole
+
+        pos_av = self.atoms.get_positions()
+        charges_a = [setup.Nv for setup in self.setups]
+        moment = np.dot(charges_a, pos_av)
+        return moment
+
     def get_number_of_bands(self):
         if isinstance(self.parameters.nbands, str):
             return int(
@@ -163,7 +181,10 @@ class GPAW(Calculator):
     def write(self, name, mode=None):
         from asr.core import write_json
 
-        write_json(name, self.parameters)
+        calc = {'atoms': self.atoms,
+                'parameters': self.parameters}
+
+        write_json(name, calc)
 
     def read(self, name):
         from asr.core import read_json
@@ -183,11 +204,10 @@ class GPAW(Calculator):
             def __setattr__(self, key, value):
                 self[key] = value
 
-        parameters = Parameters(**read_json(name))
+        saved_calc = read_json(name)
+        parameters = Parameters(**saved_calc['parameters'])
         self.parameters = parameters
-        from ase.io import read
-
-        self.atoms = read("structure.json")
+        self.atoms = saved_calc['atoms']
         self.calculate(self.atoms)
 
     def get_electrostatic_potential(self):

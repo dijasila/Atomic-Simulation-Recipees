@@ -85,11 +85,6 @@ def main(gpwname='formalpol.gpw', kptdensity=12.0):
 
     Calculate the formal polarization geometric phase necesarry for in
     the modern theory of polarization.
-
-    .. math::
-
-       a^2 + b^2
-
     """
     from pathlib import Path
     from gpaw import GPAW
