@@ -74,7 +74,8 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     params['convergence'] = {'forces': fconverge}
 
     fd = open('phonons.txt'.format(n), 'a')
-    calc = get_calculator()(txt=fd, **params)
+    params['txt'] = fd
+    calc = get_calculator()(**params)
 
     from asr.core import get_dimensionality
     nd = get_dimensionality()
