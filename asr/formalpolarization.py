@@ -45,8 +45,7 @@ def get_polarization_phase(calc):
     return -phase_c
 
 
-def get_wavefunctions(atoms, name, params, density=6.0,
-                      no_symmetries=False):
+def get_wavefunctions(atoms, name, params):
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     from pathlib import Path
@@ -54,17 +53,13 @@ def get_wavefunctions(atoms, name, params, density=6.0,
     if Path(name).is_file():
         return GPAW(name, communicator=serial_comm, txt=None)
 
-    params['kpts'] = {'density': density,
-                      'gamma': True}
-    # 'even': True}  # Not compatible with ASE atm.
-    if no_symmetries:
-        params['symmetry'] = {'point_group': False,
-                              'time_reversal': False}
+    # We make sure that we converge eigenstates
+    convergence = {'eigenstates': 1e-11,
+                   'density': 1e-7}
+    if 'convergence' in params:
+        params['convergence'].update(convergence)
     else:
-        params['symmetry'] = {'point_group': True,
-                              'time_reversal': True}
-    params['convergence']['eigenstates'] = 1e-11
-    params['convergence']['density'] = 1e-7
+        params['convergence'] = convergence
     tmp = Path(name).with_suffix('').name
     params['txt'] = tmp + '.txt'
     calc = GPAW(**params)
@@ -80,7 +75,7 @@ def get_wavefunctions(atoms, name, params, density=6.0,
          requires=['gs.gpw'])
 @option('--gpwname', help='Formal polarization gpw file name')
 @option('--kptdensity', help='Kpoint density for gpw file')
-def main(gpwname='formalpol.gpw', kptdensity=12.0):
+def main(gpwname='formalpol.gpw', kpts={'density': 12.0}):
     """Calculate the formal polarization phase.
 
     Calculate the formal polarization geometric phase necesarry for in
@@ -91,9 +86,11 @@ def main(gpwname='formalpol.gpw', kptdensity=12.0):
     from gpaw.mpi import world
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
+    params['kpts'] = kpts
     atoms = calc.atoms
-    calc = get_wavefunctions(atoms=atoms, name=gpwname,
-                             params=params, density=kptdensity)
+    calc = get_wavefunctions(atoms=atoms,
+                             name=gpwname,
+                             params=params)
     phase_c = get_polarization_phase(calc)
     results = {'phase_c': phase_c}
     world.barrier()

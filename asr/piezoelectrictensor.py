@@ -1,4 +1,5 @@
 from asr.core import command, option
+from pathlib import Path
 
 
 def webpanel(row, key_descriptions):
@@ -113,10 +114,15 @@ def get_wavefunctions(atoms, name, params, density=6.0,
 
 
 @command()
-@option('--delta', help='Strain fraction.')
-def main(delta=0.01):
+@option('--strain-percent', help='Strain fraction.')
+def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
     import numpy as np
     from gpaw import GPAW
+    from ase.calculators.calculator import kptdensity2monkhorstpack
+    from asr.setup.strains import main as setupstrains
+    from asr.setup.strains import get_relevant_strains, get_strained_folder_name
+
+    setupstrains()
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
 
@@ -124,6 +130,7 @@ def main(delta=0.01):
     params['symmetry'] = {'point_group': False,
                           'do_not_symmetrize_the_density': True,
                           'time_reversal': False}
+
     # We need the eigenstates to a higher accuracy
     params['convergence']['density'] = 1e-8
     atoms = calc.atoms
@@ -131,15 +138,27 @@ def main(delta=0.01):
     # From experience it is important to use
     # non-gamma centered grid when using symmetries.
     # Might have something to do with degeneracies, not sure.
-    size = kptdensity2monkhorstpack(atoms, 6.0, True)
-    params['kpts'] = {'size': size, 'gamma': False}
+    if 'density' in kpts:
+        density = kpts.pop('density')
+        kpts['size'] = kptdensity2monkhorstpack(atoms, density, True)
+    params['kpts'] = kpts
     oldcell_cv = atoms.get_cell()
     pbc_c = atoms.pbc
 
-    if world.rank == 0:
-        print('i j s')
     epsclamped_vvv = np.zeros((3, 3, 3), float)
     eps_vvv = np.zeros((3, 3, 3), float)
+
+    ij = get_relevant_strains(atoms.pbc)
+
+    ij_to_voigt = [[0, 5, 4],
+                   [5, 1, 3],
+                   [4, 3, 2]]
+
+    for i, j in ij:
+        for sign in [-1, 1]:
+            folder = get_strained_folder_name(sign * strain_percent, i, j)
+            with chdir(folder):
+                pass
 
     for i in range(3):
         for j in range(3):
@@ -147,37 +166,32 @@ def main(delta=0.01):
                 continue
             phaseclamped_sc = np.zeros((2, 3), float)
             phase_sc = np.zeros((2, 3), float)
-            if world.rank == 0:
-                print(i, j)
             for s, sign in enumerate([-1, 1]):
                 if not pbc_c[i] or not pbc_c[j]:
                     continue
 
                 # Update atomic structure
                 strain_vv = np.zeros((3, 3), float)
-                strain_vv[i, j] = sign * delta
+                strain_vv[i, j] = sign * strain_percent
                 newcell_cv = np.dot(oldcell_cv,
                                     np.eye(3) + strain_vv)
                 atoms.set_cell(newcell_cv, scale_atoms=True)
-                namegpw = 'piezo-{}-{}{}{}.gpw'.format(delta, i, j, '-+'[s])
-                berryname = 'piezo-{}-{}{}{}-berryphases.json'.format(delta, i,
+                namegpw = 'piezo-{}-{}{}{}.gpw'.format(strain_percent, i, j, '-+'[s])
+                berryname = 'piezo-{}-{}{}{}-berryphases.json'.format(strain_percent, i,
                                                                       j,
                                                                       '-+'[s])
-                if not exists(namegpw) and not exists(berryname):
+                if not Path(namegpw).is_file() and not Path(berryname).is_file():
                     calc = get_wavefunctions(atoms, namegpw, params)
 
-                try:
-                    phaseclamped_sc[s] = get_polarization_phase(namegpw)
-                except ValueError:
-                    calc = get_wavefunctions(atoms, namegpw, params)
-                    phaseclamped_sc[s] = get_polarization_phase(namegpw)
+                # TODO: Check that .gpw file can be loaded
+                phaseclamped_sc[s] = get_polarization_phase(namegpw)
 
                 # Now relax atoms
-                relaxname = 'piezo-{}-{}{}{}-relaxed'.format(delta, i,
+                relaxname = 'piezo-{}-{}{}{}-relaxed'.format(strain_percent, i,
                                                              j, '-+'[s])
                 relaxnamegpw = relaxname + '.gpw'
                 berryname = relaxname + '-berryphases.json'
-                if not exists(relaxnamegpw) and not exists(berryname):
+                if not Path(relaxnamegpw).is_file() and not Path(berryname).is_file():
                     try:
                         relaxedatoms = read(relaxname + '.traj')
                     except (IOError, UnknownFileTypeError, JSONDecodeError):
@@ -195,16 +209,12 @@ def main(delta=0.01):
                     calc = get_wavefunctions(relaxedatoms, relaxnamegpw,
                                              params)
 
-                try:
-                    phase_sc[s] = get_polarization_phase(relaxnamegpw)
-                except ValueError:
-                    calc = get_wavefunctions(relaxedatoms, relaxnamegpw,
-                                             params)
-                    phase_sc[s] = get_polarization_phase(relaxnamegpw)
+                # TODO: Check that .gpw file is not empty
+                phase_sc[s] = get_polarization_phase(relaxnamegpw)
 
             world.barrier()
             if world.rank == 0:
-                files = glob('piezo-{}-*.gpw'.format(delta))
+                files = glob('piezo-{}-*.gpw'.format(strain_percent))
                 for f in files:
                     if isfile(f):
                         remove(f)
@@ -212,7 +222,7 @@ def main(delta=0.01):
             vol = abs(np.linalg.det(oldcell_cv / Bohr))
             dphase_c = phaseclamped_sc[1] - phaseclamped_sc[0]
             dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
-            dphasedeps_c = dphase_c / (2 * delta)
+            dphasedeps_c = dphase_c / (2 * strain_percent)
             eps_v = (-np.dot(dphasedeps_c, oldcell_cv / Bohr) /
                      (2 * np.pi * vol))
 
@@ -229,7 +239,7 @@ def main(delta=0.01):
 
             dphase_c = phase_sc[1] - phase_sc[0]
             dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
-            dphasedeps_c = dphase_c / (2 * delta)
+            dphasedeps_c = dphase_c / (2 * strain_percent)
             eps_v = (-np.dot(dphasedeps_c, oldcell_cv / Bohr) /
                      (2 * np.pi * vol))
             if (~atoms.pbc).any():
@@ -266,14 +276,14 @@ def main(delta=0.01):
     data = {'eps_vvv': eps_vvv,
             'epsclamped_vvv': epsclamped_vvv}
 
-    filename = 'piezoelectrictensor-{}.json'.format(delta)
+    filename = 'piezoelectrictensor-{}.json'.format(strain_percent)
 
     with paropen(filename, 'w') as fd:
         json.dump(jsonio.encode(data), fd)
 
     world.barrier()
     if world.rank == 0:
-        files = glob('piezo-{}-*.gpw'.format(delta))
+        files = glob('piezo-{}-*.gpw'.format(strain_percent))
         for f in files:
             if isfile(f):
                 remove(f)

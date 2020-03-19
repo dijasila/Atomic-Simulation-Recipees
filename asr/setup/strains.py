@@ -32,7 +32,7 @@ def get_strained_folder_name(strain_percent, i, j):
          tests=tests)
 @option('--strain-percent', help='Strain percentage')
 @option('--kptdensity', help='Setup up relax and gs calc with fixed density')
-def main(strain_percent=1, kptdensity=6.0):
+def main(strain_percent=1, parameters=None):
     from ase.io import read
     import numpy as np
     from asr.setup.params import main as setup_params

@@ -51,7 +51,7 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel)
 @option('--displacement', help='Atomic displacement (Å)')
 @option('--kptdensity')
-def main(displacement=0.01, kptdensity=8.0):
+def main(displacement=0.01, kpts={'density': 8.0}):
     """Calculate Born charges."""
     from pathlib import Path
 
@@ -66,6 +66,7 @@ def main(displacement=0.01, kptdensity=8.0):
 
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
+    params['kpts'] = kpts
     atoms = calc.atoms
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
@@ -90,15 +91,13 @@ def main(displacement=0.01, kptdensity=8.0):
                                                  'xyz'[v],
                                                  ' +-'[sign])
                 name = prefix + '.gpw'
-                calc = get_wavefunctions(atoms, name, params,
-                                         density=kptdensity)
+                calc = get_wavefunctions(atoms, name, params)
                 try:
                     phase_c = get_polarization_phase(calc)
                 except ValueError:
                     with file_barrier(name):
                         calc = get_wavefunctions(atoms, name,
-                                                 params,
-                                                 density=kptdensity)
+                                                 params)
                         phase_c = get_polarization_phase(name)
 
                 dipol_svv[s, :, v] = calc.results['dipole'] / Bohr
