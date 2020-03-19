@@ -8,8 +8,6 @@ from ase.io import read
 from asr.core import command, option
 from asr.core import read_json, write_json
 
-import click
-
 
 def lattice_vectors(N_c):
     """Return lattice vectors for cells in the supercell."""
