@@ -47,6 +47,7 @@ def setup_rotation(atom, distance):
     equivalent with symmetry operations for the spacegroup. If that's not the
     case, keep the rotations and continue.
     """
+    from ase.io import write
 
     cell = atom.get_cell()
     print('INFO: atoms object: {}'.format(atom))
@@ -60,26 +61,27 @@ def setup_rotation(atom, distance):
         rotations = 180
 
     i = 0
+    rot_list = []
+    structure_list = []
     for rot in range(0,360,rotations):
         print('INFO: rotation {}: {}'.format(i, rot))
+        rot_list.append(rot)
         i = i+1
-    newstruc = atom.copy()
-    newstruc.rotate(rotations, 'z', rotate_cell=False)
-    newstruc.wrap()
+    for el in rot_list:
+        newstruc = atom.copy()
+        newstruc.rotate(rotations, 'z', rotate_cell=False)
+        newstruc.wrap()
 
-    newpos = newstruc.get_positions()
-    newpos[:,2] = newpos[:,2] + distance
-    newstruc.set_positions(newpos)
+        newpos = newstruc.get_positions()
+        newpos[:,2] = newpos[:,2] + distance
+        newstruc.set_positions(newpos)
 
-    newstruc = newstruc + atom
+        newstruc = newstruc + atom
+        structure_list.append(newstruc)
 
-    # cell[:,2] = cell[2,2] + distance
-    # newstruc.set_cell(cell)
+        # write('newstruc.json', newstruc)
 
-    from ase.io import write
-    write('newstruc.json', newstruc)
-
-    return rot
+    return structure_list
 
 
 # ToDo:
