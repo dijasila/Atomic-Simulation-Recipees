@@ -6,19 +6,9 @@ please see our explanation of the :ref:`Modern theory of
 polarization`, in particular to see the definition of the polarization
 phase.
 
-The central recipe of this module is
+The central recipe of this module is :func:`asr.formalpolarization.main`.
 
 .. autofunction:: asr.formalpolarization.main
-
-Examples
---------
-To calculate the polarization phase simply do::
-
-  $ asr run formalpolarization
-
-See also
---------
-:mod:`asr.piezoelectrictensor`
 
 """
 
