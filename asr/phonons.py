@@ -54,24 +54,29 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
                 f.unlink()
     world.barrier()
 
-    params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdensity, 'gamma': True}}
-
-    # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False}
-    # Make sure to converge forces! Can be important
-    params['convergence'] = {'forces': fconverge}
-
     atoms = read('structure.json')
-    fd = open('phonons.txt'.format(n), 'a')
-    calc = get_calculator()(txt=fd, **params)
+    gsold = get_calculator()('gs.gpw', txt=None)
 
     # Set initial magnetic moments
     from asr.core import is_magnetic
     if is_magnetic():
-        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
+
+    params = gsold.parameters.copy()
+    params.update({'mode': {'name': 'pw', 'ecut': ecut},
+                   'kpts': {'density': kptdensity, 'gamma': True},
+                   'xc': 'PBE'})
+
+    # Set essential parameters for phonons
+    params['symmetry'] = {'point_group': False}
+
+    # Make sure to converge forces! Can be important
+    params['convergence'] = {'forces': fconverge}
+
+    fd = open('phonons.txt'.format(n), 'a')
+    params['txt'] = fd
+    calc = get_calculator()(**params)
 
     from asr.core import get_dimensionality
     nd = get_dimensionality()
