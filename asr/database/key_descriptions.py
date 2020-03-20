@@ -171,6 +171,20 @@ key_descriptions = {
     }
 }
 
+# Piezoelectrictensor key_descriptions
+piezokd = {}
+for i in range(1, 4):
+    for j in range(1, 7):
+        key = 'e_{}{}'.format(i, j)
+        name = 'Piezoelectric tensor'
+        description = ('{} ({}{})'.format(name, i, j),
+                       '{} ({}{}-component)'.format(name, i, j),
+                       '`\\text{Ang}^{-1}`')
+        piezokd[key] = description
+
+key_descriptions['piezoelectrictensor'] = piezokd
+
+# Key descriptions like has_asr_gs_calculate
 extras = {}
 for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
