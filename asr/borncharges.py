@@ -50,7 +50,7 @@ def webpanel(row, key_descriptions):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option('--displacement', help='Atomic displacement (Å)')
-@option('--kptdensity')
+@option('--kpts', help='K-point dict for ES calculation.')
 def main(displacement=0.01, kpts={'density': 8.0}):
     """Calculate Born charges."""
     from pathlib import Path

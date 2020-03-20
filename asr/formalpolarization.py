@@ -73,8 +73,8 @@ def get_wavefunctions(atoms, name, params):
 
 @command(dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'])
-@option('--gpwname', help='Formal polarization gpw file name')
-@option('--kptdensity', help='Kpoint density for gpw file')
+@option('--gpwname', help='Formal polarization gpw file name.')
+@option('--kpts', help='K-point dict for ES calculation.')
 def main(gpwname='formalpol.gpw', kpts={'density': 12.0}):
     """Calculate the formal polarization phase.
 

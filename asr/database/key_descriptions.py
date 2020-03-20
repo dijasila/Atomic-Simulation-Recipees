@@ -177,9 +177,7 @@ for i in range(1, 4):
     for j in range(1, 7):
         key = 'e_{}{}'.format(i, j)
         name = 'Piezoelectric tensor'
-        description = ('{} ({}{})'.format(name, i, j),
-                       '{} ({}{}-component)'.format(name, i, j),
-                       '`\\text{Ang}^{-1}`')
+        description = f'Piezoelectric tensor {i}{j}-component' + '[`\\text{Ang}^{-1}`]'
         piezokd[key] = description
 
 key_descriptions['piezoelectrictensor'] = piezokd
