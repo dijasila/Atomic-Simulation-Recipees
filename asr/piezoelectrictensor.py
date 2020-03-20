@@ -75,7 +75,7 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
     pbc_c = atoms.get_pbc()
-    L = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+    N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     epsclamped_vvv = np.zeros((3, 3, 3), float)
     eps_vvv = np.zeros((3, 3, 3), float)
 
@@ -100,7 +100,7 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
         eps_v = (-np.dot(dphasedeps_c, cell_cv)
                  / (2 * np.pi * vol))
         if (~atoms.pbc).any():
-            eps_v *= L
+            eps_v *= N
 
         eps_vvv[:, i, j] = eps_v
         eps_vvv[:, j, i] = eps_v

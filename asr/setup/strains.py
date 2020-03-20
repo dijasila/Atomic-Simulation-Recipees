@@ -32,8 +32,12 @@ def get_strained_folder_name(strain_percent, i, j):
          tests=tests)
 @option('--strain-percent', help='Strain percentage')
 @option('--kptdensity', help='Setup up relax and gs calc with fixed density')
-def main(strain_percent=1, kptdensity=6.0):
+@option('--copyparams/--dontcopyparams',
+        help='Copy params.json from current folder into strained folders',
+        is_flag=True)
+def main(strain_percent=1, kptdensity=6.0, copyparams=True):
     from ase.io import read
+    from pathlib import Path
     import numpy as np
     from asr.setup.params import main as setup_params
     from asr.core import chdir
@@ -56,14 +60,26 @@ def main(strain_percent=1, kptdensity=6.0):
             folder = get_strained_folder_name(signed_strain, i, j)
             folder.mkdir()
             atoms.write(str(folder / 'unrelaxed.json'))
+            if copyparams:
+                paramsfile = Path('params.json')
+                if paramsfile.is_file():
+                    Path(folder / 'params.json').write_text(paramsfile.read_text())
 
             with chdir(folder):
-                params = ("asr.relax:calculator {'kpts':{'size':["
-                          + '{},{},{}'.format(*size)
-                          + "],'gamma':True},...}").split()
-                params.extend(['asr.relax:fixcell', 'True'])
-                params.extend(['asr.relax:allow_symmetry_breaking', 'True'])
-                params.extend(['asr.relax:fmax', '0.008'])
+                params = {
+                    'asr.relax': {
+                        'calculator': {
+                            'kpts': {
+                                'size': size,
+                                'gamma': True,
+                            },
+                            None: None,
+                        },
+                        'fixcell': True,
+                        'allow_symmetry_breaking': True,
+                        'fmax': 0.008,
+                    }
+                }
                 setup_params(params=params)
 
 
