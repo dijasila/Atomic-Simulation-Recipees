@@ -86,8 +86,11 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
         for s, sign in enumerate([-1, 1]):
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             with chdir(folder):
-                relax()
-                formalpolarization(kpts=kpts)
+                if not relax.done:
+                    relax()
+                if not formalpolarization.done:
+                    formalpolarization(kpts=kpts)
+
             polresults = read_json(folder / 'results-asr.formalpolarization.json')
             phase_sc[s] = polresults['phase_c']
 
