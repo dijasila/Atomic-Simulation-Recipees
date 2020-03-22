@@ -37,9 +37,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
-    if not is_asr_initialized():
-        initialize_asr_configuration_dir()
-
 
 @cli.command()
 @click.option('-s', '--shell', is_flag=True,
@@ -302,6 +299,9 @@ def find(recipe, hashes):
 
     """
     from os import walk
+
+    if not is_asr_initialized():
+        initialize_asr_configuration_dir()
 
     recipe_results_file = f"results-{recipe}.json"
 
