@@ -330,8 +330,11 @@ def find(recipe, hashes):
 def extract_hash_from_file(filename):
     """Extract the ASR hash from an ASR results file."""
     results = read_json(filename)
-    version = results['__versions__']['asr']
-    asrhash = version.split('-')[1]
+    try:
+        version = results['__versions__']['asr']
+        asrhash = version.split('-')[1]
+    except KeyError:
+        asrhash = None
 
     return asrhash
 
