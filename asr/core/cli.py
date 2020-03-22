@@ -3,8 +3,6 @@ import click
 from pathlib import Path
 import subprocess
 
-stdlist = list
-
 
 def format(content, indent=0, title=None, pad=2):
     colwidth_c = []
@@ -223,9 +221,9 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
                     raise
 
 
-@cli.command()
+@cli.command(name='list')
 @click.argument('search', required=False)
-def list(search):
+def asrlist(search):
     """List and search for recipes.
 
     If SEARCH is specified: list only recipes containing SEARCH in their
@@ -317,10 +315,13 @@ def find(recipe, hashes):
 
     if hashes:
         rev_list = get_git_rev_list(hashes[0], hashes[1])
-        matching_files = filter(lambda x: extract_hash_from_file(x) in rev_list,
-                                matching_files)
+        matching_files = list(
+            filter(lambda x: extract_hash_from_file(x) in rev_list,
+                   matching_files)
+        )
 
-    print("\n".join(matching_files))
+    if matching_files:
+        print("\n".join(matching_files))
 
 
 def extract_hash_from_file(filename):

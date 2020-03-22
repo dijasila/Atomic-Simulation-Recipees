@@ -86,4 +86,4 @@ def test_asr_find():
     runner = CliRunner()
     result = runner.invoke(cli, ['find', '-h'])
     assert result.exit_code == 0
-    assert 'Usage: cli find [OPTIONS] NAME' in result.output
+    assert 'Usage: cli find [OPTIONS] RECIPE HASH1 HASH2' in result.output
