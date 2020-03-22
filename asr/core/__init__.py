@@ -630,14 +630,18 @@ def magnetic_atoms(atoms):
                     dtype=bool)
 
 
+def encode_json(data):
+    from ase.io.jsonio import MyEncoder
+    return MyEncoder(indent=1).encode(data)
+
+
 def write_json(filename, data):
     from pathlib import Path
-    from ase.io.jsonio import MyEncoder
     from ase.parallel import world
 
     with file_barrier([filename]):
         if world.rank == 0:
-            Path(filename).write_text(MyEncoder(indent=1).encode(data))
+            Path(filename).write_text(encode_json(data))
 
 
 def read_json(filename):

@@ -1,3 +1,4 @@
+from asr.core import encode_json
 from ase.calculators.calculator import kpts2ndarray, Calculator
 from ase.units import Bohr, Ha
 import numpy as np
@@ -115,6 +116,14 @@ class GPAW(Calculator):
             "magmoms": self.parameters.magmoms
             or np.zeros((len(self.atoms), 3), float),
         }
+
+        if self.parameters.get('txt'):
+            if isinstance(self.parameters.txt, str):
+                self.write(self.parameters.txt)
+            else:  # Assume that this is a file-descriptor
+                params = self.parameters.copy()
+                params.pop('txt')
+                self.parameters.txt.write(encode_json(params))
 
     def get_fermi_level(self):
         return 0.0
