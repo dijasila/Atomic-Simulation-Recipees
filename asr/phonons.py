@@ -97,6 +97,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
         dct['__tofile__'] = 'asr.phonons@topckl'
         files[filename] = dct
     data = {'__files__': files}
+    fd.close()
     return data
 
 
