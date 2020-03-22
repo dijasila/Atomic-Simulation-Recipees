@@ -86,17 +86,21 @@ def test_asr_find_help():
     runner = CliRunner()
     result = runner.invoke(cli, ['find', '-h'])
     assert result.exit_code == 0
-    assert 'Usage: cli find [OPTIONS] RECIPE HASH1 HASH2' in result.output
+    assert 'Usage: cli find [OPTIONS] RECIPE [HASH]...' in result.output
 
 
 @pytest.mark.ci
 @pytest.mark.parametrize(
-    "recipe,hash1,hash2,output",
-    [('asr.recipename', '9e2e1e68', '32241753', 'results-asr.recipename.json\n'),
-     ('asr.recipename', 'c8980f6f3^', 'c8980f6f3', 'results-asr.recipename.json\n'),
-     ('asr.recipename', 'c8980f6f3', 'c8980f6f3^', ''),
-     ('asr.recipename', 'c8980f6f3', '32241753', '')])
-def test_asr_find(recipe, hash1, hash2, output):
+    "recipe,hashish,output",
+    [('asr.recipename', '9e2e1e68..32241753', 'results-asr.recipename.json\n'),
+     ('asr.recipename', '^9e2e1e68 32241753', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3^..c8980f6f3', 'results-asr.recipename.json\n'),
+     ('asr.recipename', '^c8980f6f3^ c8980f6f3', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3..c8980f6f3^', ''),
+     ('asr.recipename', '^c8980f6f3 c8980f6f3^', ''),
+     ('asr.recipename', 'c8980f6f3..32241753', ''),
+     ('asr.recipename', '^c8980f6f3 32241753', '')])
+def test_asr_find(recipe, hashish, output):
     from asr.core import write_json
     # TODO: Mock git call
     data = {
@@ -112,7 +116,7 @@ def test_asr_find(recipe, hash1, hash2, output):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ['find', recipe, hash1, hash2])
+        ['find', recipe] + hashish.split())
 
     assert result.exit_code == 0
     assert result.output == output
@@ -129,7 +133,7 @@ def test_asr_find_no_versions(separate_folder):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ['find', recipe, 'c8980f6f3', '32241753'])
+        ['find', recipe, 'c8980f6f3..32241753'])
 
     assert result.exit_code == 0
     assert result.output == ''

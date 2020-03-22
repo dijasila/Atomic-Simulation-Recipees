@@ -286,7 +286,7 @@ def results(name, show):
 
 @cli.command()
 @click.argument('recipe')
-@click.argument('hashes', required=False, nargs=2, metavar='HASH1 HASH2')
+@click.argument('hashes', required=False, nargs=-1, metavar='[HASH]...')
 def find(recipe, hashes):
     """Find result files.
 
@@ -294,10 +294,21 @@ def find(recipe, hashes):
     these according to a certain ranges of Git hashes (requires having
     Git installed). Valid recipe names are asr.bandstructure etc.
 
-    OPTIONAL: To select all git commit from HASH1 to HASH2 (NOT
-    including HASH1) do "asr find asr.bandstructure HASH1 HASH2". To
-    include HASH1 use the special Git syntax "asr find
-    asr.bandstructure HASH1^ HASH2".
+    Find all results files calculated with a checkout of ASR that is
+    an ancestor of HASH (including HASH): "asr find asr.bandstructure
+    HASH".
+
+    Find all results files calculated with a checkout of ASR that is
+    an ancestor of HASH2 but not HASH1: "asr find asr.bandstructure
+    HASH1..HASH2" (not including HASH1).
+
+    Find all results files that are calculated with a checkout of ASR
+    that is an ancestor of HASH1 or HASH2: "asr find asr.bandstructure
+    HASH1 HASH2".
+
+    This is basically a wrapper around Git's rev-list command and all
+    hashes are forwarded to this command. For example, we can use the
+    special HASH^ to refer to the parent of HASH.
 
     """
     from os import walk
@@ -308,6 +319,7 @@ def find(recipe, hashes):
     recipe_results_file = f"results-{recipe}.json"
 
     if hashes:
+        hashes = list(hashes)
         check_git()
 
     matching_files = []
@@ -317,7 +329,7 @@ def find(recipe, hashes):
             matching_files.append(str(Path(root) / recipe_results_file))
 
     if hashes:
-        rev_list = get_git_rev_list(hashes[0], hashes[1])
+        rev_list = get_git_rev_list(hashes)
         matching_files = list(
             filter(lambda x: extract_hash_from_file(x) in rev_list,
                    matching_files)
@@ -332,11 +344,14 @@ def extract_hash_from_file(filename):
     results = read_json(filename)
     try:
         version = results['__versions__']['asr']
-        asrhash = version.split('-')[1]
     except KeyError:
-        asrhash = None
+        version = None
+    except Exception:
+        print(f"Problem when extration asr git hash from {filename}")
+        raise
 
-    return asrhash
+    if version and '-' in version:
+        return version.split('-')[1]
 
 
 def check_git():
@@ -349,7 +364,7 @@ def check_git():
     assert not err, f"{err}\nProblem with your Git installation."
 
 
-def get_git_rev_list(hash1, hash2, home=None):
+def get_git_rev_list(hashes, home=None):
     """Get Git rev list from HASH1 to HASH2."""
     cfgdir = get_config_dir(home=home)
 
@@ -361,7 +376,7 @@ def get_git_rev_list(hash1, hash2, home=None):
     asrdir = cfgdir / "asr"
     subprocess.check_output(['git', 'pull'],
                             cwd=asrdir)
-    out = subprocess.check_output(['git', 'rev-list', f'{hash1}..{hash2}'],
+    out = subprocess.check_output(['git', 'rev-list'] + hashes,
                                   cwd=asrdir)
     return set(out.decode("utf-8").strip("\n").split("\n"))
 
