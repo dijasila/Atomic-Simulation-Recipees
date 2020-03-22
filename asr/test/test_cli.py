@@ -116,3 +116,20 @@ def test_asr_find(recipe, hash1, hash2, output):
 
     assert result.exit_code == 0
     assert result.output == output
+
+
+@pytest.mark.ci
+def test_asr_find_no_versions(separate_folder):
+    from asr.core import write_json
+    data = {'dummydata': ['somecontent']}
+    recipe = "asr.recipename"
+    filename = f'results-{recipe}.json'
+    write_json(filename, data)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['find', recipe, 'c8980f6f3', '32241753'])
+
+    assert result.exit_code == 0
+    assert result.output == ''
