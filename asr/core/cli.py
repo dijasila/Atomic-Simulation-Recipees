@@ -296,8 +296,10 @@ def find(recipe, hashes):
     these according to a certain ranges of Git hashes (requires having
     Git installed). Valid recipe names are asr.bandstructure etc.
 
-    OPTIONAL: To select all git commit from HASH1 to HASH2 do "asr
-    find asr.bandstructure HASH1 HASH2.
+    OPTIONAL: To select all git commit from HASH1 to HASH2 (NOT
+    including HASH1) do "asr find asr.bandstructure HASH1 HASH2". To
+    include HASH1 use the special Git syntax "asr find
+    asr.bandstructure HASH1^ HASH2".
 
     """
     from os import walk
@@ -354,7 +356,7 @@ def get_git_rev_list(hash1, hash2, home=None):
                             cwd=asrdir)
     out = subprocess.check_output(['git', 'rev-list', f'{hash1}..{hash2}'],
                                   cwd=asrdir)
-    return out.decode("utf-8").strip("\n").split("\n")
+    return set(out.decode("utf-8").strip("\n").split("\n"))
 
 
 def is_asr_initialized(home=None):
