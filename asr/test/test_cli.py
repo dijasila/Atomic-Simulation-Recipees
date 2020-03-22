@@ -90,8 +90,15 @@ def test_asr_find_help():
 
 
 @pytest.mark.ci
-def test_asr_find(separate_folder):
+@pytest.mark.parametrize(
+    "recipe,hash1,hash2,output",
+    [('asr.recipename', '9e2e1e68', '32241753', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3^', 'c8980f6f3', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3', 'c8980f6f3^', ''),
+     ('asr.recipename', 'c8980f6f3', '32241753', '')])
+def test_asr_find(recipe, hash1, hash2, output):
     from asr.core import write_json
+    # TODO: Mock git call
     data = {
         '__versions__': {
             'asr':
@@ -105,21 +112,7 @@ def test_asr_find(separate_folder):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ['find', recipe, '9e2e1e68', '32241753'])
+        ['find', recipe, hash1, hash2])
 
     assert result.exit_code == 0
-    assert result.output == filename + '\n'
-
-    result = runner.invoke(
-        cli,
-        ['find', recipe, 'c8980f6f3', '32241753'])
-
-    assert result.exit_code == 0
-    assert result.output == ''
-
-    result = runner.invoke(
-        cli,
-        ['find', recipe, 'c8980f6f3^', '32241753'])
-
-    assert result.exit_code == 0
-    assert result.output == filename + '\n'
+    assert result.output == output
