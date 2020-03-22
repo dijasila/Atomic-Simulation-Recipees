@@ -315,7 +315,6 @@ def find(recipe, hashes):
 
     if hashes:
         rev_list = get_git_rev_list(hashes[0], hashes[1])
-        print(rev_list)
         matching_files = filter(lambda x: extract_hash_from_file(x) in rev_list,
                                 matching_files)
 
