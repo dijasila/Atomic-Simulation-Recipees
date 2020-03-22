@@ -79,3 +79,11 @@ def test_asr_results():
     result = runner.invoke(cli, ['results', '-h'])
     assert result.exit_code == 0
     assert 'Usage: cli results [OPTIONS] NAME' in result.output
+
+
+@pytest.mark.ci
+def test_asr_find():
+    runner = CliRunner()
+    result = runner.invoke(cli, ['find', '-h'])
+    assert result.exit_code == 0
+    assert 'Usage: cli find [OPTIONS] NAME' in result.output

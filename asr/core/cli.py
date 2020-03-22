@@ -290,7 +290,7 @@ def results(name, show):
 @click.argument('recipe')
 @click.argument('hashes', required=False, nargs=2, metavar='HASH1 HASH2')
 def find(recipe, hashes):
-    """Find results files.
+    """Find result files.
 
     Find all results files belonging to RECIPE. Optionally, filter
     these according to a certain ranges of Git hashes (requires having
@@ -303,7 +303,6 @@ def find(recipe, hashes):
     from os import walk
 
     recipe_results_file = f"results-{recipe}.json"
-    print(f'Searching for results-files: {recipe_results_file}')
 
     if hashes:
         check_git()
@@ -316,21 +315,17 @@ def find(recipe, hashes):
 
     if hashes:
         rev_list = get_git_rev_list(hashes[0], hashes[1])
+        print(rev_list)
         matching_files = filter(lambda x: extract_hash_from_file(x) in rev_list,
                                 matching_files)
 
-    nfiles = len(matching_files)
     print("\n".join(matching_files))
-    if hashes:
-        print(f"Found {nfiles} matching {hashes}.")
-    else:
-        print(f"Found {nfiles}.")
 
 
 def extract_hash_from_file(filename):
     """Extract the ASR hash from an ASR results file."""
     results = read_json(filename)
-    version = results['__version__']['asr']
+    version = results['__versions__']['asr']
     asrhash = version.split('-')[1]
 
     return asrhash
@@ -351,23 +346,16 @@ def get_git_rev_list(hash1, hash2, home=None):
     cfgdir = get_config_dir(home=home)
 
     git_repo = 'https://gitlab.com/mortengjerding/asr.git'
-    if not (cfgdir / 'asr'):
-        proc = subprocess.Popen(['git', 'clone', git_repo], cwd=cfgdir,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        out, err = proc.communicate()
-
-        assert not err, "{err}\nProblem in cloning ASR Git repository."
+    if not (cfgdir / 'asr').is_dir():
+        subprocess.check_output(['git', 'clone', git_repo],
+                                cwd=cfgdir)
 
     asrdir = cfgdir / "asr"
-    subprocess.Popen(['git', 'rev-list', f'{hash1}..{hash2}'],
-                     cwd=asrdir,
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.PIPE)
-    out, err = proc.communicate()
-
-    assert not err, "{err}\nProblem in git rev-list."
-    return set(out.split("\n"))
+    subprocess.check_output(['git', 'pull'],
+                            cwd=asrdir)
+    out = subprocess.check_output(['git', 'rev-list', f'{hash1}..{hash2}'],
+                                  cwd=asrdir)
+    return out.decode("utf-8").strip("\n").split("\n")
 
 
 def is_asr_initialized(home=None):
@@ -385,5 +373,5 @@ def initialize_asr_configuration_dir(home=None):
 def get_config_dir(home=None):
     """Get path to ASR configuration dir."""
     if home is None:
-        home = Path.home
+        home = Path.home()
     return home / '.asr'
