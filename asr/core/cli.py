@@ -37,6 +37,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
+    ...
+
 
 @cli.command()
 @click.option('-s', '--shell', is_flag=True,

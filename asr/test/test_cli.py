@@ -82,8 +82,44 @@ def test_asr_results():
 
 
 @pytest.mark.ci
-def test_asr_find():
+def test_asr_find_help():
     runner = CliRunner()
     result = runner.invoke(cli, ['find', '-h'])
     assert result.exit_code == 0
     assert 'Usage: cli find [OPTIONS] RECIPE HASH1 HASH2' in result.output
+
+
+@pytest.mark.ci
+def test_asr_find(separate_folder):
+    from asr.core import write_json
+    data = {
+        '__versions__': {
+            'asr':
+            'version-c8980f6f32492437136b3b88b6d2598a8b653a25'
+        }
+    }
+    recipe = "asr.recipename"
+    filename = f'results-{recipe}.json'
+    write_json(filename, data)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['find', recipe, '9e2e1e68', '32241753'])
+
+    assert result.exit_code == 0
+    assert result.output == filename + '\n'
+
+    result = runner.invoke(
+        cli,
+        ['find', recipe, 'c8980f6f3', '32241753'])
+
+    assert result.exit_code == 0
+    assert result.output == ''
+
+    result = runner.invoke(
+        cli,
+        ['find', recipe, 'c8980f6f3^', '32241753'])
+
+    assert result.exit_code == 0
+    assert result.output == filename + '\n'
