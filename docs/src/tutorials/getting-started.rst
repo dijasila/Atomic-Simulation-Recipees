@@ -17,6 +17,7 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
+     find     Find result files.
      list     List and search for recipes.
      results  Show results for a specific recipe.
      run      Run recipe, python function or shell command in multiple folders.
