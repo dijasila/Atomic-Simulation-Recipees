@@ -110,6 +110,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
 
     Don't actually do anything just show what would be done
     >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
+
     """
     import subprocess
     from ase.parallel import parprint
