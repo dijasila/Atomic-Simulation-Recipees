@@ -1,5 +1,7 @@
+from asr.core import read_json
 import click
-
+from pathlib import Path
+import subprocess
 
 stdlist = list
 
@@ -37,7 +39,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
-    ...
+    if not is_asr_initialized():
+        initialize_asr_configuration_dir()
 
 
 @cli.command()
@@ -111,7 +114,6 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
     >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
-    from pathlib import Path
     from ase.parallel import parprint
     from asr.core import chdir
     from functools import partial
@@ -268,7 +270,6 @@ def results(name, show):
     from asr.core.material import (get_material_from_folder,
                                    get_webpanels_from_material,
                                    make_panel_figures)
-    from pathlib import Path
     recipe = get_recipe_from_name(name)
 
     if recipe.webpanel is None:
@@ -283,3 +284,106 @@ def results(name, show):
     make_panel_figures(material, panels)
     if show:
         plt.show()
+
+
+@cli.command()
+@click.argument('recipe')
+@click.argument('hashes', required=False, nargs=2, metavar='HASH1 HASH2')
+def find(recipe, hashes):
+    """Find results files.
+
+    Find all results files belonging to RECIPE. Optionally, filter
+    these according to a certain ranges of Git hashes (requires having
+    Git installed). Valid recipe names are asr.bandstructure etc.
+
+    OPTIONAL: To select all git commit from HASH1 to HASH2 do "asr
+    find asr.bandstructure HASH1 HASH2.
+
+    """
+    from os import walk
+
+    recipe_results_file = f"results-{recipe}.json"
+    print(f'Searching for results-files: {recipe_results_file}')
+
+    if hashes:
+        check_git()
+
+    matching_files = []
+    for root, dirs, files in walk(".", followlinks=False):
+
+        if recipe_results_file in set(files):
+            matching_files.append(str(Path(root) / recipe_results_file))
+
+    if hashes:
+        rev_list = get_git_rev_list(hashes[0], hashes[1])
+        matching_files = filter(lambda x: extract_hash_from_file(x) in rev_list,
+                                matching_files)
+
+    nfiles = len(matching_files)
+    print("\n".join(matching_files))
+    if hashes:
+        print(f"Found {nfiles} matching {hashes}.")
+    else:
+        print(f"Found {nfiles}.")
+
+
+def extract_hash_from_file(filename):
+    """Extract the ASR hash from an ASR results file."""
+    results = read_json(filename)
+    version = results['__version__']['asr']
+    asrhash = version.split('-')[1]
+
+    return asrhash
+
+
+def check_git():
+    """Check that Git is installed."""
+    proc = subprocess.Popen(['git'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    assert not err, f"{err}\nProblem with your Git installation."
+
+
+def get_git_rev_list(hash1, hash2, home=None):
+    """Get Git rev list from HASH1 to HASH2."""
+    cfgdir = get_config_dir(home=home)
+
+    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    if not (cfgdir / 'asr'):
+        proc = subprocess.Popen(['git', 'clone', git_repo], cwd=cfgdir,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        out, err = proc.communicate()
+
+        assert not err, "{err}\nProblem in cloning ASR Git repository."
+
+    asrdir = cfgdir / "asr"
+    subprocess.Popen(['git', 'rev-list', f'{hash1}..{hash2}'],
+                     cwd=asrdir,
+                     stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    assert not err, "{err}\nProblem in git rev-list."
+    return set(out.split("\n"))
+
+
+def is_asr_initialized(home=None):
+    """Determine if ASR is initialized."""
+    cfgdir = get_config_dir(home=home)
+    return (cfgdir).is_dir()
+
+
+def initialize_asr_configuration_dir(home=None):
+    """Construct ASR configuration dir."""
+    cfgdir = get_config_dir(home=home)
+    cfgdir.mkdir()
+
+
+def get_config_dir(home=None):
+    """Get path to ASR configuration dir."""
+    if home is None:
+        home = Path.home
+    return home / '.asr'
