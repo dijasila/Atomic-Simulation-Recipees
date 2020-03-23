@@ -20,7 +20,8 @@ def main(distance=12.):
     except RuntimeError:
         magstate = 'nm'
 
-    setup_rotation(atom, distance)
+    structure_list, name_list =  setup_rotation(atom, distance)
+    create_folder_structure(structure_list, name_list)
     print('INFO: finished!')
 
 def get_magstate(atom):
@@ -63,11 +64,16 @@ def setup_rotation(atom, distance):
     i = 0
     rot_list = []
     structure_list = []
+    name_list = []
     for rot in range(0,360,rotations):
         print('INFO: rotation {}: {}'.format(i, rot))
         rot_list.append(rot)
+        name = 'stacking.rot_{}.trans_0'.format(rot)
+        name_list.append(name)
         i = i+1
+    print('Rotation list: {}'.format(rot_list))
     for el in rot_list:
+        print('INFO: applied rotation {}'.format(el))
         newstruc = atom.copy()
         newstruc.rotate(rotations, 'z', rotate_cell=False)
         newstruc.wrap()
@@ -81,11 +87,24 @@ def setup_rotation(atom, distance):
 
         # write('newstruc.json', newstruc)
 
-    return structure_list
+    return structure_list, name_list
 
 
-def create_folder_structure(structure_list):
-    pass
+def create_folder_structure(structure_list, name_list):
+    """
+    TBD
+    """
+    from ase.io import write
+    from pathlib import Path
+    print('Structures to be created: {}'.format(structure_list))
+    print('Folder names to be created: {}'.format(name_list))
+
+    for i in range(len(name_list)):
+        print(i)
+        Path(name_list[i]).mkdir()
+        write(name_list[i]+'/structure.json', structure_list[i])
+
+    print('INFO: finished IO part of the setup recipe')
 
 
 # ToDo:
@@ -97,6 +116,7 @@ def create_folder_structure(structure_list):
 # - Find suitable naming convention for the different folders
 # - Put io in separate function
 # - expand name list for figuring out rotations of the cell
+# - fix duplicate rotated structures
 
 
 if __name__ == '__main__':
