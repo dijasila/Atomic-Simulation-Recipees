@@ -1,12 +1,14 @@
 from asr.core import command, option
 
-@command(module='asr.duplicates',
-         requires=['structure.json'],
-         resources='1:20m')
-
-
-def check_duplicates(structure, db):
+def check_duplicates(structure, db, ref_mag):
     from ase.formula import Formula
+    from pymatgen.io.ase import AseAtomsAdaptor
+    from pymatgen.analysis.structure_matcher import StructureMatcher
+    from pymatgen.alchemy.filters import RemoveExistingFilter
+
+    asetopy = AseAtomsAdaptor()
+    refpy = asetopy.get_structure(structure)
+    matcher = StructureMatcher()
 
     formula = Formula(str(structure.symbols))
     stoichiometry = formula.reduce()[0]
@@ -29,29 +31,23 @@ def check_duplicates(structure, db):
     return not results
 
 
+@command(module='asr.duplicates',
+         requires=['structure.json'],
+         resources='1:20m')
 def main():
     """
     tbd
     """
     from ase.db import connect
-    from pymatgen.io.ase import AseAtomsAdaptor
-    from pymatgen.analysis.structure_matcher import StructureMatcher
-    from pymatgen.alchemy.filters import RemoveExistingFilter
     from asr.core import read_json
     from ase.io import write, read
 
     startset = connect('db.db')
-
-    asetopy = AseAtomsAdaptor()
-
     structure = read('structure.json')
     struc_info = read_json('results-asr.structureinfo.json')
     ref_mag = struc_info.get('magstate')
 
-    refpy = asetopy.get_structure(structure)
-    matcher = StructureMatcher()
-
-    does_exist = check_duplicates(structure, startset)
+    does_exist = check_duplicates(structure, startset, ref_mag)
 
     results = {'duplicate': does_exist,
                '__key_descriptions__': {'duplicate':
