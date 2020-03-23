@@ -1,4 +1,5 @@
-from asr.core import command, option
+from asr.core import command
+
 
 def check_duplicates(structure, db, ref_mag):
     from ase.formula import Formula
@@ -14,7 +15,7 @@ def check_duplicates(structure, db, ref_mag):
     stoichiometry = formula.reduce()[0]
     id_duplicates = []
     structure_list = []
-    # Stoichiometric identification    
+    # Stoichiometric identification
     for row in db.select():
         stoichiometry_row = Formula(str(row.get("formula"))).reduce()[0]
         if stoichiometry_row == stoichiometry:
@@ -24,7 +25,8 @@ def check_duplicates(structure, db, ref_mag):
             if row.get('magstate') == ref_mag:
                 struc = asetopy.get_structure(struc)
                 structure_list.append(struc)
-    rmdup = RemoveExistingFilter(structure_list, matcher,symprec=1e-5)
+
+    rmdup = RemoveExistingFilter(structure_list, matcher, symprec=1e-5)
     results = rmdup.test(refpy)
     print('INFO: structure already in DB? {}'.format(not results))
 
@@ -40,7 +42,7 @@ def main():
     """
     from ase.db import connect
     from asr.core import read_json
-    from ase.io import write, read
+    from ase.io import read
 
     startset = connect('db.db')
     structure = read('structure.json')
@@ -50,7 +52,8 @@ def main():
     does_exist = check_duplicates(structure, startset, ref_mag)
 
     results = {'duplicate': does_exist,
-               '__key_descriptions__': {'duplicate':
-               'Does a duplicate of structure.json already exist in the DB?'}}
+               '__key_descriptions__':
+               {'duplicate':
+                'Does a duplicate of structure.json already exist in the DB?'}}
 
     return results
