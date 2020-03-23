@@ -84,6 +84,10 @@ def setup_rotation(atom, distance):
     return structure_list
 
 
+def create_folder_structure(structure_list):
+    pass
+
+
 # ToDo:
 # - Compare rotations of the cell with the ones of the spacegroup and only
 # keep the ones that are only present for the cell
@@ -92,6 +96,7 @@ def setup_rotation(atom, distance):
 # properly is more important
 # - Find suitable naming convention for the different folders
 # - Put io in separate function
+# - expand name list for figuring out rotations of the cell
 
 
 if __name__ == '__main__':
