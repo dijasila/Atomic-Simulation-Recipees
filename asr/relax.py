@@ -326,11 +326,6 @@ def main(calculator={'name': 'gpaw',
     """
     from ase.calculators.calculator import get_calculator_class
 
-    msg = ('You cannot already have a structure.json file '
-           'when you relax a structure, because this is '
-           'what the relax recipe is supposed to produce. You should '
-           'name your original/start structure "unrelaxed.json!"')
-    assert not Path('structure.json').is_file(), msg
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
