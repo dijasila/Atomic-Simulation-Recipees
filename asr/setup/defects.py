@@ -4,7 +4,6 @@ import click
 
 
 @command('asr.setup.defects')
-         # creates=['general_parameters.json'])
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
@@ -77,7 +76,6 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     """
     from ase.io import read
     import numpy as np
-
 
     if halfinteger:
         setup_halfinteger()
@@ -530,6 +528,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
 
     return None
 
+
 def setup_halfinteger():
     """
     Sets up halfinteger folder which copies params.json and changes the q
@@ -559,10 +558,10 @@ def setup_halfinteger():
     write_json('sj_-0.5/params.json', params_m05)
     print('INFO: changed parameters m: {}'.format(params_m05))
 
-    shutil.copyfile(foldername+'/structure.json',
-                    foldername+'/sj_-0.5/structure.json')
-    shutil.copyfile(foldername+'/structure.json',
-                    foldername+'/sj_+0.5/structure.json')
+    shutil.copyfile(foldername + '/structure.json',
+                    foldername + '/sj_-0.5/structure.json')
+    shutil.copyfile(foldername + '/structure.json',
+                    foldername + '/sj_+0.5/structure.json')
 
     return None
 
