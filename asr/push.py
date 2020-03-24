@@ -22,7 +22,13 @@ def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
     u_klav = data["u_klav"]
 
     q_qc = data["q_qc"]
-    assert momentum in q_qc.tolist(), "No momentum in calculated q-points"
+
+    diff_kc = np.array(list(q_qc)) - q_c 
+    diff_kc -= np.round(diff_kc) 
+    ind = np.argwhere(np.all(np.abs(diff_kc) < 1e-2, 1))[0,0]
+    print(ind)
+
+    #assert momentum in q_qc.tolist(), "No momentum in calculated q-points"
     # Repeat atoms
     from fractions import Fraction
     repeat_c = [Fraction(qc).limit_denominator(10).denominator for qc in q_c]
@@ -42,7 +48,7 @@ def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
     phase_Na = phase_N.repeat(len(atoms))
 
     # Repeat and multiply by Bloch phase factor
-    mode_av = u_klav[0, mode]
+    mode_av = u_klav[ind, mode]
     n_a = np.linalg.norm(mode_av, axis=1)
     mode_av /= np.max(n_a)
     mode_Nav = (np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] * amplitude)
