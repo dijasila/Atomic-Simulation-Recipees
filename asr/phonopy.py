@@ -237,14 +237,32 @@ def main(rc=None):
         phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
-    q_qc = np.indices(sc).reshape(3, -1).T / sc
+    nqpts = 100
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
-    omega_kl = np.zeros((len(q_qc), 3 * len(atoms)))
+    omega_kl = np.zeros((nqpts, 3 * len(atoms)))
+
+    #calculating phonon frequencies along a path in the BZ
+    for q, q_c in enumerate(path.kpts):
+        omega_l = phonon.get_frequencies(q_c)
+        omega_kl[q] = omega_l * THzToEv
+
+    R_cN = lattice_vectors(sc)
+    C_N = phonon.get_force_constants()
+    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(sc), 3, 3)
+    C_N = C_N.transpose(2, 0, 3, 1, 4)
+    C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
+
+    #calculating hessian and eigenvectors at high symmetry points of the BZ
+    eigs_kl = []
+    q_qc = list(path.special_points.values())
     u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
 
     for q, q_c in enumerate(q_qc):
-        omega_l, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
-        omega_kl[q] = omega_l * THzToEv
+        phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
+        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
+        eigs_kl.append(np.linalg.eigvalsh(C_q))
+        _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
         u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
         if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
@@ -256,19 +274,6 @@ def main(rc=None):
                 irreps += [irr] * len(deg)
 
     irreps = list(irreps)
-
-    R_cN = lattice_vectors(sc)
-    C_N = phonon.get_force_constants()
-    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(sc), 3, 3)
-    C_N = C_N.transpose(2, 0, 3, 1, 4)
-    C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
-
-    eigs_kl = []
-
-    for q_c in q_qc:
-        phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
-        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
-        eigs_kl.append(np.linalg.eigvalsh(C_q))
 
     eigs_kl = np.array(eigs_kl)
     mineig = np.min(eigs_kl)
@@ -287,21 +292,11 @@ def main(rc=None):
                'phi_anv': phi_anv,
                'irr_l': irreps,
                'q_qc': q_qc,
+               'path': path,
                'u_klav': u_klav,
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
 
-    # Next calculate an approximate phonon band structure
-    nqpts = 100
-    freqs_kl = np.zeros((nqpts, 3 * len(atoms)))
-    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
-
-    for q, q_c in enumerate(path.kpts):
-        freqs = phonon.get_frequencies(q_c) * THzToEv
-        freqs_kl[q] = freqs
-
-    results['interp_freqs_kl'] = freqs_kl
-    results['path'] = path
     results['__key_descriptions__'] = \
         {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
          'dynamic_stability_level': 'KVP: Dynamic stability level'}
@@ -345,36 +340,18 @@ def plot_bandstructure(row, fname):
 
     data = row.data.get("results-asr.phonopy.json")
     path = data["path"]
-    energies = data["interp_freqs_kl"]
+    energies = data["omega_kl"]
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)
-    bs.plot(label="Interpolated")
-
-    exact_indices = []
-    for q_c in data["q_qc"]:
-        diff_kc = path.kpts - q_c
-        diff_kc -= np.round(diff_kc)
-        inds = np.argwhere(np.all(np.abs(diff_kc) < 1e-3, 1))
-        exact_indices.extend(inds.tolist())
-
-    en_exact = np.zeros_like(energies) + np.nan
-    for ind in exact_indices:
-        en_exact[ind] = energies[ind]
-
-    bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(
-        ax=plt.gca(),
-        ls="",
-        marker="o",
-        color="k",
-        emin=np.min(energies * 1.1),
-        emax=np.max(energies * 1.1),
-        ylabel="Phonon frequencies [eV]",
-        label="Exact",
+    bs.plot(
+       color="k",
+       emin=np.min(energies * 1.1),
+       emax=np.max(energies * 1.1),
+       ylabel="Phonon frequencies [meV]",
     )
+
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
 
 if __name__ == "__main__":
     main.cli()
