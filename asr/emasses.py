@@ -907,7 +907,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     sort_args = np.argsort(mass_u)
 
     mass_u = mass_u[sort_args]
-    w3_vn = w3_vn[sort_args, :]
+    w3_vn = w3_vn[:, sort_args]
 
     out = dict(mass_u=mass_u,
                eigenvectors_vu=w3_vn,
