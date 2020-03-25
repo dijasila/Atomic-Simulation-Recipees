@@ -1,7 +1,8 @@
 from collections import Counter
 from typing import List, Dict, Any
+from pathlib import Path
 
-from asr.core import command, argument, option
+from asr.core import command, argument
 
 from ase.db import connect
 from ase.io import read
@@ -51,9 +52,7 @@ def webpanel(row, key_descriptions):
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
-@option('--standardreferences',
-        help='Database containing standard references.')
-def main(databases, standardreferences=None):
+def main(databases, included3=True):
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -79,7 +78,6 @@ def main(databases, standardreferences=None):
     .. code-block:: json
 
         {
-            'filename': 'oqmdreferences.db',
             'title': 'Bulk reference phases',
             'legend': 'Bulk',
             'name': '{row.formula}',
@@ -94,14 +92,17 @@ def main(databases, standardreferences=None):
 
     """
     from asr.core import read_json
-    if standardreferences is None:
-        standardreferences = databases[0]
-
     atoms = read('structure.json')
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
     ref_energies = get_reference_energies(atoms, databases[0])
-    hform = hof(read_json('results-asr.gs.json').get('etot'),
+    # TODO: Make separate recipe for calculating vdW correction to total energy
+    for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
+        if Path(filename).is_file():
+            energy = read_json(filename).get('etot')
+            break
+
+    hform = hof(energy,
                 count,
                 ref_energies)
 
@@ -120,11 +121,7 @@ def main(databases, standardreferences=None):
     for data in dbdata.values():
         metadata = data['metadata']
         for row in data['rows']:
-            # Take the energy from the gs recipe if its calculated
-            # or fall back to row.energy
-            energy = row.data.get('results-asr.gs.json')['etot'] if \
-                'results-asr.gs.json' in row.data else row.energy
-            hformref = hof(energy, row.count_atoms(), ref_energies)
+            hformref = hof(row.energy, row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
