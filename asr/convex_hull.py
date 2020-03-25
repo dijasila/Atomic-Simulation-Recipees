@@ -47,10 +47,9 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.convex_hull',
-         requires=['results-asr.gs.json', 'results-asr.structureinfo.json',
+         requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.gs',
-                       'asr.structureinfo',
+         dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
@@ -98,8 +97,14 @@ def main(databases):
         List of filenames of databases.
 
     """
+    from asr.relax import main as relax
+    from asr.gs import main as groundstate
     from asr.core import read_json
     atoms = read('structure.json')
+
+    if not relax.done:
+        if not groundstate.done:
+            groundstate()
 
     # TODO: Make separate recipe for calculating vdW correction to total energy
     for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
