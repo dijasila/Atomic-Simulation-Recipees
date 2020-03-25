@@ -61,7 +61,7 @@ def main(databases):
 
     For a database to be a valid reference database each row has to have a
     "uid" key-value-pair. Additionally, it is required that the metadata of
-    each database contains following keys::
+    each database contains following keys:
 
         - title: Title of the reference database.
         - legend: Collective label for all references in the database to
@@ -80,7 +80,7 @@ def main(databases):
     key-value-pairs in the given database. For example, valid metadata looks
     like:
 
-    .. code-block:: json
+    .. code-block:: javascript
 
         {
             'title': 'Bulk reference phases',
