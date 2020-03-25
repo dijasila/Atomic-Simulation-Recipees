@@ -85,8 +85,6 @@ def setup_rotation(atom, distance):
         newstruc = newstruc + atom
         structure_list.append(newstruc)
 
-        # write('newstruc.json', newstruc)
-
     return structure_list, name_list
 
 
@@ -110,13 +108,12 @@ def create_folder_structure(structure_list, name_list):
 # ToDo:
 # - Compare rotations of the cell with the ones of the spacegroup and only
 # keep the ones that are only present for the cell
-# - Return list of different rotations in the setup_rotation function
 # - Keep translations in the ToDo list, first figuring out the rotations
 # properly is more important
 # - Find suitable naming convention for the different folders
 # - Put io in separate function
+#   * working for rotations now
 # - expand name list for figuring out rotations of the cell
-# - fix duplicate rotated structures
 
 
 if __name__ == '__main__':
