@@ -9,6 +9,8 @@ from ase.io import read
 from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
 
+known_methods = ['DFT', 'DFT+D3']
+
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
@@ -70,7 +72,7 @@ def main(databases):
           (see further information below).
         - label: f-string from which to derive a material specific name to
           put on convex hull figure.
-        - calculator: String denoting the calculator that was used to calculate
+        - method: String denoting the method that was used to calculate
           reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
           "DFT" means bare DFT references energies. "DFT+D3" indicate that the
           reference also include the D3 dispersion correction.
@@ -85,9 +87,9 @@ def main(databases):
             'title': 'Bulk reference phases',
             'legend': 'Bulk',
             'name': '{row.formula}',
-            'label': '{row.formula}',
             'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
-            'calculator': 'DFT',
+            'label': '{row.formula}',
+            'method': 'DFT',
         }
 
     Parameters
@@ -98,29 +100,49 @@ def main(databases):
     """
     from asr.core import read_json
     atoms = read('structure.json')
-    formula = atoms.get_chemical_formula()
-    count = Counter(atoms.get_chemical_symbols())
-    ref_energies = get_reference_energies(atoms, databases[0])
+
     # TODO: Make separate recipe for calculating vdW correction to total energy
     for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
         if Path(filename).is_file():
-            energy = read_json(filename).get('etot')
+            results = read_json(filename)
+            energy = results.get('etot')
+            usingd3 = results.get('__params__', {}).get('d3', False)
             break
 
+    if usingd3:
+        mymethod = 'DFT+D3'
+    else:
+        mymethod = 'DFT'
+
+    formula = atoms.get_chemical_formula()
+    count = Counter(atoms.get_chemical_symbols())
+
+    dbdata = {}
+    reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
+    for database in databases:
+        # Connect to databases and save relevant rows
+        refdb = connect(database)
+        metadata = refdb.metadata
+        assert not (reqkeys - set(metadata)), \
+            'Missing some essential metadata keys.'
+
+        dbmethod = metadata['method']
+        assert dbmethod in known_methods, f'Unknown method: {dbmethod}'
+        assert dbmethod == mymethod, \
+            ('You are using a reference database with '
+             f'inconsistent methods: {mymethod} (this material) != '
+             f'{dbmethod} ({database})')
+
+        rows = []
+        # Select only references which contain relevant elements
+        rows.extend(select_references(refdb, set(count)))
+        dbdata[database] = {'rows': rows,
+                            'metadata': metadata}
+
+    ref_energies = get_reference_energies(atoms, databases[0])
     hform = hof(energy,
                 count,
                 ref_energies)
-
-    # Now compute convex hull
-    dbdata = {}
-    for database in databases:
-        # Connect to databases and save relevant rows
-        rows = []
-        refdb = connect(database)
-        rows.extend(select_references(refdb, set(count)))
-        dbdata[database] = {'rows': rows,
-                            'metadata': refdb.metadata}
-
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
