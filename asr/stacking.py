@@ -70,12 +70,12 @@ def setup_rotation(atom, distance):
         rot_list.append(rot)
         name = 'stacking.rot_{}.trans_0'.format(rot)
         name_list.append(name)
-        i = i+1
+        i = i + 1
     print('Rotation list: {}'.format(rot_list))
     for el in rot_list:
         print('INFO: applied rotation {}'.format(el))
         newstruc = atom.copy()
-        newstruc.rotate(rotations, 'z', rotate_cell=False)
+        newstruc.rotate(el, 'z', rotate_cell=False)
         newstruc.wrap()
 
         newpos = newstruc.get_positions()
