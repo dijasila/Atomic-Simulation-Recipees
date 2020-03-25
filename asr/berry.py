@@ -10,8 +10,7 @@ from asr.core import command, option, read_json
 @option('--kpar', help='K-points along path')
 @option('--kperp', help='K-points orthogonal to path')
 def calculate(gs='gs.gpw', kpar=120, kperp=7):
-
-    """Calculate ground state on specified k-point grid"""
+    """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
     from gpaw import GPAW
@@ -20,7 +19,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
-    
+
     """Find the easy axis of magnetic materials"""
     theta = 0.0
     phi = 0.0
@@ -167,7 +166,14 @@ def webpanel(row, key_descriptions):
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]]}
-    return [summary]
+
+    basicelec = {'title': 'Basic electronic properties (PBE)',
+                 'columns': [[{'type': 'table',
+                               'header': ['Property', ''],
+                               'rows': [row]}]],
+                 'sort': 15}
+
+    return [summary, basicelec]
 
 
 @command(module='asr.berry',

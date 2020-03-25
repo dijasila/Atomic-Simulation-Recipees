@@ -114,17 +114,19 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
              theta=0, phi=0):
-    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
-    fermi energy
+    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
-    Parameters:
+    Parameters
+    ----------
         gpw (str): gpw filename
         soc : None, bool
             use spinorbit coupling if None it returns both w and w/o
         bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
 
-    Returns : dict or e_skn, efermi
+    Returns
+    -------
+    dict or e_skn, efermi
         containg eigenvalues and fermi levels w and w/o spinorbit coupling
     """
     from gpaw import GPAW

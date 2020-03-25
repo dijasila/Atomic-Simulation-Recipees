@@ -13,6 +13,7 @@ import ase.parallel as parallel
 import inspect
 import copy
 from ast import literal_eval
+from functools import update_wrapper
 
 
 def parse_dict_string(string, dct=None):
@@ -125,11 +126,22 @@ def argument(name, **kwargs):
         param.update(kwargs)
         add_param(func, param)
         return func
-        
+
     return decorator
 
 
 class ASRCommand:
+    """Wrapper class for constructing recipes.
+
+    This class implements the behaviour of an ASR recipe.
+
+    This class wrappes a callable `func` and automatically endows the function
+    with a command-line interface (CLI) through `cli` method. The CLI is
+    defined using the :func:`asr.core.__init__.argument` and
+    :func:`asr.core.__init__.option` functions in the core sub-package.
+
+    The ASRCommand... XXX
+    """
 
     package_dependencies = ('asr', 'ase', 'gpaw')
 
@@ -138,17 +150,19 @@ class ASRCommand:
                  requires=None,
                  dependencies=None,
                  creates=None,
-                 tests=None,
                  log=None,
-                 resources='1:10m',
-                 diskspace=0,
-                 restart=0,
                  webpanel=None,
-                 overwrite_defaults=None,
-                 known_exceptions=None,
                  save_results_file=True,
-                 pass_params=False,
-                 add_skip_opt=True):
+                 tests=None,
+                 resources=None):
+        """Construct an instance of an ASRCommand.
+
+        Parameters
+        ----------
+        func : callable
+            Wrapped function that
+
+        """
         assert callable(main), 'The wrapped object should be callable'
 
         if module is None:
@@ -168,15 +182,8 @@ class ASRCommand:
         self._main = main
         self.name = name
 
-        # We can handle these exceptions
-        self._known_exceptions = known_exceptions or {}
-
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
-
-        # Pass a dictionary with all params to the function for
-        # convenience?
-        self.pass_params = pass_params
 
         # What files are created?
         self._creates = creates
@@ -185,13 +192,7 @@ class ASRCommand:
         self.log = log
 
         # Properties of this function
-        self._resources = resources
-        self._diskspace = diskspace
         self._requires = requires
-        self.restart = restart
-
-        # Add skip dependencies option to control this?
-        self.add_skip_opt = add_skip_opt
 
         # Tell ASR how to present the data in a webpanel
         self.webpanel = webpanel
@@ -200,9 +201,6 @@ class ASRCommand:
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
         self.dependencies = dependencies or []
-
-        # Our function can also have tests
-        self.tests = tests
 
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
@@ -231,22 +229,7 @@ class ASRCommand:
 
         # Setup the CLI
         self.setup_cli()
-
-        self.__doc__ = self._main.__doc__
-
-    @property
-    def known_exceptions(self):
-        if callable(self._known_exceptions):
-            return self._known_exceptions()
-        return self._known_exceptions
-
-    @property
-    def state(self):
-        """The state of tests of this recipe.
-        Currently only supports 'tested' and 'untested'"""
-        if not self.tests:
-            return 'untested'
-        return 'tested'
+        update_wrapper(self, self._main)
 
     @property
     def requires(self):
@@ -262,12 +245,6 @@ class ASRCommand:
             if not Path(filename).is_file():
                 return False
         return True
-
-    @property
-    def resources(self):
-        if callable(self._resources):
-            return self._resources()
-        return self._resources
 
     @property
     def diskspace(self):
@@ -326,8 +303,8 @@ class ASRCommand:
                         clickdoc.extend([bb, line, bb])
                     else:
                         clickdoc.extend([line, bb])
-                elif ('-' in line and
-                      (spaces + '-' * (len(line) - lspaces)) == line):
+                elif ('-' in line
+                      and (spaces + '-' * (len(line) - lspaces)) == line):
                     clickdoc.insert(-1, bb)
                     clickdoc.append(line)
                 else:
@@ -357,57 +334,43 @@ class ASRCommand:
             else:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
-                
-        if self.add_skip_opt:
-            command = co('--skip-deps', is_flag=True, default=False,
-                         help='Skip execution of dependencies.')(command)
-        command = co('--silence', is_flag=True, default=False,
-                     help='Silence output.')(command)
 
         self._cli = command
 
-    def cli(self, *args, **kwargs):
+    def cli(self, args=None):
+        """Parse parameters from command line and call wrapped function.
+
+        Parameters
+        ----------
+        args : List of strings or None
+            List of command line arguments. If None: Read arguments from
+            sys.argv.
+        """
         return self._cli(standalone_mode=False,
-                         prog_name=f'asr run {self.name}', *args, **kwargs)
+                         prog_name=f'asr run {self.name}', args=args)
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)
 
-    def main(self, skip_deps=False, catch_exceptions=True, silence=False,
-             *args, **kwargs):
+    def main(self, *args, **kwargs):
+        """Return results from wrapped function.
 
-        if silence:
-            import sys
-            f = open(os.devnull, 'w')
-            _stdout = sys.stdout
-            sys.stdout = f
+        This is the main function of an ASRCommand. It takes care of reading
+        parameters, creating metadata, checksums etc. If you want to
+        understand what happens when you execute an ASRCommand this is a good
+        place to start.
+        """
+        # Run this recipes dependencies but only if it actually creates
+        # a file that is in __requires__
+        for dep in self.dependencies:
+            recipe = get_recipe_from_name(dep)
+            if recipe.done:
+                continue
 
-        if not skip_deps:
-            # Run this recipes dependencies but only if it actually creates
-            # a file that is in __requires__
-            for dep in self.dependencies:
-                recipe = get_recipe_from_name(dep)
-                if recipe.done:
-                    continue
-
-                filenames = set(self.requires).intersection(recipe.creates)
-                if not all([Path(filename).exists() for filename in
-                            filenames]):
-                    recipe()
-
-        # Try to run this command
-        results = self.callback(*args, **kwargs)
-
-        if silence:
-            sys.stdout = _stdout
-
-        return results
-
-    def callback(self, *args, **kwargs):
-        # This is the main function of an ASRCommand. It takes care of
-        # reading parameters can creating metadata, checksums.
-        # If you to understand what happens when you execute an ASRCommand
-        # this is a good place to start
+            filenames = set(self.requires).intersection(recipe.creates)
+            if not all([Path(filename).exists() for filename in
+                        filenames]):
+                recipe()
 
         assert self.is_requirements_met(), \
             (f'{self.name}: Some required files are missing: {self.requires}. '
@@ -417,6 +380,7 @@ class ASRCommand:
         # parameters
         bound_arguments = self.signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
+
         params = dict(bound_arguments.arguments)
         for key, value in params.items():
             assert key in self.myparams, f'Unknown key: {key} {params}'
@@ -497,13 +461,16 @@ class ASRCommand:
         return results
 
     def get_execution_info(self):
-        """Get parameter and software version information as a dictionary"""
+        """Get parameter and software version information as a dictionary."""
         from ase.utils import search_current_git_hash
         exeinfo = {}
         modnames = self.package_dependencies
         versions = {}
         for modname in modnames:
-            mod = import_module(modname)
+            try:
+                mod = import_module(modname)
+            except ModuleNotFoundError:
+                continue
             githash = search_current_git_hash(mod)
             version = mod.__version__
             if githash:
@@ -519,55 +486,6 @@ def command(*args, **kwargs):
 
     def decorator(func):
         return ASRCommand(func, *args, **kwargs)
-
-    return decorator
-
-
-class ASRSubResult:
-    def __init__(self, asr_name, calculator):
-        self._asr_name = asr_name[4:]
-        self.calculator = calculator
-        self._asr_key = calculator.__name__
-
-        self.results = {}
-
-    def __call__(self, params, *args, **kwargs):
-        # Try to read sub-result from previous calculation
-        subresult = self.read_subresult()
-        if subresult is None:
-            subresult = self.calculate(params, *args, **kwargs)
-
-        return subresult
-
-    def read_subresult(self):
-        """Read sub-result from tmpresults file if possible"""
-        subresult = None
-        path = Path(f'tmpresults_{self._asr_name}.json')
-        if path.exists():
-            self.results = jsonio.decode(path.read_text())
-            # Get subcommand sub-result, if available
-            if self._asr_key in self.results.keys():
-                subresult = self.results[self._asr_key]
-
-        return subresult
-
-    def calculate(self, params, *args, **kwargs):
-        """Do the actual calculation"""
-        subresult = self.calculator.__call__(*args, **kwargs)
-        assert isinstance(subresult, dict)
-
-        subresult.update(self.get_execution_info(params))
-        self.results[self._asr_key] = subresult
-
-        write_json(f'tmpresults_{self._asr_name}.json', self.results)
-
-        return subresult
-
-
-def subresult(name):
-    """Decorator pattern for sub-result"""
-    def decorator(calculator):
-        return ASRSubResult(name, calculator)
 
     return decorator
 
@@ -588,14 +506,15 @@ def chdir(folder, create=False, empty=False):
 def get_recipe_module_names():
     # Find all modules containing recipes
     from pathlib import Path
-    folder = Path(__file__).parent.parent
-    files = list(folder.glob('**/[a-zA-Z]*.py'))
+    asrfolder = Path(__file__).parent.parent
+    folders_with_recipes = [asrfolder / '.',
+                            asrfolder / 'setup',
+                            asrfolder / 'database']
+    files = [filename for folder in folders_with_recipes
+             for filename in folder.glob("[a-zA-Z]*.py")]
     modulenames = []
     for file in files:
-        if 'utils' in str(file) or 'tests' in str(file) or \
-           'test' in str(file) or 'core' in str(file):
-            continue
-        name = str(file.with_suffix(''))[len(str(folder)):]
+        name = str(file.with_suffix(''))[len(str(asrfolder)):]
         modulename = 'asr' + name.replace('/', '.')
         modulenames.append(modulename)
     return modulenames
@@ -729,7 +648,6 @@ def read_json(filename):
 
 def unlink(path: Union[str, Path], world=None):
     """Safely unlink path (delete file or symbolic link)."""
-
     if isinstance(path, str):
         path = Path(path)
     if world is None:
@@ -775,8 +693,15 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
     yield
 
     # Wait for file:
+    i = 0
     while not all([path.is_file() for path in paths]):
+        filenames = ', '.join([path.name for path in paths
+                               if not path.is_file()])
+        if i > 0:
+            print(f'Waiting for ~{i}sec on existence of {filenames}'
+                  ' on all ranks')
         time.sleep(1.0)
+        i += 1
     world.barrier()
 
 

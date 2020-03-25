@@ -4,6 +4,18 @@ from ase.dft.bandgap import bandgap
 from click import Choice
 
 
+def get_kpts_size(atoms, kptdensity):
+    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
+    size, offset = k2so(atoms=atoms, density=kptdensity)
+    size[2] = 1
+    for i in range(2):
+        if size[i] % 6 != 0:
+            size[i] = 6 * (size[i] // 6 + 1)
+    kpts = {'size': size, 'gamma': True}
+    return kpts
+
+
 @command(creates=['bse_polx.csv', 'bse_eigx.dat',
                   'bse_poly.csv', 'bse_eigy.dat',
                   'bse_polz.csv', 'bse_eigz.dat'],
@@ -20,7 +32,7 @@ from click import Choice
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
               nv_s=-2.3, nc_s=2.3):
-    """Calculate BSE polarizability"""
+    """Calculate BSE polarizability."""
     import os
     from ase.io import read
     from gpaw import GPAW
@@ -40,23 +52,9 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         truncation = None
     elif ND == 2:
         eta = 0.05
-
-        def get_kpts_size(atoms, kptdensity):
-            """trying to get a reasonable monkhorst size which hits high
-            symmetry points
-            """
-            from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-            size, offset = k2so(atoms=atoms, density=kptdensity)
-            size[2] = 1
-            for i in range(2):
-                if size[i] % 6 != 0:
-                    size[i] = 6 * (size[i] // 6 + 1)
-            kpts = {'size': size, 'gamma': True}
-            return kpts
-
         kpts = get_kpts_size(atoms=atoms, kptdensity=20)
         truncation = '2D'
-        
+
     else:
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
@@ -101,10 +99,10 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-        
+
     print(valence_bands)
     print(conduction_bands)
-        
+
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
             gs,
@@ -149,7 +147,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
                                            write_eig='bse_eigx.dat',
                                            pbc=pbc,
                                            w_w=w_w)
-    
+
     w_w, alphay_w = bse.get_polarizability(eta=eta,
                                            filename='bse_poly.csv',
                                            direction=1,
@@ -167,7 +165,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
         os.system('rm gs_bse.gpw')
         os.system('rm gs_nosym.gpw')
 
-                         
+
 def absorption(row, filename, direction='x'):
     import numpy as np
     import matplotlib.pyplot as plt
@@ -250,7 +248,7 @@ def webpanel(row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
@@ -262,7 +260,7 @@ def webpanel(row, key_descriptions):
         funcy = partial(absorption, direction='y')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption',
+        panel = {'title': 'Optical absorption (BSE and RPA)',
                  'columns': [[fig('absx.png'), fig('absz.png')],
                              [fig('absy.png'), E_B]],
                  'plot_descriptions': [{'function': funcx,
@@ -291,7 +289,7 @@ def main():
         alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
     from asr.core import read_json
-                         
+
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
 
@@ -299,11 +297,10 @@ def main():
         magstate = info['magstate']
 
         gsresults = read_json('results-asr.gs.json')
-        print(gsresults.keys())
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E
         else:
-            E_B = gsresults['gaps_dir_nosoc'] - E
+            E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
         data['__key_descriptions__'] = \

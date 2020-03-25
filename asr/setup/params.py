@@ -22,7 +22,8 @@ def main(params=None):
 
     This recipe compiles a list of all options and their default
     values for all recipes to be used for manually changing values
-    for specific options."""
+    for specific options.
+    """
     import json
     from pathlib import Path
     from asr.core import get_recipes, read_json, parse_dict_string
@@ -31,7 +32,6 @@ def main(params=None):
     import copy
 
     defparamdict = {}
-    
     recipes = get_recipes()
     for recipe in recipes:
         defparams = recipe.defparams
