@@ -49,11 +49,18 @@ def setup_rotation(atom, distance):
     case, keep the rotations and continue.
     """
     from ase.io import write
+    import spglib
 
     cell = atom.get_cell()
     print('INFO: atoms object: {}'.format(atom))
     bravais = cell.get_bravais_lattice()
     print('INFO: Bravais lattice for this structure: {}'.format(bravais))
+
+    cell_spg = (atom.cell.array, atom.get_scaled_positions(),
+                atom.numbers)
+    print('Spglib cell: {}'.format(cell_spg))
+    dataset = spglib.get_symmetry_dataset(cell_spg)
+    print('Spglib dataset: {}'.format(dataset))
 
     name = bravais.lattice_system
     if name == 'cubic':
@@ -65,7 +72,7 @@ def setup_rotation(atom, distance):
     rot_list = []
     structure_list = []
     name_list = []
-    for rot in range(0,360,rotations):
+    for rot in range(0, 360, rotations):
         print('INFO: rotation {}: {}'.format(i, rot))
         rot_list.append(rot)
         name = 'stacking.rot_{}.trans_0'.format(rot)
@@ -79,7 +86,7 @@ def setup_rotation(atom, distance):
         newstruc.wrap()
 
         newpos = newstruc.get_positions()
-        newpos[:,2] = newpos[:,2] + distance
+        newpos[:, 2] = newpos[:, 2] + distance
         newstruc.set_positions(newpos)
 
         newstruc = newstruc + atom
@@ -114,6 +121,8 @@ def create_folder_structure(structure_list, name_list):
 # - Put io in separate function
 #   * working for rotations now
 # - expand name list for figuring out rotations of the cell
+# - extract rotation around z from rotation matrix
+#   * that one will be extracted from spglibs symmetry dataset
 
 
 if __name__ == '__main__':
