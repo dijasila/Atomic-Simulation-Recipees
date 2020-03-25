@@ -63,10 +63,11 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    params = gsold.parameters.copy()
+    params = gsold.parameters.copy()  # TODO: remove fix density from gs params
+    if 'fixdensity' in params:
+        params.pop('fixdensity')
     params.update({'mode': {'name': 'pw', 'ecut': ecut},
-                   'kpts': {'density': kptdensity, 'gamma': True},
-                   'xc': 'PBE'})
+                   'kpts': {'density': kptdensity, 'gamma': True}})
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False}
@@ -97,6 +98,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
         dct['__tofile__'] = 'asr.phonons@topckl'
         files[filename] = dct
     data = {'__files__': files}
+    fd.close()
     return data
 
 
