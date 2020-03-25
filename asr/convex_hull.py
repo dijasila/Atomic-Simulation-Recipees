@@ -52,7 +52,7 @@ def webpanel(row, key_descriptions):
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
-def main(databases, included3=True):
+def main(databases):
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -70,6 +70,10 @@ def main(databases, included3=True):
           (see further information below).
         - label: f-string from which to derive a material specific name to
           put on convex hull figure.
+        - calculator: String denoting the calculator that was used to calculate
+          reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
+          "DFT" means bare DFT references energies. "DFT+D3" indicate that the
+          reference also include the D3 dispersion correction.
 
     The name and link keys are given as f-strings and can this refer to
     key-value-pairs in the given database. For example, valid metadata looks
@@ -83,6 +87,7 @@ def main(databases, included3=True):
             'name': '{row.formula}',
             'label': '{row.formula}',
             'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
+            'calculator': 'DFT',
         }
 
     Parameters
