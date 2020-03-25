@@ -56,7 +56,42 @@ def webpanel(row, key_descriptions):
 def main(databases, standardreferences=None):
     """Calculate convex hull energies.
 
-    The reference database has to have a type column indicating.
+    It is assumed that the first database supplied is the one containing the
+    standard references.
+
+    For a database to be a valid reference database each row has to have a
+    "uid" key-value-pair. Additionally, it is required that the metadata of
+    each database contains following keys::
+
+        - title: Title of the reference database.
+        - legend: Collective label for all references in the database to
+          put on the convex hull figures.
+        - name: f-string from which to derive name for a material.
+        - link: f-string from which to derive an url for a material
+          (see further information below).
+        - label: f-string from which to derive a material specific name to
+          put on convex hull figure.
+
+    The name and link keys are given as f-strings and can this refer to
+    key-value-pairs in the given database. For example, valid metadata looks
+    like:
+
+    .. code-block:: json
+
+        {
+            'filename': 'oqmdreferences.db',
+            'title': 'Bulk reference phases',
+            'legend': 'Bulk',
+            'name': '{row.formula}',
+            'label': '{row.formula}',
+            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
+        }
+
+    Parameters
+    ----------
+    databases : list of str
+        List of filenames of databases.
+
     """
     from asr.core import read_json
     if standardreferences is None:
