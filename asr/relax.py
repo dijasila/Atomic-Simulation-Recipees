@@ -154,8 +154,6 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             smask = [1, 1, 1, 1, 1, 1]
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
-        elif nd == 1:
-            smask = [0, 0, 1, 0, 0, 0]
 
         else:
             pbc = atoms.get_pbc()
