@@ -52,6 +52,7 @@ def setup_rotation(atom, distance):
     """
     # from ase.io import write
     import spglib
+    from scipy.spatial.transform import Rotation as R
 
     cell = atom.get_cell()
     print('INFO: atoms object: {}'.format(atom))
@@ -62,7 +63,18 @@ def setup_rotation(atom, distance):
                 atom.numbers)
     print('Spglib cell: {}'.format(cell_spg))
     dataset = spglib.get_symmetry_dataset(cell_spg)
-    print('Spglib dataset: {}'.format(dataset))
+    # print('Spglib dataset: {}'.format(dataset))
+
+    rotations = dataset.get('rotations')
+    translations = dataset.get('translations')
+    # for i in range(len(rotations)):
+    r = R.from_matrix(rotations)
+    angles = r.as_euler('xyz', degrees=True)
+    for i in range(len(angles)):
+        # if angles[i,0] == 0 and angles[i,1] == 0:
+        print(angles[i], translations[i])
+    # print(angles[i] for i in range(len(angles)))
+    print('rotation {}: {}'.format(0, angles))
 
     name = bravais.lattice_system
     if name == 'cubic':
@@ -85,7 +97,7 @@ def setup_rotation(atom, distance):
         print('INFO: applied rotation {}'.format(el))
         newstruc = atom.copy()
         newstruc.rotate(el, 'z', rotate_cell=False)
-        newstruc.wrap()
+        # newstruc.wrap()
 
         newpos = newstruc.get_positions()
         newpos[:, 2] = newpos[:, 2] + distance
