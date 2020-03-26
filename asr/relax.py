@@ -11,7 +11,6 @@ The relax recipe has a couple of note-worthy features::
     and raises an error if this happens.
 """
 
-from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
@@ -327,11 +326,6 @@ def main(calculator={'name': 'gpaw',
     """
     from ase.calculators.calculator import get_calculator_class
 
-    msg = ('You cannot already have a structure.json file '
-           'when you relax a structure, because this is '
-           'what the relax recipe is supposed to produce. You should '
-           'name your original/start structure "unrelaxed.json!"')
-    assert not Path('structure.json').is_file(), msg
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):

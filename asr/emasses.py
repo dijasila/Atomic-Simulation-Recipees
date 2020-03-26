@@ -725,6 +725,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
@@ -738,26 +739,27 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         name = f'{identity}.gpw'
 
         if not Path(name).is_file():
-            # embzcut stuff
-            kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
-            assert not np.isnan(kmax)
-            kd_v = masses_dict['eigenvectors_vu'][:, u]
-            assert not (np.isnan(kd_v)).any()
-            k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
-            k_kv += masses_dict['ke_v']
-            k_kv /= Bohr
-            assert not (np.isnan(k_kv)).any()
-            k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
-            assert not (np.isnan(k_kc)).any()
-            atoms = calc.get_atoms()
-            for i, pb in enumerate(atoms.pbc):
-                if not pb:
-                    k_kc[:, i] = 0
-            assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off',
-                     txt=f'{identity}.txt', fixdensity=True)
-            atoms.get_potential_energy()
-            calc.write(name)
+            with file_barrier([name]):
+                # embzcut stuff
+                kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+                assert not np.isnan(kmax)
+                kd_v = masses_dict['eigenvectors_vu'][:, u]
+                assert not (np.isnan(kd_v)).any()
+                k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
+                k_kv += masses_dict['ke_v']
+                k_kv /= Bohr
+                assert not (np.isnan(k_kv)).any()
+                k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+                assert not (np.isnan(k_kc)).any()
+                atoms = calc.get_atoms()
+                for i, pb in enumerate(atoms.pbc):
+                    if not pb:
+                        k_kc[:, i] = 0
+                assert not (np.isnan(k_kc)).any()
+                calc.set(kpts=k_kc, symmetry='off',
+                         txt=f'{identity}.txt', fixdensity=True)
+                atoms.get_potential_energy()
+                calc.write(name)
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
@@ -907,7 +909,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     sort_args = np.argsort(mass_u)
 
     mass_u = mass_u[sort_args]
-    w3_vn = w3_vn[sort_args, :]
+    w3_vn = w3_vn[:, sort_args]
 
     out = dict(mass_u=mass_u,
                eigenvectors_vu=w3_vn,
