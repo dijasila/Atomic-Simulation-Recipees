@@ -1,9 +1,9 @@
-import json
-from pathlib import Path
+# import json
+# from pathlib import Path
 from ase.io import read
 from asr.core import command, option
-from math import isclose
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+# from math import isclose
+# from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 @command('asr.setup.stacking',
          resources='1:1h')
@@ -19,10 +19,12 @@ def main(distance=12.):
         magstate = get_magstate(atom)
     except RuntimeError:
         magstate = 'nm'
+    print('INFO: magnetic state: {}'.format(magstate))
 
-    structure_list, name_list =  setup_rotation(atom, distance)
+    structure_list, name_list = setup_rotation(atom, distance)
     create_folder_structure(structure_list, name_list)
     print('INFO: finished!')
+
 
 def get_magstate(atom):
     """
@@ -48,7 +50,7 @@ def setup_rotation(atom, distance):
     equivalent with symmetry operations for the spacegroup. If that's not the
     case, keep the rotations and continue.
     """
-    from ase.io import write
+    # from ase.io import write
     import spglib
 
     cell = atom.get_cell()
@@ -107,7 +109,7 @@ def create_folder_structure(structure_list, name_list):
     for i in range(len(name_list)):
         print(i)
         Path(name_list[i]).mkdir()
-        write(name_list[i]+'/structure.json', structure_list[i])
+        write(name_list[i] + '/structure.json', structure_list[i])
 
     print('INFO: finished IO part of the setup recipe')
 
