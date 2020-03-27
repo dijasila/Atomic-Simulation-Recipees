@@ -64,11 +64,14 @@ class SOCDOS(DOS):
     def get_dos(self):
         """Interface to DOS.get_dos()."""
         if self.world.rank == 0:
-            dos = DOS.get_dos(self, spin=0)
-            self.world.broadcast(np.ascontiguousarray(dos), 0)
+            dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
         else:
             dos = np.empty(self.npts)
-            self.world.broadcast(dos, 0)
+
+        print(self.world.rank, 'ready for broadcast', flush=True)
+        # Wait for rank=0 to finish before broadcasting
+        self.world.barrier()
+        self.world.broadcast(dos, 0)
 
         print(self.world.rank, dos, flush=True)
         self.world.barrier()
