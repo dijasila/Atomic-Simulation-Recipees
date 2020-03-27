@@ -21,17 +21,59 @@ def lattice_vectors(N_c):
     return R_cN
 
 
+def distance_to_sc(nd, atoms, dist_max):
+    if nd >= 1:
+        for x in range(2, 20):
+            atoms_x = atoms.repeat((x, 1, 1))
+            indices_x = [a for a in range(len(atoms_x))]
+            dist_x = []
+            for a in range(len(atoms)):
+                dist = max(atoms_x.get_distances(a, indices_x, mic=True))
+                dist_x.append(dist)
+            if max(dist_x) > dist_max:
+                x_size = x - 1
+                break
+        supercell = [x_size, 1, 1]
+    if nd >= 2:
+        for y in range(2, 20):
+            atoms_y = atoms.repeat((1, y, 1))
+            indices_y = [a for a in range(len(atoms_y))]
+            dist_y = []
+            for a in range(len(atoms)):
+                dist = max(atoms_y.get_distances(a, indices_y, mic=True))
+                dist_y.append(dist)
+            if max(dist_y) > dist_max:
+                y_size = y - 1
+                supercell = [x_size, y_size, 1]
+                break
+    if nd >= 3:
+        for z in range(2, 20):
+            atoms_z = atoms.repeat((1, 1, z))
+            indices_z = [a for a in range(len(atoms_z))]
+            dist_z = []
+            for a in range(len(atoms)):
+                dist = max(atoms_z.get_distances(a, indices_z, mic=True))
+                dist_z.append(dist)
+            if max(dist_z) > dist_max:
+                z_size = z - 1
+                supercell = [x_size, y_size, z_size]
+                break
+    return supercell
+
+
 @command(
     "asr.phonopy",
     requires=["structure.json", "gs.gpw"],
     dependencies=["asr.gs@calculate"],
 )
 @option("--d", type=float, help="Displacement size")
+@option("--dist_max", type=float,
+        help="Maximum distance between atoms in the supercell")
 @option("--fsname", help="Name for forces file")
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.')
-def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
+def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
               calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
                           'xc': 'PBE',
@@ -72,7 +114,11 @@ def calculate(d=0.05, fsname='phonons', sc=[2, 2, 2],
     from asr.core import get_dimensionality
 
     nd = get_dimensionality()
+   
     sc = list(map(int, sc))
+    if np.array(sc).any() == 0:
+        sc = distance_to_sc(nd, atoms, dist_max)
+    
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
@@ -187,10 +233,14 @@ def main(rc=None):
     atoms = read("structure.json")
     sc = dct["__params__"]["sc"]
     d = dct["__params__"]["d"]
+    dist_max = dct["__params__"]["dist_max"]
     fsname = dct["__params__"]["fsname"]
 
     nd = get_dimensionality()
+
     sc = list(map(int, sc))
+    if np.array(sc).any() == 0:
+        sc = distance_to_sc(nd, atoms, dist_max)
 
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
@@ -242,7 +292,7 @@ def main(rc=None):
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
 
-    #calculating phonon frequencies along a path in the BZ
+    # Calculating phonon frequencies along a path in the BZ
     for q, q_c in enumerate(path.kpts):
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
@@ -253,7 +303,7 @@ def main(rc=None):
     C_N = C_N.transpose(2, 0, 3, 1, 4)
     C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
 
-    #calculating hessian and eigenvectors at high symmetry points of the BZ
+    # Calculating hessian and eigenvectors at high symmetry points of the BZ
     eigs_kl = []
     q_qc = list(path.special_points.values())
     u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
@@ -343,15 +393,16 @@ def plot_bandstructure(row, fname):
     energies = data["omega_kl"]
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)
     bs.plot(
-       color="k",
-       emin=np.min(energies * 1.1),
-       emax=np.max(energies * 1.1),
-       ylabel="Phonon frequencies [meV]",
+        color="k",
+        emin=np.min(energies * 1.1),
+        emax=np.max(energies * 1.1),
+        ylabel="Phonon frequencies [meV]",
     )
 
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
+
 
 if __name__ == "__main__":
     main.cli()
