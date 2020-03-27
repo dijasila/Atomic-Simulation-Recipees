@@ -83,6 +83,10 @@ def setup_rotation(atom, distance):
     else:
         rotations = 180
 
+    # set up rotation matrices using the bravais angles
+    # create_rotation_matrices(rotations)
+
+
     i = 0
     rot_list = []
     structure_list = []
@@ -95,6 +99,11 @@ def setup_rotation(atom, distance):
             name_list.append(name)
             i = i + 1
     print('Rotation list: {}'.format(rot_list))
+
+    #test
+    spg_rots = create_rotation_matrices(rot_list)
+    print('INFO: bravais_rotation_list: {}'.format(spg_rots))
+    #test
     for el in rot_list:
         print('INFO: applied rotation {}'.format(el))
         newstruc = atom.copy()
@@ -109,6 +118,26 @@ def setup_rotation(atom, distance):
         structure_list.append(newstruc)
 
     return structure_list, name_list
+
+
+def create_rotation_matrices(rotations):
+    """
+    Takes a list of angles as argument and converts them to an array of
+    rotation matrices
+    """
+    from scipy.spatial.transform import Rotation as R
+    import numpy as np
+
+    print('INFO: enter create_rotation_matrices')
+    r_mat_list = []
+    for rot in rotations:
+        r = R.from_euler('z', rot, degrees=True)
+        r_mat = r.as_matrix()
+        r_mat_list.append(r_mat)
+        print('Rotation: {}, Matrix: {}'.format(rot, r_mat))
+
+    return r_mat_list
+
 
 
 def create_folder_structure(structure_list, name_list):
