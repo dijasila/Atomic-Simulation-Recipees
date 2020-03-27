@@ -19,7 +19,7 @@ def refine(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
-    socs = [True, False]
+    socs = [True]
 
     for soc in socs:
         theta, phi = get_spin_axis()
@@ -27,6 +27,7 @@ def refine(gpwfilename='gs.gpw'):
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
