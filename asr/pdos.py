@@ -47,7 +47,7 @@ class SOCDOS(DOS):
 
             # Hack the eigenvalues
             theta, phi = get_spin_axis()
-            e_skm, ef = calc2eigs(calc, theta=theta, phi=phi)
+            e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
@@ -62,9 +62,9 @@ class SOCDOS(DOS):
         from gpaw.mpi import broadcast
         if self.world.rank == 0:
             dos = DOS.get_dos(self, spin=0)
-            broadcast(dos, world=self.world)
+            broadcast(dos, comm=self.world)
         else:
-            dos = broadcast(None, world=self.world)
+            dos = broadcast(None, comm=self.world)
 
         return dos
 
