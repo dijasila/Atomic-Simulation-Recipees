@@ -63,7 +63,7 @@ def setup_rotation(atom, distance):
                 atom.numbers)
     print('Spglib cell: {}'.format(cell_spg))
     dataset = spglib.get_symmetry_dataset(cell_spg)
-    # print('Spglib dataset: {}'.format(dataset))
+    print('Spglib dataset: {}'.format(dataset))
 
     rotations = dataset.get('rotations')
     translations = dataset.get('translations')
