@@ -36,12 +36,59 @@ def refine(gpwfilename='gs.gpw'):
                 raise NoGapError('Gap was zero')
             if os.path.exists(gpw2):
                 continue
-            nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
+            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
+            nonsc_sphere(gpw=gpwrefined, soc=soc, bandtype=bt)
 
 
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
+
+def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
+    from gpaw import GPAW
+    import numpy as np
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
+    # Get calc and current kpts
+    calc = GPAW(gpw, txt=None)
+    ndim = calc.atoms.pbc.sum()
+    k_kc = calc.get_ibz_k_points()
+    cell_cv = calc.atoms.get_cell()
+
+
+    # Find energies and VBM/CBM
+    theta, phi = get_spin_axis()
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    if e_skn.ndim == 2:
+        e_skn = e_skn[np.newaxis]
+    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                            output=None)
+
+    # Make a sphere of kpts of high density
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 20)
+    ksphere = kptsinsphere(cell_cv, npoints=nkpts,
+                           erange=500e-3, m=1.0,
+                           dimensionality=ndim)
+    
+    # Position sphere around VBM is bandtype == vb
+    # Else around CBM
+    if bandtype == 'vb':
+        newk_kc = k_kc[k1] + ksphere
+    elif bandtype == 'cb':
+        newk_kc = k_kc[k2] + ksphere
+    else:
+        raise ValueError(f'Bandtype {bandtype} not recognized')
+
+    # Calculate energies for new k-grid
+    fname = '_refined'
+    calc.set(kpts=newk_kc,
+             symmetry='off',
+             txt=fname + '.txt')
+    atoms = calc.get_atoms()
+    atoms.get_potential_energy()
+    calc.write(fname + '.gpw')
+    return fname + '.gpw'
 
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
@@ -555,8 +602,7 @@ def check_soc(spin_band_dict):
 
 
 @command('asr.emasses',
-         requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json'],
