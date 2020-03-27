@@ -22,7 +22,7 @@ def main(distance=12.):
     print('INFO: magnetic state: {}'.format(magstate))
 
     structure_list, name_list = setup_rotation(atom, distance)
-    create_folder_structure(structure_list, name_list)
+#     create_folder_structure(structure_list, name_list)
     print('INFO: finished!')
 
 
@@ -70,11 +70,12 @@ def setup_rotation(atom, distance):
     # for i in range(len(rotations)):
     r = R.from_matrix(rotations)
     angles = r.as_euler('xyz', degrees=True)
+    spgrot = []
     for i in range(len(angles)):
-        # if angles[i,0] == 0 and angles[i,1] == 0:
-        print(angles[i], translations[i])
-    # print(angles[i] for i in range(len(angles)))
-    print('rotation {}: {}'.format(0, angles))
+        if angles[i,0] == 0 and angles[i,1] == 0:
+            spgrot.append(angles[i,2])
+    # print('rotation {}: {}'.format(0, angles))
+    print('spg z rotations: {}'.format(spgrot))
 
     name = bravais.lattice_system
     if name == 'cubic':
@@ -87,17 +88,18 @@ def setup_rotation(atom, distance):
     structure_list = []
     name_list = []
     for rot in range(0, 360, rotations):
-        print('INFO: rotation {}: {}'.format(i, rot))
-        rot_list.append(rot)
-        name = 'stacking.rot_{}.trans_0'.format(rot)
-        name_list.append(name)
-        i = i + 1
+        if rot in spgrot:
+            print('INFO: rotation {}: {}'.format(i, rot))
+            rot_list.append(rot)
+            name = 'unstacking.rot_{}.trans_0'.format(rot)
+            name_list.append(name)
+            i = i + 1
     print('Rotation list: {}'.format(rot_list))
     for el in rot_list:
         print('INFO: applied rotation {}'.format(el))
         newstruc = atom.copy()
         newstruc.rotate(el, 'z', rotate_cell=False)
-        # newstruc.wrap()
+        newstruc.wrap()
 
         newpos = newstruc.get_positions()
         newpos[:, 2] = newpos[:, 2] + distance
@@ -135,8 +137,9 @@ def create_folder_structure(structure_list, name_list):
 # - Put io in separate function
 #   * working for rotations now
 # - expand name list for figuring out rotations of the cell
-# - extract rotation around z from rotation matrix
-#   * that one will be extracted from spglibs symmetry dataset
+# - get rotation matrix from rotation angle
+#   * compare that matrix to matrices from spglib
+#   * if these are included, neglect it, otherwise keep!
 
 
 if __name__ == '__main__':
