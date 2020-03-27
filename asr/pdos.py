@@ -248,13 +248,13 @@ def main():
 
     results = {}
 
-    # Calculate pdos
-    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
-    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
-
     # Calculate the dos at the Fermi energy
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
+
+    # Calculate pdos
+    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Log key descriptions
     kd = {}
