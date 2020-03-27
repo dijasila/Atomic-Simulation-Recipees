@@ -56,7 +56,6 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
 
-
     # Find energies and VBM/CBM
     theta, phi = get_spin_axis()
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
@@ -70,7 +69,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
                            erange=500e-3, m=1.0,
                            dimensionality=ndim)
-    
+
     # Position sphere around VBM is bandtype == vb
     # Else around CBM
     if bandtype == 'vb':
@@ -89,6 +88,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     atoms.get_potential_energy()
     calc.write(fname + '.gpw')
     return fname + '.gpw'
+
 
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
