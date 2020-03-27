@@ -32,29 +32,41 @@ class SOCDOS(DOS):
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
         import gpaw.mpi as mpi
-        from asr.utils.gpw2eigs import gpw2eigs
+        from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-        DOS.__init__(self, calc, **kwargs)
+        # Only the rank=0 has an actual DOS object.
+        # The others receive the output as a broadcast.
+        self.world = mpi.world
+        if mpi.world.rank == 0:
+            calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            DOS.__init__(self, calc, **kwargs)
 
-        # Hack the number of spins
-        self.nspins = 1
+            # Hack the number of spins
+            self.nspins = 1
 
-        # Hack the eigenvalues
-        theta, phi = get_spin_axis()
-        e_skm, ef = gpw2eigs(gpw, theta=theta, phi=phi)
-        if e_skm.ndim == 2:
-            e_skm = e_skm[np.newaxis]
-        e_skn = e_skm - ef
-        bzkpts = calc.get_bz_k_points()
-        size, offset = k2so(bzkpts)
-        bz2ibz = calc.get_bz_to_ibz_map()
-        shape = (self.nspins, ) + tuple(size) + (-1, )
-        self.e_skn = e_skn[:, bz2ibz].reshape(shape)
+            # Hack the eigenvalues
+            theta, phi = get_spin_axis()
+            e_skm, ef = calc2eigs(calc, theta=theta, phi=phi)
+            if e_skm.ndim == 2:
+                e_skm = e_skm[np.newaxis]
+            e_skn = e_skm - ef
+            bzkpts = calc.get_bz_k_points()
+            size, offset = k2so(bzkpts)
+            bz2ibz = calc.get_bz_to_ibz_map()
+            shape = (self.nspins, ) + tuple(size) + (-1, )
+            self.e_skn = e_skn[:, bz2ibz].reshape(shape)
 
     def get_dos(self):
-        return DOS.get_dos(self, spin=0)
+        """Interface to DOS.get_dos()."""
+        from gpaw.mpi import broadcast
+        if self.world.rank == 0:
+            dos = DOS.get_dos(self, spin=0)
+            broadcast(dos, world=self.world)
+        else:
+            dos = broadcast(None, world=self.world)
+
+        return dos
 
 
 # Hack the local density of states to keep spin-orbit results and not
