@@ -37,19 +37,21 @@ class SOCDOS(DOS):
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        # Only the rank=0 has an actual DOS object.
+        # Initiate calculator object and get the spin-orbit eigenvalues
+        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        theta, phi = get_spin_axis()
+        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
+
+        # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
         self.world = mpi.world
         if mpi.world.rank == 0:
-            calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
             DOS.__init__(self, calc, npts=npts, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
 
             # Hack the eigenvalues
-            theta, phi = get_spin_axis()
-            e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
@@ -63,18 +65,14 @@ class SOCDOS(DOS):
 
     def get_dos(self):
         """Interface to DOS.get_dos()."""
+        # Rank=0 calculates the dos
         if self.world.rank == 0:
             dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
         else:
             dos = np.empty(self.npts)
 
-        print(self.world.rank, 'ready for broadcast', flush=True)
-        # Wait for rank=0 to finish before broadcasting
-        self.world.barrier()
+        # Broadcast result
         self.world.broadcast(dos, 0)
-
-        print(self.world.rank, dos, flush=True)
-        self.world.barrier()
 
         return dos
 
