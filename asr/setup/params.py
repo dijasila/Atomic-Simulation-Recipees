@@ -45,7 +45,7 @@ def main(params=None):
     else:
         paramdict = {}
 
-    if isinstance(params, list):
+    if isinstance(params, (list, tuple)):
         # Find recipe:option
         tmpoptions = params[::2]
         tmpargs = params[1::2]

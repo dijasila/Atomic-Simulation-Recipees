@@ -1,5 +1,2 @@
-import numpy as np
-
-
-def get_berry_phases(calc, *args, **kwargs):
-    return None, np.zeros((10,), float)
+def get_berry_phases(calc, dir=0, spin=0):
+    return None, calc._get_berry_phases(dir, spin)

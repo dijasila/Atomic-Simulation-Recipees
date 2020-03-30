@@ -30,6 +30,8 @@ def get_polarization_phase(calc):
             _, phases = get_berry_phases(calc, dir=c, spin=spin)
             phase_c[c] += np.sum(phases) / len(phases)
 
+    phase_c = phase_c * 2 / nspins
+
     # Ionic contribution
     Z_a = []
     for num in calc.atoms.get_atomic_numbers():
@@ -38,8 +40,6 @@ def get_polarization_phase(calc):
             if abs(ida[0] - num) < 1e-5:
                 break
         Z_a.append(setup.Nv)
-
-    phase_c = phase_c * 2 / nspins
     phase_c += 2 * np.pi * np.dot(Z_a, calc.spos_ac)
 
     return -phase_c

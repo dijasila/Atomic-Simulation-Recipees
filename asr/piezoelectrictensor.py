@@ -75,16 +75,19 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
     pbc_c = atoms.get_pbc()
-    N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+    if not all(pbc_c):
+        N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
+    else:
+        N = 1.0
     epsclamped_vvv = np.zeros((3, 3, 3), float)
     eps_vvv = np.zeros((3, 3, 3), float)
-
     ij = get_relevant_strains(atoms.pbc)
 
     for i, j in ij:
         phase_sc = np.zeros((2, 3), float)
         for s, sign in enumerate([-1, 1]):
             folder = get_strained_folder_name(sign * strain_percent, i, j)
+            print('Folder', folder)
             with chdir(folder):
                 if not relax.done:
                     relax()
@@ -92,15 +95,16 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
                     formalpolarization(kpts=kpts)
 
             polresults = read_json(folder / 'results-asr.formalpolarization.json')
+            print('polresults[phase_c]', polresults['phase_c'])
             phase_sc[s] = polresults['phase_c']
 
         dphase_c = phase_sc[1] - phase_sc[0]
         dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
-        dphasedeps_c = dphase_c / (2 * strain_percent)
+        dphasedeps_c = dphase_c / (2 * strain_percent * 0.01)
+        print('ij', f'{i}{j}', 'dphasedeps_c', dphasedeps_c, strain_percent)
         eps_v = (-np.dot(dphasedeps_c, cell_cv)
                  / (2 * np.pi * vol))
-        if (~atoms.pbc).any():
-            eps_v *= N
+        eps_v *= N
 
         eps_vvv[:, i, j] = eps_v
         eps_vvv[:, j, i] = eps_v
