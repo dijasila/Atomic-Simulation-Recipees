@@ -1,6 +1,7 @@
 import pytest
 from asr.core import get_recipes
 
+
 @pytest.mark.ci
 def test_setup_params(separate_folder):
     from asr.setup.params import main

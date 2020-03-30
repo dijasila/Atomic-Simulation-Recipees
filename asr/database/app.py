@@ -139,11 +139,6 @@ def initialize_project(database):
     (tmpdir / name).mkdir()
 
     metadata = db.metadata
-    if 'keys' not in metadata:
-        raise KeyError('Missing list of keys for database. '
-                       'To fix this either: run database.fromtree again. '
-                       'or python -m asr.database.set_metadata DATABASEFILE.')
-    keys = metadata.get('keys')
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
