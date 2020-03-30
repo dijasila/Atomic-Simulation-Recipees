@@ -20,7 +20,7 @@ from asr.core import magnetic_atoms, read_json
 
 # Hack the density of states
 class SOCDOS(DOS):
-    def __init__(self, gpw, **kwargs):
+    def __init__(self, gpw, npts=401, **kwargs):
         """Hack to make DOS class work with spin orbit coupling.
 
         Parameters
@@ -28,6 +28,8 @@ class SOCDOS(DOS):
         gpw : str
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
+        npts : int
+            see ase.dft.dos.DOS
         """
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
@@ -35,19 +37,21 @@ class SOCDOS(DOS):
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        # Only the rank=0 has an actual DOS object.
+        # Initiate calculator object and get the spin-orbit eigenvalues
+        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        theta, phi = get_spin_axis()
+        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
+
+        # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
         self.world = mpi.world
         if mpi.world.rank == 0:
-            calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            DOS.__init__(self, calc, **kwargs)
+            DOS.__init__(self, calc, npts=npts, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
 
             # Hack the eigenvalues
-            theta, phi = get_spin_axis()
-            e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
@@ -56,15 +60,19 @@ class SOCDOS(DOS):
             bz2ibz = calc.get_bz_to_ibz_map()
             shape = (self.nspins, ) + tuple(size) + (-1, )
             self.e_skn = e_skn[:, bz2ibz].reshape(shape)
+        else:
+            self.npts = npts
 
     def get_dos(self):
         """Interface to DOS.get_dos()."""
-        from gpaw.mpi import broadcast
+        # Rank=0 calculates the dos
         if self.world.rank == 0:
-            dos = DOS.get_dos(self, spin=0)
-            broadcast(dos, comm=self.world)
+            dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
         else:
-            dos = broadcast(None, comm=self.world)
+            dos = np.empty(self.npts)
+
+        # Broadcast result
+        self.world.broadcast(dos, 0)
 
         return dos
 
