@@ -9,8 +9,7 @@ class NoGapError(Exception):
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.structureinfo',
                        'asr.magnetic_anisotropy'],
-         creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                  'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
+         creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def refine(gpwfilename='gs.gpw'):
@@ -50,6 +49,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
+    from gpaw import mpi
     # Get calc and current kpts
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
@@ -63,9 +63,10 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
         e_skn = e_skn[np.newaxis]
     _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                             output=None)
-
     # Make a sphere of kpts of high density
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 20)
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 19)
+    nkpts = nkpts + (1 - (nkpts % 2))
+    assert nkpts % 2 != 0
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
                            erange=500e-3, m=1.0,
                            dimensionality=ndim)
