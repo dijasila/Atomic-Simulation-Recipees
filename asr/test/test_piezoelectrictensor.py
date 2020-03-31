@@ -44,5 +44,7 @@ def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, atoms, nspins):
     eps_analytic_vvv = np.tensordot(cell_cv, dpde_cvv,
                                     axes=([0], [0])) / (2 * np.pi * vol) * N * 2
     eps_vvv = results['eps_vvv']
+    eps_clamped_vvv = results['eps_clamped_vvv']
     assert eps_vvv == pytest.approx(eps_analytic_vvv)
+    assert eps_clamped_vvv == pytest.approx(eps_analytic_vvv)
     assert "Piezoelectrictensor" in content, content

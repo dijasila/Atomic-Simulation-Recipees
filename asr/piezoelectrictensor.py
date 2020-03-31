@@ -13,7 +13,7 @@ def webpanel(row, key_descriptions):
 
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
-    e0_vvv = piezodata['epsclamped_vvv']
+    e0_vvv = piezodata['eps_clamped_vvv']
 
     e_ij = e_vvv[:,
                  [0, 1, 2, 1, 0, 0],
@@ -55,10 +55,14 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
     from asr.formalpolarization import main as formalpolarization
     from asr.relax import main as relax
     from asr.setup.strains import main as setupstrains
+    from asr.setup.strains import clamped as setupclampedstrains
     from asr.setup.strains import get_relevant_strains, get_strained_folder_name
 
     if not setupstrains.done:
         setupstrains(strain_percent=strain_percent)
+
+    if not setupclampedstrains.done:
+        setupclampedstrains(strain_percent=strain_percent)
 
     # TODO: Clamped strains
     # TODO: converge density and states
@@ -79,38 +83,42 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
         N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     else:
         N = 1.0
-    epsclamped_vvv = np.zeros((3, 3, 3), float)
+    eps_clamped_vvv = np.zeros((3, 3, 3), float)
     eps_vvv = np.zeros((3, 3, 3), float)
     ij = get_relevant_strains(atoms.pbc)
 
-    for i, j in ij:
-        phase_sc = np.zeros((2, 3), float)
-        for s, sign in enumerate([-1, 1]):
-            folder = get_strained_folder_name(sign * strain_percent, i, j)
-            print('Folder', folder)
-            with chdir(folder):
-                if not relax.done:
-                    relax()
-                if not formalpolarization.done:
-                    formalpolarization(kpts=kpts)
+    for clamped in [True, False]:
+        for i, j in ij:
+            phase_sc = np.zeros((2, 3), float)
+            for s, sign in enumerate([-1, 1]):
+                folder = get_strained_folder_name(sign * strain_percent, i, j,
+                                                  clamped=clamped)
+                with chdir(folder):
+                    if not clamped and not relax.done:
+                        relax()
+                    if not formalpolarization.done:
+                        formalpolarization(kpts=kpts)
 
-            polresults = read_json(folder / 'results-asr.formalpolarization.json')
-            print('polresults[phase_c]', polresults['phase_c'])
-            phase_sc[s] = polresults['phase_c']
+                polresults = read_json(folder / 'results-asr.formalpolarization.json')
+                phase_sc[s] = polresults['phase_c']
 
-        dphase_c = phase_sc[1] - phase_sc[0]
-        dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
-        dphasedeps_c = dphase_c / (2 * strain_percent * 0.01)
-        print('ij', f'{i}{j}', 'dphasedeps_c', dphasedeps_c, strain_percent)
-        eps_v = (-np.dot(dphasedeps_c, cell_cv)
-                 / (2 * np.pi * vol))
-        eps_v *= N
+            dphase_c = phase_sc[1] - phase_sc[0]
+            dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
+            dphasedeps_c = dphase_c / (2 * strain_percent * 0.01)
+            eps_v = (-np.dot(dphasedeps_c, cell_cv)
+                     / (2 * np.pi * vol))
+            eps_v *= N
 
-        eps_vvv[:, i, j] = eps_v
-        eps_vvv[:, j, i] = eps_v
+            if clamped:
+                epsref_vvv = eps_clamped_vvv
+            else:
+                epsref_vvv = eps_vvv
+
+            epsref_vvv[:, i, j] = eps_v
+            epsref_vvv[:, j, i] = eps_v
 
     data = {'eps_vvv': eps_vvv,
-            'epsclamped_vvv': epsclamped_vvv}
+            'eps_clamped_vvv': eps_clamped_vvv}
 
     return data
 
