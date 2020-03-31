@@ -1,13 +1,14 @@
 import numpy as np
 from asr.core import command, option
 
+
 @command(module='asr.exchange',
          creates=['2x1x1_gs.gpw', 'exchange.gpw'],
          requires=['gs.gpw'],
          resources='40:10h')
 @option('--gs', help='Ground state on which exchange calculation is based')
 def calculate(gs='gs.gpw'):
-    """Calculate two spin configurations"""
+    """Calculate two spin configurations."""
     from gpaw import GPAW
     from asr.core import magnetic_atoms
 
@@ -65,13 +66,13 @@ def calculate(gs='gs.gpw'):
     else:
         pass
 
-def get_parameters(fm, afm, txt=False, 
+
+def get_parameters(fm, afm, txt=False,
                    dis_cut=0.2, line=False, a0=None):
-    """Extract Heisenberg parameters"""
+    """Extract Heisenberg parameters."""
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     from gpaw.spinorbit import get_anisotropy
-    from ase.geometry import get_distances
     from ase.dft.bandgap import bandgap
 
     calc_fm = GPAW(fm, communicator=serial_comm, txt=None)
@@ -80,7 +81,6 @@ def get_parameters(fm, afm, txt=False,
     atoms = calc_fm.atoms
     if a0 is None:
         a0 = np.argmax(np.abs(calc_fm.get_magnetic_moments()))
-    symbols = atoms.symbols
     el = atoms[a0].symbol
     a_i = []
     for i in range(len(atoms)):
@@ -101,15 +101,15 @@ def get_parameters(fm, afm, txt=False,
     else:
         width = None
 
-    E_fm_x = get_anisotropy(calc_fm, theta=np.pi/2, phi=0,
+    E_fm_x = get_anisotropy(calc_fm, theta=np.pi / 2, phi=0,
                             width=width, nbands=nbands) / 2
-    E_fm_y = get_anisotropy(calc_fm, theta=np.pi/2, phi=np.pi/2,
+    E_fm_y = get_anisotropy(calc_fm, theta=np.pi / 2, phi=np.pi / 2,
                             width=width, nbands=nbands) / 2
     E_fm_z = get_anisotropy(calc_fm, theta=0, phi=0,
                             width=width, nbands=nbands) / 2
-    E_afm_x = get_anisotropy(calc_afm, theta=np.pi/2, phi=0,
+    E_afm_x = get_anisotropy(calc_afm, theta=np.pi / 2, phi=0,
                              width=width, nbands=nbands) / 2
-    E_afm_y = get_anisotropy(calc_afm, theta=np.pi/2, phi=np.pi/2,
+    E_afm_y = get_anisotropy(calc_afm, theta=np.pi / 2, phi=np.pi / 2,
                              width=width, nbands=nbands) / 2
     E_afm_z = get_anisotropy(calc_afm, theta=0, phi=0,
                              width=width, nbands=nbands) / 2
@@ -156,7 +156,7 @@ def get_parameters(fm, afm, txt=False,
             B = -dE_afm / (N_afm - N_fm) / S**2
     else:
         A = dE_fm * (1 - N_fm / N_afm) + dE_afm * (1 + N_fm / N_afm)
-        A /= (2 * S - 1) * S 
+        A /= (2 * S - 1) * S
         B = (dE_fm - dE_afm) / (N_afm * S**2)
 
     return J, A, B
@@ -166,7 +166,7 @@ def get_parameters(fm, afm, txt=False,
          requires=['2x1x1_gs.gpw', 'exchange.gpw'],
          dependencies=['asr.exchange@calculate', 'asr.gs'])
 def main():
-    """Collect data"""
+    """Collect data."""
     from ase.io import read
     N_gs = len(read('gs.gpw'))
     N_exchange = len(read('2x1x1_gs.gpw'))
@@ -176,7 +176,6 @@ def main():
         line = True
 
     J, A, B = get_parameters('2x1x1_gs.gpw', 'exchange.gpw', line=line)
-    
     data = {}
     data['J'] = J
     data['__key_descriptions__'] = {'J': 'KVP: Exchange coupling [meV]'}
