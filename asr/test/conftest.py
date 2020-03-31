@@ -153,7 +153,7 @@ def freeelectroneigenvalues(atoms, gap=0):
 
         if hasattr(self, "tmpeigenvalues"):
             return self.tmpeigenvalues[kpt]
-        nelectrons = self.parameters.nelectrons
+        nelectrons = self.get_number_of_electrons()
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
         nbands = self.get_number_of_bands()
 

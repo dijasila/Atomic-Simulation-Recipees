@@ -1,64 +1,5 @@
 from asr.core import command, option
-
-
-def get_polarization_phase(calc):
-    import numpy as np
-    from gpaw.berryphase import get_berry_phases
-    from gpaw.mpi import SerialCommunicator
-
-    assert isinstance(calc.world, SerialCommunicator)
-
-    phase_c = np.zeros((3,), float)
-    # Calculate and save berry phases
-    nspins = calc.wfs.nspins
-    for c in [0, 1, 2]:
-        for spin in range(nspins):
-            indices_kk, phases = get_berry_phases(calc, dir=c, spin=spin)
-            phase_c[c] += np.sum(phases) / len(phases)
-
-    # Ionic contribution
-    Z_a = []
-    for num in calc.atoms.get_atomic_numbers():
-        for ida, setup in zip(calc.wfs.setups.id_a,
-                              calc.wfs.setups):
-            if abs(ida[0] - num) < 1e-5:
-                break
-        Z_a.append(setup.Nv)
-
-    phase_c = phase_c * 2 / nspins
-    phase_c += 2 * np.pi * np.dot(Z_a, calc.spos_ac)
-
-    return -phase_c
-
-
-def get_wavefunctions(atoms, name, params, density=6.0,
-                      no_symmetries=False):
-    from gpaw import GPAW
-    from gpaw.mpi import serial_comm
-    from pathlib import Path
-
-    if Path(name).is_file():
-        return GPAW(name, communicator=serial_comm, txt=None)
-
-    params['kpts'] = {'density': density,
-                      'gamma': True}
-    # 'even': True}  # Not compatible with ASE atm.
-    if no_symmetries:
-        params['symmetry'] = {'point_group': False,
-                              'time_reversal': False}
-    else:
-        params['symmetry'] = {'point_group': True,
-                              'time_reversal': True}
-    params['convergence']['eigenstates'] = 1e-11
-    params['convergence']['density'] = 1e-7
-    tmp = Path(name).with_suffix('').name
-    calc = GPAW(txt=tmp + '.txt', **params)
-    atoms.set_calculator(calc)
-    atoms.get_potential_energy()
-    calc.write(name, 'all')
-
-    calc = GPAW(name, communicator=serial_comm, txt=None)
-    return calc
+from asr.formalpolarization import get_wavefunctions, get_polarization_phase
 
 
 def webpanel(row, key_descriptions):
@@ -109,8 +50,8 @@ def webpanel(row, key_descriptions):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option('--displacement', help='Atomic displacement (Å)')
-@option('--kptdensity')
-def main(displacement=0.01, kptdensity=8.0):
+@option('--kpts', help='K-point dict for ES calculation.')
+def main(displacement=0.01, kpts={'density': 8.0}):
     """Calculate Born charges."""
     from pathlib import Path
 
@@ -125,6 +66,7 @@ def main(displacement=0.01, kptdensity=8.0):
 
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
+    params['kpts'] = kpts
     atoms = calc.atoms
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
@@ -149,15 +91,13 @@ def main(displacement=0.01, kptdensity=8.0):
                                                  'xyz'[v],
                                                  ' +-'[sign])
                 name = prefix + '.gpw'
-                calc = get_wavefunctions(atoms, name, params,
-                                         density=kptdensity)
+                calc = get_wavefunctions(atoms, name, params)
                 try:
                     phase_c = get_polarization_phase(calc)
                 except ValueError:
                     with file_barrier(name):
                         calc = get_wavefunctions(atoms, name,
-                                                 params,
-                                                 density=kptdensity)
+                                                 params)
                         phase_c = get_polarization_phase(name)
 
                 dipol_svv[s, :, v] = calc.results['dipole'] / Bohr
