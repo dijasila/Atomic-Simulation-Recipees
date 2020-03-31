@@ -30,6 +30,7 @@ class SOCDOS(DOS):
             it, instead of the normal ASE compliant calculator object.
         npts : int
             see ase.dft.dos.DOS
+
         """
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
@@ -64,7 +65,7 @@ class SOCDOS(DOS):
             self.npts = npts
 
     def get_dos(self):
-        """Interface to DOS.get_dos()."""
+        """Interface to DOS.get_dos."""
         # Rank=0 calculates the dos
         if self.world.rank == 0:
             dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
@@ -326,6 +327,7 @@ def calculate_pdos(calc, gpw, soc=True):
         chemical symbols in Atoms object
     efermi : float
         Fermi energy
+
     """
     from gpaw import GPAW
     import gpaw.mpi as mpi
@@ -419,6 +421,7 @@ def get_l_a(zs):
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a
         given atom
+
     """
     lantha = range(58, 72)
     acti = range(90, 104)
@@ -465,6 +468,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
     -------
     outdct_syl : OrderedDict
         Sorted dct_syl
+
     """
     from collections import OrderedDict
 
@@ -494,6 +498,7 @@ def get_yl_colors(dct_syl):
     -------
     color_yl : OrderedDict
         Color strings for each symbol and angular momentum
+
     """
     from collections import OrderedDict
 
