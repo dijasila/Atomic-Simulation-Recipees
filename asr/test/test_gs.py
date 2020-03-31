@@ -1,6 +1,6 @@
 import pytest
 from pytest import approx
-from .conftest import test_materials, get_webcontent, freeelectroneigenvalues
+from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
@@ -13,12 +13,11 @@ def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
     from ase.units import Ha
     import gpaw
     import gpaw.occupations
-    get_eigenvalues = freeelectroneigenvalues(atoms, gap=gap)
-
-    mocker.patch.object(gpaw.GPAW, "get_eigenvalues", new=get_eigenvalues)
-    mocker.patch.object(gpaw.GPAW, "get_fermi_level")
+    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
+    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     mocker.patch("gpaw.occupations.occupation_numbers")
-    gpaw.GPAW.get_fermi_level.return_value = fermi_level
+    gpaw.GPAW._get_fermi_level.return_value = fermi_level
+    gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.occupations.occupation_numbers.return_value = [0,
                                                         fermi_level / Ha,
                                                         0,

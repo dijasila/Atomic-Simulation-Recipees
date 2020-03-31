@@ -2,6 +2,13 @@
 
 Topical Discussions
 ===================
+
+.. toctree::
+   :maxdepth: 2
+
+   formalpolarization
+
+
 Here you will find discussion of various concepts in employed in ASR.
 
 The setup recipes
@@ -52,7 +59,7 @@ structures. Here we provide some explanations of their usage.
   a specific combination of those parameters. When you are done with
   you calculations you can collect the data in the folders and plot
   them in the browser.
-
+  
 The database subpackage
 -----------------------
 XXX TODO

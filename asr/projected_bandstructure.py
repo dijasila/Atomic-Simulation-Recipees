@@ -93,7 +93,7 @@ def get_orbital_ldos(calc):
         i_x.append(i)
 
     # Allocate output array
-    nk, nb = calc.wfs.kd.nibzkpts, calc.wfs.bd.nbands
+    nk, nb = len(calc.get_ibz_k_points()), calc.get_number_of_bands()
     weight_skni = np.zeros((ns, nk, nb, len(yl_i)))
 
     # Set up progressbar
