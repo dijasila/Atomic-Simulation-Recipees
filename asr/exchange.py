@@ -1,8 +1,8 @@
 import numpy as np
-from asr.core import command, option
+from asr.core import command, option, file_barrier
 
 @command(module='asr.exchange',
-         creates=['2x1x1_gs.gpw', 'exchange.gpw'],
+         creates=['gs_2mag.gpw', 'exchange.gpw'],
          requires=['gs.gpw'],
          resources='40:10h')
 @option('--gs', help='Ground state on which exchange calculation is based')
@@ -16,10 +16,10 @@ def calculate(gs='gs.gpw'):
     magnetic = magnetic_atoms(atoms)
     if sum(magnetic) == 2:
         calc.reset()
-        calc.set(txt='2x1x1_gs.txt')
+        calc.set(txt='gs_2mag.txt')
         atoms.set_calculator(calc)
         atoms.get_potential_energy()
-        calc.write('2x1x1_gs.gpw')
+        calc.write('gs_2mag.gpw')
 
         a1, a2 = np.where(magnetic)[0]
         magmoms_i = calc.get_magnetic_moments()
@@ -44,10 +44,10 @@ def calculate(gs='gs.gpw'):
         atoms.set_initial_magnetic_moments(magmoms)
         atoms = atoms.repeat((2, 1, 1))
         calc.reset()
-        calc.set(txt='2x1x1_gs.txt')
+        calc.set(txt='gs_2mag.txt')
         atoms.set_calculator(calc)
         atoms.get_potential_energy()
-        calc.write('2x1x1_gs.gpw')
+        calc.write('gs_2mag.gpw')
 
         magnetic = magnetic_atoms(atoms)
         a1, a2 = np.where(magnetic)[0]
@@ -65,7 +65,7 @@ def calculate(gs='gs.gpw'):
     else:
         pass
 
-def get_parameters(fm, afm, txt=False, 
+def get_parameters(gs, exchange, txt=False, 
                    dis_cut=0.2, line=False, a0=None):
     """Extract Heisenberg parameters"""
     from gpaw import GPAW
@@ -73,9 +73,24 @@ def get_parameters(fm, afm, txt=False,
     from gpaw.spinorbit import get_anisotropy
     from ase.geometry import get_distances
     from ase.dft.bandgap import bandgap
+    from gpaw.utilities.ibz2bz import ibz2bz
 
-    calc_fm = GPAW(fm, communicator=serial_comm, txt=None)
-    calc_afm = GPAW(afm, communicator=serial_comm, txt=None)
+    with file_barrier(['gs_2mag_nosym.gpw']):
+        ibz2bz(gs, 'gs_2mag_nosym.gpw')
+    with file_barrier(['exchange_nosym.gpw']):
+        ibz2bz(exchange, 'exchange_nosym.gpw')
+
+    calc_gs_2mag = GPAW('gs_2mag_nosym.gpw', communicator=serial_comm, txt=None)
+    calc_exchange = GPAW('exchange_nosym.gpw', communicator=serial_comm, txt=None)
+    m_gs = calc_gs_2mag.get_magnetic_moment()
+    m_ex = calc_exchange.get_magnetic_moment()
+    if np.abs(m_gs) > np.abs(m_ex):
+        calc_fm = calc_gs_2mag
+        calc_afm = calc_exchange
+    else:
+        calc_afm = calc_gs_2mag
+        calc_fm = calc_exchange        
+
     nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
     if a0 is None:
@@ -163,26 +178,26 @@ def get_parameters(fm, afm, txt=False,
 
 
 @command(module='asr.exchange',
-         requires=['2x1x1_gs.gpw', 'exchange.gpw'],
+         requires=['gs_2mag.gpw', 'exchange.gpw'],
          dependencies=['asr.exchange@calculate', 'asr.gs'])
 def main():
     """Collect data"""
     from ase.io import read
     N_gs = len(read('gs.gpw'))
-    N_exchange = len(read('2x1x1_gs.gpw'))
+    N_exchange = len(read('gs_2mag.gpw'))
     if N_gs == N_exchange:
         line = False
     else:
         line = True
 
-    J, A, B = get_parameters('2x1x1_gs.gpw', 'exchange.gpw', line=line)
+    J, A, B = get_parameters('gs_2mag.gpw', 'exchange.gpw', line=line)
     
     data = {}
-    data['J'] = J
+    data['J'] = J * 1000
     data['__key_descriptions__'] = {'J': 'KVP: Exchange coupling [meV]'}
-    data['A'] = A
+    data['A'] = A * 1000
     data['__key_descriptions__'] = {'A': 'KVP: Single-ion anisotropy [meV]'}
-    data['B'] = B
+    data['B'] = B * 1000
     data['__key_descriptions__'] = {'B': 'KVP: Anisotropic exchange [meV]'}
     return data
 
