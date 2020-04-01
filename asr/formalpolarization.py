@@ -11,11 +11,11 @@ The central recipe of this module is :func:`asr.formalpolarization.main`.
 .. autofunction:: asr.formalpolarization.main
 
 """
-
+import numpy as np
 from asr.core import command, option
 
 
-def get_polarization_phase(calc):
+def get_electronic_polarization_phase(calc):
     import numpy as np
     from gpaw.berryphase import get_berry_phases
     from gpaw.mpi import SerialCommunicator
@@ -32,7 +32,10 @@ def get_polarization_phase(calc):
 
     phase_c = phase_c * 2 / nspins
 
-    # Ionic contribution
+    return phase_c
+
+
+def get_atomic_polarization_phase(calc):
     Z_a = []
     for num in calc.atoms.get_atomic_numbers():
         for ida, setup in zip(calc.setups.id_a,
@@ -40,9 +43,14 @@ def get_polarization_phase(calc):
             if abs(ida[0] - num) < 1e-5:
                 break
         Z_a.append(setup.Nv)
-    phase_c += 2 * np.pi * np.dot(Z_a, calc.spos_ac)
+    phase_c = 2 * np.pi * np.dot(Z_a, calc.spos_ac)
+    return phase_c
 
-    return -phase_c
+
+def get_dipole_polarization_phase(dipole_v, cell_cv):
+    B_cv = np.linalg.inv(cell_cv).T * 2 * np.pi
+    dipole_phase_c = np.dot(B_cv, dipole_v)
+    return dipole_phase_c
 
 
 def get_wavefunctions(atoms, name, params):
@@ -84,6 +92,8 @@ def main(gpwname='formalpol.gpw', kpts={'density': 12.0}):
     from pathlib import Path
     from gpaw import GPAW
     from gpaw.mpi import world
+    from ase.units import Bohr
+
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
     params['kpts'] = kpts
@@ -91,8 +101,22 @@ def main(gpwname='formalpol.gpw', kpts={'density': 12.0}):
     calc = get_wavefunctions(atoms=atoms,
                              name=gpwname,
                              params=params)
-    phase_c = get_polarization_phase(calc)
-    results = {'phase_c': phase_c}
+    electronic_phase_c = get_electronic_polarization_phase(calc)
+    atomic_phase_c = get_atomic_polarization_phase(calc)
+    dipole_v = calc.get_dipole_moment() / Bohr
+    cell_cv = atoms.get_cell() / Bohr
+    dipole_phase_c = get_dipole_polarization_phase(dipole_v, cell_cv)
+
+    # Total phase
+    pbc_c = atoms.get_pbc()
+    phase_c = electronic_phase_c + atomic_phase_c
+    phase_c[~pbc_c] = dipole_phase_c[~pbc_c]
+
+    results = {'phase_c': phase_c,
+               'electronic_phase_c': electronic_phase_c,
+               'atomic_phase_c': atomic_phase_c,
+               'dipole_phase_c': dipole_phase_c,
+               'dipole_v': dipole_v}
     world.barrier()
     if world.rank == 0:
         f = Path(gpwname)

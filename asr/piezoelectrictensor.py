@@ -105,7 +105,7 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
             dphase_c = phase_sc[1] - phase_sc[0]
             dphase_c -= np.round(dphase_c / (2 * np.pi)) * 2 * np.pi
             dphasedeps_c = dphase_c / (2 * strain_percent * 0.01)
-            eps_v = (-np.dot(dphasedeps_c, cell_cv)
+            eps_v = (np.dot(dphasedeps_c, cell_cv)
                      / (2 * np.pi * vol))
             eps_v *= N
 

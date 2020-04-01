@@ -1,5 +1,4 @@
 from asr.core import command, option
-from asr.formalpolarization import get_wavefunctions, get_polarization_phase
 
 
 def webpanel(row, key_descriptions):
@@ -53,16 +52,18 @@ def webpanel(row, key_descriptions):
 @option('--kpts', help='K-point dict for ES calculation.')
 def main(displacement=0.01, kpts={'density': 8.0}):
     """Calculate Born charges."""
-    from pathlib import Path
-
     import numpy as np
     from gpaw import GPAW
-    from gpaw.mpi import world
 
-    from ase.parallel import parprint
     from ase.units import Bohr
 
-    from asr.core import file_barrier
+    from asr.core import chdir, read_json
+    from asr.formalpolarization import main as formalpolarization
+    from asr.setup.displacements import main as setupdisplacements
+    from asr.setup.displacements import get_all_displacements, get_displacement_folder
+
+    if not setupdisplacements.done:
+        setupdisplacements(displacement=displacement)
 
     calc = GPAW('gs.gpw', txt=None)
     params = calc.parameters
@@ -72,60 +73,33 @@ def main(displacement=0.01, kpts={'density': 8.0}):
     vol = abs(np.linalg.det(cell_cv))
     sym_a = atoms.get_chemical_symbols()
 
-    pos_av = atoms.get_positions().copy()
     Z_avv = []
-    P_asvv = []
+    phase_ascv = np.zeros((len(atoms), 2, 3, 3), float)
 
-    parprint('Atomnum Atom Direction Displacement')
-    for a in range(len(atoms)):
-        phase_scv = np.zeros((2, 3, 3), float)
-        dipol_svv = np.zeros((2, 3, 3), float)
-        for v in range(3):
-            for s, sign in enumerate([-1, 1]):
-                if world.rank == 0:
-                    print(sym_a[a], a, v, s)
-                # Update atomic positions
-                atoms.positions = pos_av
-                atoms.positions[a, v] = pos_av[a, v] + sign * displacement
-                prefix = 'born-{}-{}{}{}'.format(displacement, a,
-                                                 'xyz'[v],
-                                                 ' +-'[sign])
-                name = prefix + '.gpw'
-                calc = get_wavefunctions(atoms, name, params)
-                try:
-                    phase_c = get_polarization_phase(calc)
-                except ValueError:
-                    with file_barrier(name):
-                        calc = get_wavefunctions(atoms, name,
-                                                 params)
-                        phase_c = get_polarization_phase(name)
+    for ia, iv, sign in get_all_displacements(atoms):
+        folder = get_displacement_folder(ia, iv, sign, displacement)
 
-                dipol_svv[s, :, v] = calc.results['dipole'] / Bohr
-                phase_scv[s, :, v] = phase_c
+        with chdir(folder):
+            if not formalpolarization.done:
+                formalpolarization()
 
+        polresults = read_json(folder / 'results-asr.formalpolarization.json')
+        phase_c = polresults['phase_c']
+        isign = [None, 1, 0][sign]
+        phase_ascv[ia, isign, :, iv] = phase_c
+
+    for phase_scv in phase_ascv:
         dphase_cv = (phase_scv[1] - phase_scv[0])
         mod_cv = np.round(dphase_cv / (2 * np.pi)) * 2 * np.pi
         dphase_cv -= mod_cv
         phase_scv[1] -= mod_cv
-        dP_vv = (-np.dot(dphase_cv.T, cell_cv).T
-                 / (2 * np.pi * vol))
-
-        pbc = atoms.pbc
-        dP_vv[~pbc] = (dipol_svv[1, ~pbc] - dipol_svv[0, ~pbc]) / vol
-        P_svv = (-np.dot(cell_cv.T, phase_scv).transpose(1, 0, 2)
+        dP_vv = (np.dot(dphase_cv.T, cell_cv).T
                  / (2 * np.pi * vol))
         Z_vv = dP_vv * vol / (2 * displacement / Bohr)
-        P_asvv.append(P_svv)
         Z_avv.append(Z_vv)
 
-    data = {'Z_avv': Z_avv, 'sym_a': sym_a,
-            'P_asvv': P_asvv}
-
-    world.barrier()
-    if world.rank == 0:
-        files = Path().glob('born-*.gpw')
-        for f in files:
-            f.unlink()
+    Z_avv = np.array(Z_avv)
+    data = {'Z_avv': Z_avv, 'sym_a': sym_a}
 
     return data
 

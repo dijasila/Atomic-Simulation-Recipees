@@ -13,6 +13,7 @@ def get_displacement_folder(atomic_index,
                             cartesian_index,
                             displacement_sign,
                             displacement):
+    """Generate folder name from (ia, iv, sign, displacement)."""
     cartesian_symbol = 'xyz'[cartesian_index]
     displacement_symbol = ' +-'[displacement_sign]
     foldername = (f'{displacement}-{atomic_index}'
@@ -26,10 +27,11 @@ def create_displacements_folder(folder):
 
 
 def get_all_displacements(atoms):
+    """Generate ia, iv, sign for all displacements."""
     for ia in range(len(atoms)):
         for iv in range(3):
             for sign in [-1, 1]:
-                yield ia, iv, sign
+                yield (ia, iv, sign)
 
 
 def displace_atom(atoms, ia, iv, sign, delta):
@@ -41,15 +43,15 @@ def displace_atom(atoms, ia, iv, sign, delta):
 
 
 @command('asr.setup.displacements')
-@option('--delta', help='How much to displace atoms.')
-def main(delta=0.01):
+@option('--displacement', help='How much to displace atoms.')
+def main(displacement=0.01):
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms. The generated
     atomic structures are written to 'structure.json' and put into a
     directory with the structure
 
-         displacements/{displacement}-{atomic_index}-{displacement_symbol}{cartesian_symbol}
+        displacements/{displacement}-{atomic_index}-{displacement_symbol}{cartesian_symbol}
 
     Notice that all generated directories are a sub-directory of displacements/.
 
@@ -59,9 +61,9 @@ def main(delta=0.01):
     folders = []
     for ia, iv, sign in get_all_displacements(structure):
         folder = get_displacement_folder(ia, iv,
-                                         sign, delta)
+                                         sign, displacement)
         create_displacements_folder(folder)
-        new_structure = displace_atom(structure, ia, iv, sign, delta)
+        new_structure = displace_atom(structure, ia, iv, sign, displacement)
         new_structure.write(folder / 'structure.json')
         folders.append(str(folder))
 
