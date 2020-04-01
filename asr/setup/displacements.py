@@ -14,7 +14,7 @@ def get_displacement_folder(atomic_index,
                             displacement_sign,
                             displacement):
     cartesian_symbol = 'xyz'[cartesian_index]
-    displacement_symbol = '-+'
+    displacement_symbol = ' +-'[displacement_sign]
     foldername = (f'{displacement}-{atomic_index}'
                   f'-{displacement_symbol}{cartesian_symbol}')
     folder = Path('displacements') / foldername
@@ -22,14 +22,22 @@ def get_displacement_folder(atomic_index,
 
 
 def create_displacements_folder(folder):
-    folder.mkdir(parent=True, exist_ok=False)
+    folder.mkdir(parents=True, exist_ok=False)
 
 
 def get_all_displacements(atoms):
-    for ia in len(range(atoms)):
+    for ia in range(len(atoms)):
         for iv in range(3):
             for sign in [-1, 1]:
                 yield ia, iv, sign
+
+
+def displace_atom(atoms, ia, iv, sign, delta):
+    new_atoms = atoms.copy()
+    pos_av = new_atoms.get_positions()
+    pos_av[ia, iv] += sign * delta
+    new_atoms.set_positions(pos_av)
+    return new_atoms
 
 
 @command('asr.setup.displacements')
@@ -48,12 +56,13 @@ def main(delta=0.01):
     """
     from ase.io import read
     structure = read('structure.json')
-    structure_positions_av = structure.get_positions()
+    folders = []
     for ia, iv, sign in get_all_displacements(structure):
         folder = get_displacement_folder(ia, iv,
                                          sign, delta)
         create_displacements_folder(folder)
-        new_structure_positions_av = structure_positions_av.copy()
-        new_structure_positions_av[ia, iv] += sign * delta
-        structure.set_positions(new_structure_positions_av)
-        structure.write(folder / 'structure.json')
+        new_structure = displace_atom(structure, ia, iv, sign, delta)
+        new_structure.write(folder / 'structure.json')
+        folders.append(str(folder))
+
+    return {'folders': folders}
