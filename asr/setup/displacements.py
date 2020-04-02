@@ -70,7 +70,8 @@ def main(displacement=0.01, copy_params=True):
     for ia, iv, sign in get_all_displacements(structure):
         folder = get_displacement_folder(ia, iv,
                                          sign, displacement)
-        create_displacements_folder(folder)
+        if world.rank == 0:
+            create_displacements_folder(folder)
         new_structure = displace_atom(structure, ia, iv, sign, displacement)
         new_structure.write(folder / 'structure.json')
         folders.append(str(folder))
@@ -78,4 +79,5 @@ def main(displacement=0.01, copy_params=True):
         if copy_params and params.is_file() and world.rank == 0:
             (folder / 'params.json').write_text(params_text)
 
+    world.barrier()
     return {'folders': folders}
