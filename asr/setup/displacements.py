@@ -58,6 +58,7 @@ def main(displacement=0.01, copy_params=True):
 
     """
     from ase.io import read
+    from ase.parallel import world
     structure = read('structure.json')
     folders = []
     params = Path('params.json')
@@ -74,7 +75,7 @@ def main(displacement=0.01, copy_params=True):
         new_structure.write(folder / 'structure.json')
         folders.append(str(folder))
 
-        if copy_params and params.is_file():
+        if copy_params and params.is_file() and world.rank == 0:
             (folder / 'params.json').write_text(params_text)
 
     return {'folders': folders}
