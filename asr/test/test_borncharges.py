@@ -39,3 +39,51 @@ def test_borncharges(separate_folder, mockgpaw, mocker, atoms):
     Z_analytical_avv = np.array([(Z + positive_charge) * np.eye(3) for Z in Z_a])
     Z_avv = np.array(results['Z_avv'])
     assert Z_analytical_avv == approx(Z_avv)
+
+
+@pytest.mark.integration_test_gpaw
+def test_gpaw_berry_get_berry_phases_integration(separate_folder):
+    from .conftest import BN
+    from asr.borncharges import main
+    from asr.setup.params import main as setupparams
+
+    calculator_params = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 300},
+        'xc': 'PBE',
+        'basis': 'dzp',
+        'kpts': {'density': 2.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'bands': 'CBM+3.0'},
+        'nbands': '100%',
+        'txt': 'gs.txt',
+        'charge': 0,
+    }
+
+    formal_calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 300},
+        'xc': 'PBE',
+        'basis': 'dzp',
+        'kpts': {'density': 2.0},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'txt': 'formalpol.txt',
+        'charge': 0
+    }
+    setupparams(params={'asr.gs@calculate': {'calculator': calculator_params},
+                        'asr.formalpolarization': {'calculator': formal_calculator}})
+    BN.write('structure.json')
+
+    results = main()
+
+    ZB_vv = np.eye(3)
+    ZB_vv[np.arange(3), np.arange(3)] = [2.71, 2.71, 0.31]
+    for Z_vv, sym in zip(results['Z_avv'], results['sym_a']):
+        if sym == 'B':
+            assert np.all(Z_vv > 0)
+            assert Z_vv == pytest.approx(ZB_vv)
+        elif sym == 'N':
+            assert np.all(Z_vv < 0)
+            assert Z_vv == pytest.approx(-ZB_vv)

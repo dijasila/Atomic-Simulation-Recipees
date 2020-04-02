@@ -49,8 +49,7 @@ def webpanel(row, key_descriptions):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option('--displacement', help='Atomic displacement (Å)')
-@option('--kpts', help='K-point dict for ES calculation.')
-def main(displacement=0.01, kpts={'density': 8.0}):
+def main(displacement=0.01):
     """Calculate Born charges."""
     import numpy as np
     from gpaw import GPAW
@@ -66,8 +65,6 @@ def main(displacement=0.01, kpts={'density': 8.0}):
         setupdisplacements(displacement=displacement)
 
     calc = GPAW('gs.gpw', txt=None)
-    params = calc.parameters
-    params['kpts'] = kpts
     atoms = calc.atoms
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))

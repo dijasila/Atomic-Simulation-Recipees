@@ -44,7 +44,8 @@ def displace_atom(atoms, ia, iv, sign, delta):
 
 @command('asr.setup.displacements')
 @option('--displacement', help='How much to displace atoms.')
-def main(displacement=0.01):
+@option('--copy-params', help='Copy params.json to displacement folders.')
+def main(displacement=0.01, copy_params=True):
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms. The generated
@@ -59,6 +60,12 @@ def main(displacement=0.01):
     from ase.io import read
     structure = read('structure.json')
     folders = []
+    params = Path('params.json')
+    if not params.is_file():
+        copy_params = False
+    else:
+        params_text = params.read_text()
+
     for ia, iv, sign in get_all_displacements(structure):
         folder = get_displacement_folder(ia, iv,
                                          sign, displacement)
@@ -66,5 +73,8 @@ def main(displacement=0.01):
         new_structure = displace_atom(structure, ia, iv, sign, displacement)
         new_structure.write(folder / 'structure.json')
         folders.append(str(folder))
+
+        if copy_params and params.is_file():
+            (folder / 'params.json').write_text(params_text)
 
     return {'folders': folders}

@@ -53,24 +53,12 @@ def get_dipole_polarization_phase(dipole_v, cell_cv):
     return dipole_phase_c
 
 
-def get_wavefunctions(atoms, name, params):
+def get_wavefunctions(atoms, name, calculator):
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
-    from pathlib import Path
-
-    if Path(name).is_file():
-        return GPAW(name, communicator=serial_comm, txt=None)
-
-    # We make sure that we converge eigenstates
-    convergence = {'eigenstates': 1e-11,
-                   'density': 1e-7}
-    if 'convergence' in params:
-        params['convergence'].update(convergence)
-    else:
-        params['convergence'] = convergence
-    tmp = Path(name).with_suffix('').name
-    params['txt'] = tmp + '.txt'
-    calc = GPAW(**params)
+    from ase.calculators.calculator import get_calculator_class
+    calcname = calculator.pop("name")
+    calc = get_calculator_class(calcname)(**calculator)
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
     calc.write(name, 'all')
@@ -82,25 +70,35 @@ def get_wavefunctions(atoms, name, params):
 @command(dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'])
 @option('--gpwname', help='Formal polarization gpw file name.')
-@option('--kpts', help='K-point dict for ES calculation.')
-def main(gpwname='formalpol.gpw', kpts={'density': 12.0}):
+@option('--calculator', help='Calculator parameters.')
+def main(gpwname='formalpol.gpw',
+         calculator={
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'basis': 'dzp',
+             'kpts': {'density': 12.0},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'eigenstates': 1e-11,
+                             'density': 1e-7},
+             'nbands': '200%',
+             'txt': 'formalpol.txt',
+             'charge': 0
+         }):
     """Calculate the formal polarization phase.
 
     Calculate the formal polarization geometric phase necesarry for in
     the modern theory of polarization.
     """
     from pathlib import Path
-    from gpaw import GPAW
     from gpaw.mpi import world
     from ase.units import Bohr
-
-    calc = GPAW('gs.gpw', txt=None)
-    params = calc.parameters
-    params['kpts'] = kpts
-    atoms = calc.atoms
+    from ase.io import read
+    atoms = read('structure.json')
     calc = get_wavefunctions(atoms=atoms,
                              name=gpwname,
-                             params=params)
+                             calculator=calculator)
     electronic_phase_c = get_electronic_polarization_phase(calc)
     atomic_phase_c = get_atomic_polarization_phase(calc)
     dipole_v = calc.get_dipole_moment() / Bohr
