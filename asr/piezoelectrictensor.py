@@ -45,8 +45,21 @@ def webpanel(row, key_descriptions):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option('--strain-percent', help='Strain fraction.')
-@option('--kpts', help='K-point dict for ES calculation.')
-def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
+@option('--calculator', help='Calculator parameters.')
+def main(strain_percent=1,
+         calculator={
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'basis': 'dzp',
+             'kpts': {'density': 12.0},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'eigenstates': 1e-11,
+                             'density': 1e-7},
+             'txt': 'formalpol.txt',
+             'charge': 0
+         }):
     import numpy as np
     from gpaw import GPAW
     from ase.calculators.calculator import kptdensity2monkhorstpack
@@ -72,7 +85,8 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
     # From experience it is important to use
     # non-gamma centered grid when using symmetries.
     # Might have something to do with degeneracies, not sure.
-    if 'density' in kpts:
+    if 'density' in calculator['kpts']:
+        kpts = calculator['kpts']
         density = kpts.pop('density')
         kpts['size'] = kptdensity2monkhorstpack(atoms, density, True)
 
@@ -97,7 +111,7 @@ def main(strain_percent=1, kpts={'density': 6.0, 'gamma': False}):
                     if not clamped and not relax.done:
                         relax()
                     if not formalpolarization.done:
-                        formalpolarization(kpts=kpts)
+                        formalpolarization(calculator=calculator)
 
                 polresults = read_json(folder / 'results-asr.formalpolarization.json')
                 phase_sc[s] = polresults['phase_c']
