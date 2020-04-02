@@ -67,8 +67,7 @@ def get_wavefunctions(atoms, name, calculator):
     return calc
 
 
-@command(dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'])
+@command('asr.formalpolarization')
 @option('--gpwname', help='Formal polarization gpw file name.')
 @option('--calculator', help='Calculator parameters.')
 def main(gpwname='formalpol.gpw',
@@ -82,7 +81,6 @@ def main(gpwname='formalpol.gpw',
                              'width': 0.05},
              'convergence': {'eigenstates': 1e-11,
                              'density': 1e-7},
-             'nbands': '200%',
              'txt': 'formalpol.txt',
              'charge': 0
          }):
