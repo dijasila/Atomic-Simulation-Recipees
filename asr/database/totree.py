@@ -202,10 +202,7 @@ def main(database, run=False, selection='',
                 # Unpack any extra files
                 files = results.get('__files__', {})
                 for extrafile, content in files.items():
-                    if not Path(extrafile).is_file():
-                        print(f'{folder}: Unknown extra file:'
-                              f'{extrafile}')
-                        continue
+
                     if '__tofile__' in content:
                         tofile = content.pop('__tofile__')
                         mod, func = tofile.split('@')
@@ -214,7 +211,6 @@ def main(database, run=False, selection='',
                         write(folder / extrafile, content)
             elif filename == '__links__':
                 for destdir, identifier in results.items():
-                    destdir = folder / Path(destdir).absolute()
                     if identifier not in folders:
                         print(f'{folder}: Unknown unique identifier '
                               f'{identifier}! Cannot link to'
@@ -222,8 +218,8 @@ def main(database, run=False, selection='',
                         srcdir = None
                     else:
                         srcdir = cwd / folders[identifier][0]
-                    destdir.symlink_to(srcdir,
-                                       target_is_directory=True)
+                    (folder / destdir).symlink_to(srcdir,
+                                                  target_is_directory=True)
             else:
                 path = results.get('pointer')
                 srcfile = Path(path)
@@ -231,6 +227,8 @@ def main(database, run=False, selection='',
                     print(f'Cannot locate source file: {path}')
                     continue
                 destfile = folder / Path(filename)
+                if destfile.is_file():
+                    continue
                 if copy:
                     destfile.write_bytes(srcfile.read_bytes())
                 else:
