@@ -88,5 +88,5 @@ def test_gpaw_berry_get_berry_phases_integration(separate_folder):
             sign = -1
 
         assert np.all(sign * Z_vv[diag] > 0)
-        assert Z_vv[~diag] == pytest.approx(0)
+        assert Z_vv[~diag] == pytest.approx(0, abs=0.001)
         assert Z_vv == pytest.approx(sign * ZB_vv, abs=0.5)
