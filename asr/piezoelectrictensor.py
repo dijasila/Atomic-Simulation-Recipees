@@ -41,8 +41,6 @@ def webpanel(row, key_descriptions):
 
 
 @command(module="asr.piezoelectrictensor",
-         dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'],
          webpanel=webpanel)
 @option('--strain-percent', help='Strain fraction.')
 @option('--calculator', help='Calculator parameters.')
@@ -61,8 +59,8 @@ def main(strain_percent=1,
              'charge': 0
          }):
     import numpy as np
-    from gpaw import GPAW
     from ase.calculators.calculator import kptdensity2monkhorstpack
+    from ase.io import read
     from ase.units import Bohr
     from asr.core import read_json, chdir
     from asr.formalpolarization import main as formalpolarization
@@ -77,10 +75,7 @@ def main(strain_percent=1,
     if not setupclampedstrains.done:
         setupclampedstrains(strain_percent=strain_percent)
 
-    # TODO: Clamped strains
-    # TODO: converge density and states
-    calc = GPAW('gs.gpw', txt=None)
-    atoms = calc.atoms
+    atoms = read("structure.json")
 
     # From experience it is important to use
     # non-gamma centered grid when using symmetries.

@@ -30,6 +30,7 @@ def get_strained_folder_name(strain_percent, i, j, clamped=False):
 
 def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms=False):
     from ase.io import read
+    from ase.parallel import world
     from pathlib import Path
     import numpy as np
     from asr.setup.params import main as setup_params
@@ -51,7 +52,8 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
             strained_cell_cv = np.dot(cell_cv, strain_vv)
             atoms.set_cell(strained_cell_cv, scale_atoms=True)
             folder = get_strained_folder_name(signed_strain, i, j, clamped=clamp_atoms)
-            folder.mkdir()
+            if world.rank == 0:
+                folder.mkdir()
             if clamp_atoms:
                 filename = str(folder / 'structure.json')
             else:
@@ -59,7 +61,7 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
             atoms.write(filename)
             if copyparams:
                 paramsfile = Path('params.json')
-                if paramsfile.is_file():
+                if paramsfile.is_file() and world.rank == 0:
                     Path(folder / 'params.json').write_text(paramsfile.read_text())
 
             with chdir(folder):
