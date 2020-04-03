@@ -59,6 +59,6 @@ def main():
                {'duplicate':
                 'Does a duplicate of structure.json already exist in the DB?',
                 'duplicate_IDs':
-                'Returns a list of row IDs corresponding to the IDs of the duplicates in the original DB'}}
+                'list of IDs of identified duplicates in original DB'}}
 
     return results
