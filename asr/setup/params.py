@@ -25,7 +25,6 @@ def main(params=None):
     for specific options.
     """
     from pathlib import Path
-    from ase.parallel import world
     from asr.core import get_recipes, read_json, write_json
     from ast import literal_eval
     from fnmatch import fnmatch
@@ -105,7 +104,7 @@ def main(params=None):
                 recursive_update(value, defparamdict[recipe][option])
                 paramdict[recipe][option] = value
 
-    if paramdict and world.rank == 0:
+    if paramdict:
         write_json(p, paramdict)
     return paramdict
 

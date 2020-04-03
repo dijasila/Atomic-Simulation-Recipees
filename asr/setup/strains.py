@@ -34,7 +34,7 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
     from pathlib import Path
     import numpy as np
     from asr.setup.params import main as setup_params
-    from asr.core import chdir
+    from asr.core import chdir, read_json, write_json
     from ase.calculators.calculator import kpts2sizeandoffsets
 
     atoms = read('structure.json')
@@ -61,8 +61,8 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
             atoms.write(filename)
             if copyparams:
                 paramsfile = Path('params.json')
-                if paramsfile.is_file() and world.rank == 0:
-                    Path(folder / 'params.json').write_text(paramsfile.read_text())
+                if paramsfile.is_file():
+                    write_json(folder / 'params.json', read_json(paramsfile))
 
             with chdir(folder):
                 params = {
