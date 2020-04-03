@@ -15,6 +15,10 @@ import numpy as np
 from asr.core import command, option
 
 
+class AtomsTooCloseToBoundary(Exception):
+    pass
+
+
 def get_electronic_polarization_phase(calc):
     import numpy as np
     from gpaw.berryphase import get_berry_phases
@@ -67,6 +71,18 @@ def get_wavefunctions(atoms, name, calculator):
     return calc
 
 
+def distance_to_non_pbc_boundary(atoms, eps=1):
+    pbc_c = atoms.get_pbc()
+    if pbc_c.all():
+        return None
+    cell_cv = atoms.get_cell()
+    pos_ac = atoms.get_scaled_positions()
+    pos_ac -= np.round(pos_ac)
+    posnonpbc_av = np.dot(pos_ac[:, ~pbc_c], cell_cv[~pbc_c])
+    dist_to_cell_edge_a = np.sqrt((posnonpbc_av**2).sum(axis=1))
+    return dist_to_cell_edge_a
+
+
 @command('asr.formalpolarization')
 @option('--gpwname', help='Formal polarization gpw file name.')
 @option('--calculator', help='Calculator parameters.')
@@ -94,6 +110,14 @@ def main(gpwname='formalpol.gpw',
     from ase.units import Bohr
     from ase.io import read
     atoms = read('structure.json')
+
+    dist_a = distance_to_non_pbc_boundary(atoms)
+    if dist_a is not None and np.any(dist_a < 1):
+        raise AtomsTooCloseToBoundary(
+            'The atoms are too close to a non-pbc boundary '
+            'which creates problems when using a dipole correction. '
+            f'Please center the atoms in the unit-cell. Distances (Å): {dist_a}.')
+
     calc = get_wavefunctions(atoms=atoms,
                              name=gpwname,
                              calculator=calculator)

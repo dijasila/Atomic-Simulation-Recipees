@@ -79,11 +79,14 @@ def test_gpaw_berry_get_berry_phases_integration(separate_folder):
     results = main()
 
     ZB_vv = np.eye(3)
-    ZB_vv[np.arange(3), np.arange(3)] = [2.71, 2.71, 0.31]
+    diag = np.eye(3, dtype=bool)
+    ZB_vv[diag] = [2.71, 2.71, 0.27]
     for Z_vv, sym in zip(results['Z_avv'], results['sym_a']):
         if sym == 'B':
-            assert np.all(Z_vv > 0)
-            assert Z_vv == pytest.approx(ZB_vv)
-        elif sym == 'N':
-            assert np.all(Z_vv < 0)
-            assert Z_vv == pytest.approx(-ZB_vv)
+            sign = 1
+        else:
+            sign = -1
+
+        assert np.all(sign * Z_vv[diag] > 0)
+        assert Z_vv[~diag] == pytest.approx(0)
+        assert Z_vv == pytest.approx(sign * ZB_vv, abs=0.5)
