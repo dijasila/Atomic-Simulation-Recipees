@@ -86,7 +86,6 @@ class GPAW(Calculator):
 
         # These are unreasonable
         self.setups = self._get_setups()
-        self.spos_ac = atoms.get_scaled_positions(wrap=True)
         self.wfs.kd.nibzkpts = len(kpts)
         self.wfs.kd.weight_k = np.array(self.get_k_point_weights())
         self.setups.nvalence = self.get_number_of_electrons()
@@ -112,6 +111,13 @@ class GPAW(Calculator):
             else:  # Assume that this is a file-descriptor
                 data['params'].pop('txt')
                 self.parameters.txt.write(encode_json(data))
+
+    @property
+    def spos_ac(self):
+        return self._get_scaled_positions()
+
+    def _get_scaled_positions(self):
+        return self.atoms.get_scaled_positions(wrap=True)
 
     def _get_setups(self):
         setups = Setups()
