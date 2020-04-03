@@ -34,11 +34,17 @@ def check_duplicates(structure, db, ref_mag):
 
 
 @command(module='asr.duplicates',
-         requires=['structure.json'],
+         requires=['structure.json', 'results-asr.structureinfo.json'],
          resources='1:20m')
 def main():
     """
-    tbd
+    Identifying duplicates of structure.json in given database.
+
+    This recipe reads in a structure.json and identifies duplicates of that structure
+    in an existing DB db.db. It uses the StructureMatcher object from pymatgen
+    (https://pymatgen.org/pymatgen.analysis.structure_matcher.html). This is done by
+    reducing the structures to their respective primitive cells and uses the normalized
+    average rms displacement to evaluate the similarity of two structures.
     """
     from ase.db import connect
     from asr.core import read_json
