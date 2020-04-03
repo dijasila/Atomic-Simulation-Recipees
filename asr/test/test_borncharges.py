@@ -41,7 +41,7 @@ def test_borncharges(separate_folder, mockgpaw, mocker, atoms):
     assert Z_analytical_avv == approx(Z_avv)
 
 
-@pytest.mark.integration_test_gpaw
+@pytest.mark.acceptance_test
 def test_gpaw_berry_get_berry_phases_integration(separate_folder):
     from .conftest import BN
     from asr.borncharges import main
