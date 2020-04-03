@@ -21,7 +21,7 @@ def check_duplicates(structure, db, ref_mag):
         if stoichiometry_row == stoichiometry:
             id = row.get("id")
             id_duplicates.append(id)
-            struc = db.get_atoms(id=id)
+            struc = row.toatoms()
             if row.get('magstate') == ref_mag:
                 struc = asetopy.get_structure(struc)
                 structure_list.append(struc)
@@ -30,7 +30,7 @@ def check_duplicates(structure, db, ref_mag):
     results = rmdup.test(refpy)
     print('INFO: structure already in DB? {}'.format(not results))
 
-    return not results
+    return not results, id_duplicates
 
 
 @command(module='asr.duplicates',
@@ -49,11 +49,16 @@ def main():
     struc_info = read_json('results-asr.structureinfo.json')
     ref_mag = struc_info.get('magstate')
 
-    does_exist = check_duplicates(structure, startset, ref_mag)
+    does_exist, id_list = check_duplicates(structure, startset, ref_mag)
+
+    print('INFO: duplicate structures in db: {}'.format(id_list))
 
     results = {'duplicate': does_exist,
+               'duplicate_IDs': id_list,
                '__key_descriptions__':
                {'duplicate':
-                'Does a duplicate of structure.json already exist in the DB?'}}
+                'Does a duplicate of structure.json already exist in the DB?',
+                'duplicate_IDs':
+                'Returns a list of row IDs corresponding to the IDs of the duplicates in the original DB'}}
 
     return results
