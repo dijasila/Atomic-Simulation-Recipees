@@ -206,9 +206,9 @@ def main(database, run=False, selection='',
                     if '__tofile__' in content:
                         tofile = content.pop('__tofile__')
                         mod, func = tofile.split('@')
-                        write = getattr(importlib.import_module(mod),
-                                        func)
-                        write(folder / extrafile, content)
+                        write_func = getattr(importlib.import_module(mod),
+                                             func)
+                        write_func(folder / extrafile, content)
             elif filename == '__links__':
                 for destdir, identifier in results.items():
                     if identifier not in folders:
