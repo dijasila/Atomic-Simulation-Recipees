@@ -288,7 +288,7 @@ def main():
     calc = GPAW('hse_nowfs.gpw', txt=None)
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
-    nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
+    nbands = data['e_hse_skn'].shape[2]
     delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 

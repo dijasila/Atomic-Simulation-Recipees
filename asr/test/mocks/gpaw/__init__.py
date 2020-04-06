@@ -112,6 +112,10 @@ class GPAW(Calculator):
                 data['params'].pop('txt')
                 self.parameters.txt.write(encode_json(data))
 
+    def set(self, **kwargs):
+        Calculator.set(self, **kwargs)
+        self.results = {}
+
     @property
     def spos_ac(self):
         return self._get_scaled_positions()
