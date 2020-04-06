@@ -22,4 +22,4 @@ def test_database_totree(separate_folder):
     assert Path('tree').is_dir()
     assert Path('tree/A/123/Ag-A-123-c-0/structure.json').is_file()
     assert Path('tree/A/227/Si2-A-227-b-0/structure.json').is_file()
-    assert Path('tree/AB/187/BN-AB-187-a-c-0/structure.json').is_file()
+    assert Path('tree/AB/187/BN-AB-187-b-d-0/structure.json').is_file()

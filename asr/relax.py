@@ -1,4 +1,16 @@
-from pathlib import Path
+"""Relax an atomic structure.
+
+By defaults read from "unrelaxed.json" from disk and relaxes
+structures and saves the final relaxed structure in "structure.json".
+
+The relax recipe has a couple of note-worthy features::
+
+  - It automatically handles structures of any dimensionality
+  - It tries to enforce symmetries
+  - It continously checks after each step that no symmetries are broken,
+    and raises an error if this happens.
+"""
+
 import numpy as np
 from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
@@ -150,6 +162,9 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     dataset = spglib.get_symmetry_dataset(ats(atoms),
                                           symprec=1e-4,
                                           angle_tolerance=0.1)
+    spgname = dataset['international']
+    number = dataset['number']
+    nsym = len(dataset['rotations'])
     atoms = SpgAtoms.from_atoms(atoms)
     if enforce_symmetry:
         atoms.set_symmetries(symmetries=dataset['rotations'],
@@ -160,41 +175,54 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
         calc = dft
     atoms.calc = calc
 
-    spgname, number = spglib.get_spacegroup(ats(read('unrelaxed.json',
-                                                     parallel=False)),
-                                            symprec=1e-4,
-                                            angle_tolerance=0.1).split()
-
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
-    opt = myBFGS(filter,
-                 logfile=name + '.log',
-                 trajectory=Trajectory(name + '.traj', 'a', atoms))
+    try:
+        trajfile = Trajectory(name + '.traj', 'a', atoms)
+        opt = myBFGS(filter,
+                     logfile=name + '.log',
+                     trajectory=trajfile)
 
-    # fmax=0 here because we have implemented our own convergence criteria
-    runner = opt.irun(fmax=0)
-    for _ in runner:
-        # Check that the symmetry has not been broken
-        spgname2, number2 = spglib.get_spacegroup(ats(atoms),
-                                                  symprec=1e-4,
-                                                  angle_tolerance=0.1).split()
+        # fmax=0 here because we have implemented our own convergence criteria
+        runner = opt.irun(fmax=0)
 
-        if not (allow_symmetry_breaking or number == number2):
-            # Log the last step
-            opt.log()
-            opt.call_observers()
-            msg = ('The symmetry was broken during the relaxation! '
-                   f'The initial spacegroup was {spgname} {number} '
+        for _ in runner:
+            # Check that the symmetry has not been broken
+            newdataset = spglib.get_symmetry_dataset(ats(atoms),
+                                                     symprec=1e-4,
+                                                     angle_tolerance=0.1)
+            spgname2 = newdataset['international']
+            number2 = newdataset['number']
+            nsym2 = len(newdataset['rotations'])
+            msg = (f'The initial spacegroup was {spgname} {number} '
                    f'but it changed to {spgname2} {number2} during '
                    'the relaxation.')
-            raise BrokenSymmetryError(msg)
+            if (not allow_symmetry_breaking
+               and number != number2 and nsym > nsym2):
+                # Log the last step
+                opt.log()
+                opt.call_observers()
+                errmsg = 'The symmetry was broken during the relaxation! ' + msg
+                raise BrokenSymmetryError(errmsg)
+            elif number != number2:
+                print('Not an error: The spacegroup has changed during relaxation. '
+                      + msg)
+                spgname = spgname2
+                number = number2
+                nsym = nsym2
+                if enforce_symmetry:
+                    atoms.set_symmetries(symmetries=newdataset['rotations'],
+                                         translations=newdataset['translations'])
 
-        if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
-            opt.log()
-            opt.call_observers()
-            break
-
+            if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
+                opt.log()
+                opt.call_observers()
+                break
+    finally:
+        trajfile.close()
+        if opt.logfile is not None:
+            opt.logfile.close()
     return atoms
 
 
@@ -268,11 +296,10 @@ def main(calculator={'name': 'gpaw',
          fmax=0.01, enforce_symmetry=True):
     """Relax atomic positions and unit cell.
 
-    By default, this recipe takes the atomic structure in 'unrelaxed.json'
-
-    and relaxes the structure including the DFTD3 van der Waals
-    correction. The relaxed structure is saved to `structure.json` which can be
-    processed by other recipes.
+    By default, this recipe takes the atomic structure in
+    'unrelaxed.json' and relaxes the structure including the DFTD3 van
+    der Waals correction. The relaxed structure is saved to
+    `structure.json` which can be processed by other recipes.
 
     To install DFTD3 do::
 
@@ -294,14 +321,10 @@ def main(calculator={'name': 'gpaw',
 
       $ ase build -x diamond Si unrelaxed.json
       $ asr run "relax --calculator {'xc':'LDA',...}"
+
     """
     from ase.calculators.calculator import get_calculator_class
 
-    msg = ('You cannot already have a structure.json file '
-           'when you relax a structure, because this is '
-           'what the relax recipe is supposed to produce. You should '
-           'name your original/start structure "unrelaxed.json!"')
-    assert not Path('structure.json').is_file(), msg
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):

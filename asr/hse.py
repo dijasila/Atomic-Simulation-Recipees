@@ -6,8 +6,7 @@ from contextlib import contextmanager
          dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
          creates=['hse_nowfs.gpw', 'hse-restart.json'],
          requires=['gs.gpw', 'results-asr.gs.json'],
-         resources='24:10h',
-         restart=2)
+         resources='24:10h')
 @option('--kptdensity', help='K-point density')
 @option('--emptybands', help='number of empty bands to include')
 def calculate(kptdensity=12, emptybands=20):
@@ -309,7 +308,6 @@ def webpanel(row, key_descriptions):
                    'results-asr.bandstructure.json',
                    'results-asr.hse@calculate.json'],
          resources='1:10m',
-         restart=1,
          webpanel=webpanel)
 def main():
     """Interpolate HSE band structure along a given path."""
