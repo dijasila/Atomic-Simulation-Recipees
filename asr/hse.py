@@ -3,7 +3,7 @@ from asr.core import command, option, read_json
 
 @command(module='asr.hse',
          dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-         creates=['hse_nowfs.gpw', 'hse-restart.json'],
+         creates=['hse_nowfs.gpw', 'hse-snapshot.json'],
          requires=['gs.gpw', 'results-asr.gs.json'],
          resources='24:10h')
 @option('--kptdensity', help='K-point density')
