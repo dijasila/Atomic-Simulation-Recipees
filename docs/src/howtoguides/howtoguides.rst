@@ -141,11 +141,12 @@ To unpack the project do::
 
   $ asr run "database.totree --patterns results-asr.gs.json"
   $ asr run "database.totree project.db --run --patterns results-asr.gs.json,gs.gpw"
-  
+
 Then perform the calculations needed in the unpacked folders. When
 calculations are done package them and merge the databases::
 
   $ asr run "database.fromtree tree/*/*/*/"
   $ asr run "database.merge project.db database.db merged.db"
 
-The databases have now been merged into a new database called `merge.db`
+The databases have now been merged into a new database called
+`merged.db`.
