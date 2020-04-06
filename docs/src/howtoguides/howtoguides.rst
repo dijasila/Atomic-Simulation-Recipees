@@ -139,7 +139,6 @@ in the database.
 
 To unpack the project do::
 
-  $ asr run "database.totree --patterns results-asr.gs.json"
   $ asr run "database.totree project.db --run --patterns results-asr.gs.json,gs.gpw"
 
 Then perform the calculations needed in the unpacked folders. When
