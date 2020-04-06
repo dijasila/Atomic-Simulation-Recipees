@@ -277,6 +277,11 @@ def get_emass_dict_from_row(row):
     return electron_dict, hole_dict
 
 
+def get_range(mass, _erange):
+    from ase.units import Ha, Bohr
+    return (2 * mass * _erange / Ha) ** 0.5 / Bohr
+
+
 def make_the_plots(row, *args):
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
@@ -334,9 +339,6 @@ def make_the_plots(row, *args):
         vb_masses[tuple_key] = masses
 
     erange = 0.05
-
-    def get_range(mass, _erange):
-        return (2 * mass * _erange / Ha) ** 0.5 / Bohr
 
     plt_count = 0
     for direction in range(3):
@@ -709,6 +711,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + '3rdOrderr2'] = out_dict['r']
         results_dict[index][prefix + '2ndOrderMAE'] = out_dict['mae2']
         results_dict[index][prefix + '3rdOrderMAE'] = out_dict['mae3']
+        results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
@@ -768,9 +771,41 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
                                                 spin=b[0],
                                                 band=b[1],
                                                 nbands=nbands)
+        masses[b]['wideareaMAE'] = wideMAE(masses[b], bandtype,
+                                           cell_cv)
         masses[b]['offset'] = offset
 
     return masses
+
+
+def wideMAE(masses, bt, cell_cv, erange=25e-3):
+    from ase.dft.kpoints import kpoint_convert
+    import numpy as np
+
+    maes = []
+    for i, mass in enumerate(masses['mass_u']):
+        if mass is np.nan or np.isnan(mass) or mass is None:
+            continue
+
+        fit_data = masses['bs_along_emasses'][i]
+        c = masses['c']
+        k_kc = fit_data['kpts_kc']
+        k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+        e_k = fit_data['e_k']
+
+        if bt == "vb":
+            ks = np.where((e_k - np.max(e_k)) > -erange)
+            sk_kv = k_kv[ks]
+        else:
+            ks = np.where((e_k - np.max(e_k)) < erange)
+            sk_kv = k_kv[ks]
+
+        emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+
+        mae = np.mean(np.abs(emodel_k - e_k[ks]))
+        maes.append(mae)
+
+    return maes
 
 
 def calculate_bs_along_emass_vecs(masses_dict, soc,
