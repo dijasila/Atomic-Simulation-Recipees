@@ -14,10 +14,7 @@ class NoGapError(Exception):
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def refine(gpwfilename='gs.gpw'):
-    '''
-    Take a bandstructure and calculate more kpts around
-    the vbm and cbm
-    '''
+    """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -46,22 +43,24 @@ def get_name(soc, bt):
 
 
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
-    """non sc calculation based for kpts in a sphere around the
-        valence band maximum and conduction band minimum.
-        writes the files:
-            em_circle_vb_soc.gpw
-            em_circle_cb_soc.gpw
-            em_circle_vb_nosoc.gpw
-            em_circle_cb_nosoc.gpw
-        Parameters:
-            gpw: str
-                gpw filename
-            soc: bool
-                spinorbit coupling
-            bandtype: None or 'cb' or 'vb'
-                which bandtype do we do calculations for, if None is done for
-                for both cb and vb
+    """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
+    Writes the files:
+
+    * em_circle_vb_soc.gpw
+    * em_circle_cb_soc.gpw
+    * em_circle_vb_nosoc.gpw
+    * em_circle_cb_nosoc.gpw
+
+    Parameters
+    ----------
+    gpw: str
+        gpw filename
+    soc: bool
+        spinorbit coupling
+    bandtype: None or 'cb' or 'vb'
+        Which bandtype do we do calculations for, if None is done for
+        for both cb and vb
     """
     from gpaw import GPAW
     import numpy as np
@@ -216,11 +215,12 @@ def get_emass_dict_from_row(row):
                         mass_str = str(round(abs(mass) * 100) / 100)
                         if offset_num == 0:
                             my_dict[f'{name}, direction {direction}'] = \
-                                '{}'.format(mass_str)
+                                f'{mass_str} m<sub>e</sub>'
                         else:
                             my_dict['{} {} {}, direction {}'.format(
                                 name, offset_sym,
-                                offset_num, direction)] = mass_str
+                                offset_num, direction)] = \
+                                f'{mass_str} m<sub>e</sub>'
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -615,14 +615,14 @@ def unpack_masses(masses, soc, bt, results_dict):
     # We want to flatten this structure so that results_dict contains
     # the masses directly
     import numpy as np
-    
+
     for ind in masses['indices']:
         out_dict = masses[ind]
         index = str(ind)
         socpre = 'soc' if soc else 'nosoc'
         prefix = bt + '_' + socpre + '_'
         offset = out_dict['offset']
-        
+
         results_dict[index] = {}
 
         mass_u = list(out_dict['mass_u'])
@@ -660,8 +660,10 @@ def unpack_masses(masses, soc, bt, results_dict):
 
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
-    """effective masses for bands within delta of extrema
-    Parameters:
+    """Effective masses for bands within delta of extrema.
+
+    Parameters
+    ----------
         gpw: str
             name of gpw filename
         soc: bool
@@ -673,6 +675,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
         delta: float, optional
             bands within this value (in eV) is included in the em fit
             default is 0.1 eV
+
     """
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
@@ -722,6 +725,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
@@ -735,26 +739,27 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         name = f'{identity}.gpw'
 
         if not Path(name).is_file():
-            # embzcut stuff
-            kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
-            assert not np.isnan(kmax)
-            kd_v = masses_dict['eigenvectors_vu'][:, u]
-            assert not (np.isnan(kd_v)).any()
-            k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
-            k_kv += masses_dict['ke_v']
-            k_kv /= Bohr
-            assert not (np.isnan(k_kv)).any()
-            k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
-            assert not (np.isnan(k_kc)).any()
-            atoms = calc.get_atoms()
-            for i, pb in enumerate(atoms.pbc):
-                if not pb:
-                    k_kc[:, i] = 0
-            assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off',
-                     txt=f'{identity}.txt', fixdensity=True)
-            atoms.get_potential_energy()
-            calc.write(name)
+            with file_barrier([name]):
+                # embzcut stuff
+                kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+                assert not np.isnan(kmax)
+                kd_v = masses_dict['eigenvectors_vu'][:, u]
+                assert not (np.isnan(kd_v)).any()
+                k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
+                k_kv += masses_dict['ke_v']
+                k_kv /= Bohr
+                assert not (np.isnan(k_kv)).any()
+                k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+                assert not (np.isnan(k_kc)).any()
+                atoms = calc.get_atoms()
+                for i, pb in enumerate(atoms.pbc):
+                    if not pb:
+                        k_kc[:, i] = 0
+                assert not (np.isnan(k_kc)).any()
+                calc.set(kpts=k_kc, symmetry='off',
+                         txt=f'{identity}.txt', fixdensity=True)
+                atoms.get_potential_energy()
+                calc.write(name)
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
@@ -773,18 +778,21 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
 
 def get_vb_cb_indices(e_skn, efermi, delta):
-    """
-    find CB and VB within a distance of delta of the CB and VB extrema
-    Parameters:
+    """Find CB and VB within a distance of delta of the CB and VB extrema.
+
+    Parameters
+    ----------
         e_skn: (ns, nk, nb)-shape ndarray
             eigenvalues
         efermi: float
             fermi level
         delta: float
             bands within delta of the extrema are included
-    Returns:
+    Returns
+    -------
         vb_indices, cb_indices: [(spin, band), ..], [(spin, band), ...]
             spin and band indices (aka as SBandex) for VB and CB, respectively
+
     """
     import numpy as np
     from ase.dft.bandgap import bandgap
@@ -811,13 +819,16 @@ def get_vb_cb_indices(e_skn, efermi, delta):
 
 
 def em(kpts_kv, eps_k, bandtype=None, ndim=3):
-    """
-    Parameters:
+    """TODO: Do me.
+
+    Parameters
+    ----------
         kpts_kv: (nk, 3)-shape ndarray
             k-points in cartesian coordinates (in units of 1 / Bohr)
         eps_k: (nk,)-shape ndarray
             eigenvalues (in units of Hartree)
-    Returns:
+    Returns
+    -------
         out: dct
             - effective masses in units of m_e
             - eigenvectors in cartesian coordinates
@@ -898,7 +909,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     sort_args = np.argsort(mass_u)
 
     mass_u = mass_u[sort_args]
-    w3_vn = w3_vn[sort_args, :]
+    w3_vn = w3_vn[:, sort_args]
 
     out = dict(mass_u=mass_u,
                eigenvectors_vu=w3_vn,
@@ -1045,6 +1056,13 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     x, y, z = optimize.fmin(func, x0=x0,
                             xtol=1.0e-15, ftol=1.0e-15, disp=False)
 
+    model_deltaE = np.abs(func(np.array([x, y, z])) - func(x0))
+
+    if model_deltaE > 1e-3:
+        x = xm
+        y = ym
+        z = zm
+
     if ndim == 2:
         return x, y, 0
     elif ndim == 1:
@@ -1062,10 +1080,13 @@ def fit(kpts_kv, eps_k, thirdorder=False):
 
 
 def model(kpts_kv):
-    """ simple third order model
-        Parameters:
-            kpts_kv: (nk, 3)-shape ndarray
-                units of (1 / Bohr)
+    """Calculate simple third order model.
+
+    Parameters
+    ----------
+        kpts_kv: (nk, 3)-shape ndarray
+            units of (1 / Bohr)
+
     """
     import numpy as np
     k_kx, k_ky, k_kz = kpts_kv[:, 0], kpts_kv[:, 1], kpts_kv[:, 2]

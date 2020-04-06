@@ -19,7 +19,7 @@
 #
 # import os
 # import sys
-# sys.path.insert(0, os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- General configuration ------------------------------------------------
@@ -31,20 +31,36 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+from pathlib import Path
+import shutil
 
 
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.autosummary',
+              'sphinx.ext.viewcode',
               'sphinx.ext.intersphinx',
               'sphinx.ext.napoleon',
-              'autoapi.extension',
+              'sphinx.ext.doctest',
               'sphinxcontrib.programoutput',
+              # 'autoapi.extension',
               ]
-autoapi_type = 'python'
-autoapi_dirs = ['../asr']
+# autoapi_type = 'python'
+# autoapi_dirs = ['../asr']
+# autoapi_root = 'src/autoapi'
+# autoapi_keep_files = True
+# autoapi_add_toctree_entry = False
+
+# Hack for autosummary which doesn't update generated docs for some
+# reason
+gendocs = Path('src/generated')
+if gendocs.is_dir():
+    shutil.rmtree(gendocs)
+
 napoleon_numpy_docstring = True
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = []
+templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:

@@ -37,10 +37,10 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @option('--npoints')
 @option('--emptybands')
 def calculate(kptpath=None, npoints=400, emptybands=20):
-    """Calculate electronic band structure"""
+    """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
-    atoms = read('gs.gpw')
+    atoms = read('structure.json')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
@@ -57,7 +57,6 @@ def calculate(kptpath=None, npoints=400, emptybands=20):
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
-    atoms = read('gs.gpw')
     calc = GPAW('gs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs.gpw')
@@ -232,8 +231,7 @@ def bs_pbe_html(row,
         '</script>').format(id=plotdivid)
 
     # Insert plotly.js
-    plotlyjs = ('<script src="https://cdn.plot.ly/plotly-latest.min.js">' +
-                '</script>')
+    plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
     html = ''.join([
         '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
@@ -245,7 +243,7 @@ def bs_pbe_html(row,
 
 
 def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """plot pbe with soc on ax"""
+    """Plot pbe with soc on ax."""
     from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
@@ -267,6 +265,7 @@ def plot_with_colors(bs,
                      show=None,
                      energies=None,
                      colors=None,
+                     colorbar=True,
                      ylabel=None,
                      clabel='$s_z$',
                      cmin=-1.0,
@@ -301,8 +300,11 @@ def plot_with_colors(bs,
     for e_k, c_k, x_k in zip(energies, colors, xcoords):
         things = ax.scatter(x_k, e_k, c=c_k, s=s, vmin=cmin, vmax=cmax)
 
-    cbar = plt.colorbar(things)
-    cbar.set_label(clabel)
+    if colorbar:
+        cbar = plt.colorbar(things)
+        cbar.set_label(clabel)
+    else:
+        cbar = None
 
     bs.finish_plot(filename, show, loc)
 
@@ -366,11 +368,13 @@ def bs_pbe(row,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
+    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
         energies=e_mk - ref_soc,
         colors=sz_mk,
+        colorbar=colorbar,
         filename=filename,
         show=False,
         emin=emin - ref_soc,
@@ -380,8 +384,9 @@ def bs_pbe(row,
         clabel=r'$\langle S_{} \rangle $'.format(sdir),
         s=s)
 
-    cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-    cbar.update_ticks()
+    if cbar:
+        cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+        cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
     ax.set_xlabel('$k$-points')
@@ -400,60 +405,6 @@ def bs_pbe(row,
     ])
     if not show_legend:
         ax.legend_.remove()
-    plt.savefig(filename, bbox_inches='tight')
-
-
-def pdos_bs_pbe(row,
-                filename='pbe-pdos-bs.png',
-                figsize=(6.4, 4.8),
-                fontsize=10):
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
-    mpl.rcParams['font.size'] = fontsize
-
-    # Extract band structure data
-    d = row.data.get('results-asr.bandstructure.json')
-    path = d['bs_nosoc']['path']
-    ef = d['bs_nosoc']['efermi']
-
-    # If a vacuum energy is available, use it as a reference
-    ref = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-
-    # Determine plotting window based on band gap
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm') - 3
-    else:
-        emin = ef - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm') + 3
-    else:
-        emax = ef + 3
-
-    # hstack spin index for the BandStructure object
-    e_skn = d['bs_nosoc']['energies']
-    nspins = e_skn.shape[0]
-    e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-
-    # Use band structure objects to plot
-    bs = BandStructure(path, e_kn - ref, ef - ref)
-    style = dict(
-        colors=['0.8'] * e_skn.shape[0],
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    bsp = BandStructurePlot(bs)
-    bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
-             ylabel=label, **style)
-
-    ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
 
 
@@ -481,7 +432,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                     'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
@@ -489,7 +440,7 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'gap', 'gap_dir', 'vbm', 'cbm',
+                    'workfunction', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
     else:
@@ -497,34 +448,43 @@ def webpanel(row, key_descriptions):
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
-                    'cbm', 'dipz', 'evacdiff'
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
+                    'dipz', 'evacdiff'
                 ],
                 kd=key_descriptions_noxc)
         else:
             pbe = table(
                 row,
                 'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir', 'vbm',
-                    'cbm',
+                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
                 ],
                 kd=key_descriptions_noxc)
 
-    panel = {'title': 'Electronic band structure (PBE)',
+    gap = row.get('gap')
+    if gap > 0:
+        if row.get('evac'):
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. vacuum level',
+                  f'{row.vbm - row.evac:.2f} eV'],
+                 ['Conduction band minimum wrt. vacuum level',
+                  f'{row.cbm - row.evac:.2f} eV']])
+        else:
+            pbe['rows'].extend(
+                [['Valence band maximum wrt. Fermi level',
+                  f'{row.vbm - row.efermi:.2f} eV'],
+                 ['Conduction band minimum wrt. Fermi level',
+                  f'{row.cbm - row.efermi:.2f} eV']])
+
+    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
                          [fig('bz-with-gaps.png'), pbe]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14}
+             'sort': 14.5}
 
-    pdos_panel = {'title': 'Band structure with pdos (PBE)',
-                  'columns': [[fig('pbe-pdos-bs.png', link='empty')], []],
-                  'plot_descriptions': [{'function': pdos_bs_pbe,
-                                         'filenames': ['pbe-pdos-bs.png']}]}
-
-    return [panel, pdos_panel]
+    return [panel]
 
 
 @command('asr.bandstructure',
@@ -548,15 +508,16 @@ def main():
     calc = GPAW('bs.gpw', txt=None)
     atoms = calc.atoms
     path = calc.parameters.kpts
-    if 'kpts' in path:
-        # In this case path comes from a bandpath object
-        path = BandPath(kpts=path['kpts'], cell=path['cell'],
-                        special_points=path['special_points'],
-                        path=path['labelseq'])
-    else:
-        path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
-                                        path=path['path'],
-                                        npoints=path['npoints'])
+    if not isinstance(path, BandPath):
+        if 'kpts' in path:
+            # In this case path comes from a bandpath object
+            path = BandPath(kpts=path['kpts'], cell=path['cell'],
+                            special_points=path['special_points'],
+                            path=path['labelseq'])
+        else:
+            path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
+                                            path=path['path'],
+                                            npoints=path['npoints'])
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}

@@ -1,12 +1,15 @@
 from collections import Counter
 from typing import List, Dict, Any
+from pathlib import Path
 
-from asr.core import command, argument, option
+from asr.core import command, argument
 
 from ase.db import connect
 from ase.io import read
 from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
+
+known_methods = ['DFT', 'DFT+D3']
 
 
 def webpanel(row, key_descriptions):
@@ -30,63 +33,127 @@ def webpanel(row, key_descriptions):
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
     row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[thermostab].upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', ''],
-                             'rows': [row]}]]}
+                             'rows': [row],
+                             'columnwidth': 3}]],
+               'sort': 1}
     return [panel, summary]
 
 
 @command('asr.convex_hull',
-         requires=['results-asr.gs.json', 'results-asr.structureinfo.json',
+         requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.gs',
-                       'asr.structureinfo',
+         dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
 @argument('databases', nargs=-1)
-@option('--standardreferences',
-        help='Database containing standard references.')
-def main(databases, standardreferences=None):
-    """Calculate convex hull energies
+def main(databases):
+    """Calculate convex hull energies.
 
-    The reference database has to have a type column indicating"""
+    It is assumed that the first database supplied is the one containing the
+    standard references.
+
+    For a database to be a valid reference database each row has to have a
+    "uid" key-value-pair. Additionally, it is required that the metadata of
+    each database contains following keys:
+
+        - title: Title of the reference database.
+        - legend: Collective label for all references in the database to
+          put on the convex hull figures.
+        - name: f-string from which to derive name for a material.
+        - link: f-string from which to derive an url for a material
+          (see further information below).
+        - label: f-string from which to derive a material specific name to
+          put on convex hull figure.
+        - method: String denoting the method that was used to calculate
+          reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
+          "DFT" means bare DFT references energies. "DFT+D3" indicate that the
+          reference also include the D3 dispersion correction.
+
+    The name and link keys are given as f-strings and can this refer to
+    key-value-pairs in the given database. For example, valid metadata looks
+    like:
+
+    .. code-block:: javascript
+
+        {
+            'title': 'Bulk reference phases',
+            'legend': 'Bulk',
+            'name': '{row.formula}',
+            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
+            'label': '{row.formula}',
+            'method': 'DFT',
+        }
+
+    Parameters
+    ----------
+    databases : list of str
+        List of filenames of databases.
+
+    """
+    from asr.relax import main as relax
+    from asr.gs import main as groundstate
     from asr.core import read_json
-    if standardreferences is None:
-        standardreferences = databases[0]
-
     atoms = read('structure.json')
+
+    if not relax.done:
+        if not groundstate.done:
+            groundstate()
+
+    # TODO: Make separate recipe for calculating vdW correction to total energy
+    for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
+        if Path(filename).is_file():
+            results = read_json(filename)
+            energy = results.get('etot')
+            usingd3 = results.get('__params__', {}).get('d3', False)
+            break
+
+    if usingd3:
+        mymethod = 'DFT+D3'
+    else:
+        mymethod = 'DFT'
+
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
-    ref_energies = get_reference_energies(atoms, databases[0])
-    hform = hof(read_json('results-asr.gs.json').get('etot'),
-                count,
-                ref_energies)
 
-    # Now compute convex hull
     dbdata = {}
+    reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
     for database in databases:
         # Connect to databases and save relevant rows
-        rows = []
         refdb = connect(database)
+        metadata = refdb.metadata
+        assert not (reqkeys - set(metadata)), \
+            'Missing some essential metadata keys.'
+
+        dbmethod = metadata['method']
+        assert dbmethod in known_methods, f'Unknown method: {dbmethod}'
+        assert dbmethod == mymethod, \
+            ('You are using a reference database with '
+             f'inconsistent methods: {mymethod} (this material) != '
+             f'{dbmethod} ({database})')
+
+        rows = []
+        # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
         dbdata[database] = {'rows': rows,
-                            'metadata': refdb.metadata}
+                            'metadata': metadata}
 
+    ref_energies = get_reference_energies(atoms, databases[0])
+    hform = hof(energy,
+                count,
+                ref_energies)
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
         metadata = data['metadata']
         for row in data['rows']:
-            # Take the energy from the gs recipe if its calculated
-            # or fall back to row.energy
-            energy = row.data.get('results-asr.gs.json')['etot'] if \
-                'results-asr.gs.json' in row.data else row.energy
-            hformref = hof(energy, row.count_atoms(), ref_energies)
+            hformref = hof(row.energy, row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -105,18 +172,22 @@ def main(databases, standardreferences=None):
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
 
-    pd = PhaseDiagram(pdrefs)
-    e0, indices, coefs = pd.decompose(formula)
-
     results = {'hform': hform,
                'references': references}
-    ehull = hform - e0 / len(atoms)
+
+    if len(count) == 1:
+        ehull = hform
+    else:
+        pd = PhaseDiagram(pdrefs)
+        e0, indices, coefs = pd.decompose(formula)
+        ehull = hform - e0 / len(atoms)
+        results['indices'] = indices.tolist()
+        results['coefs'] = coefs.tolist()
+
     results['ehull'] = ehull
-    results['indices'] = indices.tolist()
-    results['coefs'] = coefs.tolist()
     results['__key_descriptions__'] = {
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'hform': 'KVP: Heat of formation [eV/atom]',
+        'ehull': 'KVP: Energy above convex hull [eV/atom]',
         'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
@@ -171,7 +242,6 @@ def select_references(db, symbols):
 
 def plot(row, fname):
     from ase.phasediagram import PhaseDiagram
-    import re
     import matplotlib.pyplot as plt
 
     data = row.data['results-asr.convex_hull.json']
@@ -206,6 +276,8 @@ def plot(row, fname):
             mask = e < 0.05
             e = e[mask]
             x = x[mask]
+            hull = hull[mask]
+            names = [name for name, m in zip(names, mask) if m]
         ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
         delta = e.ptp() / 30
@@ -227,9 +299,8 @@ def plot(row, fname):
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
     else:
-        x, y, names, hull, simplices = pd.plot2d3()
-        names = [re.sub(r'(\d+)', r'$_{\1}$', ref['label'])
-                 for ref in references]
+        x, y, _, hull, simplices = pd.plot2d3()
+        names = [ref['label'] for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
@@ -242,7 +313,7 @@ def plot(row, fname):
     for it, legend in enumerate(legends):
         ax.scatter([], [], facecolor='none', marker='o',
                    edgecolor=f'C{it + 2}', label=legend)
-        
+
     plt.legend(loc='lower left')
     plt.tight_layout()
     plt.savefig(fname)

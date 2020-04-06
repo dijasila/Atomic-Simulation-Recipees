@@ -43,9 +43,10 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
-    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']] +
-               [[f'Eigenvalue {ie}', f'{eig:0.2f} N/m']
-                for ie, eig in enumerate(sorted(eigs))])
+    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
+                  for ie, eig in enumerate(sorted(eigs,
+                                                  key=lambda x: x.real))])
     eigtable = dict(
         type='table',
         rows=eigrows)
@@ -58,14 +59,16 @@ def webpanel(row, key_descriptions):
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
                low, high, dynstab.upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Stability', 'Category'],
-                             'rows': [row]}]]}
+                             'rows': [row],
+                             }]],
+               'sort': 3}
 
     return [panel, summary]
 
@@ -82,7 +85,7 @@ def main(strain_percent=1.0):
     from asr.core import read_json, chdir
     from asr.database.material_fingerprint import main as computemf
     import numpy as np
-    
+
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
@@ -97,8 +100,8 @@ def main(strain_percent=1.0):
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             structurefile = folder / 'structure.json'
-            if not computemf.done:
-                with chdir(folder):
+            with chdir(folder):
+                if not computemf.done:
                     computemf()
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
