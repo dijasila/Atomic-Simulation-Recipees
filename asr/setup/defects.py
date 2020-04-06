@@ -491,7 +491,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             struc = structure_dict[element].get('structure')
             params = structure_dict[element].get('parameters')
             try:
-                write(folder_name + '/unrelaxed.json', struc)
+                write(folder_name + '/structure.json', struc)
                 write_json(folder_name + '/params.json', params)
             except FileExistsError:
                 print('WARNING: files already exist inside this folder.')
