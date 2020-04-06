@@ -49,7 +49,6 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
-    from gpaw import mpi
     # Get calc and current kpts
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
@@ -71,7 +70,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
                            erange=500e-3, m=1.0,
                            dimensionality=ndim)
 
-    # Position sphere around VBM is bandtype == vb
+    # Position sphere around VBM if bandtype == vb
     # Else around CBM
     if bandtype == 'vb':
         newk_kc = k_kc[k1] + ksphere
@@ -350,7 +349,7 @@ def make_the_plots(row, *args):
                                  gridspec_kw={'width_ratios': [1]})
 
         should_plot = True
-        for cb_key in cb_indices:
+        for cb_key in cb_indices[0:1]:
             cb_tuple = convert_key_to_tuple(cb_key)
             # Save something
             data = results[cb_key]
@@ -369,11 +368,13 @@ def make_the_plots(row, *args):
             kpts_kv *= Bohr
 
             e_k = fit_data['e_k'] - reference
-            sz_k = fit_data['spin_k']
+            e_km = fit_data['e_km'] - reference
+            sz_km = fit_data['spin_km']
             emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.min(e_k) - np.min(emodel_k)
 
-            things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
+            for im in range(e_km.shape[1]):
+                things = axes.scatter(xk, e_km[:, im], c=sz_km[:, im], vmin=-1, vmax=1)
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -407,7 +408,7 @@ def make_the_plots(row, *args):
                                  sharey=True,
                                  gridspec_kw={'width_ratios': [1]})
 
-        for vb_key in vb_indices:
+        for vb_key in vb_indices[0:1]:
             # Save something
             vb_tuple = convert_key_to_tuple(vb_key)
             data = results[vb_key]
@@ -419,18 +420,20 @@ def make_the_plots(row, *args):
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            xk2, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
+            e_k = fit_data['e_k'] - reference
+            e_km = fit_data['e_km'] - reference
+            sz_km = fit_data['spin_km']
+            xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
             xk2 -= xk2[-1] / 2
+
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
-
-            e_k = fit_data['e_k'] - reference
-            sz_k = fit_data['spin_k']
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.max(e_k) - np.max(emodel_k)
 
-            things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
+            for im in range(e_km.shape[1]):
+                things = axes.scatter(xk2, e_km[:, im], c=sz_km[:, im], vmin=-1, vmax=1)
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -455,6 +458,7 @@ def make_the_plots(row, *args):
             fname = args[plt_count + nplts // 2]
             plt.savefig(fname)
             plt.close()
+
         plt_count += 1
     # Make final column with table of numerical vals
 
@@ -755,10 +759,15 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
 
         calc_bs = calculate_bs_along_emass_vecs
+        if offset == 0:
+            nbands = len(indices)
+        else:
+            nbands = 1
         masses[b]['bs_along_emasses'] = calc_bs(masses[b],
                                                 soc, bandtype, calc,
                                                 spin=b[0],
-                                                band=b[1])
+                                                band=b[1],
+                                                nbands=nbands)
         masses[b]['offset'] = offset
 
     return masses
@@ -767,7 +776,8 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
                                   spin, band,
-                                  erange=500e-3, npoints=91):
+                                  erange=500e-3, npoints=91,
+                                  nbands=1):
     from pathlib import Path
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
@@ -817,10 +827,19 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
         sz_km = s_kvm[:, get_spin_index(), :]
 
-        results_dicts.append(dict(bt=bt,
-                                  kpts_kc=k_kc,
-                                  e_k=e_km[:, band],
-                                  spin_k=sz_km[:, band]))
+        dct = dict(bt=bt,
+                   kpts_kc=k_kc,
+                   e_k=e_km[:, band],
+                   spin_k=sz_km[:, band])
+        if nbands != 1:
+            if bt == "vb":
+                dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
+                dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
+            else:
+                dct['e_km'] = e_km[:, band:band + nbands]
+                dct['spin_km'] = sz_km[:, band:band + nbands]
+
+        results_dicts.append(dct)
 
     return results_dicts
 
