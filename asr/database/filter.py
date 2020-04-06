@@ -8,7 +8,7 @@ from asr.core import command, argument, option
 @option('-p', '--patterns',
         help='Comma separated string of patterns for filtering.')
 def main(databasein, databaseout, selection='',
-         patterns='*', identifier='uid'):
+         patterns='*'):
     """Filter rows and data in database."""
     from ase.db import connect
     from pathlib import Path
@@ -33,8 +33,8 @@ def main(databasein, databaseout, selection='',
                 keys = filter(filter_func, row.data)
                 data = {key: row.data[key] for key in keys}
 
-            conout.write(atoms=row.to_atoms(), data=data, **row.key_value_pairs)
-
+            conout.write(atoms=row.toatoms(), data=data, **row.key_value_pairs)
+    # metadata = con.metadata
     conout.metadata = con.metadata
 
 
