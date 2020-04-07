@@ -1,7 +1,7 @@
 .. _Explanations:
 
-Topical Discussions
-===================
+Explanations
+============
 
 .. toctree::
    :maxdepth: 2
