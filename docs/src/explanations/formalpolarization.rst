@@ -26,9 +26,9 @@ Relevant recipes
 
 The following recipes are all relying on the Modern theory of Polarization:
 
-  :py:func:`asr.formalpolarization.main`
-  :py:func:`asr.piezoelectrictensor.main`
-  :py:func:`asr.borncharges.main`
+- :py:func:`asr.formalpolarization.main`
+- :py:func:`asr.piezoelectrictensor.main`
+- :py:func:`asr.borncharges.main`
 
 Alternative literature
 ======================
@@ -73,7 +73,7 @@ this and the next section we show, following two different routes, that
 such quantities are indeed well defined.
 
 Before we derive a unit-cell independent formula for the change in
-polarization, it should be noted that expression (:eq:`P`) cannot be
+polarization, it should be noted that expression :eq:`P` cannot be
 directly applied to determine such a change. This point should be clear
 from Figure :numref:`Pcell`.
 
@@ -81,7 +81,7 @@ from Figure :numref:`Pcell`.
    :name: Pcell
 
    An illustration of the dependence of the polarization change on the
-   choice of unit cell when computed using Eq. (:eq:`P`). Here we induce
+   choice of unit cell when computed using Eq. :eq:`P`. Here we induce
    a change in the electron density by moving an atom which could induce
    a change in the polarization of the material. However, depending on
    the choice of unit cell (top and bottom panel) some fractional amount
@@ -89,9 +89,9 @@ from Figure :numref:`Pcell`.
    (:math:`\delta n`) and yield arbitrary values for the induced
    polarisation.
 
-Rather than starting from the unit cell dependent formula (:eq:`P`), we
+Rather than starting from the unit cell dependent formula :eq:`P`, we
 consider the polarization of a finite piece of the bulk for which
-(:eq:`P`) is meaningful when :math:`V_{\textrm{cell}}` is replaced by the
+:eq:`P` is meaningful when :math:`V_{\textrm{cell}}` is replaced by the
 total volume of the crystal, :math:`V`. The idea is now to calculate the
 change in :math:`\mathbf P` induced by some change in the Hamiltonian,
 and then show that taking the thermodynamic limit (:math:`V\to \infty`)
@@ -103,7 +103,7 @@ potential is changed adiabatically from :math:`v_{\lambda=0}` to
 
 .. math:: \Delta \mathbf P = \int_{0}^{1} \frac{d \mathbf P}{d\lambda}d\lambda
 
-and from Eq. (:eq:`P`) we can write
+and from Eq. :eq:`P` we can write
 
 .. math::
    :label: dP
@@ -146,7 +146,7 @@ Polarization change from Kubo formula
 -------------------------------------
 
 In the previous section, the problem with the unit cell dependent
-expression (:eq:`P`), was circumvented by considering a finite piece of
+expression :eq:`P`, was circumvented by considering a finite piece of
 material and then taking the thermodynamic limit. In this section we
 present an alternative formulation which defines the polarization from
 the current flowing through a unit cell in response to a periodic
@@ -192,12 +192,12 @@ the ground state.  With this we obtain
    |\psi_n^\lambda\rangle} {(\varepsilon_n-\varepsilon_m)^2} +
    \mathrm{c.c.}
 
-which coincide with Eq. (:eq:`dP_final`).
+which coincide with Eq. :eq:`dP_final`.
 
 Polarisation change as a Berry phase on the occupied manifold
 -------------------------------------------------------------
 
-Eq. (:eq:`dP\_final`) uniquely specifies the macroscopic polarisation
+Eq. :eq:`dP\_final` uniquely specifies the macroscopic polarisation
 change due to an adiabatic change of the crystal potential. It has the
 drawback that it involves a sum over unoccupied states making it costly
 to evaluate in practice. As shown below, it is possible to obtain an
@@ -226,7 +226,7 @@ where the cell periodic Hamiltonian is given by
 It should be noted that for the above relations to hold it is essential
 that the cell-periodic functions, :math:`u^\lambda_{nk}`, are analytic
 with respect to :math:`\mathbf k` and :math:`\lambda`. Substituting into
-Eq. (:eq:`dP\_final`) we obtain (after some manipulations)
+Eq. :eq:`dP\_final` we obtain (after some manipulations)
 
 .. math:: \Delta P_\alpha = \frac{-e}{(4\pi^3)} \int_{\mathrm{BZ}}d\mathbf k \sum_n^{\text{occ}}\int_0^1 d\lambda\, \mathrm{Im}\left(\langle \frac{\partial u_{nk}^\lambda}{\partial k_\alpha} |\frac{\partial u_{nk}^\lambda}{\partial \lambda} \rangle\right)
 
@@ -297,11 +297,11 @@ most differ by a phase,
 
 .. math:: u_{n\mathbf k}^{(1)}(\mathbf r) = e^{i\theta_{n\mathbf k}}u_{n\mathbf k}^{(0)}(\mathbf r).
 
-Inserting this in Eq. (:eq:`3`) yields
+Inserting this in Eq. :eq:`3` yields
 
 .. math:: \Delta \mathbf P_{\textrm{el}} = \frac{e}{2\pi A} \mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z \sum_n^{\text{occ}} \frac{\partial \theta_{n\mathbf k}}{\partial k_z}.
 
-Because of Eq. (:eq:`periodic`) we must have
+Because of Eq. :eq:`periodic` we must have
 :math:`e^{i\theta_{n\mathbf k}}=e^{i\theta_{n,\mathbf k+\mathbf G}}`
 meaning that
 
@@ -328,7 +328,7 @@ Practical calculations of the polarization
 ------------------------------------------
 
 We now describe how the Berry phase theory can be used to calculate real
-world quantities in practice. Eq. (:eq:`2`) is slightly rewritten to make
+world quantities in practice. Eq. :eq:`2` is slightly rewritten to make
 apparent its use of a trace
 
 .. math::
@@ -353,7 +353,7 @@ that the polarisation along a specific direction is obtained by dotting
 with :math:`\mathbf{n}`). In principle, this expression can be
 straightforwardly implemented numerically. However, it appears that the
 result depend on the (arbitrary) phases of the Bloch states. Eq.
-(:eq:`ndotP`) requires that the :math:`u_{n\mathbf k}` are differentiable
+:eq:`ndotP` requires that the :math:`u_{n\mathbf k}` are differentiable
 with respect to :math:`\mathbf k`. But the wave functions obtained from
 practical DFT codes come with arbitrary phases. To show that the result
 is in fact independent of the phases, we use that the logarithm of a
@@ -417,7 +417,7 @@ atom, :math:`a`, in a crystal is a tensor defined as
 where :math:`i,j=x,y,x` denote the direction. In this equation it is
 understood that atom :math:`a` in all unit cells are displaced such that
 the assumption of a periodic perturbation behind Eq.
-(:eq:`dP\_practical`) is satisfied. At this point it is instructive to
+:eq:`dP\_practical` is satisfied. At this point it is instructive to
 recall the definition of the electronic dielectric tensor and
 susceptibilites that we have studied so far in the course:
 
@@ -439,7 +439,7 @@ frequencies of the lattice, i.e. the phonons, and the Born charges, as
 input. If you would like to see how this goes, consult page 417-419 and
 423-424 in GP.
 
-In practice, formula (:eq:`born`) is evaluated as a finite difference
+In practice, formula :eq:`born` is evaluated as a finite difference
 
 .. math::
 
