@@ -58,8 +58,8 @@ volume. As such it would be natural to define a macroscopic (i.e. unit
 cell averaged) polarisation for an infinite periodic bulk system as
 
 .. math::
-   
-   \label{eq:P}
+   :label: P
+
    \mathbf P = \frac{e}{V_\textrm{cell}}\int_{V_\textrm{cell}} \mathbf r n(\mathbf r) d\mathbf r
 
  where :math:`n` includes the ion point charges as well as the
@@ -75,11 +75,12 @@ such quantities are indeed well defined.
 Before we derive a unit-cell independent formula for the change in
 polarization, it should be noted that expression ([eq:P]) cannot be
 directly applied to determine such a change. This point should be clear
-from Figure [fig:Pcell].
+from Figure :fig:`Pcell`.
 
 .. figure:: born_charge.pdf
+   :label: Pcell
    :alt: An illustration of the dependence of the polarization change on
-   the choice of unit cell when computed using Eq. ([eq:P]). Here we
+   the choice of unit cell when computed using Eq. (:eq:`P`). Here we
    induce a change in the electron density by moving an atom which could
    induce a change in the polarization of the material. However,
    depending on the choice of unit cell (top and bottom panel) some
@@ -88,7 +89,7 @@ from Figure [fig:Pcell].
    polarisation.
 
    An illustration of the dependence of the polarization change on the
-   choice of unit cell when computed using Eq. ([eq:P]). Here we induce
+   choice of unit cell when computed using Eq. (:eq:`P`). Here we induce
    a change in the electron density by moving an atom which could induce
    a change in the polarization of the material. However, depending on
    the choice of unit cell (top and bottom panel) some fractional amount
@@ -96,9 +97,9 @@ from Figure [fig:Pcell].
    (:math:`\delta n`) and yield arbitrary values for the induced
    polarisation.
 
-Rather than starting from the unit cell dependent formula ([eq:P]), we
+Rather than starting from the unit cell dependent formula (:eq:`P`), we
 consider the polarization of a finite piece of the bulk for which
-([eq:P]) is meaningful when :math:`V_{\textrm{cell}}` is replaced by the
+(:eq:`P`) is meaningful when :math:`V_{\textrm{cell}}` is replaced by the
 total volume of the crystal, :math:`V`. The idea is now to calculate the
 change in :math:`\mathbf P` induced by some change in the Hamiltonian,
 and then show that taking the thermodynamic limit (:math:`V\to \infty`)
@@ -110,14 +111,14 @@ potential is changed adiabatically from :math:`v_{\lambda=0}` to
 
 .. math:: \Delta \mathbf P = \int_{0}^{1} \frac{d \mathbf P}{d\lambda}d\lambda
 
- and from Eq. ([eq:P]) we can write
+and from Eq. (:eq:`P`) we can write
 
 .. math::
+   :label: dP
 
-   \label{eq:dP}
    \frac{d \mathbf P}{d\lambda} = -\frac{e}{V} \sum_n^{\text{occ}} \langle \psi_n^\lambda |\mathbf r|\frac{d \psi_n^\lambda}{d \lambda} \rangle + \mathrm{c.c.}
 
- Using first order perturbation theory we have
+Using first order perturbation theory we have
 
 .. math:: |\frac{d \psi_n^\lambda}{d \lambda} \rangle = \sum_{m\neq n} |\psi_m^\lambda\rangle\frac{\langle \psi^\lambda_m|\frac{\partial v_\lambda}{\partial \lambda}|\psi_n^\lambda\rangle}{\varepsilon_n-\varepsilon_m}.
 
@@ -129,22 +130,22 @@ potential is changed adiabatically from :math:`v_{\lambda=0}` to
    \langle \psi^\lambda_m|\frac{\partial v_\lambda}{\partial \lambda}|\psi_n^\lambda\rangle}
    {\varepsilon_n-\varepsilon_m} + \mathrm{c.c.}
 
- Using the commutator relation
-:math:`[\mathbf r,H_{\lambda}]=i\hbar\mathbf p / m_e`, the off-diagonal
-matrix elements of the position operator can be rewritten
+Using the commutator relation :math:`[\mathbf
+r,H_{\lambda}]=i\hbar\mathbf p / m_e`, the off-diagonal matrix
+elements of the position operator can be rewritten
 
 .. math:: \langle \psi_n^\lambda |\mathbf r|\psi_m^\lambda  \rangle = \frac{i\hbar}{m_e}\frac{\langle \psi_n^\lambda |\mathbf p|\psi_m^\lambda  \rangle}{\varepsilon_m-\varepsilon_n}
 
- and we finally arrive at the expression
+and we finally arrive at the expression
 
 .. math::
+   :label: dP_final
 
-   \label{eq:dP_final}
    \frac{d \mathbf P}{d\lambda} = \frac{i e \hbar}{Vm_e} \sum_n^{\text{occ}}\sum_{m\neq n} \frac{
    \langle \psi^\lambda_n|\mathbf p |\psi_m^\lambda\rangle \langle \psi^\lambda_m|\frac{\partial v_\lambda}{\partial \lambda}|\psi_n^\lambda\rangle }
    {(\varepsilon_n-\varepsilon_m)^2} + \mathrm{c.c.}
 
- This quantity is well defined for any piece of material also for a
+This quantity is well defined for any piece of material also for a
 periodic solid in the thermodynamic limit. It does not depend on the
 choice of unit cell (because it makes no reference to the unit cell) and
 it is independent of the phases chosen for the Bloch states.
@@ -153,7 +154,7 @@ Polarization change from Kubo formula
 =====================================
 
 In the previous section, the problem with the unit cell dependent
-expression ([eq:P]), was circumvented by considering a finite piece of
+expression (:eq:`P`), was circumvented by considering a finite piece of
 material and then taking the thermodynamic limit. In this section we
 present an alternative formulation which defines the polarization from
 the current flowing through a unit cell in response to a periodic
@@ -166,38 +167,40 @@ the potential from :math:`v_{\lambda=0}` to :math:`v_{\lambda=1}`, where
 
 .. math:: \frac{\partial \mathbf P(\mathbf r) }{ \partial t} =\mathbf j(\mathbf r)
 
- As a quantum mechanical operator we have
-:math:` \frac{\partial \mathbf P(\mathbf r) }{ \partial t} = [\mathbf P, H] / i\hbar`.
-Thus when considering off-diagonal matrix elements of :math:`\mathbf P`
-on energy eigenstates we have
+As a quantum mechanical operator we have :math:`\frac{\partial \mathbf
+P(\mathbf r) }{ \partial t} = [\mathbf P, H] / i\hbar`. Thus when
+considering off-diagonal matrix elements of :math:`\mathbf P` on
+energy eigenstates we have
 
 .. math:: \langle \psi_n|\mathbf P(\mathbf r) |\psi_m\rangle = i\hbar\frac{\langle \psi_n|\mathbf j(\mathbf r) |\psi_m\rangle}{\varepsilon_m - \varepsilon_n}.
 
- Since we are interested in the macroscopic polarisation we perform a
+Since we are interested in the macroscopic polarisation we perform a
 unit cell average. Thanks to the Bloch form of the wave functions,
-:math:`\psi_{nk}(\mathbf r)=e^{i\mathbf{k}\cdot \mathbf{r}}u_{nk}(\mathbf r)`,
-we have
+:math:`\psi_{nk}(\mathbf r)=e^{i\mathbf{k}\cdot
+\mathbf{r}}u_{nk}(\mathbf r)`, we have
 
 .. math:: \int_{V} \psi_{nk}^* \mathbf j(\mathbf r) \psi_{mk'} d \mathbf r= \frac{e}{m_e} \langle \psi_{nk} |\mathbf p |\psi_{mk}\rangle\delta_{kk'}
 
- Suppose the system is in the ground state of :math:`H(\lambda)`. We now
-consider the change in :math:`\mathbf P` when the Hamiltonian is changed
-adiabatically to :math:`H(\lambda + d\lambda)`. This change can be
-obtained from the Kubo formula using :math:`\mathbf P` as the observable
-and
-:math:`dH(\lambda)=\frac{\partial v_\lambda}{ \partial \lambda} d\lambda`
-as the time-independent perturbation. The finite imaginary frequency
-:math:`i\eta` in the Kubo formula ensures that the perturbation is
-switched on adiabatically so that the system stays in the ground state.
-With this we obtain
+Suppose the system is in the ground state of :math:`H(\lambda)`. We
+now consider the change in :math:`\mathbf P` when the Hamiltonian is
+changed adiabatically to :math:`H(\lambda + d\lambda)`. This change
+can be obtained from the Kubo formula using :math:`\mathbf P` as the
+observable and :math:`dH(\lambda)=\frac{\partial v_\lambda}{ \partial
+\lambda} d\lambda` as the time-independent perturbation. The finite
+imaginary frequency :math:`i\eta` in the Kubo formula ensures that the
+perturbation is switched on adiabatically so that the system stays in
+the ground state.  With this we obtain
 
 .. math::
 
-   \frac{\partial  \mathbf P(\lambda)}{\partial \lambda} = \frac{-i e \hbar}{Vm_e} \sum_n^{\text{occ}}\sum_{m\neq n} \frac{\langle \psi^\lambda_{n}|\frac{\partial v_\lambda}{\partial \lambda}|\psi_{m}^\lambda\rangle 
-   \langle \psi^\lambda_m|\mathbf p |\psi_n^\lambda\rangle}
-   {(\varepsilon_n-\varepsilon_m)^2} + \mathrm{c.c.}
+   \frac{\partial \mathbf P(\lambda)}{\partial \lambda} =
+   \frac{-i e \hbar}{Vm_e} \sum_n^{\text{occ}}\sum_{m\neq n}
+   \frac{\langle \psi^\lambda_{n}|\frac{\partial v_\lambda}{\partial
+   \lambda}|\psi_{m}^\lambda\rangle \langle \psi^\lambda_m|\mathbf p
+   |\psi_n^\lambda\rangle} {(\varepsilon_n-\varepsilon_m)^2} +
+   \mathrm{c.c.}
 
- which coincide with Eq. ([eq:dP\_final]).
+which coincide with Eq. (:eq:`dP_final`).
 
 Polarisation change as a Berry phase on the occupied manifold
 =============================================================
@@ -220,24 +223,22 @@ We use the relations
 
 .. math::
 
-   \begin{aligned}
-   \langle \psi^\lambda_{nk}|\frac{\partial v_\lambda}{ \partial \lambda} |\psi^\lambda_{mk}\rangle = \langle u^\lambda_{nk}|[\frac{\partial }{\partial \lambda}, H(\mathbf k,\lambda)]| u^\lambda_{mk}\rangle \\
-   \langle \psi^\lambda_{nk}| p_{\alpha} |\psi^\lambda_{mk}\rangle = \frac{m_e}{\hbar}\langle u^\lambda_{nk}|[\frac{\partial }{\partial k_{\alpha}}, H(\mathbf k,\lambda)]| u^\lambda_{mk}\rangle\end{aligned}
+   \langle \psi^\lambda_{nk}|\frac{\partial v_\lambda}{ \partial \lambda} |\psi^\lambda_{mk}\rangle = \langle u^\lambda_{nk}|[\frac{\partial }{\partial \lambda}, H(\mathbf k,\lambda)]| u^\lambda_{mk}\rangle
+   
+   \langle \psi^\lambda_{nk}| p_{\alpha} |\psi^\lambda_{mk}\rangle = \frac{m_e}{\hbar}\langle u^\lambda_{nk}|[\frac{\partial }{\partial k_{\alpha}}, H(\mathbf k,\lambda)]| u^\lambda_{mk}\rangle
 
- where the cell periodic Hamiltonian is given by
+where the cell periodic Hamiltonian is given by
 
 .. math:: H(\mathbf k,\lambda) = (-i\nabla + \mathbf k)^2 +v_\lambda(\mathbf r).
 
- It should be noted that for the above relations to hold it is essential
+It should be noted that for the above relations to hold it is essential
 that the cell-periodic functions, :math:`u^\lambda_{nk}`, are analytic
 with respect to :math:`\mathbf k` and :math:`\lambda`. Substituting into
 Eq. ([eq:dP\_final]) we obtain (after some manipulations)
 
 .. math:: \Delta P_\alpha = \frac{-e}{(4\pi^3)} \int_{\mathrm{BZ}}d\mathbf k \sum_n^{\text{occ}}\int_0^1 d\lambda\, \mathrm{Im}\left(\langle \frac{\partial u_{nk}^\lambda}{\partial k_\alpha} |\frac{\partial u_{nk}^\lambda}{\partial \lambda} \rangle\right)
 
- (show this!).
-
-It can be shown (see e.g. Grosso and Paravicini) that the above
+XXX (show this!). It can be shown (see e.g. Grosso and Paravicini) that the above
 expression can be rephrased as
 
 .. math::
@@ -245,14 +246,14 @@ expression can be rephrased as
    \label{eq:1}
    \Delta \mathbf P = \Delta \mathbf P_{\mathrm{ion}} + [\mathbf P_{\mathrm{el}}(1)-\mathbf P_{\mathrm{el}}(0)]
 
- where
+where
 
 .. math::
 
    \label{eq:2}
    \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3}\mathrm{Im}\int_{\mathrm{BZ}}d\mathbf k \sum_n^{\text{occ}}  \langle u_{nk}^\lambda |\nabla_{\mathbf k}|u_{nk}^\lambda \rangle.
 
- Considering the polarisation along a particular direction, say the
+Considering the polarisation along a particular direction, say the
 :math:`z`-axis, the derivative only connects Bloch states along
 :math:`\mathbf k_z`. In this case the BZ integral can be discretised in
 the directions perpendicular to :math:`z`, and the contribution for each
@@ -275,10 +276,9 @@ can write this as
 
 .. math::
 
-   \begin{aligned}
-       \phi_n = \mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z  \langle u_{nk}^\lambda |\frac{\partial u_{nk}^\lambda}{\partial k_z}\rangle\end{aligned}
+   \phi_n = \mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z  \langle u_{nk}^\lambda |\frac{\partial u_{nk}^\lambda}{\partial k_z}\rangle
 
- is nothing but the Berry phase picked up along the 1D BZ. As always the
+is nothing but the Berry phase picked up along the 1D BZ. As always the
 expression is invariant under a change in the phases of the wave
 functions, :math:`e^{i\theta(\mathbf k)}`, as long as :math:`\theta` is
 differentiable on the BZ torus (i.e. with periodic boundary conditions).
@@ -294,7 +294,7 @@ a gauge transformation, i.e. a unitary transformation of the form
    \label{eq:periodic}
    u_{n\mathbf k}^\lambda = e^{i\mathbf r \cdot \mathbf G}u_{n,\mathbf k+\mathbf G}^\lambda
 
- (which is not just a phase factor). We refer to this relation as the
+(which is not just a phase factor). We refer to this relation as the
 periodic gauge.
 
 Now, we show that Eqs. ([eq:1]-[eq:3]) only determine :math:`\Delta P`
@@ -306,23 +306,23 @@ most differ by a phase,
 
 .. math:: u_{n\mathbf k}^{(1)}(\mathbf r) = e^{i\theta_{n\mathbf k}}u_{n\mathbf k}^{(0)}(\mathbf r).
 
- Inserting this in Eq. ([eq:3]) yields
+Inserting this in Eq. ([eq:3]) yields
 
 .. math:: \Delta \mathbf P_{\textrm{el}} = \frac{e}{2\pi A} \mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z \sum_n^{\text{occ}} \frac{\partial \theta_{n\mathbf k}}{\partial k_z}.
 
- Because of Eq. ([eq:periodic]) we must have
+Because of Eq. ([eq:periodic]) we must have
 :math:`e^{i\theta_{n\mathbf k}}=e^{i\theta_{n,\mathbf k+\mathbf G}}`
 meaning that
 
 .. math:: \theta_{n\mathbf k} = \beta_{n\mathbf k}^{\mathrm{per}}+\mathbf k\cdot \mathbf R_n
 
- where :math:`\beta` is BZ-periodic (and differentiable) in
+where :math:`\beta` is BZ-periodic (and differentiable) in
 :math:`\mathbf k`. We thus conclude that for
 :math:`H(\lambda=0)=H(\lambda=1)` we have
 
 .. math:: \Delta \mathbf P_{\textrm{el}} = \frac{e}{V_{\textrm{cell}}} \sum_n^{\text{occ}} \mathbf R_n
 
- where :math:`V_\mathrm{cell} = Ac`. This shows that the polarisation
+where :math:`V_\mathrm{cell} = Ac`. This shows that the polarisation
 change in direction :math:`\alpha` is only determined up to the
 polarisation quantum :math:`(e/V_{\textrm{cell}})L_{\alpha}`.
 
@@ -345,7 +345,7 @@ apparent its use of a trace
    \label{eq:ndotP}
    \mathbf{n}\cdot\mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}}d\mathbf k \, \mathrm{Tr}_\mathrm{occ} \left( \langle u_{nk}^\lambda |\mathbf{n} \cdot \nabla_{\mathbf k}|u_{mk}^\lambda \rangle\right),
 
- where it is understood that the inside of the trace is a matrix in
+where it is understood that the inside of the trace is a matrix in
 band-indices :math:`n,m` and that trace is taken over the occupied
 manifold of bands. :math:`\mathbf{n}` is a unit-vector along the
 direction the polarization is calculated. The derivative of the
@@ -353,11 +353,11 @@ Bloch-functions is expanded to first order in :math:`\mathbf{k}`
 
 .. math:: \nabla_{\mathbf k}|u_{m\mathbf{k}}^\lambda \rangle \approx \frac{ |u_{m\mathbf{k}+ \delta \mathbf{k}}^\lambda \rangle-|u_{m\mathbf{k}}^\lambda \rangle}{\delta \mathbf{k}}
 
- leading to the approximate expression for the polarization
+leading to the approximate expression for the polarization
 
 .. math:: \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}_\perp}d\mathbf k_\perp \sum_{\mathbf k_\parallel}\, \mathrm{Tr}_\mathrm{occ} \left( \langle u_{n\mathbf{k}}^\lambda |u_{m\mathbf{k}+\delta\mathbf{k}}^\lambda\rangle - 1 \right).
 
- (Here we have removed :math:`\mathbf{n}\cdot` as it should be clear
+(Here we have removed :math:`\mathbf{n}\cdot` as it should be clear
 that the polarisation along a specific direction is obtained by dotting
 with :math:`\mathbf{n}`). In principle, this expression can be
 straightforwardly implemented numerically. However, it appears that the
@@ -370,21 +370,21 @@ matrix, :math:`S`, which is close to the unit matrix, to first order is
 
 .. math:: \mathrm{ln}(S) \approx (S - I)
 
- which allows us to write
+which allows us to write
 
 .. math:: \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}_\perp}d\mathbf k_\perp \sum_{\mathbf k_\parallel}\, \, \mathrm{Tr}_\mathrm{occ} \, \mathrm{ln} \left[\langle u_{n\mathbf{k}}^\lambda |u_{m\mathbf{k}+\delta\mathbf{k}}^\lambda\rangle\right].
 
- Now we can use the fact that the trace of a logarithm of a matrix is
+Now we can use the fact that the trace of a logarithm of a matrix is
 equal to the logarithm of the determinant
 
 .. math:: \mathrm{Tr} \, \mathrm{ln} \, S = \mathrm{ln} \det S
 
- (which can be confirmed by inserting the eigen-representation of
+(which can be confirmed by inserting the eigen-representation of
 :math:`S`) yielding
 
 .. math:: \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}_\perp}d\mathbf k_\perp  \, \sum_{\mathbf k_\parallel}\, \mathrm{ln} \, \det_\mathrm{occ} \, \left[\langle u_{n\mathbf{k}}^\lambda |u_{m\mathbf{k}+\delta\mathbf{k}}^\lambda\rangle\right].
 
- Finally we can pull the sum into the logarithm by converting it to a
+Finally we can pull the sum into the logarithm by converting it to a
 product
 
 .. math::
@@ -408,10 +408,9 @@ the ion multiplied by the displacement :math:`\delta \mathbf{R}`
 
 .. math::
 
-   \begin{aligned}
-       \delta \mathbf{P} = \frac{e Z_\mathrm{ion}}{V_\mathrm{cell}} \delta \mathbf{R}.\end{aligned}
+   \delta \mathbf{P} = \frac{e Z_\mathrm{ion}}{V_\mathrm{cell}} \delta \mathbf{R}.
 
- Here :math:`Z_\mathrm{ion}` is a number describing the net-charge
+Here :math:`Z_\mathrm{ion}` is a number describing the net-charge
 associated with the ion. If the electrons are strongly bound to the ion
 they will follow the displacement of the ion and :math:`Z` will be
 expected to be an integer, however, in the general case where electrons
@@ -421,11 +420,10 @@ atom, :math:`a`, in a crystal is a tensor defined as
 
 .. math::
 
-   \begin{aligned}
    \label{eq:born}
-        Z^*_{a,ij} = \frac{V_\mathrm{cell}}{e} \frac{\partial P_{j}}{\partial R_{a,i}}.\end{aligned}
+   Z^*_{a,ij} = \frac{V_\mathrm{cell}}{e} \frac{\partial P_{j}}{\partial R_{a,i}}
 
- where :math:`i,j=x,y,x` denote the direction. In this equation it is
+where :math:`i,j=x,y,x` denote the direction. In this equation it is
 understood that atom :math:`a` in all unit cells are displaced such that
 the assumption of a periodic perturbation behind Eq.
 ([eq:dP\_practical]) is satisfied. At this point it is instructive to
@@ -434,11 +432,11 @@ susceptibilites that we have studied so far in the course:
 
 .. math:: \chi^{el}_{ij} = \frac{\partial P^{el}_{j}}{\partial E_i}
 
- and
+and
 
 .. math:: \mathbf \epsilon^{el} = \epsilon_0(1+\mathbf \chi^{el}).
 
- In writing these relations we have suppressed the :math:`q`- and
+In writing these relations we have suppressed the :math:`q`- and
 :math:`\omega`-dependence of the response functions. The important point
 is the “el” superscript, which indicates that the induced polarization
 is created by the electrons moving in the frozen crystal, i.e without
@@ -454,37 +452,37 @@ In practice, formula ([eq:born]) is evaluated as a finite difference
 
 .. math::
 
-   \begin{aligned}
-       \frac{\partial \mathbf{P}(\mathbf{R})}{\partial \mathbf{R}} \approx \frac{\mathbf{P}(\mathbf{R} + \delta \mathbf{R}) - \mathbf{P}(\mathbf{R} - \delta \mathbf{R})}{2 \delta \mathbf{R}}.\end{aligned}
+   \frac{\partial \mathbf{P}(\mathbf{R})}{\partial \mathbf{R}} \approx \frac{\mathbf{P}(\mathbf{R} + \delta \mathbf{R}) - \mathbf{P}(\mathbf{R} - \delta \mathbf{R})}{2 \delta \mathbf{R}}.
 
- Finally, we need to use Eq. ([eq:dP\_practical]) to calculate the
+Finally, we need to use Eq. ([eq:dP\_practical]) to calculate the
 polarisation at a finite displacement of the atoms. However, it is
-important to remember that the complex logarithm has a branch cut which
-typically lies from :math:`[-\infty, 0]`, which can lead to
+important to remember that the complex logarithm has a branch cut
+which typically lies from :math:`[-\infty, 0]`, which can lead to
 discontinuous jumps of the integrand in Eq. ([eq:dP\_practical])
 yielding unphysical results (the integrand should be continuous). An
 example is shown in Fig. [fig:berry\_phase] for the two-dimensional
 material MoS\ :math:`_2` where the integral (over
-:math:`\mathbf{k}_\perp`) is one-dimensional and therefore can be easily
-plotted. Here it is clear that the branch cut of the logarithm is being
-crossed leading to discontinuous jumps in the integrand (blue line).
-This can be fixed by comparing neighbouring k-points in the integrand
-and adding or subtracting a multiple of :math:`2\pi` to ensure that the
-Berry phases change slowly as a function of :math:`\mathrm{k}_\perp`
-(orange lines). Using this scheme we find that two-dimensional
-MoS\ :math:`_2` in the H-phase has the following Born charges:
-:math:`Z^\mathrm{Mo}_{[xx, yy, zz]} = [-1.07, -1.07, -0.13]` and
-:math:`Z^\mathrm{S}_{[xx, yy, zz]} = [0.53, 0.53, 0.07]` (all
-off-diagonal elements are zero). Now it can be seen that
+:math:`\mathbf{k}_\perp`) is one-dimensional and therefore can be
+easily plotted. Here it is clear that the branch cut of the logarithm
+is being crossed leading to discontinuous jumps in the integrand (blue
+line).  This can be fixed by comparing neighbouring k-points in the
+integrand and adding or subtracting a multiple of :math:`2\pi` to
+ensure that the Berry phases change slowly as a function of
+:math:`\mathrm{k}_\perp` (orange lines). Using this scheme we find
+that two-dimensional MoS\ :math:`_2` in the H-phase has the following
+Born charges: :math:`Z^\mathrm{Mo}_{[xx, yy, zz]} = [-1.07, -1.07,
+-0.13]` and :math:`Z^\mathrm{S}_{[xx, yy, zz]} = [0.53, 0.53, 0.07]`
+(all off-diagonal elements are zero). Now it can be seen that
 :math:`Z^\mathrm{S} \approx -Z^\mathrm{Mo} / 2` which is actually a
-variant of a deeper principle known as the acoustic sum rule which says
-that :math:`\sum^A Z^A_{ij} = 0` (when the net-charge of the total cell
-is zero), where :math:`A` runs over all atoms in the unit cell. It is
-interesting to note that the Born charges of S are positive and those of
-Mo are negative while the opposite is found for the net charge of the
-atoms in the equilibrium structure (S takes electron density from Mo).
-This shows that the concept of Born charges on covalently bonded
-structures like MoS\ :math:`_2` is highly non-trivial.
+variant of a deeper principle known as the acoustic sum rule which
+says that :math:`\sum^A Z^A_{ij} = 0` (when the net-charge of the
+total cell is zero), where :math:`A` runs over all atoms in the unit
+cell. It is interesting to note that the Born charges of S are
+positive and those of Mo are negative while the opposite is found for
+the net charge of the atoms in the equilibrium structure (S takes
+electron density from Mo).  This shows that the concept of Born
+charges on covalently bonded structures like MoS\ :math:`_2` is highly
+non-trivial.
 
 .. figure:: berry_phases.pdf
    :alt: Calculated Berry phase for MoS\ :math:`_2` showing a
