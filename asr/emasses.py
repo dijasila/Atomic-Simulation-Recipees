@@ -780,7 +780,10 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
 
 def wideMAE(masses, bt, cell_cv, erange=25e-3):
     from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha
     import numpy as np
+
+    erange = erange / Ha
 
     maes = []
     for i, mass in enumerate(masses['mass_u']):
