@@ -90,7 +90,7 @@ def get_parameters(gs, exchange, txt=False,
         calc_afm = calc_exchange
     else:
         calc_afm = calc_gs_2mag
-        calc_fm = calc_exchange        
+        calc_fm = calc_exchange
 
     nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
