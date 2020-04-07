@@ -58,6 +58,7 @@ if gendocs.is_dir():
 
 napoleon_numpy_docstring = True
 autosummary_generate = True
+numfig = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
