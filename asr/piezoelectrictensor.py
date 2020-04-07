@@ -1,3 +1,15 @@
+"""Piezoelectric tensor module.
+
+Module containing functionality for calculating the piezoelectric
+tensor. The central recipe of this module is
+:func:`asr.piezoelectrictensor.main`.
+
+Recipes
+-------
+.. autofunction:: asr.piezoelectrictensor.main
+
+"""
+
 from asr.core import command, option
 
 
@@ -58,6 +70,30 @@ def main(strain_percent=1,
              'txt': 'formalpol.txt',
              'charge': 0
          }):
+    """Calculate piezoelectric tensor.
+
+    This recipe calculates the clamped and full piezoelectric
+    tensor. You generally will only need the full piezoelectric
+    tensor. The clamped piezoelectric tensor is useful for analyzing
+    results. The piezoelectric tensor is calculated using a finite
+    difference scheme by calculating the derivative of the
+    polarization density at finite strains.
+
+    Parameters
+    ----------
+    strain_percent : float
+        Amount of strain applied to the material.
+    calculator : dict
+        Calculator parameters.
+
+    Returns
+    -------
+    dict
+        Keys:
+            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
+            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
+
+    """
     import numpy as np
     from ase.calculators.calculator import kptdensity2monkhorstpack
     from ase.io import read
