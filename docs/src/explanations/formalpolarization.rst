@@ -62,7 +62,7 @@ cell averaged) polarisation for an infinite periodic bulk system as
 
    \mathbf P = \frac{e}{V_\textrm{cell}}\int_{V_\textrm{cell}} \mathbf r n(\mathbf r) d\mathbf r
 
- where :math:`n` includes the ion point charges as well as the
+where :math:`n` includes the ion point charges as well as the
 delocalised electron charge (:math:`e > 0`). It is, however, obvious
 that this definition is not meaningful as it depends on the chosen unit
 cell (see p. 365 in Grosso and Parravicini 2nd. ed.). Instead, it turns
@@ -73,12 +73,12 @@ this and the next section we show, following two different routes, that
 such quantities are indeed well defined.
 
 Before we derive a unit-cell independent formula for the change in
-polarization, it should be noted that expression ([eq:P]) cannot be
+polarization, it should be noted that expression (:eq:`P`) cannot be
 directly applied to determine such a change. This point should be clear
-from Figure :fig:`Pcell`.
+from Figure :numref:`Pcell`.
 
-.. figure:: born_charge.pdf
-   :label: Pcell
+.. figure:: born_charge.png
+   :name: Pcell
    :alt: An illustration of the dependence of the polarization change on
    the choice of unit cell when computed using Eq. (:eq:`P`). Here we
    induce a change in the electron density by moving an atom which could
@@ -151,7 +151,7 @@ choice of unit cell (because it makes no reference to the unit cell) and
 it is independent of the phases chosen for the Bloch states.
 
 Polarization change from Kubo formula
-=====================================
+-------------------------------------
 
 In the previous section, the problem with the unit cell dependent
 expression (:eq:`P`), was circumvented by considering a finite piece of
@@ -203,9 +203,9 @@ the ground state.  With this we obtain
 which coincide with Eq. (:eq:`dP_final`).
 
 Polarisation change as a Berry phase on the occupied manifold
-=============================================================
+-------------------------------------------------------------
 
-Eq. ([eq:dP\_final]) uniquely specifies the macroscopic polarisation
+Eq. (:eq:`dP\_final`) uniquely specifies the macroscopic polarisation
 change due to an adiabatic change of the crystal potential. It has the
 drawback that it involves a sum over unoccupied states making it costly
 to evaluate in practice. As shown below, it is possible to obtain an
@@ -234,7 +234,7 @@ where the cell periodic Hamiltonian is given by
 It should be noted that for the above relations to hold it is essential
 that the cell-periodic functions, :math:`u^\lambda_{nk}`, are analytic
 with respect to :math:`\mathbf k` and :math:`\lambda`. Substituting into
-Eq. ([eq:dP\_final]) we obtain (after some manipulations)
+Eq. (:eq:`dP\_final`) we obtain (after some manipulations)
 
 .. math:: \Delta P_\alpha = \frac{-e}{(4\pi^3)} \int_{\mathrm{BZ}}d\mathbf k \sum_n^{\text{occ}}\int_0^1 d\lambda\, \mathrm{Im}\left(\langle \frac{\partial u_{nk}^\lambda}{\partial k_\alpha} |\frac{\partial u_{nk}^\lambda}{\partial \lambda} \rangle\right)
 
@@ -264,14 +264,14 @@ the directions perpendicular to :math:`z`, and the contribution for each
 
    \mathbf P_{\mathrm{el},z}(\lambda) = \frac{e}{2\pi A}\mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z \sum_n^{\text{occ}} \langle u_{nk}^\lambda |\frac{\partial u_{nk}^\lambda}{\partial k_z}\rangle
 
- where :math:`A` is the area of the unit cell in :math:`xy` plane. We
+where :math:`A` is the area of the unit cell in :math:`xy` plane. We
 can write this as
 
 .. math::
 
    \mathbf P_{\mathrm{el},z}(\lambda) = \frac{e}{2\pi A}\sum_n^{\text{occ}} \phi_n
 
- where
+where
 
 .. math::
 
@@ -296,7 +296,7 @@ a gauge transformation, i.e. a unitary transformation of the form
 (which is not just a phase factor). We refer to this relation as the
 periodic gauge.
 
-Now, we show that Eqs. ([eq:1]-[eq:3]) only determine :math:`\Delta P`
+Now, we show that Eqs. (:eq:`1` - :eq:`3`) only determine :math:`\Delta P`
 up to an integer number of polarisation quanta. To this end consider the
 special case where the Hamiltonians at :math:`\lambda=0` and 1 are
 identical, e.g. an atom is moved along a closed loop. In this case
@@ -305,11 +305,11 @@ most differ by a phase,
 
 .. math:: u_{n\mathbf k}^{(1)}(\mathbf r) = e^{i\theta_{n\mathbf k}}u_{n\mathbf k}^{(0)}(\mathbf r).
 
-Inserting this in Eq. ([eq:3]) yields
+Inserting this in Eq. (:eq:`3`) yields
 
 .. math:: \Delta \mathbf P_{\textrm{el}} = \frac{e}{2\pi A} \mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z \sum_n^{\text{occ}} \frac{\partial \theta_{n\mathbf k}}{\partial k_z}.
 
-Because of Eq. ([eq:periodic]) we must have
+Because of Eq. (:eq:`periodic`) we must have
 :math:`e^{i\theta_{n\mathbf k}}=e^{i\theta_{n,\mathbf k+\mathbf G}}`
 meaning that
 
@@ -325,7 +325,7 @@ where :math:`V_\mathrm{cell} = Ac`. This shows that the polarisation
 change in direction :math:`\alpha` is only determined up to the
 polarisation quantum :math:`(e/V_{\textrm{cell}})L_{\alpha}`.
 
-Eqs. ([eq:1]-[eq:2]) invites the interpretation in terms of an absolute
+Eqs. (:eq:`1` - :eq:`2`) invites the interpretation in terms of an absolute
 polarisation. However, as previously discussed such a concept is not
 well defined. Thus :math:`\mathbf P(\lambda)` only makes sense as a
 device to compute the change in polarisation (which when evaluated in
@@ -333,10 +333,10 @@ terms of the Berry phase is defined only modulus the polarisation
 quantum).
 
 Practical calculations of the polarization
-==========================================
+------------------------------------------
 
 We now describe how the Berry phase theory can be used to calculate real
-world quantities in practice. Eq. ([eq:2]) is slightly rewritten to make
+world quantities in practice. Eq. (:eq:`2`) is slightly rewritten to make
 apparent its use of a trace
 
 .. math::
@@ -361,7 +361,7 @@ that the polarisation along a specific direction is obtained by dotting
 with :math:`\mathbf{n}`). In principle, this expression can be
 straightforwardly implemented numerically. However, it appears that the
 result depend on the (arbitrary) phases of the Bloch states. Eq.
-([eq:ndotP]) requires that the :math:`u_{n\mathbf k}` are differentiable
+(:eq:`ndotP`) requires that the :math:`u_{n\mathbf k}` are differentiable
 with respect to :math:`\mathbf k`. But the wave functions obtained from
 practical DFT codes come with arbitrary phases. To show that the result
 is in fact independent of the phases, we use that the logarithm of a
@@ -397,7 +397,7 @@ GPAW code, and one example of its use will be illustrated in the next
 section.
 
 The Born charge
-===============
+---------------
 
 Now we consider the induced polarization when displacing an atom in a
 crystal from its equilibrium position. If the atom is ionized and thus
@@ -425,7 +425,7 @@ atom, :math:`a`, in a crystal is a tensor defined as
 where :math:`i,j=x,y,x` denote the direction. In this equation it is
 understood that atom :math:`a` in all unit cells are displaced such that
 the assumption of a periodic perturbation behind Eq.
-([eq:dP\_practical]) is satisfied. At this point it is instructive to
+(:eq:`dP\_practical`) is satisfied. At this point it is instructive to
 recall the definition of the electronic dielectric tensor and
 susceptibilites that we have studied so far in the course:
 
@@ -447,19 +447,19 @@ frequencies of the lattice, i.e. the phonons, and the Born charges, as
 input. If you would like to see how this goes, consult page 417-419 and
 423-424 in GP.
 
-In practice, formula ([eq:born]) is evaluated as a finite difference
+In practice, formula (:eq:`born`) is evaluated as a finite difference
 
 .. math::
 
    \frac{\partial \mathbf{P}(\mathbf{R})}{\partial \mathbf{R}} \approx \frac{\mathbf{P}(\mathbf{R} + \delta \mathbf{R}) - \mathbf{P}(\mathbf{R} - \delta \mathbf{R})}{2 \delta \mathbf{R}}.
 
-Finally, we need to use Eq. ([eq:dP\_practical]) to calculate the
+Finally, we need to use Eq. :eq:`dP_practical` to calculate the
 polarisation at a finite displacement of the atoms. However, it is
 important to remember that the complex logarithm has a branch cut
 which typically lies from :math:`[-\infty, 0]`, which can lead to
-discontinuous jumps of the integrand in Eq. ([eq:dP\_practical])
+discontinuous jumps of the integrand in Eq. :eq:`dP_practical`
 yielding unphysical results (the integrand should be continuous). An
-example is shown in Fig. [fig:berry\_phase] for the two-dimensional
+example is shown in Fig. :numref:`berry_phase` for the two-dimensional
 material MoS\ :math:`_2` where the integral (over
 :math:`\mathbf{k}_\perp`) is one-dimensional and therefore can be
 easily plotted. Here it is clear that the branch cut of the logarithm
@@ -483,7 +483,8 @@ electron density from Mo).  This shows that the concept of Born
 charges on covalently bonded structures like MoS\ :math:`_2` is highly
 non-trivial.
 
-.. figure:: berry_phases.pdf
+.. figure:: berry_phases.png
+   :name: berry_phase
    :alt: Calculated Berry phase for MoS\ :math:`_2` showing a
    discontinuous jump as the phase crosses the branch cut of the complex
    logarithm.
