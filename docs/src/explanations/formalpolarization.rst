@@ -242,15 +242,15 @@ XXX (show this!). It can be shown (see e.g. Grosso and Paravicini) that the abov
 expression can be rephrased as
 
 .. math::
+   :label: 1
 
-   \label{eq:1}
    \Delta \mathbf P = \Delta \mathbf P_{\mathrm{ion}} + [\mathbf P_{\mathrm{el}}(1)-\mathbf P_{\mathrm{el}}(0)]
 
 where
 
 .. math::
+   :label: 2
 
-   \label{eq:2}
    \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3}\mathrm{Im}\int_{\mathrm{BZ}}d\mathbf k \sum_n^{\text{occ}}  \langle u_{nk}^\lambda |\nabla_{\mathbf k}|u_{nk}^\lambda \rangle.
 
 Considering the polarisation along a particular direction, say the
@@ -260,8 +260,8 @@ the directions perpendicular to :math:`z`, and the contribution for each
 :math:`\mathbf k_{\perp}` becomes
 
 .. math::
+   :label: 3
 
-   \label{eq:3}
    \mathbf P_{\mathrm{el},z}(\lambda) = \frac{e}{2\pi A}\mathrm{Im}\int_{-\pi/c}^{\pi/c} d k_z \sum_n^{\text{occ}} \langle u_{nk}^\lambda |\frac{\partial u_{nk}^\lambda}{\partial k_z}\rangle
 
  where :math:`A` is the area of the unit cell in :math:`xy` plane. We
@@ -269,7 +269,6 @@ can write this as
 
 .. math::
 
-   \label{eq:3}
    \mathbf P_{\mathrm{el},z}(\lambda) = \frac{e}{2\pi A}\sum_n^{\text{occ}} \phi_n
 
  where
@@ -290,8 +289,8 @@ a gauge transformation, i.e. a unitary transformation of the form
 :math:`\exp(i\chi(\mathbf r))`. This means that
 
 .. math::
+   :label: periodic
 
-   \label{eq:periodic}
    u_{n\mathbf k}^\lambda = e^{i\mathbf r \cdot \mathbf G}u_{n,\mathbf k+\mathbf G}^\lambda
 
 (which is not just a phase factor). We refer to this relation as the
@@ -341,8 +340,8 @@ world quantities in practice. Eq. ([eq:2]) is slightly rewritten to make
 apparent its use of a trace
 
 .. math::
+   :label: ndotP
 
-   \label{eq:ndotP}
    \mathbf{n}\cdot\mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}}d\mathbf k \, \mathrm{Tr}_\mathrm{occ} \left( \langle u_{nk}^\lambda |\mathbf{n} \cdot \nabla_{\mathbf k}|u_{mk}^\lambda \rangle\right),
 
 where it is understood that the inside of the trace is a matrix in
@@ -388,8 +387,8 @@ Finally we can pull the sum into the logarithm by converting it to a
 product
 
 .. math::
+   :label: dP_practical
 
-   \label{eq:dP_practical}
    \mathbf P_{\mathrm{el}}(\lambda) = \frac{e}{8\pi^3} \mathrm{Im}\int_{\mathrm{BZ}_\perp}d\mathbf k_\perp  \, \mathrm{ln} \, \prod_{\mathbf k_\parallel}\, \det_\mathrm{occ} \, \left[\langle u_{n\mathbf{k}}^\lambda |u_{m\mathbf{k}+\delta\mathbf{k}}^\lambda\rangle\right]
 
 This expression shows that the polarization is in fact independent of
@@ -419,8 +418,8 @@ fractional number known as the Born charge. The Born charge of a given
 atom, :math:`a`, in a crystal is a tensor defined as
 
 .. math::
+   :label: born
 
-   \label{eq:born}
    Z^*_{a,ij} = \frac{V_\mathrm{cell}}{e} \frac{\partial P_{j}}{\partial R_{a,i}}
 
 where :math:`i,j=x,y,x` denote the direction. In this equation it is
