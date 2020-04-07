@@ -794,10 +794,10 @@ def wideMAE(masses, bt, cell_cv, erange=25e-3):
         e_k = fit_data['e_k']
 
         if bt == "vb":
-            ks = np.where((e_k - np.max(e_k)) > -erange)
+            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
             sk_kv = k_kv[ks]
         else:
-            ks = np.where((e_k - np.max(e_k)) < erange)
+            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
             sk_kv = k_kv[ks]
 
         emodel_k = evalmodel(sk_kv, c, thirdorder=True)
