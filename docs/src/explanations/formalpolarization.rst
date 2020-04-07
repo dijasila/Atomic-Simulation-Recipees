@@ -79,14 +79,6 @@ from Figure :numref:`Pcell`.
 
 .. figure:: born_charge.png
    :name: Pcell
-   :alt: An illustration of the dependence of the polarization change on
-   the choice of unit cell when computed using Eq. (:eq:`P`). Here we
-   induce a change in the electron density by moving an atom which could
-   induce a change in the polarization of the material. However,
-   depending on the choice of unit cell (top and bottom panel) some
-   fractional amount of electrons will be folded back into the unit cell
-   (:math:`\delta n`) and yield arbitrary values for the induced
-   polarisation.
 
    An illustration of the dependence of the polarization change on the
    choice of unit cell when computed using Eq. (:eq:`P`). Here we induce
@@ -485,9 +477,6 @@ non-trivial.
 
 .. figure:: berry_phases.png
    :name: berry_phase
-   :alt: Calculated Berry phase for MoS\ :math:`_2` showing a
-   discontinuous jump as the phase crosses the branch cut of the complex
-   logarithm.
 
    Calculated Berry phase for MoS\ :math:`_2` showing a discontinuous
    jump as the phase crosses the branch cut of the complex logarithm.
