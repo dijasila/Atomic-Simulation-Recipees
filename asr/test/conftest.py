@@ -1,41 +1,48 @@
-import pytest
-import os
-import numpy as np
-import contextlib
-from pathlib import Path
-
 from ase import Atoms
+from ase.utils import devnull
 from ase.build import bulk
+import contextlib
+from ase.parallel import world, broadcast
+import numpy as np
+import os
+from pathlib import Path
+import pytest
+from _pytest.tmpdir import _mk_tmp
 
 
 def get_webcontent(name='database.db'):
     from asr.database.fromtree import main as fromtree
+    from asr.database.material_fingerprint import main as mf
+    mf()
     fromtree()
-
+    content = ""
     from asr.database import app as appmodule
     from pathlib import Path
-    from asr.database.app import app, initialize_project, projects
+    if world.rank == 0:
+        from asr.database.app import app, initialize_project, projects
 
-    tmpdir = Path("tmp/")
-    tmpdir.mkdir()
-    appmodule.tmpdir = tmpdir
-    initialize_project(name)
+        tmpdir = Path("tmp/")
+        tmpdir.mkdir()
+        appmodule.tmpdir = tmpdir
+        initialize_project(name)
 
-    app.testing = True
-    with app.test_client() as c:
-        content = c.get(f"/database.db/").data.decode()
-        project = projects["database.db"]
-        db = project["database"]
-        uid_key = project["uid_key"]
-        row = db.get(id=1)
-        uid = row.get(uid_key)
-        url = f"/database.db/row/{uid}"
-        content = c.get(url).data.decode()
-        content = (
-            content
-            .replace("\n", "")
-            .replace(" ", "")
-        )
+        app.testing = True
+        with app.test_client() as c:
+            project = projects["database.db"]
+            db = project["database"]
+            uid_key = project["uid_key"]
+            row = db.get(id=1)
+            uid = row.get(uid_key)
+            url = f"/database.db/row/{uid}"
+            content = c.get(url).data.decode()
+            content = (
+                content
+                .replace("\n", "")
+                .replace(" ", "")
+            )
+    else:
+        content = None
+    content = broadcast(content)
     return content
 
 
@@ -113,36 +120,23 @@ def create_new_working_directory(path='workdir', unique=False):
 
 
 @pytest.fixture()
-def separate_folder(tmpdir):
+def separate_folder(request, tmp_path_factory):
     """Create temp folder and change directory to that folder.
 
     A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
+    if world.rank == 0:
+        path = _mk_tmp(request, tmp_path_factory)
+    else:
+        path = None
+    path = broadcast(path)
     cwd = os.getcwd()
-    os.chdir(str(tmpdir))
-
+    os.chdir(path)
     try:
-        yield str(tmpdir)
+        yield path
     finally:
         os.chdir(cwd)
-
-
-def pytest_configure(config):
-    # register an additional marker
-    config.addinivalue_line(
-        "markers",
-        """integration_test: Marks an integration test""",
-    )
-    config.addinivalue_line(
-        "markers",
-        """integration_test_gpaw: Marks an integration
-        test specifically using gpaw""",
-    )
-    config.addinivalue_line(
-        "markers",
-        """ci: Mark a test for running in continuous integration""",
-    )
 
 
 def freeelectroneigenvalues(atoms, gap=0):
@@ -174,3 +168,31 @@ def freeelectroneigenvalues(atoms, gap=0):
         self.tmpeigenvalues = eps_kn[:, : nbands] * Ha
         return self.tmpeigenvalues[kpt]
     return get_eigenvalues
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_sessionstart(session):
+    # execute all other hooks to obtain the report object
+    config = session.config
+    tw = config.get_terminal_writer()
+    if world.rank != 0:
+        tw._file = devnull
+    tr = config.pluginmanager.get_plugin("terminalreporter")
+    tr.section('ASR-MPI stuff')
+    tr.write(f'size: {world.size}\n')
+    yield
+
+
+def pytest_configure(config):
+    # Register additional markers
+    config.addinivalue_line(
+        "markers", "integration_test: Marks an integration test",
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration_test_gpaw: Marks an integration "
+        "test specifically using gpaw",
+    )
+    config.addinivalue_line(
+        "markers", "ci: Mark a test for running in continuous integration",
+    )
