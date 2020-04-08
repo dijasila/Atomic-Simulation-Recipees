@@ -73,7 +73,7 @@ Fe.set_initial_magnetic_moments([1])
 abn = 2.51
 BN = Atoms(
     "BN",
-    scaled_positions=[[0, 0, 0], [1 / 3, 2 / 3, 0]],
+    scaled_positions=[[0, 0, 0.5], [1 / 3, 2 / 3, 0.5]],
     cell=[
         [abn, 0.0, 0.0],
         [-0.5 * abn, np.sqrt(3) / 2 * abn, 0],
@@ -153,7 +153,7 @@ def freeelectroneigenvalues(atoms, gap=0):
 
         if hasattr(self, "tmpeigenvalues"):
             return self.tmpeigenvalues[kpt]
-        nelectrons = self.parameters.nelectrons
+        nelectrons = self.get_number_of_electrons()
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
         nbands = self.get_number_of_bands()
 

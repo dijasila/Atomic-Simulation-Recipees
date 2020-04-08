@@ -29,9 +29,12 @@ def test_setup_strains(separate_folder, mockgpaw, atoms):
     from asr.core import read_json
     from ase.io import write
     from pathlib import Path
+    from asr.setup.params import main as setupparams
     write('structure.json', atoms)
-    main(strain_percent=1)
+    setupparams(params={'asr.gs@calculate': {
+        'calculator': {'mode': 'fd', None: None}}})
 
+    main(strain_percent=1)
     ij = get_relevant_strains(atoms.pbc)
     for i, j in ij:
         name = get_strained_folder_name(1, i, j)
@@ -46,3 +49,4 @@ def test_setup_strains(separate_folder, mockgpaw, atoms):
         assert 'size' in params['asr.relax']['calculator']['kpts']
         assert params['asr.relax']['fixcell']
         assert params['asr.relax']['allow_symmetry_breaking']
+        assert params['asr.gs@calculate']['calculator']['mode'] == 'fd'

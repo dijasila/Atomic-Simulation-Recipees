@@ -1,5 +1,5 @@
 import pytest
-from .conftest import test_materials
+from .conftest import test_materials, get_webcontent
 from pathlib import Path
 
 
@@ -14,3 +14,6 @@ def test_phonons(separate_folder, mockgpaw, atoms):
     assert p.is_file()
     text = p.read_text()
     assert '"xc": "PBE"' in text, p.read_text()
+
+    content = get_webcontent('database.db')
+    assert f"Phonons" in content, content

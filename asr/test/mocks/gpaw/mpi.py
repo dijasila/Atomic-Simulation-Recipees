@@ -20,3 +20,5 @@ world = SimpleNamespace(size=1,
                         new_communicator=new_communicator)
 
 serial_comm = None
+
+SerialCommunicator = SimpleNamespace
