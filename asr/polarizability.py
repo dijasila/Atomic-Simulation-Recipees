@@ -56,39 +56,39 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
     from pathlib import Path
     import numpy as np
 
-    try:
-        atoms = read('structure.json')
-        pbc = atoms.pbc.tolist()
+    atoms = read('structure.json')
+    pbc = atoms.pbc.tolist()
 
-        dfkwargs = {
-            'eta': 0.05,
-            'domega0': 0.005,
-            'ecut': ecut,
-            'name': 'chi',
-            'intraband': False
-        }
+    dfkwargs = {
+        'eta': 0.05,
+        'domega0': 0.005,
+        'ecut': ecut,
+        'name': 'chi',
+        'intraband': False
+    }
 
-        ND = np.sum(pbc)
-        if ND == 3 or ND == 1:
-            kpts = {'density': kptdensity, 'gamma': False, 'even': True}
-        elif ND == 2:
-            kpts = get_kpts_size(atoms=atoms, density=kptdensity)
-            volume = atoms.get_volume()
-            if volume < 120:
-                nblocks = world.size // 4
-            else:
-                nblocks = world.size // 2
-            dfkwargs.update({
-                'nblocks': nblocks,
-                'pbc': pbc,
-                'integrationmode': 'tetrahedron integration',
-                'truncation': '2D'
-            })
-
+    ND = np.sum(pbc)
+    if ND == 3 or ND == 1:
+        kpts = {'density': kptdensity, 'gamma': False, 'even': True}
+    elif ND == 2:
+        kpts = get_kpts_size(atoms=atoms, density=kptdensity)
+        volume = atoms.get_volume()
+        if volume < 120:
+            nblocks = world.size // 4
         else:
-            raise NotImplementedError(
-                'Polarizability not implemented for 1D and 2D structures')
+            nblocks = world.size // 2
+        dfkwargs.update({
+            'nblocks': nblocks,
+            'pbc': pbc,
+            'integrationmode': 'tetrahedron integration',
+            'truncation': '2D'
+        })
 
+    else:
+        raise NotImplementedError(
+            'Polarizability not implemented for 1D and 2D structures')
+
+    try:
         if not Path('es.gpw').is_file():
             calc_old = GPAW(gs, txt=None)
             nval = calc_old.wfs.nvalence
