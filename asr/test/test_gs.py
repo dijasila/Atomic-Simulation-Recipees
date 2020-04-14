@@ -1,13 +1,12 @@
 import pytest
 from pytest import approx
-from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
+def test_gs(separate_folder, mockgpaw, mocker, get_webcontent,
+            test_material, gap, fermi_level):
     from asr.gs import calculate, main
     from ase.io import write
     from ase.units import Ha
@@ -23,7 +22,7 @@ def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
                                                         0,
                                                         0]
 
-    write('structure.json', atoms)
+    write('structure.json', test_material)
     calculate(
         calculator={
             "name": "gpaw",
@@ -48,12 +47,13 @@ def test_gs(separate_folder, mockgpaw, mocker, atoms, gap, fermi_level):
 
 @pytest.mark.ci
 def test_gs_asr_cli_results_figures(separate_folder, mockgpaw):
+    from .materials import std_test_materials
     from pathlib import Path
     from asr.gs import main
     from asr.core.material import (get_material_from_folder,
                                    get_webpanels_from_material,
                                    make_panel_figures)
-    atoms = test_materials[0]
+    atoms = std_test_materials[0]
     atoms.write('structure.json')
 
     main()

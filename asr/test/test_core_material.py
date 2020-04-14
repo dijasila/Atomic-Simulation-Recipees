@@ -1,11 +1,11 @@
-from .conftest import test_materials
+from .materials import std_test_materials
 import pytest
 
 
 @pytest.mark.ci
 def test_gs_asr_cli_results_figures():
     from asr.core.material import Material
-    atoms = test_materials[0]
+    atoms = std_test_materials[0]
     kvp = {'gap': 1}
     data = {}
 

@@ -1,11 +1,8 @@
 import pytest
 
-from .conftest import test_materials, get_webcontent
-
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_gw(separate_folder, atoms, mockgpaw, mocker):
+def test_gw(separate_folder, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     import gpaw
     from gpaw.response.g0w0 import G0W0
@@ -15,8 +12,8 @@ def test_gw(separate_folder, atoms, mockgpaw, mocker):
     gpaw.GPAW.get_fermi_level.return_value = 0.5
 
     from asr.gw import main
-    atoms.write("structure.json")
-    ndim = sum(atoms.pbc)
+    test_material.write("structure.json")
+    ndim = sum(test_material.pbc)
 
     def calculate(self):
         self.calc.get_eigenvalues(kpt=0)

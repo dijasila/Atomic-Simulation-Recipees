@@ -1,5 +1,5 @@
 import pytest
-from .conftest import test_materials
+from .materials import std_test_materials
 
 
 @pytest.mark.ci
@@ -10,7 +10,7 @@ def test_database_totree(separate_folder):
 
     dbname = 'database.db'
     db = connect(dbname)
-    for atoms in test_materials:
+    for atoms in std_test_materials:
         db.write(atoms)
 
     main(database=dbname)

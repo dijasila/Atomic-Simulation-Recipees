@@ -1,14 +1,12 @@
 import pytest
-from .conftest import test_materials
 import numpy as np
 from ase import Atoms
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_formalpolarization(separate_folder, mockgpaw, atoms):
+def test_formalpolarization(separate_folder, mockgpaw, test_material):
     from asr.formalpolarization import main
-    atoms.write('structure.json')
+    test_material.write('structure.json')
     main()
 
 

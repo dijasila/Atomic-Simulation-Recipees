@@ -1,14 +1,11 @@
 import pytest
 
-from .conftest import test_materials, get_webcontent
-
 
 @pytest.mark.ci
-@pytest.mark.parametrize('atoms', test_materials)
-def test_hse(separate_folder, atoms, mockgpaw, mocker):
+def test_hse(separate_folder, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     from pathlib import Path
-    atoms.write('structure.json')
+    test_material.write('structure.json')
 
     def non_self_consistent_eigenvalues(calc,
                                         xcname,

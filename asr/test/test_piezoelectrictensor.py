@@ -1,4 +1,3 @@
-from .conftest import test_materials, get_webcontent
 from ase.units import Bohr
 import numpy as np
 import pytest
@@ -13,14 +12,14 @@ def get_strain_from_atoms(inv_cell_vc, atoms):
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
 @pytest.mark.parametrize("nspins", [1, 2])
-def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, atoms, nspins):
+def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, test_material,
+                             nspins, get_webcontent):
     import numpy as np
     from gpaw import GPAW
 
-    cell_cv = atoms.get_cell() / Bohr
-    pbc_c = atoms.get_pbc()
+    cell_cv = test_material.get_cell() / Bohr
+    pbc_c = test_material.get_pbc()
     inv_cell_vc = np.linalg.inv(cell_cv)
     # dphase_c / dstrain_vv
     dpde_cvv = zero_pad_non_pbc_strain_directions(
@@ -35,11 +34,11 @@ def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, atoms, nspins):
     )
 
     # Also move atomic positions
-    natoms = len(atoms)
+    natoms = len(test_material)
     dsposde_acvv = np.zeros((natoms, 3, 3, 3), float)
     dsposde_acvv[:, :] = np.eye(3)
     dsposde_acvv *= pbc_c[None, None] * pbc_c[None, None, None]
-    spos_ac = atoms.get_scaled_positions(wrap=True)
+    spos_ac = test_material.get_scaled_positions(wrap=True)
 
     def _get_berry_phases(self, dir=0, spin=0):
         strain_vv = get_strain_from_atoms(inv_cell_vc, self.atoms)
@@ -70,12 +69,12 @@ def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, atoms, nspins):
     mocker.patch.object(GPAW, 'get_number_of_spins', new=get_number_of_spins)
     from ase.io import write
     from asr.piezoelectrictensor import main
-    write('structure.json', atoms)
+    write('structure.json', test_material)
     results = main()
     content = get_webcontent('database.db')
 
     N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
-    vol = atoms.get_volume() / Bohr**3
+    vol = test_material.get_volume() / Bohr**3
 
     # Formula for piezoeletric tensor
     # (The last factor of 2 is for spins)

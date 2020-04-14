@@ -1,9 +1,9 @@
-from .conftest import test_materials, Ag2
+from .materials import std_test_materials, Ag2
 import pytest
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("inputatoms", [Ag2] + test_materials)
+@pytest.mark.parametrize("inputatoms", [Ag2] + std_test_materials)
 def test_setup_magnetize(separate_folder, inputatoms):
     import numpy as np
     from asr.core import magnetic_atoms

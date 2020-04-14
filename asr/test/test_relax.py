@@ -1,4 +1,3 @@
-from .conftest import test_materials
 from asr.relax import BrokenSymmetryError
 from pathlib import Path
 import pytest
@@ -6,12 +5,11 @@ import numpy as np
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_relax(separate_folder, mockgpaw, atoms):
+def test_relax(separate_folder, mockgpaw, test_material):
     from asr.relax import main as relax
     from ase.io import write
 
-    write('unrelaxed.json', atoms)
+    write('unrelaxed.json', test_material)
     relax(calculator={
         "name": "gpaw",
         "kpts": {"density": 2, "gamma": True},
