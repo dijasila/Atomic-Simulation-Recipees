@@ -1,5 +1,5 @@
-from .fixtures import (fast_params, mockgpaw, test_material,  # noqa
-                       asr_tmpdir_w_params)  # noqa
+from .fixtures import (mockgpaw, test_material, asr_tmpdir,  # noqa
+                       asr_tmpdir_w_params, get_webcontent)  # noqa
 
 
 def pytest_configure(config):
