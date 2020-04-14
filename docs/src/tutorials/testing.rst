@@ -66,11 +66,60 @@ Pytest fixtures
 ---------------
 
 Pytest has an important concept called ``fixtures`` which can be hard
-to wrap your head around.
+to wrap your head around, so let's teach it by example. Don't worry,
+once you know how they work they will be trivial to use.
 
+Let's extend the previous example with the following
+
+.. code-block:: python
+   :caption: asr/test/test_example.py
+
+   import pytest
+
+
+   @pytest.fixture()
+   def some_input_data():
+       return 1
+
+   def test_adding_numbers(some_input_data):
+       b = 2
+       assert some_input_data + b == 3
+
+Now run the test (remember the command from before). It still checks
+out! If you are not confused by this, take a minute to understand that
+`somehow` the output of the function `some_input_data` was evaluated
+and fed into our test. This is the magic of Pytest_. It matches the
+input argument against all known fixtures and feeds into it the output
+of that fixture, such that the output is available for the test.
+
+This was a trivial example. Fixtures can in general be used to to
+initialize tests, set up folders, mock up certain functions (see below
+if you don't know what "mock" means), capture output etc.
+
+ASR has its own set of fixtures that are available to all tests. They
+are defined in :py:mod:`asr.test.fixtures`. Let's highlight a couple
+of the most useful:
+
+  - :py:mod:`asr.test.fixtures.asr_tmpdir_w_params`: This sets up an
+    empty temporary directory and put in a parameter file containing
+    parameters that ensure fast execution.
+  - :py:mod:`asr.test.fixtures.mockgpaw`: This substitues GPAW with a
+    dummy calculator such that a full DFT calculation won't be needed
+    when running a test. See the API documentation for a full
+    explanation.
+
+
+
+Conftest
+--------
+
+Mocks
+-----
 
 Tox
 ===
 
+ASR Test sub-package
+====================
 
 .. _PyTest: https://docs.pytest.org/en/latest/
