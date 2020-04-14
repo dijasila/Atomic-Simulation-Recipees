@@ -1,6 +1,6 @@
-"""ASR test module.
+"""ASR test sub-package.
 
-This module contains all tests of ASR. Notable files:
+This sub-package contains all tests of ASR. Notable files:
 
   - ``conftest.py``: Containts all pytest configurations and imports all fixtures.
   - ``fixtures.py``: Defines all pytest fixtures used in the tests of ASR.
