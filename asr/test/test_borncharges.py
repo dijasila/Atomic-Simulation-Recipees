@@ -41,7 +41,7 @@ def test_borncharges(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
 
 @pytest.mark.acceptance_test
 def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
-    from .conftest import BN
+    from .materials import BN
     from asr.borncharges import main
     from asr.setup.params import main as setupparams
 

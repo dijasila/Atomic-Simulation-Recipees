@@ -1,4 +1,4 @@
-from .conftest import Fe  # , Si
+from .materials import Fe
 import pytest
 from pytest import approx
 

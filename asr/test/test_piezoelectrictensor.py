@@ -110,7 +110,7 @@ def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_materia
 
 @pytest.mark.acceptance_test
 def test_piezo_BN(asr_tmpdir_w_params):
-    from .conftest import BN
+    from .materials import BN
     from asr.piezoelectrictensor import main
     from asr.setup.params import main as setupparams
 
