@@ -147,10 +147,11 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
             es_file = Path("es.gpw")
             es_file.unlink()
 
-    except MemoryError as error:
+    except Exception as error:
         if world.rank == 0:
             es_file = Path("es.gpw")
             es_file.unlink()
+        world.barrier()
         raise error
 
     return data
