@@ -91,3 +91,16 @@ Core sub-package
    core
    core.cli
    core.material
+
+Test sub-package
+================
+.. currentmodule:: asr
+
+.. autosummary::
+   :template: autosummary/mytemplate.rst
+   :toctree: generated
+
+   test
+   test.conftest
+   test.fixtures
+   test.materials
