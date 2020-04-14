@@ -16,8 +16,7 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
     ndim = sum(test_material.pbc)
 
     def calculate(self):
-        self.calc.get_eigenvalues(kpt=0)
-        eps = self.calc.tmpeigenvalues[np.newaxis, :, 0:6]
+        eps = self.calc.get_all_eigenvalues()[np.newaxis, :, 0:6]
 
         return {"qp": eps,
                 "Z": np.zeros_like(eps) + 1,
@@ -26,7 +25,7 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
         main()
-        get_webcontent('database.db')
+        get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
             main()

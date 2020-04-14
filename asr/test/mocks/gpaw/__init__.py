@@ -198,7 +198,7 @@ class GPAW(Calculator):
             axis=1,
         )
         nbands = self.get_number_of_bands()
-        return eps_kn[:, : nbands] * Ha
+        return eps_kn[:, :nbands] * Ha
 
     def get_eigenvalues(self, kpt, spin=0):
         return self.eigenvalues[kpt]
