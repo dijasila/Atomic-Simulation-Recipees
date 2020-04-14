@@ -40,6 +40,48 @@ def get_webcontent(name='database.db'):
 
 
 @pytest.fixture()
+def fast_params():
+    params = {
+        'asr.gs@calculate': {
+            'calculator': {
+                "name": "gpaw",
+                "kpts": {"density": 2, "gamma": True},
+                "xc": "PBE",
+            },
+        },
+        'asr.bandstructure@calculate': {
+            'npoints': 10,
+            'emptybands': 5,
+        },
+        'asr.hse@calculate': {
+            'kptdensity': 2,
+            'emptybands': 5,
+        },
+        'asr.gw@gs': {
+            'kptdensity': 2,
+        },
+        'asr.pdos@calculate': {
+            'kptdensity': 2,
+            'emptybands': 5,
+        },
+        'asr.piezoelectrictensor': {
+            'calculator': {
+                "name": "gpaw",
+                "kpts": {"density": 2},
+            },
+        },
+        'asr.formalpolarization': {
+            'calculator': {
+                "name": "gpaw",
+                "kpts": {"density": 2},
+            },
+        },
+    }
+
+    return params
+
+
+@pytest.fixture()
 def mockgpaw(monkeypatch):
     import sys
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
@@ -52,16 +94,6 @@ def mockgpaw(monkeypatch):
     for module in list(sys.modules):
         if "gpaw" in module:
             sys.modules.pop(module)
-
-# @pytest.fixture()
-# def mockgpaw(mocker):
-#     from sys import modules
-#     from .mocks import gpaw
-#     mocker.patch.dict(
-#         modules,
-#         {
-#             "gpaw": gpaw,
-#         })
 
 
 # Make some 1D, 2D and 3D test materials
@@ -113,7 +145,25 @@ def create_new_working_directory(path='workdir', unique=False):
 
 
 @pytest.fixture()
-def separate_folder(tmpdir):
+def separate_folder(tmpdir, fast_params):
+    """Create temp folder and change directory to that folder.
+
+    A context manager that creates a tdemporary folder and changes
+    the current working directory to it for isolated filesystem tests.
+    """
+    from asr.core import write_json
+    cwd = os.getcwd()
+    os.chdir(str(tmpdir))
+
+    write_json('params.json', fast_params)
+    try:
+        yield str(tmpdir)
+    finally:
+        os.chdir(cwd)
+
+
+@pytest.fixture()
+def separate_folder_fastparams(tmpdir):
     """Create temp folder and change directory to that folder.
 
     A context manager that creates a temporary folder and changes
