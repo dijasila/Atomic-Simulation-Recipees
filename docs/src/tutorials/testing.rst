@@ -298,7 +298,67 @@ explaining some extra concepts that are not necessary
 Tox
 ===
 
-Tox is another popular python package that is used for 
+tox_ is another python package which finds common usage in combination
+with pytest (or other test runners). tox_ sets up a virtual
+environment, installs your package with its dependencies and runs all
+tests. You have seen how to run tests directly using pytest but we
+recommond actually using "tox" for running the entire test suite. It
+is beyond the scope of this tutorial to go much further into detail
+about this, but the curious reader can take a ook in ``tox.ini`` which
+configures the virtual environments.
+
+To install tox_ run:
+
+.. code-block:: console
+
+   $ python3 -m pip install tox --user
+
+To see a list of the virtual environments do
+
+.. code-block:: console
+
+   $ tox -l
+   flake8
+   docs
+   py36
+   py37
+   py38
+   py36-gpaw
+   py37-gpaw
+   py38-gpaw
+
+A quick rundown of the meaning of these environments:
+
+  - The environments ``py36``, ``py37``, ``py38`` run the test-suite
+    which different versions of the python interpreter, ``python3.6``,
+    ``python3.7`` and ``python3.8``.
+  - ``flake8`` runs the the ``flake8`` style checker on the code.
+  - ``py3*-gpaw`` runs specially marked tests that require having
+    ``gpaw`` installed under the ``python3.*`` interpreter.
+
+To run all environments simply do
+
+.. code-block:: console
+
+   $ tox
+
+This will however require that you have all the above mentioned Python
+interpreters installed. What you probably want is to run a specific
+environment, for example, ``py36``
+
+.. code-block:: console
+
+   $ tox -e py36
+
+If you want to supply extra arguments for pytest ``tox`` can forward
+them using the ``--`` separator. For example, to run our previous test
+``test_gs_tutorial`` we run the command
+
+.. code-block:: console
+
+   $ tox -e py36 -- -k test_gs_tutorial
+
+Similarly you can append any pytest option and argument.
 
 Where to go now?
 ================
@@ -310,3 +370,4 @@ ASR Test sub-package
 ====================
 
 .. _PyTest: https://docs.pytest.org/en/latest/
+.. _tox: https://tox.readthedocs.io/en/latest/
