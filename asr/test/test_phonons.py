@@ -13,5 +13,5 @@ def test_phonons(asr_tmpdir_w_params, mockgpaw, test_material, get_webcontent):
     text = p.read_text()
     assert '"xc": "PBE"' in text, p.read_text()
 
-    content = get_webcontent('database.db')
+    content = get_webcontent()
     assert f"Phonons" in content, content

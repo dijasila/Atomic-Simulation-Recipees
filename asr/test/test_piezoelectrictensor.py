@@ -71,7 +71,7 @@ def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_materia
     from asr.piezoelectrictensor import main
     write('structure.json', test_material)
     results = main()
-    content = get_webcontent('database.db')
+    content = get_webcontent()
 
     N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     vol = test_material.get_volume() / Bohr**3

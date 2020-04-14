@@ -27,4 +27,4 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
     from asr.hse import main
     main()
-    get_webcontent('database.db')
+    get_webcontent()

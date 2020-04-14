@@ -38,7 +38,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         assert results.get("gap") == approx(0)
 
-    content = get_webcontent('database.db')
+    content = get_webcontent()
     resultgap = results.get("gap")
     assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
     assert f"<td>Fermilevel</td><td>{fermi_level:0.3f}eV</td>" in \
