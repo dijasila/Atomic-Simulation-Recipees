@@ -118,7 +118,7 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
-    
+    print(sc) 
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
