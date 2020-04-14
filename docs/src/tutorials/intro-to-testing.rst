@@ -6,15 +6,14 @@ Introduction to testing in ASR
 
 Testing is essential for any piece of software and in particular in
 collaborative projects where the consequences of changes to your code
-extends beyond yourself. This tutorial walks you through all the
-important concepts that you need to know to write simple tests, but
-leaves out non essential details. Thus this document is the only one
-you need to read.
+extend beyond yourself. This tutorial walks you through all the
+important concepts that you need to know to write tests of your
+recipe.
 
 PyTest
 ======
 
-As its test runner ASR uses PyTest_, which is a very popular python
+As its test runner ASR uses PyTest_ which is a very popular python
 framework for writing and running test suites. First install
 ``pytest`` and ``pytest-mock`` (don't worry about ``pytest-mock``
 right now, we will need that for later)
