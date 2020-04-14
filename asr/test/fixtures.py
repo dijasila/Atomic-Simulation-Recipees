@@ -28,7 +28,7 @@ def test_material(request):
 
 
 @pytest.fixture()
-def asr_temp_dir(tmpdir):
+def asr_tmpdir(tmpdir):
     """Create temp directory and change directory to that directory.
 
     A context manager that creates a temporary directory and changes
@@ -82,7 +82,7 @@ def get_webcontent():
 
 
 @pytest.fixture()
-def temp_dir_with_params(temp_dir):
+def asr_tmpdir_w_params(asr_tmpdir):
     """Make temp dir and create a params.json with settings for fast evaluation."""
     params = {
         'asr.gs@calculate': {
