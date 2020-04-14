@@ -104,3 +104,6 @@ Test sub-package
    test.conftest
    test.fixtures
    test.materials
+   test.mocks
+   test.mocks.gpaw
+   test.mocks.gpaw.GPAW
