@@ -15,6 +15,8 @@ def calculate(gs='gs.gpw'):
     calc = GPAW(gs, fixdensity=False, txt=None)
     atoms = calc.atoms
     magnetic = magnetic_atoms(atoms)
+    assert sum(magnetic) in [1, 2], \
+            ('Cannot handle %d magnetic atoms' % sum(magnetic))
     if sum(magnetic) == 2:
         calc.reset()
         calc.set(txt='gs_2mag.txt')
@@ -24,12 +26,14 @@ def calculate(gs='gs.gpw'):
 
         a1, a2 = np.where(magnetic)[0]
         magmoms_i = calc.get_magnetic_moments()
+        assert np.round(np.abs(magmoms_i[a1] / magmoms_i[a2]), 1) == 1, \
+            'The two magnetic moments differ'
         magmoms_e = np.zeros(len(atoms), float)
-        magmoms_e[a1] = np.max(magmoms_i)
+        magmoms_e[a1] = np.max(np.abs(magmoms_i))
         if np.sign(magmoms_i[a1]) == np.sign(magmoms_i[a2]):
-            magmoms_e[a2] = -np.max(magmoms_i)
+            magmoms_e[a2] = -magmoms_e[a1]
         else:
-            magmoms_e[a2] = np.max(magmoms_i)
+            magmoms_e[a2] = magmoms_e[a1]
         atoms.set_initial_magnetic_moments(magmoms_e)
         calc.reset()
         calc.set(txt='exchange.txt')
@@ -37,9 +41,9 @@ def calculate(gs='gs.gpw'):
         atoms.get_potential_energy()
         calc.write('exchange.gpw')
 
-    elif sum(magnetic) == 1:
+    else:
         a1 = np.where(magnetic)[0]
-        mag = np.max(calc.get_magnetic_moments())
+        mag = np.max(np.abs(calc.get_magnetic_moments()))
         magmoms = np.zeros(len(atoms), float)
         magmoms[a1] = mag
         atoms.set_initial_magnetic_moments(magmoms)
@@ -52,19 +56,19 @@ def calculate(gs='gs.gpw'):
 
         magnetic = magnetic_atoms(atoms)
         a1, a2 = np.where(magnetic)[0]
-        mag = np.max(calc.get_magnetic_moments())
-        magmoms = np.zeros(len(atoms), float)
-        magmoms[a1] = mag
-        magmoms[a2] = -mag
-        atoms.set_initial_magnetic_moments(magmoms)
+        magmoms_i = calc.get_magnetic_moments()
+        assert np.round(magmoms_i[a1] / magmoms_i[a2], 1) == 1, \
+            'The two magnetic moments differ'
+        mag = np.max(np.abs(magmoms_i))
+        magmoms_e = np.zeros(len(atoms), float)
+        magmoms_e[a1] = mag
+        magmoms_e[a2] = -mag
+        atoms.set_initial_magnetic_moments(magmoms_e)
         calc.reset()
         calc.set(txt='exchange.txt')
         atoms.set_calculator(calc)
         atoms.get_potential_energy()
         calc.write('exchange.gpw')
-
-    else:
-        pass
 
 
 def get_parameters(gs, exchange, txt=False,
@@ -86,9 +90,13 @@ def get_parameters(gs, exchange, txt=False,
     m_gs = calc_gs_2mag.get_magnetic_moment()
     m_ex = calc_exchange.get_magnetic_moment()
     if np.abs(m_gs) > np.abs(m_ex):
+        assert np.abs(m_gs) - np.abs(m_ex) > 0.1, \
+            'AFM calculation did not converge to target state'
         calc_fm = calc_gs_2mag
         calc_afm = calc_exchange
     else:
+        assert np.abs(m_ex) - np.abs(m_gs) > 0.1, \
+            'AFM calculation did not converge to target state'
         calc_afm = calc_gs_2mag
         calc_fm = calc_exchange        
 
