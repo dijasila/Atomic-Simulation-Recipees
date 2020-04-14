@@ -98,7 +98,7 @@ def get_parameters(gs, exchange, txt=False,
         assert np.abs(m_ex) - np.abs(m_gs) > 0.1, \
             'AFM calculation did not converge to target state'
         calc_afm = calc_gs_2mag
-        calc_fm = calc_exchange        
+        calc_fm = calc_exchange
 
     nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
