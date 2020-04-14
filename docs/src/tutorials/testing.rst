@@ -124,23 +124,107 @@ as input arguments:
 
 This will apply all the fixtures above to your test.
 
+A realistic test
+================
+
+We will now use our knowledge of Pytest and fixtures to write a
+realistic test of the ground state recipe of ASR. Such as test already
+exists, however, it will serve as a good learning experience to go
+through each step. First open the existing
+``asr/test/test_gs.py``.
+
+.. note:: Notice the naming convention: We name the test after the module it's testing.
+
+Here we create a new test by appending
+
+.. code-block:: python
+   :caption: asr/test/test_gs.py
+
+   ...
+
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
+       from asr.gs import main
+
+       main()
+   
+
+and we quickly check that the test is running by running:
+
+.. code-block:: console
+
+   $ pytest -k test_gs_tutorial
+
+As you can see the test is running multiple times due to the
+test_material fixture. At this point the test if of quite low quality
+since the results aren't actually checked. We can improve this by
+checking that the band gap is zero (which is the default setting of
+the mocked up calculator):
+
+.. code-block:: python
+   :caption: asr/test/test_gs.py
+
+   ...
+
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
+       from asr.gs import main
+
+       results = main()
+
+       assert results['gap'] == pytest.approx(0)
+
+Here we use a utility function from pytest namely ``approx`` which is
+useful when two floating point numbers are to be compared.
+
+
 Mocks and pytest-mock
 ---------------------
 
-The previous section mentioned the concept of mocking. Mocking
-involves substituting some function, class or module with a `pretend`
-version returns some artificial data that you have designed. The kinds
-of function that we would like to mock is slow function/class calls
-that are not important for the test. In ASR the most important example
-of a mock is the mock of the GPAW calculator which can be found in
+The previous sections mentions the concept of mocking. Mocking involves
+substituting some function, class or module with a `pretend` version
+returns some artificial data that you have designed. The kinds of
+functions that we would like to mock is slow function/class calls that
+are not important for the test. In ASR the most important example of a
+mock is the mock of the GPAW calculator which can be found in
 :py:mod:`asr.test.mocks.gpaw` and is applied by the
 :py:func:`asr.test.fixtures.mockgpaw` fixture.
 
-In the beginning of the turorial, we also installed ``pytest-mock``
-which is a plugin to pytest that enables easy mocking. A common use
-case is to modify a certain property returned by the Mocked gpaw calculator. :py:mod:`asr.test.mocks.gpaw` such that you can
+In the beginning of the turorial, we installed ``pytest-mock`` which
+is a plugin to pytest that enables easy mocking. A common use case is
+to modify a certain property returned by the Mocked
+calculator. :py:mod:`asr.test.mocks.gpaw` is designed such that you
+can easily specify a band gap or a fermi level using the ``mocker``
+fixture (which is provided by ``pytest-mock``), and check that the
+corresponding results of yoru recipe are correct. For example let's
+improve our ground state test by setting the band gap and fermi leve
+to something non-trivial
+
+.. code-block:: python
+   :caption: asr/test/test_gs.py
+
+   ...
+
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
+       from asr.gs import main
+       from gpaw import GPAW
+
+       mocker.patch.object(GPAW, '_get_band_gap')
+       mocker.patch.object(GPAW, '_get_fermi_level')
+       GPAW._get_fermi_level.return_value = 0.5
+       GPAW._get_band_gap.return_value = 1
+	     
+       results = main()
+
+       assert results['gap'] == pytest.approx(1)
 
 
+As you can see in this concrete example ``mocker`` allows you to patch
+objects and explicitly set the return values of the specified methods.
+
+Parametrizing
+-------------
+
+We can improve our test even more by using pytest functionality for
+parametrizing.
 
 Marks and conftest.py
 ---------------------
