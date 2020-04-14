@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 @pytest.mark.ci
-def test_phonons(separate_folder, mockgpaw, test_material, get_webcontent):
+def test_phonons(asr_tmpdir_w_params, mockgpaw, test_material, get_webcontent):
     """Simple test of phonon recipe."""
     from asr.phonons import main
     test_material.write('structure.json')

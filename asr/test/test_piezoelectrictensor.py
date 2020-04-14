@@ -13,7 +13,7 @@ def get_strain_from_atoms(inv_cell_vc, atoms):
 
 @pytest.mark.ci
 @pytest.mark.parametrize("nspins", [1, 2])
-def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, test_material,
+def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                              nspins, get_webcontent):
     import numpy as np
     from gpaw import GPAW
@@ -109,7 +109,7 @@ def test_piezoelectrictensor(separate_folder, mockgpaw, mocker, test_material,
 
 
 @pytest.mark.acceptance_test
-def test_piezo_BN(separate_folder):
+def test_piezo_BN(asr_tmpdir_w_params):
     from .conftest import BN
     from asr.piezoelectrictensor import main
     from asr.setup.params import main as setupparams

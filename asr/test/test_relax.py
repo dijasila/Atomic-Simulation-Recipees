@@ -5,7 +5,7 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_relax(separate_folder, mockgpaw, test_material):
+def test_relax(asr_tmpdir_w_params, mockgpaw, test_material):
     from asr.relax import main as relax
     from ase.io import write
 
@@ -19,7 +19,7 @@ def test_relax(separate_folder, mockgpaw, test_material):
 @pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-def test_relax_emt(separate_folder, name):
+def test_relax_emt(asr_tmpdir_w_params, name):
     from asr.relax import main as relax
     from ase.build import bulk
 
@@ -31,7 +31,7 @@ def test_relax_emt(separate_folder, name):
 @pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-def test_relax_emt_fail_broken_symmetry(separate_folder, name,
+def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
                                         monkeypatch, capsys):
     """Test that a broken symmetry raises an error."""
     from asr.relax import main as relax
@@ -52,7 +52,7 @@ def test_relax_emt_fail_broken_symmetry(separate_folder, name,
 
 
 @pytest.mark.ci
-def test_relax_find_higher_symmetry(separate_folder, monkeypatch, capsys):
+def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
     """Test that a structure is allowed to find a higher symmetry without failing."""
     from ase.build import bulk
     from asr.relax import main, SpgAtoms, myBFGS
@@ -88,7 +88,7 @@ def test_relax_find_higher_symmetry(separate_folder, monkeypatch, capsys):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_si_gpaw(separate_folder):
+def test_relax_si_gpaw(asr_tmpdir_w_params):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     setupmaterial.cli(["-s", "Si2"])
@@ -103,7 +103,7 @@ def test_relax_si_gpaw(separate_folder):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_bn_gpaw(separate_folder):
+def test_relax_bn_gpaw(asr_tmpdir_w_params):
     from asr.setup.materials import main as setupmaterial
     from asr.relax import main as relax
     from asr.core import read_json

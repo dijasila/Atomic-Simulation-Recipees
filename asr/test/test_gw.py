@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_gw(separate_folder, test_material, mockgpaw, mocker, get_webcontent):
+def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     import gpaw
     from gpaw.response.g0w0 import G0W0

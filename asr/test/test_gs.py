@@ -5,7 +5,7 @@ from pytest import approx
 @pytest.mark.ci
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(separate_folder, mockgpaw, mocker, get_webcontent,
+def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
     from asr.gs import calculate, main
     from ase.io import write
@@ -46,7 +46,7 @@ def test_gs(separate_folder, mockgpaw, mocker, get_webcontent,
 
 
 @pytest.mark.ci
-def test_gs_asr_cli_results_figures(separate_folder, mockgpaw):
+def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from .materials import std_test_materials
     from pathlib import Path
     from asr.gs import main

@@ -4,7 +4,7 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_borncharges(separate_folder, mockgpaw, mocker, test_material):
+def test_borncharges(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
     from gpaw import GPAW
     from asr.borncharges import main
 
@@ -40,7 +40,7 @@ def test_borncharges(separate_folder, mockgpaw, mocker, test_material):
 
 
 @pytest.mark.acceptance_test
-def test_gpaw_berry_get_berry_phases_integration(separate_folder):
+def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
     from .conftest import BN
     from asr.borncharges import main
     from asr.setup.params import main as setupparams

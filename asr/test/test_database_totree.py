@@ -3,7 +3,7 @@ from .materials import std_test_materials
 
 
 @pytest.mark.ci
-def test_database_totree(separate_folder):
+def test_database_totree(asr_tmpdir_w_params):
     from ase.db import connect
     from asr.database.totree import main
     from pathlib import Path

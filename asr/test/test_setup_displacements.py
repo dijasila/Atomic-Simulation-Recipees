@@ -33,7 +33,7 @@ def test_setup_displacements_get_all_displacements(test_material):
 
 
 @pytest.mark.ci
-def test_setup_displacements(separate_folder, test_material):
+def test_setup_displacements(asr_tmpdir_w_params, test_material):
     from asr.setup.displacements import main as displacements
 
     test_material.write('structure.json')

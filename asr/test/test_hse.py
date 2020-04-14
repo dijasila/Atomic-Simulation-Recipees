@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_hse(separate_folder, test_material, mockgpaw, mocker, get_webcontent):
+def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     from pathlib import Path
     test_material.write('structure.json')
