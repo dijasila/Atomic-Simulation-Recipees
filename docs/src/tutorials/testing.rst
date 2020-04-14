@@ -332,9 +332,10 @@ A quick rundown of the meaning of these environments:
   - The environments ``py36``, ``py37``, ``py38`` run the test-suite
     which different versions of the python interpreter, ``python3.6``,
     ``python3.7`` and ``python3.8``.
-  - ``flake8`` runs the the ``flake8`` style checker on the code.
   - ``py3*-gpaw`` runs specially marked tests that require having
     ``gpaw`` installed under the ``python3.*`` interpreter.
+  - ``flake8`` runs the the ``flake8`` style checker on the code.
+  - ``docs`` builds the documentation of asr.
 
 To run all environments simply do
 
