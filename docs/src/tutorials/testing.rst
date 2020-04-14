@@ -1,8 +1,8 @@
 .. _Testing tutorial:
 
-=======================
-Getting started testing
-=======================
+==============================
+Introduction to testing in ASR
+==============================
 
 Testing is essential for any piece of software and in particular in
 collaborative projects where the consequences of changes to your code
@@ -11,7 +11,7 @@ important concepts that you need to know to write simple tests, but
 leaves out non essential details. Thus this document is the only one
 you need to read.
 
-Pytest
+PyTest
 ======
 
 As its test runner ASR uses PyTest_, which is a very popular python
