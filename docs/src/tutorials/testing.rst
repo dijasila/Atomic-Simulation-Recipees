@@ -110,7 +110,7 @@ of the most useful:
   - :py:func:`asr.test.fixtures.mockgpaw`: This substitues GPAW with a
     dummy calculator such that a full DFT calculation won't be needed
     when running a test. See the API documentation for a full
-    explanation.
+    explanation :py:mod:`asr.test.mocks.gpaw.GPAW`.
   - :py:func:`asr.test.fixtures.test_material`: A fixture that iterates
     over a set of test materials and runs your test on each material.
 
@@ -223,14 +223,88 @@ objects and explicitly set the return values of the specified methods.
 Parametrizing
 -------------
 
-We can improve our test even more by using pytest functionality for
-parametrizing.
+We can improve our test even more by parametrizing over gaps and fermi
+levels
 
-Marks and conftest.py
----------------------
+.. code-block:: python
+   :caption: asr/test/test_gs.py
+
+   ...
+
+   @pytest.mark.parametrize('gap', [0, 1])
+   @pytest.mark.parametrize('fermi_level', [0.5, 1.5])
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                        gap, fermi_level):
+       from asr.gs import main
+       from gpaw import GPAW
+
+       mocker.patch.object(GPAW, '_get_band_gap')
+       mocker.patch.object(GPAW, '_get_fermi_level')
+       GPAW._get_fermi_level.return_value = 0.5
+       GPAW._get_band_gap.return_value = 1
+	     
+       results = main()
+
+       assert results.get("efermi") == approx(fermi_level)
+       if gap >= fermi_level:
+           assert results.get("gap") == approx(gap)
+       else:
+           assert results.get("gap") == approx(0)
+
+The ``pytest.mark.parametrize`` loops over each entry in the supplied
+list and feeds it into the test.
+
+Testing web panels
+------------------
+
+To test the webpanel output the
+:py:func:`asr.test.fixtures.get_webcontent` fixture provide a
+convenience function to return the web content and below we use this
+function to also check that the website data is consistent with the
+input band gap
+
+.. code-block:: python
+   :caption: asr/test/test_gs.py
+
+   ...
+
+   @pytest.mark.parametrize('gap', [0, 1])
+   @pytest.mark.parametrize('fermi_level', [0.5, 1.5])
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker,
+	                get_webcontent, test_material,
+                        gap, fermi_level):
+       from asr.gs import main
+       from gpaw import GPAW
+
+       mocker.patch.object(GPAW, '_get_band_gap')
+       mocker.patch.object(GPAW, '_get_fermi_level')
+       GPAW._get_fermi_level.return_value = 0.5
+       GPAW._get_band_gap.return_value = 1
+	     
+       results = main()
+
+       assert results.get("efermi") == approx(fermi_level)
+       if gap >= fermi_level:
+           assert results.get("gap") == approx(gap)
+       else:
+           assert results.get("gap") == approx(0)
+
+       content = get_webcontent()
+       assert f'<td>Bandgap</td><td>{gap:0.2f}eV</td>' in content
+
+This ends the tutorial on writing tests. We will now continue with
+explaining some extra concepts that are not necessary
 
 Tox
 ===
+
+Tox is another popular python package that is used for 
+
+Where to go now?
+================
+
+If you want more examples of tests we suggest looking at the existing
+tests in :py:mod:`asr.test`.
 
 ASR Test sub-package
 ====================
