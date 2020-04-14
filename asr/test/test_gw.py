@@ -1,6 +1,6 @@
 import pytest
 
-from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
+from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
@@ -9,9 +9,8 @@ def test_gw(separate_folder, atoms, mockgpaw, mocker):
     import numpy as np
     import gpaw
     from gpaw.response.g0w0 import G0W0
-
-    get_eigenvalues = freeelectroneigenvalues(atoms, gap=1)
-    mocker.patch.object(gpaw.GPAW, "get_eigenvalues", new=get_eigenvalues)
+    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
+    gpaw.GPAW._get_band_gap.return_value = 1
     mocker.patch.object(gpaw.GPAW, "get_fermi_level")
     gpaw.GPAW.get_fermi_level.return_value = 0.5
 
