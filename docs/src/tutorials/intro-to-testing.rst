@@ -141,7 +141,7 @@ To use any of these fixtures in your test your only have to give them
 as input arguments to your test function, you don't even have to
 import them, and the order doesn't matter:
 
-.. code-block::
+.. code-block:: console
 
    def test_example(asr_tmpdir_w_params, mockgpaw, test_material):
        ...
