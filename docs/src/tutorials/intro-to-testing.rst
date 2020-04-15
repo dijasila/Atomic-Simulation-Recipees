@@ -97,12 +97,19 @@ Let's extend the previous example with the following
        b = 2
        assert some_input_data + b == 3
 
+
+Here we have created a function ``some_input_data`` which returns 1,
+and decorated that with ``pytest.fixture``. At the same time we have
+added an input argument to our original test identically named
+``some_input_data`` and removed the definition ``a = 1``.
+
 Now run the test (remember the command from before). It still checks
-out! If you are not confused by this, take a minute to understand that
-`somehow` the output of the function `some_input_data` was evaluated
-and fed into our test. This is the magic of pytest_. It matches the
-input argument against all known fixtures and feeds into it the output
-of that fixture, such that the output is available for the test.
+out?! If you are not confused by this, take a minute to appreciate
+that *somehow* the output of the function ``some_input_data`` was
+evaluated and fed into our test. This is the magic of pytest_. It
+matches the input arguments of your test against all known fixtures
+and feeds into it the output of that fixture, such that the output is
+available for the test.
 
 This was a trivial example. Fixtures can in general be used to to
 initialize tests, set up folders, mock up certain functions (see below
@@ -423,7 +430,7 @@ Hopefully you will now be capable of writing and running tests for
 your recipe. If you want more examples of tests we suggest looking at
 the existing tests in ``asr/test/test_*.py``. Additionally you can
 take a look at the API documentation of the test sub-package :ref:`api
-test`.
+test` or you can take a look at the documentation of pytest_ itself.
 
 .. _pytest: https://docs.pytest.org/en/latest/
 .. _tox: https://tox.readthedocs.io/en/latest/

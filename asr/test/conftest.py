@@ -24,5 +24,10 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
+        """acceptance_test: Marks an acceptance test""",
+    )
+
+    config.addinivalue_line(
+        "markers",
         """ci: Mark a test for running in continuous integration""",
     )
