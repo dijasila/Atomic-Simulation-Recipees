@@ -16,7 +16,7 @@ your recipe.
 PyTest
 ======
 
-As its testing framework ASR uses PyTest_ which is a very popular
+As its testing framework ASR uses pytest_ which is a very popular
 python package for said purpose. First install ``pytest`` and
 ``pytest-mock`` (don't worry about ``pytest-mock`` right now, we will
 need that for later)
@@ -29,17 +29,19 @@ To invoke pytest and run all ASR tests change directory into your
 ``asr/`` folder and run pytest:
 
 .. code-block:: console
+   :caption: In: asr/
 
-  $ pytest
+   $ pytest  # Don't wait for this to finish: Ctrl-C to cancel
 
-This will locate all tests of ASR and evaluate them and test
-summary. pytest_ locates a test by searching for all files matching
-``test_*`` and looking for functions in those files matching
-``test_*``. In ASR these can be found in ``asr/test/``. Let's try and
-write a simple toy-model test to understand how it works:
+This will collect all tests of ASR, evaluate them and print a test
+summary. pytest_ collects tests by searching for all files in the
+current directory and child-directories matching ``test_*`` and
+looking for functions in those files matching ``test_*``. In ASR these
+can be found in ``asr/test/``. Let's try and write a simple toy-model
+test to understand how it works:
 
 .. code-block:: python
-   :caption: asr/test/test_example.py
+   :caption: In: asr/asr/test/test_example.py
 
    def test_adding_numbers():
        a = 1
@@ -49,14 +51,19 @@ write a simple toy-model test to understand how it works:
 Save this in ``asr/test/test_example.py`` and run
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ pytest -k test_example
+   ...
+   asr/test/test_example.py .
+   ...
 
 
-As you will see the test we just wrote ran and checked out
-(hopefully). The option ``-k`` matches all tests with the given
-pattern and only run those that match. More advanced logical
-expressions like ``-k "not test_example"`` are also allowed. To see all
+Yay a dot! That means that the test ran successfully. A failed test
+would be marked with "F". The option ``-k`` matches all tests with the
+given pattern and only run those that match. More advanced logical
+expressions like ``-k "not test_example"`` are also allowed. If we
+want more verbose output we can also add the option ``-v``. To see all
 options of pytest do:
 
 .. code-block:: console
@@ -76,7 +83,7 @@ once you know how they work they will be trivial to use.
 Let's extend the previous example with the following
 
 .. code-block:: python
-   :caption: asr/test/test_example.py
+   :caption: In: asr/asr/test/test_example.py
 
    import pytest
 
@@ -154,7 +161,7 @@ through each step. First open the existing
 Here we create a new test by appending
 
 .. code-block:: python
-   :caption: asr/test/test_gs.py
+   :caption: In: asr/asr/test/test_gs.py
 
    # ... Rest of test_gs.py
 
@@ -168,6 +175,7 @@ Here we create a new test by appending
 and we quickly check that the test works
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ pytest -k test_gs_tutorial
 
@@ -179,7 +187,7 @@ improve this by checking that the band gap is zero (which is the
 default setting of the mocked-up/dummy calculator):
 
 .. code-block:: python
-   :caption: asr/test/test_gs.py
+   :caption: In: asr/asr/test/test_gs.py
 
    ...
 
@@ -218,7 +226,7 @@ improve our ground state test by setting the band gap and fermi leve
 to something non-trivial
 
 .. code-block:: python
-   :caption: asr/test/test_gs.py
+   :caption: In asr/asr/test/test_gs.py
 
    ...
 
@@ -247,7 +255,7 @@ We can improve our test even more by parametrizing over gaps and fermi
 levels
 
 .. code-block:: python
-   :caption: asr/test/test_gs.py
+   :caption: In: asr/asr/test/test_gs.py
 
    ...
 
@@ -285,7 +293,7 @@ we use this function to also check that the website data is consistent
 with the input band gap
 
 .. code-block:: python
-   :caption: asr/test/test_gs.py
+   :caption: In asr/asr/test/test_gs.py
 
    ...
 
@@ -341,6 +349,7 @@ To install tox_ run:
 To see a list of the virtual environments do
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ tox -l
    flake8
@@ -366,6 +375,7 @@ the meaning of these environments:
 To run all environments simply do
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ tox
 
@@ -374,6 +384,7 @@ interpreters installed. What you probably want is to run a specific
 environment, for example, ``py36``
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ tox -e py36
 
@@ -382,13 +393,16 @@ them using the ``--`` separator. For example, to run our previous test
 ``test_gs_tutorial`` we run the command
 
 .. code-block:: console
+   :caption: In: asr/
 
    $ tox -e py36 -- -k test_gs_tutorial
 
-Similarly you can append any pytest option and argument. Since we are
-now running pytest_ within tox_, the destination of the temporary
-directory where tests are running have changed. The temporary
-directory can now be found in ``.tox/environment-name/tmp/``.
+Similarly you can append any pytest option and argument.
+
+Since we are now running pytest_ within tox_, we have changed the
+destination of the temporary directory where tests are running. The
+temporary directory can now be found in
+``.tox/environment-name/tmp/``.
 
 Summary
 =======
