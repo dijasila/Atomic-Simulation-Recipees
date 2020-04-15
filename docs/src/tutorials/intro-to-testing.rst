@@ -339,12 +339,12 @@ Finally: Mark your test for CI execution
 ----------------------------------------
 
 In software development continuous integration (CI) referes to the
-practice of automatically and continuously running test s of your code
+practice of automatically and continuously running tests of your code
 every time changes have been made. ASR utilizes Gitlab's CI runner for
 this task. To register your test to be run in continuous integration
 you will have to mark your test using the ``@pytest.mark.ci``
 decorator. Then the test will be run along with all other tests in the
-test suite hwn you push code to Gitlab. Mark your test with
+test suite when you push code to Gitlab. Mark your test with
 
 .. code-block:: python
    :caption: In asr/asr/test/test_gs.py
