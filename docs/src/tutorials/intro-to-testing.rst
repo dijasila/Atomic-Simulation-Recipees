@@ -448,7 +448,7 @@ Below you will find a list of the concepts you have been taught in
 this tutorial:
 
   - pytest_: ``pytest.fixture``, ``pytest.mark.parametrize``,
-    ``pytest.approx``
+    ``pytest.approx``, ``pytest.approx``, ``mocker``
   - ASR fixtures: ``mockgpaw``, ``asr_tmpdir_w_params``,
     ``test_material``, ``get_webcontent``
   - tox_
@@ -459,8 +459,8 @@ Where to go now?
 Hopefully you will now be capable of writing and running tests for
 your recipe. If you want more examples of tests we suggest looking at
 the existing tests in ``asr/test/test_*.py``. Additionally you can
-take a look at the API documentation of the test sub-package :ref:`api
-test` or you can take a look at the documentation of pytest_ itself.
+take a look at the :ref:`api test` API documentation or you can take a
+look at the documentation of pytest_ itself.
 
 .. _pytest: https://docs.pytest.org/en/latest/
 .. _tox: https://tox.readthedocs.io/en/latest/
