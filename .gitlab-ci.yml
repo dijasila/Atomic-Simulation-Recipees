@@ -63,7 +63,7 @@ python37:
 python38:
   image: python:3.8
   stage: test
-  script: tox -e py38-test
+  script: tox -e py38
   artifacts:
     paths:
       - .tox/.coverage*
