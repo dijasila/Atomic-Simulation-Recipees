@@ -10,6 +10,9 @@ extend beyond yourself. This tutorial walks you through all the
 important concepts and tools that you need to know to write tests of
 your recipe.
 
+This tutorial assumes that you have git-clone'd the ASR project and
+that the clone is located in a directory named ``asr/``.
+
 .. contents::
    :local:
 
@@ -37,7 +40,7 @@ This will collect all tests of ASR, evaluate them and print a test
 summary. pytest_ collects tests by searching for all files in the
 current directory and child-directories matching ``test_*`` and
 looking for functions in those files matching ``test_*``. In ASR these
-can be found in ``asr/test/``. Let's try and write a simple toy-model
+can be found in ``asr/asr/test/``. Let's try and write a simple toy-model
 test to understand how it works:
 
 .. code-block:: python
@@ -48,7 +51,7 @@ test to understand how it works:
        b = 2
        assert a + b == 3
 
-Save this in ``asr/test/test_example.py`` and run
+Save this in ``asr/asr/test/test_example.py`` and run
 
 .. code-block:: console
    :caption: In: asr/
@@ -161,7 +164,7 @@ We will now use our knowledge of pytest and fixtures to write a
 realistic test of the ground state recipe of ASR. Such as test already
 exists, however, it will serve as a good learning experience to go
 through each step. First open the existing
-``asr/test/test_gs.py``.
+``asr/asr/test/test_gs.py``.
 
 .. note::
 
@@ -169,7 +172,7 @@ through each step. First open the existing
    it's testing.
 
 We create a new test by appending the following to
-``asr/test/test_gs.py``
+``asr/asr/test/test_gs.py``
 
 .. code-block:: python
    :caption: In: asr/asr/test/test_gs.py
@@ -458,7 +461,7 @@ Where to go now?
 
 Hopefully you will now be capable of writing and running tests for
 your recipe. If you want more examples of tests we suggest looking at
-the existing tests in ``asr/test/test_*.py``. Additionally you can
+the existing tests in ``asr/asr/test/test_*.py``. Additionally you can
 take a look at the :ref:`api test` API documentation or you can take a
 look at the documentation of pytest_ itself.
 
