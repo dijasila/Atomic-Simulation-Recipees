@@ -335,10 +335,6 @@ with the input band gap
        else:
 	   assert f'<td>Bandgap</td><td>0.00eV</td>' in content
 
-This ends the tutorial on pytest_. We will now continue with
-explaining another tool that is very useful in conjunction with
-pytest_.
-
 Finally: Mark your test for CI execution
 ----------------------------------------
 
@@ -348,7 +344,7 @@ every time changes have been made. ASR utilizes Gitlab's CI runner for
 this task. To register your test to be run in continuous integration
 you will have to mark your test using the ``@pytest.mark.ci``
 decorator. Then the test will be run along with all other tests in the
-test suite hwn you push code to Gitlab. To mark your test you simply do
+test suite hwn you push code to Gitlab. Mark your test with
 
 .. code-block:: python
    :caption: In asr/asr/test/test_gs.py
@@ -362,6 +358,11 @@ test suite hwn you push code to Gitlab. To mark your test you simply do
 	                get_webcontent, test_material,
                         gap, fermi_level):
        ...
+
+
+This ends the tutorial on pytest. We will now continue with explaining
+another tool that is very useful in conjunction with pytest.
+
 
 Tox
 ===
