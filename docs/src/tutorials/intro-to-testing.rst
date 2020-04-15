@@ -438,8 +438,8 @@ Similarly you can append any pytest option and argument.
 
 Since we are now running pytest_ within tox_, we have changed the
 destination of the temporary directory where tests are running. The
-temporary directory can now be found in
-``.tox/environment-name/tmp/``.
+temporary directory can now be found in ``.tox/environment-name/tmp/``
+and ``.tox/`` is located in your ``asr/`` directory.
 
 Summary
 =======
