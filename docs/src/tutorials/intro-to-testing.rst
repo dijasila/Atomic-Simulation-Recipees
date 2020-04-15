@@ -373,9 +373,9 @@ environment, installs your package with its dependencies and runs all
 tests within that environment. As such it will no longer be important
 exactly which packages you have installed in your system. You have
 seen how to run tests directly using pytest but we actually recommend
-using "tox" for running the entire test suite in stead of vanilla
+using "tox" for running the entire test suite instead of vanilla
 pytest_. It is beyond the scope of this tutorial to go much further
-into detail about this, but the curious reader can take a ook in
+into detail about this, but the curious reader can take a look in
 ``tox.ini`` which configures the virtual environments.
 
 To install tox_ run:
@@ -402,13 +402,12 @@ To see a list of the virtual environments do
 Each of these environments perform a specific task. A quick rundown of
 the meaning of these environments:
 
-  - The environments ``py36``, ``py37``, ``py38`` run the test-suite
-    which different versions of the python interpreter, ``python3.6``,
-    ``python3.7`` and ``python3.8``.
+  - The environments ``py3*`` run the test-suite with different
+    versions of the python interpreter, ``python3.*``.
   - ``py3*-gpaw`` runs specially marked tests that require having
-    ``gpaw`` installed under the ``python3.*`` interpreter.
+    ``gpaw`` installed with the ``python3.*`` interpreter.
   - ``flake8`` runs the the ``flake8`` style checker on the code.
-  - ``docs`` builds the documentation of asr.
+  - ``docs`` builds the documentation of ASR.
 
 To run all environments simply do
 
