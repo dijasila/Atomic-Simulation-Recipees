@@ -3,7 +3,7 @@ from pytest import approx
 
 
 @pytest.mark.ci
-def test_core(separate_folder):
+def test_core(asr_tmpdir_w_params):
     from click.testing import CliRunner
     from asr.core import command, argument, option, read_json
     from pathlib import Path
