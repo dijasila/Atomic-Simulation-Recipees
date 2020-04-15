@@ -1,12 +1,11 @@
 import pytest
-from .conftest import test_materials
 
 
 @pytest.mark.ci
 @pytest.mark.parametrize("pbc", [[True, ] * 3,
                                  [True, True, False],
                                  [False, False, True]])
-def test_setup_strains_get_relevant_strains(separate_folder, pbc):
+def test_setup_strains_get_relevant_strains(asr_tmpdir_w_params, pbc):
     from asr.setup.strains import get_relevant_strains
 
     ij = set(get_relevant_strains(pbc))
@@ -21,8 +20,7 @@ def test_setup_strains_get_relevant_strains(separate_folder, pbc):
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_setup_strains(separate_folder, mockgpaw, atoms):
+def test_setup_strains(asr_tmpdir_w_params, mockgpaw, test_material):
     from asr.setup.strains import (main,
                                    get_strained_folder_name,
                                    get_relevant_strains)
@@ -30,12 +28,12 @@ def test_setup_strains(separate_folder, mockgpaw, atoms):
     from ase.io import write
     from pathlib import Path
     from asr.setup.params import main as setupparams
-    write('structure.json', atoms)
+    write('structure.json', test_material)
     setupparams(params={'asr.gs@calculate': {
         'calculator': {'mode': 'fd', None: None}}})
 
     main(strain_percent=1)
-    ij = get_relevant_strains(atoms.pbc)
+    ij = get_relevant_strains(test_material.pbc)
     for i, j in ij:
         name = get_strained_folder_name(1, i, j)
         folder = Path(name)

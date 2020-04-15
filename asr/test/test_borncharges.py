@@ -1,16 +1,14 @@
 import pytest
 from pytest import approx
-from .conftest import test_materials
 import numpy as np
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_borncharges(separate_folder, mockgpaw, mocker, atoms):
+def test_borncharges(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
     from gpaw import GPAW
     from asr.borncharges import main
 
-    natoms = len(atoms)
+    natoms = len(test_material)
 
     # Number of electrons on each atom
     Z_a = np.array([-2 if ia % 2 else -2 for ia in range(natoms)])
@@ -33,7 +31,7 @@ def test_borncharges(separate_folder, mockgpaw, mocker, atoms):
     mocker.patch.object(GPAW, '_get_dipole_moment', new=_get_dipole_moment)
     mocker.patch.object(GPAW, '_get_berry_phases', new=_get_berry_phases)
 
-    atoms.write('structure.json')
+    test_material.write('structure.json')
     results = main()
 
     Z_analytical_avv = np.array([(Z + positive_charge) * np.eye(3) for Z in Z_a])
@@ -42,8 +40,8 @@ def test_borncharges(separate_folder, mockgpaw, mocker, atoms):
 
 
 @pytest.mark.acceptance_test
-def test_gpaw_berry_get_berry_phases_integration(separate_folder):
-    from .conftest import BN
+def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
+    from .materials import BN
     from asr.borncharges import main
     from asr.setup.params import main as setupparams
 
