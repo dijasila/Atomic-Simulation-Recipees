@@ -263,7 +263,9 @@ Parametrizing
 -------------
 
 We can improve our test even more by parametrizing over gaps and fermi
-levels
+levels. The ``pytest.mark.parametrize`` decorator loops over each
+entry in the supplied lists and assigns them to the specified
+arguments of the test one-by-one.
 
 .. code-block:: python
    :caption: In: asr/asr/test/test_gs.py
@@ -279,8 +281,8 @@ levels
 
        mocker.patch.object(GPAW, '_get_band_gap')
        mocker.patch.object(GPAW, '_get_fermi_level')
-       GPAW._get_fermi_level.return_value = 0.5
-       GPAW._get_band_gap.return_value = 1
+       GPAW._get_fermi_level.return_value = fermi_level
+       GPAW._get_band_gap.return_value = gap
 
        test_material.write('structure.json')
        results = main()
@@ -290,9 +292,6 @@ levels
            assert results.get("gap") == approx(gap)
        else:
            assert results.get("gap") == approx(0)
-
-The ``pytest.mark.parametrize`` loops over each entry in the supplied
-lists and feeds them into the test one-by-one.
 
 Testing web panels
 ------------------
@@ -318,8 +317,8 @@ with the input band gap
 
        mocker.patch.object(GPAW, '_get_band_gap')
        mocker.patch.object(GPAW, '_get_fermi_level')
-       GPAW._get_fermi_level.return_value = 0.5
-       GPAW._get_band_gap.return_value = 1
+       GPAW._get_fermi_level.return_value = fermi_level
+       GPAW._get_band_gap.return_value = gap
 
        test_material.write('structure.json')
        results = main()
@@ -331,11 +330,38 @@ with the input band gap
            assert results.get("gap") == approx(0)
 
        content = get_webcontent()
-       assert f'<td>Bandgap</td><td>{gap:0.2f}eV</td>' in content
+       if gap >= fermi_level:
+           assert f'<td>Bandgap</td><td>{gap:0.2f}eV</td>' in content
+       else:
+	   assert f'<td>Bandgap</td><td>0.00eV</td>' in content
 
 This ends the tutorial on pytest_. We will now continue with
 explaining another tool that is very useful in conjunction with
 pytest_.
+
+Finally: Mark your test for CI execution
+----------------------------------------
+
+In software development continuous integration (CI) referes to the
+practice of automatically and continuously running test s of your code
+every time changes have been made. ASR utilizes Gitlab's CI runner for
+this task. To register your test to be run in continuous integration
+you will have to mark your test using the ``@pytest.mark.ci``
+decorator. Then the test will be run along with all other tests in the
+test suite hwn you push code to Gitlab. To mark your test you simply do
+
+.. code-block:: python
+   :caption: In asr/asr/test/test_gs.py
+
+   ...
+
+   @pytest.mark.ci
+   @pytest.mark.parametrize('gap', [0, 1])
+   @pytest.mark.parametrize('fermi_level', [0.5, 1.5])
+   def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker,
+	                get_webcontent, test_material,
+                        gap, fermi_level):
+       ...
 
 Tox
 ===

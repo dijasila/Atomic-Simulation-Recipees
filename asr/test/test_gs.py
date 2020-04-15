@@ -55,18 +55,3 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     panel = get_webpanels_from_material(material, main)
     make_panel_figures(material, panel)
     assert Path('bz-with-gaps.png').is_file()
-
-
-def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
-    from asr.gs import main
-    from gpaw import GPAW
-
-    mocker.patch.object(GPAW, '_get_band_gap')
-    mocker.patch.object(GPAW, '_get_fermi_level')
-    GPAW._get_fermi_level.return_value = 0.5
-    GPAW._get_band_gap.return_value = 1
-
-    test_material.write('structure.json')
-    results = main()
-
-    assert results['gap'] == pytest.approx(1)
