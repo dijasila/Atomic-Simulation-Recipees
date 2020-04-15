@@ -7,16 +7,19 @@ Introduction to testing in ASR
 Testing is essential for any piece of software and in particular in
 collaborative projects where the consequences of changes to your code
 extend beyond yourself. This tutorial walks you through all the
-important concepts that you need to know to write tests of your
-recipe.
+important concepts and tools that you need to know to write tests of
+your recipe.
+
+.. contents::
+   :local:
 
 PyTest
 ======
 
-As its test runner ASR uses PyTest_ which is a very popular python
-framework for writing and running test suites. First install
-``pytest`` and ``pytest-mock`` (don't worry about ``pytest-mock``
-right now, we will need that for later)
+As its testing framework ASR uses PyTest_ which is a very popular
+python package for said purpose. First install ``pytest`` and
+``pytest-mock`` (don't worry about ``pytest-mock`` right now, we will
+need that for later)
 
 .. code-block:: console
 
@@ -27,13 +30,13 @@ To invoke pytest and run all ASR tests change directory into your
 
 .. code-block:: console
 
-  $ pytest --pyargs asr
+  $ pytest
 
 This will locate all tests of ASR and evaluate them and test
-summary. Pytest_ locates a test by searching for all files matching
-``test_*`` and looking for functions also matching ``test_*``. In ASR
-these can be found in ``asr/test/``. Let's try and write a simple test
-to understand how it works:
+summary. pytest_ locates a test by searching for all files matching
+``test_*`` and looking for functions in those files matching
+``test_*``. In ASR these can be found in ``asr/test/``. Let's try and
+write a simple toy-model test to understand how it works:
 
 .. code-block:: python
    :caption: asr/test/test_example.py
@@ -50,11 +53,11 @@ Save this in ``asr/test/test_example.py`` and run
    $ pytest -k test_example
 
 
-As you will see the test we jsut wrote ran and checked out
+As you will see the test we just wrote ran and checked out
 (hopefully). The option ``-k`` matches all tests with the given
 pattern and only run those that match. More advanced logical
-expressions like ``not test_example`` are also allowed. To see all
-options of Pytest do:
+expressions like ``-k "not test_example"`` are also allowed. To see all
+options of pytest do:
 
 .. code-block:: console
 
@@ -63,10 +66,10 @@ options of Pytest do:
 Use this command as a reference in case you don't remember the meaning
 of a specific option.
 
-Pytest fixtures
+pytest fixtures
 ---------------
 
-Pytest has an important concept called ``fixtures`` which can be hard
+pytest has an important concept called ``fixtures`` which can be hard
 to wrap your head around, so let's teach it by example. Don't worry,
 once you know how they work they will be trivial to use.
 
@@ -82,6 +85,7 @@ Let's extend the previous example with the following
    def some_input_data():
        return 1
 
+
    def test_adding_numbers(some_input_data):
        b = 2
        assert some_input_data + b == 3
@@ -89,7 +93,7 @@ Let's extend the previous example with the following
 Now run the test (remember the command from before). It still checks
 out! If you are not confused by this, take a minute to understand that
 `somehow` the output of the function `some_input_data` was evaluated
-and fed into our test. This is the magic of Pytest_. It matches the
+and fed into our test. This is the magic of pytest_. It matches the
 input argument against all known fixtures and feeds into it the output
 of that fixture, such that the output is available for the test.
 
@@ -105,7 +109,7 @@ of the most useful:
     empty temporary directory, changes directory into that directory,
     and puts in a parameter file containing a parameter-set that
     ensure fast execution. The temporary directory can be found in
-    ``/tmp/pytest-of-username/test_example*``.
+    ``/tmp/pytest-of-username/pytest-current/test_example*``.
   - :py:func:`asr.test.fixtures.mockgpaw`: This substitues GPAW with a
     dummy calculator such that a full DFT calculation won't be needed
     when running a test. See the API documentation for a full
@@ -114,50 +118,65 @@ of the most useful:
     over a set of test materials and runs your test on each material.
 
 To use any of these fixtures in your test your only have to give them
-as input arguments:
+as input arguments, you don't even have to import them, and the order
+doesn't matter:
 
 .. code-block::
 
    def test_example(asr_tmpdir_w_params, mockgpaw, test_material):
        ...
 
-This will apply all the fixtures above to your test.
+.. admonition:: Tip: Where are my tests running?
+
+   When debugging it will be useful to check the actual output of your
+   recipes, and to do this you need to know where pytest_ actually is
+   running your tests. When you start pytest_ it will create a
+   temporary directory and run all your tests in that folder. This
+   folder can by default be found in
+   ``/tmp/pytest-of-username/pytest-run_number``. The latest run can
+   always be found under the symbolic link
+   ``/tmp/pytest-of-username/pytest-current``.
 
 A realistic test
 ================
 
-We will now use our knowledge of Pytest and fixtures to write a
+We will now use our knowledge of pytest and fixtures to write a
 realistic test of the ground state recipe of ASR. Such as test already
 exists, however, it will serve as a good learning experience to go
 through each step. First open the existing
 ``asr/test/test_gs.py``.
 
-.. note:: Notice the naming convention: We name the test after the module it's testing.
+.. note::
+
+   Notice the naming convention: We name the test after the module
+   it's testing.
 
 Here we create a new test by appending
 
 .. code-block:: python
    :caption: asr/test/test_gs.py
 
-   ...
+   # ... Rest of test_gs.py
 
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
        from asr.gs import main
-
+       
+       test_material.write('structure.json')
        main()
    
 
-and we quickly check that the test is running by running:
+and we quickly check that the test works
 
 .. code-block:: console
 
    $ pytest -k test_gs_tutorial
 
 As you can see the test is running multiple times due to the
-test_material fixture. At this point the test if of quite low quality
-since the results aren't actually checked. We can improve this by
-checking that the band gap is zero (which is the default setting of
-the mocked up calculator):
+test_material fixture which feeds multiple different test materials
+into the test as input. At this point the test is of quite low quality
+since the results aren't actually checked against anything. We can
+improve this by checking that the band gap is zero (which is the
+default setting of the mocked-up/dummy calculator):
 
 .. code-block:: python
    :caption: asr/test/test_gs.py
@@ -167,6 +186,7 @@ the mocked up calculator):
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
        from asr.gs import main
 
+       test_material.write('structure.json')
        results = main()
 
        assert results['gap'] == pytest.approx(0)
@@ -181,7 +201,7 @@ Mocks and pytest-mock
 The previous sections mentions the concept of mocking. Mocking involves
 substituting some function, class or module with a `pretend` version
 returns some artificial data that you have designed. The kinds of
-functions that we would like to mock is slow function/class calls that
+functions that we would like to mock are slow function/class calls that
 are not important for the test. In ASR the most important example of a
 mock is the mock of the GPAW calculator which can be found in
 :py:mod:`asr.test.mocks.gpaw` and is applied by the
@@ -193,7 +213,7 @@ to modify a certain property returned by the Mocked
 calculator. :py:mod:`asr.test.mocks.gpaw` is designed such that you
 can easily specify a band gap or a fermi level using the ``mocker``
 fixture (which is provided by ``pytest-mock``), and check that the
-corresponding results of yoru recipe are correct. For example let's
+corresponding results of your recipe are correct. For example let's
 improve our ground state test by setting the band gap and fermi leve
 to something non-trivial
 
@@ -210,7 +230,8 @@ to something non-trivial
        mocker.patch.object(GPAW, '_get_fermi_level')
        GPAW._get_fermi_level.return_value = 0.5
        GPAW._get_band_gap.return_value = 1
-	     
+
+       test_material.write('structure.json')
        results = main()
 
        assert results['gap'] == pytest.approx(1)
@@ -241,7 +262,8 @@ levels
        mocker.patch.object(GPAW, '_get_fermi_level')
        GPAW._get_fermi_level.return_value = 0.5
        GPAW._get_band_gap.return_value = 1
-	     
+
+       test_material.write('structure.json')
        results = main()
 
        assert results.get("efermi") == approx(fermi_level)
@@ -251,16 +273,16 @@ levels
            assert results.get("gap") == approx(0)
 
 The ``pytest.mark.parametrize`` loops over each entry in the supplied
-list and feeds it into the test.
+lists and feeds them into the test one-by-one.
 
 Testing web panels
 ------------------
 
-To test the webpanel output the
-:py:func:`asr.test.fixtures.get_webcontent` fixture provide a
-convenience function to return the web content and below we use this
-function to also check that the website data is consistent with the
-input band gap
+To test the output of the web-panel you have implemented the
+:py:func:`asr.test.fixtures.get_webcontent` fixture provides a
+convenience function to return the content of your web-panel and below
+we use this function to also check that the website data is consistent
+with the input band gap
 
 .. code-block:: python
    :caption: asr/test/test_gs.py
@@ -279,7 +301,8 @@ input band gap
        mocker.patch.object(GPAW, '_get_fermi_level')
        GPAW._get_fermi_level.return_value = 0.5
        GPAW._get_band_gap.return_value = 1
-	     
+
+       test_material.write('structure.json')
        results = main()
 
        assert results.get("efermi") == approx(fermi_level)
@@ -291,20 +314,23 @@ input band gap
        content = get_webcontent()
        assert f'<td>Bandgap</td><td>{gap:0.2f}eV</td>' in content
 
-This ends the tutorial on writing tests. We will now continue with
-explaining some extra concepts that are not necessary
+This ends the tutorial on pytest_. We will now continue with
+explaining another tool that is very useful in conjunction with
+pytest_.
 
 Tox
 ===
 
 tox_ is another python package which finds common usage in combination
-with pytest (or other test runners). tox_ sets up a virtual
+with pytest_ (or other test runners). tox_ sets up a virtual
 environment, installs your package with its dependencies and runs all
-tests. You have seen how to run tests directly using pytest but we
-recommond actually using "tox" for running the entire test suite. It
-is beyond the scope of this tutorial to go much further into detail
-about this, but the curious reader can take a ook in ``tox.ini`` which
-configures the virtual environments.
+tests within that environment. As such it will no longer be important
+exactly which packages you have installed in your system. You have
+seen how to run tests directly using pytest but we actually recommend
+using "tox" for running the entire test suite in stead of vanilla
+pytest_. It is beyond the scope of this tutorial to go much further
+into detail about this, but the curious reader can take a ook in
+``tox.ini`` which configures the virtual environments.
 
 To install tox_ run:
 
@@ -326,7 +352,8 @@ To see a list of the virtual environments do
    py37-gpaw
    py38-gpaw
 
-A quick rundown of the meaning of these environments:
+Each of these environments perform a specific task. A quick rundown of
+the meaning of these environments:
 
   - The environments ``py36``, ``py37``, ``py38`` run the test-suite
     which different versions of the python interpreter, ``python3.6``,
@@ -358,16 +385,31 @@ them using the ``--`` separator. For example, to run our previous test
 
    $ tox -e py36 -- -k test_gs_tutorial
 
-Similarly you can append any pytest option and argument.
+Similarly you can append any pytest option and argument. Since we are
+now running pytest_ within tox_, the destination of the temporary
+directory where tests are running have changed. The temporary
+directory can now be found in ``.tox/environment-name/tmp/``.
+
+Summary
+=======
+
+Below you will find a list of the concepts you have been taught in
+this tutorial:
+
+  - pytest_: ``pytest.fixture``, ``pytest.mark.parametrize``,
+    ``pytest.approx``
+  - ASR fixtures: ``mockgpaw``, ``asr_tmpdir_w_params``,
+    ``test_material``, ``get_webcontent``
+  - tox_
 
 Where to go now?
 ================
 
-If you want more examples of tests we suggest looking at the existing
-tests in :py:mod:`asr.test`.
+Hopefully you will now be capable of writing and running tests for
+your recipe. If you want more examples of tests we suggest looking at
+the existing tests in ``asr/test/test_*.py``. Additionally you can
+take a look at the API documentation of the test sub-package :ref:`api
+test`.
 
-ASR Test sub-package
-====================
-
-.. _PyTest: https://docs.pytest.org/en/latest/
+.. _pytest: https://docs.pytest.org/en/latest/
 .. _tox: https://tox.readthedocs.io/en/latest/

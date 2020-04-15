@@ -92,8 +92,11 @@ Core sub-package
    core.cli
    core.material
 
+.. _api test:
+
 Test sub-package
 ================
+
 .. currentmodule:: asr
 
 .. autosummary::
