@@ -111,29 +111,32 @@ matches the input arguments of your test against all known fixtures
 and feeds into it the output of that fixture, such that the output is
 available for the test.
 
-This was a trivial example. Fixtures can in general be used to to
-initialize tests, set up folders, mock up certain functions (see below
-if you don't know what "mock" means), capture output etc.
+This was a trivial example. Fixtures can in general be used to
+initialize tests, set up empty folders, set-up and tear-down tests,
+mock up certain functions (see below if you don't know what "mock"
+means), capture output etc.
 
-ASR has its own set of fixtures that are available to all tests. They
-are defined in :py:mod:`asr.test.fixtures`. Let's highlight a couple
-of the most useful:
+ASR has its own set of fixtures that are automatically available to
+all tests. They are defined in :py:mod:`asr.test.fixtures`. Let's
+highlight a couple of the most useful:
 
   - :py:func:`asr.test.fixtures.asr_tmpdir_w_params`: This sets up an
-    empty temporary directory, changes directory into that directory,
-    and puts in a parameter file containing a parameter-set that
-    ensure fast execution. The temporary directory can be found in
+    empty temporary directory, changes directory into that directory
+    and puts in a parameter file ``params.json`` containing a default
+    parameter-set that ensure fast execution. The temporary directory
+    can be found in
     ``/tmp/pytest-of-username/pytest-current/test_example*``.
   - :py:func:`asr.test.fixtures.mockgpaw`: This substitues GPAW with a
-    dummy calculator such that a full DFT calculation won't be needed
+    dummy calculator such that a full DFT performed won't be needed
     when running a test. See the API documentation for a full
     explanation :py:mod:`asr.test.mocks.gpaw.GPAW`.
-  - :py:func:`asr.test.fixtures.test_material`: A fixture that iterates
-    over a set of test materials and runs your test on each material.
+  - :py:func:`asr.test.fixtures.test_material`: A fixture that
+    iterates over a standard set of test materials and returns the
+    atoms objects to your test one by one.
 
 To use any of these fixtures in your test your only have to give them
-as input arguments, you don't even have to import them, and the order
-doesn't matter:
+as input arguments to your test function, you don't even have to
+import them, and the order doesn't matter:
 
 .. code-block::
 
@@ -165,7 +168,8 @@ through each step. First open the existing
    Notice the naming convention: We name the test after the module
    it's testing.
 
-Here we create a new test by appending
+We create a new test by appending the following to
+``asr/test/test_gs.py``
 
 .. code-block:: python
    :caption: In: asr/asr/test/test_gs.py
@@ -186,12 +190,12 @@ and we quickly check that the test works
 
    $ pytest -k test_gs_tutorial
 
-As you can see the test is running multiple times due to the
-test_material fixture which feeds multiple different test materials
-into the test as input. At this point the test is of quite low quality
-since the results aren't actually checked against anything. We can
-improve this by checking that the band gap is zero (which is the
-default setting of the mocked-up/dummy calculator):
+As you can see the test is running multiple times (there are multiple
+dots) due to the test_material fixture which feeds multiple different
+test materials into the test as input. At this point the test is of
+quite low quality since the results aren't actually checked against
+anything. We can improve this by checking that the band gap is zero
+(which is the default setting of the mocked-up/dummy calculator):
 
 .. code-block:: python
    :caption: In: asr/asr/test/test_gs.py
@@ -213,23 +217,23 @@ useful when two floating point numbers are to be compared.
 Mocks and pytest-mock
 ---------------------
 
-The previous sections mentions the concept of mocking. Mocking involves
-substituting some function, class or module with a `pretend` version
-returns some artificial data that you have designed. The kinds of
-functions that we would like to mock are slow function/class calls that
-are not important for the test. In ASR the most important example of a
-mock is the mock of the GPAW calculator which can be found in
-:py:mod:`asr.test.mocks.gpaw` and is applied by the
+The previous sections mentions the concept of mocking. Mocking
+involves substituting some function, class or module with a `pretend`
+version which returns some artificial data that you have designed. The
+kinds of functions that we would like to mock are slow function/class
+calls that are not important for the test. In ASR the most important
+example of a mock is the mock of the GPAW calculator which can be
+found in :py:mod:`asr.test.mocks.gpaw` and is applied by the
 :py:func:`asr.test.fixtures.mockgpaw` fixture.
 
 In the beginning of the turorial, we installed ``pytest-mock`` which
 is a plugin to pytest that enables easy mocking. A common use case is
-to modify a certain property returned by the Mocked
+to modify a certain physical property returned by the Mocked
 calculator. :py:mod:`asr.test.mocks.gpaw` is designed such that you
 can easily specify a band gap or a fermi level using the ``mocker``
 fixture (which is provided by ``pytest-mock``), and check that the
 corresponding results of your recipe are correct. For example let's
-improve our ground state test by setting the band gap and fermi leve
+improve our ground state test by setting the band gap and Fermi level
 to something non-trivial
 
 .. code-block:: python

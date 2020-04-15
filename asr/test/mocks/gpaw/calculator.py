@@ -142,6 +142,9 @@ class ASRCalculator(Calculator):
             "gap": self._get_band_gap(),
         }
 
+        # TODO: Fix this hack
+        ASRCalculator._gap = self.results["gap"]
+        ASRCalculator._fermi_level = self.results["fermi_level"]
         if self.parameters.get('txt'):
             data = {'params': self.parameters.copy(),
                     'results': self.results}
