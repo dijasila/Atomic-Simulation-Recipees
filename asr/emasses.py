@@ -800,7 +800,7 @@ def wideMAE(masses, bt, cell_cv, erange=25e-3):
             ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
             sk_kv = k_kv[ks]
         else:
-            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            ks = np.where(np.abs(e_k - np.min(e_k)) < erange)
             sk_kv = k_kv[ks]
 
         emodel_k = evalmodel(sk_kv, c, thirdorder=True)
@@ -869,13 +869,12 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                    kpts_kc=k_kc,
                    e_k=e_km[:, band],
                    spin_k=sz_km[:, band])
-        if nbands != 1:
-            if bt == "vb":
-                dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
-                dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
-            else:
-                dct['e_km'] = e_km[:, band:band + nbands]
-                dct['spin_km'] = sz_km[:, band:band + nbands]
+        if bt == "vb":
+            dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
+            dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
+        else:
+            dct['e_km'] = e_km[:, band:band + nbands]
+            dct['spin_km'] = sz_km[:, band:band + nbands]
 
         results_dicts.append(dct)
 
