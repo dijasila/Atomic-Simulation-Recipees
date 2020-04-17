@@ -369,11 +369,10 @@ def make_the_plots(row, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_k = fit_data['e_k'] - reference
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.min(e_k) - np.min(emodel_k)
+            emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
 
             for im in range(e_km.shape[1]):
                 things = axes.scatter(xk, e_km[:, im], c=sz_km[:, im], vmin=-1, vmax=1)
@@ -399,8 +398,8 @@ def make_the_plots(row, *args):
         if should_plot:
             fname = args[plt_count]
             plt.savefig(fname)
-            plt.close()
-
+        plt.close()
+        
         # axes.clear()
         # VB plots
         y1 = None
@@ -422,7 +421,6 @@ def make_the_plots(row, *args):
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            e_k = fit_data['e_k'] - reference
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
@@ -432,7 +430,7 @@ def make_the_plots(row, *args):
             kpts_kv *= Bohr
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.max(e_k) - np.max(emodel_k)
+            emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
             for im in range(e_km.shape[1]):
                 things = axes.scatter(xk2, e_km[:, im], c=sz_km[:, im], vmin=-1, vmax=1)
@@ -459,7 +457,7 @@ def make_the_plots(row, *args):
             nplts = len(args)
             fname = args[plt_count + nplts // 2]
             plt.savefig(fname)
-            plt.close()
+        plt.close()
 
         plt_count += 1
     # Make final column with table of numerical vals
