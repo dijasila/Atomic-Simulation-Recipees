@@ -1,10 +1,9 @@
-from click import Choice
 from asr.core import command, option
 
 
 @command('asr.setup.magnetize')
-@option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
-        help='Magnetic states to create.')
+@option('--state', type=str,
+        help='Comma separated string of magnetic states to create.')
 @option('--name', help='Atomic structure')
 @option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).')
@@ -40,10 +39,15 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     Examples
     --------
     Set up all known magnetic configurations (assuming existence of 'unrelaxed.json')
-    >>> asr run setup.magnetize
+    $ asr run setup.magnetize
 
     Only set up ferromagnetic configuration
-    >>> asr run "setup.magnetic --state fm"
+
+    $ asr run "setup.magnetic --state fm"
+
+    Set up multiple specific magnetic configurations
+
+    $ asr run "setup.magnetic --state nm,fm"
 
     """
     from pathlib import Path
@@ -53,10 +57,11 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
 
-    if state == 'all':
-        states = known_states
-    else:
-        states = [state]
+    states = state.split(',')
+
+    if 'all' in states:
+        assert len(states) == 1, \
+            'Cannot combine "all" with other magnetic states.'
 
     for state in states:
         msg = f'{state} is not a known state!'
