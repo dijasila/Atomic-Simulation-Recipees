@@ -377,7 +377,7 @@ def make_the_plots(row, *args):
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
-            repeated_xcoords = np.vstack([xk] * shape[1])
+            repeated_xcoords = np.vstack([xk] * shape[1]).T
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
@@ -440,8 +440,14 @@ def make_the_plots(row, *args):
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.max(e_k) - np.max(emodel_k)
 
-            for im in range(e_km.shape[1]):
-                things = axes.scatter(xk2, e_km[:, im], c=sz_km[:, im], vmin=-1, vmax=1)
+            shape = e_km.shape
+            perm = (-sz_km).argsort(axis=None)
+            repeated_xcoords = np.vstack([xk] * shape[1]).T
+            flat_energies = e_km.ravel()[perm]
+            flat_xcoords = repeated_xcoords.ravel()[perm]
+            flat_spins = sz_km.ravel()[perm]
+            things = axes.scatter(flat_xcoords, flat_energies,
+                                  c=flat_spins, vmin=-1, vmax=1)
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
