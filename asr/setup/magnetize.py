@@ -40,10 +40,15 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     Examples
     --------
     Set up all known magnetic configurations (assuming existence of 'unrelaxed.json')
-    >>> asr run setup.magnetize
+    $ asr run setup.magnetize
 
     Only set up ferromagnetic configuration
-    >>> asr run "setup.magnetic --state fm"
+
+    $ asr run "setup.magnetic --state fm"
+
+    Set up multiple specific magnetic configurations
+
+    $ asr run "setup.magnetic --state nm,fm"
 
     """
     from pathlib import Path
