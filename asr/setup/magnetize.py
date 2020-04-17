@@ -3,8 +3,8 @@ from asr.core import command, option
 
 
 @command('asr.setup.magnetize')
-@option('--state', type=Choice(['all', 'nm', 'fm', 'afm']),
-        help='Magnetic states to create.')
+@option('--state', type=str,
+        help='Comma separated string of magnetic states to create.')
 @option('--name', help='Atomic structure')
 @option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).')
@@ -53,10 +53,11 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     import numpy as np
     known_states = ['nm', 'fm', 'afm']
 
-    if state == 'all':
-        states = known_states
-    else:
-        states = [state]
+    states = state.split(',')
+
+    if 'all' in states:
+        assert len(states) == 1, \
+            'Cannot combine "all" with other magnetic states.'
 
     for state in states:
         msg = f'{state} is not a known state!'
