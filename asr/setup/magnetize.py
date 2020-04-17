@@ -1,4 +1,3 @@
-from click import Choice
 from asr.core import command, option
 
 
