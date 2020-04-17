@@ -440,7 +440,7 @@ def make_the_plots(row, *args):
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
-            repeated_xcoords = np.vstack([xk] * shape[1]).T
+            repeated_xcoords = np.vstack([xk2] * shape[1]).T
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
