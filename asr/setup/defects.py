@@ -1,6 +1,7 @@
 from pathlib import Path
 from asr.core import command, option
 import click
+import os
 
 
 @command('asr.setup.defects')
@@ -530,8 +531,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
                         charge_name).get('structure')
                     params = sub_dict[sub_element].get(
                         charge_name).get('parameters')
-                    write(charge_folder_name + '/unrelaxed.json', struc)
                     write_json(charge_folder_name + '/params.json', params)
+                    if i == 0:
+                        write(charge_folder_name + '/unrelaxed.json', struc)
+                    elif i < 0:
+                        os.system('ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(charge_folder_name, i+1, charge_folder_name))
+                    elif i > 0:
+                        os.system('ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(charge_folder_name, i-1, charge_folder_name))
 
     return None
 
