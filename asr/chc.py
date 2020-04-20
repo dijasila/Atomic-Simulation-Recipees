@@ -247,18 +247,21 @@ class Reference:
             self.count[k] = v
 
     def __str__(self):
-        '''
-        Represent Reference-object by formula
-        and heat of formation in a tuple.
-        '''
+        """
+        String version of object.
+
+        Represent Reference by formula and heat of formation in a tuple.
+        """
         return f'({self.formula}, {self.hform})'
 
     def __eq__(self, other):
-        '''
+        """
+        Equate.
+
         Equate Reference-object with another
-        if formulas and heat of formations
+        If formulas and heat of formations
         are equal.
-        '''
+        """
         if type(other) != Reference:
             return False
         else:
@@ -268,11 +271,13 @@ class Reference:
             return feq and heq
 
     def __neq__(self, other):
-        '''
+        """
+        Not Equal.
+
         Equate Reference-object with another
         if formulas and heat of formations
         are equal.        
-        '''
+        """
         return not (self == other)
 
     def to_elements(self):
@@ -307,12 +312,14 @@ class ConvexHullReference(Reference):
         return ConvexHullReference(ref.formula, ref.hform, elements=elements)
 
     def __str__(self):
-        '''
+        """
+        String version of ConvexHullRef.
+
         Represent Convex Hull Reference by
         1. Formula
         2. Heat of formation
         3. List of elements used in convex hull
-        '''
+        """
         msg = f'ConvexHullReference:' + f'\nFormula: {self.formula}'
         msg = msg + f'\nHform: {self.hform}' + f'\nElements: {self.elements}'
         return msg
