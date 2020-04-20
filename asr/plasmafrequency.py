@@ -14,7 +14,9 @@ def get_kpts_size(atoms, density):
 
 
 @command('asr.plasmafrequency',
-         creates=['es_plasma.gpw'])
+         creates=['es_plasma.gpw'],
+         dependencies=['asr.gs@calculate'],
+         requires=['gs.gpw'])
 @option('--kptdensity', help='k-point density')
 def calculate(kptdensity=20):
     """Calculate excited states for polarizability calculation."""
@@ -53,7 +55,6 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.plasmafrequency',
-         requires=['es_plasma.gpw'],
          webpanel=webpanel,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
@@ -93,8 +94,7 @@ def main(tetra=True):
     finally:
         if world.rank == 0:
             es_file = Path("es_plasma.gpw")
-            if es_file.is_file():
-                es_file.unlink()
+            es_file.unlink()
         world.barrier()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv,
