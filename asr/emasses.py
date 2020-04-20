@@ -1,4 +1,5 @@
 from asr.core import command, option
+from ase.parallel import parprint
 
 
 class NoGapError(Exception):
@@ -24,6 +25,7 @@ def refine(gpwfilename='gs.gpw'):
         theta, phi = get_spin_axis()
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
+        parprint(f"REFINE gpw2eigs efermi = {efermi}")
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
 
@@ -60,8 +62,13 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
-    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                             output=None)
+    parprint(f"REFINE gap={gap}, s1,k1,n1={(s1, k1, n1)}, s2,k2,n2={(s2,k2,n2)}")
+    vbm = e_skn[s1, k1, n1]
+    cbm = e_skn[s2, k2, n2]
+    parprint(f"REFINE vbm = {vbm}, cbm = {cbm}")
+    parprint(f"REFINE efermi = {efermi}")
     # Make a sphere of kpts of high density
     nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 19)
     nkpts = nkpts + (1 - (nkpts % 2))
@@ -69,6 +76,11 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
                            erange=500e-3, m=1.0,
                            dimensionality=ndim)
+
+    parprint(f"REFINE ksphere = {ksphere}")
+    parprint(f"REFINE bt = {bandtype}")
+    parprint(f"REFINE k_kc[k1] = {k_kc[k1]}")
+    parprint(f"REFINE k_kc[k2] = {k_kc[k2]}")
 
     # Position sphere around VBM if bandtype == vb
     # Else around CBM
@@ -136,11 +148,18 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
 
-    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                             output=None)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
+
+    parprint(f"REFINE2 bt = {bandtype}")
+    parprint(f"REFINE2 gap = {gap}")
+    parprint(f"REFINE2 s1.. = {(s1, k1, n1)}")
+    parprint(f"REFINE2 s2.. = {(s2, k2, n2)}")
+    parprint(f"REFINE2 k_kc[k1] = {k_kc[k1]}")
+    parprint(f"REFINE2 k_kc[k2] = {k_kc[k2]}")
 
     bandtypes, ks = get_bt_ks(bandtype, k1_c, k2_c)
 
@@ -295,6 +314,7 @@ def make_the_plots(row, *args):
     cell_cv = row.cell
 
     reference = row.get('evac', efermi)
+
     label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
     columns = []
     cb_fnames = []
@@ -387,10 +407,11 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(emodel_k) - erange * 0.25
                 y2 = np.min(emodel_k) + erange * 0.75
-                axes.set_ylim(y1, y2)
+                
+                # axes.set_ylim(y1, y2)
 
                 my_range = get_range(abs(mass), erange)
-                axes.set_xlim(-my_range, my_range)
+                # axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -451,10 +472,10 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(emodel_k) - erange * 0.75
                 y2 = np.max(emodel_k) + erange * 0.25
-                axes.set_ylim(y1, y2)
-
+                # axes.set_ylim(y1, y2)
+                
                 my_range = get_range(abs(mass), erange)
-                axes.set_xlim(-my_range, my_range)
+                # axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -757,7 +778,13 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
         efermi = efermi2
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
+    parprint(f"MAIN Calling get_vb_cb_indices with gpw = {gpw}")
+    parprint(f"MAIN theta, phi = {(theta, phi)}")
+    parprint(f"MAIN efermi2 = {efermi2}")
     vb_ind, cb_ind = get_vb_cb_indices(e_skn=e_skn, efermi=efermi, delta=delta)
+    parprint("MAIN vb_ind=", vb_ind)
+    parprint("MAIN cb_ind=", cb_ind)
+    
 
     indices = vb_ind if bandtype == 'vb' else cb_ind
     atoms = calc.get_atoms()
@@ -856,6 +883,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 k_kv /= Bohr
                 assert not (np.isnan(k_kv)).any()
                 k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+                k_kc = k_kc[(np.abs(k_kc) < 1).all(axis=-1), :]
                 assert not (np.isnan(k_kc)).any()
                 atoms = calc.get_atoms()
                 for i, pb in enumerate(atoms.pbc):
@@ -920,6 +948,14 @@ def get_vb_cb_indices(e_skn, efermi, delta):
 
     cbm = e_skn[s2, k2, n2]
     vbm = e_skn[s1, k1, n1]
+    parprint(f"MAIN vbm = {vbm}")
+    parprint(f"MAIN cbm = {cbm}")
+    parprint(f"MAIN gap = {gap}")
+    parprint(f"MAIN efermi = {efermi}")
+    parprint(f"MAIN delta = {delta}")
+    parprint(f"MAIN s1,k1,n1 = {(s1, k1, n1)}")
+    parprint(f"MAIN s2,k2,n2 = {(s2, k2, n2)}")
+    
 
     cb_sn = e_skn[:, k2, n2:]
     vb_sn = e_skn[:, k1, :n1 + 1]
