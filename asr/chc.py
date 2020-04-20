@@ -248,7 +248,7 @@ class Reference:
 
     def __str__(self):
         """
-        String version of object.
+        Make string version of object.
 
         Represent Reference by formula and heat of formation in a tuple.
         """
@@ -276,7 +276,7 @@ class Reference:
 
         Equate Reference-object with another
         if formulas and heat of formations
-        are equal.        
+        are equal.
         """
         return not (self == other)
 
@@ -313,7 +313,7 @@ class ConvexHullReference(Reference):
 
     def __str__(self):
         """
-        String version of ConvexHullRef.
+        Get string version of ConvexHullRef.
 
         Represent Convex Hull Reference by
         1. Formula
