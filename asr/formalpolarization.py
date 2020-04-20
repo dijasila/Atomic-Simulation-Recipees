@@ -23,18 +23,21 @@ def get_electronic_polarization_phase(calc):
     import numpy as np
     from gpaw.berryphase import get_berry_phases
     from gpaw.mpi import SerialCommunicator
+    from ase.parallel import world
 
     assert isinstance(calc.world, SerialCommunicator)
 
     phase_c = np.zeros((3,), float)
     # Calculate and save berry phases
     nspins = calc.get_number_of_spins()
-    for c in [0, 1, 2]:
-        for spin in range(nspins):
-            _, phases = get_berry_phases(calc, dir=c, spin=spin)
-            phase_c[c] += np.sum(phases) / len(phases)
+    if world.rank == 0:
+        for c in [0, 1, 2]:
+            for spin in range(nspins):
+                _, phases = get_berry_phases(calc, dir=c, spin=spin)
+                phase_c[c] += np.sum(phases) / len(phases)
 
     phase_c = phase_c * 2 / nspins
+    world.sum(phase_c)
 
     return phase_c
 

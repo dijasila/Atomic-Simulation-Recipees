@@ -10,7 +10,7 @@
    src/install
    src/tutorials/tutorials
    src/howtoguides/howtoguides
-   src/topical-discussions/topical-discussions
+   src/explanations/explanations
    src/api
    src/developing
 
@@ -34,8 +34,8 @@ First time here: :ref:`Getting started`
    * :ref:`Tutorials`: Lessons that take the reader by the hand though a
      series of steps to complete a project.
    * :ref:`How to guides`: Concrete solutions to common tasks.
-   * :ref:`Topical discussions`: Explanations that clarify and
-     illuminate a particular topic
+   * :ref:`Explanations`: Explanations that clarify and
+     illuminate a particular topic.
    * :ref:`API Reference`: Technical documentation of the code.
 
    See also Daniele Procida's PyCon 2017 talk "`How documentation

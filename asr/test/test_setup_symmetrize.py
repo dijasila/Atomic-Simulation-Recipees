@@ -1,4 +1,4 @@
-from .conftest import Fe  # , Si
+from .materials import Fe
 import pytest
 from pytest import approx
 
@@ -6,7 +6,7 @@ from pytest import approx
 # XXX How to test for shifted origin, happens for Si
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Fe])
-def test_setup_symmetrize(separate_folder, inputatoms):
+def test_setup_symmetrize(asr_tmpdir_w_params, inputatoms):
     import numpy as np
     from asr.setup.symmetrize import main
     from ase.io import read, write
