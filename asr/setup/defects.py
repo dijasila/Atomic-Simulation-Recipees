@@ -306,10 +306,13 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         for i in range(len(structure)):
             if not eq_pos[i] in finished_list:
                 vacancy = pristine.copy()
+                sitename = vacancy.get_chemical_symbols()[i]
                 vacancy.pop(i)
                 vacancy.rattle()
                 string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
                          formula, N_x, N_y, N_z, wyckoffs[i], i)
+                string = 'defects.{0}_{1}{2}{3}.v_{4}'.format(
+                         formula, N_x, N_y, N_z, sitename)
                 charge_dict = {}
                 for q in range((-1) * charge_states, charge_states + 1):
                     parameters = {}
@@ -368,11 +371,15 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 for element in defect_list:
                     if not structure[i].symbol == element:
                         defect = pristine.copy()
+                        sitename = defect.get_chemical_symbols()[i]
                         defect[i].symbol = element
                         defect.rattle()
-                        string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                        # string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
+                        #          formula, N_x, N_y, N_z, element,
+                        #          wyckoffs[i], i)
+                        string = 'defects.{0}_{1}{2}{3}.{4}_{5}'.format(
                                  formula, N_x, N_y, N_z, element,
-                                 wyckoffs[i], i)
+                                 sitename)
                         charge_dict = {}
                         for q in range(
                                 (-1) * charge_states,
