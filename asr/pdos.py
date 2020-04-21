@@ -263,6 +263,7 @@ def calculate(kptdensity=20.0, emptybands=20):
 def main():
     from gpaw import GPAW
     from asr.core import singleprec_dict
+    from ase.parallel import parprint
 
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
@@ -270,11 +271,15 @@ def main():
     results = {}
 
     # Calculate the dos at the Fermi energy
+    parprint('\nComputing dos at Ef', flush=True)
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
+    parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
 
     # Calculate pdos
+    parprint('\nComputing pdos', flush=True)
     results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    parprint('\nComputing pdos with spin-orbit coupling', flush=True)
     results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Log key descriptions
@@ -334,7 +339,6 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
-    from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
@@ -368,7 +372,6 @@ def calculate_pdos(calc, gpw, soc=True):
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
-    parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
     if mpi.world.rank == 0:
         pb = ProgressBar()
     else:
