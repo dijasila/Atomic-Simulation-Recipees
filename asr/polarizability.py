@@ -143,11 +143,11 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
             ' z-direction [Ang]'}
 
     finally:
+        world.barrier()
         if world.rank == 0:
             es_file = Path("es.gpw")
             if es_file.is_file():
                 es_file.unlink()
-        world.barrier()
 
     return data
 
