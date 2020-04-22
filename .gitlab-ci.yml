@@ -110,6 +110,9 @@ coverage:
   stage: coverage
   script:
     - tox -e coverage-report
+  artifacts:
+    paths:
+      - .tox/htmlcov/
 
 # -------------- Deploy coverage report --------------
 pages:
