@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_setup_params(separate_folder):
+def test_setup_params(asr_tmpdir_w_params):
     from asr.core import read_json
     from asr.setup.scanparams import main
     from pathlib import Path

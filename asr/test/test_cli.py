@@ -20,7 +20,7 @@ def test_asr():
 
 
 @pytest.mark.ci
-def test_asr_run(separate_folder):
+def test_asr_run(asr_tmpdir_w_params):
     import pathlib
     runner = CliRunner()
     result = runner.invoke(cli, ['run', '-h'])
@@ -123,7 +123,7 @@ def test_asr_find(recipe, hashish, output):
 
 
 @pytest.mark.ci
-def test_asr_find_no_versions(separate_folder):
+def test_asr_find_no_versions(asr_tmpdir_w_params):
     from asr.core import write_json
     data = {'dummydata': ['somecontent']}
     recipe = "asr.recipename"
