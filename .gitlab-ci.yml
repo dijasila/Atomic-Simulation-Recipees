@@ -74,7 +74,10 @@ python38:
 python36-mpi:
   image: python:3.6
   stage: test
-  script: tox -e py36-mpi
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py36-mpi
 
 # -------------- Integration tests --------------
 python36-gpaw:
