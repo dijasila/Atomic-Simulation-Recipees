@@ -48,14 +48,13 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
 def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
               theta=0, phi=0):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
-    from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
     from gpaw.symmetry import atoms2symmetry
 
     dct = None
-    if mpi.world.rank in ranks:
+    if calc.world.rank in ranks:
         if bands is None:
             n2 = calc.todict().get("convergence", {}).get("bands")
             if isinstance(n2, str):
@@ -97,7 +96,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
                         'efermi': efermi,
                         's_kvm': s_kvm})
 
-    dct = broadcast(dct, root=0, comm=mpi.world)
+    dct = broadcast(dct, root=0, comm=calc.world)
     if soc is None:
         raise NotImplementedError('soc=None is not implemented')
 

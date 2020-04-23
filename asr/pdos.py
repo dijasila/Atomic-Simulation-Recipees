@@ -38,16 +38,16 @@ class SOCDOS(DOS):
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        # Initiate calculator object and get the spin-orbit eigenvalues
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-        theta, phi = get_spin_axis()
-        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
-
         # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
         self.world = mpi.world
-        if mpi.world.rank == 0:
-            DOS.__init__(self, calc, npts=npts, **kwargs)
+        if self.world.rank == 0:
+            # Initiate calculator object and get the spin-orbit eigenvalues
+            calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            theta, phi = get_spin_axis()
+            e_skm, ef = calc2eigs(calc0, theta=theta, phi=phi, ranks=[0])
+
+            DOS.__init__(self, calc0, npts=npts, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
@@ -56,9 +56,9 @@ class SOCDOS(DOS):
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
-            bzkpts = calc.get_bz_k_points()
+            bzkpts = calc0.get_bz_k_points()
             size, offset = k2so(bzkpts)
-            bz2ibz = calc.get_bz_to_ibz_map()
+            bz2ibz = calc0.get_bz_to_ibz_map()
             shape = (self.nspins, ) + tuple(size) + (-1, )
             self.e_skn = e_skn[:, bz2ibz].reshape(shape)
         else:
