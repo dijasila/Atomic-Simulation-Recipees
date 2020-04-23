@@ -76,7 +76,7 @@ python36-mpi:
   stage: test
   script:
     - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
     - tox -e py36-mpi
 
 # -------------- Integration tests --------------
