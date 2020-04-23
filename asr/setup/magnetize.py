@@ -62,6 +62,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     if 'all' in states:
         assert len(states) == 1, \
             'Cannot combine "all" with other magnetic states.'
+        states = known_states
 
     for state in states:
         msg = f'{state} is not a known state!'

@@ -36,7 +36,7 @@ def test_setup_magnetize(asr_tmpdir_w_params, inputatoms):
 
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Ag2])
-@pytest.mark.parametrize("state", ['nm', 'fm', 'afm', 'nm,fm'])
+@pytest.mark.parametrize("state", ['all', 'nm', 'fm', 'afm', 'nm,fm'])
 @pytest.mark.parametrize("name", ['original.json', 'unrelaxed.json'])
 def test_setup_magnetize_state_inputs(asr_tmpdir_w_params, inputatoms,
                                       state, name):
@@ -45,6 +45,8 @@ def test_setup_magnetize_state_inputs(asr_tmpdir_w_params, inputatoms,
     inputatoms.write(name)
     main(state=state, name=name)
 
+    if state == 'all':
+        state = 'nm,fm'
     states = state.split(',')
     for directory in states:
         assert Path(directory).is_dir()
