@@ -8,6 +8,7 @@ stages:
 - systemtest
 - coverage
 - release
+- deploy
 
 before_script:
 - pip install pip --upgrade
@@ -109,6 +110,24 @@ coverage:
   stage: coverage
   script:
     - tox -e coverage-report
+  artifacts:
+    paths:
+      - .tox/htmlcov/
+
+# -------------- Deploy coverage report --------------
+pages:
+  stage: deploy
+  dependencies:
+    - coverage
+  script:
+    - mv .tox/htmlcov public
+  artifacts:
+    paths:
+      - public
+    expire_in: 3 weeks
+  only:
+    - master
+
 
 # -------------- Release --------------
 # (Only on git tagged commit)
