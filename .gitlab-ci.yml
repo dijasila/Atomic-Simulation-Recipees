@@ -77,7 +77,8 @@ python36-mpi:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
-    - tox -e py36-mpi
+    - useradd -m user
+    - su user -c 'tox -e py36-mpi'
 
 # -------------- Integration tests --------------
 python36-gpaw:
