@@ -28,26 +28,15 @@ def pytest_sessionstart(session):
 def pytest_configure(config):
     """Configure PyTest."""
     # register an additional marker
-    config.addinivalue_line(
-        "markers",
-        """integration_test: Marks an integration test""",
-    )
-    config.addinivalue_line(
-        "markers",
-        """integration_test_gpaw: Marks an integration
-        test specifically using gpaw""",
-    )
-    config.addinivalue_line(
-        "markers",
-        """acceptance_test: Marks an acceptance test""",
-    )
+    markers = [
+        "integration_test: Marks an integration test",
+        "integration_test_gpaw: Marks an integration test specifically using gpaw",
+        "acceptance_test: Marks an acceptance test",
+        "ci: Mark a test for running in continuous integration",
+        "parallel: Mark a test for parallel testing",
+    ]
+    for marker in markers:
+        config.addinivalue_line("markers", marker)
 
-    config.addinivalue_line(
-        "markers",
-        """ci: Mark a test for running in continuous integration"""
-    )
-
-    config.addinivalue_line(
-        "markers",
-        """parallel: Mark a test for parallel testing"""
-    )
+    config.addinivalue_line("addopts", "--doctest-modules")
+    config.addinivalue_line("filterwarnings", "once::Warning")
