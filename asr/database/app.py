@@ -131,7 +131,7 @@ def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
-    db = connect(database)
+    db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", database)
 
