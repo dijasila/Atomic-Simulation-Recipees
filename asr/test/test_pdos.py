@@ -1,16 +1,35 @@
 import pytest
 
 
+# ---------- Mocks ---------- #
+
+
+class MockProgressbar:
+    def __init__(self, *args, **kwargs):
+        """Ignore all input arguments."""
+        pass
+
+    def enumerate(self, iterable):
+        return enumerate(iterable)
+
+
+# ---------- Tests ---------- #
+
+
 @pytest.mark.ci
 def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
               test_material, get_webcontent):
     from asr.pdos import main
 
     mocker.patch("gpaw.utilities.dos.raw_orbital_LDOS", create=True)
-    mocker.patch("gpaw.utilities.progressbar.ProgressBar", create=True)
+    mocker.patch("gpaw.utilities.progressbar.ProgressBar",
+                 MockProgressbar)
     test_material.write('structure.json')
     main()
     get_webcontent()
+
+
+# ---------- Integration tests ---------- #
 
 
 @pytest.mark.integration_test_gpaw
