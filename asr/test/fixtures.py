@@ -89,7 +89,7 @@ def _get_webcontent(name='database.db'):
 
 @pytest.fixture(autouse=True)
 def set_asr_test_environ_variable(monkeypatch):
-    monkeypatch.setenv("ASRTESTENV", True)
+    monkeypatch.setenv("ASRTESTENV", "true")
 
 
 @pytest.fixture()
