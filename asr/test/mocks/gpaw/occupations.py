@@ -13,4 +13,4 @@ def occupation_numbers(occ, eps_skn, weight_k, nelectrons):
 class FermiDirac:
 
     def __init__(self, *args, **kwargs):
-        self = None
+        pass
