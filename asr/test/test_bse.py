@@ -3,7 +3,6 @@ import pytest
 
 @pytest.mark.ci
 def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
-    import numpy as np
     import gpaw
     from gpaw.response.bse import BSE
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
