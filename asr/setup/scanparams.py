@@ -1,4 +1,3 @@
-import click
 from asr.core import command, argument, option
 
 
@@ -23,33 +22,21 @@ def main(scanparams, symlink=True):
 
     This function can be useful when conducting convergence tests of recipes.
 
-    \b
-    Examples:
-    ---------
+    Examples
+    --------
     Test different kpoint density in the relax recipe
-        asr run "setup.scanparams asr.relax:kptdensity 3 4 5"
-    \b
+    >>> asr run "setup.scanparams asr.relax:kptdensity 3 4 5"
     Test combination of kpoint densities and planewave cutoff in relax:
-        asr run "setup.scanparams asr.relax:kptdensity 3 4 5
-            asr.relax:ecut 300 400 500"
+    >>> asr run "setup.scanparams asr.relax:kptdensity 3 4 5 asr.relax:ecut 300 400 500"
+
     """
     from pathlib import Path
-    from asr.core import get_recipes, ASRCommand, read_json, write_json
+    from asr.core import get_recipes, read_json, write_json
 
     paramdict = {}
-    recipes = get_recipes(sort=True)
+    recipes = get_recipes()
     for recipe in recipes:
-        if not recipe.main:
-            continue
-        params = {}
-        ctx = click.Context(ASRCommand)
-        opts = recipe.main.get_params(ctx)
-        for opt in opts:
-            if opt.name == 'help':
-                continue
-            params[opt.name] = opt.get_default(ctx)
-
-        paramdict[recipe.name] = params
+        paramdict[recipe.name] = recipe.defparams
 
     # Find asr.recipe:option
     optioninds = []

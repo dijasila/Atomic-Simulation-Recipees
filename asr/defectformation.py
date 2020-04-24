@@ -102,8 +102,11 @@ def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
 
 
 def check_and_get_general_inputs():
-    """Checks if all necessary input files and input parameters for this
-    recipe are acessible"""
+    """Determine whether all necessary files exist.
+
+    Checks if all necessary input files and input parameters for
+    this recipe are acessible.
+    """
     from asr.core import read_json
 
     # first, get path of 'gs.gpw' file of pristine_sc, as well as the path of
@@ -133,7 +136,9 @@ def check_and_get_general_inputs():
 
 
 def find_file_in_folder(filename, foldername):
-    """Finds a specific file within a folder starting from your current
+    """Find a specific file in folder.
+
+    Finds a specific file within a folder starting from your current
     position in the directory tree.
     """
     from pathlib import Path
@@ -219,7 +224,10 @@ def collect_data():
 
 
 def line_intersection(line1, line2):
-    """Helper function to calculate intersection of two given lines"""
+    """Get intersection between two lines.
+
+    Helper function to calculate intersection of two given lines.
+    """
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -237,7 +245,10 @@ def line_intersection(line1, line2):
 
 
 def line(p1, p2):
-    """Helper function to define a line"""
+    """Define a line between p1 and p2.
+
+    Helper function to define a line.
+    """
     A = (p1[1] - p2[1])
     B = (p2[0] - p1[0])
     C = (p1[0] * p2[1] - p2[0] * p1[1])
@@ -245,8 +256,10 @@ def line(p1, p2):
 
 
 def intersection(L1, L2):
-    """Helper function to calculate intersection of two given lines that were
-    defined with the upper 'line' function
+    """Get intersection between two lines L1 and L2.
+
+    Helper function to calculate intersection of two given lines that were
+    defined with the upper 'line' function.
     """
     D = L1[0] * L2[1] - L1[1] * L2[0]
     Dx = L1[2] * L2[1] - L1[1] * L2[2]
@@ -260,7 +273,9 @@ def intersection(L1, L2):
 
 
 def plot_formation_and_transitions(defect_dict, defectname, gap):
-    """Function to plot formation energies versus the Fermi energy and to
+    """XXX: Do me.
+
+    Function to plot formation energies versus the Fermi energy and to
     obtain transition points between most stable charge states of a given
     defect
     """

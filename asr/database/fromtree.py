@@ -68,8 +68,8 @@ def get_kvp_kd(resultsdct):
         key_descriptions[key] = \
             (desc['shortdesc'], desc['longdesc'], desc['units'])
 
-        if (key in resultsdct and desc['iskvp'] and
-            resultsdct[key] is not None):
+        if (key in resultsdct and desc['iskvp']
+           and resultsdct[key] is not None):
             kvp[key] = resultsdct[key]
 
     return kvp, key_descriptions
@@ -150,7 +150,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     from pathlib import Path
     from fnmatch import fnmatch
     from asr.database.material_fingerprint import main as mf
-    from gpaw.mpi import world
+    from ase.parallel import world
 
     def item_show_func(item):
         return str(item)
@@ -191,15 +191,15 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
                       flush=True)
             with chdir(folder):
-                kvp = {'folder': str(folder),
-                       'absfolder': str(Path(folder).resolve())}
+                kvp = {'folder': str(folder)}
                 data = {'__links__': {}}
 
                 if not Path(atomsname).is_file():
                     continue
 
-                if not mf.done:
-                    mf()
+                if world.size == 1:
+                    if not mf.done:
+                        mf()
 
                 atoms = read(atomsname, parallel=False)
                 data[atomsname] = read_json(atomsname)
@@ -215,6 +215,11 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                         kvp.update(tmpkvp)
                         data.update(tmpdata)
                         data['__links__'].update(tmplinks)
+
+            for key in filter(lambda x: x.startswith('results-'), data.keys()):
+                recipe = key[8:-5].replace('.', '_').replace('@', '_')
+                name = f'has_{recipe}'
+                kvp[name] = True
 
             keys.update(kvp.keys())
             db.write(atoms, data=data, **kvp)

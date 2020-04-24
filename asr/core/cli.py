@@ -1,8 +1,7 @@
+from asr.core import read_json
 import click
-from click import argument, option
-
-
-stdlist = list
+from pathlib import Path
+import subprocess
 
 
 def format(content, indent=0, title=None, pad=2):
@@ -48,8 +47,6 @@ def cli():
               help='COMMAND is not a recipe.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Show what would happen without doing anything.')
-@click.option('-p', '--parallel', type=int, help='Run on NCORES.',
-              metavar='NCORES')
 @click.option('-j', '--jobs', type=int,
               help='Run COMMAND in serial on JOBS processes.')
 @click.option('-S', '--skip-if-done', is_flag=True,
@@ -59,9 +56,9 @@ def cli():
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
 @click.pass_context
-def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
+def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
         skip_if_done, dont_raise):
-    """Run recipe, python function or shell command in multiple folders.
+    r"""Run recipe, python function or shell command in multiple folders.
 
     Can run an ASR recipe or a shell command. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
@@ -72,7 +69,7 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
     Provide extra arguments to the recipe using 'asr run "recipe --arg1
     --arg2"'.
 
-    Run a recipe in parallel using 'asr run -p NCORES "recipe --arg1"'.
+    XXX NO Run a recipe in parallel using 'asr run -p NCORES "recipe --arg1"'.
 
     Run command in multiple folders using "asr run recipe folder1/ folder2/".
     This is also compatible with input arguments to the current command
@@ -81,85 +78,45 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
     If you dont actually wan't to run the command, i.e., if it is a
     dangerous command, then use the "asr run --dry-run ..." syntax
     where ... could be any of the above commands. For example,
-    'asr run --dry-run --shell "echo Hello!" */' would run "echo Hello!"
+    'asr run --dry-run --shell "echo Hello!" \\*/' would run "echo Hello!"
     in all folders of the current directory.
 
     Examples
     --------
-    Run the relax recipe::
+    Run the relax recipe
+    >>> asr run relax
 
-        $ asr run relax
+    Run the calculate function in the gs module
+    >>> asr run gs@calculate
 
-    Run the calculate function in the gs module::
-        $ asr run gs@calculate
+    Get help for a recipe
+    >>> asr run "relax -h"
 
-    Get help for a recipe::
+    Specify an argument
+    >>> asr run "relax --ecut 600"
 
-        $ asr run "relax -h"
+    Run a recipe in parallel with an argument
+    >>> asr run -p 2 "relax --ecut 600"
 
-    Specify an argument::
+    Run relax recipe in two folders sequentially
+    >>> asr run relax folder1/ folder2/
 
-        $ asr run "relax --ecut 600"
+    Run a shell command in this folder
+    >>> asr run --shell "ase convert gs.gpw structure.json"
 
-    Run a recipe in parallel with an argument::
+    Run a shell command in "folder1/"
+    >>> asr run --shell "ase convert gs.gpw structure.json" folder1/
 
-        $ asr run -p 2 "relax --ecut 600"
+    Don't actually do anything just show what would be done
+    >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
 
-    Run relax recipe in two folders sequentially::
-
-        $ asr run relax folder1/ folder2/
-
-    Run a shell command in this folder::
-
-        $ asr run --shell "ase convert gs.gpw structure.json"
-
-    Run a shell command in "folder1/"::
-
-        $ asr run --shell "ase convert gs.gpw structure.json" folder1/
-
-    Don't actually do anything just show what would be done::
-
-        $ asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
     """
     import subprocess
-    from pathlib import Path
     from ase.parallel import parprint
     from asr.core import chdir
     from functools import partial
-    import os
-    assert not (parallel and jobs), '--parallel is incompatible with --jobs'
-
-    if os.environ.get('COVERAGE_PROCESS_START'):
-        # Then we have to log
-        import coverage
-        print('WARNING STARTING COVERAGE LOGGING (ONLY FOR TESTING)')
-        coverage.process_startup()
 
     prt = partial(parprint, flush=True)
-
-    if parallel:
-        assert not shell, \
-            ('You cannot execute a shell command in parallel. '
-             'Only supported for python modules.')
-
-        from gpaw.mpi import have_mpi
-        if not have_mpi:
-            cmd = f'mpiexec -np {parallel} gpaw python -m asr run'
-            cliargs = ''
-            for param, value in ctx.params.items():
-                if param in ['command', 'folders']:
-                    continue
-                tmp = param.replace('_', '-')
-                key = f' --{tmp}'
-                if isinstance(value, (bool, type(None))):
-                    if value:
-                        cliargs += key
-                else:
-                    cliargs += key + f' {value}'
-            cliargs += f' "{command}" ' + ' '.join(folders)
-            cmd += cliargs
-            return subprocess.run(cmd, shell=True,
-                                  check=True)
 
     if not folders:
         folders = ['.']
@@ -170,20 +127,26 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
 
     if jobs:
         assert jobs <= nfolders, 'Too many jobs and too few folders!'
+        processes = []
         for job in range(jobs):
-            cmd = 'asr run'
+            cmd = 'python3 -m asr run'.split()
             myfolders = folders[job::jobs]
             if skip_if_done:
-                cmd += ' --skip-if-done'
+                cmd.append('--skip-if-done')
             if dont_raise:
-                cmd += ' --dont-raise'
+                cmd.append('--dont-raise')
             if shell:
-                cmd += ' --shell'
+                cmd.append('--shell')
             if dry_run:
-                cmd += ' --dry-run'
-            cmd += f' "{command}" '
-            cmd += ' '.join(myfolders)
-            subprocess.Popen(cmd, shell=True)
+                cmd.append('--dry-run')
+            cmd.append(command)
+            cmd.extend(myfolders)
+            process = subprocess.Popen(cmd)
+            processes.append(process)
+
+        for process in processes:
+            returncode = process.wait()
+            assert returncode == 0
         return
 
     # Identify function that should be executed
@@ -197,7 +160,7 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
         for i, folder in enumerate(folders):
             with chdir(Path(folder)):
                 prt(f'Running {command} in {folder} ({i + 1}/{nfolders})')
-                subprocess.run(command, shell=True)
+                subprocess.run(command.split())
         return
 
     # If not shell then we assume that the command is a call
@@ -258,248 +221,180 @@ def run(ctx, shell, not_recipe, dry_run, parallel, command, folders, jobs,
                     raise
 
 
-@cli.command()
+@cli.command(name='list')
 @click.argument('search', required=False)
-def list(search):
+def asrlist(search):
     """List and search for recipes.
 
     If SEARCH is specified: list only recipes containing SEARCH in their
-    description."""
+    description.
+    """
     from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
              ['----', '-----------']]
 
-    for state in ['tested', 'untested']:
-        for recipe in recipes:
-            if not recipe.state == state.strip():
-                continue
-            longhelp = recipe._main.__doc__
-            if not longhelp:
-                longhelp = ''
-
-            shorthelp, *_ = longhelp.split('\n')
-
-            if state == 'untested':
-                shorthelp = '(Untested) ' + shorthelp
-            if search and (search not in longhelp and
-                           search not in recipe.name):
-                continue
-            status = [recipe.name[4:], shorthelp]
-            panel += [status]
-        panel += ['\n']
-
-    print(format(panel))
-
-
-@cli.command()
-def status():
-    """Show the status of the current folder for all ASR recipes"""
-    from asr.core import get_recipes
-    recipes = get_recipes()
-    panel = []
-    missing_files = []
     for recipe in recipes:
-        status = [recipe.name]
-        done = recipe.done
-        if done:
-            if recipe.creates:
-                status.append(f'Done -> {recipe.creates}')
-            else:
-                status.append(f'Done.')
-        else:
-            status.append(f'Todo')
-        if done:
-            panel.insert(0, status)
-        else:
-            panel.append(status)
-    
+        longhelp = recipe._main.__doc__
+        if not longhelp:
+            longhelp = ''
+
+        shorthelp, *_ = longhelp.split('\n')
+
+        if search and (search not in longhelp
+                       and search not in recipe.name):
+            continue
+        status = [recipe.name[4:], shorthelp]
+        panel += [status]
+    panel += ['\n']
+
     print(format(panel))
-    print(format(missing_files))
-
-
-@cli.command(context_settings={'ignore_unknown_options': True,
-                               'allow_extra_args': True})
-@argument('patterns', nargs=-1, required=False)
-@option('-s', '--show-output', is_flag=True,
-        help='Show standard output from tests.')
-@option('--raiseexc', is_flag=True,
-        help='Raise error if tests fail')
-@option('--tmpdir', help='Execution dir. If '
-        'not specified ASR will decide')
-@option('--tag', help='Only run tests with given tag')
-@option('--run-coverage', is_flag=True, help='Run coverage module')
-def test(patterns, show_output, raiseexc, tmpdir, tag, run_coverage):
-    from asr.core.testrunner import TestRunner
-    import os
-    from pathlib import Path
-
-    # We will log the test home directory if needed
-    cwd = Path('.').absolute()
-
-    if run_coverage:
-        os.environ['COVERAGE_PROCESS_START'] = str(cwd /
-                                                   '.coveragerc')
-
-    def get_tests():
-        tests = []
-
-        # Collect tests from recipes
-        from asr.core import get_recipes
-        recipes = get_recipes()
-        for recipe in recipes:
-            if recipe.tests:
-                id = 0
-                for test in recipe.tests:
-                    dct = {}
-                    dct.update(test)
-                    if 'name' not in dct:
-                        dct['name'] = f'{recipe.name}_{id}'
-                        id += 1
-                    tests.append(dct)
-
-        # Get cli tests
-        for i, test in enumerate(clitests):
-            clitest = {'name': f'clitest_{i}'}
-            clitest.update(test)
-            tests.append(clitest)
-
-        # Test docstrings
-        for recipe in recipes:
-            if recipe.__doc__:
-                tmptests = doctest(recipe.__doc__)
-                for i, test in enumerate(tmptests):
-                    test['name'] = f'{recipe.name}_doctest_{i}'
-                tests += tmptests
-        return tests
-
-    tests = get_tests()
-
-    if patterns:
-        tmptests = []
-        for test in tests:
-            for pattern in patterns:
-                if pattern in test['name']:
-                    tmptests.append(test)
-                    break
-        tests = tmptests
-
-    if tag:
-        tmptests = []
-        for test in tests:
-            tags = test.get('tags', [])
-            if tag in tags:
-                tmptests.append(test)
-
-        tests = tmptests
-    failed = TestRunner(tests, show_output=show_output).run(tmpdir=tmpdir)
-    if raiseexc and failed:
-        raise AssertionError('Some tests failed!')
-
-
-def doctest(text):
-    text = text.split('\n')
-    tests = []
-    cli = []
-    for line in text:
-        if not line.startswith(' ' * 8) and cli:
-            tests.append({'cli': cli})
-            cli = []
-        line = line[8:]
-        # print(line)
-        if line.startswith('$ '):
-            cli.append(line[2:])
-        elif line.startswith('  ...'):
-            cli[-1] += line[5:]
-    else:
-        if cli:
-            tests.append({'cli': cli})
-
-    return tests
 
 
 @cli.command()
-@click.option('-t', '--tasks', type=str,
-              help=('Only choose specific recipes and their dependencies '
-                    '(comma separated list of asr.recipes)'),
-              default=None)
-@click.option('--doforstable',
-              help='Only do these recipes for stable materials')
-def workflow(tasks, doforstable):
-    """Helper function to make workflows for MyQueue"""
-    from asr.core import get_recipes, get_dep_tree
+@click.argument('name')
+@click.option('--show/--dont-show', default=True, is_flag=True,
+              help='Show generated figures')
+def results(name, show):
+    """Show results for a specific recipe.
 
-    body = ''
-    body += 'from myqueue.task import task\n\n\n'
+    Generate and save figures relating to recipe with NAME. Examples
+    of valid names are asr.bandstructure, asr.gs etc.
 
-    isstablefunc = """def is_stable():
-    # Example of function that looks at the heat of formation
-    # and returns True if the material is stable
-    from asr.core import read_json
-    from pathlib import Path
-    fname = 'results_convex_hull.json'
-    if not Path(fname).is_file():
-        return False
+    """
+    from matplotlib import pyplot as plt
+    from asr.core import get_recipe_from_name
+    from asr.core.material import (get_material_from_folder,
+                                   get_webpanels_from_material,
+                                   make_panel_figures)
+    recipe = get_recipe_from_name(name)
 
-    data = read_json(fname)
-    if data['hform'] < 0.05:
-        return True
-    return False\n\n\n"""
+    if recipe.webpanel is None:
+        print('{recipe.name} does not have any results to present!')
+        return
 
-    if doforstable:
-        body += isstablefunc
+    assert Path(f"results-{recipe.name}.json").is_file(), \
+        'No results file for {recipe.name}, so I cannot show the results!'
 
-    body += 'def create_tasks():\n    tasks = []\n'
-
-    if tasks:
-        names = []
-        for task in tasks.split(','):
-            names += [recipe.name for recipe in get_dep_tree(task)]
-
-    for recipe in get_recipes(sort=True):
-        indent = 4
-        if tasks:
-            if recipe.name not in names:
-                continue
-
-        if not recipe.group:
-            continue
-
-        if recipe.group not in ['structure', 'property']:
-            continue
-
-        if recipe.resources:
-            resources = recipe.resources
-        else:
-            resources = '1:10m'
-
-        if doforstable and recipe.name in doforstable.split(','):
-            indent = 8
-            body += '    if is_stable():\n'
-        body += ' ' * indent + f"tasks += [task('{recipe.name}@{resources}'"
-        if recipe.dependencies:
-            deps = ','.join(recipe.dependencies)
-            body += f", deps='{deps}')"
-        else:
-            body += ')'
-        body += ']\n'
-
-    print(body)
-
-    print('    return tasks')
+    material = get_material_from_folder('.')
+    panels = get_webpanels_from_material(material, recipe)
+    make_panel_figures(material, panels)
+    if show:
+        plt.show()
 
 
-clitests = [{'cli': ['asr run -h'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run "setup.params asr.relax:fixcell True"'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['asr run --dry-run setup.params'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['mkdir folder1',
-                     'mkdir folder2',
-                     'asr run setup.params folder1 folder2'],
-             'tags': ['gitlab-ci']},
-            {'cli': ['touch str1.json',
-                     'asr run --shell "mv str1.json str2.json"'],
-             'tags': ['gitlab-ci']}]
+@cli.command()
+@click.argument('recipe')
+@click.argument('hashes', required=False, nargs=-1, metavar='[HASH]...')
+def find(recipe, hashes):
+    """Find result files.
+
+    Find all results files belonging to RECIPE. Optionally, filter
+    these according to a certain ranges of Git hashes (requires having
+    Git installed). Valid recipe names are asr.bandstructure etc.
+
+    Find all results files calculated with a checkout of ASR that is
+    an ancestor of HASH (including HASH): "asr find asr.bandstructure
+    HASH".
+
+    Find all results files calculated with a checkout of ASR that is
+    an ancestor of HASH2 but not HASH1: "asr find asr.bandstructure
+    HASH1..HASH2" (not including HASH1).
+
+    Find all results files that are calculated with a checkout of ASR
+    that is an ancestor of HASH1 or HASH2: "asr find asr.bandstructure
+    HASH1 HASH2".
+
+    This is basically a wrapper around Git's rev-list command and all
+    hashes are forwarded to this command. For example, we can use the
+    special HASH^ to refer to the parent of HASH.
+
+    """
+    from os import walk
+
+    if not is_asr_initialized():
+        initialize_asr_configuration_dir()
+
+    recipe_results_file = f"results-{recipe}.json"
+
+    if hashes:
+        hashes = list(hashes)
+        check_git()
+
+    matching_files = []
+    for root, dirs, files in walk(".", followlinks=False):
+
+        if recipe_results_file in set(files):
+            matching_files.append(str(Path(root) / recipe_results_file))
+
+    if hashes:
+        rev_list = get_git_rev_list(hashes)
+        matching_files = list(
+            filter(lambda x: extract_hash_from_file(x) in rev_list,
+                   matching_files)
+        )
+
+    if matching_files:
+        print("\n".join(matching_files))
+
+
+def extract_hash_from_file(filename):
+    """Extract the ASR hash from an ASR results file."""
+    results = read_json(filename)
+    try:
+        version = results['__versions__']['asr']
+    except KeyError:
+        version = None
+    except Exception:
+        print(f"Problem when extration asr git hash from {filename}")
+        raise
+
+    if version and '-' in version:
+        return version.split('-')[1]
+
+
+def check_git():
+    """Check that Git is installed."""
+    proc = subprocess.Popen(['git'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    assert not err, f"{err}\nProblem with your Git installation."
+
+
+def get_git_rev_list(hashes, home=None):
+    """Get Git rev list from HASH1 to HASH2."""
+    cfgdir = get_config_dir(home=home)
+
+    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    if not (cfgdir / 'asr').is_dir():
+        subprocess.check_output(['git', 'clone', git_repo],
+                                cwd=cfgdir)
+
+    asrdir = cfgdir / "asr"
+    subprocess.check_output(['git', 'pull'],
+                            cwd=asrdir)
+    out = subprocess.check_output(['git', 'rev-list'] + hashes,
+                                  cwd=asrdir)
+    return set(out.decode("utf-8").strip("\n").split("\n"))
+
+
+def is_asr_initialized(home=None):
+    """Determine if ASR is initialized."""
+    cfgdir = get_config_dir(home=home)
+    return (cfgdir).is_dir()
+
+
+def initialize_asr_configuration_dir(home=None):
+    """Construct ASR configuration dir."""
+    cfgdir = get_config_dir(home=home)
+    cfgdir.mkdir()
+
+
+def get_config_dir(home=None):
+    """Get path to ASR configuration dir."""
+    if home is None:
+        home = Path.home()
+    return home / '.asr'

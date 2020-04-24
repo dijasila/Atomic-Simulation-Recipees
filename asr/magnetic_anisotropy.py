@@ -30,6 +30,9 @@ def spin_axis(theta, phi):
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
+    if row.get('magstate', 'NM') == 'NM':
+        return []
+
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
@@ -54,19 +57,20 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():
     """Calculate the magnetic anisotropy.
+
     Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
-    Returns:
+    Returns
+    -------
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
     import numpy as np
     from asr.core import file_barrier, read_json
-    from gpaw.mpi import world
+    from gpaw.mpi import world, serial_comm
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 
@@ -125,11 +129,11 @@ def main():
     results.update({'spin_axis': axis,
                     'theta': theta,
                     'phi': phi,
-                    'E_x': E_x,
-                    'E_y': E_y,
-                    'E_z': E_z,
-                    'dE_zx': dE_zx,
-                    'dE_zy': dE_zy})
+                    'E_x': E_x * 1e3,
+                    'E_y': E_y * 1e3,
+                    'E_z': E_z * 1e3,
+                    'dE_zx': dE_zx * 1e3,
+                    'dE_zy': dE_zy * 1e3})
     world.barrier()
     if world.rank == 0:
         Path('gs_nosym.gpw').unlink()

@@ -19,21 +19,24 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db):
+def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_kd
     from ase.db.web import create_key_descriptions
 
-    metadata = db.metadata
-    if 'keys' not in metadata:
-        raise KeyError('Missing list of keys for database. '
-                       'To fix this either: run database.fromtree again. '
-                       'or python -m asr.database.set_metadata DATABASEFILE.')
-
-    keys = metadata.get('keys')
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
+
+    if db is not None:
+        metadata = db.metadata
+        if 'keys' not in metadata:
+            raise KeyError('Missing list of keys for database. '
+                           'To fix this either: run database.fromtree again. '
+                           'or python -m asr.database.set_metadata DATABASEFILE.')
+        keys = metadata.get('keys')
+    else:
+        keys = list(flatten.keys())
 
     kd = {}
     for key in keys:
@@ -128,12 +131,14 @@ def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
-    db = connect(database)
+    db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", database)
 
     # Make temporary directory
     (tmpdir / name).mkdir()
+
+    metadata = db.metadata
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
@@ -163,42 +168,46 @@ def initialize_project(database):
 def main(databases, host="0.0.0.0", test=False):
     for database in databases:
         initialize_project(database)
+
     setup_app()
+
     if test:
         import traceback
         app.testing = True
-        c = app.test_client()
-        for name in projects:
-            print(f'Testing {name}')
-            c.get(f'/{name}/').data.decode()
-            project = projects[name]
-            db = project['database']
-            uid_key = project['uid_key']
-            n = len(db)
-            uids = []
-            for row in db.select(include_data=False):
-                uids.append(row.get(uid_key))
-                if len(uids) == n:
-                    break
-            print(len(uids))
-            for i, uid in enumerate(uids):
-                url = f'/{name}/row/{uid}'
-                print(f'\rRows: {i + 1}/{len(uids)} {url}', end='', flush=True)
-                try:
-                    c.get(url).data.decode()
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    print()
-                    row = db.get(uid=uid)
-                    exc = traceback.format_exc()
-                    exc += (f'Problem with {uid}: '
-                            f'Formula={row.formula} '
-                            f'Prototype={row.crystal_prototype}\n' +
-                            '-' * 20 + '\n')
-                    with Path('errors.txt').open(mode='a') as fid:
-                        fid.write(exc)
-                    print(exc)
+        with app.test_client() as c:
+            for name in projects:
+                print(f'Testing {name}')
+                c.get(f'/{name}/').data.decode()
+                project = projects[name]
+                db = project['database']
+                uid_key = project['uid_key']
+                n = len(db)
+                uids = []
+                for row in db.select(include_data=False):
+                    uids.append(row.get(uid_key))
+                    if len(uids) == n:
+                        break
+                print(len(uids))
+
+                for i, uid in enumerate(uids):
+                    url = f'/{name}/row/{uid}'
+                    print(f'\rRows: {i + 1}/{len(uids)} {url}',
+                          end='', flush=True)
+                    try:
+                        c.get(url).data.decode()
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception:
+                        print()
+                        row = db.get(uid=uid)
+                        exc = traceback.format_exc()
+                        exc += (f'Problem with {uid}: '
+                                f'Formula={row.formula} '
+                                f'Prototype={row.crystal_prototype}\n'
+                                + '-' * 20 + '\n')
+                        with Path('errors.txt').open(mode='a') as fid:
+                            fid.write(exc)
+                            print(exc)
     else:
         app.run(host="0.0.0.0", debug=True)
 

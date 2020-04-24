@@ -1,22 +1,152 @@
-tests:
-  image:  python:3.6
+image: python
+
+stages:
+- build
+- style
+- test
+- integrationtest
+- systemtest
+- coverage
+- release
+- deploy
+
+before_script:
+- pip install pip --upgrade
+- pip install -r dev-requirements.txt
+
+# -------------- Build --------------
+build:
+  stage: build
+  script: tox -e build
+  artifacts:
+    paths:
+    - dist/
+    expire_in: 1 week
+
+# -------------- Style tests --------------
+flake8:
+  image: python:3.7
+  stage: style
+  script: tox -e flake8
+
+readme:
+  image: python:3.7
+  stage: style
+  script: tox -e readme
+
+docs:
+  image: python:3.7
+  stage: style
+  script: tox -e docs
+
+# -------------- Unit tests --------------
+doctest:
+  image: python:3.7
+  stage: test
+  script: tox -e doctest
+
+python36:
+  image: python:3.6
+  stage: test
+  script: tox -e py36
+  artifacts:
+    paths:
+      - .tox/.coverage*
+
+python37:
+  image: python:3.7
+  stage: test
+  script: tox -e py37
+  artifacts:
+    paths:
+      - .tox/.coverage*
+
+python38:
+  image: python:3.8
+  stage: test
+  script: tox -e py38
+  artifacts:
+    paths:
+      - .tox/.coverage*
+
+# -------------- Parallel tests --------------
+
+python36-mpi:
+  image: python:3.6
+  stage: test
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
+    - useradd -m user
+    - su user -c 'tox -e py36-mpi'
+
+# -------------- Integration tests --------------
+python36-gpaw:
+  image: python:3.6
+  stage: integrationtest
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - pip install flake8 coverage
-    - pip install -r requirements.txt
-    - flake8 asr
-    - pip install git+https://gitlab.com/gpaw/gpaw.git
-    - gpaw install-data paw-datasets --register
-    - tdir=$(mktemp -d /tmp/asr-test-XXXXXXXXX)
-    - coverage run -m asr test --tag gitlab-ci --tmpdir $tdir --raiseexc --run-coverage
-    - coverage combine $tdir/*/.coverage.* .coverage.*
-    - coverage report --include '*/asr/asr/*'
+    - tox -e py36-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
 
-docs_test:
-  image: python:3.6
+python37-gpaw:
+  image: python:3.7
+  stage: integrationtest
   script:
-    - pip install .[docs]
-    - which sphinx-build
-    - cd $CI_PROJECT_DIR/docs
-    - make html
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py37-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
+
+python38-gpaw:
+  image: python:3.8
+  stage: integrationtest
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py38-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
+
+
+# -------------- Coverage --------------
+coverage:
+  image: python:3.7
+  stage: coverage
+  script:
+    - tox -e coverage-report
+  artifacts:
+    paths:
+      - .tox/htmlcov/
+
+# -------------- Deploy coverage report --------------
+pages:
+  stage: deploy
+  dependencies:
+    - coverage
+  script:
+    - mv .tox/htmlcov public
+  artifacts:
+    paths:
+      - public
+    expire_in: 3 weeks
+  only:
+    - master
+
+
+# -------------- Release --------------
+# (Only on git tagged commit)
+release:
+  stage: release
+  script: tox -e release
+  artifacts:
+    paths:
+    - dist
+  only:
+    - tags
