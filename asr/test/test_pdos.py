@@ -14,7 +14,7 @@ class MockProgressbar:
 
 
 def get_number_of_electrons(angular):
-    """Make a simple calculation of the number of electrons 
+    """Make a simple calculation of the number of electrons
     based on the occurence of orbitals."""
     count = 0
     count += 2 * angular.count('s')
@@ -57,6 +57,7 @@ def mock_ldos(calc, a, spin, angular='spdf', *args, **kwargs):
 @pytest.mark.ci
 def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
               test_material, get_webcontent):
+    import numpy as np
     from asr.pdos import main
 
     mocker.patch("gpaw.utilities.progressbar.ProgressBar",
@@ -66,8 +67,33 @@ def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
     mocker.patch("asr.pdos.raw_spinorbit_orbital_LDOS_hack",
                  mock_ldos)
     test_material.write('structure.json')
-    main()
-    get_webcontent()
+    results = main()
+
+    # We can check the dos at ef
+    dos_at_ef_nosoc = results['dos_at_ef_nosoc']
+    # We should be able to compute dos_at_ef manually for the hom. el. gas
+    # at different fermi levels, gaps, exchange splittings and dimensionalities
+    # This could be a very good ci test!
+
+    # When mocking, spin-orbit coupling should not make a difference
+    dos_at_ef_soc = results['dos_at_ef_soc']
+    assert dos_at_ef_nosoc == pytest.approx(dos_at_ef_soc)
+
+    # For the pdos, make a sum over spin, symbol and angular momentum
+    for pdos_result in [results['pdos_nosoc'], results['pdos_soc']]:
+        e_e = pdos_result['energies']
+        ef = pdos_result['efermi']  # remember to check me!                             XXX
+        efe = np.argmin(np.abs(e_e - ef))
+        dos_at_ef = sum([pdos_e[efe] for _, pdos_e in pdos_result['pdos_syl'].items()])
+        # With the mocked raw_orbital_LDOS, total projection weight is 1
+        assert dos_at_ef == pytest.approx(dos_at_ef_nosoc, abs=1e-2)  # ef not exact
+
+    # Check content of webpanel
+    content = get_webcontent()
+    assert ('<td>DensityofstatesattheFermienergyw/osoc.</td>'
+            f'<td>{dos_at_ef_nosoc:0.2f}states/(eV*unitcell)</td>') in content
+    assert ('<td>DensityofstatesattheFermienergy</td>'
+            f'<td>{dos_at_ef_soc:0.2f}states/(eV*unitcell)</td>') in content
 
 
 # ---------- Integration tests ---------- #
