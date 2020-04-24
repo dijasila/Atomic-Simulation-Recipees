@@ -7,8 +7,8 @@ def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
     from gpaw.response.bse import BSE
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     gpaw.GPAW._get_band_gap.return_value = 1.0
-    mocker.patch.object(gpaw.GPAW, "get_fermi_level")
-    gpaw.GPAW.get_fermi_level.return_value = 0.5
+    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
+    gpaw.GPAW._get_fermi_level.return_value = 0.5
 
     from asr.bse import main
     test_material.write("structure.json")
