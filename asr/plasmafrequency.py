@@ -92,10 +92,10 @@ def main(tetra=True):
                               pbc=[True, True, False],
                               filename=None)
     finally:
+        world.barrier()
         if world.rank == 0:
             es_file = Path("es_plasma.gpw")
             es_file.unlink()
-        world.barrier()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv,
             '__key_descriptions__': {'plasmafreq_vv':

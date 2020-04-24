@@ -696,6 +696,7 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
 
     # Wait for file:
     i = 0
+    world.barrier()
     while not all([path.is_file() for path in paths]):
         filenames = ', '.join([path.name for path in paths
                                if not path.is_file()])

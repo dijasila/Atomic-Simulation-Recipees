@@ -150,7 +150,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     from pathlib import Path
     from fnmatch import fnmatch
     from asr.database.material_fingerprint import main as mf
-    from gpaw.mpi import world
+    from ase.parallel import world
 
     def item_show_func(item):
         return str(item)
@@ -197,8 +197,9 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                 if not Path(atomsname).is_file():
                     continue
 
-                if not mf.done:
-                    mf()
+                if world.size == 1:
+                    if not mf.done:
+                        mf()
 
                 atoms = read(atomsname, parallel=False)
                 data[atomsname] = read_json(atomsname)
