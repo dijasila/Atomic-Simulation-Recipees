@@ -3,31 +3,44 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Atomic Simulation Recipes's documentation!
-=====================================================
-Recipes for Atomic Scale Materials Research.
-
-Warning: This project is under active development but you are welcome to try it out.
-
-Collection of python recipes for common (and not so common)
-tasks perfomed in atomic scale materials research. These tasks include
-relaxation of structures, calculating ground states, calculating band
-structures, calculating dielectric functions and so on.
-
-
 .. toctree::
    :maxdepth: 2
    :hidden:
 
    src/install
-   src/getting-started
-   src/tutorials
-   src/howtoguides
-   src/topic-guides
+   src/tutorials/tutorials
+   src/howtoguides/howtoguides
+   src/explanations/explanations
    src/api
-   src/recipes
    src/developing
 
+
+Welcome to Atomic Simulation Recipes's documentation!
+=====================================================
+Recipes for Atomic Scale Materials Research.
+
+Collection of python recipes for tasks perfomed in atomic scale
+materials research. These tasks include relaxation of structures,
+calculating ground states, calculating band structures, calculating
+dielectric functions and so on.
+
+First time here: :ref:`Getting started`
+
+
+.. Admonition:: Overview of documentation
+
+   The documentation is divided into four categories:
+   
+   * :ref:`Tutorials`: Lessons that take the reader by the hand though a
+     series of steps to complete a project.
+   * :ref:`How to guides`: Concrete solutions to common tasks.
+   * :ref:`Explanations`: Explanations that clarify and
+     illuminate a particular topic.
+   * :ref:`API Reference`: Technical documentation of the code.
+
+   See also Daniele Procida's PyCon 2017 talk "`How documentation
+   works... <https://www.youtube.com/watch?v=azf6yzuJt54>`_" for a
+   detailed explanation of this division.
 
 Indices and tables
 ==================

@@ -9,8 +9,7 @@ class NoGapError(Exception):
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.structureinfo',
                        'asr.magnetic_anisotropy'],
-         creates=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                  'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
+         creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def refine(gpwfilename='gs.gpw'):
@@ -19,7 +18,7 @@ def refine(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
-    socs = [True, False]
+    socs = [True]
 
     for soc in socs:
         theta, phi = get_spin_axis()
@@ -27,6 +26,7 @@ def refine(gpwfilename='gs.gpw'):
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
@@ -35,11 +35,59 @@ def refine(gpwfilename='gs.gpw'):
                 raise NoGapError('Gap was zero')
             if os.path.exists(gpw2):
                 continue
-            nonsc_sphere(gpw=gpwfilename, soc=soc, bandtype=bt)
+            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
+            nonsc_sphere(gpw=gpwrefined, soc=soc, bandtype=bt)
 
 
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
+
+
+def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
+    from gpaw import GPAW
+    import numpy as np
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
+    # Get calc and current kpts
+    calc = GPAW(gpw, txt=None)
+    ndim = calc.atoms.pbc.sum()
+    k_kc = calc.get_ibz_k_points()
+    cell_cv = calc.atoms.get_cell()
+
+    # Find energies and VBM/CBM
+    theta, phi = get_spin_axis()
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    if e_skn.ndim == 2:
+        e_skn = e_skn[np.newaxis]
+    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                            output=None)
+    # Make a sphere of kpts of high density
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 19)
+    nkpts = nkpts + (1 - (nkpts % 2))
+    assert nkpts % 2 != 0
+    ksphere = kptsinsphere(cell_cv, npoints=nkpts,
+                           erange=500e-3, m=1.0,
+                           dimensionality=ndim)
+
+    # Position sphere around VBM if bandtype == vb
+    # Else around CBM
+    if bandtype == 'vb':
+        newk_kc = k_kc[k1] + ksphere
+    elif bandtype == 'cb':
+        newk_kc = k_kc[k2] + ksphere
+    else:
+        raise ValueError(f'Bandtype {bandtype} not recognized')
+
+    # Calculate energies for new k-grid
+    fname = '_refined'
+    calc.set(kpts=newk_kc,
+             symmetry='off',
+             txt=fname + '.txt')
+    atoms = calc.get_atoms()
+    atoms.get_potential_energy()
+    calc.write(fname + '.gpw')
+    return fname + '.gpw'
 
 
 def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
@@ -229,6 +277,11 @@ def get_emass_dict_from_row(row):
     return electron_dict, hole_dict
 
 
+def get_range(mass, _erange):
+    from ase.units import Ha, Bohr
+    return (2 * mass * _erange / Ha) ** 0.5 / Bohr
+
+
 def make_the_plots(row, *args):
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
@@ -287,9 +340,6 @@ def make_the_plots(row, *args):
 
     erange = 0.05
 
-    def get_range(mass, _erange):
-        return (2 * mass * _erange / Ha) ** 0.5 / Bohr
-
     plt_count = 0
     for direction in range(3):
         y1 = None
@@ -301,7 +351,7 @@ def make_the_plots(row, *args):
                                  gridspec_kw={'width_ratios': [1]})
 
         should_plot = True
-        for cb_key in cb_indices:
+        for cb_key in cb_indices[0:1]:
             cb_tuple = convert_key_to_tuple(cb_key)
             # Save something
             data = results[cb_key]
@@ -320,11 +370,19 @@ def make_the_plots(row, *args):
             kpts_kv *= Bohr
 
             e_k = fit_data['e_k'] - reference
-            sz_k = fit_data['spin_k']
+            e_km = fit_data['e_km'] - reference
+            sz_km = fit_data['spin_km']
             emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.min(e_k) - np.min(emodel_k)
 
-            things = axes.scatter(xk, e_k, c=sz_k, vmin=-1, vmax=1)
+            shape = e_km.shape
+            perm = (-sz_km).argsort(axis=None)
+            repeated_xcoords = np.vstack([xk] * shape[1]).T
+            flat_energies = e_km.ravel()[perm]
+            flat_xcoords = repeated_xcoords.ravel()[perm]
+            flat_spins = sz_km.ravel()[perm]
+            things = axes.scatter(flat_xcoords, flat_energies,
+                                  c=flat_spins, vmin=-1, vmax=1)
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -358,7 +416,7 @@ def make_the_plots(row, *args):
                                  sharey=True,
                                  gridspec_kw={'width_ratios': [1]})
 
-        for vb_key in vb_indices:
+        for vb_key in vb_indices[0:1]:
             # Save something
             vb_tuple = convert_key_to_tuple(vb_key)
             data = results[vb_key]
@@ -370,18 +428,26 @@ def make_the_plots(row, *args):
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            xk2, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
+            e_k = fit_data['e_k'] - reference
+            e_km = fit_data['e_km'] - reference
+            sz_km = fit_data['spin_km']
+            xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
             xk2 -= xk2[-1] / 2
+
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
-
-            e_k = fit_data['e_k'] - reference
-            sz_k = fit_data['spin_k']
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
             emodel_k += np.max(e_k) - np.max(emodel_k)
 
-            things = axes.scatter(xk2, e_k, c=sz_k, vmin=-1, vmax=1)
+            shape = e_km.shape
+            perm = (-sz_km).argsort(axis=None)
+            repeated_xcoords = np.vstack([xk2] * shape[1]).T
+            flat_energies = e_km.ravel()[perm]
+            flat_xcoords = repeated_xcoords.ravel()[perm]
+            flat_spins = sz_km.ravel()[perm]
+            things = axes.scatter(flat_xcoords, flat_energies,
+                                  c=flat_spins, vmin=-1, vmax=1)
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -406,6 +472,7 @@ def make_the_plots(row, *args):
             fname = args[plt_count + nplts // 2]
             plt.savefig(fname)
             plt.close()
+
         plt_count += 1
     # Make final column with table of numerical vals
 
@@ -554,8 +621,7 @@ def check_soc(spin_band_dict):
 
 
 @command('asr.emasses',
-         requires=['em_circle_vb_nosoc.gpw', 'em_circle_cb_nosoc.gpw',
-                   'em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json'],
@@ -657,6 +723,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + '3rdOrderr2'] = out_dict['r']
         results_dict[index][prefix + '2ndOrderMAE'] = out_dict['mae2']
         results_dict[index][prefix + '3rdOrderMAE'] = out_dict['mae3']
+        results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
 def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
@@ -707,24 +774,66 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
 
         calc_bs = calculate_bs_along_emass_vecs
+        if offset == 0:
+            nbands = len(indices)
+        else:
+            nbands = 1
         masses[b]['bs_along_emasses'] = calc_bs(masses[b],
                                                 soc, bandtype, calc,
                                                 spin=b[0],
-                                                band=b[1])
+                                                band=b[1],
+                                                nbands=nbands)
+        masses[b]['wideareaMAE'] = wideMAE(masses[b], bandtype,
+                                           cell_cv)
         masses[b]['offset'] = offset
 
     return masses
 
 
+def wideMAE(masses, bt, cell_cv, erange=25e-3):
+    from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha
+    import numpy as np
+
+    erange = erange / Ha
+
+    maes = []
+    for i, mass in enumerate(masses['mass_u']):
+        if mass is np.nan or np.isnan(mass) or mass is None:
+            continue
+
+        fit_data = masses['bs_along_emasses'][i]
+        c = masses['c']
+        k_kc = fit_data['kpts_kc']
+        k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+        e_k = fit_data['e_k']
+
+        if bt == "vb":
+            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            sk_kv = k_kv[ks]
+        else:
+            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            sk_kv = k_kv[ks]
+
+        emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+
+        mae = np.mean(np.abs(emodel_k - e_k[ks]))
+        maes.append(mae)
+
+    return maes
+
+
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
                                   spin, band,
-                                  erange=500e-3, npoints=91):
+                                  erange=500e-3, npoints=91,
+                                  nbands=1):
     from pathlib import Path
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     import numpy as np
@@ -738,26 +847,27 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         name = f'{identity}.gpw'
 
         if not Path(name).is_file():
-            # embzcut stuff
-            kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
-            assert not np.isnan(kmax)
-            kd_v = masses_dict['eigenvectors_vu'][:, u]
-            assert not (np.isnan(kd_v)).any()
-            k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
-            k_kv += masses_dict['ke_v']
-            k_kv /= Bohr
-            assert not (np.isnan(k_kv)).any()
-            k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
-            assert not (np.isnan(k_kc)).any()
-            atoms = calc.get_atoms()
-            for i, pb in enumerate(atoms.pbc):
-                if not pb:
-                    k_kc[:, i] = 0
-            assert not (np.isnan(k_kc)).any()
-            calc.set(kpts=k_kc, symmetry='off',
-                     txt=f'{identity}.txt', fixdensity=True)
-            atoms.get_potential_energy()
-            calc.write(name)
+            with file_barrier([name]):
+                # embzcut stuff
+                kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+                assert not np.isnan(kmax)
+                kd_v = masses_dict['eigenvectors_vu'][:, u]
+                assert not (np.isnan(kd_v)).any()
+                k_kv = (np.linspace(-1, 1, npoints) * kmax * kd_v.reshape(3, 1)).T
+                k_kv += masses_dict['ke_v']
+                k_kv /= Bohr
+                assert not (np.isnan(k_kv)).any()
+                k_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=k_kv)
+                assert not (np.isnan(k_kc)).any()
+                atoms = calc.get_atoms()
+                for i, pb in enumerate(atoms.pbc):
+                    if not pb:
+                        k_kc[:, i] = 0
+                assert not (np.isnan(k_kc)).any()
+                calc.set(kpts=k_kc, symmetry='off',
+                         txt=f'{identity}.txt', fixdensity=True)
+                atoms.get_potential_energy()
+                calc.write(name)
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
@@ -767,10 +877,19 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
         sz_km = s_kvm[:, get_spin_index(), :]
 
-        results_dicts.append(dict(bt=bt,
-                                  kpts_kc=k_kc,
-                                  e_k=e_km[:, band],
-                                  spin_k=sz_km[:, band]))
+        dct = dict(bt=bt,
+                   kpts_kc=k_kc,
+                   e_k=e_km[:, band],
+                   spin_k=sz_km[:, band])
+        if nbands != 1:
+            if bt == "vb":
+                dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
+                dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
+            else:
+                dct['e_km'] = e_km[:, band:band + nbands]
+                dct['spin_km'] = sz_km[:, band:band + nbands]
+
+        results_dicts.append(dct)
 
     return results_dicts
 
@@ -907,7 +1026,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     sort_args = np.argsort(mass_u)
 
     mass_u = mass_u[sort_args]
-    w3_vn = w3_vn[sort_args, :]
+    w3_vn = w3_vn[:, sort_args]
 
     out = dict(mass_u=mass_u,
                eigenvectors_vu=w3_vn,

@@ -135,7 +135,8 @@ def gs(kptdensity=5.0, ecut=200.0):
         'gs.gpw',
         txt='gs_gw.txt',
         fixdensity=True,
-        kpts=kpts)
+        kpts=kpts,
+        parallel={'domain': 1})
     calc.get_potential_energy()
     calc.diagonalize_full_hamiltonian(ecut=ecut)
     calc.write('gs_gw_nowfs.gpw')

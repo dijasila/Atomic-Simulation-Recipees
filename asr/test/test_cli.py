@@ -20,7 +20,7 @@ def test_asr():
 
 
 @pytest.mark.ci
-def test_asr_run(separate_folder):
+def test_asr_run(asr_tmpdir_w_params):
     import pathlib
     runner = CliRunner()
     result = runner.invoke(cli, ['run', '-h'])
@@ -74,7 +74,66 @@ def test_asr_list():
 
 
 @pytest.mark.ci
-def test_asr_status():
+def test_asr_results():
     runner = CliRunner()
-    result = runner.invoke(cli, ['status'])
+    result = runner.invoke(cli, ['results', '-h'])
     assert result.exit_code == 0
+    assert 'Usage: cli results [OPTIONS] NAME' in result.output
+
+
+@pytest.mark.ci
+def test_asr_find_help():
+    runner = CliRunner()
+    result = runner.invoke(cli, ['find', '-h'])
+    assert result.exit_code == 0
+    assert 'Usage: cli find [OPTIONS] RECIPE [HASH]...' in result.output
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize(
+    "recipe,hashish,output",
+    [('asr.recipename', '9e2e1e68..32241753', 'results-asr.recipename.json\n'),
+     ('asr.recipename', '^9e2e1e68 32241753', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3^..c8980f6f3', 'results-asr.recipename.json\n'),
+     ('asr.recipename', '^c8980f6f3^ c8980f6f3', 'results-asr.recipename.json\n'),
+     ('asr.recipename', 'c8980f6f3..c8980f6f3^', ''),
+     ('asr.recipename', '^c8980f6f3 c8980f6f3^', ''),
+     ('asr.recipename', 'c8980f6f3..32241753', ''),
+     ('asr.recipename', '^c8980f6f3 32241753', '')])
+def test_asr_find(recipe, hashish, output):
+    from asr.core import write_json
+    # TODO: Mock git call
+    data = {
+        '__versions__': {
+            'asr':
+            'version-c8980f6f32492437136b3b88b6d2598a8b653a25'
+        }
+    }
+    recipe = "asr.recipename"
+    filename = f'results-{recipe}.json'
+    write_json(filename, data)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['find', recipe] + hashish.split())
+
+    assert result.exit_code == 0
+    assert result.output == output
+
+
+@pytest.mark.ci
+def test_asr_find_no_versions(asr_tmpdir_w_params):
+    from asr.core import write_json
+    data = {'dummydata': ['somecontent']}
+    recipe = "asr.recipename"
+    filename = f'results-{recipe}.json'
+    write_json(filename, data)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['find', recipe, 'c8980f6f3..32241753'])
+
+    assert result.exit_code == 0
+    assert result.output == ''

@@ -19,21 +19,24 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db):
+def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_kd
     from ase.db.web import create_key_descriptions
 
-    metadata = db.metadata
-    if 'keys' not in metadata:
-        raise KeyError('Missing list of keys for database. '
-                       'To fix this either: run database.fromtree again. '
-                       'or python -m asr.database.set_metadata DATABASEFILE.')
-
-    keys = metadata.get('keys')
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
+
+    if db is not None:
+        metadata = db.metadata
+        if 'keys' not in metadata:
+            raise KeyError('Missing list of keys for database. '
+                           'To fix this either: run database.fromtree again. '
+                           'or python -m asr.database.set_metadata DATABASEFILE.')
+        keys = metadata.get('keys')
+    else:
+        keys = list(flatten.keys())
 
     kd = {}
     for key in keys:
@@ -128,12 +131,14 @@ def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
-    db = connect(database)
+    db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", database)
 
     # Make temporary directory
     (tmpdir / name).mkdir()
+
+    metadata = db.metadata
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),

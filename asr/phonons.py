@@ -54,24 +54,30 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
                 f.unlink()
     world.barrier()
 
-    params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdensity, 'gamma': True}}
-
-    # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False}
-    # Make sure to converge forces! Can be important
-    params['convergence'] = {'forces': fconverge}
-
     atoms = read('structure.json')
-    fd = open('phonons.txt'.format(n), 'a')
-    calc = get_calculator()(txt=fd, **params)
+    gsold = get_calculator()('gs.gpw', txt=None)
 
     # Set initial magnetic moments
     from asr.core import is_magnetic
     if is_magnetic():
-        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
+
+    params = gsold.parameters.copy()  # TODO: remove fix density from gs params
+    if 'fixdensity' in params:
+        params.pop('fixdensity')
+    params.update({'mode': {'name': 'pw', 'ecut': ecut},
+                   'kpts': {'density': kptdensity, 'gamma': True}})
+
+    # Set essential parameters for phonons
+    params['symmetry'] = {'point_group': False}
+
+    # Make sure to converge forces! Can be important
+    params['convergence'] = {'forces': fconverge}
+
+    fd = open('phonons.txt'.format(n), 'a')
+    params['txt'] = fd
+    calc = get_calculator()(**params)
 
     from asr.core import get_dimensionality
     nd = get_dimensionality()
@@ -92,6 +98,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
         dct['__tofile__'] = 'asr.phonons@topckl'
         files[filename] = dct
     data = {'__files__': files}
+    fd.close()
     return data
 
 
@@ -238,11 +245,6 @@ def plot_bandstructure(row, fname):
     data = row.data.get('results-asr.phonons.json')
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
-    bs = BandStructure(path=path,
-                       energies=energies[None, :, :],
-                       reference=0)
-    bs.plot(colors=['C0'])
-    plt.plot([], [], label='Interpolated', color='C0')
     exact_indices = []
     for q_c in data['q_qc']:
         diff_kc = path.kpts - q_c
@@ -254,12 +256,12 @@ def plot_bandstructure(row, fname):
     for ind in exact_indices:
         en_exact[ind] = energies[ind]
 
-    bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
-             emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
-             ylabel='Phonon frequencies [meV]')
+    bs = BandStructure(path=path, energies=en_exact[None])
+    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
+            emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
+            ylabel='Phonon frequencies [meV]')
     plt.plot([], [], label='Calculated', color='C1', marker='o', ls='')
-    plt.legend(ncol=2, loc='upper center')
+    plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
 

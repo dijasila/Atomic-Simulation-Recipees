@@ -1,8 +1,9 @@
 import pytest
+from asr.core import get_recipes
 
 
 @pytest.mark.ci
-def test_setup_params(separate_folder):
+def test_setup_params(asr_tmpdir_w_params):
     from asr.setup.params import main
     from asr.core import read_json
     from pathlib import Path
@@ -34,7 +35,19 @@ def test_setup_params(separate_folder):
 
 
 @pytest.mark.ci
-def test_setup_params_recurse_dict(separate_folder):
+def test_setup_params_input_dict(asr_tmpdir_w_params):
+    """Test that setup.params works with an input dict."""
+    from asr.setup.params import main
+    from asr.core import read_json
+    params = {'asr.gs@calculate': {'calculator': {'name': 'testname', None: None}}}
+    main(params=params)
+    params = read_json('params.json')
+    assert params['asr.gs@calculate']['calculator']['name'] == 'testname'
+    assert params['asr.gs@calculate']['calculator']['charge'] == 0
+
+
+@pytest.mark.ci
+def test_setup_params_recurse_dict(asr_tmpdir_w_params):
     from asr.setup.params import main
     from asr.core import read_json
     main(params=['asr.gs@calculate:calculator',
@@ -44,3 +57,18 @@ def test_setup_params_recurse_dict(separate_folder):
     assert params['asr.gs@calculate']['calculator']['name'] == 'testname'
     assert params['asr.gs@calculate']['calculator']['mode']['name'] == 'pw'
     assert params['asr.gs@calculate']['calculator']['mode']['ecut'] == 400
+
+
+recipes = get_recipes()
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize("recipe",
+                         list(filter(lambda x: x.name != 'asr.setup.params',
+                                     recipes)))
+def test_setup_params_parametrize(asr_tmpdir_w_params, recipe):
+    from asr.setup.params import main as setupparams
+    defparams = recipe.defparams
+    defparamdict = {recipe.name: defparams}
+    setupparams(params=defparamdict)
+    setupparams(params=defparamdict)

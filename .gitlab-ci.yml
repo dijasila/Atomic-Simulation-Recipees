@@ -8,6 +8,7 @@ stages:
 - systemtest
 - coverage
 - release
+- deploy
 
 before_script:
 - pip install pip --upgrade
@@ -39,10 +40,15 @@ docs:
   script: tox -e docs
 
 # -------------- Unit tests --------------
+doctest:
+  image: python:3.7
+  stage: test
+  script: tox -e doctest
+
 python36:
   image: python:3.6
   stage: test
-  script: tox -e py36-unit
+  script: tox -e py36
   artifacts:
     paths:
       - .tox/.coverage*
@@ -50,7 +56,7 @@ python36:
 python37:
   image: python:3.7
   stage: test
-  script: tox -e py37-unit
+  script: tox -e py37
   artifacts:
     paths:
       - .tox/.coverage*
@@ -58,10 +64,21 @@ python37:
 python38:
   image: python:3.8
   stage: test
-  script: tox -e py38-unit
+  script: tox -e py38
   artifacts:
     paths:
       - .tox/.coverage*
+
+# -------------- Parallel tests --------------
+
+python36-mpi:
+  image: python:3.6
+  stage: test
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
+    - useradd -m user
+    - su user -c 'tox -e py36-mpi'
 
 # -------------- Integration tests --------------
 python36-gpaw:
@@ -97,28 +114,31 @@ python38-gpaw:
     paths:
       - .tox/.coverage*
 
-# -------------- System tests --------------
-python36-gpaw-2dsystem:
-  image: python:3.6
-  stage: systemtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e 2dsystem
-  timeout: 1h
-  when: manual
-  artifacts:
-    paths:
-      - .tox/.coverage*
-# allow_failure: false
 
 # -------------- Coverage --------------
-
 coverage:
   image: python:3.7
   stage: coverage
   script:
     - tox -e coverage-report
+  artifacts:
+    paths:
+      - .tox/htmlcov/
+
+# -------------- Deploy coverage report --------------
+pages:
+  stage: deploy
+  dependencies:
+    - coverage
+  script:
+    - mv .tox/htmlcov public
+  artifacts:
+    paths:
+      - public
+    expire_in: 3 weeks
+  only:
+    - master
+
 
 # -------------- Release --------------
 # (Only on git tagged commit)
