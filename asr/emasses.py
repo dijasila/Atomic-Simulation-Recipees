@@ -34,7 +34,7 @@ def refine(gpwfilename='gs.gpw'):
             gpw2 = name + '.gpw'
 
             if not gap > 0:
-                raise NoGapError('Gap was zero: {}'.format(efermi))
+                raise NoGapError('Gap was zero: {}'.format(gap))
             if os.path.exists(gpw2):
                 continue
             gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
