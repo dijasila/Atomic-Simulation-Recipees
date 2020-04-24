@@ -34,19 +34,20 @@ class SOCDOS(DOS):
         """
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
-        import gpaw.mpi as mpi
+        from gpaw.mpi import serial_comm
+        from ase.parallel import world
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
         # Initiate calculator object and get the spin-orbit eigenvalues
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        calc = GPAW(gpw, communicator=serial_comm, txt=None)
         theta, phi = get_spin_axis()
         e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
 
         # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
-        self.world = mpi.world
-        if mpi.world.rank == 0:
+        self.world = world
+        if world.rank == 0:
             DOS.__init__(self, calc, npts=npts, **kwargs)
 
             # Hack the number of spins
@@ -333,17 +334,16 @@ def calculate_pdos(calc, gpw, soc=True):
 
     """
     from gpaw import GPAW
-    import gpaw.mpi as mpi
+    from gpaw.mpi import serial_comm
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
-    from ase.parallel import parprint
+    from ase.parallel import world, parprint, broadcast
     from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
     from asr.magnetic_anisotropy import get_spin_axis
-    world = mpi.world
 
     if soc and world.rank == 0:
-        calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        calc0 = GPAW(gpw, communicator=serial_comm, txt=None)
 
     # Extract basic info from calculator
     zs = calc.atoms.get_atomic_numbers()
@@ -379,7 +379,7 @@ def calculate_pdos(calc, gpw, soc=True):
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
     parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
-    if mpi.world.rank == 0:
+    if world.rank == 0:
         pb = ProgressBar()
     else:
         devnull = DevNull()
@@ -390,9 +390,9 @@ def calculate_pdos(calc, gpw, soc=True):
         if soc:
             if world.rank == 0:  # GPAW soc is done in serial
                 energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                mpi.broadcast((energies, weights))
+                broadcast((energies, weights))
             else:
-                energies, weights = mpi.broadcast(None)
+                energies, weights = broadcast(None)
         else:
             energies, weights = ldos(calc, a, spin, l)
 
