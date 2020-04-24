@@ -94,7 +94,6 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     print('nv_s, nc_s', nv_s, nc_s)
     valence_bands = []
     conduction_bands = []
-    calc_gs = GPAW(gs, txt=None) # needed for test?
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
