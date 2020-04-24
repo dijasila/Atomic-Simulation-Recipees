@@ -20,6 +20,7 @@ def get_kpts_size(atoms, kptdensity):
                   'bse_poly.csv', 'bse_eigy.dat',
                   'bse_polz.csv', 'bse_eigz.dat'],
          requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'],
          resources='480:20h')
 @option('--gs', help='Ground state on which BSE is based')
 @option('--kptdensity', help='K-point density')

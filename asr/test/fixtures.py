@@ -115,6 +115,9 @@ def asr_tmpdir_w_params(asr_tmpdir):
         'asr.gw@gs': {
             'kptdensity': 2,
         },
+        'asr.bse@gs': {
+            'kptdensity': 2,
+        },
         'asr.pdos@calculate': {
             'kptdensity': 2,
             'emptybands': 5,
