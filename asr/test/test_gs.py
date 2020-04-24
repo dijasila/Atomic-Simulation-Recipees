@@ -55,3 +55,30 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     panel = get_webpanels_from_material(material, main)
     make_panel_figures(material, panel)
     assert Path('bz-with-gaps.png').is_file()
+
+@pytest.mark.parametrize('gap', [0, 1])
+@pytest.mark.parametrize('fermi_level', [0.5, 1.5])
+def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                     get_webcontent, gap, fermi_level):
+    from asr.gs import main
+    from gpaw import GPAW
+
+    mocker.patch.object(GPAW, '_get_band_gap')
+    mocker.patch.object(GPAW, '_get_fermi_level')
+    GPAW._get_fermi_level.return_value = fermi_level
+    GPAW._get_band_gap.return_value = gap
+
+    test_material.write('structure.json')
+    results = main()
+
+    assert results.get("efermi") == approx(fermi_level)
+    if gap >= fermi_level:
+        assert results.get("gap") == approx(gap)
+    else:
+        assert results.get("gap") == approx(0)
+
+    content = get_webcontent()
+    if gap >= fermi_level:
+        assert f'<td>Bandgap</td><td>{gap:0.2f}eV</td>' in content
+    else:
+        assert f'<td>Bandgap</td><td>0.00eV</td>' in content
