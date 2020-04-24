@@ -26,9 +26,8 @@ class BSE:
             f = open(write_eig, 'w')
             print('# %s eigenvalues in eV' % 'BSE', file=f)
             for iw in range(100):
-                print('%8d %12.6f %12.16f' % (iw, iw*0.1, 1.0),
+                print('%8d %12.6f %12.16f' % (iw, iw * 0.1, 1.0),
                       file=f)
             f.close()
-
 
         return w_w, w_w
