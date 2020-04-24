@@ -133,7 +133,7 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
     # Do the rest as usual:
     ns = paw.wfs.nspins
-    w_k = paw.wfs.kd.weight_k
+    w_k = np.array(calc.get_k_point_weights())
     nk = len(w_k)
     nb = len(e_mk)
 
@@ -338,17 +338,24 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
     from ase.parallel import parprint
+    from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
     from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
     if soc and world.rank == 0:
         calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
 
+    # Extract basic info from calculator
     zs = calc.atoms.get_atomic_numbers()
     chem_symbols = calc.atoms.get_chemical_symbols()
     efermi = calc.get_fermi_level()
     l_a = get_l_a(zs)
-    kd = calc.wfs.kd
+
+    # Extract info on the k-point grid
+    weight_k = np.array(calc.get_k_point_weights())
+    nibzkpts = calc.wfs.kd.nibzkpts
+    bz2ibz_k = calc.get_bz_to_ibz_map()
+    N_c, _ = k2so(calc.kpts)
 
     if soc:
         ldos = raw_spinorbit_orbital_LDOS_hack
@@ -390,15 +397,15 @@ def calculate_pdos(calc, gpw, soc=True):
             energies, weights = ldos(calc, a, spin, l)
 
         # Reshape energies
-        energies.shape = (kd.nibzkpts, -1)
-        energies = energies[kd.bz2ibz_k]
-        energies.shape = tuple(kd.N_c) + (-1, )
+        energies.shape = (nibzkpts, -1)
+        energies = energies[bz2ibz_k]
+        energies.shape = tuple(N_c) + (-1, )
 
         # Get true weights and reshape
-        weights.shape = (kd.nibzkpts, -1)
-        weights /= kd.weight_k[:, np.newaxis]
-        w = weights[kd.bz2ibz_k]
-        w.shape = tuple(kd.N_c) + (-1, )
+        weights.shape = (nibzkpts, -1)
+        weights /= weight_k[:, np.newaxis]
+        w = weights[bz2ibz_k]
+        w.shape = tuple(N_c) + (-1, )
 
         # Linear tetrahedron integration
         p = lti(calc.atoms.cell, energies * Ha, e_e, w)

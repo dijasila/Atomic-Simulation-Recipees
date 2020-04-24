@@ -25,17 +25,17 @@ def get_number_of_electrons(angular):
     return count
 
 
-def mock_ldos(calc, a, spin, angular='spdf', **kwargs):
+def mock_ldos(calc, a, spin, angular='spdf', *args, **kwargs):
     """Distribute weights on atoms, spins and angular momentum."""
     import numpy as np
     from asr.pdos import get_l_a
 
     # Extract eigenvalues and weights
     e_kn = calc.get_all_eigenvalues()
-    w_k = calc.wfs.kd.weight_k
+    w_k = np.array(calc.get_k_point_weights())
 
     # Do a simple normalization of the weights based atoms and spin
-    w_k /= 1  # calc.wfs.nspins not implemented yet in mock_gpaw
+    w_k /= calc.get_number_of_spins()
     w_k /= len(calc.atoms)
 
     # Figure out the total number of orbitals to be counted
