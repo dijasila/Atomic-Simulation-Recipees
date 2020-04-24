@@ -18,10 +18,12 @@ def refine(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
+    from gpaw import GPAW
     socs = [True]
 
     for soc in socs:
         theta, phi = get_spin_axis()
+        calc = GPAW(gpwfilename)
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
@@ -32,7 +34,7 @@ def refine(gpwfilename='gs.gpw'):
             gpw2 = name + '.gpw'
 
             if not gap > 0:
-                raise NoGapError('Gap was zero')
+                raise NoGapError('Gap was zero: {}'.format(efermi))
             if os.path.exists(gpw2):
                 continue
             gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
@@ -1017,8 +1019,13 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                         [dxy, dyy, dyz],
                         [dxz, dyz, dzz]])
     v2_n, vecs = np.linalg.eigh(hessian)
+    mass2_u = np.zeros_like(v2_n)
+    npno = np.logical_not
+    npis = np.isclose
+    mass2_u[npno(npis(v2_n, 0))] = 1 / v2_n[npno(npis(v2_n, 0))]
 
-    mass_u = 1 / v3_n
+    mass_u = np.zeros_like(v3_n)
+    mass_u[npno(npis(v3_n, 0))] = 1 / v3_n[npno(npis(v3_n, 0))]
     for u, v3 in enumerate(v3_n):
         if np.allclose(v3, 0):
             mass_u[u] = np.nan
@@ -1033,7 +1040,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                ke_v=ke_v,
                c=c3,
                r=r3,
-               mass2_u=1 / v2_n,
+               mass2_u=mass2_u,
                eigenvectors2_vu=vecs,
                ke2_v=ke2_v,
                c2=c,
