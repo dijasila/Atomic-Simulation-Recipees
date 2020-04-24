@@ -444,6 +444,46 @@ destination of the temporary directory where tests are running. The
 temporary directory can now be found in ``.tox/environment-name/tmp/``
 and ``.tox/`` is located in your ``asr/`` directory.
 
+Coverage
+========
+
+A very useful tool in guiding your focus when writing tests is how
+well your tests cover your code, also known as test coverage or simply
+coverage. Test coverage is usually displayed as a percentage which
+represent fraction of source code that has actually been executed by
+the tests. As such, coverage does not tell you anything about the
+quality of the tests but it does tell you if nothing is being tested
+at all!
+
+With tox_ we have made it easy to get the test coverage locally on
+your own computer. For example, the canonical way to the get test
+coverage when running the ``py36`` would be
+
+.. code-block:: console
+   :caption: In: asr/
+
+   $ tox -e coverage-clean  # Clean any old coverage data
+   $ tox -e py36
+   $ tox -e coverage-report
+
+This will print an overview of the coverage of the test suite. The
+coverage module also saves a browser friendly version in
+``.tox/htmlcov/index.html`` in which you can see exactly which lines
+have been executed, or more importantly, which haven't.
+
+
+Parallel testing
+================
+
+If a test have been marked using the ``@pytest.mark.parallel`` marker
+it will automatically be run in CI in parallel on two cores. Parallel
+tests can be run locally with the ``py36-mpi`` environment
+
+.. code-block:: console
+   :caption:
+
+   $ tox -e py36-mpi 
+
 Summary
 =======
 
