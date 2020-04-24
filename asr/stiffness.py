@@ -156,6 +156,7 @@ def main(strain_percent=1.0):
         kd['speed_of_sound_y'] = 'KVP: Speed of sound in y direction [m/s]'
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
     elif nd == 1:
+        cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
         stiffness = stiffness[5, 5] * area * 1e-20
         kd['stiffness_tensor'] = 'Stiffness tensor [N]'
@@ -165,7 +166,10 @@ def main(strain_percent=1.0):
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness
 
-    eigs = np.linalg.eigvals(stiffness)
+    if nd == 1:
+        eigs = stiffness
+    else:
+        eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
     return data
 
