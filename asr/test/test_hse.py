@@ -2,9 +2,11 @@ import pytest
 
 
 @pytest.mark.ci
-def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
-    import numpy as np
+def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
+             get_webcontent):
     from pathlib import Path
+    import numpy as np
+    from asr.hse import main
     test_material.write('structure.json')
 
     def non_self_consistent_eigenvalues(calc,
@@ -15,8 +17,12 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
                                         snapshot=None,
                                         ftol=42.0):
         Path(snapshot).write_text('{}')
-        e_skn = calc.eigenvalues[np.newaxis, :, n1:n2]
-        return e_skn, e_skn, e_skn
+        e_skn = calc.eigenvalues[np.newaxis, :, n1:n2].copy()
+        v_skn = np.zeros_like(e_skn)
+        v_hyb_skn = np.zeros_like(e_skn)
+        v_hyb_skn[:, :, :4] = -1.0
+        v_hyb_skn[:, :, 4:] = 1.0
+        return e_skn, v_skn, v_hyb_skn
 
     mocker.patch('gpaw.hybrids.eigenvalues.non_self_consistent_eigenvalues',
                  create=True, new=non_self_consistent_eigenvalues)
@@ -25,6 +31,8 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
         return calc.eigenvalues[np.newaxis]
 
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
-    from asr.hse import main
-    main()
-    get_webcontent()
+    results = main()
+    assert results['gap_hse_nosoc'] == pytest.approx(2.0)
+    assert results['gap_dir_hse_nosoc'] == pytest.approx(2.0)
+    html = get_webcontent()
+    assert 'hse-bs.png' in html
