@@ -1,6 +1,4 @@
-import numpy as np
-from asr.core import command, option
-from ase.dft.bandgap import bandgap
+from asr.core import command, option, file_barrier
 from click import Choice
 
 
@@ -36,13 +34,13 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
+    from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from asr.core import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -96,6 +94,7 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     print('nv_s, nc_s', nv_s, nc_s)
     valence_bands = []
     conduction_bands = []
+    calc_gs = GPAW(gs, txt=None) # needed for test?
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
