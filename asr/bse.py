@@ -278,17 +278,19 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
          webpanel=webpanel)
 def main():
+    import numpy as np
+    from pathlib import Path
+    from asr.core import read_json
+
     alphax_w = np.loadtxt('bse_polx.csv', delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
 
-    from pathlib import Path
     if Path('bse_poly.csv').is_file():
         alphay_w = np.loadtxt('bse_poly.csv', delimiter=',')
         data['bse_alphay_w'] = alphay_w.astype(np.float32)
     if Path('bse_polz.csv').is_file():
         alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
-    from asr.core import read_json
 
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
