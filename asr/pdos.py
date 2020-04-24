@@ -47,7 +47,7 @@ class SOCDOS(DOS):
             theta, phi = get_spin_axis()
             e_skm, ef = calc2eigs(calc0, theta=theta, phi=phi, ranks=[0])
 
-            DOS.__init__(self, calc0, npts=npts, **kwargs)
+            DOS.__init__(self, calc0, npts=npts, comm=calc0.world, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
