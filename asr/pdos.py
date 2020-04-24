@@ -10,8 +10,6 @@ from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
 from ase.dft.dos import DOS
 from ase.dft.dos import linear_tetrahedron_integration as lti
 
-from ase.units import Hartree
-
 from asr.core import magnetic_atoms, read_json
 
 
@@ -130,7 +128,7 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
     # Get eigenvalues and wavefunctions from SOCDescriptor
     eps_mk, v_knm = paw.socd.get_soc_eig(theta, phi)
-    e_mk = eps_mk / Hartree
+    e_mk = eps_mk / Ha
 
     # Do the rest as usual:
     ns = paw.wfs.nspins

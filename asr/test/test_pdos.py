@@ -28,15 +28,16 @@ def get_number_of_electrons(angular):
 def mock_ldos(calc, a, spin, angular='spdf', *args, **kwargs):
     """Distribute weights on atoms, spins and angular momentum."""
     import numpy as np
+    from ase.units import Ha
     from asr.pdos import get_l_a
 
     # Extract eigenvalues and weights
-    e_kn = calc.get_all_eigenvalues()
+    e_kn = calc.get_all_eigenvalues() / Ha
     w_k = np.array(calc.get_k_point_weights())
 
-    # Do a simple normalization of the weights based atoms and spin
-    w_k /= calc.get_number_of_spins()
-    w_k /= len(calc.atoms)
+    # Take care of spin degeneracy
+    if calc.get_number_of_spins() == 1:
+        w_k *= 2
 
     # Figure out the total number of orbitals to be counted
     l_a = get_l_a(calc.atoms.get_atomic_numbers())
@@ -55,17 +56,29 @@ def mock_ldos(calc, a, spin, angular='spdf', *args, **kwargs):
 
 
 @pytest.mark.ci
-def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
-              test_material, get_webcontent):
+@pytest.mark.parametrize('gap', [0.0, 1.0])
+@pytest.mark.parametrize('fermi_level', [0.5, 1.5])
+def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
+              test_material, gap, fermi_level):
     import numpy as np
     from asr.pdos import main
+    from gpaw import GPAW
 
+    # Adjust the gap and the fermi level
+    mocker.patch.object(GPAW, '_get_band_gap')
+    mocker.patch.object(GPAW, '_get_fermi_level')
+    GPAW._get_fermi_level.return_value = fermi_level
+    GPAW._get_band_gap.return_value = gap
+
+    # Use mocker for gpaw stuff
     mocker.patch("gpaw.utilities.progressbar.ProgressBar",
                  MockProgressbar)
     mocker.patch("gpaw.utilities.dos.raw_orbital_LDOS",
                  mock_ldos)
     mocker.patch("asr.pdos.raw_spinorbit_orbital_LDOS_hack",
                  mock_ldos)
+
+    # Run recipe
     test_material.write('structure.json')
     results = main()
 
@@ -82,11 +95,16 @@ def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
     # For the pdos, make a sum over spin, symbol and angular momentum
     for pdos_result in [results['pdos_nosoc'], results['pdos_soc']]:
         e_e = pdos_result['energies']
-        ef = pdos_result['efermi']  # remember to check me!                             XXX
+        ef = pdos_result['efermi']
+        # Fermi level in pdos calculation should be specified one
+        assert ef == pytest.approx(fermi_level)
+        # Calculate the sum of pdos as close to the fermi level as possible
         efe = np.argmin(np.abs(e_e - ef))
         dos_at_ef = sum([pdos_e[efe] for _, pdos_e in pdos_result['pdos_syl'].items()])
-        # With the mocked raw_orbital_LDOS, total projection weight is 1
-        assert dos_at_ef == pytest.approx(dos_at_ef_nosoc, abs=1e-2)  # ef not exact
+        # With the mocked raw_orbital_LDOS, total projection weight is 1, so that
+        # dos_at_ef should be consistent with the other results (apart from the fact
+        # that we are not guaranteed to hit exactly the fermi energy).
+        assert dos_at_ef == pytest.approx(dos_at_ef_nosoc, abs=0.1)  # not exactly ef
 
     # Check content of webpanel
     content = get_webcontent()
