@@ -9,6 +9,8 @@ def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
     gpaw.GPAW._get_band_gap.return_value = 1.0
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     gpaw.GPAW._get_fermi_level.return_value = 0.5
+    mocker.patch.object(gpaw.GPAW, "FermiDirac")
+    gpaw.GPAW.FermiDirac.return_value = None
 
     from asr.bse import main
     test_material.write("structure.json")
@@ -17,7 +19,12 @@ def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
     def calculate(self):
         E_B = 1.0
 
-        return {"E_B": E_B}
+        data = {}
+        data['E_B'] = E_B
+        data['__key_descriptions__'] = \
+            {'E_B': 'KVP: BSE binding energy (Exc. bind. energy) [eV]'}
+
+        return data
 
     mocker.patch.object(BSE, "calculate", calculate)
     if ndim > 1:
