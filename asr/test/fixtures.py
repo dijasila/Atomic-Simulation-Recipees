@@ -87,6 +87,11 @@ def _get_webcontent(name='database.db'):
     return content
 
 
+@pytest.fixture(autouse=True)
+def set_asr_test_environ_variable(monkeypatch):
+    monkeypatch.setenv("ASRTESTENV", True)
+
+
 @pytest.fixture()
 def get_webcontent():
     """Return a utility function that can create and return webcontent."""
