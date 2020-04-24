@@ -14,8 +14,7 @@ class MockProgressbar:
 
 
 def get_number_of_electrons(angular):
-    """Make a simple calculation of the number of electrons
-    based on the occurence of orbitals."""
+    """Compute the number of electrons to fill orbitals."""
     count = 0
     count += 2 * angular.count('s')
     count += 6 * angular.count('p')

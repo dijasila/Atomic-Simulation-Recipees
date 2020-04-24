@@ -132,7 +132,7 @@ def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
 
     # Do the rest as usual:
     ns = paw.wfs.nspins
-    w_k = np.array(calc.get_k_point_weights())
+    w_k = np.array(paw.get_k_point_weights())
     nk = len(w_k)
     nb = len(e_mk)
 
