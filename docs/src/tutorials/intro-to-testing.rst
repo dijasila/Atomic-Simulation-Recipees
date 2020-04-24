@@ -480,7 +480,7 @@ it will automatically be run in CI in parallel on two cores. Parallel
 tests can be run locally with the ``py36-mpi`` environment
 
 .. code-block:: console
-   :caption:
+   :caption: In: asr/
 
    $ tox -e py36-mpi 
 
