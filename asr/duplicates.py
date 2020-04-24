@@ -20,11 +20,11 @@ def check_duplicates(structure, db, ref_mag):
         stoichiometry_row = Formula(str(row.get("formula"))).reduce()[0]
         if stoichiometry_row == stoichiometry:
             id = row.get("id")
-            id_duplicates.append(id)
             struc = row.toatoms()
             if row.get('magstate') == ref_mag:
                 struc = asetopy.get_structure(struc)
                 structure_list.append(struc)
+                id_duplicates.append(id)
 
     rmdup = RemoveExistingFilter(structure_list, matcher, symprec=1e-5)
     results = rmdup.test(refpy)
