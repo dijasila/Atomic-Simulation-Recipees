@@ -12,7 +12,7 @@ def test_stiffness_gpaw_1(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
                                    get_relevant_strains)
 
     test_material.write('structure.json')
-    strain_percent=1
+    strain_percent = 1
     setup_strains(strain_percent=strain_percent)
 
     ij = get_relevant_strains(test_material.pbc)
@@ -58,7 +58,7 @@ def test_stiffness_gpaw_2(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
                                    get_relevant_strains)
 
     test_material.write('structure.json')
-    strain_percent=1
+    strain_percent = 1
     setup_strains(strain_percent=strain_percent)
     nd = np.sum(test_material.pbc)
 
@@ -108,12 +108,13 @@ def test_stiffness_emt(asr_tmpdir_w_params, name):
     from ase.build import bulk
     from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
+    from asr.stiffness import main as stiffness
     from asr.setup.strains import (get_strained_folder_name,
                                    get_relevant_strains)
 
     structure = bulk(name)
     structure.write('structure.json')
-    strain_percent=1
+    strain_percent = 1
     setup_strains(strain_percent=1)
 
     ij = get_relevant_strains(structure.pbc)
