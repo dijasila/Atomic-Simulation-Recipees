@@ -15,7 +15,7 @@ from ase.units import Hartree
 from asr.core import magnetic_atoms, read_json
 
 
-# ---------- GPAW hacks ---------- #
+# ---------- ASE hacks ---------- #
 
 
 # Hack the density of states
@@ -76,6 +76,9 @@ class SOCDOS(DOS):
         self.world.broadcast(dos, 0)
 
         return dos
+
+
+# ---------- GPAW hacks ---------- #
 
 
 # Hack the local density of states to keep spin-orbit results and not
