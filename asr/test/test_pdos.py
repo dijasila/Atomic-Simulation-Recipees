@@ -58,8 +58,8 @@ def mock_ldos(calc, a, spin, angular='spdf', *args, **kwargs):
 @pytest.mark.ci
 @pytest.mark.parametrize('gap', [0.0, 1.0])
 @pytest.mark.parametrize('fermi_level', [0.5, 1.5])
-def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
-              test_material, gap, fermi_level):
+def test_pdos_mocked(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
+                     test_material, gap, fermi_level):
     import numpy as np
     from asr.pdos import main
     from gpaw import GPAW
