@@ -69,6 +69,17 @@ python38:
     paths:
       - .tox/.coverage*
 
+# -------------- Parallel tests --------------
+
+python36-mpi:
+  image: python:3.6
+  stage: test
+  script:
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
+    - useradd -m user
+    - su user -c 'tox -e py36-mpi'
+
 # -------------- Integration tests --------------
 python36-gpaw:
   image: python:3.6
