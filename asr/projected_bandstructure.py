@@ -210,7 +210,7 @@ def get_bs_sampling(bsp, npoints=40):
     return chosenx_x, k_x
 
 
-def get_pie_slice(theta0, theta, s=36., res=126):
+def get_pie_slice(theta0, theta, s=36., res=64):
     """Get a single pie slice marker.
 
     Parameters
@@ -241,7 +241,7 @@ def get_pie_slice(theta0, theta, s=36., res=126):
     return {'marker': xy, 's': size, 'linewidths': 0.0}
 
 
-def get_pie_markers(weight_xi, scale_marker=True, s=36., res=126):
+def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     """Get pie markers corresponding to a 2D array of weights.
 
     Parameters
@@ -280,10 +280,23 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=126):
     return pie_xi
 
 
-def projected_bs_pbe(row,
+def projected_bs_pbe(row, npoints=40, markersize=36., res=64,
                      filename='pbe-projected-bs.png',
                      figsize=(5.5, 5),
-                     fontsize=10):  # Choose input parameters               XXX
+                     fontsize=10):
+    """Produce the projected band structure.
+
+    Plot the projection weight fractions as pie charts on top of the band structure.
+
+    Parameters
+    ----------
+    npoints : int,
+        number of pie charts per band
+    markersize : float
+        size of pie chart markers
+    res : int
+        resolution of the pie chart markers (in points around the circumference)
+    """
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -346,7 +359,6 @@ def projected_bs_pbe(row,
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
              ylabel=label, **style)
 
-    npoints = 40  # input variable?
     xcoords, k_x = get_bs_sampling(bsp, npoints=npoints)
 
     # Generate energy and weight arrays based on band structure sampling
@@ -360,8 +372,6 @@ def projected_bs_pbe(row,
                              k_x[np.newaxis, :],
                              n_u[:, np.newaxis], :]
     # Plot projections
-    markersize = 36.
-    res = 64  # input variable?                                             XXX
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
         # Weights as pie chart
