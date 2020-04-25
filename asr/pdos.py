@@ -387,12 +387,13 @@ def calculate_pdos(calc, gpw, soc=True):
 
         if soc:
             if world.rank == 0:  # GPAW soc is done in serial
-                energies, weights = ldos(calc0, a, spin, l, theta, phi)
+                energies, weights = ldos(calc0, a, spin, angular=l,
+                                         theta=theta, phi=phi)
                 broadcast((energies, weights))
             else:
                 energies, weights = broadcast(None)
         else:
-            energies, weights = ldos(calc, a, spin, l)
+            energies, weights = ldos(calc, a, spin, angular=l)
 
         # Reshape energies
         energies.shape = (nibzkpts, -1)
