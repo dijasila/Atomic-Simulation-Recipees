@@ -3,12 +3,6 @@ import numpy as np
 from asr.core import command
 
 
-# ---------- Recipe tests ---------- #
-
-
-# Add test(s)                                                               XXX
-
-
 # ---------- Webpanel ---------- #
 
 
@@ -293,7 +287,6 @@ def projected_bs_pbe(row,
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
-    # import pylab
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
@@ -367,7 +360,6 @@ def projected_bs_pbe(row,
                              k_x[np.newaxis, :],
                              n_u[:, np.newaxis], :]
     # Plot projections
-    # Choose some plotting format                                           XXX
     markersize = 36.
     res = 64  # input variable?                                             XXX
     for e_x, weight_xi in zip(e_ux, weight_uxi):
@@ -380,50 +372,6 @@ def projected_bs_pbe(row,
             for i, pie in enumerate(pie_i):
                 ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
                            zorder=3, **pie)
-            # Plot radius = 1 circle for comparison of total weights
-            # cx = np.cos(np.linspace(0., 2 * np.pi, res)).tolist()
-            # cy = np.sin(np.linspace(0., 2 * np.pi, res)).tolist()
-            # xy = np.column_stack([cx, cy])
-            # ax.scatter(x, e, marker=xy, linewidth=.5,
-            #            s=markersize * np.abs(xy).max() ** 2,
-            #            facecolor='none', edgecolor='black', zorder=4)
-
-        # Marker size depending on each weight
-        # for x, e, weight_i in zip(xcoords, e_x, weight_xi):
-        #     # Sort orbital after weight
-        #     i_si = np.argsort(weight_i)
-        #     # Calculate accumulated weight and use it for area of marker.
-        #     # Join orbitals with less than 10% weight in a neutral marker
-        #     totweight = np.sum(weight_i)
-        #     accweight = 0.
-        #     neutralweight = 0.
-        #     c_pi = []
-        #     a_pi = []
-        #     for i, weight in zip(i_si, weight_i[i_si]):
-        #         if weight < 0.1 * totweight:
-        #             neutralweight += weight
-        #         else:
-        #             if neutralweight is not None:
-        #                 # Done with small weights, store neutral marker
-        #                 a_pi.append(markersize * neutralweight)
-        #                 c_pi.append('xkcd:grey')
-        #                 accweight += neutralweight
-        #                 neutralweight = None
-        #             # Add orbital as is
-        #             accweight += weight
-        #             a_pi.append(markersize * accweight)
-        #             c_pi.append('C{}'.format(c_i[i]))
-        #     # Plot points from largest to smallest
-        #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
-        #         ax.scatter(x, e, color=c, s=a, zorder=3)
-        # # Plot radius = 1 circle for comparison of total weights
-        # ax.scatter(xcoords, e_x, marker='o', s=markersize, linewidth=.5,
-        #            facecolor='none', edgecolor='black', zorder=4)
-
-        # Marker color depending on largest weight
-        # c_x = [c_i[i] for i in np.argmax(weight_xi, axis=1)]
-        # for x, e, c in zip(xcoords, e_x, c_x):
-        #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
     # Set legend
     # Get "pac-man" style pie slice marker
