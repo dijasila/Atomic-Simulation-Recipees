@@ -4,15 +4,6 @@ import pytest
 # ---------- Mocks ---------- #
 
 
-class MockProgressbar:
-    def __init__(self, *args, **kwargs):
-        """Ignore all input arguments."""
-        pass
-
-    def enumerate(self, iterable):
-        return enumerate(iterable)
-
-
 def get_number_of_electrons(angular):
     """Compute the number of electrons to fill orbitals."""
     count = 0
@@ -70,8 +61,6 @@ def test_pdos_mocked(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     GPAW._get_band_gap.return_value = gap
 
     # Use mocker for gpaw stuff
-    mocker.patch("gpaw.utilities.progressbar.ProgressBar",
-                 MockProgressbar)
     mocker.patch("gpaw.utilities.dos.raw_orbital_LDOS",
                  mock_ldos)
     mocker.patch("asr.pdos.raw_spinorbit_orbital_LDOS_hack",
