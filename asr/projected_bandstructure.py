@@ -280,10 +280,9 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     return pie_xi
 
 
-def projected_bs_pbe(row, npoints=40, markersize=36., res=64,
-                     filename='pbe-projected-bs.png',
-                     figsize=(5.5, 5),
-                     fontsize=10):
+def projected_bs_pbe(row, filename='pbe-projected-bs.png',
+                     npoints=40, markersize=36., res=64,
+                     figsize=(5.5, 5), fontsize=10):
     """Produce the projected band structure.
 
     Plot the projection weight fractions as pie charts on top of the band structure.
