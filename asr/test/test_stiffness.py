@@ -100,14 +100,15 @@ def test_stiffness_gpaw_2(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
 
 
 # @pytest.mark.ci
-# @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
-#                                   'Pd', 'Pt', 'C'])
-@pytest.mark.parametrize('name', ['Cu'])
+@pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
+                                  'Pd', 'Pt', 'C'])
+# @pytest.mark.parametrize('name', ['Cu'])
 def test_stiffness_emt(asr_tmpdir_w_params, name):
     from pathlib import Path
     from ase.build import bulk
     from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
+    from asr.setup.params import main as setup_params
     from asr.stiffness import main as stiffness
     from asr.setup.strains import (get_strained_folder_name,
                                    get_relevant_strains)
@@ -131,7 +132,11 @@ def test_stiffness_emt(asr_tmpdir_w_params, name):
                 assert os.path.isfile('results-asr.setup.params.json')
                 # # should I run relaxation or just mock
                 # # an EMT calculation with a well defined stress?
-                relax(calculator={"name": "emt"})
+                params = {
+                    'asr.relax': {'calculator': {'name': 'emt'}}
+                }
+                setup_params(params=params)
+                relax()
                 assert os.path.isfile('results-asr.relax.json')
                 assert os.path.isfile('structure.json')
 
