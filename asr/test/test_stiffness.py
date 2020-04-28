@@ -102,7 +102,6 @@ def test_stiffness_gpaw_2(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
 # @pytest.mark.ci
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
-# @pytest.mark.parametrize('name', ['Cu'])
 def test_stiffness_emt(asr_tmpdir_w_params, name):
     from pathlib import Path
     from ase.build import bulk
@@ -140,4 +139,18 @@ def test_stiffness_emt(asr_tmpdir_w_params, name):
                 assert os.path.isfile('results-asr.relax.json')
                 assert os.path.isfile('structure.json')
 
-    stiffness()
+    results = stiffness()
+
+    nd = np.sum(structure.pbc)
+    stiffness_tensor = results['stiffness_tensor']
+    eigenvalues = results['eigenvalues']
+    # check that stiffness_tensor is symmetric
+    s_max = np.max(stiffness_tensor)
+    assert np.allclose(stiffness_tensor, stiffness_tensor.T, atol=1e-05*s_max)
+    # check that num. of eigenvalues = num. of dimensions
+    if nd==1:
+        assert len(eigenvalues) == 1
+    elif nd==2:
+        assert len(eigenvalues) == 3
+    else:
+        assert len(eigenvalues) == 6
