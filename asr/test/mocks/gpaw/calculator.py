@@ -356,9 +356,12 @@ class ASRCalculator(Calculator):
     def write(self, name, mode=None):
         """Write calculator to file."""
         from asr.core import write_json
+        from copy import deepcopy
 
-        calc = {'atoms': self.atoms,
-                'parameters': self.parameters}
+        calc = {
+            'atoms': self.atoms,
+            'parameters': deepcopy(self.parameters)
+        }
 
         write_json(name, calc)
 
