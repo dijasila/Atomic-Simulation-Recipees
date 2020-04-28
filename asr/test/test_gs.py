@@ -3,6 +3,7 @@ from pytest import approx
 
 
 @pytest.mark.ci
+@pytest.mark.parallel
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
 def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,

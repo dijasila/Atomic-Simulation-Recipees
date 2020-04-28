@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
+import os
 
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
@@ -190,7 +191,10 @@ def layout(row: AtomsRow,
                 try:
                     function(row, *(str(path) for path in paths))
                 except Exception:
-                    traceback.print_exc()
+                    if os.environ.get('ASRTESTENV', False):
+                        raise
+                    else:
+                        traceback.print_exc()
                 plt.close('all')
                 for path in paths:
                     if not path.is_file():

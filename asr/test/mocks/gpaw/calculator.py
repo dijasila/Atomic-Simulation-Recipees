@@ -313,7 +313,7 @@ class ASRCalculator(Calculator):
             Spin channel.
 
         """
-        return self.eigenvalues[kpt]
+        return self.eigenvalues[kpt].copy()
 
     def get_k_point_weights(self):
         """Get all k-point weights."""
