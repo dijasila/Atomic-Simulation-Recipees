@@ -358,6 +358,9 @@ class ASRCalculator(Calculator):
         from asr.core import write_json
         from copy import deepcopy
 
+        # We have to do a deep copy because the current version of
+        # ase.calculators.calculator.KPoints overwrites the __dict__
+        # attribute of KPoints upon writing the first time.
         calc = {
             'atoms': self.atoms,
             'parameters': deepcopy(self.parameters)
