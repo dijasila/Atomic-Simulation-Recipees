@@ -356,9 +356,15 @@ class ASRCalculator(Calculator):
     def write(self, name, mode=None):
         """Write calculator to file."""
         from asr.core import write_json
+        from copy import deepcopy
 
-        calc = {'atoms': self.atoms,
-                'parameters': self.parameters}
+        # We have to do a deep copy because the current version of
+        # ase.calculators.calculator.KPoints overwrites the __dict__
+        # attribute of KPoints upon writing the first time.
+        calc = {
+            'atoms': self.atoms,
+            'parameters': deepcopy(self.parameters)
+        }
 
         write_json(name, calc)
 
