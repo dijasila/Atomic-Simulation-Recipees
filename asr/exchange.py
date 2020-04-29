@@ -16,7 +16,7 @@ def calculate(gs='gs.gpw'):
     atoms = calc.atoms
     magnetic = magnetic_atoms(atoms)
     assert sum(magnetic) in [1, 2], \
-            ('Cannot handle %d magnetic atoms' % sum(magnetic))
+        ('Cannot handle %d magnetic atoms' % sum(magnetic))
     if sum(magnetic) == 2:
         calc.reset()
         calc.set(txt='gs_2mag.txt')
