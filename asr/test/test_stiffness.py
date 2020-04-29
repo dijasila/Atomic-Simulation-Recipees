@@ -100,12 +100,12 @@ def test_stiffness_gpaw_2(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
 
     # check that num. of eigenvalues is correct
     eigenvalues = results['eigenvalues']
-    if nd == 1:
-        assert len(eigenvalues) == 1
+    if nd == 3:
+        assert len(eigenvalues) == 6
     elif nd == 2:
         assert len(eigenvalues) == 3
-    else:
-        assert len(eigenvalues) == 6
+    # else:
+    #     assert len(eigenvalues) == 1
 
 
 # @pytest.mark.ci
