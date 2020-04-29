@@ -38,7 +38,7 @@ def check_duplicates(structure, db, ref_mag):
          resources='1:20m')
 def main():
     """
-    Identifying duplicates of structure.json in given database.
+    Identify duplicates of structure.json in given database.
 
     This recipe reads in a structure.json and identifies duplicates of that structure
     in an existing DB db.db. It uses the StructureMatcher object from pymatgen

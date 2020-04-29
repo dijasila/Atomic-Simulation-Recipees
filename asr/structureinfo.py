@@ -215,9 +215,11 @@ def main():
 
 def cluster_check(atoms):
     """
-    Analyzes the primary dimensionality of the input structure as well as
-    cluster analysis according to Mahler, et. al. Physical Review Materials
-    3 (3), 034003.
+    Cluser and dimensionality analysis of the input structure.
+
+    Analyzes the primary dimensionality of the input structure
+    and analyze clusters following Mahler, et. al.
+    Physical Review Materials 3 (3), 034003.
     """
     from ase.geometry.dimensionality import analyze_dimensionality
     cluster_data = analyze_dimensionality(atoms)[0]
