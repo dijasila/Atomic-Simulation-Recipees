@@ -677,9 +677,7 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
 
     After the with-block all cores will be able to read the file.
 
-    >>> with file_barrier(['something.txt']):
-    ...     <write file>
-    ...
+    Do "with file_barrier(['something.txt']):"
 
     This will remove the file, write the file and wait for the file.
     """
@@ -698,6 +696,7 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
 
     # Wait for file:
     i = 0
+    world.barrier()
     while not all([path.is_file() for path in paths]):
         filenames = ', '.join([path.name for path in paths
                                if not path.is_file()])

@@ -1,10 +1,10 @@
-from .conftest import test_materials, Ag2
+from .materials import std_test_materials, Ag2
 import pytest
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("inputatoms", [Ag2] + test_materials)
-def test_setup_magnetize(separate_folder, inputatoms):
+@pytest.mark.parametrize("inputatoms", [Ag2] + std_test_materials)
+def test_setup_magnetize(asr_tmpdir_w_params, inputatoms):
     import numpy as np
     from asr.core import magnetic_atoms
     from asr.setup.magnetize import main
@@ -32,3 +32,22 @@ def test_setup_magnetize(separate_folder, inputatoms):
         magmoms = atoms.get_initial_magnetic_moments()
         assert magmoms[a1] == 1.0
         assert magmoms[a2] == -1.0
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize("inputatoms", [Ag2])
+@pytest.mark.parametrize("state", ['all', 'nm', 'fm', 'afm', 'nm,fm'])
+@pytest.mark.parametrize("name", ['original.json', 'unrelaxed.json'])
+def test_setup_magnetize_state_inputs(asr_tmpdir_w_params, inputatoms,
+                                      state, name):
+    from asr.setup.magnetize import main
+    from pathlib import Path
+    inputatoms.write(name)
+    main(state=state, name=name)
+
+    if state == 'all':
+        state = 'nm,fm'
+    states = state.split(',')
+    for directory in states:
+        assert Path(directory).is_dir()
+        assert (Path(directory) / name).is_file()

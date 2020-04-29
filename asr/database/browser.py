@@ -2,6 +2,8 @@ from asr.core import command, option
 import sys
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
+import traceback
+import os
 
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
@@ -146,8 +148,8 @@ def layout(row: AtomsRow,
             continue
         try:
             panels = recipe.webpanel(row, key_descriptions)
-        except Exception as e:
-            print(e)
+        except Exception:
+            traceback.print_exc()
             panels = []
         for thispanel in panels:
             assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
@@ -188,8 +190,11 @@ def layout(row: AtomsRow,
                 # Create figure(s) only once:
                 try:
                     function(row, *(str(path) for path in paths))
-                except Exception as e:
-                    print(e)
+                except Exception:
+                    if os.environ.get('ASRTESTENV', False):
+                        raise
+                    else:
+                        traceback.print_exc()
                 plt.close('all')
                 for path in paths:
                     if not path.is_file():
