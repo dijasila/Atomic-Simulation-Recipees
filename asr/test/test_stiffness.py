@@ -75,7 +75,7 @@ def test_stiffness_gpaw_2(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
 
                 # generate random stress (without breaking symmetry)
                 from ase.units import J
-                stress = np.random.rand(6) * J / 1e30  # does this make any sense?
+                stress = np.random.rand(6) * J / 1e30
                 if nd == 2:
                     stress *= 1e10
                 elif nd == 1:
@@ -138,8 +138,6 @@ def test_stiffness_emt(asr_tmpdir_w_params, name):
                 import os
                 assert os.path.isfile('unrelaxed.json')
                 assert os.path.isfile('results-asr.setup.params.json')
-                # # should I run relaxation or just mock
-                # # an EMT calculation with a well defined stress?
                 params = {
                     'asr.relax': {'calculator': {'name': 'emt'}}
                 }
