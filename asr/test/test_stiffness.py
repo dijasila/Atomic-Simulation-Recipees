@@ -4,7 +4,8 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material, get_webcontent):
+def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                        get_webcontent):
     from pathlib import Path
     from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
@@ -109,5 +110,4 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
                        atol=1e-05 * s_max)
 
     content = get_webcontent()
-    nd = np.sum(structure.pbc)
     assert 'Dynamical(stiffness)' in content, content

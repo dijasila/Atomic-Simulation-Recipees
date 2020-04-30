@@ -38,4 +38,5 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcont
     topology = results['Topology']
     if topology != 'Not checked':
         assert 'Bandtopology' in content, content
-        # assert f"<td>Bandtopology</td><td>{results['Topology']}</td>" in content, content
+        # assert f"<td>Bandtopology</td><td>{results['Topology']}</td>" in \
+        #     content, content

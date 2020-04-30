@@ -78,7 +78,7 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Stiffness tensor',
              'columns': [[ctable], [eigtable]],
              'sort': 2}
-    
+
     if nd == 1:
         dynstab = ['low', 'high'][eigs > 0]
     else:
