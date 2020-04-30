@@ -58,9 +58,7 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material, ge
     assert results['eigenvalues'] == approx(eigenvalues)
 
     content = get_webcontent()
-    if nd == 2:
-        # XXX: only for 2D materials for now
-        assert 'Dynamical(stiffness)' in content, content
+    assert 'Dynamical(stiffness)' in content, content
 
 
 @pytest.mark.ci
@@ -112,6 +110,4 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
 
     content = get_webcontent()
     nd = np.sum(structure.pbc)
-    if nd == 2:
-        # XXX: only for 2D materials for now
-        assert 'Dynamical(stiffness)' in content, content
+    assert 'Dynamical(stiffness)' in content, content

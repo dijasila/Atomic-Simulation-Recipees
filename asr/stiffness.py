@@ -24,16 +24,44 @@ def webpanel(row, key_descriptions):
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
     eigs = stiffnessdata['eigenvalues']
+    nd = np.sum(row.pbc)
 
-    c_ij = np.zeros((4, 4))
-    c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-    rows = matrixtable(c_ij, unit='',
-                       skiprow=1,
-                       skipcolumn=1)
-    rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
-    rows[1][0] = 'xx'
-    rows[2][0] = 'yy'
-    rows[3][0] = 'xy'
+    if nd == 2:
+        c_ij = np.zeros((4, 4))
+        c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
+        rows = matrixtable(c_ij, unit='',
+                           skiprow=1,
+                           skipcolumn=1)
+        rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
+        rows[1][0] = 'xx'
+        rows[2][0] = 'yy'
+        rows[3][0] = 'xy'
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
+                      for ie, eig in enumerate(sorted(eigs,
+                                                      key=lambda x: x.real))])
+    elif nd == 3:
+        c_ij = np.zeros((7, 7))
+        c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
+        rows = matrixtable(c_ij, unit='',
+                           skiprow=1,
+                           skipcolumn=1)
+        rows[0] = ['C<sub>ij</sub> (N/m^2)', 'xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+        rows[1][0] = 'xx'
+        rows[2][0] = 'yy'
+        rows[3][0] = 'zz'
+        rows[4][0] = 'yz'
+        rows[5][0] = 'xz'
+        rows[6][0] = 'xy'
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m^2']
+                      for ie, eig in enumerate(sorted(eigs,
+                                                      key=lambda x: x.real))])
+    else:
+        rows = []
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue', f'{eigs:.2f} N']])
+
     for ir, tmprow in enumerate(rows):
         for ic, item in enumerate(tmprow):
             if ir == 0 or ic == 0:
@@ -43,10 +71,6 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
-    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
-                  for ie, eig in enumerate(sorted(eigs,
-                                                  key=lambda x: x.real))])
     eigtable = dict(
         type='table',
         rows=eigrows)
@@ -54,8 +78,11 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Stiffness tensor',
              'columns': [[ctable], [eigtable]],
              'sort': 2}
-
-    dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    
+    if nd == 1:
+        dynstab = ['low', 'high'][eigs > 0]
+    else:
+        dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
