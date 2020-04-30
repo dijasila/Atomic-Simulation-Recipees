@@ -2,6 +2,7 @@ import pytest
 from pytest import approx
 
 
+@pytest.mark.ci
 def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     test_material.write('structure.json')
