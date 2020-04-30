@@ -4,7 +4,7 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
+def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material, get_webcontent):
     from pathlib import Path
     from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
@@ -57,12 +57,17 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
     assert results['stiffness_tensor'] == approx(stiffness_tensor)
     assert results['eigenvalues'] == approx(eigenvalues)
 
+    content = get_webcontent()
+    if nd == 2:
+        # XXX: only for 2D materials for now
+        assert 'Dynamical(stiffness)' in content, content
+
 
 @pytest.mark.ci
 # @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
 #                                   'Pd', 'Pt', 'C'])
 @pytest.mark.parametrize('name', ['Al'])
-def test_stiffness_emt(asr_tmpdir_w_params, name):
+def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
     from pathlib import Path
     from ase.build import bulk
     from asr.relax import main as relax
@@ -104,3 +109,9 @@ def test_stiffness_emt(asr_tmpdir_w_params, name):
     s_max = np.max(stiffness_tensor)
     assert np.allclose(stiffness_tensor, stiffness_tensor.T,
                        atol=1e-05 * s_max)
+
+    content = get_webcontent()
+    nd = np.sum(structure.pbc)
+    if nd == 2:
+        # XXX: only for 2D materials for now
+        assert 'Dynamical(stiffness)' in content, content

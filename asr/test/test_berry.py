@@ -1,4 +1,4 @@
-import pytest 
+import pytest
 from pytest import approx
 
 
@@ -8,7 +8,7 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcont
     test_material.write('structure.json')
     kpar = 10
     nbands = 2
-    
+
     def parallel_transport(calc='gs_berry.gpw', direction=0, theta=0, phi=0):
         phi_km = np.zeros([kpar, nbands])
         s_km = np.zeros([kpar, nbands])
@@ -19,17 +19,23 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcont
                  new=parallel_transport)
     results = calculate()
 
-    # check that all phi_km and s_km are returned by asr.berry@calculate 
+    # check that all phi_km and s_km are returned by asr.berry@calculate
     # note that asr.berry@calculate does not return any phi_km, s_km for 1D materials
     nd = np.sum(test_material.pbc)
     directions = []
     if nd == 3:
         directions = ['0', '1', '2', '0_pi']
     elif nd == 2:
-        directions = ['0']       
+        directions = ['0']
     for d in directions:
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-    main()
-    get_webcontent()
+    results = main()
+    assert 'Topology' in results
+
+    content = get_webcontent()
+    topology = results['Topology']
+    if topology != 'Not checked':
+        assert 'Bandtopology' in content, content
+        # assert f"<td>Bandtopology</td><td>{results['Topology']}</td>" in content, content
