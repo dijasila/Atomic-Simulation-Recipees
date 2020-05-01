@@ -58,7 +58,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     gsold = get_calculator()('gs.gpw', txt=None)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
     if is_magnetic():
         magmoms_m = gsold.get_magnetic_moments()
         # Some calculators return magnetic moments resolved into their
@@ -83,8 +83,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     params['txt'] = fd
     calc = get_calculator()(**params)
 
-    from asr.core import get_dimensionality
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -146,11 +145,10 @@ def webpanel(row, key_descriptions):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo=True):
     from asr.core import read_json
-    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
