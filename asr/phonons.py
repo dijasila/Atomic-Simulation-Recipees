@@ -58,7 +58,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     gsold = get_calculator()('gs.gpw', txt=None)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
     if is_magnetic():
         magmoms_m = gsold.get_magnetic_moments()
         # Some calculators return magnetic moments resolved into their
@@ -83,8 +83,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     params['txt'] = fd
     calc = get_calculator()(**params)
 
-    from asr.core import get_dimensionality
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:

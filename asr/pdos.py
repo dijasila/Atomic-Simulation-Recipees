@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, read_json
 
 from collections import defaultdict
 
@@ -12,7 +12,7 @@ from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase.units import Hartree
 
-from asr.core import magnetic_atoms, read_json
+from asr.utils import magnetic_atoms
 
 
 # ---------- GPAW hacks ---------- #

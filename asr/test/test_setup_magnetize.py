@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.parametrize("inputatoms", [Ag2] + std_test_materials)
 def test_setup_magnetize(asr_tmpdir_w_params, inputatoms):
     import numpy as np
-    from asr.core import magnetic_atoms
+    from asr.utils import magnetic_atoms
     from asr.setup.magnetize import main
     from ase.io import write, read
     from pathlib import Path
