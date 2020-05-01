@@ -2,8 +2,8 @@ import pytest
 
 
 @pytest.mark.ci
-def test_projected_bandstructure(asr_tmpdir, mockgpaw, test_material,
-                                 get_webcontent):
+def test_projected_bs_mocked(asr_tmpdir, mockgpaw, get_webcontent,
+                             test_material):
     from asr.projected_bandstructure import main
     test_material.write("structure.json")
     main()
