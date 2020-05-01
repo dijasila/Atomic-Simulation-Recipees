@@ -660,8 +660,7 @@ def main(gpwfilename='gs.gpw'):
             try:
                 masses = embands(gpw2,
                                  soc=soc,
-                                 bandtype=bt,
-                                 efermi=efermi)
+                                 bandtype=bt)
 
                 # This function modifies the last argument
                 unpack_masses(masses, soc, bt, good_results)
@@ -731,7 +730,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
-def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
+def embands(gpw, soc, bandtype, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
     Parameters
@@ -759,11 +758,10 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     ndim = calc.atoms.pbc.sum()
 
     theta, phi = get_spin_axis()
-    e_skn, efermi2 = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
-    if efermi is None:
-        efermi = efermi2
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
+
     vb_ind, cb_ind = get_vb_cb_indices(e_skn=e_skn, efermi=efermi, delta=delta)
 
     indices = vb_ind if bandtype == 'vb' else cb_ind
