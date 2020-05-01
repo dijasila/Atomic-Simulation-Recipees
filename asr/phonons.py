@@ -145,11 +145,10 @@ def webpanel(row, key_descriptions):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo=True):
     from asr.core import read_json
-    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:

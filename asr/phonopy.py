@@ -169,7 +169,6 @@ def webpanel(row, key_descriptions):
 )
 def main():
     from asr.core import read_json
-    from asr.core import get_dimensionality
 
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
@@ -180,7 +179,7 @@ def main():
     n = dct["__params__"]["n"]
     d = dct["__params__"]["d"]
 
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
         N_c = (n, n, n)
