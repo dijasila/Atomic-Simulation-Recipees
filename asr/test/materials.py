@@ -40,6 +40,5 @@ Agchain = Atoms(
     pbc=[False, False, True],
 )
 
-std_test_materials = [Si, BN, Agchain]
-
+std_test_materials = [Si, BN, Agchain, Fe]
 all_test_materials = [Si, BN, Agchain, Fe]

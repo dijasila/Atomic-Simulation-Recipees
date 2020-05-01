@@ -61,6 +61,10 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     from asr.core import is_magnetic
     if is_magnetic():
         magmoms_m = gsold.get_magnetic_moments()
+        # Some calculators return magnetic moments resolved into their
+        # cartesian components
+        if len(magmoms_m.shape) == 2:
+            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     params = gsold.parameters.copy()  # TODO: remove fix density from gs params
