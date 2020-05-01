@@ -54,13 +54,13 @@ def webpanel(row, key_descriptions):
         rows[5][0] = 'xz'
         rows[6][0] = 'xy'
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} 10^9 N/m^2']
+                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} * 10^9 N/m^2']
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     else:
         rows = []
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eigs.real:.2f} 10^(-10) N']])
+                   + [[f'Eigenvalue', f'{eigs.real:.2f} * 10^(-10) N']])
 
     for ir, tmprow in enumerate(rows):
         for ic, item in enumerate(tmprow):
