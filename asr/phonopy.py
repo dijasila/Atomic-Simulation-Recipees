@@ -61,16 +61,14 @@ def calculate(n=2, d=0.05,
     calc = get_calculator_class(name)(**calculator)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
 
     if is_magnetic():
         gsold = get_calculator()("gs.gpw", txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    from asr.core import get_dimensionality
-
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
     elif nd == 2:
@@ -171,7 +169,6 @@ def webpanel(row, key_descriptions):
 )
 def main():
     from asr.core import read_json
-    from asr.core import get_dimensionality
 
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
@@ -182,7 +179,7 @@ def main():
     n = dct["__params__"]["n"]
     d = dct["__params__"]["d"]
 
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
         N_c = (n, n, n)
