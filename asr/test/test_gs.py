@@ -3,16 +3,20 @@ from pytest import approx
 
 
 @pytest.mark.ci
+@pytest.mark.parallel
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
 def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
+    import asr.relax
+    from asr.core import read_json
     from asr.gs import calculate, main
     from ase.io import write
     import gpaw
     import gpaw.occupations
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
+    spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
     gpaw.GPAW._get_band_gap.return_value = gap
 
@@ -25,6 +29,13 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     )
 
     results = main()
+    gs = read_json('gs.gpw')
+    gs['atoms'].has('initial_magmoms')
+    if test_material.has('initial_magmoms'):
+        spy.assert_not_called()
+    else:
+        spy.assert_called()
+
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level)
     if gap >= fermi_level:

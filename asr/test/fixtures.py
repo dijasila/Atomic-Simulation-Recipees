@@ -1,9 +1,11 @@
 """Module containing the implementations of all ASR pytest fixtures."""
 
+from ase.parallel import world, broadcast
 from asr.core import write_json
 from .materials import std_test_materials
 import os
 import pytest
+from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
 
 
@@ -26,55 +28,68 @@ def mockgpaw(monkeypatch):
 @pytest.fixture(params=std_test_materials)
 def test_material(request):
     """Fixture that returns an ase.Atoms object representing a std test material."""
-    return request.param
+    return request.param.copy()
 
 
 @pytest.fixture()
-def asr_tmpdir(tmpdir):
-    """Create temp directory and change directory to that directory.
+def asr_tmpdir(request, tmp_path_factory):
+    """Create temp folder and change directory to that folder.
 
-    A context manager that creates a temporary directory and changes
+    A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
+    if world.rank == 0:
+        path = _mk_tmp(request, tmp_path_factory)
+    else:
+        path = None
+    path = broadcast(path)
     cwd = os.getcwd()
-    os.chdir(str(tmpdir))
-
+    os.chdir(path)
     try:
-        yield str(tmpdir)
+        yield path
     finally:
         os.chdir(cwd)
 
 
-def _get_webcontent():
-    """Create database, setup test server and return website content."""
+def _get_webcontent(name='database.db'):
     from asr.database.fromtree import main as fromtree
+    from asr.database.material_fingerprint import main as mf
+    mf()
     fromtree()
-
+    content = ""
     from asr.database import app as appmodule
     from pathlib import Path
-    from asr.database.app import app, initialize_project, projects
+    if world.rank == 0:
+        from asr.database.app import app, initialize_project, projects
 
-    tmpdir = Path("tmp/")
-    tmpdir.mkdir()
-    appmodule.tmpdir = tmpdir
-    initialize_project("database.db")
+        tmpdir = Path("tmp/")
+        tmpdir.mkdir()
+        appmodule.tmpdir = tmpdir
+        initialize_project(name)
 
-    app.testing = True
-    with app.test_client() as c:
-        content = c.get(f"/database.db/").data.decode()
-        project = projects["database.db"]
-        db = project["database"]
-        uid_key = project["uid_key"]
-        row = db.get(id=1)
-        uid = row.get(uid_key)
-        url = f"/database.db/row/{uid}"
-        content = c.get(url).data.decode()
-        content = (
-            content
-            .replace("\n", "")
-            .replace(" ", "")
-        )
+        app.testing = True
+        with app.test_client() as c:
+            project = projects["database.db"]
+            db = project["database"]
+            uid_key = project["uid_key"]
+            row = db.get(id=1)
+            uid = row.get(uid_key)
+            url = f"/database.db/row/{uid}"
+            content = c.get(url).data.decode()
+            content = (
+                content
+                .replace("\n", "")
+                .replace(" ", "")
+            )
+    else:
+        content = None
+    content = broadcast(content)
     return content
+
+
+@pytest.fixture(autouse=True)
+def set_asr_test_environ_variable(monkeypatch):
+    monkeypatch.setenv("ASRTESTENV", "true")
 
 
 @pytest.fixture()
@@ -103,6 +118,9 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'emptybands': 5,
         },
         'asr.gw@gs': {
+            'kptdensity': 2,
+        },
+        'asr.bse@calculate': {
             'kptdensity': 2,
         },
         'asr.pdos@calculate': {
