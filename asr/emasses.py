@@ -18,7 +18,6 @@ def refine(gpwfilename='gs.gpw'):
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
-    from gpaw import GPAW
     socs = [True]
 
     for soc in socs:
