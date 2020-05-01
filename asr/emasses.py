@@ -23,7 +23,6 @@ def refine(gpwfilename='gs.gpw'):
 
     for soc in socs:
         theta, phi = get_spin_axis()
-        calc = GPAW(gpwfilename)
         eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
