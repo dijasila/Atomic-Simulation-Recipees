@@ -49,7 +49,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
         assert not relaxed.get_initial_magnetic_moments().any()
 
     # If user has set magnetic moments, make sure that we don't touch them
-    if set_magmoms:
+    if test_material.has('initial_magmoms'):
         spy.assert_not_called()
     else:
         spy.assert_called()
@@ -123,27 +123,6 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "The spacegroup has changed during relaxation. " in captured.out
-
-
-@pytest.mark.acceptance_test
-def test_relax_fe_gpaw(asr_tmpdir):
-    from asr.relax import main
-    from ase.io import read
-    from ase import Atoms
-    a = 1.41973054
-    magmom = 2.26739285
-    Fe = Atoms('Fe',
-               positions=[[0., 0., 0.]],
-               cell=[[-a, a, a],
-                     [a, -a, a],
-                     [a, a, -a]],
-               magmoms=[magmom],
-               pbc=True)
-    Fe.write('unrelaxed.json')
-    main()
-    relaxed = read('structure.json')
-    magmoms = relaxed.get_initial_magnetic_moments()
-    assert magmoms[0] == pytest.approx(magmom, abs=0.1)
 
 
 @pytest.mark.integration_test
