@@ -26,12 +26,12 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
     Use the 'all' identifier to test all magnetic configuration: --state all
     This is the default option.
 
-    An atomic structure with the correct initial magnetic moments
-    named 'unrelaxed.json' is saved in each folder, which can be relaxed
-    using the relax recipe.
-
     By default this recipe looks for a structure in the current directory named
     'unrelaxed.json'. Use the --name switch to change this name.
+
+    An atomic structure with the correct initial magnetic moments
+    named as '--name' is saved in each folder, which can be relaxed
+    using the relax recipe.
 
     If you also want to copy the params.json file in the current directory into
     all newly created directories use the --copy-params switch.
@@ -75,7 +75,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
         assert not Path('nm').is_dir(), 'nm/ already exists!'
         if world.rank == 0:
             Path('nm').mkdir()
-            write('nm/unrelaxed.json', atoms)
+            write(f'nm/{name}', atoms)
             if copy_params:
                 p = Path('params.json')
                 if p.is_file:
@@ -88,7 +88,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
         assert not Path('fm').is_dir(), 'fm/ already exists!'
         if world.rank == 0:
             Path('fm').mkdir()
-            write('fm/unrelaxed.json', atoms)
+            write(f'fm/{name}', atoms)
             if copy_params:
                 p = Path('params.json')
                 if p.is_file:
@@ -108,7 +108,7 @@ def main(state='all', name='unrelaxed.json', copy_params=False):
             assert not Path('afm').is_dir(), 'afm/ already exists!'
             if world.rank == 0:
                 Path('afm').mkdir()
-                write('afm/unrelaxed.json', atoms)
+                write(f'afm/{name}', atoms)
                 if copy_params:
                     p = Path('params.json')
                     if p.is_file:
