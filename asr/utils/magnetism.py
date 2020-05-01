@@ -1,4 +1,5 @@
 """Utility functions for magnetic properties."""
+import numpy as np
 
 
 def is_magnetic():
