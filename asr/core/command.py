@@ -1,4 +1,4 @@
-"""Module implementing the ASRCommand class and its decorators."""
+"""Module implementing the ASRCommand class and related decorators."""
 from . import (parse_dict_string, read_json, write_json, md5sum,
                file_barrier, unlink)
 from ase.parallel import parprint
@@ -11,43 +11,44 @@ import inspect
 from functools import update_wrapper
 
 
-def paramerrormsg(func, msg):
+def _paramerrormsg(func, msg):
     return f'Problem in {func.__module__}@{func.__name__}. {msg}'
 
 
-def add_param(func, param):
+def _add_param(func, param):
     if not hasattr(func, '__asr_params__'):
         func.__asr_params__ = {}
 
     name = param['name']
     assert name not in func.__asr_params__, \
-        paramerrormsg(func, f'Double assignment of {name}')
+        _paramerrormsg(func, f'Double assignment of {name}')
 
     import inspect
     sig = inspect.signature(func)
     assert name in sig.parameters, \
-        paramerrormsg(func, f'Unkown parameter {name}')
+        _paramerrormsg(func, f'Unkown parameter {name}')
 
     assert 'argtype' in param, \
-        paramerrormsg(func, 'You have to specify the parameter '
-                      'type: option or argument')
+        _paramerrormsg(func, 'You have to specify the parameter '
+                       'type: option or argument')
 
     if param['argtype'] == 'option':
         if 'nargs' in param:
             assert param['nargs'] > 0, \
-                paramerrormsg(func, 'Options only allow one argument')
+                _paramerrormsg(func, 'Options only allow one argument')
     elif param['argtype'] == 'argument':
         assert 'default' not in param, \
-            paramerrormsg(func, 'Argument don\'t allow defaults')
+            _paramerrormsg(func, 'Argument don\'t allow defaults')
     else:
         raise AssertionError(
-            paramerrormsg(func,
-                          f'Unknown argument type {param["argtype"]}'))
+            _paramerrormsg(func,
+                           f'Unknown argument type {param["argtype"]}'))
 
     func.__asr_params__[name] = param
 
 
 def option(*args, **kwargs):
+    """Tag a function to have an option."""
 
     def decorator(func):
         assert args, 'You have to give a name to this parameter'
@@ -59,20 +60,21 @@ def option(*args, **kwargs):
                 break
         else:
             raise AssertionError(
-                paramerrormsg(func,
-                              'You must give exactly one alias that starts '
-                              'with -- and matches a function argument.'))
+                _paramerrormsg(func,
+                               'You must give exactly one alias that starts '
+                               'with -- and matches a function argument.'))
         param = {'argtype': 'option',
                  'alias': args,
                  'name': name}
         param.update(kwargs)
-        add_param(func, param)
+        _add_param(func, param)
         return func
 
     return decorator
 
 
 def argument(name, **kwargs):
+    """Mark a function to have an argument."""
 
     def decorator(func):
         assert 'default' not in kwargs, 'Arguments do not support defaults!'
@@ -80,7 +82,7 @@ def argument(name, **kwargs):
                  'alias': (name, ),
                  'name': name}
         param.update(kwargs)
-        add_param(func, param)
+        _add_param(func, param)
         return func
 
     return decorator
