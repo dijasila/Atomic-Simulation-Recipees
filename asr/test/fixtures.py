@@ -28,7 +28,7 @@ def mockgpaw(monkeypatch):
 @pytest.fixture(params=std_test_materials)
 def test_material(request):
     """Fixture that returns an ase.Atoms object representing a std test material."""
-    return request.param
+    return request.param.copy()
 
 
 @pytest.fixture()
@@ -118,6 +118,9 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'emptybands': 5,
         },
         'asr.gw@gs': {
+            'kptdensity': 2,
+        },
+        'asr.bse@calculate': {
             'kptdensity': 2,
         },
         'asr.pdos@calculate': {
