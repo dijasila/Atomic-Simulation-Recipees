@@ -49,7 +49,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
         assert not relaxed.get_initial_magnetic_moments().any()
 
     # If user has set magnetic moments, make sure that we don't touch them
-    if set_magmoms:
+    if test_material.has('initial_magmoms'):
         spy.assert_not_called()
     else:
         spy.assert_called()
