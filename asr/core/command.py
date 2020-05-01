@@ -1,49 +1,14 @@
-import os
+"""Module implementing the ASRCommand class and its decorators."""
+from . import (parse_dict_string, read_json, write_json, md5sum,
+               file_barrier, unlink)
+from ase.parallel import parprint
+import click
+import copy
 import time
-from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Union, List
-
-import click
-import numpy as np
-from ase.io import jsonio
-from ase.parallel import parprint
-import ase.parallel as parallel
 import inspect
-import copy
-from ast import literal_eval
 from functools import update_wrapper
-
-
-def parse_dict_string(string, dct=None):
-    if dct is None:
-        dct = {}
-
-    # Locate ellipsis
-    string = string.replace('...', 'None:None')
-    tmpdct = literal_eval(string)
-    recursive_update(tmpdct, dct)
-    return tmpdct
-
-
-def recursive_update(dct, defaultdct):
-    if None in dct:
-        # This marks that we take default values from defaultdct
-        del dct[None]
-        for key in defaultdct:
-            if key not in dct:
-                dct[key] = defaultdct[key]
-
-    for key, value in dct.items():
-        if isinstance(value, dict) and None in value:
-            if key not in defaultdct:
-                del value[None]
-                continue
-            if not isinstance(defaultdct[key], dict):
-                del value[None]
-                continue
-            recursive_update(dct[key], defaultdct[key])
 
 
 def paramerrormsg(func, msg):

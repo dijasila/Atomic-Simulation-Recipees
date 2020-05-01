@@ -1,3 +1,11 @@
+"""Implements useful utility functions needed for several asr features.
+
+Functions
+---------
+
+    parse_dict_string: Convert a string-serialized dict, return a real dict.
+
+"""
 import os
 import time
 from contextlib import contextmanager
@@ -7,9 +15,23 @@ from typing import Union, List
 import numpy as np
 from ase.io import jsonio
 import ase.parallel as parallel
+from ast import literal_eval
+
+
+def parse_dict_string(string, dct=None):
+    """Convert a string-serialized dict, return a real dict."""
+    if dct is None:
+        dct = {}
+
+    # Locate ellipsis
+    string = string.replace('...', 'None:None')
+    tmpdct = literal_eval(string)
+    recursive_update(tmpdct, dct)
+    return tmpdct
 
 
 def recursive_update(dct, defaultdct):
+    """Recursively update defualtdct with values from dct."""
     if None in dct:
         # This marks that we take default values from defaultdct
         del dct[None]
