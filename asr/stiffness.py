@@ -46,7 +46,7 @@ def webpanel(row, key_descriptions):
         rows = matrixtable(c_ij, unit='',
                            skiprow=1,
                            skipcolumn=1)
-        rows[0] = ['C<sub>ij</sub> (N/m^2)', 'xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+        rows[0] = ['C<sub>ij</sub> (10^9 N/m^2)', 'xx', 'yy', 'zz', 'yz', 'xz', 'xy']
         rows[1][0] = 'xx'
         rows[2][0] = 'yy'
         rows[3][0] = 'zz'
@@ -54,13 +54,13 @@ def webpanel(row, key_descriptions):
         rows[5][0] = 'xz'
         rows[6][0] = 'xy'
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m^2']
+                   + [[f'Eigenvalue {ie}', f'{eig:.2f} 10^9 N/m^2']
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     else:
         rows = []
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eigs:.2f} N']])
+                   + [[f'Eigenvalue', f'{eigs:.2f} 10^(-10) N']])
 
     for ir, tmprow in enumerate(rows):
         for ic, item in enumerate(tmprow):
@@ -185,10 +185,14 @@ def main(strain_percent=1.0):
     elif nd == 1:
         cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
-        stiffness = stiffness[5, 5] * area * 1e-20
-        kd['stiffness_tensor'] = 'Stiffness tensor [N]'
+        stiffness = stiffness[2, 2] * area * 1e-20
+        # typical values for 1D are of the order of 10^(-10) N
+        stiffness = stiffness * 1.0e10
+        kd['stiffness_tensor'] = 'Stiffness tensor [10^(-10) N]'
     else:
-        kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
+        # typical values for 3D are of the order of 100 GPa [= 100*10^9 N/m^2]
+        stiffness = stiffness / 1.0e9
+        kd['stiffness_tensor'] = 'Stiffness tensor [10^9 N/m^2]'
 
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness
