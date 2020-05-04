@@ -107,6 +107,6 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
     stiffness_tensor = results['stiffness_tensor']
     diff = stiffness_tensor - stiffness_tensor.T
     assert np.max(diff) < 1e-08
-    
+
     content = get_webcontent()
     assert 'Dynamical(stiffness)' in content, content
