@@ -19,7 +19,7 @@ def check_duplicates(structure, db, ref_mag=None,
     id_duplicates = []
 
     # Stoichiometric identification
-    for row in db.select(','.join(symbols)):
+    for row in db.select(','.join(symbols), include_data=False):
         if row.id in exclude_ids:
             continue
         stoichiometry_row = Formula(str(row.get("formula"))).reduce()[0]
