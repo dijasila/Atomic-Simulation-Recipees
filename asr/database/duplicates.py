@@ -1,6 +1,7 @@
 from asr.core import command, argument, option
 from asr.duplicates import check_duplicates
 from functools import cmp_to_key
+from datetime import datetime
 
 
 @command(module='asr.database.duplicates',
@@ -18,13 +19,14 @@ def main(database, databaseout,
 
     """
     from ase.db import connect
-    from datetime import datetime
     assert database != databaseout, \
         'You cannot read and write from the same database.'
     db = connect(database)
     already_checked_set = set()
+    nmat = len(db)
     with connect(databaseout) as filtereddb:
-        for row in db.select():
+        for row in db.select(include_data=False):
+            timed_print(f'{row.id}/{nmat}', wait=30)
             if row.id % 200 == 0:
                 now = datetime.now()
                 print(f'{now}: {row.id}')
@@ -53,6 +55,18 @@ def main(database, databaseout,
                              **relevant_row.key_value_pairs)
 
     filtereddb.metadata = db.metadata
+
+
+_LATEST_PRINT = datetime.now()
+
+
+def timed_print(*args, wait=20):
+    global _LATEST_PRINT
+
+    now = datetime.now()
+    if (now - _LATEST_PRINT).seconds > wait:
+        print(*args)
+        _LATEST_PRINT = now
 
 
 def pick_out_row(db, duplicate_ids, filterstring):
