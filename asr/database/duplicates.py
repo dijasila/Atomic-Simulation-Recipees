@@ -1,6 +1,5 @@
 from asr.core import command, argument, option
 from asr.duplicates import check_duplicates
-from functools import cmp_to_key
 from datetime import datetime
 
 
