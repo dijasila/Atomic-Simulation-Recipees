@@ -26,10 +26,8 @@ def main(database, databaseout,
     nmat = len(db)
     with connect(databaseout) as filtereddb:
         for row in db.select(include_data=False):
-            _timed_print(f'{row.id}/{nmat}', wait=30)
-            if row.id % 200 == 0:
-                now = datetime.now()
-                print(f'{now}: {row.id}')
+            now = datetime.now()
+            _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
 
             if row.id in already_checked_set:
                 continue
