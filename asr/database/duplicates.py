@@ -26,7 +26,7 @@ def main(database, databaseout,
     nmat = len(db)
     with connect(databaseout) as filtereddb:
         for row in db.select(include_data=False):
-            timed_print(f'{row.id}/{nmat}', wait=30)
+            _timed_print(f'{row.id}/{nmat}', wait=30)
             if row.id % 200 == 0:
                 now = datetime.now()
                 print(f'{now}: {row.id}')
@@ -60,7 +60,7 @@ def main(database, databaseout,
 _LATEST_PRINT = datetime.now()
 
 
-def timed_print(*args, wait=20):
+def _timed_print(*args, wait=20):
     global _LATEST_PRINT
 
     now = datetime.now()
@@ -71,17 +71,14 @@ def timed_print(*args, wait=20):
 
 def pick_out_row(db, duplicate_ids, filterstring):
     rows = [db.get(id=rowid) for rowid in duplicate_ids]
-    filters = filterstring.split(',')
+    keys = filterstring.split(',')
 
-    def compare(row1, row2):
-        for filt in filters:
-            cmp = row1.get(filt) <= row2.get(filt)
-            if not cmp:
-                return False
+    def keyfunc(row):
+        return tuple(row.get(key) for key in keys)
 
-        return True
-
-    rows = sorted(rows, key=cmp_to_key(compare))
+    rows = sorted(rows, key=keyfunc)
+    for row in rows:
+        print(row.natoms, row.id, row)
     return rows[0]
 
 
