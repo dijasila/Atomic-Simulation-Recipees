@@ -9,9 +9,11 @@ from datetime import datetime
 @argument('databaseout')
 @argument('database')
 @option('-f', '--filterstring',
-        help='Comparison string. If true then pick row1, else pick row2.')
+        help='List of keys denoting the priority of picking'
+        ' a candidate among duplicates.')
+@option('-c', '--comparison-keys', help='')
 def main(database, databaseout,
-         filterstring='natoms,id'):
+         filterstring='natoms,id', comparison_keys='magstate'):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -20,6 +22,7 @@ def main(database, databaseout,
     from ase.db import connect
     assert database != databaseout, \
         'You cannot read and write from the same database.'
+    comparison_keys = comparison_keys.split(',')
     db = connect(database)
     already_checked_set = set()
     nmat = len(db)
@@ -31,12 +34,11 @@ def main(database, databaseout,
             if row.id in already_checked_set:
                 continue
 
-            structure = row.toatoms()
-            ref_mag = row.get('magstate')
             already_checked_set.add(row.id)
             has_duplicate, id_list = check_duplicates(
-                structure, db, ref_mag,
-                exclude_ids=already_checked_set)
+                db=db, row=row,
+                exclude_ids=already_checked_set,
+                comparison_keys=comparison_keys)
             already_checked_set.update(set(id_list))
 
             if has_duplicate:
