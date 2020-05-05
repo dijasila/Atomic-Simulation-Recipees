@@ -11,7 +11,8 @@ from datetime import datetime
 @option('-f', '--filterstring',
         help='List of keys denoting the priority of picking'
         ' a candidate among duplicates.')
-@option('-c', '--comparison-keys', help='')
+@option('-c', '--comparison-keys',
+        help='Keys that have to be identical for materials to be identical.')
 def main(database, databaseout,
          filterstring='natoms,id', comparison_keys='magstate'):
     """Take an input database filter out duplicates.
