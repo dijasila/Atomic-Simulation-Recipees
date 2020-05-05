@@ -77,8 +77,6 @@ def pick_out_row(db, duplicate_ids, filterstring):
         return tuple(row.get(key) for key in keys)
 
     rows = sorted(rows, key=keyfunc)
-    for row in rows:
-        print(row.natoms, row.id, row)
     return rows[0]
 
 
