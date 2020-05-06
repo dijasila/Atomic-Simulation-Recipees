@@ -5,7 +5,8 @@ def check_duplicates(structure=None, row=None, db=None,
                      comparison_keys=[],
                      exclude_ids=set(),
                      extra_data={},
-                     verbose=False):
+                     verbose=False,
+                     symprec=1e-5):
     """Compare structure with structures in db with magstate ref_mag."""
     from ase.formula import Formula
     from pymatgen.io.ase import AseAtomsAdaptor
@@ -42,7 +43,7 @@ def check_duplicates(structure=None, row=None, db=None,
                 struc = asetopy.get_structure(struc)
                 rmdup = RemoveExistingFilter([struc],
                                              matcher,
-                                             symprec=1e-5)
+                                             symprec=symprec)
                 is_duplicate = not rmdup.test(refpy)
                 if is_duplicate:
                     id_duplicates.append(id)

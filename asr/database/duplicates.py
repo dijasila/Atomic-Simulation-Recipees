@@ -13,8 +13,11 @@ from datetime import datetime
         ' a candidate among duplicates.')
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for materials to be identical.')
+@option('-s', '--symprec',
+        help='Symmetry determination tolerance (SPGLib parameter).')
 def main(database, databaseout,
-         filterstring='natoms,id', comparison_keys='magstate'):
+         filterstring='natoms,id', comparison_keys='',
+         symprec=1e-2):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -26,6 +29,7 @@ def main(database, databaseout,
     comparison_keys = comparison_keys.split(',')
     db = connect(database)
     already_checked_set = set()
+    duplicate_groups = {}
     nmat = len(db)
     with connect(databaseout) as filtereddb:
         for row in db.select(include_data=False):
@@ -39,7 +43,8 @@ def main(database, databaseout,
             has_duplicate, id_list = check_duplicates(
                 db=db, row=row,
                 exclude_ids=already_checked_set,
-                comparison_keys=comparison_keys)
+                comparison_keys=comparison_keys,
+                symprec=symprec)
             already_checked_set.update(set(id_list))
 
             if has_duplicate:
@@ -47,6 +52,7 @@ def main(database, databaseout,
                       f'duplicates with ids: {id_list}')
                 duplicate_ids = set(id_list + [row.id])
                 relevant_row = pick_out_row(db, duplicate_ids, filterstring)
+                duplicate_groups[relevant_row.id] = list(duplicate_ids)
             else:
                 relevant_row = row
 
@@ -55,6 +61,8 @@ def main(database, databaseout,
                              **relevant_row.key_value_pairs)
 
     filtereddb.metadata = db.metadata
+
+    return {'duplicate_groups': duplicate_groups}
 
 
 _LATEST_PRINT = datetime.now()
