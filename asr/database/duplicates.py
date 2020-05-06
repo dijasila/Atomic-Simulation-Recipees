@@ -13,11 +13,12 @@ from datetime import datetime
         ' a candidate among duplicates.')
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for materials to be identical.')
+@option('-r', '--rmsd-tol', help='RMSD tolerance.')
 @option('-s', '--symprec',
         help='Symmetry determination tolerance (SPGLib parameter).')
 def main(database, databaseout,
          filterstring='natoms,id', comparison_keys='',
-         symprec=1e-2):
+         rmsd_tol=0.3, symprec=1e-2):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -44,7 +45,8 @@ def main(database, databaseout,
                 db=db, row=row,
                 exclude_ids=already_checked_set,
                 comparison_keys=comparison_keys,
-                symprec=symprec)
+                symprec=symprec,
+                rmsd_tol=rmsd_tol)
             already_checked_set.update(set(id_list))
 
             if has_duplicate:

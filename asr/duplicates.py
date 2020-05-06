@@ -3,6 +3,7 @@ from asr.core import command, argument
 
 def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
     from pymatgen.analysis.structure_matcher import StructureMatcher
+    from ase.build import niggli_reduce
 
     if adaptor is None:
         from pymatgen.io.ase import AseAtomsAdaptor
@@ -11,11 +12,16 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
     if matcher is None:
         matcher = StructureMatcher()
 
+    atoms1 = atoms1.copy()
+    atoms2 = atoms2.copy()
+    atoms1.set_pbc(True)
+    atoms2.set_pbc(True)
+    niggli_reduce(atoms1)
+    niggli_reduce(atoms2)
     struct1 = adaptor.get_structure(atoms1)
     struct2 = adaptor.get_structure(atoms2)
 
     struct1, struct2 = matcher._process_species([struct1, struct2])
-
     if not matcher._subset and matcher._comparator.get_hash(struct1.composition) \
             != matcher._comparator.get_hash(struct2.composition):
         return None
@@ -24,28 +30,33 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
     match = matcher._match(struct1, struct2, fu, s1_supercell,
                            break_on_match=True)
     if match is None:
-        return False
+        return None
     else:
         return match[0]
 
 
-def fix_nonpbc_cell_directions(atoms):
-    import numpy as np
-    atoms = atoms.copy()
-    pbc_c = atoms.get_pbc()
-    cell_cv = atoms.get_cell()
-    print('before cell', cell_cv)
-    cell_cv[~pbc_c] = np.eye(3)[~pbc_c]
-    print('after cell', cell_cv)
-    atoms.set_cell(cell_cv)
-    return atoms
+def normalize_nonpbc_atoms(atoms1, atoms2):
+    atoms1, atoms2 = atoms1.copy(), atoms2.copy()
+
+    pbc1_c = atoms1.get_pbc()
+    pbc2_c = atoms2.get_pbc()
+
+    assert all(pbc1_c == pbc2_c)
+
+    cell2_cv = atoms2.get_cell()
+    cell2_cv[~pbc2_c] = atoms1.get_cell()[~pbc1_c]
+    atoms2.set_cell(cell2_cv)
+    return atoms1, atoms2
 
 
-def are_structures_duplicates(atoms1, atoms2, symprec=1e-5,
+def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
                               adaptor=None, matcher=None):
     """Return true if atoms1 and atoms2 are duplicates."""
+    import spglib
+    from asr.setup.symmetrize import atomstospgcell as ats
     from pymatgen.analysis.structure_matcher import StructureMatcher
     from pymatgen.alchemy.filters import RemoveExistingFilter
+    import numpy as np
 
     if adaptor is None:
         from pymatgen.io.ase import AseAtomsAdaptor
@@ -54,16 +65,33 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5,
     if matcher is None:
         matcher = StructureMatcher()
 
-    atoms1 = fix_nonpbc_cell_directions(atoms1)
-    atoms2 = fix_nonpbc_cell_directions(atoms2)
-    struc1 = adaptor.get_structure(atoms1)
-    struc2 = adaptor.get_structure(atoms2)
-    rmdup = RemoveExistingFilter([struc2],
-                                 matcher,
-                                 symprec=symprec)
-    rmsd = get_rmsd(atoms1, atoms2, matcher=matcher, adaptor=adaptor)
-    print('rmsd', rmsd)
-    is_duplicate = not rmdup.test(struc1)
+    atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
+
+    # struc1 = adaptor.get_structure(atoms1)
+    # struc2 = adaptor.get_structure(atoms2)
+    # rmdup = RemoveExistingFilter([struc2],
+    #                              matcher,
+    #                              symprec=symprec)
+    # is_duplicate = not rmdup.test(struc1)
+
+    # Manually fix normalization
+    dataset1 = spglib.get_symmetry_dataset(ats(atoms1), symprec=symprec)
+    dataset2 = spglib.get_symmetry_dataset(ats(atoms2), symprec=symprec)
+    if dataset1['number'] == dataset2['number']:
+        rmsd = get_rmsd(atoms1, atoms2, matcher=matcher, adaptor=adaptor)
+        # Fix normalization
+        # vol = atoms1.get_volume()
+        # pbc_c = atoms1.get_pbc()
+        # norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
+        # rmsd *= vol**(1 / 3) / norm**(1 / sum(pbc_c))
+        if rmsd is None:
+            is_duplicate = False
+        else:
+            is_duplicate = rmsd < rmsd_tol
+        print('rmsd', rmsd)
+    else:
+        is_duplicate = False
+
     return is_duplicate
 
 
@@ -72,7 +100,8 @@ def check_duplicates(structure=None, row=None, db=None,
                      exclude_ids=set(),
                      extra_data={},
                      verbose=False,
-                     symprec=1e-5):
+                     symprec=1e-5,
+                     rmsd_tol=0.3):
     """Compare structure with structures in db with magstate ref_mag."""
     from ase.formula import Formula
     from pymatgen.io.ase import AseAtomsAdaptor
@@ -107,7 +136,8 @@ def check_duplicates(structure=None, row=None, db=None,
                                                          otherstructure,
                                                          matcher=matcher,
                                                          adaptor=adaptor,
-                                                         symprec=symprec)
+                                                         symprec=symprec,
+                                                         rmsd_tol=rmsd_tol)
                 if is_duplicate:
                     id_duplicates.append(id)
 
