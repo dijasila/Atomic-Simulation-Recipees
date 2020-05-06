@@ -1,6 +1,72 @@
 from asr.core import command, argument
 
 
+def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
+    from pymatgen.analysis.structure_matcher import StructureMatcher
+
+    if adaptor is None:
+        from pymatgen.io.ase import AseAtomsAdaptor
+        adaptor = AseAtomsAdaptor()
+
+    if matcher is None:
+        matcher = StructureMatcher()
+
+    struct1 = adaptor.get_structure(atoms1)
+    struct2 = adaptor.get_structure(atoms2)
+
+    struct1, struct2 = matcher._process_species([struct1, struct2])
+
+    if not matcher._subset and matcher._comparator.get_hash(struct1.composition) \
+            != matcher._comparator.get_hash(struct2.composition):
+        return None
+
+    struct1, struct2, fu, s1_supercell = matcher._preprocess(struct1, struct2)
+    match = matcher._match(struct1, struct2, fu, s1_supercell,
+                           break_on_match=True)
+    if match is None:
+        return False
+    else:
+        return match[0]
+
+
+def fix_nonpbc_cell_directions(atoms):
+    import numpy as np
+    atoms = atoms.copy()
+    pbc_c = atoms.get_pbc()
+    cell_cv = atoms.get_cell()
+    print('before cell', cell_cv)
+    cell_cv[~pbc_c] = np.eye(3)[~pbc_c]
+    print('after cell', cell_cv)
+    atoms.set_cell(cell_cv)
+    return atoms
+
+
+def are_structures_duplicates(atoms1, atoms2, symprec=1e-5,
+                              adaptor=None, matcher=None):
+    """Return true if atoms1 and atoms2 are duplicates."""
+    from pymatgen.analysis.structure_matcher import StructureMatcher
+    from pymatgen.alchemy.filters import RemoveExistingFilter
+
+    if adaptor is None:
+        from pymatgen.io.ase import AseAtomsAdaptor
+        adaptor = AseAtomsAdaptor()
+
+    if matcher is None:
+        matcher = StructureMatcher()
+
+    atoms1 = fix_nonpbc_cell_directions(atoms1)
+    atoms2 = fix_nonpbc_cell_directions(atoms2)
+    struc1 = adaptor.get_structure(atoms1)
+    struc2 = adaptor.get_structure(atoms2)
+    rmdup = RemoveExistingFilter([struc2],
+                                 matcher,
+                                 symprec=symprec)
+    rmsd = get_rmsd(atoms1, atoms2, matcher=matcher, adaptor=adaptor)
+    print('rmsd', rmsd)
+    is_duplicate = not rmdup.test(struc1)
+    return is_duplicate
+
+
 def check_duplicates(structure=None, row=None, db=None,
                      comparison_keys=[],
                      exclude_ids=set(),
@@ -11,7 +77,6 @@ def check_duplicates(structure=None, row=None, db=None,
     from ase.formula import Formula
     from pymatgen.io.ase import AseAtomsAdaptor
     from pymatgen.analysis.structure_matcher import StructureMatcher
-    from pymatgen.alchemy.filters import RemoveExistingFilter
 
     if row is not None:
         assert structure is None
@@ -21,10 +86,8 @@ def check_duplicates(structure=None, row=None, db=None,
         assert structure is not None
         extra_row_data = extra_data
 
-    asetopy = AseAtomsAdaptor()
-    refpy = asetopy.get_structure(structure)
+    adaptor = AseAtomsAdaptor()
     matcher = StructureMatcher()
-
     symbols = set(structure.get_chemical_symbols())
     formula = Formula(str(structure.symbols))
     stoichiometry = formula.reduce()[0]
@@ -37,14 +100,14 @@ def check_duplicates(structure=None, row=None, db=None,
         stoichiometry_row = Formula(str(dbrow.get("formula"))).reduce()[0]
         if stoichiometry_row == stoichiometry:
             id = dbrow.get("id")
-            struc = dbrow.toatoms()
+            otherstructure = dbrow.toatoms()
             if all(dbrow.get(key) == extra_row_data.get(key)
                    for key in comparison_keys):
-                struc = asetopy.get_structure(struc)
-                rmdup = RemoveExistingFilter([struc],
-                                             matcher,
-                                             symprec=symprec)
-                is_duplicate = not rmdup.test(refpy)
+                is_duplicate = are_structures_duplicates(structure,
+                                                         otherstructure,
+                                                         matcher=matcher,
+                                                         adaptor=adaptor,
+                                                         symprec=symprec)
                 if is_duplicate:
                     id_duplicates.append(id)
 

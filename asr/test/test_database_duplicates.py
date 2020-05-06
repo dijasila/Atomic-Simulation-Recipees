@@ -1,5 +1,6 @@
 import pytest
 from .materials import std_test_materials
+from ase import Atoms
 
 
 @pytest.fixture(params=std_test_materials)
@@ -31,9 +32,10 @@ def duplicates_test_db(request, asr_tmpdir):
     cell = stretch_nonpbc_atoms.get_cell()
     pbc_c = atoms.get_pbc()
     cell[~pbc_c][:, ~pbc_c] *= 2
+    stretch_nonpbc_atoms.set_cell(cell)
     db.write(stretch_nonpbc_atoms)
 
-    return db
+    return (atoms, db)
 
 
 @pytest.mark.ci
@@ -42,7 +44,7 @@ def test_database_duplicates(duplicates_test_db):
 
     results = main('duplicates.db', 'duplicates_removed.db')
 
-    nduplicates = len(duplicates_test_db)
+    nduplicates = len(duplicates_test_db[1])
     duplicate_groups = results['duplicate_groups']
     assert duplicate_groups[1] == list(range(1, nduplicates + 1))
 
@@ -103,8 +105,42 @@ def test_database_duplicates_rattled_BN(rattled_atoms_db):
     from asr.database.duplicates import main
 
     results = main('very_rattled.db',
-                   'very_rattled_no_duplicates.db',
-                   comparison_keys='id')
+                   'very_rattled_no_duplicates.db')
 
     duplicate_groups = results['duplicate_groups']
     assert not duplicate_groups
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('atoms1,atoms2', [
+    (
+        Atoms(symbols='Co2S2',
+              pbc=[True, True, False],
+              cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
+                    [-1.7895394075540594, 3.10048672285293, 0.0],
+                    [2.3583795244967227e-18, 0.0, 18.85580293064]],
+              scaled_positions=[[0, 0, 0.56],
+                                [1 / 3, 2 / 3, 0.44],
+                                [1 / 3, 2 / 3, 0.40],
+                                [0, 0, 0.60]]),
+        Atoms(symbols='Co2S2',
+              pbc=[True, True, False],
+              cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
+                    [-1.7895394075540594, 3.10048672285293, 0.0],
+                    [2.3583795244967227e-18, 0.0, 18.85580293064]],
+              scaled_positions=[[0, 0, 0.56],
+                                [0, 0, 0.44],
+                                [1 / 3, 2 / 3, 0.40],
+                                [2 / 3, 1 / 3, 0.60]])
+    )
+])
+def test_database_duplicates_not_equal(atoms1, atoms2):
+    """Test some explicit cases that have previously posed a problem."""
+    from asr.duplicates import are_structures_duplicates
+    # from ase.visualize import view
+    print(atoms1.get_scaled_positions())
+    print(atoms2.get_scaled_positions())
+
+    # view(atoms1)
+    # view(atoms2)
+    assert not are_structures_duplicates(atoms1, atoms2, symprec=0.1)
