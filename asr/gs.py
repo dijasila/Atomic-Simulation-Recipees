@@ -194,7 +194,7 @@ def main():
     results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
     results.update(gaps(calc, soc=True))
     # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:
+    if int(np.sum(atoms.get_pbc())) in [1, 2]:
         vac = vacuumlevels(atoms, calc)
         results['vacuumlevels'] = vac
         results['dipz'] = vac['dipz']
