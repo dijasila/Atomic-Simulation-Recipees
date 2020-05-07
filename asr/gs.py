@@ -37,7 +37,11 @@ def calculate(calculator={'name': 'gpaw',
     import numpy as np
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
+    from asr.relax import set_initial_magnetic_moments
     atoms = read('structure.json')
+
+    if not atoms.has('initial_magmoms'):
+        set_initial_magnetic_moments(atoms)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:

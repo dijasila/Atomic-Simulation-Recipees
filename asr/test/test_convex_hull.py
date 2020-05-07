@@ -4,7 +4,7 @@ from ase.build import bulk
 
 
 @pytest.mark.ci
-def test_convex_hull(separate_folder, mockgpaw):
+def test_convex_hull(asr_tmpdir_w_params, mockgpaw):
     from ase.calculators.emt import EMT
     from asr.convex_hull import main
     metals = ['Al', 'Cu', 'Ag', 'Au', 'Ni',

@@ -1,27 +1,22 @@
 import pytest
 
-from .conftest import test_materials, freeelectroneigenvalues, get_webcontent
-
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_gw(separate_folder, atoms, mockgpaw, mocker):
+def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
     import numpy as np
     import gpaw
     from gpaw.response.g0w0 import G0W0
-
-    get_eigenvalues = freeelectroneigenvalues(atoms, gap=1)
-    mocker.patch.object(gpaw.GPAW, "get_eigenvalues", new=get_eigenvalues)
+    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
+    gpaw.GPAW._get_band_gap.return_value = 1
     mocker.patch.object(gpaw.GPAW, "get_fermi_level")
     gpaw.GPAW.get_fermi_level.return_value = 0.5
 
     from asr.gw import main
-    atoms.write("structure.json")
-    ndim = sum(atoms.pbc)
+    test_material.write("structure.json")
+    ndim = sum(test_material.pbc)
 
     def calculate(self):
-        self.calc.get_eigenvalues(kpt=0)
-        eps = self.calc.tmpeigenvalues[np.newaxis, :, 0:6]
+        eps = self.calc.get_all_eigenvalues()[np.newaxis, :, 0:6]
 
         return {"qp": eps,
                 "Z": np.zeros_like(eps) + 1,
@@ -30,7 +25,7 @@ def test_gw(separate_folder, atoms, mockgpaw, mocker):
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
         main()
-        get_webcontent('database.db')
+        get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
             main()

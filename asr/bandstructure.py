@@ -290,7 +290,7 @@ def plot_with_colors(bs,
 
     vlines2back(ax.lines)
     shape = energies.shape
-    xcoords = np.vstack([bs.xcoords] * shape[1])
+    xcoords = np.vstack([bs.xcoords] * shape[0])
     if sortcolors:
         perm = (-colors).argsort(axis=None)
         energies = energies.ravel()[perm].reshape(shape)
