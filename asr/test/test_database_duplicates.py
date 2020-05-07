@@ -120,52 +120,60 @@ def rattled_atoms_db(request, asr_tmpdir):
     return (atoms, db)
 
 
+def rattle_atoms(atoms, scale=0.01, seed=42):
+    import numpy as np
+    rng = np.random.RandomState(seed)
+    pos = atoms.get_positions()
+    dir_av = rng.normal(scale=scale, size=pos.shape)
+    dir_av /= np.linalg.norm(dir_av, axis=1)[:, None]
+    atoms.set_positions(pos + dir_av * scale)
+    return atoms
+
+
 @pytest.mark.ci
 def test_database_duplicates_rattled(test_material):
     import numpy as np
     from asr.duplicates import get_rmsd
 
     pbc_c = test_material.get_pbc()
-    repeat = np.array([2, 2, 2], int)
+    repeat = np.array([3, 3, 3], int)
     repeat[~pbc_c] = 1
-    atoms = test_material.repeat(repeat)
-    rattled_atoms = atoms.copy()
-    rattled_atoms.rattle(0.01, seed=32)
+    rattled_atoms = test_material.repeat(repeat)
+    rattle_atoms(rattled_atoms, 0.01, seed=42)
 
-    rmsd = get_rmsd(atoms, rattled_atoms)
-    assert rmsd > 0.001
+    rmsd = get_rmsd(test_material, rattled_atoms)
+    assert rmsd > 0.0, (test_material.repeat(repeat).get_scaled_positions()
+                        - rattled_atoms.get_scaled_positions())
 
 
-# @pytest.mark.ci
-# @pytest.mark.parametrize('atoms1,atoms2', [
-#     (
-#         Atoms(symbols='Co2S2',
-#               pbc=[True, True, False],
-#               cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
-#                     [-1.7895394075540594, 3.10048672285293, 0.0],
-#                     [2.3583795244967227e-18, 0.0, 18.85580293064]],
-#               scaled_positions=[[0, 0, 0.56],
-#                                 [1 / 3, 2 / 3, 0.44],
-#                                 [1 / 3, 2 / 3, 0.40],
-#                                 [0, 0, 0.60]]),
-#         Atoms(symbols='Co2S2',
-#               pbc=[True, True, False],
-#               cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
-#                     [-1.7895394075540594, 3.10048672285293, 0.0],
-#                     [2.3583795244967227e-18, 0.0, 18.85580293064]],
-#               scaled_positions=[[0, 0, 0.56],
-#                                 [0, 0, 0.44],
-#                                 [1 / 3, 2 / 3, 0.40],
-#                                 [2 / 3, 1 / 3, 0.60]])
-#     )
-# ])
-# def test_database_duplicates_not_equal(atoms1, atoms2):
-#     """Test some explicit cases that have previously posed a problem."""
-#     from asr.duplicates import are_structures_duplicates
-#     # from ase.visualize import view
-#     print(atoms1.get_scaled_positions())
-#     print(atoms2.get_scaled_positions())
+@pytest.mark.ci
+@pytest.mark.parametrize('atoms1,atoms2', [
+    (
+        Atoms(symbols='Co2S2',
+              pbc=[True, True, False],
+              cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
+                    [-1.7895394075540594, 3.10048672285293, 0.0],
+                    [2.3583795244967227e-18, 0.0, 18.85580293064]],
+              scaled_positions=[[0, 0, 0.56],
+                                [1 / 3, 2 / 3, 0.44],
+                                [1 / 3, 2 / 3, 0.40],
+                                [0, 0, 0.60]]),
+        Atoms(symbols='Co2S2',
+              pbc=[True, True, False],
+              cell=[[3.5790788191969725, -1.1842760125086163e-20, 0.0],
+                    [-1.7895394075540594, 3.10048672285293, 0.0],
+                    [2.3583795244967227e-18, 0.0, 18.85580293064]],
+              scaled_positions=[[0, 0, 0.56],
+                                [0, 0, 0.44],
+                                [1 / 3, 2 / 3, 0.40],
+                                [2 / 3, 1 / 3, 0.60]])
+    )
+])
+def test_database_duplicates_not_equal(atoms1, atoms2):
+    """Test some explicit cases that have previously posed a problem."""
+    from asr.duplicates import are_structures_duplicates
+    # from ase.visualize import view
+    print(atoms1.get_scaled_positions())
+    print(atoms2.get_scaled_positions())
 
-#     # view(atoms1)
-#     # view(atoms2)
-#     assert not are_structures_duplicates(atoms1, atoms2, symprec=0.1)
+    assert not are_structures_duplicates(atoms1, atoms2, symprec=0.1)

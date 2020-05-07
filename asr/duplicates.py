@@ -80,10 +80,12 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
     if dataset1['number'] == dataset2['number']:
         rmsd = get_rmsd(atoms1, atoms2, matcher=matcher, adaptor=adaptor)
         # Fix normalization
-        # vol = atoms1.get_volume()
-        # pbc_c = atoms1.get_pbc()
-        # norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        # rmsd *= vol**(1 / 3) / norm**(1 / sum(pbc_c))
+        vol = atoms1.get_volume()
+        natoms = len(atoms1)
+        rmsd *= (vol / natoms)**(1 / 3)  # Undo
+        pbc_c = atoms1.get_pbc()
+        norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
+        rmsd *= (natoms / norm)**(1 / sum(pbc_c))  # Redo
         if rmsd is None:
             is_duplicate = False
         else:
