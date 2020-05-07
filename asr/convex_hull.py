@@ -1,6 +1,7 @@
 from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
+import numpy as np
 
 from asr.core import command, argument
 
@@ -308,6 +309,18 @@ def plot(row, fname):
         for a, b, name in zip(x, y, names):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
+        iB = np.argmax(x)
+        B_v = np.array([x[iB], y[iB]])
+
+        iC = np.argmax(y)
+        C_v = np.array([x[iC], y[iC]])
+
+        bfrac = count.get(B, 0) / sum(count.values())
+        cfrac = count.get(C, 0) / sum(count.values())
+
+        ax.plot([bfrac * B_v[0] + cfrac * C_v[0]],
+                [bfrac * B_v[1] + cfrac * C_v[1]],
+                'o', color='C1', label='This material')
         plt.axis('off')
 
     for it, legend in enumerate(legends):
