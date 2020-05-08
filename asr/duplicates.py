@@ -1,4 +1,5 @@
 from asr.core import command, argument
+import numpy as np
 
 
 def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
@@ -10,7 +11,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         adaptor = AseAtomsAdaptor()
 
     if matcher is None:
-        matcher = StructureMatcher()
+        matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
 
     atoms1 = atoms1.copy()
     atoms2 = atoms2.copy()
@@ -32,6 +33,15 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
     if match is None:
         return None
     else:
+        rmsd = match[0]
+        # Fix normalization
+        vol = atoms1.get_volume()
+        natoms = len(atoms1)
+        rmsd *= (vol / natoms)**(1 / 3)  # Undo
+        pbc_c = atoms1.get_pbc()
+        norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
+        rmsd *= (natoms / norm)**(1 / sum(pbc_c))  # Redo
+
         return match[0]
 
 
@@ -56,14 +66,13 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
     from asr.setup.symmetrize import atomstospgcell as ats
     from pymatgen.analysis.structure_matcher import StructureMatcher
     from pymatgen.alchemy.filters import RemoveExistingFilter
-    import numpy as np
 
     if adaptor is None:
         from pymatgen.io.ase import AseAtomsAdaptor
         adaptor = AseAtomsAdaptor()
 
     if matcher is None:
-        matcher = StructureMatcher()
+        matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
 
@@ -79,18 +88,10 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
     dataset2 = spglib.get_symmetry_dataset(ats(atoms2), symprec=symprec)
     if dataset1['number'] == dataset2['number']:
         rmsd = get_rmsd(atoms1, atoms2, matcher=matcher, adaptor=adaptor)
-        # Fix normalization
-        vol = atoms1.get_volume()
-        natoms = len(atoms1)
-        rmsd *= (vol / natoms)**(1 / 3)  # Undo
-        pbc_c = atoms1.get_pbc()
-        norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        rmsd *= (natoms / norm)**(1 / sum(pbc_c))  # Redo
         if rmsd is None:
             is_duplicate = False
         else:
             is_duplicate = rmsd < rmsd_tol
-        print('rmsd', rmsd)
     else:
         is_duplicate = False
 
@@ -118,7 +119,7 @@ def check_duplicates(structure=None, row=None, db=None,
         extra_row_data = extra_data
 
     adaptor = AseAtomsAdaptor()
-    matcher = StructureMatcher()
+    matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
     symbols = set(structure.get_chemical_symbols())
     formula = Formula(str(structure.symbols))
     stoichiometry = formula.reduce()[0]
