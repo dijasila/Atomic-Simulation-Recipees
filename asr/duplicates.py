@@ -13,6 +13,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
     if matcher is None:
         matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
 
+    pbc_c = atoms1.get_pbc()
     atoms1 = atoms1.copy()
     atoms2 = atoms2.copy()
     atoms1.set_pbc(True)
@@ -37,12 +38,12 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         # Fix normalization
         vol = atoms1.get_volume()
         natoms = len(atoms1)
-        rmsd *= (vol / natoms)**(1 / 3)  # Undo
-        pbc_c = atoms1.get_pbc()
-        norm = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        rmsd *= (natoms / norm)**(1 / sum(pbc_c))  # Redo
-
-        return match[0]
+        old_norm = (natoms / vol)**(1 / 3)
+        rmsd /= old_norm  # Undo
+        lenareavol = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
+        new_norm = (natoms / lenareavol)**(1 / 3)  # sum(pbc_c))
+        rmsd *= new_norm  # Apply our own norm
+        return rmsd
 
 
 def normalize_nonpbc_atoms(atoms1, atoms2):

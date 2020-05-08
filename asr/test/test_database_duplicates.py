@@ -172,8 +172,4 @@ def test_database_duplicates_rattled(test_material):
 def test_database_duplicates_not_equal(atoms1, atoms2):
     """Test some explicit cases that have previously posed a problem."""
     from asr.duplicates import are_structures_duplicates
-    # from ase.visualize import view
-    print(atoms1.get_scaled_positions())
-    print(atoms2.get_scaled_positions())
-
     assert not are_structures_duplicates(atoms1, atoms2, symprec=0.1)
