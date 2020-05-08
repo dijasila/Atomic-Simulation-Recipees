@@ -66,7 +66,6 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
     import spglib
     from asr.setup.symmetrize import atomstospgcell as ats
     from pymatgen.analysis.structure_matcher import StructureMatcher
-    from pymatgen.alchemy.filters import RemoveExistingFilter
 
     if adaptor is None:
         from pymatgen.io.ase import AseAtomsAdaptor
@@ -76,13 +75,6 @@ def are_structures_duplicates(atoms1, atoms2, symprec=1e-5, rmsd_tol=0.3,
         matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
-
-    # struc1 = adaptor.get_structure(atoms1)
-    # struc2 = adaptor.get_structure(atoms2)
-    # rmdup = RemoveExistingFilter([struc2],
-    #                              matcher,
-    #                              symprec=symprec)
-    # is_duplicate = not rmdup.test(struc1)
 
     # Manually fix normalization
     dataset1 = spglib.get_symmetry_dataset(ats(atoms1), symprec=symprec)
