@@ -41,7 +41,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         old_norm = (natoms / vol)**(1 / 3)
         rmsd /= old_norm  # Undo
         lenareavol = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        new_norm = (natoms / lenareavol)**(1 / 3)  # sum(pbc_c))
+        new_norm = (natoms / lenareavol)**(1 / sum(pbc_c))
         rmsd *= new_norm  # Apply our own norm
         return rmsd
 
