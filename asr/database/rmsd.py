@@ -129,7 +129,7 @@ def main(database, databaseout, comparison_keys='', rmsd_tol=1):
         if row_rmsd_by_id:
             rmsd_by_id[rowid] = row_rmsd_by_id
 
-    print('Print writing to new database...')
+    print('Writing to new database...')
     with connect(databaseout) as dbwithrmsd:
         for row in db.select():
             now = datetime.now()
