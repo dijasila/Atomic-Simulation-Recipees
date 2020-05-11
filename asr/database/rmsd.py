@@ -102,7 +102,7 @@ def main(database, databaseout, rmsd_tol=1):
     rmsd_by_id = {}
     for rowid, (atoms, row) in rows.items():
         now = datetime.now()
-        _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
+        _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
         row_rmsd_by_id = {}
         formula = Formula(row.formula).reduce()[0]
         for otherrowid, (otheratoms, otherrow) in rows.items():
@@ -124,7 +124,7 @@ def main(database, databaseout, rmsd_tol=1):
     with connect(databaseout) as dbwithrmsd:
         for row in db.select():
             now = datetime.now()
-            _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
+            _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
             data = row.data
             key_value_pairs = row.key_value_pairs
             uid = row.get(uid_key)
