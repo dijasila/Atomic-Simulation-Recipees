@@ -1,5 +1,6 @@
 from asr.core import command, argument, option
 import numpy as np
+from datetime import datetime
 
 
 def normalize_nonpbc_atoms(atoms1, atoms2):
@@ -96,8 +97,12 @@ def main(database, databaseout, rmsd_tol=0.3):
     for row in db.select(include_data=False):
         rows[row.get(uid_key)] = (row.toatoms(), row)
 
+    print('Calculating RMSDs for all materials...')
+    nmat = len(rows)
     rmsd_by_id = {}
     for rowid, (atoms, row) in rows.items():
+        now = datetime.now()
+        _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
         row_rmsd_by_id = {}
         formula = Formula(row.formula).reduce()[0]
         for otherrowid, (otheratoms, otherrow) in rows.items():
@@ -115,8 +120,11 @@ def main(database, databaseout, rmsd_tol=0.3):
         if row_rmsd_by_id:
             rmsd_by_id[rowid] = row_rmsd_by_id
 
+    print('Print writing to new database...')
     with connect(databaseout) as dbwithrmsd:
         for row in db.select():
+            now = datetime.now()
+            _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
             data = row.data
             key_value_pairs = row.key_value_pairs
             uid = row.get(uid_key)
@@ -131,6 +139,18 @@ def main(database, databaseout, rmsd_tol=0.3):
 
     dbwithrmsd.metadata = db.metadata
     return rmsd_by_id
+
+
+_LATEST_PRINT = datetime.now()
+
+
+def _timed_print(*args, wait=20):
+    global _LATEST_PRINT
+
+    now = datetime.now()
+    if (now - _LATEST_PRINT).seconds > wait:
+        print(*args)
+        _LATEST_PRINT = now
 
 
 if __name__ == '__main__':
