@@ -50,11 +50,12 @@ def test_database_rmsd_duplicates(duplicates_test_db):
     nmat = len(duplicates_test_db)
     results = main('duplicates.db')
 
-    assert set(range(1, nmat + 1)) == set(results.keys())
+    assert set(range(1, nmat + 1)).issubset(set(results.keys()))
     for i in range(1, nmat + 1):
-        assert set(results[i].keys()) == set([j for j in range(1, nmat + 1)
-                                              if j != i])
-        for j in results[i]:
+        keys = set([j for j in range(1, nmat + 1) if j != i])
+        assert keys.issubset(set(results[i].keys()))
+
+        for j in keys:
             assert results[i][j] == pytest.approx(0)
 
 

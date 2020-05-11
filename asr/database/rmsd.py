@@ -10,9 +10,14 @@ def normalize_nonpbc_atoms(atoms1, atoms2):
 
     assert all(pbc1_c == pbc2_c)
 
-    cell2_cv = atoms2.get_cell()
-    cell2_cv[~pbc2_c] = atoms1.get_cell()[~pbc1_c]
-    atoms2.set_cell(cell2_cv)
+    if not all(pbc1_c):
+        cell1_cv = atoms1.get_cell()
+        n1_c = (cell1_cv**2).sum(1)**0.5
+        cell2_cv = atoms2.get_cell()
+        n2_c = (cell2_cv**2).sum(1)**0.5
+        cell2_cv[~pbc2_c] *= (n1_c / n2_c)[~pbc2_c, np.newaxis]
+        atoms2.set_cell(cell2_cv)
+
     return atoms1, atoms2
 
 
@@ -67,7 +72,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
          save_results_file=False)
 @argument('database')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, rmsd_tol=1):
+def main(database, rmsd_tol=0.3):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
