@@ -1,25 +1,11 @@
 from asr.core import command, option
 
-def webpanel(row, key_descriptions):
-    from asr.database.browser import fig
 
-    panel = {'title': 'Density of states (PBE)',
-              'columns': [[fig('dos.png')],[]],
-              'plot_descriptions': [{'function': dos,
-                                     'filenames': ['dos.png']}]}
-  
- 
-    return [panel]
-  
-
-
-@command('asr.dos',
-         requires=['gs.gpw', 'dos.gpw', 'results-asr.gs.json'],
-         dependencies=['asr.gs'],
-         webpanel=webpanel)
+@command('asr.dos')
 @option('--name', type=str)
+@option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity')
-def main(name='dos.gpw', kptdensity=12.0):
+def main(name='dos.gpw', filename='dos.json', kptdensity=50.0):
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
@@ -48,7 +34,25 @@ def main(name='dos.gpw', kptdensity=12.0):
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-    return data
+    import json
+
+    from ase.parallel import paropen
+    with paropen(filename, 'w') as fd:
+        json.dump(data, fd)
+
+
+def collect_data(atoms):
+    """Band structure PBE and GW +- SOC."""
+    from ase.io.jsonio import read_json
+    from pathlib import Path
+
+    if not Path('dos.json').is_file():
+        return {}, {}, {}
+
+    dos = read_json('dos.json')
+
+    return {}, {}, {'dos': dos}
+
 
 def plot(row=None, filename='dos.png', file=None, show=False):
     """Plot DOS.
@@ -63,9 +67,9 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
     # Get data from row
     if row is not None:
-        if 'results-asr.dos.json' not in row.data:
+        if 'dos' not in row.data:
             return
-        dos = row.data['results-asr.dos.json']
+        dos = row.data['dos']
 
     # Otherwise from from file
     file = file or 'dos.json'
@@ -83,7 +87,17 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     return plt.gca()
 
 
+def webpanel(row, key_descriptions):
+    from asr.database.browser import fig
+
+    panel = ('Density of states (PBE)',
+             [[fig('dos.png')], []])
+
+    things = [(plot, ['dos.png'])]
+
+    return panel, things
 
 
 if __name__ == '__main__':
     main.cli()
+
