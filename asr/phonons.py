@@ -262,7 +262,7 @@ def plot_bandstructure(row, fname):
     bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
             emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
             ylabel='Phonon frequencies [meV]')
-    plt.plot([], [], label='Calculated', color='C1', marker='o', ls='')
+    plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
     plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
