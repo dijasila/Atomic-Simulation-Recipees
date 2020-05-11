@@ -73,8 +73,10 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
          save_results_file=False)
 @argument('databaseout')
 @argument('database')
+@option('-c', '--comparison-keys',
+        help='Keys that have to be identical for RMSD to be calculated.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout, rmsd_tol=1):
+def main(database, databaseout, comparison_keys='', rmsd_tol=1):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -90,6 +92,9 @@ def main(database, databaseout, rmsd_tol=1):
                                attempt_supercell=True,
                                stol=rmsd_tol)
 
+    comparison_keys = comparison_keys.split(',')
+
+    # Try to figure out what the UID key should be
     row = db.get(id=1)
     uid_key = 'uid' if 'uid' in row else 'id'
 
@@ -110,6 +115,10 @@ def main(database, databaseout, rmsd_tol=1):
                 continue
             otherformula = Formula(otherrow.formula).reduce()[0]
             if not formula == otherformula:
+                continue
+            if comparison_keys and \
+               not all(row.get(key) == otherrow.get(key)
+                       for key in comparison_keys):
                 continue
             rmsd = get_rmsd(atoms, otherrow.toatoms(),
                             adaptor=adaptor,
