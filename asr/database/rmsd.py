@@ -84,14 +84,12 @@ def main(database, rmsd_tol=1):
 
     rows = {}
     for row in db.select(include_data=False):
-        rows[row.id] = {'atoms': row.toatoms(),
-                        'row': row}
+        rows[row.id] = (row.toatoms(), row)
 
     rmsd_by_id = {}
-    for rowid, row in rows.items():
-        atoms = row.toatoms()
+    for rowid, (atoms, row) in rows.items():
         row_rmsd_by_id = {}
-        for otherrowid, otherrow in rows.items():
+        for otherrowid, (otheratoms, otherrow) in rows.items():
             if rowid == otherrowid:
                 continue
             if not row.formula == otherrow.formula:
