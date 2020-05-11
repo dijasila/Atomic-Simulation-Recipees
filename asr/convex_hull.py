@@ -1,7 +1,6 @@
 from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
-import numpy as np
 
 from asr.core import command, argument
 
