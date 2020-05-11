@@ -16,7 +16,7 @@ def duplicates_test_db(request, asr_tmpdir):
 
     rotated_atoms = atoms.copy()
     rotated_atoms.rotate(23, v='z', rotate_cell=True)
-    db.write(atoms=rotated_atoms)
+    db.write(atoms=rotated_atoms, magstate='FM')
 
     pbc_c = atoms.get_pbc()
     repeat = np.array([2, 2, 2], int)
@@ -57,6 +57,17 @@ def test_database_rmsd_duplicates(duplicates_test_db):
 
         for j in keys:
             assert rmsd_by_id[i][j] == pytest.approx(0)
+
+
+@pytest.mark.ci
+def test_database_rmsd_duplicates_comparison_keys(duplicates_test_db):
+    """Test that the duplicates (with rmsd=0)are correctly identified."""
+    from asr.database.rmsd import main
+
+    results = main('duplicates.db', 'duplicates-rmsd.db',
+                   comparison_keys='magstate')
+    rmsd_by_id = results['rmsd_by_id']
+    assert set(rmsd_by_id.keys()) == set([1, 3, 4, 5, 6])
 
 
 @pytest.mark.ci
