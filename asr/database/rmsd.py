@@ -138,7 +138,9 @@ def main(database, databaseout, rmsd_tol=1):
             dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
 
     dbwithrmsd.metadata = db.metadata
-    return rmsd_by_id
+    results = {'rmsd_by_id': rmsd_by_id,
+               'uid_key': uid_key}
+    return results
 
 
 _LATEST_PRINT = datetime.now()
