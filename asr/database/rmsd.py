@@ -70,9 +70,10 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @command(module='asr.database.rmsd',
          resources='1:20m',
          save_results_file=False)
+@argument('databaseout')
 @argument('database')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, rmsd_tol=0.3):
+def main(database, databaseout, rmsd_tol=0.3):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -80,6 +81,7 @@ def main(database, rmsd_tol=0.3):
     """
     from pymatgen.analysis.structure_matcher import StructureMatcher
     from pymatgen.io.ase import AseAtomsAdaptor
+    from ase.formula import Formula
     from ase.db import connect
     db = connect(database)
     adaptor = AseAtomsAdaptor()
@@ -87,17 +89,22 @@ def main(database, rmsd_tol=0.3):
                                attempt_supercell=True,
                                stol=rmsd_tol)
 
+    row = db.get(id=1)
+    uid_key = 'uid' if 'uid' in row else 'id'
+
     rows = {}
     for row in db.select(include_data=False):
-        rows[row.id] = (row.toatoms(), row)
+        rows[row.get(uid_key)] = (row.toatoms(), row)
 
     rmsd_by_id = {}
     for rowid, (atoms, row) in rows.items():
         row_rmsd_by_id = {}
+        formula = Formula(row.formula).reduce()[0]
         for otherrowid, (otheratoms, otherrow) in rows.items():
             if rowid == otherrowid:
                 continue
-            if not row.formula == otherrow.formula:
+            otherformula = Formula(otherrow.formula).reduce()[0]
+            if not formula == otherformula:
                 continue
             rmsd = get_rmsd(atoms, otherrow.toatoms(),
                             adaptor=adaptor,
@@ -105,7 +112,24 @@ def main(database, rmsd_tol=0.3):
             if rmsd is None:
                 continue
             row_rmsd_by_id[otherrowid] = rmsd
-        rmsd_by_id[rowid] = row_rmsd_by_id
+        if row_rmsd_by_id:
+            rmsd_by_id[rowid] = row_rmsd_by_id
+
+    with connect(databaseout) as dbwithrmsd:
+        for row in db.select():
+            data = row.data
+            key_value_pairs = row.key_value_pairs
+            uid = row.get(uid_key)
+            if uid in rmsd_by_id:
+                rmsd_dict = rmsd_by_id[uid]
+                data['results-asr.database.rmsd.json'] = rmsd_dict
+                min_rmsd, min_rmsd_uid = \
+                    min((val, uid) for uid, val in rmsd_dict.items())
+                key_value_pairs['min_rmsd'] = min_rmsd
+                key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
+            dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
+
+    dbwithrmsd.metadata = db.metadata
     return rmsd_by_id
 
 

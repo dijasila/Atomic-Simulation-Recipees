@@ -48,7 +48,7 @@ def test_database_rmsd_duplicates(duplicates_test_db):
     from asr.database.rmsd import main
 
     nmat = len(duplicates_test_db)
-    results = main('duplicates.db')
+    results = main('duplicates.db', 'duplicates-rmsd.db')
 
     assert set(range(1, nmat + 1)).issubset(set(results.keys()))
     for i in range(1, nmat + 1):
