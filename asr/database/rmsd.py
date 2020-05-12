@@ -71,12 +71,12 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @command(module='asr.database.rmsd',
          resources='1:20m',
          save_results_file=False)
-@argument('databaseout')
+@argument('databaseout', required=False)
 @argument('database')
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for RMSD to be calculated.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout, comparison_keys='', rmsd_tol=1):
+def main(database, databaseout=None, comparison_keys='', rmsd_tol=1):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -129,22 +129,23 @@ def main(database, databaseout, comparison_keys='', rmsd_tol=1):
         if row_rmsd_by_id:
             rmsd_by_id[rowid] = row_rmsd_by_id
 
-    print('Writing to new database...')
-    with connect(databaseout) as dbwithrmsd:
-        for row in db.select():
-            now = datetime.now()
-            _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-            data = row.data
-            key_value_pairs = row.key_value_pairs
-            uid = row.get(uid_key)
-            if uid in rmsd_by_id:
-                rmsd_dict = rmsd_by_id[uid]
-                data['results-asr.database.rmsd.json'] = rmsd_dict
-                min_rmsd, min_rmsd_uid = \
-                    min((val, uid) for uid, val in rmsd_dict.items())
-                key_value_pairs['min_rmsd'] = min_rmsd
-                key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
-            dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
+    if databaseout is not None:
+        print('Writing to new database...')
+        with connect(databaseout) as dbwithrmsd:
+            for row in db.select():
+                now = datetime.now()
+                _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
+                data = row.data
+                key_value_pairs = row.key_value_pairs
+                uid = row.get(uid_key)
+                if uid in rmsd_by_id:
+                    rmsd_dict = rmsd_by_id[uid]
+                    data['results-asr.database.rmsd.json'] = rmsd_dict
+                    min_rmsd, min_rmsd_uid = \
+                        min((val, uid) for uid, val in rmsd_dict.items())
+                    key_value_pairs['min_rmsd'] = min_rmsd
+                    key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
+                dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
 
     dbwithrmsd.metadata = db.metadata
     results = {'rmsd_by_id': rmsd_by_id,
