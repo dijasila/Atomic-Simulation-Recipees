@@ -76,7 +76,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for RMSD to be calculated.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout=None, comparison_keys='', rmsd_tol=1):
+def main(database, databaseout=None, comparison_keys='', rmsd_tol=1.0):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
