@@ -14,73 +14,67 @@ from datetime import datetime
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for materials to be identical.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-@option('-s', '--symprec',
-        help='Symmetry determination tolerance (SPGLib parameter).')
 def main(database, databaseout,
          filterstring='natoms,id', comparison_keys='',
-         rmsd_tol=0.3, symprec=1e-2):
+         rmsd_tol=0.3):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
 
     """
     from ase.db import connect
+    from asr.database.rmsd import main as rmsd
+    from asr.database.rmsd import _timed_print
     assert database != databaseout, \
         'You cannot read and write from the same database.'
-    comparison_keys = comparison_keys.split(',')
-    db = connect(database)
-    already_checked_set = set()
+
+    rmsd_results = rmsd(database,
+                        comparison_keys=comparison_keys,
+                        rmsd_tol=rmsd_tol)
+    rmsd_by_id = rmsd_results['rmsd_by_id']
+    uid_key = rmsd_results['uid_key']
     duplicate_groups = {}
+    db = connect(database)
+    exclude_uids = set()
+    already_checked_uids = set()
+    print('rmsd_by_id', rmsd_by_id)
+    for uid, rmsd_dict in rmsd_by_id.items():
+        if uid in already_checked_uids:
+            continue
+        duplicate_ids = set(rmsd_dict.keys())
+        duplicate_ids.add(uid)
+
+        # Pick the preferred row according to filterstring
+        preferred_row = pick_out_row(db, duplicate_ids, filterstring, uid_key)
+        preferred_uid = preferred_row.get(uid_key)
+
+        # Book keeping
+        already_checked_uids.update(duplicate_ids)
+        exclude_uids.update(duplicate_ids - set(preferred_uid))
+
+        print('preferred_uid', preferred_uid)
+        duplicate_groups[preferred_uid] = duplicate_ids
+
+    comparison_keys = comparison_keys.split(',')
     nmat = len(db)
     with connect(databaseout) as filtereddb:
-        for row in db.select(include_data=False):
+        for row in db.select():
             now = datetime.now()
             _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
 
-            if row.id in already_checked_set:
+            if row.get(uid_key) in exclude_uids:
                 continue
-
-            already_checked_set.add(row.id)
-            has_duplicate, id_list = check_duplicates(
-                db=db, row=row,
-                exclude_ids=already_checked_set,
-                comparison_keys=comparison_keys,
-                symprec=symprec,
-                rmsd_tol=rmsd_tol)
-            already_checked_set.update(set(id_list))
-
-            if has_duplicate:
-                print(f'row.id={row.id}: {row.formula} has '
-                      f'duplicates with ids: {id_list}')
-                duplicate_ids = set(id_list + [row.id])
-                relevant_row = pick_out_row(db, duplicate_ids, filterstring)
-                duplicate_groups[relevant_row.id] = list(duplicate_ids)
-            else:
-                relevant_row = row
-
-            filtereddb.write(atoms=relevant_row.toatoms(),
-                             data=relevant_row.data,
-                             **relevant_row.key_value_pairs)
+            filtereddb.write(atoms=row.toatoms(),
+                             data=row.data,
+                             **row.key_value_pairs)
 
     filtereddb.metadata = db.metadata
 
     return {'duplicate_groups': duplicate_groups}
 
 
-_LATEST_PRINT = datetime.now()
-
-
-def _timed_print(*args, wait=20):
-    global _LATEST_PRINT
-
-    now = datetime.now()
-    if (now - _LATEST_PRINT).seconds > wait:
-        print(*args)
-        _LATEST_PRINT = now
-
-
-def pick_out_row(db, duplicate_ids, filterstring):
-    rows = [db.get(id=rowid) for rowid in duplicate_ids]
+def pick_out_row(db, duplicate_ids, filterstring, uid_key):
+    rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
     keys = filterstring.split(',')
 
     def keyfunc(row):

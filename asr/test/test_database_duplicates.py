@@ -1,6 +1,7 @@
 import pytest
 from .materials import std_test_materials
 from ase import Atoms
+from pathlib import Path
 
 
 @pytest.fixture(params=std_test_materials)
@@ -61,6 +62,7 @@ def test_database_duplicates(duplicates_test_db):
 
     results = main('duplicates.db', 'duplicates_removed.db')
 
+    assert Path('duplicates_removed.db').is_file()
     nduplicates = len(duplicates_test_db[1])
     duplicate_groups = results['duplicate_groups']
     assert duplicate_groups[1] == list(range(1, nduplicates + 1))

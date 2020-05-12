@@ -147,7 +147,7 @@ def main(database, databaseout=None, comparison_keys='', rmsd_tol=1):
                     key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
                 dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
 
-    dbwithrmsd.metadata = db.metadata
+        dbwithrmsd.metadata = db.metadata
     results = {'rmsd_by_id': rmsd_by_id,
                'uid_key': uid_key}
     return results
