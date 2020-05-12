@@ -52,7 +52,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
     struct1, struct2, fu, s1_supercell = matcher._preprocess(struct1, struct2)
     match = matcher._match(struct1, struct2, fu, s1_supercell,
-                           break_on_match=True)
+                           break_on_match=False)
     if match is None:
         return None
     else:
@@ -76,7 +76,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for RMSD to be calculated.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout=None, comparison_keys='', rmsd_tol=1):
+def main(database, databaseout=None, comparison_keys='', rmsd_tol=0.3):
     """Take an input database filter out duplicates.
 
     Uses asr.duplicates.check_duplicates.
@@ -153,14 +153,13 @@ def main(database, databaseout=None, comparison_keys='', rmsd_tol=1):
     return results
 
 
-_LATEST_PRINT = datetime.now()
+_LATEST_PRINT = None
 
 
 def _timed_print(*args, wait=20):
     global _LATEST_PRINT
-
     now = datetime.now()
-    if (now - _LATEST_PRINT).seconds > wait:
+    if _LATEST_PRINT is None or (now - _LATEST_PRINT).seconds > wait:
         print(*args)
         _LATEST_PRINT = now
 

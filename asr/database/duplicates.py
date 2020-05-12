@@ -1,5 +1,4 @@
 from asr.core import command, argument, option
-from asr.duplicates import check_duplicates
 from datetime import datetime
 
 
@@ -17,11 +16,7 @@ from datetime import datetime
 def main(database, databaseout,
          filterstring='natoms,id', comparison_keys='',
          rmsd_tol=0.3):
-    """Take an input database filter out duplicates.
-
-    Uses asr.duplicates.check_duplicates.
-
-    """
+    """Take an input database filter out duplicates."""
     from ase.db import connect
     from asr.database.rmsd import main as rmsd
     from asr.database.rmsd import _timed_print
@@ -37,7 +32,7 @@ def main(database, databaseout,
     db = connect(database)
     exclude_uids = set()
     already_checked_uids = set()
-    print('rmsd_by_id', rmsd_by_id)
+
     for uid, rmsd_dict in rmsd_by_id.items():
         if uid in already_checked_uids:
             continue
@@ -50,10 +45,9 @@ def main(database, databaseout,
 
         # Book keeping
         already_checked_uids.update(duplicate_ids)
-        exclude_uids.update(duplicate_ids - set(preferred_uid))
+        exclude_uids.update(duplicate_ids - {preferred_uid})
 
-        print('preferred_uid', preferred_uid)
-        duplicate_groups[preferred_uid] = duplicate_ids
+        duplicate_groups[preferred_uid] = list(duplicate_ids)
 
     comparison_keys = comparison_keys.split(',')
     nmat = len(db)
