@@ -24,8 +24,7 @@ def main(database, databaseout,
         'You cannot read and write from the same database.'
 
     rmsd_results = rmsd(database,
-                        comparison_keys=comparison_keys,
-                        rmsd_tol=rmsd_tol)
+                        comparison_keys=comparison_keys)
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
     duplicate_groups = {}
@@ -36,7 +35,8 @@ def main(database, databaseout,
     for uid, rmsd_dict in rmsd_by_id.items():
         if uid in already_checked_uids:
             continue
-        duplicate_ids = set(rmsd_dict.keys())
+        duplicate_ids = set(key for key, value in rmsd_dict.items()
+                            if value < rmsd_tol)
         duplicate_ids.add(uid)
 
         # Pick the preferred row according to filterstring
