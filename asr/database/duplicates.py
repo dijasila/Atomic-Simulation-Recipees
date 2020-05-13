@@ -9,7 +9,8 @@ from datetime import datetime
 @argument('database')
 @option('-f', '--filterstring',
         help='List of keys denoting the priority of picking'
-        ' a candidate among duplicates.')
+        ' a candidate among duplicates. Preface with + if '
+        'you want to prioritize larger values.')
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for materials to be identical.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
@@ -71,8 +72,28 @@ def pick_out_row(db, duplicate_ids, filterstring, uid_key):
     rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
     keys = filterstring.split(',')
 
+    reverses = []
+    for i, key in enumerate(keys):
+        if key.startswith('+'):
+            reverse = True
+            keys[i] = key[1:]
+        else:
+            reverse = False
+        reverses.append(reverse)
+
     def keyfunc(row):
-        return tuple(row.get(key) for key in keys)
+        values = []
+        for key, reverse in zip(keys, reverses):
+            value = row.get(key)
+            if value is None:
+                values.append(value)
+                continue
+
+            if reverse:
+                values.append(-value)
+            else:
+                values.append(value)
+        return tuple(values)
 
     rows = sorted(rows, key=keyfunc)
     return rows[0]
