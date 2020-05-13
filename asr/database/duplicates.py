@@ -65,6 +65,10 @@ def main(database, databaseout,
 
     filtereddb.metadata = db.metadata
 
+    for preferred_uid, group in duplicate_groups:
+        print(f'Chose {uid_key}={preferred_uid} out of.')
+        print('    ', ','.join(group))
+
     return {'duplicate_groups': duplicate_groups}
 
 
