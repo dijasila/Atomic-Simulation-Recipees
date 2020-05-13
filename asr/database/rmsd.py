@@ -69,8 +69,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
 
 @command(module='asr.database.rmsd',
-         resources='1:20m',
-         save_results_file=False)
+         resources='1:20m')
 @argument('databaseout', required=False)
 @argument('database')
 @option('-c', '--comparison-keys',

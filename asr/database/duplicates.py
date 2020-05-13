@@ -19,13 +19,15 @@ def main(database, databaseout,
          rmsd_tol=0.3):
     """Take an input database filter out duplicates."""
     from ase.db import connect
+    from asr.core import read_json
     from asr.database.rmsd import main as rmsd
     from asr.database.rmsd import _timed_print
     assert database != databaseout, \
         'You cannot read and write from the same database.'
 
-    rmsd_results = rmsd(database,
-                        comparison_keys=comparison_keys)
+    if not rmsd.done:
+        rmsd(database, comparison_keys=comparison_keys)
+    rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
     duplicate_groups = {}
@@ -36,19 +38,21 @@ def main(database, databaseout,
     for uid, rmsd_dict in rmsd_by_id.items():
         if uid in already_checked_uids:
             continue
-        duplicate_ids = set(key for key, value in rmsd_dict.items()
-                            if value < rmsd_tol)
-        duplicate_ids.add(uid)
+        duplicate_uids = set(key for key, value in rmsd_dict.items()
+                             if value < rmsd_tol)
+        duplicate_uids.add(uid)
 
         # Pick the preferred row according to filterstring
-        preferred_row = pick_out_row(db, duplicate_ids, filterstring, uid_key)
+        preferred_row = pick_out_row(db, duplicate_uids, filterstring, uid_key)
         preferred_uid = preferred_row.get(uid_key)
 
         # Book keeping
-        already_checked_uids.update(duplicate_ids)
-        exclude_uids.update(duplicate_ids - {preferred_uid})
+        already_checked_uids.update(duplicate_uids)
 
-        duplicate_groups[preferred_uid] = list(duplicate_ids)
+        exclude = duplicate_uids - {preferred_uid}
+        if exclude:
+            exclude_uids.update(exclude)
+            duplicate_groups[preferred_uid] = list(duplicate_uids)
 
     comparison_keys = comparison_keys.split(',')
     nmat = len(db)
@@ -65,10 +69,11 @@ def main(database, databaseout,
 
     filtereddb.metadata = db.metadata
 
-    for preferred_uid, group in duplicate_groups:
-        print(f'Chose {uid_key}={preferred_uid} out of.')
-        print('    ', ','.join(group))
+    for preferred_uid, group in duplicate_groups.items():
+        print(f'Chose {uid_key}={preferred_uid} out of')
+        print('    ', ', '.join([str(item) for item in group]))
 
+    print(f'Excluded {len(exclude_uids)} materials.')
     return {'duplicate_groups': duplicate_groups}
 
 
