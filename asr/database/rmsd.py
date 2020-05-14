@@ -74,7 +74,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @argument('database')
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for RMSD to be calculated.')
-@option('-r', '--rmsd-tol', help='RMSD tolerance.')
+@option('-r', '--max-rmsd', help='Maximum allowed RMSD.')
 def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
     """Calculate RMSD between materials of a database.
 
