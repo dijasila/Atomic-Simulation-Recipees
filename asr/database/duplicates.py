@@ -17,7 +17,37 @@ from datetime import datetime
 def main(database, databaseout,
          filterstring='natoms,id', comparison_keys='',
          rmsd_tol=0.3):
-    """Take an input database filter out duplicates."""
+    """Filter out duplicates of a database.
+
+    Parameters
+    ----------
+    database : str
+        Database to be analyzed for duplicates.
+    databaseout : str
+        Filename of new database with duplicates removed.
+    filterstring : str
+        Comma separated string of to keys determining priority of
+        picking of row. Preface key with '+' to prioritize larger
+        values.
+    comparison_keys : str
+        Comma separated string of keys that should be identical
+        between rows to be compared. Eg. 'magstate,natoms'. Default is
+        'natoms,id' which would first prioritize picking the structure
+        with fewest atoms and then picking the one with the smallest
+        id.
+    rmsd_tol : float
+        Tolerance on RMSD between materials for them to be considered
+        to be duplicates.
+
+    Returns
+    -------
+    dict
+        Keys:
+            - ``duplicate_groups``: Dict containing all duplicate groups.
+              The key of each group is the uid of the prioritized candidate
+              of the group.
+
+    """
     from ase.db import connect
     from asr.core import read_json
     from asr.database.rmsd import main as rmsd
