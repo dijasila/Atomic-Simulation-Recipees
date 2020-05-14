@@ -135,9 +135,9 @@ def main(database, run=False, selection='',
                 if folder not in folderlist:
                     break
             else:
-                msg = ('Too many materials with same stoichiometry, '
-                       'same space group and same formula')
+                msg = ('Too many collisions (>10):\n' + '\n'.join(err[-9:]))
                 raise RuntimeError(msg)
+
             if uid > 0:
                 nc += 1
                 err += [f'Collision: {folder}']
