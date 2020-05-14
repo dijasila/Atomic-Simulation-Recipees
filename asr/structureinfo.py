@@ -96,18 +96,11 @@ def webpanel(row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
-    row = ['Magnetic state', row.magstate]
-    eltable = {'type': 'table',
-               'header': ['Electronic properties', ''],
-               'rows': [row],
-               'columnwidth': 4}
-
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
                            'rows': [],
-                           'columnwidth': 4},
-                          eltable],
+                           'columnwidth': 4}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
@@ -144,25 +137,6 @@ def main():
     folder = Path().cwd()
     info['folder'] = str(folder)
 
-    # Determine magnetic state
-    def get_magstate(a):
-        magmom = a.get_magnetic_moment()
-        if abs(magmom) > 0.02:
-            return 'fm'
-
-        magmoms = a.get_magnetic_moments()
-        if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-            return 'afm'
-
-        # Material is essentially non-magnetic
-        return 'nm'
-
-    try:
-        magstate = get_magstate(atoms)
-    except RuntimeError:
-        magstate = 'nm'
-    info['magstate'] = magstate.upper()
-
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
     info['formula'] = formula
@@ -186,10 +160,6 @@ def main():
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
     info['spgnum'] = number
-
-    # Set temporary uid.
-    # Will be changed later once we know the prototype.
-    info['is_magnetic'] = info['magstate'] != 'NM'
 
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
