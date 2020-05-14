@@ -75,10 +75,49 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 @option('-c', '--comparison-keys',
         help='Keys that have to be identical for RMSD to be calculated.')
 @option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout=None, comparison_keys='', rmsd_tol=1.0):
-    """Take an input database filter out duplicates.
+def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
+    """Calculate RMSD between materials of a database.
 
-    Uses asr.duplicates.check_duplicates.
+    Uses pymatgens StructureMatcher to calculate rmsd. If
+    ``databaseout`` is specified a new database will be written to the
+    given filename with extra data for rows where a similar row exists
+    in ``row.data['results-asr.database.rmsd.json']``. The structure
+    of this data is similar to ``rmsd_by_id``. It also stores two
+    extra key-value-pairs ``row.min_rmsd`` and ``row.min_rmsd_uid``
+    containing the minimum rmsd of the current material to any other
+    material and ``uid`` of that other material.
+
+    Note
+    ----
+    Please note that for systems <3D the computed RMSD can still be
+    larger than max_rmsd due to a renormalization of the RMSD measure.
+    Normally, a large value is preferred.
+
+    The structure of ``rmsd_by_id`` is::
+
+        {
+            '1': {'2': 0.01},
+            '2': {'1': 0.01},
+        }
+
+    Parameters
+    ----------
+    database : str
+        ASE database filename.
+    databaseout : str or None
+        If not None, write a new database with rmsd data. Default is None.
+    comparison_keys : str
+        Comma separated string of keys that should be identical between
+        rows to be compared. Eg. 'magstate,natoms'. Default is ''.
+    max_rmsd : float
+        Maximum rmsd allowed for RMSD to be calculated.
+
+    Returns
+    -------
+    dict
+        Keys:
+            - ``rmsd_by_id``: RMSDs between materials. The keys are the uids.
+            - ``uid_key``: uid_key of the database.
 
     """
     from pymatgen.analysis.structure_matcher import StructureMatcher
@@ -89,7 +128,7 @@ def main(database, databaseout=None, comparison_keys='', rmsd_tol=1.0):
     adaptor = AseAtomsAdaptor()
     matcher = StructureMatcher(primitive_cell=False,
                                attempt_supercell=True,
-                               stol=rmsd_tol)
+                               stol=max_rmsd)
 
     comparison_keys = comparison_keys.split(',')
 
