@@ -273,9 +273,8 @@ def webpanel(row, key_descriptions):
 
 
 @command(module='asr.bse',
-         requires=['bse_polx.csv', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json'],
-         dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
+         requires=['bse_polx.csv', 'results-asr.gs.json'],
+         dependencies=['asr.bse@calculate', 'asr.gs'],
          webpanel=webpanel)
 def main():
     import numpy as np
@@ -295,8 +294,8 @@ def main():
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
 
-        info = read_json('results-asr.structureinfo.json')
-        magstate = info['magstate']
+        magstateresults = read_json('results-asr.magstate.json')
+        magstate = magstateresults['magstate']
 
         gsresults = read_json('results-asr.gs.json')
         if magstate == 'NM':
