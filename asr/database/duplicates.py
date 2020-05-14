@@ -69,7 +69,7 @@ def main(database, databaseout,
         if uid in already_checked_uids:
             continue
         duplicate_uids = set(key for key, value in rmsd_dict.items()
-                             if value < rmsd_tol)
+                             if value is not None and value < rmsd_tol)
         duplicate_uids.add(uid)
 
         # Pick the preferred row according to filterstring
