@@ -101,9 +101,11 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 ])
 def test_gs_integration_gpaw(asr_tmpdir, atoms, parameters, magstate):
     """Check that the groundstates produced by GPAW are correct."""
+    from asr.core import read_json
     from asr.gs import main as groundstate
     from asr.setup.params import main as setupparams
     atoms.write('structure.json')
     setupparams(parameters)
-    results = groundstate()
-    assert results["magstate"] == magstate
+    groundstate()
+    magstateresults = read_json('results-asr.magstate.json')
+    assert magstateresults["magstate"] == magstate

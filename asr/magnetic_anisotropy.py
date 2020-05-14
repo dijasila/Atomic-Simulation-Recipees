@@ -52,7 +52,6 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
 
 @command('asr.magnetic_anisotropy',
          tests=tests,
-         requires=['gs.gpw', 'results-asr.structureinfo.json'],
          webpanel=webpanel,
          dependencies=['asr.gs@calculate', 'asr.magstate'])
 def main():
@@ -74,8 +73,8 @@ def main():
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 
-    gsresults = read_json('results-asr.gs.json')
-    magstate = gsresults['magstate']
+    magstateresults = read_json('results-asr.magstate.json')
+    magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
     results = {'__key_descriptions__':
