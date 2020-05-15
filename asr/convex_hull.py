@@ -319,7 +319,7 @@ def plot(row, fname):
 
         ax.plot([bfrac + cfrac / 2],
                 [cfrac],
-                's', color='C1', label='This material')
+                'o', color='C1', label='This material')
         plt.legend(loc='upper left')
         plt.axis('off')
 
