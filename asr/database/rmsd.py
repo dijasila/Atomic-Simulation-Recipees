@@ -68,6 +68,13 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         return rmsd
 
 
+def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
+    if rowid not in rmsd_by_id:
+        rmsd_by_id[rowid] = {otherrowid: rmsd}
+    else:
+        rmsd_by_id[rowid][otherrowid] = rmsd
+
+
 @command(module='asr.database.rmsd',
          resources='1:20m')
 @argument('databaseout', required=False)
@@ -146,26 +153,28 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
     for rowid, (atoms, row) in rows.items():
         now = datetime.now()
         _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-        row_rmsd_by_id = {}
         formula = Formula(row.formula).reduce()[0]
         for otherrowid, (otheratoms, otherrow) in rows.items():
             if rowid == otherrowid:
                 continue
+
             otherformula = Formula(otherrow.formula).reduce()[0]
             if not formula == otherformula:
                 continue
+
+            # Skip calculation if it has been performed already
+            if rowid in rmsd_by_id and otherrowid in rmsd_by_id[rowid]:
+                continue
+
             if comparison_keys and \
                not all(row.get(key) == otherrow.get(key)
                        for key in comparison_keys):
                 continue
-            rmsd = get_rmsd(atoms, otherrow.toatoms(),
+            rmsd = get_rmsd(atoms, otheratoms,
                             adaptor=adaptor,
                             matcher=matcher)
-            if rmsd is None:
-                continue
-            row_rmsd_by_id[otherrowid] = rmsd
-        if row_rmsd_by_id:
-            rmsd_by_id[rowid] = row_rmsd_by_id
+            update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd)
+            update_rmsd(rmsd_by_id, otherrowid, rowid, rmsd)
 
     if databaseout is not None:
         print('Writing to new database...')
@@ -179,11 +188,15 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
                 if uid in rmsd_by_id:
                     rmsd_dict = rmsd_by_id[uid]
                     data['results-asr.database.rmsd.json'] = rmsd_dict
-                    min_rmsd, min_rmsd_uid = \
-                        min((val, uid) for uid, val in rmsd_dict.items())
+                    values = [(val, uid) for uid, val in rmsd_dict.items()
+                              if val is not None]
+                    if not values:
+                        continue
+                    min_rmsd, min_rmsd_uid = min(values)
                     key_value_pairs['min_rmsd'] = min_rmsd
                     key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
-                dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
+                dbwithrmsd.write(row.toatoms(),
+                                 **key_value_pairs, data=row.data)
 
         dbwithrmsd.metadata = db.metadata
     results = {'rmsd_by_id': rmsd_by_id,

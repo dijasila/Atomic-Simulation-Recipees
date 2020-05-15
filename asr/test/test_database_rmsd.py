@@ -44,6 +44,21 @@ def test_database_rmsd_rotation(test_material,
     assert rmsd == pytest.approx(0)
 
 
+@pytest.mark.ci
+def test_database_rmsd_none_handling(asr_tmpdir):
+    """Test that handling of "None" from get_rmsd is correct."""
+    from .materials import Si
+    from ase.db import connect
+    from asr.database.rmsd import main
+    db = connect('duplicates_rattled.db')
+
+    db.write(Si)
+    rattled = Si.copy()
+    rattled.rattle(1.0)
+    db.write(rattled)
+    main('duplicates_rattled.db', 'duplicates_rattled_rmsd.db', max_rmsd=0.001)
+
+
 def rattle_atoms(atoms, scale=0.01, seed=42):
     import numpy as np
     rng = np.random.RandomState(seed)
