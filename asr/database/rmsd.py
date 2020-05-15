@@ -188,12 +188,15 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
                 if uid in rmsd_by_id:
                     rmsd_dict = rmsd_by_id[uid]
                     data['results-asr.database.rmsd.json'] = rmsd_dict
-                    min_rmsd, min_rmsd_uid = \
-                        min((val, uid) for uid, val in rmsd_dict.items()
-                            if val is not None)
+                    values = [(val, uid) for uid, val in rmsd_dict.items()
+                              if val is not None]
+                    if not values:
+                        continue
+                    min_rmsd, min_rmsd_uid = min(values)
                     key_value_pairs['min_rmsd'] = min_rmsd
                     key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
-                dbwithrmsd.write(row.toatoms(), **key_value_pairs, data=row.data)
+                dbwithrmsd.write(row.toatoms(),
+                                 **key_value_pairs, data=row.data)
 
         dbwithrmsd.metadata = db.metadata
     results = {'rmsd_by_id': rmsd_by_id,
