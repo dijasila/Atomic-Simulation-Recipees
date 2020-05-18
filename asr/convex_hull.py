@@ -308,6 +308,12 @@ def plot(row, fname):
         for a, b, name in zip(x, y, names):
             ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
+        bfrac = count.get(B, 0) / sum(count.values())
+        cfrac = count.get(C, 0) / sum(count.values())
+
+        ax.plot([bfrac + cfrac / 2],
+                [cfrac],
+                'o', color='C1', label='This material')
         plt.axis('off')
 
     for it, legend in enumerate(legends):
