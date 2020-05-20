@@ -44,7 +44,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     assert relaxed.has('initial_magmoms')
 
     if final_magmoms > 0.1:
-        assert relaxed.get_initial_magnetic_moments().all()
+        assert all(relaxed.get_magnetic_moments() == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
 
