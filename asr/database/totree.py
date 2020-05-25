@@ -43,6 +43,9 @@ def make_folder_tree(*, folders, chunks,
                 makedirs(folder)
                 folder_has_been_created = True
 
+            if (folder / filename).is_file():
+                continue
+
             # We treat json differently
             if filename.endswith('.json'):
                 write_json(folder / filename, results)
