@@ -34,7 +34,7 @@ def webpanel(row, key_descriptions):
 def main():
     """Determine magnetic state."""
     from gpaw import GPAW
-    calc = GPAW('gs.gpw')
+    calc = GPAW('gs.gpw', txt=None)
     magstate = get_magstate(calc)
 
     results = {'magstate': magstate.upper(),
