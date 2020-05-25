@@ -53,7 +53,7 @@ def test_database_totree_files_and_hard_links(make_test_db):
     import os
 
     dbname = 'database.db'
-    main(database=dbname, run=True)
+    main(database=dbname, run=True, copy=True)
     hardlink = Path('tree/AB/187/BN-AB-187-b-d-0/hardlinkedfile.txt')
     filejson = Path('tree/AB/187/BN-AB-187-b-d-0/file.json')
     assert Path('tree/AB/187/BN-AB-187-b-d-0/structure.json').is_file()
@@ -62,4 +62,7 @@ def test_database_totree_files_and_hard_links(make_test_db):
 
     contents = read_json(filejson)
     assert contents['key'] == 'value'
+
+    # Check that link is not symlink
+    assert not os.path.islink(hardlink)
     assert os.stat(hardlink).st_ino == os.stat('hardlinkedfile.txt').st_ino
