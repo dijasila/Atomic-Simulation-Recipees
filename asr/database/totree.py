@@ -69,7 +69,7 @@ def make_folder_tree(*, folders, chunks,
                                                       target_is_directory=True)
             else:
                 path = results.get('pointer')
-                srcfile = Path(path)
+                srcfile = Path(path).resolve()
                 if not srcfile.is_file():
                     print(f'Cannot locate source file: {path}')
                     continue
