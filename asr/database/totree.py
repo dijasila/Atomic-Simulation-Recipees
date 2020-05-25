@@ -225,7 +225,7 @@ def main(database, run=False, selection='',
     rows = list(db.select(selection, sort=sort))
 
     patterns = patterns.split(',')
-    folders = make_folder_dict(rows, tree_structure, patterns)
+    folders = make_folder_dict(rows, tree_structure)
 
     if not run:
         print(f'Would (at most) make {len(folders)} folders')
