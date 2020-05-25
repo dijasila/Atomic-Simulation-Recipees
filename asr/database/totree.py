@@ -130,10 +130,13 @@ def make_folder_dict(rows, tree_structure):
                 nc += 1
                 err += [f'Collision: {folder}']
         else:
-            folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
-                                           formula=formula,
-                                           mag=magstate,
-                                           row=row)
+            try:
+                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                               formula=formula,
+                                               mag=magstate,
+                                               row=row)
+            except AttributeError:
+                continue
         assert folder not in folderlist, f'Collision in folder: {folder}!'
         folderlist.append(folder)
         identifier = row.get('uid', row.id)
