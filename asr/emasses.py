@@ -41,7 +41,7 @@ def refine(gpwfilename='gs.gpw'):
             if os.path.exists(gpw2):
                 continue
             gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
-            nonsc_sphere(gpw=gpwrefined, soc=soc, bandtype=bt)
+            nonsc_sphere(gpw=gpwrefined, fallback=gpwfilename, soc=soc, bandtype=bt)
 
 
 def get_name(soc, bt):
@@ -57,6 +57,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     # Get calc and current kpts
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
+
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
 
@@ -67,9 +68,8 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
         e_skn = e_skn[np.newaxis]
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
-
     # Make a sphere of kpts of high density
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 19)
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 9)
     nkpts = nkpts + (1 - (nkpts % 2))
     assert nkpts % 2 != 0
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
@@ -96,7 +96,37 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     return fname + '.gpw'
 
 
-def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
+def get_gapskn(gpw, fallback=None, soc=True):
+    import numpy as np
+    from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.parallel import parprint
+
+    theta, phi = get_spin_axis()
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    if e_skn.ndim == 2:
+        e_skn = e_skn[np.newaxis]
+
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                              output=None)
+
+    if np.allclose(gap, 0) and fallback is not None:
+        parprint("Something went wrong. Using fallback gpw.")
+        theta, phi = get_spin_axis()
+        e_skn, efermi = gpw2eigs(fallback, soc=soc, theta=theta, phi=phi)
+        if e_skn.ndim == 2:
+            e_skn = e_skn[np.newaxis]
+
+        gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                                  output=None)
+    if np.allclose(gap, 0):
+        raise ValueError(f"Gap is still zero!")
+
+    return gap, (s1, k1, n1), (s2, k2, n2)
+
+
+def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False, bandtype=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
     Writes the files:
@@ -117,10 +147,6 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         for both cb and vb
     """
     from gpaw import GPAW
-    import numpy as np
-    from asr.utils.gpw2eigs import gpw2eigs
-    from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
@@ -137,13 +163,7 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
 
     kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim)
 
-    theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
-    if e_skn.ndim == 2:
-        e_skn = e_skn[np.newaxis]
-
-    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
-                                              output=None)
+    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
@@ -1024,9 +1044,13 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     v2_n, vecs = np.linalg.eigh(hessian)
 
     mass_u = 1 / v3_n
-    for u, v3 in enumerate(v3_n):
-        if np.allclose(v3, 0):
-            mass_u[u] = np.nan
+    if ndim == 1:
+        mass_u[0] = np.nan
+        mass_u[1] = np.nan
+        assert not np.isnan(mass_u[2])
+    elif ndim == 2:
+        mass_u[2] = np.nan
+        assert not np.isnan(mass_u[:2]).any()
 
     sort_args = np.argsort(mass_u)
 
