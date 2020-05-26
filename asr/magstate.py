@@ -37,8 +37,8 @@ def main():
     calc = GPAW('gs.gpw')
     magstate = get_magstate(calc)
 
-    results = {'magstate': magstate.upper(),
-               'is_magnetic': magstate != 'NM'}
+    results = {'magstate': magstate,
+               'is_magnetic': magstate != 'nm'}
 
     return results
 
