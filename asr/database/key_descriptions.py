@@ -169,7 +169,7 @@ key_descriptions = {
         'KVP: Conduction band effective mass, direction 3 [`m_e`]',
     },
     "database.fromtree": {
-        "folder": "KVP: Relative path to original folder",
+        "folder": "KVP: Path to collection folder",
     }
 }
 
