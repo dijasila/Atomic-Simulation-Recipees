@@ -53,8 +53,7 @@ def create_key_descriptions(db=None):
 
 
 class Summary:
-    def __init__(self, row, key_descriptions, create_layout,
-                 subscript=None, prefix=''):
+    def __init__(self, row, key_descriptions, create_layout, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
@@ -73,8 +72,6 @@ class Summary:
 
         self.formula = Formula(
             Formula(row.formula).format('metal')).format('html')
-        if subscript:
-            self.formula = subscript.sub(r'<sub>\1</sub>', self.formula)
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
