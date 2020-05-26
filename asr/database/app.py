@@ -10,7 +10,7 @@ import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
-from ase.utils import formula_metal
+from ase.formula import Formula
 import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
@@ -71,7 +71,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = formula_metal(row.numbers)
+        self.formula = Formula(
+            Formula(row.formula).format('metal')).format('html')
         if subscript:
             self.formula = subscript.sub(r'<sub>\1</sub>', self.formula)
 
