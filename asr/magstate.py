@@ -43,7 +43,7 @@ def main():
     magstate = get_magstate(calc)
 
     results = {'magstate': magstate.upper(),
-               'is_magnetic': magstate != 'NM'}
+               'is_magnetic': magstate != 'nm'}
 
     return results
 
