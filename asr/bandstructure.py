@@ -535,8 +535,13 @@ def main():
     bsresults = bs.todict()
 
     theta, phi = get_spin_axis()
+
+    # We use a larger symmetry tolerance because we want to correctly
+    # color spins which doesn't always happen due to slightly broken
+    # symmetries, hence tolerance=1e-2.
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
     bsresults['efermi'] = efermi

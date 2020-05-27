@@ -123,7 +123,8 @@ def main():
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
-                                  theta=theta, phi=phi)
+                                  theta=theta, phi=phi,
+                                  symmetry_tolerance=1e-2)
     eigs_mk = eigs_km.T
     eigs_mk -= ef
     calc = GPAW('gs.gpw', txt=None)
