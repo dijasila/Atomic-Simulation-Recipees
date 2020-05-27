@@ -1,6 +1,24 @@
 """Utility module for handling symmetries."""
 
 
+def _atoms2symmetry_gpaw(atoms, id_a=None, tolerance=1e-7):
+    """Create gpaw.symmetry.Symmetry object from atoms object.
+
+    Note this can be substituted with gpaw.symmetry.atoms2symmetry in
+    a future gpaw release.
+
+    """
+    from gpaw.symmetry import Symmetry
+    if id_a is None:
+        id_a = atoms.get_atomic_numbers()
+    symmetry = Symmetry(id_a, atoms.cell, atoms.pbc,
+                        symmorphic=False,
+                        time_reversal=False,
+                        tolerance=tolerance)
+    symmetry.analyze(atoms.get_scaled_positions())
+    return symmetry
+
+
 def atoms2spgcell(atoms, magmoms=None):
     """Convert an ase.Atoms object to spglib cell."""
     lattice = atoms.get_cell().array

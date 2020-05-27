@@ -53,7 +53,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
-    from gpaw.symmetry import atoms2symmetry
+    from asr.utils.symmetry import _atoms2symmetry_gpaw
 
     dct = None
     if mpi.world.rank in ranks:
@@ -77,8 +77,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
             eps_km = eps_mk.T
             efermi = fermi_level(calc, eps_km[np.newaxis],
                                  nelectrons=2 * calc.get_number_of_electrons())
-            symmetry = atoms2symmetry(calc.atoms,
-                                      tolerance=symmetry_tolerance)
+            symmetry = _atoms2symmetry_gpaw(calc.atoms,
+                                            tolerance=symmetry_tolerance)
             ibzk_kc = calc.get_ibz_k_points()
             # For magnetic systems we know some more about the spin
             # projections
