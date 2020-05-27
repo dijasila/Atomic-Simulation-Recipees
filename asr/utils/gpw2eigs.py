@@ -138,4 +138,4 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
                      theta=theta, phi=phi,
                      ranks=ranks,
-                     gsymmetry_tolerance=symmetry_tolerance)
+                     symmetry_tolerance=symmetry_tolerance)
