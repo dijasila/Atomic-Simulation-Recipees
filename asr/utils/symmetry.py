@@ -1,4 +1,87 @@
+"""Utility module for handling symmetries."""
+
+
+def _atoms2symmetry_gpaw(atoms, id_a=None, tolerance=1e-7):
+    """Create gpaw.symmetry.Symmetry object from atoms object.
+
+    Note this can be substituted with gpaw.symmetry.atoms2symmetry in
+    a future gpaw release.
+
+    """
+    from gpaw.symmetry import Symmetry
+    if id_a is None:
+        id_a = atoms.get_atomic_numbers()
+    symmetry = Symmetry(id_a, atoms.cell, atoms.pbc,
+                        symmorphic=False,
+                        time_reversal=False,
+                        tolerance=tolerance)
+    symmetry.analyze(atoms.get_scaled_positions())
+    return symmetry
+
+
+def atoms2spgcell(atoms, magmoms=None):
+    """Convert an ase.Atoms object to spglib cell."""
+    lattice = atoms.get_cell().array
+    positions = atoms.get_scaled_positions(wrap=False)
+    numbers = atoms.get_atomic_numbers()
+    return (lattice, positions, numbers)
+
+
+def has_inversion(rotations_n):
+    """Determine if atoms has inversion symmetry.
+
+    Parameters
+    ----------
+    rotations_n : list of 3x3 matrices
+        List of point group symmetries.
+
+    Returns
+    -------
+    bool
+        True of rotations_n contains inversion symmetry.
+    """
+    import numpy as np
+    inversion = -np.identity(3, dtype=int)
+    return np.any([np.all(rotation == inversion) for rotation in rotations_n])
+
+
+def atoms2symmetry(atoms, tolerance=1e-7, angle_tolerance=0.01):
+    """Return a SimpleNamespace containing symmetries.
+
+    Uses spglib to determine symmetries.
+
+    Parameters
+    ----------
+    atoms : `ase.Atoms` object
+    tolerance : float
+        spglib symmetry tolerance.
+    angle_tolerance : float
+        spglib angle tolerance.
+
+    Returns
+    -------
+    symmetry : SimpleNamespace
+        dataset : dict
+            spglib dataset
+        has_inversion : bool
+            Does structure have an inversion center?
+    """
+    from types import SimpleNamespace
+    from spglib import get_symmetry_dataset
+
+    cell = atoms2spgcell(atoms)
+    dataset = get_symmetry_dataset(cell, symprec=tolerance,
+                                   angle_tolerance=angle_tolerance)
+
+    symmetry = SimpleNamespace(
+        has_inversion=has_inversion(dataset['rotations']),
+        dataset=dataset
+    )
+    return symmetry
+
+
 def restrict_spin_projection_2d(kpt, op_scc, s_vm):
+    """Restrict spin projections according to symmetry."""
     import numpy as np
     mirror_count = 0
     s_vm = s_vm.copy()

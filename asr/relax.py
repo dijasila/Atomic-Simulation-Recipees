@@ -140,7 +140,6 @@ class myBFGS(BFGS):
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
-    import spglib
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
@@ -158,10 +157,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             assert pbc[2], "1D periodic axis should be the last one."
             smask = [0, 0, 1, 0, 0, 0]
 
-    from asr.setup.symmetrize import atomstospgcell as ats
-    dataset = spglib.get_symmetry_dataset(ats(atoms),
-                                          symprec=1e-4,
-                                          angle_tolerance=0.1)
+    from asr.utils.symmetry import atoms2symmetry
+    dataset = atoms2symmetry(atoms,
+                             tolerance=1e-3,
+                             angle_tolerance=0.1).dataset
     spgname = dataset['international']
     number = dataset['number']
     nsym = len(dataset['rotations'])
@@ -189,9 +188,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
 
         for _ in runner:
             # Check that the symmetry has not been broken
-            newdataset = spglib.get_symmetry_dataset(ats(atoms),
-                                                     symprec=1e-4,
-                                                     angle_tolerance=0.1)
+            newdataset = atoms2symmetry(atoms,
+                                        tolerance=1e-3,
+                                        angle_tolerance=0.1).dataset
+
             spgname2 = newdataset['international']
             number2 = newdataset['number']
             nsym2 = len(newdataset['rotations'])
