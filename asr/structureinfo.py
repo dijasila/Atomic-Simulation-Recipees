@@ -42,8 +42,6 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-
-
 def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
