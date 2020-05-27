@@ -306,7 +306,7 @@ def main(rc=None):
     # Calculating hessian and eigenvectors at high symmetry points of the BZ
     eigs_kl = []
     q_qc = list(path.special_points.values())
-    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
+    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3), dtype=complex)
 
     for q, q_c in enumerate(q_qc):
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
