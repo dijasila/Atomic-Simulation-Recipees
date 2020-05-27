@@ -16,7 +16,8 @@ def eigenvalues(calc):
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
-def fermi_level(calc, eps_skn=None, nelectrons=None):
+def fermi_level(calc, eps_skn=None, nelectrons=None,
+                width=None):
     """Get Fermi level from calculation.
 
     Parameters
@@ -27,6 +28,8 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
             eigenvalues (taken from calc if None)
         nelectrons : float, optional
             number of electrons (taken from calc if None)
+        width : float, optional
+            Fermi dirac width, if None then inherit from calc
 
     Returns
     -------
@@ -41,6 +44,8 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
         eps_skn = eigenvalues(calc)
     eps_skn.sort(axis=-1)
     occ = calc.occupations.todict()
+    if width is not None:
+        occ['width'] = width
     weight_k = calc.get_k_point_weights()
     return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
 
