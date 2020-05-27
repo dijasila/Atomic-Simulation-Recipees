@@ -42,32 +42,6 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def has_inversion(atoms, use_spglib=True):
-    """Determine if atoms has inversion symmetry.
-
-    Parameters
-    ----------
-    atoms: Atoms object
-           atoms
-    use_spglib: bool
-           use spglib
-
-    Returns
-    -------
-        out: bool
-    """
-    import numpy as np
-    import spglib
-
-    atoms2 = atoms.copy()
-    atoms2.pbc[:] = True
-    atoms2.center(axis=2)
-    cell = (atoms2.cell.array,
-            atoms2.get_scaled_positions(),
-            atoms2.numbers)
-    R = -np.identity(3, dtype=int)
-    r_n = spglib.get_symmetry(cell, symprec=1.0e-3)['rotations']
-    return np.any([np.all(r == R) for r in r_n])
 
 
 def webpanel(row, key_descriptions):
@@ -141,18 +115,18 @@ def main():
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
     info['formula'] = formula
     info['stoichiometry'] = stoichimetry
-    info['has_inversion_symmetry'] = has_inversion(atoms)
 
-    # Calculate crystal prototype
-    import spglib
-    formula = atoms.symbols.formula
-    cell = (atoms.cell.array,
-            atoms.get_scaled_positions(),
-            atoms.numbers)
-    stoi = atoms.symbols.formula.stoichiometry()[0]
-    dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3,
-                                          angle_tolerance=0.1)
+    # Get crystal symmetries
+    from asr.utils.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms,
+                              tolerance=1e-3,
+                              angle_tolerance=0.1)
+    info['has_inversion_symmetry'] = symmetry.has_inversion
+    dataset = symmetry.dataset
     info['spglib_dataset'] = dataset
+
+    # Get crystal prototype
+    stoi = atoms.symbols.formula.stoichiometry()[0]
     sg = dataset['international']
     number = dataset['number']
     w = ''.join(sorted(set(dataset['wyckoffs'])))
