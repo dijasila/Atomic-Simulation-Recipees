@@ -1,6 +1,3 @@
-
-
-
 def calc2eigs(calc, ranks, soc=True, bands=None,
               return_spin=False,
               theta=0, phi=0, symmetry_tolerance=1e-7):
@@ -9,7 +6,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
-    from asr.utils.symmetry import _atoms2symmetry_gpaw
+    from .calculator_utils import eigenvalues, fermi_level
+    from .symmetry import _atoms2symmetry_gpaw
 
     dct = None
     if mpi.world.rank in ranks:
