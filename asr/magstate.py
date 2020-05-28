@@ -9,8 +9,10 @@ def get_magstate(calc):
     if abs(magmoms).max() < 0.1:
         return 'nm'
 
-    if (abs(magmoms).max() >= 0.1 and
-       abs(magmoms.max() - magmoms.min()) < 0.1):
+    maxmom = magmoms.max()
+    minmom = magmoms.min()
+    if abs(magmoms).max() >= 0.1 and \
+       abs(maxmom - minmom) < abs(maxmom):
         return 'fm'
 
     return 'afm'
