@@ -362,8 +362,7 @@ def main(calculator={'name': 'gpaw',
 
     # If the maximum magnetic moment on all atoms is big then
     magmoms = atoms.get_magnetic_moments()
-    magmom = calc.get_magnetic_moment()
-    if abs(magmom) < 0.02 and not abs(magmoms).max() > 0.1:
+    if not abs(magmoms).max() > 0.1:
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
         # Relax the structure
