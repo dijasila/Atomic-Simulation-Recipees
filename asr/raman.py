@@ -160,7 +160,10 @@ def raman(row, filename):
     plt.savefig(filename)
 
 # Count the modes and their degeneracy factors
+
+
 def count_deg(freqs_l, freq_err=2):
+
     # Degeneracy factor for modes
     w_l = [freqs_l[0]]
     rep_l = [1]
