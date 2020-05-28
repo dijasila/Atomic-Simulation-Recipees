@@ -1,6 +1,7 @@
 def calc2eigs(calc, ranks, soc=True, bands=None,
               return_spin=False,
-              theta=0, phi=0, symmetry_tolerance=1e-7):
+              theta=0, phi=0, symmetry_tolerance=1e-7,
+              width=None):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
     from ase.parallel import broadcast
@@ -30,7 +31,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
                                                       return_spin=True)
             eps_km = eps_mk.T
             efermi = fermi_level(calc, eps_km[np.newaxis],
-                                 nelectrons=2 * calc.get_number_of_electrons())
+                                 nelectrons=2 * calc.get_number_of_electrons(),
+                                 width=width)
             symmetry = _atoms2symmetry_gpaw(calc.atoms,
                                             tolerance=symmetry_tolerance)
             ibzk_kc = calc.get_ibz_k_points()
@@ -69,7 +71,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
-             theta=0, phi=0, symmetry_tolerance=1e-7):
+             theta=0, phi=0, symmetry_tolerance=1e-7,
+             width=None):
     """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
     Parameters
@@ -79,6 +82,8 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
             use spinorbit coupling if None it returns both w and w/o
         bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
+        width : float or None
+            Fermi width when calculating new Fermi level
 
     Returns
     -------
@@ -92,4 +97,5 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
                      theta=theta, phi=phi,
                      ranks=ranks,
-                     symmetry_tolerance=symmetry_tolerance)
+                     symmetry_tolerance=symmetry_tolerance,
+                     width=width)
