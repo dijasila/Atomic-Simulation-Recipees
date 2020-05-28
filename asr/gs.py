@@ -261,7 +261,8 @@ def gaps(calc, soc=True):
     if soc:
         theta, phi = get_spin_axis()
         _, efermi = calc2eigs(calc, ranks=[0], soc=True,
-                              theta=theta, phi=phi)
+                              theta=theta, phi=phi,
+                              width=0.0)
     else:
         efermi = calc.get_fermi_level()
 
