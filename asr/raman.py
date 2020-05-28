@@ -1,11 +1,36 @@
 from asr.core import command
+import numpy as np
 
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
+    # Make a table from the phonon modes
+    data = row.data.get('results-asr.raman.json')
+    if data:
+        table = []
+        freqs_l = data['freqs_l']
+        w_l, rep_l = count_deg(freqs_l)
+        # print(w_l)
+        # print(rep_l)
+        nph = len(w_l)
+        for ii in range(nph):
+            key = 'Mode {}'.format(ii + 1)
+            table.append(
+                (key,
+                 np.array2string(
+                     np.abs(
+                         w_l[ii]),
+                     precision=1),
+                    rep_l[ii]))
+        opt = {'type': 'table',
+               'header': ['Mode', 'Frequency (1/cm)', 'Degeneracy'],
+               'rows': table}
+    else:
+        opt = None
+    # Make the panel
     panel = {'title': 'Raman spectrum (RPA)',
-             'columns': [[fig('Raman.png')], []],
+             'columns': [[fig('Raman.png')], [opt]],
              'plot_descriptions':
                  [{'function': raman,
                    'filenames': ['Raman.png']}],
@@ -14,14 +39,13 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command("asr.raman", webpanel=webpanel)
+@command('asr.raman', webpanel=webpanel)
 def main():
     raise NotImplementedError
 
 
 def raman(row, filename):
     # Import the required modules
-    import numpy as np
     import matplotlib.pyplot as plt
 
     # All required settings
@@ -42,6 +66,7 @@ def raman(row, filename):
         lor = 0.5 * g / (np.pi * ((w.real)**2 + 0.25 * g**2))
         return lor
     from math import pi, sqrt
+    # Gaussian function definition
 
     def gauss(w, g):
         gauss = 1 / (g * sqrt(2 * pi)) * np.exp(-0.5 * w**2 / g**2)
@@ -64,7 +89,7 @@ def raman(row, filename):
 
     # Make a latex type formula
     def getformula(matstr):
-        matformula = r""
+        matformula = r''
         for ch in matstr:
             if ch.isdigit():
                 matformula += '$_' + ch + '$'
@@ -73,11 +98,11 @@ def raman(row, filename):
         return matformula
 
     # Set the variables and parameters
-    wavelength_w = data["wavelength_w"]
-    freqs_l = data["freqs_l"]
-    amplitudes_vvwl = data["amplitudes_vvwl"]
-    selpol = params["polarization"]
-    gamma = params["broadening"]
+    wavelength_w = data['wavelength_w']
+    freqs_l = data['freqs_l']
+    amplitudes_vvwl = data['amplitudes_vvwl']
+    selpol = params['polarization']
+    gamma = params['broadening']
 
     # If the wavelength was not found, return
     waveind = int(np.where(wavelength_w == params['wavelength'])[0])
@@ -112,8 +137,8 @@ def raman(row, filename):
     # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):
         ax.plot(ww, rr[pol] / np.max(maxr), c='C' + str(ipol), label=pol)
-    figtitle = 'Raman spectrum of {} at {} nm wavelength'.format(
-        getformula(row.formula), params['wavelength'])
+    # figtitle = 'Raman spectrum of {} at {} nm wavelength'.format(
+    #     getformula(row.formula), params['wavelength'])
     ax.set_title(figtitle)
     ax.set_xlabel('Raman shift (cm$^{-1}$)')
     ax.set_ylabel('Raman intensity (a.u.)')
@@ -125,18 +150,7 @@ def raman(row, filename):
     ax.legend()
 
     # Count the modes and their degeneracy factors
-    freq_err = 2  # assume modes that are closer as one mode, in cm^-1
-    w_l = [freqs_l[0]]  # the degeneracy factor for modes
-    rep_l = [1]
-    for wss in freqs_l[1:]:
-        ind = len(w_l) - 1
-        if np.abs(w_l[ind] - wss) > freq_err:
-            w_l.append(wss)
-            rep_l.append(1)
-        else:
-            rep_l[ind] += 1
-    w_l = np.array(w_l)
-    rep_l = np.array(rep_l)
+    w_l, rep_l = count_deg(freqs_l)
 
     # Add the phonon bars to the figure with showing their degeneracy factors
     pltbar = plt.bar(w_l, -0.04, width=maxw / 100, color='k')
@@ -148,6 +162,20 @@ def raman(row, filename):
     plt.tight_layout()
     plt.savefig(filename)
 
-
-if __name__ == '__main__':
-    main.cli()
+# Count the modes and their degeneracy factors
+def count_deg(freqs_l, freq_err=2):
+    # Degeneracy factor for modes
+    w_l = [freqs_l[0]]
+    rep_l = [1]
+    # Loop over modes
+    for wss in freqs_l[1:]:
+        ind = len(w_l) - 1
+        if np.abs(w_l[ind] - wss) > freq_err:
+            w_l.append(wss)
+            rep_l.append(1)
+        else:
+            rep_l[ind] += 1
+    w_l = np.array(w_l)
+    rep_l = np.array(rep_l)
+    # Return the output
+    return w_l, rep_l
