@@ -12,7 +12,7 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 @command('asr.dos',
-         requires=['gs.gpw', 'dos.gpw', 'results-asr.gs.json'],
+         requires=['gs.gpw', 'results-asr.gs.json'],
          dependencies=['asr.gs'],
          webpanel=webpanel)
 @option('--name', type=str)
@@ -46,11 +46,7 @@ def main(name='dos.gpw', kptdensity=50):
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-    import json
-
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
+    return data
 
 
 def plot(row, fname):
@@ -80,7 +76,7 @@ def plot(row, fname):
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
     plt.ylabel(r'DOS (states / (eV Å$^3$)')
     plt.tight_layout()
-    plt.savefig(filename)
+    plt.savefig(fname)
     if show:
         plt.show()
     return plt.gca()
