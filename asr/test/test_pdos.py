@@ -1,21 +1,20 @@
 import pytest
-from .conftest import test_materials, get_webcontent
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("atoms", test_materials)
-def test_pdos(separate_folder, mockgpaw, mocker, atoms):
+def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
+              test_material, get_webcontent):
     from asr.pdos import main
 
     mocker.patch("gpaw.utilities.dos.raw_orbital_LDOS", create=True)
     mocker.patch("gpaw.utilities.progressbar.ProgressBar", create=True)
-    atoms.write('structure.json')
+    test_material.write('structure.json')
     main()
     get_webcontent()
 
 
 @pytest.mark.integration_test_gpaw
-def test_pdos_full(separate_folder):
+def test_pdos_full(asr_tmpdir_w_params):
     from pathlib import Path
     import numpy as np
 

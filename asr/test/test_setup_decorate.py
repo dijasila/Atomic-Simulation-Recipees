@@ -5,7 +5,7 @@ Si = bulk('Si')
 
 
 @pytest.mark.ci
-def test_setup_decorate_si(separate_folder, mockgpaw):
+def test_setup_decorate_si(asr_tmpdir_w_params, mockgpaw):
     from asr.setup.decorate import main
     from ase.io import write
     from ase.db import connect

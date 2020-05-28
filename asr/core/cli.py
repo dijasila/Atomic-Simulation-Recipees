@@ -271,11 +271,11 @@ def results(name, show):
     recipe = get_recipe_from_name(name)
 
     if recipe.webpanel is None:
-        print('{recipe.name} does not have any results to present!')
+        print(f'{recipe.name} does not have any results to present!')
         return
 
     assert Path(f"results-{recipe.name}.json").is_file(), \
-        'No results file for {recipe.name}, so I cannot show the results!'
+        f'No results file for {recipe.name}, so I cannot show the results!'
 
     material = get_material_from_folder('.')
     panels = get_webpanels_from_material(material, recipe)
