@@ -29,6 +29,8 @@ def todict(filename):
 def topckl(filename, dct):
     from ase.utils import opencew
     import pickle
+    if Path(filename).is_file():
+        return
     contents = dct['content']
     fd = opencew(filename)
     if world.rank == 0:

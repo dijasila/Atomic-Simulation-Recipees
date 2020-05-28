@@ -325,10 +325,7 @@ class ASRCommand:
             if recipe.done:
                 continue
 
-            filenames = set(self.requires).intersection(recipe.creates)
-            if not all([Path(filename).exists() for filename in
-                        filenames]):
-                recipe()
+            recipe()
 
         assert self.is_requirements_met(), \
             (f'{self.name}: Some required files are missing: {self.requires}. '

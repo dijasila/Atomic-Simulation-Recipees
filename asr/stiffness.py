@@ -24,16 +24,44 @@ def webpanel(row, key_descriptions):
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
     eigs = stiffnessdata['eigenvalues']
+    nd = np.sum(row.pbc)
 
-    c_ij = np.zeros((4, 4))
-    c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-    rows = matrixtable(c_ij, unit='',
-                       skiprow=1,
-                       skipcolumn=1)
-    rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
-    rows[1][0] = 'xx'
-    rows[2][0] = 'yy'
-    rows[3][0] = 'xy'
+    if nd == 2:
+        c_ij = np.zeros((4, 4))
+        c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
+        rows = matrixtable(c_ij, unit='',
+                           skiprow=1,
+                           skipcolumn=1)
+        rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
+        rows[1][0] = 'xx'
+        rows[2][0] = 'yy'
+        rows[3][0] = 'xy'
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} N/m']
+                      for ie, eig in enumerate(sorted(eigs,
+                                                      key=lambda x: x.real))])
+    elif nd == 3:
+        c_ij = np.zeros((7, 7))
+        c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
+        rows = matrixtable(c_ij, unit='',
+                           skiprow=1,
+                           skipcolumn=1)
+        rows[0] = ['C<sub>ij</sub> (10^9 N/m^2)', 'xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+        rows[1][0] = 'xx'
+        rows[2][0] = 'yy'
+        rows[3][0] = 'zz'
+        rows[4][0] = 'yz'
+        rows[5][0] = 'xz'
+        rows[6][0] = 'xy'
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} * 10^9 N/m^2']
+                      for ie, eig in enumerate(sorted(eigs,
+                                                      key=lambda x: x.real))])
+    else:
+        rows = []
+        eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
+                   + [[f'Eigenvalue', f'{eigs.real:.2f} * 10^(-10) N']])
+
     for ir, tmprow in enumerate(rows):
         for ic, item in enumerate(tmprow):
             if ir == 0 or ic == 0:
@@ -43,10 +71,6 @@ def webpanel(row, key_descriptions):
         type='table',
         rows=rows)
 
-    eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-               + [[f'Eigenvalue {ie}', f'{eig:.2f} N/m']
-                  for ie, eig in enumerate(sorted(eigs,
-                                                  key=lambda x: x.real))])
     eigtable = dict(
         type='table',
         rows=eigrows)
@@ -55,7 +79,10 @@ def webpanel(row, key_descriptions):
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
-    dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    if nd == 1:
+        dynstab = ['low', 'high'][eigs > 0]
+    else:
+        dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
@@ -156,16 +183,24 @@ def main(strain_percent=1.0):
         kd['speed_of_sound_y'] = 'KVP: Speed of sound in y direction [m/s]'
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
     elif nd == 1:
+        cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
-        stiffness = stiffness[5, 5] * area * 1e-20
-        kd['stiffness_tensor'] = 'Stiffness tensor [N]'
+        stiffness = stiffness[2, 2] * area * 1e-20
+        # typical values for 1D are of the order of 10^(-10) N
+        stiffness = stiffness * 1.0e10
+        kd['stiffness_tensor'] = 'Stiffness tensor [10^(-10) N]'
     else:
-        kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
+        # typical values for 3D are of the order of 100 GPa [= 100*10^9 N/m^2]
+        stiffness = stiffness / 1.0e9
+        kd['stiffness_tensor'] = 'Stiffness tensor [10^9 N/m^2]'
 
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness
 
-    eigs = np.linalg.eigvals(stiffness)
+    if nd == 1:
+        eigs = stiffness
+    else:
+        eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
     return data
 

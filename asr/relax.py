@@ -140,7 +140,6 @@ class myBFGS(BFGS):
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
-    import spglib
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
@@ -159,10 +158,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             assert pbc[2], "1D periodic axis should be the last one."
             smask = [0, 0, 1, 0, 0, 0]
 
-    from asr.setup.symmetrize import atomstospgcell as ats
-    dataset = spglib.get_symmetry_dataset(ats(atoms),
-                                          symprec=1e-4,
-                                          angle_tolerance=0.1)
+    from asr.utils.symmetry import atoms2symmetry
+    dataset = atoms2symmetry(atoms,
+                             tolerance=1e-3,
+                             angle_tolerance=0.1).dataset
     spgname = dataset['international']
     number = dataset['number']
     nsym = len(dataset['rotations'])
@@ -190,9 +189,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
 
         for _ in runner:
             # Check that the symmetry has not been broken
-            newdataset = spglib.get_symmetry_dataset(ats(atoms),
-                                                     symprec=1e-4,
-                                                     angle_tolerance=0.1)
+            newdataset = atoms2symmetry(atoms,
+                                        tolerance=1e-3,
+                                        angle_tolerance=0.1).dataset
+
             spgname2 = newdataset['international']
             number2 = newdataset['number']
             nsym2 = len(newdataset['rotations'])
@@ -368,6 +368,18 @@ def main(calculator={'name': 'gpaw',
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
+    # If the maximum magnetic moment on all atoms is big then
+    magmoms = atoms.get_magnetic_moments()
+    magmom = calc.get_magnetic_moment()
+    if abs(magmom) < 0.02 and not abs(magmoms).max() > 0.1:
+        atoms.set_initial_magnetic_moments([0] * len(atoms))
+        calc = Calculator(**calculator)
+        # Relax the structure
+        atoms = relax(atoms, name='relax', dftd3=d3,
+                      fixcell=fixcell,
+                      allow_symmetry_breaking=allow_symmetry_breaking,
+                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
 
@@ -404,12 +416,6 @@ def main(calculator={'name': 'gpaw',
          'beta': 'Cell parameter beta [deg]',
          'gamma': 'Cell parameter gamma [deg]'}
 
-    # If the maximum magnetic moment on all atoms is big then
-    magmoms = atoms.get_magnetic_moments()
-    if not abs(magmoms).max() > 0.1:
-        atoms.set_initial_magnetic_moments([0] * len(atoms))
-    else:
-        atoms.set_initial_magnetic_moments(magmoms)
     # For nm set magnetic moments to zero XXX
     # Save atomic structure
     write('structure.json', atoms)

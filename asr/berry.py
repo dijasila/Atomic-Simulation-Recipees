@@ -116,7 +116,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
         return
 
 
-def plot_phases(name='0'):
+def plot_phases(name='0', fname='berry', show=False):
     import pylab as plt
 
     results = read_json('results-asr.berry@calculate.json')
@@ -154,7 +154,10 @@ def plot_phases(name='0'):
     plt.yticks([0, np.pi, 2 * np.pi], [r'$0$', r'$\pi$', r'$2\pi$'], size=20)
     plt.axis([0, Nk, 0, 2 * np.pi])
     plt.tight_layout()
-    plt.show()
+    figname = f'{fname}-phi{name}.png'
+    plt.savefig(figname)
+    if show:
+        plt.show()
 
 
 def webpanel(row, key_descriptions):
