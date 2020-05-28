@@ -52,15 +52,16 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
 
 @command('asr.magnetic_anisotropy',
          tests=tests,
-         requires=['gs.gpw', 'results-asr.structureinfo.json'],
          webpanel=webpanel,
-         dependencies=['asr.gs@calculate', 'asr.structureinfo'])
+         dependencies=['asr.gs@calculate', 'asr.magstate'])
 def main():
     """Calculate the magnetic anisotropy.
+
     Uses the magnetic anisotropy to calculate the preferred spin orientation
     for magnetic (FM/AFM) systems.
 
-    Returns:
+    Returns
+    -------
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
@@ -72,8 +73,9 @@ def main():
     from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 
-    structureinfo = read_json('results-asr.structureinfo.json')
-    magstate = structureinfo['magstate']
+    magstateresults = read_json('results-asr.magstate.json')
+    magstate = magstateresults['magstate']
+
     # Figure out if material is magnetic
     results = {'__key_descriptions__':
                {'spin_axis': 'KVP: Suggested spin direction for SOC',

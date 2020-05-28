@@ -45,14 +45,15 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
     return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
 
 
-def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
-              theta=0, phi=0):
+def calc2eigs(calc, ranks, soc=True, bands=None,
+              return_spin=False,
+              theta=0, phi=0, symmetry_tolerance=1e-7):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
-    from gpaw.symmetry import atoms2symmetry
+    from asr.utils.symmetry import _atoms2symmetry_gpaw
 
     dct = None
     if mpi.world.rank in ranks:
@@ -76,7 +77,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
             eps_km = eps_mk.T
             efermi = fermi_level(calc, eps_km[np.newaxis],
                                  nelectrons=2 * calc.get_number_of_electrons())
-            symmetry = atoms2symmetry(calc.atoms)
+            symmetry = _atoms2symmetry_gpaw(calc.atoms,
+                                            tolerance=symmetry_tolerance)
             ibzk_kc = calc.get_ibz_k_points()
             # For magnetic systems we know some more about the spin
             # projections
@@ -113,18 +115,20 @@ def calc2eigs(calc, ranks, soc=True, bands=None, return_spin=False,
 
 
 def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
-             theta=0, phi=0):
-    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding
-    fermi energy
+             theta=0, phi=0, symmetry_tolerance=1e-7):
+    """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
-    Parameters:
+    Parameters
+    ----------
         gpw (str): gpw filename
         soc : None, bool
             use spinorbit coupling if None it returns both w and w/o
         bands : slice, list of ints or None
             None gives parameters.convergence.bands if possible else all bands
 
-    Returns : dict or e_skn, efermi
+    Returns
+    -------
+    dict or e_skn, efermi
         containg eigenvalues and fermi levels w and w/o spinorbit coupling
     """
     from gpaw import GPAW
@@ -133,4 +137,5 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
     return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
                      theta=theta, phi=phi,
-                     ranks=ranks)
+                     ranks=ranks,
+                     symmetry_tolerance=symmetry_tolerance)

@@ -3,12 +3,6 @@ import numpy as np
 from asr.core import command
 
 
-# ---------- Recipe tests ---------- #
-
-
-# Add test(s)                                                               XXX
-
-
 # ---------- Webpanel ---------- #
 
 
@@ -52,7 +46,7 @@ def main():
 
 
 def get_orbital_ldos(calc):
-    """Get the projection weights on different orbitals
+    """Get the projection weights on different orbitals.
 
     Returns
     -------
@@ -93,7 +87,7 @@ def get_orbital_ldos(calc):
         i_x.append(i)
 
     # Allocate output array
-    nk, nb = calc.wfs.kd.nibzkpts, calc.wfs.bd.nbands
+    nk, nb = len(calc.get_ibz_k_points()), calc.get_number_of_bands()
     weight_skni = np.zeros((ns, nk, nb, len(yl_i)))
 
     # Set up progressbar
@@ -121,7 +115,7 @@ def get_orbital_ldos(calc):
 
 
 def get_yl_ordering(yl_i, symbols):
-    """Get standardized yl ordering of keys
+    """Get standardized yl ordering of keys.
 
     Parameters
     ----------
@@ -135,7 +129,6 @@ def get_yl_ordering(yl_i, symbols):
     c_i : list
         ordered index for each i
     """
-
     # Setup sili (symbol index, angular momentum index) key
     def sili(yl):
         y, L = yl.split(',')
@@ -152,6 +145,7 @@ def get_yl_ordering(yl_i, symbols):
 
 def get_bs_sampling(bsp, npoints=40):
     """Sample band structure as evenly as possible.
+
     Allways include special points.
 
     Parameters
@@ -216,7 +210,7 @@ def get_bs_sampling(bsp, npoints=40):
     return chosenx_x, k_x
 
 
-def get_pie_slice(theta0, theta, s=36., res=126):
+def get_pie_slice(theta0, theta, s=36., res=64):
     """Get a single pie slice marker.
 
     Parameters
@@ -234,11 +228,11 @@ def get_pie_slice(theta0, theta, s=36., res=126):
     -------
     pie : matplotlib.pyplot.scatter option dictionary
     """
-    assert 0. <= theta0 and theta0 <= 2. * np.pi
-    assert 0. <= theta and theta <= 2. * np.pi
+    assert -np.pi / res <= theta0 and theta0 <= 2. * np.pi + np.pi / res
+    assert -np.pi / res <= theta and theta <= 2. * np.pi + np.pi / res
 
     angles = np.linspace(theta0, theta0 + theta,
-                         np.ceil(res * theta / (2 * np.pi)))
+                         int(np.ceil(res * theta / (2 * np.pi))))
     x = [0] + np.cos(angles).tolist()
     y = [0] + np.sin(angles).tolist()
     xy = np.column_stack([x, y])
@@ -247,7 +241,7 @@ def get_pie_slice(theta0, theta, s=36., res=126):
     return {'marker': xy, 's': size, 'linewidths': 0.0}
 
 
-def get_pie_markers(weight_xi, scale_marker=True, s=36., res=126):
+def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     """Get pie markers corresponding to a 2D array of weights.
 
     Parameters
@@ -286,14 +280,25 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=126):
     return pie_xi
 
 
-def projected_bs_pbe(row,
-                     filename='pbe-projected-bs.png',
-                     figsize=(5.5, 5),
-                     fontsize=10):  # Choose input parameters               XXX
+def projected_bs_pbe(row, filename='pbe-projected-bs.png',
+                     npoints=40, markersize=36., res=64,
+                     figsize=(5.5, 5), fontsize=10):
+    """Produce the projected band structure.
+
+    Plot the projection weight fractions as pie charts on top of the band structure.
+
+    Parameters
+    ----------
+    npoints : int,
+        number of pie charts per band
+    markersize : float
+        size of pie chart markers
+    res : int
+        resolution of the pie chart markers (in points around the circumference)
+    """
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
-    # import pylab
     import numpy as np
     from ase.dft.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
@@ -336,14 +341,15 @@ def projected_bs_pbe(row,
     e_skn = e_skn[:, :, inrange_n]
     weight_skni = weight_skni[:, :, inrange_n, :]
 
-    # hstack spin index for the BandStructure object
-    nspins = e_skn.shape[0]
-    e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-
     # Use band structure objects to plot outline
-    bs = BandStructure(path, e_kn - ref, ef - ref)
+    bs = BandStructure(path, e_skn - ref, ef - ref)
+    # Use colors if spin-polarized
+    if e_skn.shape[0] == 2:
+        spincolors = ['0.8', '0.4']
+    else:
+        spincolors = ['0.8'] * e_skn.shape[0]
     style = dict(
-        colors=['0.8'] * e_skn.shape[0],
+        colors=spincolors,
         ls='-',
         lw=1.0,
         zorder=0)
@@ -352,7 +358,6 @@ def projected_bs_pbe(row,
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
              ylabel=label, **style)
 
-    npoints = 40  # input variable?
     xcoords, k_x = get_bs_sampling(bsp, npoints=npoints)
 
     # Generate energy and weight arrays based on band structure sampling
@@ -366,9 +371,6 @@ def projected_bs_pbe(row,
                              k_x[np.newaxis, :],
                              n_u[:, np.newaxis], :]
     # Plot projections
-    # Choose some plotting format                                           XXX
-    markersize = 36.
-    res = 64  # input variable?                                             XXX
     for e_x, weight_xi in zip(e_ux, weight_uxi):
 
         # Weights as pie chart
@@ -379,50 +381,6 @@ def projected_bs_pbe(row,
             for i, pie in enumerate(pie_i):
                 ax.scatter(x, e, facecolor='C{}'.format(c_i[i]),
                            zorder=3, **pie)
-            # Plot radius = 1 circle for comparison of total weights
-            # cx = np.cos(np.linspace(0., 2 * np.pi, res)).tolist()
-            # cy = np.sin(np.linspace(0., 2 * np.pi, res)).tolist()
-            # xy = np.column_stack([cx, cy])
-            # ax.scatter(x, e, marker=xy, linewidth=.5,
-            #            s=markersize * np.abs(xy).max() ** 2,
-            #            facecolor='none', edgecolor='black', zorder=4)
-
-        # Marker size depending on each weight
-        # for x, e, weight_i in zip(xcoords, e_x, weight_xi):
-        #     # Sort orbital after weight
-        #     i_si = np.argsort(weight_i)
-        #     # Calculate accumulated weight and use it for area of marker.
-        #     # Join orbitals with less than 10% weight in a neutral marker
-        #     totweight = np.sum(weight_i)
-        #     accweight = 0.
-        #     neutralweight = 0.
-        #     c_pi = []
-        #     a_pi = []
-        #     for i, weight in zip(i_si, weight_i[i_si]):
-        #         if weight < 0.1 * totweight:
-        #             neutralweight += weight
-        #         else:
-        #             if neutralweight is not None:
-        #                 # Done with small weights, store neutral marker
-        #                 a_pi.append(markersize * neutralweight)
-        #                 c_pi.append('xkcd:grey')
-        #                 accweight += neutralweight
-        #                 neutralweight = None
-        #             # Add orbital as is
-        #             accweight += weight
-        #             a_pi.append(markersize * accweight)
-        #             c_pi.append('C{}'.format(c_i[i]))
-        #     # Plot points from largest to smallest
-        #     for a, c in zip(reversed(a_pi), reversed(c_pi)):
-        #         ax.scatter(x, e, color=c, s=a, zorder=3)
-        # # Plot radius = 1 circle for comparison of total weights
-        # ax.scatter(xcoords, e_x, marker='o', s=markersize, linewidth=.5,
-        #            facecolor='none', edgecolor='black', zorder=4)
-
-        # Marker color depending on largest weight
-        # c_x = [c_i[i] for i in np.argmax(weight_xi, axis=1)]
-        # for x, e, c in zip(xcoords, e_x, c_x):
-        #     ax.scatter(x, e, color='C{}'.format(c), s=markersize, zorder=3)
 
     # Set legend
     # Get "pac-man" style pie slice marker

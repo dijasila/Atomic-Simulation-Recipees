@@ -14,8 +14,7 @@ test1 = {'description': 'Test ground state of Si.',
          creates=['gs.gpw'],
          tests=[test1],
          requires=['structure.json'],
-         resources='8:10h',
-         restart=1)
+         resources='8:10h')
 @option('-c', '--calculator', help='Calculator params.')
 def calculate(calculator={'name': 'gpaw',
                           'mode': {'name': 'pw', 'ecut': 800},
@@ -29,14 +28,20 @@ def calculate(calculator={'name': 'gpaw',
                           'txt': 'gs.txt',
                           'charge': 0}):
     """Calculate ground state file.
+
     This recipe saves the ground state to a file gs.gpw based on the structure
     in 'structure.json'. This can then be processed by asr.gs@postprocessing
     for storing any derived quantities. See asr.gs@postprocessing for more
-    information."""
+    information.
+    """
     import numpy as np
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
+    from asr.relax import set_initial_magnetic_moments
     atoms = read('structure.json')
+
+    if not atoms.has('initial_magmoms'):
+        set_initial_magnetic_moments(atoms)
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
@@ -228,9 +233,6 @@ def main():
 
 
 def gaps(calc, soc=True):
-    """Could use some documentation!!! XXX
-    Who is in charge of this thing??
-    """
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -320,7 +322,9 @@ def get_gap_info(soc, direct, calc):
 
 
 def vacuumlevels(atoms, calc, n=8):
-    """Get the vacuumlevels on both sides of a 2D material. Will
+    """Get the vacuumlevels on both sides of a 2D material.
+
+    Get the vacuumlevels on both sides of a 2D material. Will
     do a dipole corrected dft calculation, if needed (Janus structures).
     Assumes the 2D material periodic directions are x and y.
     Assumes that the 2D material is centered in the z-direction of
@@ -360,7 +364,9 @@ def vacuumlevels(atoms, calc, n=8):
 
 
 def evacdiff(atoms):
-    """Calculate vacuum energy level difference from the dipole moment of
+    """Derive vacuum energy level difference from the dipole moment.
+
+    Calculate vacuum energy level difference from the dipole moment of
     a slab assumed to be in the xy plane
 
     Returns

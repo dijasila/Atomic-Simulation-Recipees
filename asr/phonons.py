@@ -29,6 +29,8 @@ def todict(filename):
 def topckl(filename, dct):
     from ase.utils import opencew
     import pickle
+    if Path(filename).is_file():
+        return
     contents = dct['content']
     fd = opencew(filename)
     if world.rank == 0:
@@ -54,27 +56,36 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
                 f.unlink()
     world.barrier()
 
-    params = {'mode': {'name': 'pw', 'ecut': ecut},
-              'kpts': {'density': kptdensity, 'gamma': True}}
+    atoms = read('structure.json')
+    gsold = get_calculator()('gs.gpw', txt=None)
+
+    # Set initial magnetic moments
+    from asr.utils import is_magnetic
+    if is_magnetic():
+        magmoms_m = gsold.get_magnetic_moments()
+        # Some calculators return magnetic moments resolved into their
+        # cartesian components
+        if len(magmoms_m.shape) == 2:
+            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
+        atoms.set_initial_magnetic_moments(magmoms_m)
+
+    params = gsold.parameters.copy()  # TODO: remove fix density from gs params
+    if 'fixdensity' in params:
+        params.pop('fixdensity')
+    params.update({'mode': {'name': 'pw', 'ecut': ecut},
+                   'kpts': {'density': kptdensity, 'gamma': True}})
 
     # Set essential parameters for phonons
     params['symmetry'] = {'point_group': False}
+
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
-    atoms = read('structure.json')
     fd = open('phonons.txt'.format(n), 'a')
-    calc = get_calculator()(txt=fd, **params)
+    params['txt'] = fd
+    calc = get_calculator()(**params)
 
-    # Set initial magnetic moments
-    from asr.core import is_magnetic
-    if is_magnetic():
-        gsold = get_calculator()('gs.gpw', txt=None)
-        magmoms_m = gsold.get_magnetic_moments()
-        atoms.set_initial_magnetic_moments(magmoms_m)
-
-    from asr.core import get_dimensionality
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -92,6 +103,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
         dct['__tofile__'] = 'asr.phonons@topckl'
         files[filename] = dct
     data = {'__files__': files}
+    fd.close()
     return data
 
 
@@ -115,8 +127,8 @@ def webpanel(row, key_descriptions):
     medium = 'Min. Hessian eig. > -2 eV/Ang^2'
     low = 'Min. Hessian eig.  < -2 eV/Ang^2'
     row = ['Dynamical (phonons)',
-           '<a href="#" data-toggle="tooltip" data-html="true" ' +
-           'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
                low, medium, high, stabilities[dynstab].upper())]
 
     summary = {'title': 'Summary',
@@ -135,11 +147,10 @@ def webpanel(row, key_descriptions):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo=True):
     from asr.core import read_json
-    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -238,11 +249,6 @@ def plot_bandstructure(row, fname):
     data = row.data.get('results-asr.phonons.json')
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
-    bs = BandStructure(path=path,
-                       energies=energies[None, :, :],
-                       reference=0)
-    bs.plot(colors=['C0'])
-    plt.plot([], [], label='Interpolated', color='C0')
     exact_indices = []
     for q_c in data['q_qc']:
         diff_kc = path.kpts - q_c
@@ -254,12 +260,12 @@ def plot_bandstructure(row, fname):
     for ind in exact_indices:
         en_exact[ind] = energies[ind]
 
-    bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
-             emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
-             ylabel='Phonon frequencies [meV]')
-    plt.plot([], [], label='Calculated', color='C1', marker='o', ls='')
-    plt.legend(ncol=2, loc='upper center')
+    bs = BandStructure(path=path, energies=en_exact[None])
+    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
+            emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
+            ylabel='Phonon frequencies [meV]')
+    plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
+    plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
 

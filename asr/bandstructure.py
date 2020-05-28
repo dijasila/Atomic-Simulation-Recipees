@@ -37,7 +37,7 @@ tests.append({'description': 'Test band structure of 2D-BN.',
 @option('--npoints')
 @option('--emptybands')
 def calculate(kptpath=None, npoints=400, emptybands=20):
-    """Calculate electronic band structure"""
+    """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
     atoms = read('structure.json')
@@ -231,8 +231,7 @@ def bs_pbe_html(row,
         '</script>').format(id=plotdivid)
 
     # Insert plotly.js
-    plotlyjs = ('<script src="https://cdn.plot.ly/plotly-latest.min.js">' +
-                '</script>')
+    plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
     html = ''.join([
         '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
@@ -244,7 +243,7 @@ def bs_pbe_html(row,
 
 
 def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """plot pbe with soc on ax"""
+    """Plot pbe with soc on ax."""
     from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
@@ -291,7 +290,7 @@ def plot_with_colors(bs,
 
     vlines2back(ax.lines)
     shape = energies.shape
-    xcoords = np.vstack([bs.xcoords] * shape[1])
+    xcoords = np.vstack([bs.xcoords] * shape[0])
     if sortcolors:
         perm = (-colors).argsort(axis=None)
         energies = energies.ravel()[perm].reshape(shape)
@@ -536,8 +535,13 @@ def main():
     bsresults = bs.todict()
 
     theta, phi = get_spin_axis()
+
+    # We use a larger symmetry tolerance because we want to correctly
+    # color spins which doesn't always happen due to slightly broken
+    # symmetries, hence tolerance=1e-2.
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
     bsresults['efermi'] = efermi

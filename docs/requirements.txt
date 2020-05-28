@@ -1,4 +1,4 @@
 git+https://gitlab.com/ase/ase.git
-sphinx-autoapi==1.1.0
 sphinxcontrib-programoutput==0.14
--e .
+sphinx
+pytest

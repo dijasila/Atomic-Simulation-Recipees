@@ -10,7 +10,7 @@ import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
-from ase.utils import formula_metal
+from ase.formula import Formula
 import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
@@ -19,21 +19,24 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db):
+def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_kd
     from ase.db.web import create_key_descriptions
 
-    metadata = db.metadata
-    if 'keys' not in metadata:
-        raise KeyError('Missing list of keys for database. '
-                       'To fix this either: run database.fromtree again. '
-                       'or python -m asr.database.set_metadata DATABASEFILE.')
-
-    keys = metadata.get('keys')
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
+
+    if db is not None:
+        metadata = db.metadata
+        if 'keys' not in metadata:
+            raise KeyError('Missing list of keys for database. '
+                           'To fix this either: run database.fromtree again. '
+                           'or python -m asr.database.set_metadata DATABASEFILE.')
+        keys = metadata.get('keys')
+    else:
+        keys = list(flatten.keys())
 
     kd = {}
     for key in keys:
@@ -50,8 +53,7 @@ def create_key_descriptions(db):
 
 
 class Summary:
-    def __init__(self, row, key_descriptions, create_layout,
-                 subscript=None, prefix=''):
+    def __init__(self, row, key_descriptions, create_layout, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
@@ -68,9 +70,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = formula_metal(row.numbers)
-        if subscript:
-            self.formula = subscript.sub(r'<sub>\1</sub>', self.formula)
+        self.formula = Formula(
+            Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -128,12 +129,14 @@ def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
-    db = connect(database)
+    db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", database)
 
     # Make temporary directory
     (tmpdir / name).mkdir()
+
+    metadata = db.metadata
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
@@ -156,9 +159,6 @@ def initialize_project(database):
     }
 
 
-setup_app()
-
-
 @command()
 @argument("databases", nargs=-1)
 @option("--host", help="Host address.")
@@ -166,6 +166,8 @@ setup_app()
 def main(databases, host="0.0.0.0", test=False):
     for database in databases:
         initialize_project(database)
+
+    setup_app()
 
     if test:
         import traceback
@@ -199,8 +201,8 @@ def main(databases, host="0.0.0.0", test=False):
                         exc = traceback.format_exc()
                         exc += (f'Problem with {uid}: '
                                 f'Formula={row.formula} '
-                                f'Prototype={row.crystal_prototype}\n' +
-                                '-' * 20 + '\n')
+                                f'Prototype={row.crystal_prototype}\n'
+                                + '-' * 20 + '\n')
                         with Path('errors.txt').open(mode='a') as fid:
                             fid.write(exc)
                             print(exc)
