@@ -331,7 +331,7 @@ def main(calculator={'name': 'gpaw',
 
     try:
         atoms = read('relax.traj')
-    except (IOError, UnknownFileTypeError):
+    except (IOError, UnknownFileTypeError, StopIteration):
         atoms = read('unrelaxed.json', parallel=False)
         if not atoms.has('initial_magmoms'):
             set_initial_magnetic_moments(atoms)
