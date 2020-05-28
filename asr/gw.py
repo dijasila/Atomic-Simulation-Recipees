@@ -256,7 +256,7 @@ def webpanel(row, key_descriptions):
 def main():
     import numpy as np
     from gpaw import GPAW
-    from asr.utils.gpw2eigs import fermi_level
+    from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace

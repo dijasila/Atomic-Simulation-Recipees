@@ -281,7 +281,7 @@ def main():
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW
-    from asr.utils.gpw2eigs import fermi_level
+    from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
