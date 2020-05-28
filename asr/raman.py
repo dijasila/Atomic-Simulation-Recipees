@@ -137,9 +137,6 @@ def raman(row, filename):
     # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):
         ax.plot(ww, rr[pol] / np.max(maxr), c='C' + str(ipol), label=pol)
-    # figtitle = 'Raman spectrum of {} at {} nm wavelength'.format(
-    #     getformula(row.formula), params['wavelength'])
-    ax.set_title(figtitle)
     ax.set_xlabel('Raman shift (cm$^{-1}$)')
     ax.set_ylabel('Raman intensity (a.u.)')
     ax.set_ylim((-0.1, 1.1))
