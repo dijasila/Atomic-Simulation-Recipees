@@ -236,7 +236,8 @@ def create_corrected_db(newname, db, reactions, els_dMu):
 
 @command("asr.fere", resources="1:1h")
 @option("--newdbname", help="Name of the new db file")
-@option("--dbname", help="Name of the base db file")
+@option("--dbname", help="Name of the db file to be corrected")
+@option("--basedbname", help="Name of the db file to calculate corrections from")
 @option(
     "--reactionsname", help="File containing reactions and energies with which to fit"
 )
@@ -246,10 +247,11 @@ def create_corrected_db(newname, db, reactions, els_dMu):
     + " whose references energies should be adjusted",
 )
 def main(
-    newdbname="newdb.db",
-    dbname="db.db",
-    reactionsname="reactions.txt",
-    referencesname="references.txt",
+        newdbname="newdb.db",
+        basedbname="base.db",
+        dbname="db.db",
+        reactionsname="reactions.txt",
+        referencesname="references.txt",
 ):
     from ase.db import connect
     import os
@@ -259,8 +261,9 @@ def main(
         raise DBAlreadyExistsError
     reactions, refs = load_data(reactionsname, referencesname)
 
+    basedb = connect(basedbname)
     db = connect(dbname)
-    dE, alpha = get_dE_alpha(db, reactions, refs)
+    dE, alpha = get_dE_alpha(basedb, reactions, refs)
 
     dMu, error = minimize_error(dE, alpha)
 
@@ -268,14 +271,15 @@ def main(
     create_corrected_db(newdbname, db, reactions, list(zip(elements, dMu)))
 
     results = {
-        "dbname": dbname,
-        "newdbname": newdbname,
-        "reactions": reactions,
-        "refs": refs,
-        "dE": np.array(dE.todense()),
-        "alpha": str(alpha),
-        "dMu": dMu,
-        "error": error,
+        "basedbname": basedbname,
+        "dbname"    : dbname,
+        "newdbname" : newdbname,
+        "reactions" : reactions,
+        "refs"      : refs,
+        "dE"        : np.array(dE.todense()),
+        "alpha"     : str(alpha),
+        "dMu"       : dMu,
+        "error"     : error,
     }
 
     results["__key_descriptions__"] = {
