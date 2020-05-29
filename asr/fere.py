@@ -232,7 +232,8 @@ def create_corrected_db(newname, db, reactions, els_dMu):
             el, dmu = el_dmu
             row.energy += formula.count()[el] * dmu
         newdb.write(row)
-
+        
+    newdb.metadata = db.metadata
 
 @command("asr.fere", resources="1:1h")
 @option("--newdbname", help="Name of the new db file")
