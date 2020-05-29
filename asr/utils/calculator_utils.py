@@ -41,18 +41,26 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
 
     Returns
     -------
-    out : float
-        fermi level
+    fermi_level : float
+        fermi level in eV
     """
     import numpy as np
     if nelectrons is None:
         nelectrons = calc.get_number_of_electrons()
-    nkpts = calc.get_number_of_kpts()
+
+    nkpts = len(calc.get_bz_k_points())
+
+    # The number of occupied states is the number of electrons
+    # multiplied by the number of k-points
+    nocc = nelectrons * nkpts
     if eps_skn is None:
         eps_skn = eigenvalues(calc)
-    count_k = np.round(calc.get_k_point_weights() * nkpts)
+    weight_k = np.array(calc.get_k_point_weights())
+    count_k = np.round(weight_k * nkpts).astype(int)
     eps_N = np.repeat(eps_skn, count_k, axis=1).ravel()
-    homo = eps_N[nelectrons]
-    lumo = eps_N[nelectrons + 1]
+    homo = eps_N[nocc - 1]
+    lumo = eps_N[nocc]
+    print('homo', homo)
+    print('lumo', lumo)
     fermi_level = (homo + lumo) / 2
     return fermi_level
