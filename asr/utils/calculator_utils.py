@@ -44,15 +44,15 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
     out : float
         fermi level
     """
-    from gpaw.occupations import occupation_numbers
-    from ase.units import Ha
+    import numpy as np
     if nelectrons is None:
         nelectrons = calc.get_number_of_electrons()
+    nkpts = calc.get_number_of_kpts()
     if eps_skn is None:
         eps_skn = eigenvalues(calc)
-    eps_skn.sort(axis=-1)
-    occ = calc.occupations.todict()
-    if width is not None:
-        occ['width'] = width
-    weight_k = calc.get_k_point_weights()
-    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
+    count_k = np.round(calc.get_k_point_weights() * nkpts)
+    eps_N = np.repeat(eps_skn, count_k, axis=1).ravel()
+    homo = eps_N[nelectrons]
+    lumo = eps_N[nelectrons + 1]
+    fermi_level = (homo + lumo) / 2
+    return fermi_level
