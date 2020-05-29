@@ -127,8 +127,8 @@ class ASRCalculator(Calculator):
         self.setups = self._get_setups()
         self.wfs.kd.nibzkpts = len(kpts)
         self.wfs.kd.weight_k = np.array(self.get_k_point_weights())
-        self.setups.nvalence = self.get_number_of_electrons()
-        self.wfs.nvalence = self.get_number_of_electrons()
+        self.setups.nvalence = self.get_number_of_valence_electrons()
+        self.wfs.nvalence = self.get_number_of_valence_electrons()
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
 
         self.results = {
@@ -281,10 +281,11 @@ class ASRCalculator(Calculator):
         Constructs all eigenvalues for the test calculator. The
         valence bands will have a negative curvature and the number of
         valence bands are determined by
-        :py:method:`ASRCalculator.get_number_of_electrons`. Conduction
+        :py:method:`ASRCalculator.get_number_of_valence_electrons`. Conduction
         bands have positive curvature and are separated from the
         valence bands by a bandgap. The band gap is obtained from
         :py:method:`ASRCalculator._get_band_gap`.
+
         """
         icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
         n = self.parameters.gridsize
@@ -292,10 +293,10 @@ class ASRCalculator(Calculator):
         eps_kn = 0.5 * (np.dot(self.kpts + offsets, icell) ** 2).sum(2).T
         eps_kn.sort()
 
-        nelectrons = self.get_number_of_electrons()
+        nvalence = self.get_number_of_valence_electrons()
         gap = self._get_band_gap()
         eps_kn = np.concatenate(
-            (-eps_kn[:, ::-1][:, -nelectrons:],
+            (-eps_kn[:, ::-1][:, -nvalence:],
              eps_kn + gap / Ha),
             axis=1,
         )
@@ -341,16 +342,33 @@ class ASRCalculator(Calculator):
             return int(
                 float(self.parameters.nbands[:-1])
                 / 100
-                * self.get_number_of_electrons()
+                * self.get_number_of_valence_electrons()
             )
         elif self.parameters.nbands < 0:
-            return (self.get_number_of_electrons()
+            return (self.get_number_of_valence_electrons()
                     - self.parameters.nbands)
         else:
             return self.parameters.nbands
 
     def get_number_of_electrons(self):
         """Get number of electrons."""
+        fermi_level = self._get_fermi_level()
+        gap = self._get_band_gap()
+        if fermi_level > gap:
+            volume = self.atoms.get_volume()
+            n_extra_electrons = ((2 * (fermi_level - gap) / Ha)**(3 / 2) /
+                                 (3 * np.pi**2) * (volume / Bohr**3))
+        else:
+            n_extra_electrons = 0
+        return self.get_number_of_valence_electrons() + n_extra_electrons
+
+    def get_number_of_valence_electrons(self):
+        """Get number of valence electrons.
+
+        The number of valence electrons exclude any extra doping there
+        might exist due to any additional doping.
+
+        """
         return 4
 
     def write(self, name, mode=None):

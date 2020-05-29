@@ -52,7 +52,7 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
 
     # The number of occupied states is the number of electrons
     # multiplied by the number of k-points
-    nocc = nelectrons * nkpts
+    nocc = int(nelectrons * nkpts)
     if eps_skn is None:
         eps_skn = eigenvalues(calc)
     weight_k = np.array(calc.get_k_point_weights())
