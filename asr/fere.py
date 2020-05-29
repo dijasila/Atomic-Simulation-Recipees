@@ -141,8 +141,12 @@ def safe_get(db, prod):
         try:
             result = db.get("formula={}".format(formula))
             break
-        except KeyError:
-            continue
+        except Exception as e:
+            if type(e) == KeyError:
+                continue
+            else:
+                print(formula)
+                raise e
 
     if result is None:
         raise MaterialNotFoundError("Could not find {} in db".format(prod))
