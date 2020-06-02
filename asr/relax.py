@@ -307,7 +307,6 @@ def main(atoms: Atoms = 'unrelaxed.json',
     """
     from ase.calculators.calculator import get_calculator_class
 
-    print('atoms', atoms)
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
