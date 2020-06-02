@@ -1,5 +1,5 @@
 """Module implementing the ASRCommand class and related decorators."""
-from . import (parse_dict_string, read_json, write_json, md5sum,
+from . import (read_json, write_json, md5sum,
                file_barrier, unlink)
 from ase.parallel import parprint
 import click

@@ -215,7 +215,8 @@ class ASRCalculator(Calculator):
 
         """
         setup = SimpleNamespace(symbol=self._get_setup_symbol(element_number),
-                                fingerprint=self._get_setup_fingerprint(element_number),
+                                fingerprint=self._get_setup_fingerprint(
+                                    element_number),
                                 Nv=self._get_setup_nvalence(element_number))
         return setup
 
@@ -355,8 +356,8 @@ class ASRCalculator(Calculator):
         """Get number of conduction electrons per unit cell."""
         fermi_level = self._get_fermi_level()
         nkpts = len(self.get_bz_k_points())
-        return (np.sum(self.eigenvalues < fermi_level) * 2 / nkpts -
-                self.get_number_of_valence_electrons())
+        return (np.sum(self.eigenvalues < fermi_level) * 2 / nkpts
+                - self.get_number_of_valence_electrons())
 
     def get_number_of_electrons(self):
         """Get number of electrons."""
