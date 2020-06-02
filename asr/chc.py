@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, argument
 import numpy as np
 
 
@@ -371,13 +371,15 @@ def chcut_plot(row, *args):
          requires=['structure.json',
                    'results-asr.convex_hull.json'],
          webpanel=webpanel)
-@option('--db', type=str,
-        help='ASE DB containing the references')
+@argument('dbs', nargs=-1)
 @option('-r', '--reactant', type=str,
         help='Reactant to add to convex hull')
-def main(db='references.db', reactant='O'):
+def main(dbs, reactant='O'):
+    if len(dbs) == 0:
+        raise ValueError('Must supply at least one database')
+
     from ase.db import connect
-    db = connect(db)
+    dbs = [connect(db) for db in dbs]
     results = {}
     formula, elements = read_structure('structure.json')
     assert reactant not in elements
@@ -387,7 +389,7 @@ def main(db='references.db', reactant='O'):
     reactant_ref = Reference(reactant, 0.0)
     references = [mat_ref]
 
-    append_references(elements, db, references)
+    append_references(elements, dbs, references)
 
     refs = convex_hull(references, mat_ref)
 
@@ -422,13 +424,36 @@ def results2ref(formula):
     return Reference(formula, data["hform"])
 
 
-def row2ref(row):
+def row2ref(row, dbs):
     if hasattr(row, "hform"):
         return Reference(row.formula, row.hform)
     elif hasattr(row, "de"):
         return Reference(row.formula, row.de)
     else:
-        raise ValueError("No recognized Heat of Formation key")
+        from asr.fere import get_hof
+        from ase.formula import Formula
+        
+        ids = ['formula', 'crystal_prototype', 'energy']
+        qstr = ', '.join([f'{id}={getattr(row, id)}' for id in ids])
+        for db in dbs:
+            try:
+                result = db.get(qstr)
+                break
+            except KeyError as e:
+                continue
+        else:
+            from asr.fere import MaterialNotFoundError
+            raise MaterialNotFoundError("Could not find {} in db".format(row.formula))
+                
+        # print(dir(row))
+   #      kvs = {x: getattr(row, x) for x in dir(row)}
+        
+ #        qstr = ",".join([f"{k}={v}" for k, v in row.
+#        dbs[-1].get(row)
+        raise NotImplementedError
+
+        # hof = get_hof(dbs[-1], Formula(row.formula))
+        return Reference(row.formula, hof)
 
 
 def convex_hull(references, mat_ref):
@@ -448,15 +473,15 @@ def convex_hull(references, mat_ref):
     return filtered_refs
 
 
-def append_references(elements, db, references):
+def append_references(elements, dbs, references):
     # For each material in DB add material to references
     # if all elements in material are in elements-list
     # and material is not already in db??
 
     def rowin(_row, _rowls):
-        _ref = row2ref(_row)
+        _ref = row2ref(_row, dbs)
         for _orow in _rowls:
-            _oref = row2ref(_orow)
+            _oref = row2ref(_orow, dbs)
             if _oref == _ref:
                 return True
 
@@ -470,14 +495,15 @@ def append_references(elements, db, references):
 
     selected_rows = []
     for element in elements:
-        for row in db.select(element):
-            if rowin(row, selected_rows):
-                continue
-            if not elementcheck(row):
-                continue
-            selected_rows.append(row)
+        for db in dbs:
+            for row in db.select(element):
+                if rowin(row, selected_rows):
+                    continue
+                if not elementcheck(row):
+                    continue
+                selected_rows.append(row)
 
-    new_refs = map(lambda r: row2ref(r), selected_rows)
+    new_refs = map(lambda r: row2ref(r, dbs), selected_rows)
 
     references.extend(new_refs)
 
