@@ -32,7 +32,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
             eps_km = eps_mk.T
             eps_km.sort(axis=-1)
             efermi = fermi_level(calc, eps_km[np.newaxis],
-                                 nelectrons=2 * calc.get_number_of_electrons(),
+                                 nelectrons=calc.get_number_of_electrons(),
                                  width=width)
             symmetry = _atoms2symmetry_gpaw(calc.atoms,
                                             tolerance=symmetry_tolerance)

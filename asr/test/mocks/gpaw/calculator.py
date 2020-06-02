@@ -352,16 +352,11 @@ class ASRCalculator(Calculator):
             return self.parameters.nbands
 
     def get_number_of_conduction_electrons(self):
-        """Get number of conduction electrons."""
+        """Get number of conduction electrons per unit cell."""
         fermi_level = self._get_fermi_level()
-        return np.sum(np.logical_and(self.eigenvalues < fermi_level,
-                                     self.eigenvalues > 0)) * 2
-        # gap = self._get_band_gap()
-        # if fermi_level > gap:
-        #     volume = self.atoms.get_volume()
-        #     return ((2 * (fermi_level - gap) / Ha)**(3 / 2) /
-        #             (3 * np.pi**2) * (volume / Bohr**3)) * 2
-        # return 0
+        nkpts = len(self.get_bz_k_points())
+        return (np.sum(self.eigenvalues < fermi_level) * 2 / nkpts -
+                self.get_number_of_valence_electrons())
 
     def get_number_of_electrons(self):
         """Get number of electrons."""

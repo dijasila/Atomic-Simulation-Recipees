@@ -61,7 +61,5 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
     eps_N.sort()
     homo = eps_N[nocc - 1]
     lumo = eps_N[nocc]
-    print('homo', homo)
-    print('lumo', lumo)
     fermi_level = (homo + lumo) / 2
     return fermi_level

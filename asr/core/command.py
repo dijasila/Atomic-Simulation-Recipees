@@ -171,23 +171,50 @@ class ASRCommand:
         sig = inspect.signature(self._main)
         self.signature = sig
 
-        myparams = []
-        defparams = {}
-        for key, value in sig.parameters.items():
-            assert key in self.myparams, \
-                f'You havent provided a description for {key}'
-            if value.default is not inspect.Parameter.empty:
-                defparams[key] = value.default
-            myparams.append(key)
-
-        myparams = [k for k, v in sig.parameters.items()]
-        for key in self.myparams:
-            assert key in myparams, f'Param: {key} is unknown'
-        self.defparams = defparams
-
         # Setup the CLI
         self.setup_cli()
         update_wrapper(self, self._main)
+
+    def get_signature(self):
+        """Return signature with updated defaults based on params.json."""
+        myparams = []
+        for key, value in self.signature.parameters.items():
+            assert key in self.myparams, \
+                f'Missing description for param={key}.'
+            myparams.append(key)
+
+        # Check that all annotated parameters can be found in the
+        # actual function signature.
+        myparams = [k for k, v in self.signature.parameters.items()]
+        for key in self.myparams:
+            assert key in myparams, f'param={key} is unknown.'
+
+        if Path('params.json').is_file():
+            # Read defaults from params.json.
+            paramsettings = read_json('params.json').get(self.name, {})
+            if paramsettings:
+                signature_parameters = dict(self.signature.parameters)
+                for key, new_default in paramsettings.items():
+                    assert key in signature_parameters, \
+                        f'Unknown param in params.json: param={key}.'
+                    parameter = signature_parameters[key]
+                    signature_parameters[key] = parameter.replace(
+                        default=new_default)
+
+                new_signature = self.signature.replace(
+                    parameters=list(signature_parameters))
+                return new_signature
+
+        return self.signature
+
+    def get_defaults(self):
+        """Get default parameters based on signature and params.json."""
+        signature = self.get_signature()
+        defparams = {}
+        for key, value in signature.parameters.items():
+            if value.default is not inspect.Parameter.empty:
+                defparams[key] = value.default
+        return defparams
 
     @property
     def requires(self):
@@ -277,6 +304,7 @@ class ASRCommand:
                      help=help)(self.main)
 
         # Convert parameters into CLI Parameters!
+        defparams = self.get_defaults()
         for name, param in self.myparams.items():
             param = param.copy()
             alias = param.pop('alias')
@@ -284,7 +312,7 @@ class ASRCommand:
             name2 = param.pop('name')
             assert name == name2
             assert name in self.myparams
-            default = self.defparams.get(name, None)
+            default = defparams.get(name, None)
 
             if argtype == 'option':
                 command = co(show_default=True, default=default,
@@ -333,34 +361,11 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        bound_arguments = self.signature.bind(*args, **kwargs)
+        signature = self.get_signature()
+        bound_arguments = signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
 
         params = dict(bound_arguments.arguments)
-        for key, value in params.items():
-            assert key in self.myparams, f'Unknown key: {key} {params}'
-            # Default type
-            if key not in self.defparams:
-                continue
-            if self.defparams[key] is None:
-                continue
-            tp = type(self.defparams[key])
-
-            if tp != type(value):
-                # Dicts has to be treated specially
-                if tp == dict:
-                    dct = copy.deepcopy(self.defparams[key])
-                    dct = parse_dict_string(value, dct=dct)
-                    params[key] = dct
-                else:
-                    params[key] = tp(value)
-
-        # Read arguments from params.json and overwrite params
-        if Path('params.json').is_file():
-            paramsettings = read_json('params.json').get(self.name, {})
-            for key, value in paramsettings.items():
-                assert key in self.myparams, f'Unknown key: {key} {params}'
-                params[key] = value
 
         paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
