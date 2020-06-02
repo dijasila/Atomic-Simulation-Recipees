@@ -202,7 +202,7 @@ class ASRCommand:
                         default=new_default)
 
                 new_signature = self.signature.replace(
-                    parameters=list(signature_parameters))
+                    parameters=[val for val in signature_parameters.values()])
                 return new_signature
 
         return self.signature
