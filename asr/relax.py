@@ -17,7 +17,7 @@ from ase.io.formats import UnknownFileTypeError
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.core import command, option
+from asr.core import command, option, AtomsFile
 from math import sqrt
 import time
 
@@ -233,36 +233,6 @@ def BN_check():
     assert results['c'] > 5
 
 
-tests = []
-testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
-            "'kpts':{'density':2,'gamma':True},...}")
-tests.append({'description': 'Test relaxation of Si.',
-              'tags': ['gitlab-ci'],
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
-tests.append({'description': 'Test relaxation of Si (cores=2).',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run -p 2 "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
-tests.append({'description': 'Test relaxation of 2D-BN.',
-              'name': 'test_asr.relax_2DBN',
-              'cli': ['asr run "setup.materials -s BN,natoms=2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'test': BN_check})
-
-
 def log(*args, **kwargs):
     atoms = read('unrelaxed.json')
 
@@ -275,29 +245,37 @@ def set_initial_magnetic_moments(atoms):
 
 @command('asr.relax',
          requires=['unrelaxed.json'],
-         creates=['structure.json'],
-         log=log)
+         creates=['structure.json'])
+@option('-a', '--atoms', help='Atoms to be relaxed.',
+        type=AtomsFile)
 @option('-c', '--calculator', help='Calculator and its parameters.')
-@option('--d3/--nod3', help='Relax with vdW D3')
-@option('--fixcell', is_flag=True, help='Don\'t relax stresses')
-@option('--allow-symmetry-breaking', is_flag=True,
-        help='Allow symmetries to be broken during relaxation')
-@option('--fmax', help='Maximum force allowed')
-@option('--enforce-symmetry', is_flag=True,
-        help='Symmetrize forces and stresses.')
-def main(calculator={'name': 'gpaw',
-                     'mode': {'name': 'pw', 'ecut': 800},
-                     'xc': 'PBE',
-                     'kpts': {'density': 6.0, 'gamma': True},
-                     'basis': 'dzp',
-                     'symmetry': {'symmorphic': False},
-                     'convergence': {'forces': 1e-4},
-                     'txt': 'relax.txt',
-                     'occupations': {'name': 'fermi-dirac',
-                                     'width': 0.05},
-                     'charge': 0},
-         d3=False, fixcell=False, allow_symmetry_breaking=False,
-         fmax=0.01, enforce_symmetry=True):
+@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+@option('--fixcell/--dont-fixcell',
+        help="Don't relax stresses.",
+        is_flag=True)
+@option('--allow-symmetry-breaking/--dont-allow-symmetry-breaking',
+        help='Allow symmetries to be broken during relaxation.',
+        is_flag=True)
+@option('--fmax', help='Maximum force allowed.', type=float)
+@option('--enforce-symmetry/--dont-enforce-symmetry',
+        help='Symmetrize forces and stresses.', is_flag=True)
+def main(atoms: Atoms = 'unrelaxed.json',
+         calculator: dict = {'name': 'gpaw',
+                             'mode': {'name': 'pw', 'ecut': 800},
+                             'xc': 'PBE',
+                             'kpts': {'density': 6.0, 'gamma': True},
+                             'basis': 'dzp',
+                             'symmetry': {'symmorphic': False},
+                             'convergence': {'forces': 1e-4},
+                             'txt': 'relax.txt',
+                             'occupations': {'name': 'fermi-dirac',
+                                             'width': 0.05},
+                             'charge': 0},
+         d3: bool = False,
+         fixcell: bool = False,
+         allow_symmetry_breaking: bool = False,
+         fmax: float = 0.01,
+         enforce_symmetry: bool = True):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in
@@ -329,6 +307,7 @@ def main(calculator={'name': 'gpaw',
     """
     from ase.calculators.calculator import get_calculator_class
 
+    print('atoms', atoms)
     try:
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
