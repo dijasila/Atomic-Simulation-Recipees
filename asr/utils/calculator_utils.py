@@ -58,6 +58,7 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
     weight_k = np.array(calc.get_k_point_weights())
     count_k = np.round(weight_k * nkpts).astype(int)
     eps_N = np.repeat(eps_skn, count_k, axis=1).ravel()
+    eps_N.sort()
     homo = eps_N[nocc - 1]
     lumo = eps_N[nocc]
     print('homo', homo)

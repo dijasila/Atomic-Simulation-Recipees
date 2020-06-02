@@ -30,6 +30,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
                                                       phi=phi,
                                                       return_spin=True)
             eps_km = eps_mk.T
+            eps_km.sort(axis=-1)
             efermi = fermi_level(calc, eps_km[np.newaxis],
                                  nelectrons=2 * calc.get_number_of_electrons(),
                                  width=width)

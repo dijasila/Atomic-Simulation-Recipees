@@ -294,9 +294,10 @@ class ASRCalculator(Calculator):
         eps_kn.sort()
 
         nvalence = self.get_number_of_valence_electrons()
+        nvalencebands = nvalence // 2
         gap = self._get_band_gap()
         eps_kn = np.concatenate(
-            (-eps_kn[:, ::-1][:, -nvalence:],
+            (-eps_kn[:, ::-1][:, -nvalencebands:],
              eps_kn + gap / Ha),
             axis=1,
         )
@@ -345,22 +346,27 @@ class ASRCalculator(Calculator):
                 * self.get_number_of_valence_electrons()
             )
         elif self.parameters.nbands < 0:
-            return (self.get_number_of_valence_electrons()
-                    - self.parameters.nbands)
+            return int((self.get_number_of_valence_electrons() / 2
+                        - self.parameters.nbands))
         else:
             return self.parameters.nbands
 
+    def get_number_of_conduction_electrons(self):
+        """Get number of conduction electrons."""
+        fermi_level = self._get_fermi_level()
+        return np.sum(np.logical_and(self.eigenvalues < fermi_level,
+                                     self.eigenvalues > 0)) * 2
+        # gap = self._get_band_gap()
+        # if fermi_level > gap:
+        #     volume = self.atoms.get_volume()
+        #     return ((2 * (fermi_level - gap) / Ha)**(3 / 2) /
+        #             (3 * np.pi**2) * (volume / Bohr**3)) * 2
+        # return 0
+
     def get_number_of_electrons(self):
         """Get number of electrons."""
-        fermi_level = self._get_fermi_level()
-        gap = self._get_band_gap()
-        if fermi_level > gap:
-            volume = self.atoms.get_volume()
-            n_extra_electrons = ((2 * (fermi_level - gap) / Ha)**(3 / 2) /
-                                 (3 * np.pi**2) * (volume / Bohr**3))
-        else:
-            n_extra_electrons = 0
-        return self.get_number_of_valence_electrons() + n_extra_electrons
+        return self.get_number_of_valence_electrons() + \
+            self.get_number_of_conduction_electrons()
 
     def get_number_of_valence_electrons(self):
         """Get number of valence electrons.
