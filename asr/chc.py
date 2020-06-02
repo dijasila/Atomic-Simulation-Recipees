@@ -430,7 +430,7 @@ def row2ref(row, dbs):
     elif hasattr(row, "de"):
         return Reference(row.formula, row.de)
     else:
-        from asr.fere import get_hof
+        from asr.fere import get_hof, MaterialNotFoundError
         from ase.formula import Formula
         
         ids = ['formula', 'crystal_prototype', 'energy']
@@ -442,18 +442,10 @@ def row2ref(row, dbs):
             except KeyError as e:
                 continue
         else:
-            from asr.fere import MaterialNotFoundError
             raise MaterialNotFoundError("Could not find {} in db".format(row.formula))
-                
-        # print(dir(row))
-   #      kvs = {x: getattr(row, x) for x in dir(row)}
-        
- #        qstr = ",".join([f"{k}={v}" for k, v in row.
-#        dbs[-1].get(row)
-        raise NotImplementedError
 
-        # hof = get_hof(dbs[-1], Formula(row.formula))
-        return Reference(row.formula, hof)
+        hof = get_hof(dbs[0], Formula(result.formula), row=result)
+        return Reference(result.formula, hof)
 
 
 def convex_hull(references, mat_ref):
@@ -497,9 +489,9 @@ def append_references(elements, dbs, references):
     for element in elements:
         for db in dbs:
             for row in db.select(element):
-                if rowin(row, selected_rows):
-                    continue
                 if not elementcheck(row):
+                    continue
+                if rowin(row, selected_rows):
                     continue
                 selected_rows.append(row)
 
