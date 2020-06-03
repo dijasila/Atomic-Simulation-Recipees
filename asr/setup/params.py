@@ -34,7 +34,7 @@ def main(params=None):
     defparamdict = {}
     recipes = get_recipes()
     for recipe in recipes:
-        defparams = recipe.defparams
+        defparams = recipe.get_defaults()
         defparamdict[recipe.name] = defparams
 
     p = Path('params.json')
