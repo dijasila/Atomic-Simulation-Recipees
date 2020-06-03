@@ -1,4 +1,4 @@
-def calc2eigs(calc, ranks, soc=True, bands=None,
+def calc2eigs(calc, ranks, soc=True,
               return_spin=False,
               theta=0, phi=0, symmetry_tolerance=1e-7,
               width=None):
@@ -12,14 +12,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
 
     dct = None
     if mpi.world.rank in ranks:
-        if bands is None:
-            n2 = calc.todict().get("convergence", {}).get("bands")
-            if isinstance(n2, str):
-                assert n2.startswith('CBM')
-                n2 = calc.get_number_of_bands()
-            bands = slice(0, n2)
-        if isinstance(bands, slice):
-            bands = range(calc.get_number_of_bands())[bands]
+        n2 = calc.get_number_of_bands()
+        bands = slice(0, n2)
         eps_nosoc_skn = get_eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
@@ -69,7 +63,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
         return dct['eps_nosoc_skn'], dct['efermi_nosoc'], dct['s_kvm']
 
 
-def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
+def gpw2eigs(gpw, soc=True, return_spin=False,
              theta=0, phi=0, symmetry_tolerance=1e-7):
     """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
@@ -90,7 +84,7 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     from gpaw import mpi
     ranks = [0]
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
-    return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
+    return calc2eigs(calc, soc=soc, return_spin=return_spin,
                      theta=theta, phi=phi,
                      ranks=ranks,
                      symmetry_tolerance=symmetry_tolerance)
