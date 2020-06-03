@@ -4,21 +4,18 @@ from asr.core import command
 
 def get_magstate(calc):
     """Determine the magstate of calc."""
-    magmom = calc.get_property('magmom', allow_calculation=False)
-    if magmom is None:
-        # In this case the calculator is probably spin-paired.
+    magmoms = calc.get_property('magmoms', allow_calculation=False)
+
+    if magmoms is None or abs(magmoms).max() < 0.1:
         return 'nm'
 
-    if abs(magmom) > 0.02:
+    maxmom = magmoms.max()
+    minmom = magmoms.min()
+    if abs(magmoms).max() >= 0.1 and \
+       abs(maxmom - minmom) < abs(maxmom):
         return 'fm'
 
-    magmoms = calc.get_property('magmoms', allow_calculation=False)
-    assert magmoms is not None
-    if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-        return 'afm'
-
-    # Material is essentially non-magnetic
-    return 'nm'
+    return 'afm'
 
 
 def webpanel(row, key_descriptions):
