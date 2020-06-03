@@ -12,8 +12,7 @@ def calc2eigs(calc, ranks, soc=True,
 
     dct = None
     if mpi.world.rank in ranks:
-        n2 = calc.get_number_of_bands()
-        bands = slice(0, n2)
+        bands = range(calc.get_number_of_bands())
         eps_nosoc_skn = get_eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
