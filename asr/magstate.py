@@ -6,7 +6,7 @@ def get_magstate(calc):
     """Determine the magstate of calc."""
     magmoms = calc.get_property('magmoms', allow_calculation=False)
 
-    if abs(magmoms).max() < 0.1:
+    if magmoms is None or abs(magmoms).max() < 0.1:
         return 'nm'
 
     maxmom = magmoms.max()
