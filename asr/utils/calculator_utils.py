@@ -66,9 +66,11 @@ def fermi_level(calc, eigenvalues=None, nelectrons=None, nspins=None):
 
     # The number of occupied states is the number of electrons
     # multiplied by the number of k-points
-    nocc = int(nelectrons * nkpts * (nspins / 2))
+    nocc = int(nelectrons * nkpts)
     weight_k = np.array(calc.get_k_point_weights())
     count_k = np.round(weight_k * nkpts).astype(int)
+    if nspins == 1:
+        count_k *= 2
     eps_N = np.repeat(eigenvalues_skn, count_k, axis=1).ravel()
     eps_N.sort()
     homo = eps_N[nocc - 1]
