@@ -256,7 +256,7 @@ def webpanel(row, key_descriptions):
 def main():
     import numpy as np
     from gpaw import GPAW
-    from asr.utils.gpw2eigs import fermi_level
+    from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
@@ -275,9 +275,10 @@ def main():
 
     # First get stuff without SOC
     eps_skn = gwresults.qp
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn,
+    efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
                                nelectrons=(calc.get_number_of_electrons()
-                                           - 2 * lb))
+                                           - 2 * lb),
+                               nspins=eps_skn.shape[0])
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -313,19 +314,20 @@ def main():
                         return_spin=False,
                         theta=theta, phi=phi)
 
-    eps = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
-    efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=(2 * (calc.get_number_of_electrons()
-                                              - 2 * lb)))
-    gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
+    eps_skn = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
+    efermi_soc = fermi_level(calc, eigenvalues=eps_skn,
+                             nelectrons=(calc.get_number_of_electrons()
+                                         - 2 * lb),
+                             nspins=2)
+    gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_soc,
                           output=None)
-    gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
+    gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
         kvbm = ibzkpts[p1[1]]
         kcbm = ibzkpts[p2[1]]
-        vbm = eps[p1]
-        cbm = eps[p2]
+        vbm = eps_skn[p1]
+        cbm = eps_skn[p2]
         subresults = {'vbm_gw': vbm,
                       'cbm_gw': cbm,
                       'gap_dir_gw': gapd,

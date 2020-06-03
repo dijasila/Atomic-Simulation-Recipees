@@ -1,5 +1,4 @@
 from asr.relax import BrokenSymmetryError
-from pathlib import Path
 import pytest
 import numpy as np
 
@@ -127,8 +126,10 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_si_gpaw(asr_tmpdir_w_params):
+def test_relax_si_gpaw(asr_tmpdir):
+    from pathlib import Path
     from asr.setup.materials import main as setupmaterial
+    from asr.setup.params import main as setupparams
     from asr.relax import main as relax
     setupmaterial.cli(["-s", "Si2"])
     Path("materials.json").rename("unrelaxed.json")
@@ -136,24 +137,26 @@ def test_relax_si_gpaw(asr_tmpdir_w_params):
         "{'mode':{'ecut':200,'dedecut':'estimate',...},"
         "'kpts':{'density':1,'gamma':True},...}"
     )
-    results = relax.cli(["--calculator", relaxargs])
+    setupparams(['asr.relax:calculator', relaxargs])
+    results = relax()
     assert abs(results["c"] - 3.978) < 0.001
 
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_bn_gpaw(asr_tmpdir_w_params):
-    from asr.setup.materials import main as setupmaterial
+def test_relax_bn_gpaw(asr_tmpdir):
+    from asr.setup.params import main as setupparams
+    from .materials import BN
     from asr.relax import main as relax
     from asr.core import read_json
 
-    setupmaterial.cli(["-s", "BN,natoms=2"])
-    Path("materials.json").rename("unrelaxed.json")
+    BN.write('unrelaxed.json')
     relaxargs = (
         "{'mode':{'ecut':300,'dedecut':'estimate',...},"
         "'kpts':{'density':2,'gamma':True},...}"
     )
-    relax.cli(["--calculator", relaxargs])
+    setupparams(['asr.relax:calculator', relaxargs])
+    relax()
 
     results = read_json("results-asr.relax.json")
     assert results["c"] > 5
