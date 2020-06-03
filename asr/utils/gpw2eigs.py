@@ -7,7 +7,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
-    from .calculator_utils import eigenvalues, fermi_level
+    from .calculator_utils import get_eigenvalues, fermi_level
     from .symmetry import _atoms2symmetry_gpaw
 
     dct = None
@@ -20,7 +20,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
             bands = slice(0, n2)
         if isinstance(bands, slice):
             bands = range(calc.get_number_of_bands())[bands]
-        eps_nosoc_skn = eigenvalues(calc)[..., bands]
+        eps_nosoc_skn = get_eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
                'efermi_nosoc': efermi_nosoc}
@@ -31,8 +31,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
                                                       return_spin=True)
             eps_km = eps_mk.T
             eps_km.sort(axis=-1)
-            efermi = fermi_level(calc, eps_km[np.newaxis],
-                                 nelectrons=calc.get_number_of_electrons())
+            efermi = fermi_level(calc, eps_km[np.newaxis], nspins=2)
             symmetry = _atoms2symmetry_gpaw(calc.atoms,
                                             tolerance=symmetry_tolerance)
             ibzk_kc = calc.get_ibz_k_points()

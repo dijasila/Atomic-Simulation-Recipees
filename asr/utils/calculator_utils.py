@@ -6,7 +6,7 @@ essential arguments. Additional, non-essential arguments are allowed.
 """
 
 
-def eigenvalues(calc):
+def get_eigenvalues(calc):
     """Get eigenvalues from calculator.
 
     Parameters
@@ -24,19 +24,23 @@ def eigenvalues(calc):
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
-def fermi_level(calc, eps_skn=None, nelectrons=None):
+def fermi_level(calc, eigenvalues=None, nelectrons=None, nspins=None):
     """Get Fermi level at T=0 from calculation.
 
     This works by filling in the appropriate number of electrons.
 
     Parameters
     ----------
-    calc : GPAW
-        GPAW calculator
-    eps_skn : ndarray, shape=(ns, nk, nb), optional
+    calc : ASE Calculator
+        ASE calculator
+    eigenvalues : ndarray
         eigenvalues (taken from calc if None)
     nelectrons : float, optional
         number of electrons (taken from calc if None)
+    nspins : int
+        Number of spins that eigenvalues are provided for (default=2). Ie.
+        2 when both spin-channels are represented in eps_skn or 1 if only
+        1 spin-channel is represented in eps_skn.
 
     Returns
     -------
@@ -47,13 +51,17 @@ def fermi_level(calc, eps_skn=None, nelectrons=None):
     if nelectrons is None:
         nelectrons = calc.get_number_of_electrons()
 
+    if eigenvalues is None:
+        eps_skn = get_eigenvalues(calc)
+        nspins = calc.get_number_of_spins()
+    else:
+        assert nspins is not None, 'You have to provide a number of spins!'
+
     nkpts = len(calc.get_bz_k_points())
 
     # The number of occupied states is the number of electrons
     # multiplied by the number of k-points
-    nocc = int(nelectrons * nkpts)
-    if eps_skn is None:
-        eps_skn = eigenvalues(calc)
+    nocc = int(nelectrons * nkpts * nspins / 2)
     weight_k = np.array(calc.get_k_point_weights())
     count_k = np.round(weight_k * nkpts).astype(int)
     eps_N = np.repeat(eps_skn, count_k, axis=1).ravel()

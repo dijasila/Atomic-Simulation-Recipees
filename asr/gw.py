@@ -275,9 +275,10 @@ def main():
 
     # First get stuff without SOC
     eps_skn = gwresults.qp
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn,
+    efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
                                nelectrons=(calc.get_number_of_electrons()
-                                           - 2 * lb))
+                                           - 2 * lb),
+                               nspins=eps_skn.shape[0])
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -314,9 +315,10 @@ def main():
                         theta=theta, phi=phi)
 
     eps = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
-    efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=(2 * (calc.get_number_of_electrons()
-                                              - 2 * lb)))
+    efermi_soc = fermi_level(calc, eigenvalues=eps,
+                             nelectrons=(calc.get_number_of_electrons()
+                                         - 2 * lb),
+                             nspins=2)
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
