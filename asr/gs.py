@@ -103,7 +103,8 @@ def bz_soc(row, fname):
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-    op_scc = row.data['spglib_dataset']['rotations']
+    op_scc = row.data[
+        'results-asr.structureinfo.json']['spglib_dataset']['rotations']
     if cbm_c is not None:
         ax = plt.gca()
         icell_cv = np.linalg.inv(row.cell).T
@@ -130,7 +131,8 @@ def bz_soc(row, fname):
 @command(module='asr.gs',
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'],
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
+                       'asr.structureinfo'],
          webpanel=webpanel)
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
