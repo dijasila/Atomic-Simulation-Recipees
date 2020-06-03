@@ -309,7 +309,7 @@ def main(atoms: Atoms = 'unrelaxed.json',
 
     try:
         atoms = read('relax.traj')
-    except (IOError, UnknownFileTypeError):
+    except (IOError, UnknownFileTypeError, StopIteration):
         atoms = read('unrelaxed.json', parallel=False)
         if not atoms.has('initial_magmoms'):
             set_initial_magnetic_moments(atoms)
@@ -340,8 +340,7 @@ def main(atoms: Atoms = 'unrelaxed.json',
 
     # If the maximum magnetic moment on all atoms is big then
     magmoms = atoms.get_magnetic_moments()
-    magmom = calc.get_magnetic_moment()
-    if abs(magmom) < 0.02 and not abs(magmoms).max() > 0.1:
+    if not abs(magmoms).max() > 0.1:
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
         # Relax the structure
