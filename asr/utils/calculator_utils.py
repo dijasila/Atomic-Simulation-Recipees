@@ -33,7 +33,7 @@ def fermi_level(calc, eigenvalues=None, nelectrons=None, nspins=None):
     ----------
     calc : ASE Calculator
         ASE calculator
-    eigenvalues : ndarray
+    eigenvalues : ndarray, shape=(nspins, nkpoints, nbands)
         eigenvalues (taken from calc if None)
     nelectrons : float, optional
         number of electrons (taken from calc if None)
@@ -48,23 +48,28 @@ def fermi_level(calc, eigenvalues=None, nelectrons=None, nspins=None):
         fermi level in eV
     """
     import numpy as np
+
     if nelectrons is None:
         nelectrons = calc.get_number_of_electrons()
 
     if eigenvalues is None:
-        eps_skn = get_eigenvalues(calc)
+        eigenvalues = get_eigenvalues(calc)
         nspins = calc.get_number_of_spins()
     else:
         assert nspins is not None, 'You have to provide a number of spins!'
 
+    eigenvalues_skn = eigenvalues  # More intuitive variable name
+    eig_shape = eigenvalues_skn.shape
+
+    assert len(eig_shape) == 3, f'Bad shape of eigenvalues: {eig_shape}.'
     nkpts = len(calc.get_bz_k_points())
 
     # The number of occupied states is the number of electrons
     # multiplied by the number of k-points
-    nocc = int(nelectrons * nkpts * nspins / 2)
+    nocc = int(nelectrons * nkpts * (nspins / 2))
     weight_k = np.array(calc.get_k_point_weights())
     count_k = np.round(weight_k * nkpts).astype(int)
-    eps_N = np.repeat(eps_skn, count_k, axis=1).ravel()
+    eps_N = np.repeat(eigenvalues_skn, count_k, axis=1).ravel()
     eps_N.sort()
     homo = eps_N[nocc - 1]
     lumo = eps_N[nocc]
