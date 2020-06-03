@@ -283,7 +283,7 @@ def set_initial_magnetic_moments(atoms):
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 @option('--fmax', help='Maximum force allowed')
-@option('--enforce-symmetry', is_flag=True,
+@option('--enforce-symmetry/--dont-enforce-symmetry', is_flag=True,
         help='Symmetrize forces and stresses.')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
