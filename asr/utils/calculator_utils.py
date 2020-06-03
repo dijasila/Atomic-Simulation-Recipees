@@ -24,9 +24,10 @@ def eigenvalues(calc):
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 
 
-def fermi_level(calc, eps_skn=None, nelectrons=None,
-                width=None):
-    """Get Fermi level from calculation.
+def fermi_level(calc, eps_skn=None, nelectrons=None):
+    """Get Fermi level at T=0 from calculation.
+
+    This works by filling in the appropriate number of electrons.
 
     Parameters
     ----------
@@ -36,8 +37,6 @@ def fermi_level(calc, eps_skn=None, nelectrons=None,
         eigenvalues (taken from calc if None)
     nelectrons : float, optional
         number of electrons (taken from calc if None)
-    width : float, optional
-        Fermi dirac width, if None then inherit from calc
 
     Returns
     -------
