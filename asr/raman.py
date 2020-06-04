@@ -24,7 +24,7 @@ def webpanel(row, key_descriptions):
                      precision=1),
                     rep_l[ii]))
         opt = {'type': 'table',
-               'header': ['Mode #', 'Frequency (1/cm)', 'Deg. Factor'],
+               'header': ['Mode', 'Frequency (1/cm)', 'Degeneracy'],
                'rows': table}
     else:
         opt = None
@@ -137,9 +137,6 @@ def raman(row, filename):
     # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):
         ax.plot(ww, rr[pol] / np.max(maxr), c='C' + str(ipol), label=pol)
-    figtitle = 'Raman spectrum of {} at {} nm wavelength'.format(
-        getformula(row.formula), params['wavelength'])
-    ax.set_title(figtitle)
     ax.set_xlabel('Raman shift (cm$^{-1}$)')
     ax.set_ylabel('Raman intensity (a.u.)')
     ax.set_ylim((-0.1, 1.1))
@@ -166,6 +163,7 @@ def raman(row, filename):
 
 
 def count_deg(freqs_l, freq_err=2):
+
     # Degeneracy factor for modes
     w_l = [freqs_l[0]]
     rep_l = [1]
