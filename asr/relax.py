@@ -140,7 +140,6 @@ class myBFGS(BFGS):
 def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
-    import spglib
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
@@ -158,10 +157,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
             assert pbc[2], "1D periodic axis should be the last one."
             smask = [0, 0, 1, 0, 0, 0]
 
-    from asr.setup.symmetrize import atomstospgcell as ats
-    dataset = spglib.get_symmetry_dataset(ats(atoms),
-                                          symprec=1e-4,
-                                          angle_tolerance=0.1)
+    from asr.utils.symmetry import atoms2symmetry
+    dataset = atoms2symmetry(atoms,
+                             tolerance=1e-3,
+                             angle_tolerance=0.1).dataset
     spgname = dataset['international']
     number = dataset['number']
     nsym = len(dataset['rotations'])
@@ -189,9 +188,10 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
 
         for _ in runner:
             # Check that the symmetry has not been broken
-            newdataset = spglib.get_symmetry_dataset(ats(atoms),
-                                                     symprec=1e-4,
-                                                     angle_tolerance=0.1)
+            newdataset = atoms2symmetry(atoms,
+                                        tolerance=1e-3,
+                                        angle_tolerance=0.1).dataset
+
             spgname2 = newdataset['international']
             number2 = newdataset['number']
             nsym2 = len(newdataset['rotations'])
@@ -269,6 +269,10 @@ def log(*args, **kwargs):
     return {'atoms': atoms.todict()}
 
 
+def set_initial_magnetic_moments(atoms):
+    atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
+
+
 @command('asr.relax',
          requires=['unrelaxed.json'],
          creates=['structure.json'],
@@ -279,7 +283,7 @@ def log(*args, **kwargs):
 @option('--allow-symmetry-breaking', is_flag=True,
         help='Allow symmetries to be broken during relaxation')
 @option('--fmax', help='Maximum force allowed')
-@option('--enforce-symmetry', is_flag=True,
+@option('--enforce-symmetry/--dont-enforce-symmetry', is_flag=True,
         help='Symmetrize forces and stresses.')
 def main(calculator={'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
@@ -327,8 +331,10 @@ def main(calculator={'name': 'gpaw',
 
     try:
         atoms = read('relax.traj')
-    except (IOError, UnknownFileTypeError):
+    except (IOError, UnknownFileTypeError, StopIteration):
         atoms = read('unrelaxed.json', parallel=False)
+        if not atoms.has('initial_magmoms'):
+            set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
@@ -353,6 +359,17 @@ def main(calculator={'name': 'gpaw',
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+
+    # If the maximum magnetic moment on all atoms is big then
+    magmoms = atoms.get_magnetic_moments()
+    if not abs(magmoms).max() > 0.1:
+        atoms.set_initial_magnetic_moments([0] * len(atoms))
+        calc = Calculator(**calculator)
+        # Relax the structure
+        atoms = relax(atoms, name='relax', dftd3=d3,
+                      fixcell=fixcell,
+                      allow_symmetry_breaking=allow_symmetry_breaking,
+                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

@@ -36,7 +36,7 @@ def main(scanparams, symlink=True):
     paramdict = {}
     recipes = get_recipes()
     for recipe in recipes:
-        paramdict[recipe.name] = recipe.defparams
+        paramdict[recipe.name] = recipe.get_defaults()
 
     # Find asr.recipe:option
     optioninds = []

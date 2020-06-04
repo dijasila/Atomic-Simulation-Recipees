@@ -127,8 +127,8 @@ class ASRCalculator(Calculator):
         self.setups = self._get_setups()
         self.wfs.kd.nibzkpts = len(kpts)
         self.wfs.kd.weight_k = np.array(self.get_k_point_weights())
-        self.setups.nvalence = self.get_number_of_electrons()
-        self.wfs.nvalence = self.get_number_of_electrons()
+        self.setups.nvalence = self.get_number_of_valence_electrons()
+        self.wfs.nvalence = self.get_number_of_valence_electrons()
         self.wfs.gd.cell_cv = atoms.get_cell() / Bohr
 
         self.results = {
@@ -215,7 +215,8 @@ class ASRCalculator(Calculator):
 
         """
         setup = SimpleNamespace(symbol=self._get_setup_symbol(element_number),
-                                fingerprint=self._get_setup_fingerprint(element_number),
+                                fingerprint=self._get_setup_fingerprint(
+                                    element_number),
                                 Nv=self._get_setup_nvalence(element_number))
         return setup
 
@@ -281,10 +282,11 @@ class ASRCalculator(Calculator):
         Constructs all eigenvalues for the test calculator. The
         valence bands will have a negative curvature and the number of
         valence bands are determined by
-        :py:method:`ASRCalculator.get_number_of_electrons`. Conduction
+        :py:method:`ASRCalculator.get_number_of_valence_electrons`. Conduction
         bands have positive curvature and are separated from the
         valence bands by a bandgap. The band gap is obtained from
         :py:method:`ASRCalculator._get_band_gap`.
+
         """
         icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
         n = self.parameters.gridsize
@@ -292,10 +294,11 @@ class ASRCalculator(Calculator):
         eps_kn = 0.5 * (np.dot(self.kpts + offsets, icell) ** 2).sum(2).T
         eps_kn.sort()
 
-        nelectrons = self.get_number_of_electrons()
+        nvalence = self.get_number_of_valence_electrons()
+        nvalencebands = nvalence // 2
         gap = self._get_band_gap()
         eps_kn = np.concatenate(
-            (-eps_kn[:, ::-1][:, -nelectrons:],
+            (-eps_kn[:, ::-1][:, -nvalencebands:],
              eps_kn + gap / Ha),
             axis=1,
         )
@@ -313,7 +316,7 @@ class ASRCalculator(Calculator):
             Spin channel.
 
         """
-        return self.eigenvalues[kpt]
+        return self.eigenvalues[kpt].copy()
 
     def get_k_point_weights(self):
         """Get all k-point weights."""
@@ -341,24 +344,47 @@ class ASRCalculator(Calculator):
             return int(
                 float(self.parameters.nbands[:-1])
                 / 100
-                * self.get_number_of_electrons()
+                * self.get_number_of_valence_electrons()
             )
         elif self.parameters.nbands < 0:
-            return (self.get_number_of_electrons()
-                    - self.parameters.nbands)
+            return int((self.get_number_of_valence_electrons() / 2
+                        - self.parameters.nbands))
         else:
             return self.parameters.nbands
 
+    def get_number_of_conduction_electrons(self):
+        """Get number of conduction electrons per unit cell."""
+        fermi_level = self._get_fermi_level()
+        nkpts = len(self.get_bz_k_points())
+        return (np.sum(self.eigenvalues < fermi_level) * 2 / nkpts
+                - self.get_number_of_valence_electrons())
+
     def get_number_of_electrons(self):
         """Get number of electrons."""
+        return self.get_number_of_valence_electrons() + \
+            self.get_number_of_conduction_electrons()
+
+    def get_number_of_valence_electrons(self):
+        """Get number of valence electrons.
+
+        The number of valence electrons exclude any extra doping there
+        might exist due to any additional doping.
+
+        """
         return 4
 
     def write(self, name, mode=None):
         """Write calculator to file."""
         from asr.core import write_json
+        from copy import deepcopy
 
-        calc = {'atoms': self.atoms,
-                'parameters': self.parameters}
+        # We have to do a deep copy because the current version of
+        # ase.calculators.calculator.KPoints overwrites the __dict__
+        # attribute of KPoints upon writing the first time.
+        calc = {
+            'atoms': self.atoms,
+            'parameters': deepcopy(self.parameters)
+        }
 
         write_json(name, calc)
 
