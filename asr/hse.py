@@ -8,7 +8,7 @@ from asr.core import command, option, read_json
          resources='24:10h')
 @option('--kptdensity', help='K-point density')
 @option('--emptybands', help='number of empty bands to include')
-def calculate(kptdensity=12, emptybands=20):
+def calculate(kptdensity=8.0, emptybands=20):
     """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
