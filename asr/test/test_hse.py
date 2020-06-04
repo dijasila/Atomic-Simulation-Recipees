@@ -4,6 +4,7 @@ import pytest
 @pytest.mark.ci
 def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
              get_webcontent):
+    import gpaw
     from pathlib import Path
     import numpy as np
     from asr.hse import main
@@ -20,9 +21,14 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         e_skn = calc.eigenvalues[np.newaxis, :, n1:n2].copy()
         v_skn = np.zeros_like(e_skn)
         v_hyb_skn = np.zeros_like(e_skn)
-        v_hyb_skn[:, :, :4] = -1.0
-        v_hyb_skn[:, :, 4:] = 1.0
+        v_hyb_skn[:, :, :2] = 0.0
+        v_hyb_skn[:, :, 2:] = 1.0
         return e_skn, v_skn, v_hyb_skn
+
+    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
+    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
+    gpaw.GPAW._get_fermi_level.return_value = 0.5
+    gpaw.GPAW._get_band_gap.return_value = 1
 
     mocker.patch('gpaw.hybrids.eigenvalues.non_self_consistent_eigenvalues',
                  create=True, new=non_self_consistent_eigenvalues)
