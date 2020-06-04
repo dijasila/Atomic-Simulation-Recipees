@@ -48,7 +48,6 @@ def fermi_level(calc, eigenvalues=None, nelectrons=None, nspins=None):
         fermi level in eV
     """
     import numpy as np
-
     if nelectrons is None:
         nelectrons = calc.get_number_of_electrons()
 
