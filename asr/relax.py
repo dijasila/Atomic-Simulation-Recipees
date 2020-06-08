@@ -228,19 +228,6 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
     return atoms
 
 
-def BN_check():
-    # Check that 2D-BN doesn't relax to its 3D form
-    from asr.core import read_json
-    results = read_json('results-asr.relax.json')
-    assert results['c'] > 5
-
-
-def log(*args, **kwargs):
-    atoms = read('unrelaxed.json')
-
-    return {'atoms': atoms.todict()}
-
-
 def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
