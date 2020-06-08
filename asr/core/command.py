@@ -172,7 +172,6 @@ class ASRCommand:
         self.signature = sig
 
         # Setup the CLI
-        self.setup_cli()
         update_wrapper(self, self._main)
 
     def get_signature(self):
@@ -324,7 +323,7 @@ class ASRCommand:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
 
-        self._cli = command
+        return command
 
     def cli(self, args=None):
         """Parse parameters from command line and call wrapped function.
@@ -335,8 +334,9 @@ class ASRCommand:
             List of command line arguments. If None: Read arguments from
             sys.argv.
         """
-        return self._cli(standalone_mode=False,
-                         prog_name=f'asr run {self.name}', args=args)
+        command = self.setup_cli()
+        return command(standalone_mode=False,
+                       prog_name=f'asr run {self.name}', args=args)
 
     def __call__(self, *args, **kwargs):
         return self.main(*args, **kwargs)

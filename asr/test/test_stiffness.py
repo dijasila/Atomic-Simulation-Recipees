@@ -7,6 +7,7 @@ import numpy as np
 def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                         get_webcontent):
     from pathlib import Path
+    from ase.io import read
     from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
     from asr.stiffness import main as stiffness
@@ -29,7 +30,9 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                 import os
                 assert os.path.isfile('unrelaxed.json')
                 assert os.path.isfile('results-asr.setup.params.json')
-                relax(calculator={"name": "gpaw",
+                unrelaxed = read('unrelaxed.json')
+                relax(unrelaxed,
+                      calculator={"name": "gpaw",
                                   "kpts": {"density": 2, "gamma": True}})
                 assert os.path.isfile('results-asr.relax.json')
                 assert os.path.isfile('structure.json')
@@ -97,7 +100,7 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
                     'asr.relax': {'calculator': {'name': 'emt'}}
                 }
                 setup_params(params=params)
-                relax()
+                relax.cli([])
                 assert os.path.isfile('results-asr.relax.json')
                 assert os.path.isfile('structure.json')
 

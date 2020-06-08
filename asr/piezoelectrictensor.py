@@ -140,7 +140,7 @@ def main(strain_percent=1,
                                                   clamped=clamped)
                 with chdir(folder):
                     if not clamped and not relax.done:
-                        relax()
+                        relax.cli([])
                     if not formalpolarization.done:
                         formalpolarization(calculator=calculator)
 
