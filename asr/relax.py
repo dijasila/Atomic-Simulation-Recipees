@@ -11,6 +11,7 @@ The relax recipe has a couple of note-worthy features::
     and raises an error if this happens.
 """
 
+from pathlib import Path
 import numpy as np
 from ase.io import read, write, Trajectory
 from ase.io.formats import UnknownFileTypeError
@@ -137,7 +138,7 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
+def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
 
@@ -177,10 +178,11 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
+    name = Path(tmp_atoms_file).with_suffix('').name
     try:
-        trajfile = Trajectory(name + '.traj', 'a', atoms)
+        trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
         opt = myBFGS(filter,
-                     logfile=name + '.log',
+                     logfile=name,
                      trajectory=trajfile)
 
         # fmax=0 here because we have implemented our own convergence criteria
@@ -247,7 +249,11 @@ def set_initial_magnetic_moments(atoms):
          requires=['unrelaxed.json'],
          creates=['structure.json'])
 @option('-a', '--atoms', help='Atoms to be relaxed.',
-        type=AtomsFile)
+        type=AtomsFile(), default='unrelaxed.json')
+@option('--tmp-atoms', help='File containing recent progress.',
+        type=AtomsFile(must_exist=False), default='relax.traj')
+@option('--tmp-atoms-name', help='File to store snapshots of relaxation.',
+        default='relax.traj')
 @option('-c', '--calculator', help='Calculator and its parameters.')
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 @option('--fixcell/--dont-fixcell',
@@ -259,7 +265,7 @@ def set_initial_magnetic_moments(atoms):
 @option('--fmax', help='Maximum force allowed.', type=float)
 @option('--enforce-symmetry/--dont-enforce-symmetry',
         help='Symmetrize forces and stresses.', is_flag=True)
-def main(atoms: Atoms = 'unrelaxed.json',
+def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
@@ -271,6 +277,8 @@ def main(atoms: Atoms = 'unrelaxed.json',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
                              'charge': 0},
+         tmp_atoms: Atoms = None,
+         tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
@@ -307,12 +315,11 @@ def main(atoms: Atoms = 'unrelaxed.json',
     """
     from ase.calculators.calculator import get_calculator_class
 
-    try:
-        atoms = read('relax.traj')
-    except (IOError, UnknownFileTypeError, StopIteration):
-        atoms = read('unrelaxed.json', parallel=False)
-        if not atoms.has('initial_magmoms'):
-            set_initial_magnetic_moments(atoms)
+    if tmp_atoms is not None:
+        atoms = tmp_atoms
+
+    if not atoms.has('initial_magmoms'):
+        set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
@@ -333,7 +340,7 @@ def main(atoms: Atoms = 'unrelaxed.json',
 
     calc = Calculator(**calculator)
     # Relax the structure
-    atoms = relax(atoms, name='relax', dftd3=d3,
+    atoms = relax(atoms, name='relax.traj', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
@@ -344,7 +351,7 @@ def main(atoms: Atoms = 'unrelaxed.json',
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
         # Relax the structure
-        atoms = relax(atoms, name='relax', dftd3=d3,
+        atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                       fixcell=fixcell,
                       allow_symmetry_breaking=allow_symmetry_breaking,
                       dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
