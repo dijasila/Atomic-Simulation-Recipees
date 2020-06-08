@@ -366,7 +366,7 @@ def main(atoms: Atoms,
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
         results['__log__'] = {'nvalence': calc.setups.nvalence,
-                              'setup_fingerprints__': fingerprint}
+                              'setup_fingerprints': fingerprint}
 
     results['__key_descriptions__'] = \
         {'etot': 'Total energy [eV]',
