@@ -3,7 +3,7 @@ from asr.core import get_recipes
 
 
 @pytest.mark.ci
-def test_setup_params(asr_tmpdir_w_params):
+def test_setup_params(asr_tmpdir):
     from asr.setup.params import main
     from asr.core import read_json
     from pathlib import Path
@@ -35,7 +35,7 @@ def test_setup_params(asr_tmpdir_w_params):
 
 
 @pytest.mark.ci
-def test_setup_params_input_dict(asr_tmpdir_w_params):
+def test_setup_params_input_dict(asr_tmpdir):
     """Test that setup.params works with an input dict."""
     from asr.setup.params import main
     from asr.core import read_json
@@ -47,7 +47,7 @@ def test_setup_params_input_dict(asr_tmpdir_w_params):
 
 
 @pytest.mark.ci
-def test_setup_params_recurse_dict(asr_tmpdir_w_params):
+def test_setup_params_recurse_dict(asr_tmpdir):
     from asr.setup.params import main
     from asr.core import read_json
     main(params=['asr.gs@calculate:calculator',
@@ -66,9 +66,9 @@ recipes = get_recipes()
 @pytest.mark.parametrize("recipe",
                          list(filter(lambda x: x.name != 'asr.setup.params',
                                      recipes)))
-def test_setup_params_parametrize(asr_tmpdir_w_params, recipe):
+def test_setup_params_parametrize(asr_tmpdir, recipe):
     from asr.setup.params import main as setupparams
-    defparams = recipe.defparams
+    defparams = recipe.get_defaults()
     defparamdict = {recipe.name: defparams}
     setupparams(params=defparamdict)
     setupparams(params=defparamdict)

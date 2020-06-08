@@ -1,71 +1,19 @@
-def eigenvalues(calc):
-    """Get eigenvalues from calculator.
-
-    Parameters
-    ----------
-    calc : Calculator
-
-    Returns
-    -------
-    e_skn: (ns, nk, nb)-shape array
-    """
-    import numpy as np
-    rs = range(calc.get_number_of_spins())
-    rk = range(len(calc.get_ibz_k_points()))
-    e = calc.get_eigenvalues
-    return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
-
-
-def fermi_level(calc, eps_skn=None, nelectrons=None):
-    """Get Fermi level from calculation.
-
-    Parameters
-    ----------
-        calc : GPAW
-            GPAW calculator
-        eps_skn : ndarray, shape=(ns, nk, nb), optional
-            eigenvalues (taken from calc if None)
-        nelectrons : float, optional
-            number of electrons (taken from calc if None)
-
-    Returns
-    -------
-        out : float
-            fermi level
-    """
-    from gpaw.occupations import occupation_numbers
-    from ase.units import Ha
-    if nelectrons is None:
-        nelectrons = calc.get_number_of_electrons()
-    if eps_skn is None:
-        eps_skn = eigenvalues(calc)
-    eps_skn.sort(axis=-1)
-    occ = calc.occupations.todict()
-    weight_k = calc.get_k_point_weights()
-    return occupation_numbers(occ, eps_skn, weight_k, nelectrons)[1] * Ha
-
-
-def calc2eigs(calc, ranks, soc=True, bands=None,
+def calc2eigs(calc, ranks, soc=True,
               return_spin=False,
-              theta=0, phi=0, symmetry_tolerance=1e-7):
+              theta=0, phi=0, symmetry_tolerance=1e-7,
+              width=None):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
     from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
-    from asr.utils.symmetry import _atoms2symmetry_gpaw
+    from .calculator_utils import get_eigenvalues, fermi_level
+    from .symmetry import _atoms2symmetry_gpaw
 
     dct = None
     if mpi.world.rank in ranks:
-        if bands is None:
-            n2 = calc.todict().get("convergence", {}).get("bands")
-            if isinstance(n2, str):
-                assert n2.startswith('CBM')
-                n2 = calc.get_number_of_bands()
-            bands = slice(0, n2)
-        if isinstance(bands, slice):
-            bands = range(calc.get_number_of_bands())[bands]
-        eps_nosoc_skn = eigenvalues(calc)[..., bands]
+        bands = range(calc.get_number_of_bands())
+        eps_nosoc_skn = get_eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
         dct = {'eps_nosoc_skn': eps_nosoc_skn,
                'efermi_nosoc': efermi_nosoc}
@@ -75,8 +23,8 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
                                                       phi=phi,
                                                       return_spin=True)
             eps_km = eps_mk.T
-            efermi = fermi_level(calc, eps_km[np.newaxis],
-                                 nelectrons=2 * calc.get_number_of_electrons())
+            eps_km.sort(axis=-1)
+            efermi = fermi_level(calc, eps_km[np.newaxis], nspins=2)
             symmetry = _atoms2symmetry_gpaw(calc.atoms,
                                             tolerance=symmetry_tolerance)
             ibzk_kc = calc.get_ibz_k_points()
@@ -114,7 +62,7 @@ def calc2eigs(calc, ranks, soc=True, bands=None,
         return dct['eps_nosoc_skn'], dct['efermi_nosoc'], dct['s_kvm']
 
 
-def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
+def gpw2eigs(gpw, soc=True, return_spin=False,
              theta=0, phi=0, symmetry_tolerance=1e-7):
     """Give the eigenvalues w or w/o spinorbit coupling and the corresponding fermi energy.
 
@@ -135,7 +83,7 @@ def gpw2eigs(gpw, soc=True, bands=None, return_spin=False,
     from gpaw import mpi
     ranks = [0]
     calc = GPAW(gpw, txt=None, communicator=mpi.serial_comm)
-    return calc2eigs(calc, soc=soc, bands=bands, return_spin=return_spin,
+    return calc2eigs(calc, soc=soc, return_spin=return_spin,
                      theta=theta, phi=phi,
                      ranks=ranks,
                      symmetry_tolerance=symmetry_tolerance)
