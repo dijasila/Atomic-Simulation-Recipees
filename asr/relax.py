@@ -13,8 +13,7 @@ The relax recipe has a couple of note-worthy features::
 
 from pathlib import Path
 import numpy as np
-from ase.io import read, write, Trajectory
-from ase.io.formats import UnknownFileTypeError
+from ase.io import write, Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
