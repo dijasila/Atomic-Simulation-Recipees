@@ -312,7 +312,10 @@ class ASRCommand:
             name2 = param.pop('name')
             assert name == name2
             assert name in self.myparams
-            default = defparams.get(name, None)
+            if 'default' in param:
+                default = param.pop('default')
+            else:
+                default = defparams.get(name, None)
 
             if argtype == 'option':
                 command = co(show_default=True, default=default,

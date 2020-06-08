@@ -18,7 +18,7 @@ from ase.io.formats import UnknownFileTypeError
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.core import command, option, AtomsFile
+from asr.core import command, option, AtomsFile, DictStr
 from math import sqrt
 import time
 
@@ -233,15 +233,15 @@ def set_initial_magnetic_moments(atoms):
 
 
 @command('asr.relax',
-         requires=['unrelaxed.json'],
          creates=['structure.json'])
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
         type=AtomsFile(must_exist=False), default='relax.traj')
-@option('--tmp-atoms-name', help='File to store snapshots of relaxation.',
+@option('--tmp-atoms-file', help='File to store snapshots of relaxation.',
         default='relax.traj')
-@option('-c', '--calculator', help='Calculator and its parameters.')
+@option('-c', '--calculator', help='Calculator and its parameters.',
+        type=DictStr())
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 @option('--fixcell/--dont-fixcell',
         help="Don't relax stresses.",
@@ -305,6 +305,8 @@ def main(atoms: Atoms,
     if tmp_atoms is not None:
         atoms = tmp_atoms
 
+    # Make our own copy
+    atoms = atoms.copy()
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
 
@@ -327,7 +329,7 @@ def main(atoms: Atoms,
 
     calc = Calculator(**calculator)
     # Relax the structure
-    atoms = relax(atoms, name='relax.traj', dftd3=d3,
+    atoms = relax(atoms, tmp_atoms_file='relax.traj', dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)

@@ -2,6 +2,7 @@
 import click
 from ase.io import read
 from ase.io.formats import UnknownFileTypeError
+from asr.core import parse_dict_string
 
 
 class AtomsFile(click.ParamType):
@@ -34,3 +35,15 @@ class AtomsFile(click.ParamType):
             if self.must_exist:
                 raise
             return None
+
+
+class DictStr(click.ParamType):
+    """Read atoms object from filename and return Atoms object."""
+
+    name = "dictionary_string"
+
+    def convert(self, value, param, ctx):
+        """Convert string to a dictionary."""
+        if isinstance(value, dict):
+            return value
+        return parse_dict_string(value)
