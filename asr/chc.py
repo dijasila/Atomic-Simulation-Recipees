@@ -242,6 +242,7 @@ class Reference:
         self.formula = formula
         self.hform = hform
         self.Formula = Formula(self.formula)
+        self.energy = self.hform * self.natoms
         self.count = defaultdict(int)
         for k, v in self.Formula.count().items():
             self.count[k] = v
@@ -333,20 +334,62 @@ def webpanel(row, key_descriptions):
     panel = {'title': 'Convex Hull Cut',
              'columns': [asrfig(fname)],
              'plot_descriptions':
-             [{'functions': chcut_plot,
+             [{'function': chcut_plot,
                'filenames': [fname]}]}
 
     return [panel]
 
 
+def filrefs(refs):
+    from asr.fere import formulas_eq
+    nrefs = []
+    visited = []
+    for (form, v) in refs:
+        seen = False
+        for x in visited:
+            if formulas_eq(form, x):
+                seen = True
+                break
+
+        if seen:
+            continue
+        visited.append(form)
+
+        vals = list(filter(lambda t: formulas_eq(t[0], form), refs))
+
+        minref = min(vals, key=lambda t: t[1])
+
+
+        nrefs.append(minref)
+
+    return nrefs
+
+
 def chcut_plot(row, *args):
+    import matplotlib.pyplot as plt
+    from asr.fere import formulas_eq
+    from ase import Atoms
+
     data = row.data.get('results-asr.chc.json')
+    # refs = filrefs(data.get('_refs'))
+    
+    # nrefs = []
+    
+    # for (form, v) in refs:
+    #     atoms = Atoms(form)
+    #     e = v * len(atoms)
+    #     nrefs.append((form, e))
+
+    # from ase.phasediagram import PhaseDiagram
+    # pd = PhaseDiagram(nrefs, verbose=True)
+    # fig = plt.figure(figsize=(4, 3), dpi=150)
+    # pd.plot(ax=plt.gca(), dims=2, show=False)
+    # plt.savefig("./convexhullcut.png")
+    # return
     mat_ref = Reference.from_dict(data['_matref'])
     reactant_ref = Reference.from_dict(data['_reactant_ref'])
     intermediates = [Intermediate.from_dict(im)
                      for im in data['_intermediates']]
-
-    import matplotlib.pyplot as plt
     xs = list(map(lambda im: im.reactant_content, intermediates))
     es = list(map(lambda im: im.hform, intermediates))
     xs_es_ims = list(zip(xs, es, intermediates))
@@ -364,6 +407,7 @@ def chcut_plot(row, *args):
     plt.gca().set_xticklabels(labels)
     plt.xlabel(f'{reactant_ref.formula} content')
     plt.ylabel(f"Heat of formation")
+    plt.tight_layout()
     plt.savefig('./convexhullcut.png', bbox_inches='tight')
 
 
@@ -404,6 +448,7 @@ def main(dbs, reactant='O'):
     results['_matref'] = mat_ref.to_dict()
     results['_intermediates'] = [im.to_dict() for im in intermediates]
     results['_reactant_ref'] = reactant_ref.to_dict()
+    results['_refs'] = [(ref.formula, ref.hform) for ref in references]
 
     return results
 
@@ -432,26 +477,14 @@ def row2ref(row, dbs):
     else:
         from asr.fere import get_hof, MaterialNotFoundError
         from ase.formula import Formula
-        
-        ids = ['formula', 'crystal_prototype', 'energy']
-        qstr = ', '.join([f'{id}={getattr(row, id)}' for id in ids])
-        for db in dbs:
-            try:
-                result = db.get(qstr)
-                break
-            except KeyError as e:
-                continue
-        else:
-            raise MaterialNotFoundError("Could not find {} in db".format(row.formula))
-
-        hof = get_hof(dbs[0], Formula(result.formula), row=result)
-        return Reference(result.formula, hof)
+        hof = get_hof(dbs[0], Formula(row.formula), row=row)
+        return Reference(row.formula, hof)
 
 
 def convex_hull(references, mat_ref):
     # Remove materials not on convex hull, except for formula
     from ase.phasediagram import PhaseDiagram
-    pd = PhaseDiagram([(ref.formula, ref.hform) for ref in references],
+    pd = PhaseDiagram([(ref.formula, ref.energy) for ref in references],
                       verbose=False)
     filtered_refs = []
     hull = pd.hull
@@ -509,7 +542,8 @@ def mu_adjustment(mat_ref, reactant_ref, intermediates):
         return x
 
     adjustments = map(lambda im: f(im), intermediates)
-    return max(adjustments)
+    return max(adjustments, default=0.0)
+
 
 
 def get_coords(ref, elements):
