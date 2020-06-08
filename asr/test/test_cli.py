@@ -85,11 +85,14 @@ def test_asr_results_help():
 def test_asr_results_bandstructure(asr_tmpdir):
     from asr.core import write_json
     from .materials import BN
+    import numpy as np
     write_json('results-asr.gs.json',
                {'etot': 0.01,
                 'gap': 0,
                 'k_vbm_c': None,
                 'k_cbm_c': None})
+    write_json('results-asr.structureinfo.json',
+               {'spglib_dataset': {'rotations': [np.eye(3)]}})
     BN.write('structure.json')
     runner = CliRunner()
     result = runner.invoke(cli, ['results', 'asr.gs'])

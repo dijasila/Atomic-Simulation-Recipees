@@ -1,18 +1,8 @@
 from asr.core import command, option
 
-test1 = {'description': 'Test ground state of Si.',
-         'cli': ['asr run "setup.materials -s Si2"',
-                 'ase convert materials.json structure.json',
-                 'asr run "setup.params *:calculator '
-                 "{'name':'gpaw','mode':'lcao','kpts':(4,4,4),...}" '"',
-                 'asr run gs@calculate',
-                 'asr run database.fromtree',
-                 'asr run "database.browser --only-figures"']}
-
 
 @command(module='asr.gs',
          creates=['gs.gpw'],
-         tests=[test1],
          requires=['structure.json'],
          resources='8:10h')
 @option('-c', '--calculator', help='Calculator params.')
@@ -61,17 +51,6 @@ def calculate(calculator={'name': 'gpaw',
         pass
     atoms.get_potential_energy()
     atoms.calc.write('gs.gpw')
-
-
-tests = [{'description': 'Test ground state of Si.',
-          'tags': ['gitlab-ci'],
-          'cli': ['asr run "setup.materials -s Si2"',
-                  'asr run "setup.params *:calculator '
-                  '''{'name':'gpaw','mode':'lcao','kpts':(4,4,4)}"''',
-                  'ase convert materials.json structure.json',
-                  'asr run gs',
-                  'asr run database.fromtree',
-                  'asr run "database.browser --only-figures"']}]
 
 
 def webpanel(row, key_descriptions):
@@ -124,19 +103,21 @@ def bz_soc(row, fname):
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-
+    op_scc = row.data[
+        'results-asr.structureinfo.json']['spglib_dataset']['rotations']
     if cbm_c is not None:
         ax = plt.gca()
-        icell = np.linalg.inv(row.cell).T
-        cbm_v = np.dot(cbm_c, icell)
-        vbm_v = np.dot(vbm_c, icell)
-
+        icell_cv = np.linalg.inv(row.cell).T
         vbm_style = {'marker': 'o', 'facecolor': 'w',
                      'edgecolors': 'C0', 's': 100, 'lw': 2,
                      'zorder': 4}
         cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
-        ax.scatter([vbm_v[0]], [vbm_v[1]], **vbm_style, label='VBM')
-        ax.scatter([cbm_v[0]], [cbm_v[1]], **cbm_style, label='CBM')
+        cbm_sc = np.dot(op_scc.transpose(0, 2, 1), cbm_c)
+        vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
+        cbm_sv = np.dot(cbm_sc, icell_cv)
+        vbm_sv = np.dot(vbm_sc, icell_cv)
+        ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
+        ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
         xlim = np.array(ax.get_xlim()) * 1.4
         ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
@@ -150,8 +131,8 @@ def bz_soc(row, fname):
 @command(module='asr.gs',
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
-         tests=tests,
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy'],
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
+                       'asr.structureinfo'],
          webpanel=webpanel)
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""

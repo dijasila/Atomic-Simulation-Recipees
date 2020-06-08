@@ -355,6 +355,8 @@ class ASRCalculator(Calculator):
     def get_number_of_conduction_electrons(self):
         """Get number of conduction electrons per unit cell."""
         fermi_level = self._get_fermi_level()
+        if not fermi_level > 0.0:
+            return 0
         nkpts = len(self.get_bz_k_points())
         return (np.sum(self.eigenvalues < fermi_level) * 2 / nkpts
                 - self.get_number_of_valence_electrons())
