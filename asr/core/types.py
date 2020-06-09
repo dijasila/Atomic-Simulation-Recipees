@@ -47,3 +47,36 @@ class DictStr(click.ParamType):
         if isinstance(value, dict):
             return value
         return parse_dict_string(value)
+
+
+def clickify_docstring(doc):
+    """Take a standard docstring a make it Click compatible."""
+    if doc is None:
+        return
+    doc_n = doc.split('\n')
+    clickdoc = []
+    skip = False
+    for i, line in enumerate(doc_n):
+        if skip:
+            skip = False
+            continue
+        lspaces = len(line) - len(line.lstrip(' '))
+        spaces = ' ' * lspaces
+        bb = spaces + '\b'
+        if line.endswith('::'):
+            skip = True
+
+            if not doc_n[i - 1].strip(' '):
+                clickdoc.pop(-1)
+                clickdoc.extend([bb, line, bb])
+            else:
+                clickdoc.extend([line, bb])
+        elif ('-' in line
+              and (spaces + '-' * (len(line) - lspaces)) == line):
+            clickdoc.insert(-1, bb)
+            clickdoc.append(line)
+        else:
+            clickdoc.append(line)
+    doc = '\n'.join(clickdoc)
+
+    return doc
