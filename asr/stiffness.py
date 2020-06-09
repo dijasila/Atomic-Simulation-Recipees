@@ -103,8 +103,8 @@ def webpanel(row, key_descriptions):
 @command(module='asr.stiffness',
          webpanel=webpanel,
          tests=tests)
-@option('--strain-percent', help='Magnitude of applied strain')
-def main(strain_percent=1.0):
+@option('--strain-percent', help='Magnitude of applied strain.', type=float)
+def main(strain_percent: float = 1.0):
     from asr.setup.strains import (get_strained_folder_name,
                                    get_relevant_strains)
     from ase.io import read

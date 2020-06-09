@@ -21,7 +21,7 @@ def test_recipe_cli_types(asr_tmpdir, capsys, recipe):
 
     notypes = set()
     for param in params.values():
-        if 'type' not in param:
+        if 'type' not in param and 'is_flag' not in param:
             notypes.add(param['name'])
 
     assert not notypes

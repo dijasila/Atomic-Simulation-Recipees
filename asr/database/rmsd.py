@@ -86,7 +86,7 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
 @option('-r', '--max-rmsd', help='Maximum allowed RMSD.',
         type=float)
 def main(database: str, databaseout: Union[str, None] = None,
-         comparison_keys: str = '', max_rmsd: flaot = 1.0):
+         comparison_keys: str = '', max_rmsd: float = 1.0):
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If

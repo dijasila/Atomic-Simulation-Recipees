@@ -4,8 +4,9 @@ from asr.core import command, option
 @command('asr.dos')
 @option('--name', type=str)
 @option('--filename', type=str)
-@option('--kptdensity', help='K point kptdensity')
-def main(name='dos.gpw', filename='dos.json', kptdensity=12.0):
+@option('--kptdensity', help='K point kptdensity', type=float)
+def main(name: str = 'dos.gpw', filename: str = 'dos.json',
+         kptdensity: float = 12.0):
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW

@@ -6,7 +6,7 @@ def make_folder_tree(*, folders, chunks,
                      copy,
                      patterns,
                      atomsname,
-                     dont_create_folders):
+                     create_folders):
     """Write folder tree to disk."""
     from pathlib import Path
     from os import makedirs, link
@@ -39,7 +39,7 @@ def make_folder_tree(*, folders, chunks,
             else:
                 continue
 
-            if not folder_has_been_created and not dont_create_folders:
+            if not folder_has_been_created and create_folders:
                 makedirs(folder)
                 folder_has_been_created = True
 
@@ -149,29 +149,31 @@ def make_folder_dict(rows, tree_structure):
 
 
 @command('asr.database.totree')
-@argument('database', nargs=1)
-@option('--run/--dry-run')
-@option('-s', '--selection', help='ASE-DB selection')
-@option('-t', '--tree-structure')
+@argument('database', nargs=1, type=str)
+@option('--run/--dry-run', is_flag=True)
+@option('-s', '--selection', help='ASE-DB selection', type=str)
+@option('-t', '--tree-structure', type=str)
 @option('--sort', help='Sort the generated materials '
-        '(only useful when dividing chunking tree)')
-@option('--copy', is_flag=True, help='Copy pointer tagged files')
-@option('--atomsname', help='Filename to unpack atomic structure to')
-@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
+        '(only useful when dividing chunking tree)', type=str)
+@option('--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
+@option('--atomsname', help='Filename to unpack atomic structure to', type=str)
+@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
+        type=int)
 @option('--patterns',
-        help="Comma separated patterns. Only unpack files matching patterns")
-@option('--dont-create-folders', is_flag=True,
+        help="Comma separated patterns. Only unpack files matching patterns",
+        type=str)
+@option('--create-folders/--dont-create-folders', is_flag=True,
         help='Dont make new folders. Useful when writing to an existing tree.')
-@option('--write_atoms_file', is_flag=True,
+@option('--write-atoms-file/--dont-write-atoms-file', is_flag=True,
         help='Write atoms object to file with name given '
         'by the --atomsname option')
-def main(database, run=False, selection='',
-         tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
-                         '{spg}-{wyck}-{uid}'),
-         sort=None, atomsname='structure.json',
-         chunks=1, copy=False,
-         patterns='*', dont_create_folders=False,
-         write_atoms_file=True):
+def main(database: str, run: bool = False, selection: str = '',
+         tree_structure: str = ('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
+                                '{spg}-{wyck}-{uid}'),
+         sort: str = None, atomsname: str = 'structure.json',
+         chunks: int = 1, copy: bool = False,
+         patterns: str = '*', create_folders: bool = True,
+         write_atoms_file: bool = True):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -248,7 +250,7 @@ def main(database, run=False, selection='',
     make_folder_tree(folders=folders, chunks=chunks,
                      write_atoms_file=write_atoms_file, copy=copy,
                      patterns=patterns, atomsname=atomsname,
-                     dont_create_folders=dont_create_folders)
+                     create_folders=create_folders)
 
 
 if __name__ == '__main__':

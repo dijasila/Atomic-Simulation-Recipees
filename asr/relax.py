@@ -238,7 +238,7 @@ def set_initial_magnetic_moments(atoms):
 @option('--tmp-atoms', help='File containing recent progress.',
         type=AtomsFile(must_exist=False), default='relax.traj')
 @option('--tmp-atoms-file', help='File to store snapshots of relaxation.',
-        default='relax.traj')
+        default='relax.traj', type=str)
 @option('-c', '--calculator', help='Calculator and its parameters.',
         type=DictStr())
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)

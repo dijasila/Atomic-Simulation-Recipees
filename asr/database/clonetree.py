@@ -7,14 +7,15 @@ from asr.core import command, option, argument
 @argument('destination', metavar='DESTDIR', type=str)
 @argument('source', metavar='SRCDIR', type=str)
 @option('--copy/--symlink', is_flag=True)
-@option('--map-files', type=bool)
+@option('--map-files', type=str)
 @option('--dont-contain', type=str)
 @option('--must-contain', type=str)
 @option('--dry-run', type=str)
-@option('--glob-pattern')
-def main(source, destination, patterns,
-         copy=False, map_files=None, dont_contain=None,
-         must_contain=None, dry_run=False, glob_pattern='**/'):
+@option('--glob-pattern', type=str)
+def main(source: str, destination: str, patterns: str,
+         copy: bool = False, map_files: str = None, dont_contain: str = None,
+         must_contain: str = None, dry_run: bool = False,
+         glob_pattern: str = '**/'):
     """Tool for copying or symlinking a tree of files."""
     import fnmatch
     from pathlib import Path

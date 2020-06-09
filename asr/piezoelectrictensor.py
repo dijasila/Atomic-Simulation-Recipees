@@ -10,7 +10,7 @@ Recipes
 
 """
 
-from asr.core import command, option
+from asr.core import command, option, DictStr
 
 
 def webpanel(row, key_descriptions):
@@ -54,10 +54,10 @@ def webpanel(row, key_descriptions):
 
 @command(module="asr.piezoelectrictensor",
          webpanel=webpanel)
-@option('--strain-percent', help='Strain fraction.')
-@option('--calculator', help='Calculator parameters.')
-def main(strain_percent=1,
-         calculator={
+@option('--strain-percent', help='Strain fraction.', type=float)
+@option('--calculator', help='Calculator parameters.', type=DictStr())
+def main(strain_percent: float = 1,
+         calculator: dict = {
              'name': 'gpaw',
              'mode': {'name': 'pw', 'ecut': 800},
              'xc': 'PBE',
