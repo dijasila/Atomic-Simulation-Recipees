@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, argument, option
 import numpy as np
 from datetime import datetime
@@ -77,12 +78,15 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
 
 @command(module='asr.database.rmsd',
          resources='1:20m')
-@argument('databaseout', required=False)
-@argument('database')
+@argument('databaseout', required=False, type=str)
+@argument('database', type=str)
 @option('-c', '--comparison-keys',
-        help='Keys that have to be identical for RMSD to be calculated.')
-@option('-r', '--max-rmsd', help='Maximum allowed RMSD.')
-def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
+        help='Keys that have to be identical for RMSD to be calculated.',
+        type=str)
+@option('-r', '--max-rmsd', help='Maximum allowed RMSD.',
+        type=float)
+def main(database: str, databaseout: Union[str, None] = None,
+         comparison_keys: str = '', max_rmsd: flaot = 1.0):
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If

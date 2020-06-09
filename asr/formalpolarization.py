@@ -12,7 +12,7 @@ The central recipe of this module is :func:`asr.formalpolarization.main`.
 
 """
 import numpy as np
-from asr.core import command, option
+from asr.core import command, option, DictStr
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -87,10 +87,10 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
 
 
 @command('asr.formalpolarization')
-@option('--gpwname', help='Formal polarization gpw file name.')
-@option('--calculator', help='Calculator parameters.')
-def main(gpwname='formalpol.gpw',
-         calculator={
+@option('--gpwname', help='Formal polarization gpw file name.', type=str)
+@option('--calculator', help='Calculator parameters.', type=DictStr())
+def main(gpwname: str = 'formalpol.gpw',
+         calculator: dict = {
              'name': 'gpaw',
              'mode': {'name': 'pw', 'ecut': 800},
              'xc': 'PBE',

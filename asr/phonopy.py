@@ -5,9 +5,8 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 
-from asr.core import command, option
+from asr.core import command, option, DictStr
 from asr.core import write_json
-
 
 def lattice_vectors(N_c):
     """Return lattice vectors for cells in the supercell."""
@@ -28,19 +27,19 @@ def lattice_vectors(N_c):
 )
 @option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
-@option('-c', '--calculator', help='Calculator params.')
-def calculate(n=2, d=0.05,
-              calculator={'name': 'gpaw',
-                          'mode': {'name': 'pw', 'ecut': 800},
-                          'xc': 'PBE',
-                          'basis': 'dzp',
-                          'kpts': {'density': 6.0, 'gamma': True},
-                          'occupations': {'name': 'fermi-dirac',
-                                          'width': 0.05},
-                          'convergence': {'forces': 1.0e-4},
-                          'symmetry': {'point_group': False},
-                          'txt': 'phonons.txt',
-                          'charge': 0}):
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def calculate(n: int = 2, d: float = 0.05,
+              calculator: dict = {'name': 'gpaw',
+                                  'mode': {'name': 'pw', 'ecut': 800},
+                                  'xc': 'PBE',
+                                  'basis': 'dzp',
+                                  'kpts': {'density': 6.0, 'gamma': True},
+                                  'occupations': {'name': 'fermi-dirac',
+                                                  'width': 0.05},
+                                  'convergence': {'forces': 1.0e-4},
+                                  'symmetry': {'point_group': False},
+                                  'txt': 'phonons.txt',
+                                  'charge': 0}):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
