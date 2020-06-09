@@ -20,7 +20,7 @@ import click
         help='Specify whether you want to incorporate vacancies.')
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: List[int] = [0, 0, 0],
-         maxsize: int = 8, intrinsic: bool = True, vacancies: bool = True):
+         maxsize: float = 8, intrinsic: bool = True, vacancies: bool = True):
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as

@@ -23,8 +23,8 @@ def get_kpts_size(atoms, kptdensity):
 @option('--gs', help='Ground state on which BSE is based', type=str)
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
-@option('--nv_s', help='Valence bands included', type=int)
-@option('--nc_s', help='Conduction bands included', type=int)
+@option('--nv_s', help='Valence bands included', type=float)
+@option('--nc_s', help='Conduction bands included', type=float)
 @option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
