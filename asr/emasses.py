@@ -17,7 +17,7 @@ MAXMASS = 10
          creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def refine(gpwfilename='gs.gpw'):
+def refine(gpwfilename: str = 'gs.gpw'):
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -638,7 +638,7 @@ def check_soc(spin_band_dict):
          webpanel=webpanel)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename='gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis

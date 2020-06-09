@@ -10,7 +10,7 @@ from asr.core import command, option, argument
 @option('--map-files', type=str)
 @option('--dont-contain', type=str)
 @option('--must-contain', type=str)
-@option('--dry-run', type=str)
+@option('--dry-run', type=bool)
 @option('--glob-pattern', type=str)
 def main(source: str, destination: str, patterns: str,
          copy: bool = False, map_files: str = None, dont_contain: str = None,
