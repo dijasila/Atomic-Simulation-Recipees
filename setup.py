@@ -13,7 +13,8 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = ['Click>=7.0', 'ase', 'matplotlib',
-                'spglib', 'plotly', 'flask', 'pymatgen']
+                'spglib', 'plotly', 'flask', 'pymatgen==2020.4.29',
+                'phonopy']
 
 setup_requirements = []
 
