@@ -111,10 +111,7 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    from asr.core import get_dimensionality
-
-    nd = get_dimensionality()
-
+    nd = sum(atoms.get_pbc())
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
@@ -222,8 +219,7 @@ def webpanel(row, key_descriptions):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc=None):
-    from asr.core import get_dimensionality
+def main(rc: float = None):
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
@@ -235,7 +231,7 @@ def main(rc=None):
     dist_max = dct["__params__"]["dist_max"]
     fsname = dct["__params__"]["fsname"]
 
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
 
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
