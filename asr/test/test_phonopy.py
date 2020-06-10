@@ -14,11 +14,11 @@ def test_phonopy(asr_tmpdir_w_params, mockgpaw, get_webcontent):
     atoms = bulk('Al', 'fcc', a=4.05)
     atoms.write("structure.json")
 
-    calculate(sc=[N, N, N], calculator={'name':'emt'})
+    calculate(sc=[N, N, N], calculator={'name': 'emt'})
 
     main()
 
-    result = Path('results-asr.phonopy.json') 
+    result = Path('results-asr.phonopy.json')
     assert result.is_file()
     data = read_json('results-asr.phonopy.json')
     assert data['minhessianeig'] == pytest.approx(0)
