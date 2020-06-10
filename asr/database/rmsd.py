@@ -36,7 +36,6 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
 
-    pbc_c = atoms1.get_pbc()
     atoms1 = atoms1.copy()
     atoms2 = atoms2.copy()
     atoms1.set_pbc(True)
