@@ -10,12 +10,8 @@ from asr.core import command, option, read_json
 @option('--emptybands', help='number of empty bands to include')
 def calculate(kptdensity=8.0, emptybands=20):
     """Calculate HSE corrections."""
-    import gpaw.mpi as mpi
-
-    eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
-    mpi.world.barrier()
-    eigs_soc = hse_spinorbit(eigs)
-    mpi.world.barrier()
+    calc, eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
+    eigs_soc = hse_spinorbit(calc, eigs)
     results = {'hse_eigenvalues': eigs,
                'hse_eigenvalues_soc': eigs_soc}
     return results
@@ -56,7 +52,6 @@ def hse(kptdensity, emptybands):
              convergence={'bands': -convbands},
              txt='hse.txt')
     calc.get_potential_energy()
-    calc.write('hse_nowfs.gpw')
     nb = calc.get_number_of_bands()
     result = non_self_consistent_eigenvalues(calc,
                                              'HSE06',
@@ -72,35 +67,28 @@ def hse(kptdensity, emptybands):
                    e_pbe_skn=e_pbe_skn,
                    vxc_pbe_skn=vxc_pbe_skn,
                    e_hse_skn=e_hse_skn)
-    return dct
+    return calc, dct
 
 
-def hse_spinorbit(dct):
-    import os
+def hse_spinorbit(calc, dct):
     import numpy as np
-    import gpaw.mpi as mpi
-    from gpaw import GPAW
-    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
-    if not os.path.isfile('hse_nowfs.gpw'):
-        return
+    e_skn = dct.get('e_hse_skn')
+    dct_soc = {}
+    theta, phi = get_spin_axis()
 
-    ranks = [0]
-    comm = mpi.world.new_communicator(ranks)
-    if mpi.world.rank in ranks:
-        calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
-        e_skn = dct.get('e_hse_skn')
-        dct_soc = {}
-        theta, phi = get_spin_axis()
+    result = soc_eigenstates(calc,
+                             myeig_skn=e_skn,
+                             bands=np.arange(e_skn.shape[2]),
+                             theta=theta, phi=phi)
+    e_km = result['eigenvalues']
+    s_kvm = result['spin_projections']
+    dct_soc['e_hse_mk'] = e_km.T
+    dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index(), :].transpose()
 
-        e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
-                                   bands=np.arange(e_skn.shape[2]),
-                                   theta=theta, phi=phi)
-        dct_soc['e_hse_mk'] = e_mk
-        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index(), :].transpose()
-
-        return dct_soc
+    return dct_soc
 
 
 def MP_interpolate(calc, delta_skn, lb, ub):
@@ -110,9 +98,8 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     by interpolating a correction onto the PBE band structure.
     """
     import numpy as np
-    import gpaw.mpi as mpi
     from gpaw import GPAW
-    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from gpaw.spinorbit import soc_eigenstates
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
     from asr.core import singleprec_dict
@@ -134,16 +121,14 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
-    ranks = [0]
-    comm = mpi.world.new_communicator(ranks)
-    if mpi.world.rank in ranks:
-        calc = GPAW('bs.gpw', communicator=comm, txt=None)
-        theta, phi = get_spin_axis()
-        e_int_mk, s_int_mk = get_soc_eigs(calc, gw_kn=e_int_skn,
-                                          return_spin=True,
-                                          bands=bandrange,
-                                          theta=theta, phi=phi)
-        dct.update(e_int_mk=e_int_mk, s_int_mk=s_int_mk)
+    calc = GPAW('bs.gpw', txt=None)
+    theta, phi = get_spin_axis()
+    result = soc_eigenstates(calc,
+                             myeig_skn=e_int_skn,
+                             bands=bandrange,
+                             theta=theta, phi=phi)
+    dct.update(e_int_mk=result['eigenvalues'].T,
+               s_int_mk=result['spin_projections'])
 
     results = {}
     results['bandstructure'] = singleprec_dict(dct)
