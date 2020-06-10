@@ -31,7 +31,8 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         adaptor = AseAtomsAdaptor()
 
     if matcher is None:
-        matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
+        matcher = StructureMatcher(primitive_cell=False,
+                                   attempt_supercell=True)
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
 
@@ -52,7 +53,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
     struct1, struct2, fu, s1_supercell = matcher._preprocess(struct1, struct2)
     match = matcher._match(struct1, struct2, fu, s1_supercell,
-                           break_on_match=False)
+                           break_on_match=False, use_rms=False)
     if match is None:
         return None
     else:
