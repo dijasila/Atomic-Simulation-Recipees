@@ -1,16 +1,15 @@
 import numpy as np
 
 
-def get_spinorbit_eigenvalues(
+def soc_eigenstatest(
         calc,
         bands=None,
-        gw_kn=None,
-        return_spin=False,
-        return_wfs=False,
+        myeig_skn=None,
         scale=1.0,
         theta=0.0,
         phi=0.0,
-):
+        return_wfs=False,
+        occupations=None):
 
     nk = len(calc.get_ibz_k_points())
     nspins = 2
@@ -32,10 +31,8 @@ def get_spinorbit_eigenvalues(
     s_kvm[:, 2, ::2] = -1
     e_km = e_ksn.reshape((nk, -1))
     e_km.sort(-1)  # Make sure eigenvalues are in ascending order
-    if return_spin:
-        return e_km.T, s_kvm
-    else:
-        return e_km.T
+    return {'eigenvalues': e_km,
+            'spin_projections': s_kvm}
 
 
 def get_anisotropy(*args, **kwargs):
