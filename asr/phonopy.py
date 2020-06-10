@@ -8,6 +8,7 @@ from ase.io import read
 from asr.core import command, option, DictStr
 from asr.core import write_json
 
+
 def lattice_vectors(N_c):
     """Return lattice vectors for cells in the supercell."""
     # Lattice vectors relevative to the reference cell
