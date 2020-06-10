@@ -74,11 +74,30 @@ def test_asr_list():
 
 
 @pytest.mark.ci
-def test_asr_results():
+def test_asr_results_help():
     runner = CliRunner()
     result = runner.invoke(cli, ['results', '-h'])
     assert result.exit_code == 0
     assert 'Usage: cli results [OPTIONS] NAME' in result.output
+
+
+@pytest.mark.ci
+def test_asr_results_bandstructure(asr_tmpdir):
+    from asr.core import write_json
+    from .materials import BN
+    import numpy as np
+    write_json('results-asr.gs.json',
+               {'etot': 0.01,
+                'gap': 0,
+                'k_vbm_c': None,
+                'k_cbm_c': None})
+    write_json('results-asr.structureinfo.json',
+               {'spglib_dataset': {'rotations': [np.eye(3)]}})
+    BN.write('structure.json')
+    runner = CliRunner()
+    result = runner.invoke(cli, ['results', 'asr.gs'])
+    assert result.exit_code == 0
+    assert 'Saved figures: bz-with-gaps.png' in result.output
 
 
 @pytest.mark.ci

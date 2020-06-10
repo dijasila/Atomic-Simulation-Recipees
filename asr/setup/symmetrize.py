@@ -1,29 +1,18 @@
 from asr.core import command, option
 
 
-def atomstospgcell(atoms, magmoms=None):
-    lattice = atoms.get_cell().array
-    positions = atoms.get_scaled_positions(wrap=False)
-    numbers = atoms.get_atomic_numbers()
-    return (lattice, positions, numbers)
-
-
 def symmetrize_atoms(atoms, tolerance=None,
                      angle_tolerance=None,
                      return_dataset=False):
-    import spglib
     import numpy as np
     from ase import Atoms
-    spgcell = atomstospgcell(atoms)
-    dataset = spglib.get_symmetry_dataset(spgcell, symprec=tolerance,
-                                          angle_tolerance=angle_tolerance)
-    cell_cv = spgcell[0]
-    spos_ac = spgcell[1]
-    numbers = spgcell[2]
-    if len(spgcell) > 3:
-        magmoms_a = spgcell[3]
-    else:
-        magmoms_a = None
+    from asr.utils.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms, tolerance=tolerance,
+                              angle_tolerance=angle_tolerance)
+    dataset = symmetry.dataset
+    cell_cv = atoms.get_cell()
+    spos_ac = atoms.get_scaled_positions()
+    numbers = atoms.get_atomic_numbers()
 
     uspos_sac = []
     M_scc = []
@@ -78,11 +67,10 @@ def symmetrize_atoms(atoms, tolerance=None,
 
     idealized = Atoms(numbers=numbers,
                       scaled_positions=spos_ac, cell=cell,
-                      pbc=True, magmoms=magmoms_a)
-
-    newdataset = spglib.get_symmetry_dataset(atomstospgcell(idealized),
-                                             symprec=tolerance,
-                                             angle_tolerance=angle_tolerance)
+                      pbc=True)
+    newsymmetry = atoms2symmetry(idealized, tolerance=tolerance,
+                                 angle_tolerance=angle_tolerance)
+    newdataset = newsymmetry.dataset
     if return_dataset:
         return idealized, origin_c, dataset, newdataset
 
@@ -150,7 +138,7 @@ def main(tolerance=1e-3, angle_tolerance=0.1):
     else:
         msg = 'Reached maximum iteration! Went through ' + ' -> '.join(spgs)
         raise RuntimeError(msg)
-    print(f'Idealizing structure into spacegroup {spg2} using SPGLIB.')
+    print(f'Idealizing structure into spacegroup {spg2}.')
     idealized.set_initial_magnetic_moments(
         atoms.get_initial_magnetic_moments())
     write('unrelaxed.json', idealized)

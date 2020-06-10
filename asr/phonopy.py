@@ -104,7 +104,7 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
     calc = get_calculator_class(name)(**calculator)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
 
     if is_magnetic():
         gsold = get_calculator()("gs.gpw", txt=None)
@@ -114,7 +114,7 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
     from asr.core import get_dimensionality
 
     nd = get_dimensionality()
-   
+
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
@@ -224,7 +224,6 @@ def webpanel(row, key_descriptions):
 @option("--rc", type=float, help="Cutoff force constants matrix")
 def main(rc=None):
     from asr.core import get_dimensionality
-
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
@@ -241,7 +240,6 @@ def main(rc=None):
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
-
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:

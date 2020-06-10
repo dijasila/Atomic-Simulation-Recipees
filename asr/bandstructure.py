@@ -290,7 +290,7 @@ def plot_with_colors(bs,
 
     vlines2back(ax.lines)
     shape = energies.shape
-    xcoords = np.vstack([bs.xcoords] * shape[1])
+    xcoords = np.vstack([bs.xcoords] * shape[0])
     if sortcolors:
         perm = (-colors).argsort(axis=None)
         energies = energies.ravel()[perm].reshape(shape)
@@ -535,8 +535,13 @@ def main():
     bsresults = bs.todict()
 
     theta, phi = get_spin_axis()
+
+    # We use a larger symmetry tolerance because we want to correctly
+    # color spins which doesn't always happen due to slightly broken
+    # symmetries, hence tolerance=1e-2.
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
     bsresults['efermi'] = efermi
