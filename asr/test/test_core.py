@@ -61,11 +61,11 @@ def test_core(asr_tmpdir_w_params):
         return {'x': x, 'y': y}
 
     runner = CliRunner()
-    result = runner.invoke(test_recipe._cli, ['--help'])
+    result = runner.invoke(test_recipe.setup_cli(), ['--help'])
     assert result.exit_code == 0, result
     assert '-h, --help    Show this message and exit.' in result.output
 
-    result = runner.invoke(test_recipe._cli, ['-h'])
+    result = runner.invoke(test_recipe.setup_cli(), ['-h'])
     assert result.exit_code == 0
     assert '-h, --help    Show this message and exit.' in result.output
 

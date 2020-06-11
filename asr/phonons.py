@@ -42,11 +42,12 @@ def topckl(filename, dct):
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs@calculate'],
          creates=creates)
-@option('-n', help='Supercell size')
-@option('--ecut', help='Energy cutoff')
-@option('--kptdensity', help='Kpoint density')
-@option('--fconverge', help='Force convergence criterium')
-def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
+@option('-n', help='Supercell size', type=int)
+@option('--ecut', help='Energy cutoff', type=float)
+@option('--kptdensity', help='Kpoint density', type=float)
+@option('--fconverge', help='Force convergence criterium', type=float)
+def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
+              fconverge: float = 1e-4):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
     # Remove empty files:
@@ -145,7 +146,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.phonons@calculate'])
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
-def main(mingo=True):
+def main(mingo: bool = True):
     from asr.core import read_json
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')

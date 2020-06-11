@@ -83,24 +83,28 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
 
 
 @command('asr.setup.strains')
-@option('--strain-percent', help='Strain percentage')
-@option('--kptdensity', help='Setup up relax and gs calc with fixed density')
+@option('--strain-percent', help='Strain percentage', type=float)
+@option('--kptdensity', help='Setup up relax and gs calc with fixed density',
+        type=float)
 @option('--copyparams/--dontcopyparams',
         help='Copy params.json from current folder into strained folders',
         is_flag=True)
-def clamped(strain_percent=1, kptdensity=6.0, copyparams=True):
+def clamped(strain_percent: float = 1, kptdensity: float = 6.0,
+            copyparams: bool = True):
     results = setup_strains(strain_percent=strain_percent, kptdensity=kptdensity,
                             copyparams=copyparams, clamp_atoms=True)
     return results
 
 
 @command('asr.setup.strains')
-@option('--strain-percent', help='Strain percentage')
-@option('--kptdensity', help='Setup up relax and gs calc with fixed density')
+@option('--strain-percent', help='Strain percentage', type=float)
+@option('--kptdensity', help='Setup up relax and gs calc with fixed density',
+        type=float)
 @option('--copyparams/--dontcopyparams',
         help='Copy params.json from current folder into strained folders',
         is_flag=True)
-def main(strain_percent=1, kptdensity=6.0, copyparams=True):
+def main(strain_percent: float = 1, kptdensity: float = 6.0,
+         copyparams: bool = True):
     results = setup_strains(strain_percent=strain_percent, kptdensity=kptdensity,
                             copyparams=copyparams, clamp_atoms=False)
     return results

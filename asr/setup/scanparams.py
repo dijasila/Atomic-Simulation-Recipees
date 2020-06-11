@@ -3,11 +3,12 @@ from asr.core import command, argument, option
 
 @command('asr.setup.scanparams')
 @argument('scanparams', nargs=-1,
-          metavar='recipe:option arg arg arg recipe:option arg arg arg')
+          metavar='recipe:option arg arg arg recipe:option arg arg arg',
+          type=str)
 @option('--symlink/--no-symlink',
         help='Make symbolic link to everything '
-        'in this folder (except params.json)')
-def main(scanparams, symlink=True):
+        'in this folder (except params.json)', is_flag=True)
+def main(scanparams: str, symlink: bool = True):
     """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax

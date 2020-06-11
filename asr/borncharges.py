@@ -48,8 +48,8 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'],
          webpanel=webpanel)
-@option('--displacement', help='Atomic displacement (Å)')
-def main(displacement=0.01):
+@option('--displacement', help='Atomic displacement (Å)', type=float)
+def main(displacement: float = 0.01):
     """Calculate Born charges."""
     import numpy as np
     from gpaw import GPAW

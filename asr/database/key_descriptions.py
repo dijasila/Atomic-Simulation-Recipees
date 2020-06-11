@@ -194,8 +194,8 @@ key_descriptions['extra'] = extras
 
 
 @command()
-@argument('database')
-def main(database):
+@argument('database', type=str)
+def main(database: str):
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys
