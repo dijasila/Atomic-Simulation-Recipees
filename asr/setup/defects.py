@@ -1,3 +1,4 @@
+from typing import List
 from pathlib import Path
 from asr.core import command, option
 import click
@@ -17,8 +18,9 @@ import click
         help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
-def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True):
+def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
+         supercell: List[int] = [0, 0, 0],
+         maxsize: float = 8, intrinsic: bool = True, vacancies: bool = True):
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as

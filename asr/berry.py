@@ -6,10 +6,10 @@ from asr.core import command, option, read_json
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='120:10h')
-@option('--gs', help='Ground state')
-@option('--kpar', help='K-points along path')
-@option('--kperp', help='K-points orthogonal to path')
-def calculate(gs='gs.gpw', kpar=120, kperp=7):
+@option('--gs', help='Ground state', type=str)
+@option('--kpar', help='K-points along path', type=int)
+@option('--kperp', help='K-points orthogonal to path', type=int)
+def calculate(gs: str = 'gs.gpw', kpar: int = 120, kperp: int = 7):
     """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read

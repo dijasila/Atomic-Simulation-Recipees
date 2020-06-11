@@ -5,18 +5,22 @@ from datetime import datetime
 @command(module='asr.database.duplicates',
          resources='1:20m',
          save_results_file=False)
-@argument('databaseout')
-@argument('database')
+@argument('databaseout', type=str)
+@argument('database', type=str)
 @option('-f', '--filterstring',
         help='List of keys denoting the priority of picking'
         ' a candidate among duplicates. Preface with + if '
-        'you want to prioritize larger values.')
+        'you want to prioritize larger values.',
+        type=str)
 @option('-c', '--comparison-keys',
-        help='Keys that have to be identical for materials to be identical.')
-@option('-r', '--rmsd-tol', help='RMSD tolerance.')
-def main(database, databaseout,
-         filterstring='natoms,id', comparison_keys='',
-         rmsd_tol=0.3):
+        help='Keys that have to be identical for materials to be identical.',
+        type=str)
+@option('-r', '--rmsd-tol', help='RMSD tolerance.', type=float)
+def main(database: str,
+         databaseout: str,
+         filterstring: str = 'natoms,id',
+         comparison_keys: str = '',
+         rmsd_tol: float = 0.3):
     """Filter out duplicates of a database.
 
     Parameters

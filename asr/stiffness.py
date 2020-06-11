@@ -3,7 +3,7 @@ from asr.core import command, option
 tests = [{'cli': ['ase build -x diamond Si structure.json',
                   'asr run "setup.strains --kptdensity 2.0"',
                   'asr run "setup.params asr.relax:calculator '
-                  '''{'mode':{'ecut':200},'kpts':(1,1,1),...}" strains*/''',
+                  '''{'mode':{'ecut':200},'kpts':(v1,1,1),...}" strains*/''',
                   'asr run relax strains*/',
                   'asr run database.material_fingerprint strains*/',
                   'asr run stiffness']}]
@@ -103,8 +103,8 @@ def webpanel(row, key_descriptions):
 @command(module='asr.stiffness',
          webpanel=webpanel,
          tests=tests)
-@option('--strain-percent', help='Magnitude of applied strain')
-def main(strain_percent=1.0):
+@option('--strain-percent', help='Magnitude of applied strain.', type=float)
+def main(strain_percent: float = 1.0):
     from asr.setup.strains import (get_strained_folder_name,
                                    get_relevant_strains)
     from ase.io import read

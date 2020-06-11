@@ -1,3 +1,4 @@
+from typing import List
 from pathlib import Path
 
 import numpy as np
@@ -5,7 +6,7 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 
-from asr.core import command, option
+from asr.core import command, option, DictStr
 from asr.core import read_json, write_json
 
 
@@ -69,22 +70,23 @@ def distance_to_sc(nd, atoms, dist_max):
 @option("--d", type=float, help="Displacement size")
 @option("--dist_max", type=float,
         help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file")
+@option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.')
-def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
-              calculator={'name': 'gpaw',
-                          'mode': {'name': 'pw', 'ecut': 800},
-                          'xc': 'PBE',
-                          'basis': 'dzp',
-                          'kpts': {'density': 6.0, 'gamma': True},
-                          'occupations': {'name': 'fermi-dirac',
-                                          'width': 0.05},
-                          'convergence': {'forces': 1.0e-4},
-                          'symmetry': {'point_group': False},
-                          'txt': 'phonons.txt',
-                          'charge': 0}):
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def calculate(d: float = 0.05, fsname: str = 'phonons',
+              sc: List[int] = [0, 0, 0], dist_max: float = 7.0,
+              calculator: dict = {'name': 'gpaw',
+                                  'mode': {'name': 'pw', 'ecut': 800},
+                                  'xc': 'PBE',
+                                  'basis': 'dzp',
+                                  'kpts': {'density': 6.0, 'gamma': True},
+                                  'occupations': {'name': 'fermi-dirac',
+                                                  'width': 0.05},
+                                  'convergence': {'forces': 1.0e-4},
+                                  'symmetry': {'point_group': False},
+                                  'txt': 'phonons.txt',
+                                  'charge': 0}):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
@@ -111,18 +113,11 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-<<<<<<< HEAD
-    from asr.core import get_dimensionality
-
-    nd = get_dimensionality()
-   
+    nd = sum(atoms.get_pbc())
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
 
-=======
-    nd = sum(atoms.get_pbc())
->>>>>>> master
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
@@ -225,15 +220,8 @@ def webpanel(row, key_descriptions):
     webpanel=webpanel,
     dependencies=["asr.phonopy@calculate"],
 )
-<<<<<<< HEAD
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc=None):
-    from asr.core import get_dimensionality
-=======
-def main():
-    from asr.core import read_json
->>>>>>> master
-
+def main(rc: float = None):
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
@@ -245,16 +233,11 @@ def main():
     dist_max = dct["__params__"]["dist_max"]
     fsname = dct["__params__"]["fsname"]
 
-<<<<<<< HEAD
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
 
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
-
-=======
-    nd = sum(atoms.get_pbc())
->>>>>>> master
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:

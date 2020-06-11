@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, option
 
 tests = []
@@ -34,9 +35,10 @@ tests.append({'description': 'Test band structure of 2D-BN.',
          dependencies=['asr.gs@calculate'],
          tests=tests)
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints')
-@option('--emptybands')
-def calculate(kptpath=None, npoints=400, emptybands=20):
+@option('--npoints', type=int)
+@option('--emptybands', type=int)
+def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
+              emptybands: int = 20):
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -535,8 +537,13 @@ def main():
     bsresults = bs.todict()
 
     theta, phi = get_spin_axis()
+
+    # We use a larger symmetry tolerance because we want to correctly
+    # color spins which doesn't always happen due to slightly broken
+    # symmetries, hence tolerance=1e-2.
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
     bsresults['efermi'] = efermi

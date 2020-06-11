@@ -43,9 +43,10 @@ def displace_atom(atoms, ia, iv, sign, delta):
 
 
 @command('asr.setup.displacements')
-@option('--displacement', help='How much to displace atoms.')
-@option('--copy-params', help='Copy params.json to displacement folders.')
-def main(displacement=0.01, copy_params=True):
+@option('--displacement', help='How much to displace atoms.', type=float)
+@option('--copy-params', help='Copy params.json to displacement folders.',
+        type=bool)
+def main(displacement: float = 0.01, copy_params: bool = True):
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms. The generated

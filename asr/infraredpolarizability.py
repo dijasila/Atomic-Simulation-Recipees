@@ -156,9 +156,9 @@ def create_plot(row, *fnames):
     ],
     webpanel=webpanel,
 )
-@option("--nfreq", help="Number of frequency points")
-@option("--eta", help="Relaxation rate")
-def main(nfreq=300, eta=1e-2):
+@option("--nfreq", help="Number of frequency points", type=int)
+@option("--eta", help="Relaxation rate", type=float)
+def main(nfreq: int = 300, eta: float = 1e-2):
     from ase.io import read
 
     # Get relevant atomic structure
