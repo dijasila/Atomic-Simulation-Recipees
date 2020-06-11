@@ -4,7 +4,7 @@ import numpy as np
 def soc_eigenstatest(
         calc,
         bands=None,
-        myeig_skn=None,
+        eigenvalues=None,
         scale=1.0,
         theta=0.0,
         phi=0.0,

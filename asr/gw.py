@@ -310,7 +310,7 @@ def main():
     bandrange = np.arange(lb, ub)
     theta, phi = get_spin_axis()
     e_mk = soc_eigenstates(calc,
-                           myeig_skn=eps_skn,
+                           eigenvalues=eps_skn,
                            bands=bandrange,
                            theta=theta, phi=phi)['eigenvalues'].T
 
