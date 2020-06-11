@@ -29,6 +29,8 @@ def todict(filename):
 def topckl(filename, dct):
     from ase.utils import opencew
     import pickle
+    if Path(filename).is_file():
+        return
     contents = dct['content']
     fd = opencew(filename)
     if world.rank == 0:
@@ -58,9 +60,13 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     gsold = get_calculator()('gs.gpw', txt=None)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
     if is_magnetic():
         magmoms_m = gsold.get_magnetic_moments()
+        # Some calculators return magnetic moments resolved into their
+        # cartesian components
+        if len(magmoms_m.shape) == 2:
+            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     params = gsold.parameters.copy()  # TODO: remove fix density from gs params
@@ -79,8 +85,7 @@ def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
     params['txt'] = fd
     calc = get_calculator()(**params)
 
-    from asr.core import get_dimensionality
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -142,11 +147,10 @@ def webpanel(row, key_descriptions):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo=True):
     from asr.core import read_json
-    from asr.core import get_dimensionality
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
-    nd = get_dimensionality()
+    nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -260,7 +264,7 @@ def plot_bandstructure(row, fname):
     bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
             emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
             ylabel='Phonon frequencies [meV]')
-    plt.plot([], [], label='Calculated', color='C1', marker='o', ls='')
+    plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
     plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)

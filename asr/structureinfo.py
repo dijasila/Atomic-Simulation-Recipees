@@ -96,18 +96,11 @@ def webpanel(row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
-    row = ['Magnetic state', row.magstate]
-    eltable = {'type': 'table',
-               'header': ['Electronic properties', ''],
-               'rows': [row],
-               'columnwidth': 4}
-
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
                            'rows': [],
-                           'columnwidth': 4},
-                          eltable],
+                           'columnwidth': 4}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
@@ -144,25 +137,6 @@ def main():
     folder = Path().cwd()
     info['folder'] = str(folder)
 
-    # Determine magnetic state
-    def get_magstate(a):
-        magmom = a.get_magnetic_moment()
-        if abs(magmom) > 0.02:
-            return 'fm'
-
-        magmoms = a.get_magnetic_moments()
-        if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-            return 'afm'
-
-        # Material is essentially non-magnetic
-        return 'nm'
-
-    try:
-        magstate = get_magstate(atoms)
-    except RuntimeError:
-        magstate = 'nm'
-    info['magstate'] = magstate.upper()
-
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)
     info['formula'] = formula
@@ -187,12 +161,12 @@ def main():
     info['spacegroup'] = sg
     info['spgnum'] = number
 
-    # Set temporary uid.
-    # Will be changed later once we know the prototype.
-    info['is_magnetic'] = info['magstate'] != 'NM'
-
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
+
+    dim, cluster = cluster_check(atoms)
+    info['primary_dimensionality'] = dim
+    info['clusters'] = cluster
 
     info['__key_descriptions__'] = {
         'magstate': 'KVP: Magnetic state',
@@ -202,9 +176,25 @@ def main():
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
         'spgnum': 'KVP: Space group number',
-        'crystal_prototype': 'KVP: Crystal prototype'}
+        'crystal_prototype': 'KVP: Crystal prototype',
+        'primary_dimensionality': 'Dim. with max. scoring parameter',
+        'clusters': 'cluster number of dim. (0d, 1d, 2d, 3d)'}
 
     return info
+
+
+def cluster_check(atoms):
+    """
+    Cluser and dimensionality analysis of the input structure.
+
+    Analyzes the primary dimensionality of the input structure
+    and analyze clusters following Mahler, et. al.
+    Physical Review Materials 3 (3), 034003.
+    """
+    from ase.geometry.dimensionality import analyze_dimensionality
+    cluster_data = analyze_dimensionality(atoms)[0]
+
+    return cluster_data.dimtype, cluster_data.h
 
 
 if __name__ == '__main__':

@@ -5,15 +5,54 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_relax(asr_tmpdir_w_params, mockgpaw, test_material):
+def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
+    """Test that the relaxation recipe actually produces a structure.json."""
     from asr.relax import main as relax
-    from ase.io import write
+    from ase.io import write, read
 
     write('unrelaxed.json', test_material)
     relax(calculator={
         "name": "gpaw",
         "kpts": {"density": 2, "gamma": True},
     })
+    read('structure.json')
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('initial_magmoms', ([0, 1]))
+@pytest.mark.parametrize('set_magmoms', ([True, False]))
+@pytest.mark.parametrize('final_magmoms', ([0, 1]))
+def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                       initial_magmoms, set_magmoms, final_magmoms):
+    """Test that the initial magnetic moments are correctly set."""
+    import asr.relax
+    from asr.relax import main
+    from ase.io import read
+    from gpaw import GPAW
+    mocker.patch.object(GPAW, "_get_magmoms")
+    spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
+    GPAW._get_magmoms.return_value = (np.zeros((len(test_material), ), float)
+                                      + final_magmoms)
+    if set_magmoms:
+        test_material.set_initial_magnetic_moments(
+            [initial_magmoms] * len(test_material))
+
+    test_material.write('unrelaxed.json')
+    main()
+
+    relaxed = read('structure.json')
+    assert relaxed.has('initial_magmoms')
+
+    if final_magmoms > 0.1:
+        assert all(relaxed.get_magnetic_moments() == 1)
+    else:
+        assert not relaxed.get_initial_magnetic_moments().any()
+
+    # If user has set magnetic moments, make sure that we don't touch them
+    if test_material.has('initial_magmoms'):
+        spy.assert_not_called()
+    else:
+        spy.assert_called()
 
 
 @pytest.mark.ci

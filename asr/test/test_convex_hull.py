@@ -3,16 +3,21 @@ from ase.db import connect
 from ase.build import bulk
 
 
+metal_alloys = ['Ag', 'Au', 'Ag,Au', 'Ag,Au,Al']
+
+
 @pytest.mark.ci
-def test_convex_hull(asr_tmpdir_w_params, mockgpaw):
+@pytest.mark.parametrize('metals', metal_alloys)
+def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
+                     metals):
     from ase.calculators.emt import EMT
     from asr.convex_hull import main
-    metals = ['Al', 'Cu', 'Ag', 'Au', 'Ni',
-              'Pd', 'Pt', 'C']
+    elemental_metals = ['Al', 'Cu', 'Ag', 'Au', 'Ni',
+                        'Pd', 'Pt', 'C']
 
     energies = {}
     with connect('references.db') as db:
-        for uid, element in enumerate(metals):
+        for uid, element in enumerate(elemental_metals):
             atoms = bulk(element)
             atoms.set_calculator(EMT())
             en = atoms.get_potential_energy()
@@ -26,8 +31,13 @@ def test_convex_hull(asr_tmpdir_w_params, mockgpaw):
                    'label': '{row.formula}',
                    'method': 'DFT'}
 
-    metal = 'Ag'
-    ag = bulk(metal)
-    ag.write('structure.json')
+    metal_atoms = metals.split(',')
+    nmetalatoms = len(metal_atoms)
+    atoms = bulk(metal_atoms[0])
+    atoms = atoms.repeat((1, 1, nmetalatoms))
+    atoms.set_chemical_symbols(metal_atoms)
+    atoms.write('structure.json')
     results = main(databases=['references.db'])
-    assert results['hform'] == -energies[metal]
+    assert results['hform'] == -sum(energies[element]
+                                    for element in metal_atoms) / nmetalatoms
+    get_webcontent()

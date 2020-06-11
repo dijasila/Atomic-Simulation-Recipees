@@ -269,6 +269,10 @@ def log(*args, **kwargs):
     return {'atoms': atoms.todict()}
 
 
+def set_initial_magnetic_moments(atoms):
+    atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
+
+
 @command('asr.relax',
          requires=['unrelaxed.json'],
          creates=['structure.json'],
@@ -329,6 +333,8 @@ def main(calculator={'name': 'gpaw',
         atoms = read('relax.traj')
     except (IOError, UnknownFileTypeError):
         atoms = read('unrelaxed.json', parallel=False)
+        if not atoms.has('initial_magmoms'):
+            set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
@@ -353,6 +359,18 @@ def main(calculator={'name': 'gpaw',
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+
+    # If the maximum magnetic moment on all atoms is big then
+    magmoms = atoms.get_magnetic_moments()
+    magmom = calc.get_magnetic_moment()
+    if abs(magmom) < 0.02 and not abs(magmoms).max() > 0.1:
+        atoms.set_initial_magnetic_moments([0] * len(atoms))
+        calc = Calculator(**calculator)
+        # Relax the structure
+        atoms = relax(atoms, name='relax', dftd3=d3,
+                      fixcell=fixcell,
+                      allow_symmetry_breaking=allow_symmetry_breaking,
+                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()

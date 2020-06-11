@@ -1,6 +1,4 @@
-import numpy as np
-from asr.core import command, option
-from ase.dft.bandgap import bandgap
+from asr.core import command, option, file_barrier
 from click import Choice
 
 
@@ -20,6 +18,7 @@ def get_kpts_size(atoms, kptdensity):
                   'bse_poly.csv', 'bse_eigy.dat',
                   'bse_polz.csv', 'bse_eigz.dat'],
          requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'],
          resources='480:20h')
 @option('--gs', help='Ground state on which BSE is based')
 @option('--kptdensity', help='K-point density')
@@ -35,13 +34,13 @@ def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
+    from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
     from pathlib import Path
     import numpy as np
-    from asr.core import file_barrier
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -235,6 +234,7 @@ def absorption(row, filename, direction='x'):
 
 
 def webpanel(row, key_descriptions):
+    import numpy as np
     from functools import partial
     from asr.database.browser import fig, table
 
@@ -273,28 +273,29 @@ def webpanel(row, key_descriptions):
 
 
 @command(module='asr.bse',
-         requires=['bse_polx.csv', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json'],
-         dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
+         requires=['bse_polx.csv', 'results-asr.gs.json'],
+         dependencies=['asr.bse@calculate', 'asr.gs'],
          webpanel=webpanel)
 def main():
+    import numpy as np
+    from pathlib import Path
+    from asr.core import read_json
+
     alphax_w = np.loadtxt('bse_polx.csv', delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
 
-    from pathlib import Path
     if Path('bse_poly.csv').is_file():
         alphay_w = np.loadtxt('bse_poly.csv', delimiter=',')
         data['bse_alphay_w'] = alphay_w.astype(np.float32)
     if Path('bse_polz.csv').is_file():
         alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
-    from asr.core import read_json
 
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
 
-        info = read_json('results-asr.structureinfo.json')
-        magstate = info['magstate']
+        magstateresults = read_json('results-asr.magstate.json')
+        magstate = magstateresults['magstate']
 
         gsresults = read_json('results-asr.gs.json')
         if magstate == 'NM':

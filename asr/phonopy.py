@@ -104,13 +104,14 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
     calc = get_calculator_class(name)(**calculator)
 
     # Set initial magnetic moments
-    from asr.core import is_magnetic
+    from asr.utils import is_magnetic
 
     if is_magnetic():
         gsold = get_calculator()("gs.gpw", txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
+<<<<<<< HEAD
     from asr.core import get_dimensionality
 
     nd = get_dimensionality()
@@ -119,6 +120,9 @@ def calculate(d=0.05, fsname='phonons', sc=[0, 0, 0], dist_max=7.0,
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
 
+=======
+    nd = sum(atoms.get_pbc())
+>>>>>>> master
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
@@ -221,9 +225,14 @@ def webpanel(row, key_descriptions):
     webpanel=webpanel,
     dependencies=["asr.phonopy@calculate"],
 )
+<<<<<<< HEAD
 @option("--rc", type=float, help="Cutoff force constants matrix")
 def main(rc=None):
     from asr.core import get_dimensionality
+=======
+def main():
+    from asr.core import read_json
+>>>>>>> master
 
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
@@ -236,12 +245,16 @@ def main(rc=None):
     dist_max = dct["__params__"]["dist_max"]
     fsname = dct["__params__"]["fsname"]
 
+<<<<<<< HEAD
     nd = get_dimensionality()
 
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
 
+=======
+    nd = sum(atoms.get_pbc())
+>>>>>>> master
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
