@@ -70,7 +70,7 @@ def distance_to_sc(nd, atoms, dist_max):
 @option("--d", type=float, help="Displacement size")
 @option("--dist_max", type=float,
         help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file")
+@option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

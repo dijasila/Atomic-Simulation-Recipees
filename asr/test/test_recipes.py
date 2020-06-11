@@ -17,7 +17,8 @@ def test_recipe_cli_help_calls(asr_tmpdir, capsys, recipe):
     assert f'Usage: asr run {name}' in captured.out
 
 
-map_typing_types = {typing.Union[Atoms, None]: Atoms,
+map_typing_types = {typing.Union[float, None]: float,
+                    typing.Union[Atoms, None]: Atoms,
                     typing.List[str]: str,
                     typing.List[int]: int,
                     typing.List[float]: float,
