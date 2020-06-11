@@ -322,7 +322,7 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
