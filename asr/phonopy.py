@@ -309,7 +309,7 @@ def main(rc: float = None):
         C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
         eigs_kl.append(np.linalg.eigvalsh(C_q))
         _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
-        u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
+        u_klav[q] = u_ll.T.reshape(3*len(atoms), len(atoms), 3))
         if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
             ob = phonon._irreps
