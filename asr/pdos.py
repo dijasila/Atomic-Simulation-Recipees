@@ -96,9 +96,11 @@ class SOCDescriptor:
         self.v_dknm = []
 
     def calculate_soc_eig(self, theta, phi):
-        from gpaw.spinorbit import get_spinorbit_eigenvalues
-        eps_mk, v_knm = get_spinorbit_eigenvalues(self.paw, return_wfs=True,
-                                                  theta=theta, phi=phi)
+        from gpaw.spinorbit import soc_eigenstates
+        result = soc_eigenstates(self.paw, return_wfs=True,
+                                 theta=theta, phi=phi)
+        eps_mk = result['eigenvalues'].T
+        v_knm = result['eigenstates']
         self.theta_d.append(theta)
         self.phi_d.append(phi)
         self.eps_dmk.append(eps_mk)
