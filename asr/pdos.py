@@ -41,7 +41,7 @@ class SOCDOS(DOS):
         # Initiate calculator object and get the spin-orbit eigenvalues
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
         theta, phi = get_spin_axis()
-        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
+        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi)
 
         # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
