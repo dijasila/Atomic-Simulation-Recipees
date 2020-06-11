@@ -158,7 +158,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
-        atoms_N.set_calculator(calc)
+        atoms_N.calc = calc
         forces = atoms_N.get_forces()
 
         drift_force = forces.sum(axis=0)

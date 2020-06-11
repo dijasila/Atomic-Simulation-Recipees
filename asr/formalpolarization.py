@@ -66,7 +66,7 @@ def get_wavefunctions(atoms, name, calculator):
     from ase.calculators.calculator import get_calculator_class
     calcname = calculator.pop("name")
     calc = get_calculator_class(calcname)(**calculator)
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     atoms.get_potential_energy()
     calc.write(name, 'all')
 
