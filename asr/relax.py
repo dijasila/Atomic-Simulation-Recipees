@@ -328,7 +328,7 @@ def main(atoms: Atoms,
 
     calc = Calculator(**calculator)
     # Relax the structure
-    atoms = relax(atoms, tmp_atoms_file='relax.traj', dftd3=d3,
+    atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)

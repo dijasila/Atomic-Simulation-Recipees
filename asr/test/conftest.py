@@ -42,3 +42,8 @@ def pytest_configure(config):
 
     config.addinivalue_line("addopts", "--doctest-modules")
     config.addinivalue_line("filterwarnings", "once::Warning")
+    config.addinivalue_line("filterwarnings", "ignore:::matplotlib")
+    config.addinivalue_line("filterwarnings",
+                            "ignore:numpy.ufunc size changed.*")
+    config.addinivalue_line("filterwarnings",
+                            "ignore:numpy.dtype size changed.*")

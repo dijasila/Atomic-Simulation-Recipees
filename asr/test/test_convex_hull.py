@@ -19,7 +19,7 @@ def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
     with connect('references.db') as db:
         for uid, element in enumerate(elemental_metals):
             atoms = bulk(element)
-            atoms.set_calculator(EMT())
+            atoms.calc = EMT()
             en = atoms.get_potential_energy()
             energies[element] = en
             db.write(atoms, uid=uid)
