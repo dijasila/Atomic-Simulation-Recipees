@@ -1,6 +1,6 @@
 """Module implementing the ASRCommand class and related decorators."""
 from . import (read_json, write_json, md5sum,
-               file_barrier, unlink)
+               file_barrier, unlink, clickify_docstring)
 from ase.parallel import parprint
 import click
 import copy
@@ -172,7 +172,6 @@ class ASRCommand:
         self.signature = sig
 
         # Setup the CLI
-        self.setup_cli()
         update_wrapper(self, self._main)
 
     def get_signature(self):
@@ -260,43 +259,16 @@ class ASRCommand:
             return True
         return False
 
+    def get_parameters(self):
+        """Get the parameters of this function."""
+        return self.myparams
+
     def setup_cli(self):
         # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
         cc = click.command
         co = click.option
-
-        def clickify_docstring(doc):
-            if doc is None:
-                return
-            doc_n = doc.split('\n')
-            clickdoc = []
-            skip = False
-            for i, line in enumerate(doc_n):
-                if skip:
-                    skip = False
-                    continue
-                lspaces = len(line) - len(line.lstrip(' '))
-                spaces = ' ' * lspaces
-                bb = spaces + '\b'
-                if line.endswith('::'):
-                    skip = True
-
-                    if not doc_n[i - 1].strip(' '):
-                        clickdoc.pop(-1)
-                        clickdoc.extend([bb, line, bb])
-                    else:
-                        clickdoc.extend([line, bb])
-                elif ('-' in line
-                      and (spaces + '-' * (len(line) - lspaces)) == line):
-                    clickdoc.insert(-1, bb)
-                    clickdoc.append(line)
-                else:
-                    clickdoc.append(line)
-            doc = '\n'.join(clickdoc)
-
-            return doc
 
         help = clickify_docstring(self._main.__doc__) or ''
 
@@ -305,14 +277,17 @@ class ASRCommand:
 
         # Convert parameters into CLI Parameters!
         defparams = self.get_defaults()
-        for name, param in self.myparams.items():
+        for name, param in self.get_parameters().items():
             param = param.copy()
             alias = param.pop('alias')
             argtype = param.pop('argtype')
             name2 = param.pop('name')
             assert name == name2
             assert name in self.myparams
-            default = defparams.get(name, None)
+            if 'default' in param:
+                default = param.pop('default')
+            else:
+                default = defparams.get(name, None)
 
             if argtype == 'option':
                 command = co(show_default=True, default=default,
@@ -321,7 +296,7 @@ class ASRCommand:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
 
-        self._cli = command
+        return command
 
     def cli(self, args=None):
         """Parse parameters from command line and call wrapped function.
@@ -332,10 +307,16 @@ class ASRCommand:
             List of command line arguments. If None: Read arguments from
             sys.argv.
         """
-        return self._cli(standalone_mode=False,
-                         prog_name=f'asr run {self.name}', args=args)
+        command = self.setup_cli()
+        return command(standalone_mode=False,
+                       prog_name=f'asr run {self.name}', args=args)
+
+    def get_wrapped_function(self):
+        """Return wrapped function."""
+        return self._main
 
     def __call__(self, *args, **kwargs):
+        """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
     def main(self, *args, **kwargs):

@@ -6,8 +6,9 @@ from asr.core import command, option, file_barrier
          creates=['gs_2mag.gpw', 'exchange.gpw'],
          requires=['gs.gpw'],
          resources='40:10h')
-@option('--gs', help='Ground state on which exchange calculation is based')
-def calculate(gs='gs.gpw'):
+@option('--gs', help='Ground state on which exchange calculation is based',
+        type=str)
+def calculate(gs: str = 'gs.gpw'):
     """Calculate two spin configurations."""
     from gpaw import GPAW
     from asr.core import magnetic_atoms

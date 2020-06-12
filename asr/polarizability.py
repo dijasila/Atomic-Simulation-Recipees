@@ -41,13 +41,17 @@ def get_kpts_size(atoms, density):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option(
-    '--gs', help='Ground state on which response is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
+    '--gs', help='Ground state on which response is based',
+    type=str)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
+def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
+         xc: str = 'RPA', bandfactor: int = 5):
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW

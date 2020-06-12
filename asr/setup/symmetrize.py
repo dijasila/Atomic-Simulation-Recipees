@@ -82,7 +82,7 @@ def symmetrize_atoms(atoms, tolerance=None,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float,
         help='Tolerance one angles when evaluating symmetries')
-def main(tolerance=1e-3, angle_tolerance=0.1):
+def main(tolerance: float = 1e-3, angle_tolerance: float = 0.1):
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell

@@ -4,10 +4,11 @@ from asr.core import command, option
 @command('asr.setup.magnetize')
 @option('--state', type=str,
         help='Comma separated string of magnetic states to create.')
-@option('--name', help='Atomic structure')
+@option('--name', help='Atomic structure', type=str)
 @option('--copy-params', is_flag=True,
-        help='Also copy params.json from this dir (if exists).')
-def main(state='all', name='unrelaxed.json', copy_params=False):
+        help='Also copy params.json from this dir (if exists).', type=bool)
+def main(state: str = 'all', name: str = 'unrelaxed.json',
+         copy_params: bool = False):
     """Set up folders with magnetic moments.
 
     This recipe can be used to test different magnetic configurations

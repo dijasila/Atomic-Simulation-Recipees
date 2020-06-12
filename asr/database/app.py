@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option, argument
 
 import tempfile
@@ -160,10 +161,10 @@ def initialize_project(database):
 
 
 @command()
-@argument("databases", nargs=-1)
-@option("--host", help="Host address.")
+@argument("databases", nargs=-1, type=str)
+@option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases, host="0.0.0.0", test=False):
+def main(databases: List[str], host: str = "0.0.0.0", test: bool = False):
     for database in databases:
         initialize_project(database)
 

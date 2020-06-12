@@ -6,9 +6,9 @@ from asr.core import command, option, read_json
          creates=['hse_nowfs.gpw', 'hse-snapshot.json'],
          requires=['gs.gpw', 'results-asr.gs.json'],
          resources='24:10h')
-@option('--kptdensity', help='K-point density')
-@option('--emptybands', help='number of empty bands to include')
-def calculate(kptdensity=8.0, emptybands=20):
+@option('--kptdensity', help='K-point density', type=float)
+@option('--emptybands', help='number of empty bands to include', type=int)
+def calculate(kptdensity: float = 8.0, emptybands: int = 20):
     """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
@@ -270,7 +270,6 @@ def webpanel(row, key_descriptions):
 
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
-         # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
                    'results-asr.bandstructure.json',

@@ -240,21 +240,24 @@ def create_corrected_db(newname, db, reactions, els_dMu):
 
 
 @command("asr.fere", resources="1:1h")
-@option("--newdbname", help="Name of the new db file")
-@option("--dbname", help="Name of the base db file")
+@option("--newdbname", help="Name of the new db file", type=str)
+@option("--dbname", help="Name of the base db file", type=str)
 @option(
-    "--reactionsname", help="File containing reactions and energies with which to fit"
+    "--reactionsname",
+    help="File containing reactions and energies with which to fit",
+    type=str,
 )
 @option(
     "--referencesname",
     help="File containing the elements"
     + " whose references energies should be adjusted",
+    type=str,
 )
 def main(
-    newdbname="newdb.db",
-    dbname="db.db",
-    reactionsname="reactions.txt",
-    referencesname="references.txt",
+    newdbname: str = "newdb.db",
+    dbname: str = "db.db",
+    reactionsname: str = "reactions.txt",
+    referencesname: str = "references.txt",
 ):
     from ase.db import connect
     import os

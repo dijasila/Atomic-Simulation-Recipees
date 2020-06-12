@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, argument, option
 import numpy as np
 from datetime import datetime
@@ -31,11 +32,11 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         adaptor = AseAtomsAdaptor()
 
     if matcher is None:
-        matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
+        matcher = StructureMatcher(primitive_cell=False,
+                                   attempt_supercell=True)
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
 
-    pbc_c = atoms1.get_pbc()
     atoms1 = atoms1.copy()
     atoms2 = atoms2.copy()
     atoms1.set_pbc(True)
@@ -52,7 +53,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
     struct1, struct2, fu, s1_supercell = matcher._preprocess(struct1, struct2)
     match = matcher._match(struct1, struct2, fu, s1_supercell,
-                           break_on_match=False)
+                           break_on_match=False, use_rms=False)
     if match is None:
         return None
     else:
@@ -62,9 +63,6 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         natoms = len(atoms1)
         old_norm = (natoms / vol)**(1 / 3)
         rmsd /= old_norm  # Undo
-        lenareavol = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        new_norm = (natoms / lenareavol)**(1 / sum(pbc_c))
-        rmsd *= new_norm  # Apply our own norm
         return rmsd
 
 
@@ -77,12 +75,15 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
 
 @command(module='asr.database.rmsd',
          resources='1:20m')
-@argument('databaseout', required=False)
-@argument('database')
+@argument('databaseout', required=False, type=str)
+@argument('database', type=str)
 @option('-c', '--comparison-keys',
-        help='Keys that have to be identical for RMSD to be calculated.')
-@option('-r', '--max-rmsd', help='Maximum allowed RMSD.')
-def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
+        help='Keys that have to be identical for RMSD to be calculated.',
+        type=str)
+@option('-r', '--max-rmsd', help='Maximum allowed RMSD.',
+        type=float)
+def main(database: str, databaseout: Union[str, None] = None,
+         comparison_keys: str = '', max_rmsd: float = 1.0):
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If
