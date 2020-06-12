@@ -7,9 +7,9 @@ def gscheck(us):
     for i in range(N):
         for j in range(N):
             if i == j:
-                assert not np.allclose(np.dot(us[i], us[j]), 0)
+                assert not np.allclose(np.dot(us[i], us[j]), 0), np.dot(us[i], us[j])
             else:
-                assert np.allclose(np.dot(us[i], us[j]), 0)
+                assert np.allclose(np.dot(us[i], us[j]), 0), np.dot(us[i], us[j])
 
 
 def projuv(u, v):
@@ -46,10 +46,37 @@ def mgs(u0):
     return us
 
 
+def orthogonalize(us):
+    nus = [us[0].copy()]
+
+    for i in range(1, len(us)):
+        u = us[i].copy()
+        for j in range(i):
+            u -= projuv(nus[j], u)
+        nus.append(u)
+
+    for i in range(len(nus)):
+        for j in range(len(nus)):
+            ip = np.dot(nus[i], nus[j])
+            if i != j:
+                if not np.allclose(ip, 0):
+                    print("US:")
+                    for u in us:
+                        print(u)
+                    print("NUS:")
+                    for nu in nus:
+                        print(nu)
+
+                    raise ValueError("not fricking orthogonal")
+
+    return nus
+
+
 def mgsls(us):
     # Do Modified Gram-Schmidt to get a vector
     # that is orthogonal to us
-    us = [u.copy() for u in us]
+    # us = [u.copy() for u in us]
+    us = orthogonalize(us)
     ndim = len(us[0])
     nmissing = ndim - len(us)
     assert nmissing == 1, f"ndim = {ndim}, nvecs = {len(us)}"
@@ -67,10 +94,15 @@ def mgsls(us):
     for k in range(ndim - 1):
         newu -= projuv(us[k], newu)
 
-    us.append(newu)
 
-    gscheck(us)
-    return us
+    for k in range(ndim - 1):
+        assert np.allclose(np.dot(newu, us[k]), 0), f"newu: {newu}, ip: {np.dot(newu, us[k])}"
+
+    us.append(newu)
+    
+
+    # gscheck(us)
+    return newu
 
 
 class Hyperplane:
@@ -87,7 +119,21 @@ class Hyperplane:
             self.vectors.append(vec)
 
         if len(self.vectors) > 0:
-            self.normal_vector = mgsls(self.vectors)[-1]
+            try:
+                self.normal_vector = mgsls(self.vectors)
+            except AssertionError as e:
+                for x in pts:
+                    print(x)
+
+                print("-----")
+                for y in self.vectors:
+                    print(y)
+                print("-----")
+                print("-----")
+                for ref in references:
+                    print(ref.formula)
+
+                raise e
         
     def contains(self, pt):
         if len(self.vectors) == 0:
@@ -170,6 +216,9 @@ class Intermediate:
         return dct
 
     def from_dict(dct):
+        if 'refdcts' not in dct:
+            return LeanIntermediate.from_dict(dct)
+
         refdcts = dct['refdcts']
         matdct = dct['matdct']
         reactdct = dct['reactdct']
@@ -226,7 +275,6 @@ class Intermediate:
 
         A = np.array([ref2vec(ref) for ref in self.references]).T
 
-        assert not np.allclose(np.linalg.det(A), 0)
         b = ref2vec(self.mat_ref)
 
         x = np.linalg.solve(A, b)
@@ -250,6 +298,43 @@ class Intermediate:
         total_matrefs = 1
 
         return total_reactants / (total_reactants + total_matrefs)
+
+
+class LeanIntermediate:
+    def __init__(self, mat_reference, reactant_reference,
+                 reference):
+        self.mat_ref = mat_reference
+        self.reactant_ref = reactant_reference
+        self.reference = reference
+        self.hform = reference.hform
+        react_symbol = reactant_reference.symbols[0]
+        rc = reference.count[react_symbol] / reference.natoms
+        assert not np.allclose(rc, 0.0)
+        self.reactant_content = rc
+        self.label = str(round(1 - rc, 2)) + reference.formula
+        
+    def to_result(self):
+        thns = (self.reference.formula, self.reference.hform)
+        strs = [f'Reference: {thns}',
+                f'Reactant content: {self.reactant_content}',
+                f'Hform: {self.hform}']
+
+        return strs
+
+    def to_dict(self):
+        dct = {}
+        dct["mat_ref"] = self.mat_ref.to_dict()
+        dct["react_ref"] = self.reactant_ref.to_dict()
+        dct["ref"] = self.reference.to_dict()
+        
+        return dct
+        
+    def from_dict(dct):
+        mat_ref = Reference.from_dict(dct["mat_ref"])
+        react_ref = Reference.from_dict(dct["react_ref"])
+        ref = Reference.from_dict(dct["ref"])
+
+        return LeanIntermediate(mat_ref, react_ref, ref)
 
 
 class Reference:
@@ -448,7 +533,9 @@ def main(dbs, reactant='O'):
     results = {}
     formula, elements = read_structure('structure.json')
 
-    assert reactant not in elements
+    if reactant in elements:
+        return results
+
     elements.append(reactant)
 
     mat_ref = results2ref(formula)
@@ -456,10 +543,13 @@ def main(dbs, reactant='O'):
     references = [mat_ref, reactant_ref]
 
     append_references(elements, dbs, references)
-
+    
     refs = convex_hull(references, mat_ref)
-
-    intermediates = calculate_intermediates(mat_ref, reactant_ref, refs)
+    
+    if len(elements) > 2:
+        intermediates = calculate_intermediates(mat_ref, reactant_ref, refs)
+    else:
+        intermediates = refs2ims(mat_ref, reactant_ref, refs)
 
     mum = mu_adjustment(mat_ref, reactant_ref, intermediates)
 
@@ -567,7 +657,7 @@ def mu_adjustment(mat_ref, reactant_ref, intermediates):
         x /= im.reactant_content
         return x
 
-    adjustments = map(lambda im: f(im), intermediates)
+    adjustments = map(f, intermediates)
     return max(adjustments, default=0.0)
 
 
@@ -603,6 +693,8 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
     for plane in planes:
         if line.intersects(plane):
             refs = plane.references
+            if mat_ref in refs:
+                continue
             im = Intermediate(refs, mat_ref, Reference(reactant, 0.0))
             ims.append(im)
 
@@ -650,10 +742,61 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
 
     for ind in plane_inds:
         refs = [chrefs[j] for j in ind]
+        # Exclude if points are collinear
+        if is_collinear(points[ind, :-1]):
+            continue
         plane = Hyperplane(points[ind, :-1], refs)
         planes.append(plane)
 
     return line, planes
+
+
+def is_collinear(pts):
+    # Return whether pts form a
+    # N - 1 dimensional hyperplane
+    # N = len(pts)
+    npts = [pt - pts[0] for pt in pts[1:]]
+    ortho_pts = orthogonalize(npts)
+    if any(np.allclose(np.linalg.norm(pt), 0) for pt in ortho_pts):
+        return True
+    else:
+        return False
+
+
+def is_independent(v1, v2):
+    f = None
+    for x1, x2 in zip(v1, v2):
+        if np.allclose(x2, 0) and np.allclose(x1, 0):
+            continue
+        elif np.allclose(x2, 0):
+            return True
+        elif np.allclose(x1, 0):
+            return True
+        else:
+            if f is None:
+                f = x1 / x2
+            else:
+                if not np.allclose(f, x1 / x2):
+                    return True
+
+    return False
+
+
+def refs2ims(mat_ref, reactant_ref, refs):
+    from asr.fere import formulas_eq
+    ims = []
+    react_symbol = reactant_ref.symbols[0]
+    for ref in refs:
+        if formulas_eq(ref.formula, mat_ref.formula):
+            continue
+        if formulas_eq(ref.formula, reactant_ref.formula):
+            continue
+        
+        lim = LeanIntermediate(mat_ref, reactant_ref, ref)
+
+        ims.append(lim)
+
+    return ims
 
 
 def _permutecontain(t, tls):
