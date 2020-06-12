@@ -44,7 +44,7 @@ def calculate(calculator: dict = {
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     atoms.get_forces()
     try:
         atoms.get_stress()

@@ -14,4 +14,5 @@ class DielectricFunction:
 
     def get_polarizability(self, *args, **kwargs):
         alpha_w = np.zeros((100, ), float) + 1j * 0
+        alpha_w[10] = 1 + 1j
         return alpha_w, alpha_w
