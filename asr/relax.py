@@ -67,17 +67,22 @@ class SpgAtoms(Atoms):
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
+        sym_a = self.get_chemical_symbols()
         for op_cc, t_c in zip(symmetries, self.t_sc):
             symspos_ac = np.dot(spos_ac, op_cc.T) + t_c
 
             a_a = []
-            for s_c in symspos_ac:
+            for a, s_c in enumeraet(symspos_ac):
                 diff_ac = spos_ac - s_c
                 diff_ac -= np.round(diff_ac)
                 mask_c = np.all(np.abs(diff_ac) < tolerance, axis=1)
-                assert np.sum(mask_c) == 1, f'Bad symmetry, {mask_c} {diff_ac}'
+                assert np.sum(mask_c) == 1, \
+                    f'Bad symmetry, {mask_c} {diff_ac} {op_cc} {t_c}'
                 ind = np.argwhere(mask_c)[0][0]
-                assert ind not in a_a, f'Bad symmetry {ind}, {diff_ac}'
+                assert ind not in a_a, \
+                    f'Bad symmetry {ind}, {diff_ac} {op_cc} {t_c}'
+                assert sym_a[a] == sym_a[ind], \
+                    f'Bad symmetry {ind}, {diff_ac} {op_cc} {t_c}'
                 a_a.append(ind)
             a_sa.append(a_a)
 
