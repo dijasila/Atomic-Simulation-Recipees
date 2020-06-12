@@ -72,7 +72,7 @@ class SpgAtoms(Atoms):
             symspos_ac = np.dot(spos_ac, op_cc.T) + t_c
 
             a_a = []
-            for a, s_c in enumeraet(symspos_ac):
+            for a, s_c in enumerate(symspos_ac):
                 diff_ac = spos_ac - s_c
                 diff_ac -= np.round(diff_ac)
                 mask_c = np.all(np.abs(diff_ac) < tolerance, axis=1)
