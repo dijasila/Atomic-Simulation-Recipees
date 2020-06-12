@@ -382,7 +382,7 @@ def plot_phonons(row, fname):
 
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
 
     data = row.data.get("results-asr.phonopy.json")
     path = data["path"]

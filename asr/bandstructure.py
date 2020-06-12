@@ -498,7 +498,7 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
-    from ase.dft.band_structure import get_band_structure
+    from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     from asr.core import read_json
     import copy
