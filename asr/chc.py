@@ -86,9 +86,12 @@ class Hyperplane:
             assert not np.allclose(np.dot(vec, vec), 0)
             self.vectors.append(vec)
 
-        self.normal_vector = mgsls(self.vectors)[-1]
-
+        if len(self.vectors) > 0:
+            self.normal_vector = mgsls(self.vectors)[-1]
+        
     def contains(self, pt):
+        if len(self.vectors) == 0:
+            return True
         C = np.allclose(np.dot((pt - self.base_point), self.normal_vector), 0)
         return C
 
@@ -116,6 +119,8 @@ class Line:
 
     def intersects(self, plane):
         assert self.ndim == len(plane.pts)
+        if len(plane.vectors) == 0:
+            return True
         normals = self.normal_vectors + [plane.normal_vector]
         NM = np.vstack(normals).T
         parallel = np.allclose(np.linalg.det(NM), 0)
@@ -202,8 +207,17 @@ class Intermediate:
         # where A is matrix from reference vectors
         # and b is vector from mat_ref
 
+        elements = self.mat_ref.to_elements()
+        if len(elements) == 1:
+            assert len(self.references) == 1, f"Els:{elements}, refs: {self.references}"
+            hof = self.references[0].hform
+            reac = self.reactant_ref.symbols[0]
+            x = self.references[0].count[reac] / self.references[0].natoms
+
+            return hof, [x]
+            
+
         def ref2vec(_ref):
-            elements = self.mat_ref.to_elements()
             _vec = np.zeros(len(elements))
             for i, el in enumerate(elements):
                 _vec[i] = _ref.count[el]
@@ -217,9 +231,13 @@ class Intermediate:
 
         x = np.linalg.solve(A, b)
 
-        hforms = np.array([ref.hform for ref in self.references])
+        # hforms = np.array([ref.hform for ref in self.references])
+        hforms = np.array([ref.energy for ref in self.references])
+                
+        counts = np.array([sum(ref.count.values()) for ref in self.references])
+        norm = x.dot(counts)
 
-        return np.dot(x, hforms), x
+        return np.dot(x, hforms) / norm, x
 
     @property
     def reactant_content(self):
@@ -246,6 +264,8 @@ class Reference:
         self.count = defaultdict(int)
         for k, v in self.Formula.count().items():
             self.count[k] = v
+        self.symbols = list(self.Formula.count().keys())
+        
 
     def __str__(self):
         """
@@ -371,21 +391,22 @@ def chcut_plot(row, *args):
     from ase import Atoms
 
     data = row.data.get('results-asr.chc.json')
-    # refs = filrefs(data.get('_refs'))
+    refs = filrefs(data.get('_refs'))
     
-    # nrefs = []
+    nrefs = []
     
-    # for (form, v) in refs:
-    #     atoms = Atoms(form)
-    #     e = v * len(atoms)
-    #     nrefs.append((form, e))
+    for (form, v) in refs:
+        atoms = Atoms(form)
+        e = v * len(atoms)
+        nrefs.append((form, e))
 
-    # from ase.phasediagram import PhaseDiagram
-    # pd = PhaseDiagram(nrefs, verbose=True)
-    # fig = plt.figure(figsize=(4, 3), dpi=150)
-    # pd.plot(ax=plt.gca(), dims=2, show=False)
-    # plt.savefig("./convexhullcut.png")
-    # return
+    from ase.phasediagram import PhaseDiagram
+    pd = PhaseDiagram(nrefs, verbose=False)
+    fig = plt.figure(figsize=(4, 3), dpi=150)
+    pd.plot(ax=plt.gca(), dims=2, show=False)
+    plt.savefig("./chcconvexhull.png")
+    plt.close()
+    
     mat_ref = Reference.from_dict(data['_matref'])
     reactant_ref = Reference.from_dict(data['_reactant_ref'])
     intermediates = [Intermediate.from_dict(im)
@@ -426,22 +447,23 @@ def main(dbs, reactant='O'):
     dbs = [connect(db) for db in dbs]
     results = {}
     formula, elements = read_structure('structure.json')
+
     assert reactant not in elements
     elements.append(reactant)
 
     mat_ref = results2ref(formula)
     reactant_ref = Reference(reactant, 0.0)
-    references = [mat_ref]
+    references = [mat_ref, reactant_ref]
 
     append_references(elements, dbs, references)
 
     refs = convex_hull(references, mat_ref)
 
     intermediates = calculate_intermediates(mat_ref, reactant_ref, refs)
-    results['intermediates'] = [im.to_result() for im in intermediates]
 
     mum = mu_adjustment(mat_ref, reactant_ref, intermediates)
 
+    results['intermediates'] = [im.to_result() for im in intermediates]
     results['material_info'] = str(mat_ref)
     results['reactant'] = reactant
     results['mu_measure'] = mum
@@ -538,6 +560,10 @@ def append_references(elements, dbs, references):
 def mu_adjustment(mat_ref, reactant_ref, intermediates):
     def f(im):
         x = (mat_ref.hform - im.hform)
+        if np.allclose(im.reactant_content, 0):
+            print("Mat ref:", mat_ref.formula)
+            for ref in im.references:
+                print(str(ref))
         x /= im.reactant_content
         return x
 
@@ -586,6 +612,10 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
 def convex_hull_planes(chrefs, mat_formula, react_formula):
     import numpy as np
     from scipy.spatial import ConvexHull
+    if chrefs[0].formula != mat_formula:
+        msg = f'Material must be first in convex hull refs:'
+        msg = msg + f' {(chrefs[0].formula, mat_formula)}'
+        raise ValueError(msg)
 
     hull_coords = list(map(lambda r: r.coords[1:] + [r.hform], chrefs))
 
@@ -593,7 +623,7 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
 
     # Equations contains a list of normal vectors and
     # offsets for the facet planes. We assume
-    # (like ase.phasediagram.PhaseDiagram that the normal vectors
+    # (like ase.phasediagram.PhaseDiagram) that the normal vectors
     # are outward-pointing but this is not always true,
     # see http://www.qhull.org/html/qh-faq.htm#orient
     eqs = hull.equations
