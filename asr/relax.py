@@ -75,7 +75,7 @@ class SpgAtoms(Atoms):
                 diff_ac = spos_ac - s_c
                 diff_ac -= np.round(diff_ac)
                 mask_c = np.all(np.abs(diff_ac) < tolerance, axis=1)
-                assert np.sum(mask_c) == 1, f'Bad symmetry, {mask_c}'
+                assert np.sum(mask_c) == 1, f'Bad symmetry, {mask_c} {diff_ac}'
                 ind = np.argwhere(mask_c)[0][0]
                 assert ind not in a_a, f'Bad symmetry {ind}, {diff_ac}'
                 a_a.append(ind)
@@ -181,7 +181,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
     try:
         trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
         opt = myBFGS(filter,
-                     logfile=name,
+                     logfile=name + '.log',
                      trajectory=trajfile)
 
         # fmax=0 here because we have implemented our own convergence criteria
