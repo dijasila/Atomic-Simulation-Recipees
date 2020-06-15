@@ -86,7 +86,7 @@ python36-gpaw:
   stage: integrationtest
   script:
     - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
     - mkdir ~/DFTD3 && cd ~/DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
@@ -103,7 +103,7 @@ python37-gpaw:
   stage: integrationtest
   script:
     - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
     - mkdir ~/DFTD3 && cd ~/DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
@@ -120,7 +120,7 @@ python38-gpaw:
   stage: integrationtest
   script:
     - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
     - mkdir ~/DFTD3 && cd ~/DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
