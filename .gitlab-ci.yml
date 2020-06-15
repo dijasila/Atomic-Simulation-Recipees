@@ -104,6 +104,12 @@ python37-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - mkdir ~/DFTD3 && cd ~/DFTD3
+    - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+    - tar -zxf dftd3.tgz
+    - make
+    - export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3
+    - cd ..
     - tox -e py37-gpaw
   artifacts:
     paths:
@@ -115,6 +121,12 @@ python38-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - mkdir ~/DFTD3 && cd ~/DFTD3
+    - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+    - tar -zxf dftd3.tgz
+    - make
+    - export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3
+    - cd ..
     - tox -e py38-gpaw
   artifacts:
     paths:
