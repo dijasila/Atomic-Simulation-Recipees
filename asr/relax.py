@@ -98,7 +98,7 @@ class SpgAtoms(Atoms):
 
         delta_vv = (sigma_vv - sigma0_vv) / (sigma0_vv + 1e-10)
 
-        assert np.abs(delta_vv) < 1e-3, (sigma0_vv, sigma_vv, delta_vv)
+        assert np.all(np.abs(delta_vv) < 1e-3), (sigma0_vv, sigma_vv, delta_vv)
         if voigt:
             return sigma_vv.flat[[0, 4, 8, 5, 2, 1]]
 
