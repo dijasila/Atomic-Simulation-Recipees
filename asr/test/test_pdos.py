@@ -13,7 +13,7 @@ def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
     get_webcontent()
 
 
-@pytest.mark.integration_test_gpaw
+@pytest.mark.integration_test
 def test_pdos_full(asr_tmpdir_w_params):
     from pathlib import Path
     import numpy as np

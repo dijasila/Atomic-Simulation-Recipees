@@ -121,7 +121,6 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 
 
 @pytest.mark.integration_test
-@pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(asr_tmpdir):
     from pathlib import Path
     from asr.setup.materials import main as setupmaterial
@@ -139,7 +138,6 @@ def test_relax_si_gpaw(asr_tmpdir):
 
 
 @pytest.mark.integration_test
-@pytest.mark.integration_test_gpaw
 def test_relax_bn_gpaw(asr_tmpdir):
     from asr.setup.params import main as setupparams
     from .materials import BN
