@@ -63,7 +63,7 @@ class SpgAtoms(Atoms):
         self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
                        op_cc in symmetries]
         self.nsym = len(symmetries)
-        tolerance = 1e-4
+        tolerance = 1e-3
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
@@ -96,6 +96,9 @@ class SpgAtoms(Atoms):
             sigma_vv += np.dot(np.dot(op_vv, sigma0_vv), op_vv.T)
         sigma_vv /= self.nsym
 
+        delta_vv = (sigma_vv - sigma0_vv) / (sigma0_vv + 1e-10)
+
+        assert np.abs(delta_vv) < 1e-3, (sigma0_vv, sigma_vv, delta_vv)
         if voigt:
             return sigma_vv.flat[[0, 4, 8, 5, 2, 1]]
 
