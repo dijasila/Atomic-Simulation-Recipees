@@ -87,7 +87,8 @@ python36-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
-    - mkdir ~/DFTD3 && cd ~/DFTD3
+    - mkdir DFTD3
+    - cd DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
     - make
@@ -104,7 +105,8 @@ python37-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
-    - mkdir ~/DFTD3 && cd ~/DFTD3
+    - mkdir DFTD3
+    - cd DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
     - make
@@ -121,7 +123,8 @@ python38-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy gfortran libopenblas-dev liblapack-dev libxc-dev
-    - mkdir ~/DFTD3 && cd ~/DFTD3
+    - mkdir DFTD3
+    - cd DFTD3
     - wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
     - tar -zxf dftd3.tgz
     - make
