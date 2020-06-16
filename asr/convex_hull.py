@@ -75,6 +75,9 @@ def main(databases: List[str]):
           reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
           "DFT" means bare DFT references energies. "DFT+D3" indicate that the
           reference also include the D3 dispersion correction.
+        - key (optional): Indicates the key-value-pair that represents
+          the total energy of a material from. If not specified the
+          default value of 'energy' will be used.
 
     The name and link keys are given as f-strings and can this refer to
     key-value-pairs in the given database. For example, valid metadata looks
@@ -89,6 +92,7 @@ def main(databases: List[str]):
             'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
             'label': '{row.formula}',
             'method': 'DFT',
+            'key': 'energy',
         }
 
     Parameters
@@ -138,6 +142,9 @@ def main(databases: List[str]):
              f'inconsistent methods: {mymethod} (this material) != '
              f'{dbmethod} ({database})')
 
+        if 'key' not in metadata:
+            metadata['key'] = energy
+
         rows = []
         # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
@@ -152,8 +159,9 @@ def main(databases: List[str]):
     references = []
     for data in dbdata.values():
         metadata = data['metadata']
+        key = metadata['key']
         for row in data['rows']:
-            hformref = hof(row.energy, row.count_atoms(), ref_energies)
+            hformref = hof(row[key], row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
