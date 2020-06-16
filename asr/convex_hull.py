@@ -143,7 +143,7 @@ def main(databases: List[str]):
              f'{dbmethod} ({database})')
 
         if 'key' not in metadata:
-            metadata['key'] = energy
+            metadata['key'] = 'energy'
 
         rows = []
         # Select only references which contain relevant elements
