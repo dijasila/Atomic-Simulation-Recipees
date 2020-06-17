@@ -258,7 +258,7 @@ class Intermediate:
 
         elements = self.mat_ref.to_elements()
         if len(elements) == 1:
-            assert len(self.references) == 1, f"Els:{elements}, refs: {self.references}"
+            assert len(self.references) == 1, f'Els:{elements}, refs: {self.references}'
             hof = self.references[0].hform
             reac = self.reactant_ref.symbols[0]
             x = self.references[0].count[reac] / self.references[0].natoms
@@ -277,7 +277,13 @@ class Intermediate:
 
         b = ref2vec(self.mat_ref)
 
-        x = np.linalg.solve(A, b)
+        if np.allclose(np.linalg.det(A), 0):
+            x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+            err = np.sum(np.abs(A.dot(x) - b))
+            if err > 1e-4:
+                raise ValueError(f'Could not find solution')
+        else:
+            x = np.linalg.solve(A, b)
 
         # hforms = np.array([ref.hform for ref in self.references])
         hforms = np.array([ref.energy for ref in self.references])
@@ -413,9 +419,13 @@ class ConvexHullReference(Reference):
     def _construct_coordinates(self, elements):
         coords = list(map(lambda e: self.count[e] / self.natoms, elements))
         self.coords = coords
+        assert np.allclose(np.sum(self.coords), 1)
 
     def from_reference(ref, elements):
         return ConvexHullReference(ref.formula, ref.hform, elements=elements)
+
+    def is_single(self):
+        return any(np.allclose(c, 1) for c in self.coords)
 
     def __str__(self):
         """
@@ -476,21 +486,24 @@ def chcut_plot(row, *args):
     from ase import Atoms
 
     data = row.data.get('results-asr.chc.json')
-    refs = filrefs(data.get('_refs'))
-    
-    nrefs = []
-    
-    for (form, v) in refs:
-        atoms = Atoms(form)
-        e = v * len(atoms)
-        nrefs.append((form, e))
+    mat_ref = Reference.from_dict(data['_matref'])
 
-    from ase.phasediagram import PhaseDiagram
-    pd = PhaseDiagram(nrefs, verbose=False)
-    fig = plt.figure(figsize=(4, 3), dpi=150)
-    pd.plot(ax=plt.gca(), dims=2, show=False)
-    plt.savefig("./chcconvexhull.png")
-    plt.close()
+
+    if mat_ref.natoms <= 2:
+        refs = filrefs(data.get('_refs'))    
+        nrefs = []
+    
+        for (form, v) in refs:
+            atoms = Atoms(form)
+            e = v * len(atoms)
+            nrefs.append((form, e))
+
+        from ase.phasediagram import PhaseDiagram
+        pd = PhaseDiagram(nrefs, verbose=False)
+        fig = plt.figure(figsize=(4, 3), dpi=150)
+        pd.plot(ax=plt.gca(), dims=2, show=False)
+        plt.savefig("./chcconvexhull.png")
+        plt.close()
     
     mat_ref = Reference.from_dict(data['_matref'])
     reactant_ref = Reference.from_dict(data['_reactant_ref'])
@@ -680,6 +693,11 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
     chrefs = [ConvexHullReference.from_reference(ref, elements)
               for ref in _refs]
 
+    if any(r.is_single() and r.hform < 0 for r in chrefs):
+        raise ValueError('Cannot have reference phase with negative HoF')
+
+    chrefs = [r for r in chrefs if not r.is_single() or np.allclose(r.hform, 0)]
+
     # Dont like this because ref object is used differently different places
     # And data content varies with time
     # for ref in refs:
@@ -714,7 +732,9 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
     hull = ConvexHull(hull_coords)
 
     # Equations contains a list of normal vectors and
-    # offsets for the facet planes. We assume
+    # offsets for the facet planes.
+    # i.e. eqs[i] is [normalvector, offset] for facet i
+    # We assume
     # (like ase.phasediagram.PhaseDiagram) that the normal vectors
     # are outward-pointing but this is not always true,
     # see http://www.qhull.org/html/qh-faq.htm#orient
@@ -743,7 +763,7 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
     for ind in plane_inds:
         refs = [chrefs[j] for j in ind]
         # Exclude if points are collinear
-        if is_collinear(points[ind, :-1]):
+        if is_collinear(points[ind, :-1], ind, points, eqs, simplex_indices, onhull):
             continue
         plane = Hyperplane(points[ind, :-1], refs)
         planes.append(plane)
@@ -751,7 +771,7 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
     return line, planes
 
 
-def is_collinear(pts):
+def is_collinear(pts, ind, apts, eqs, sis, oh):
     # Return whether pts form a
     # N - 1 dimensional hyperplane
     # N = len(pts)
