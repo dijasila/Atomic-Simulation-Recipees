@@ -152,12 +152,12 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
                     break
             else:
                 continue
-            tmpkvp, tmpkd, tmpdata, tmplinks = \
+            tmpkvp, tmpdata, tmplinks = \
                 collect_file(str(filename))
-            if tmpkvp or tmpkd or tmpdata or tmplinks:
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
-                data['__links__'].update(tmplinks)
+
+            kvp.update(tmpkvp)
+            data.update(tmpdata)
+            data['__links__'].update(tmplinks)
     return atoms, kvp, data
 
 
@@ -243,6 +243,9 @@ def main(folders: Union[str, None] = None,
             atoms, key_value_pairs, data = collect_folder(folder,
                                                           atomsname,
                                                           patterns)
+
+            if atoms is None:
+                continue
 
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
