@@ -64,8 +64,8 @@ def distance_to_sc(nd, atoms, dist_max):
 
 @command(
     "asr.phonopy",
-    requires=["structure.json", "gs.gpw"],
-    dependencies=["asr.gs@calculate"],
+    requires=["structure.json", "gs.gpw"]
+    #dependencies=["asr.gs@calculate"],
 )
 @option("--d", type=float, help="Displacement size")
 @option("--dist_max", type=float,
@@ -309,7 +309,7 @@ def main(rc: float = None):
         C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
         eigs_kl.append(np.linalg.eigvalsh(C_q))
         _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
-        u_klav[q] = u_ll.T.reshape(3*len(atoms), len(atoms), 3))
+        u_klav[q] = u_ll.T.reshape(3*len(atoms), len(atoms), 3)
         if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
             ob = phonon._irreps
@@ -399,6 +399,67 @@ def plot_bandstructure(row, fname):
     plt.savefig(fname)
     plt.close()
 
+@command(
+    "asr.phonopy",
+    requires=requires,
+    webpanel=webpanel,
+    dependencies=["asr.phonopy"],
+)
+@option('-q', '--momentum', nargs=3, type=float,
+        help='Phonon momentum')
+@option('-s', '--supercell', nargs=3, type=int,
+        help='Supercell sizes')
+@option('-m', '--mode', type=int, help='Mode index')
+@option('-a', '--amplitude', type=float,
+        help='Maximum distance an atom will be displaced')
+@option('--nimages', type=int, help='Mode index')
+def write_mode(momentum: List[float] = [0, 0, 0], mode: int = 0,
+          supercell: List[int] = [1, 1, 1], amplitude: float = 0.1,
+          nimages: int = 30):
+
+    from ase.io.trajectory import Trajectory 
+
+    q_c = momentum
+    atoms = read('structure.json') 
+    data = read_json("results-asr.phonopy.json") 
+    u_klav = data["u_klav"] 
+    q_qc = data["q_qc"] 
+    # 
+    diff_kc = np.array(list(q_qc)) - q_c 
+    diff_kc -= np.round(diff_kc) 
+    ind = np.argwhere(np.all(np.abs(diff_kc) < 1e-2, 1))[0,0] 
+ 
+    # Repeat atoms 
+    from fractions import Fraction 
+    repeat_c = supercell 
+    newatoms = atoms * repeat_c 
+    # Here `Na` refers to a composite unit cell/atom dimension 
+    pos_Nav = newatoms.get_positions() 
+    # Total number of unit cells 
+    N = np.prod(repeat_c) 
+ 
+    # Corresponding lattice vectors R_m 
+    R_cN = np.indices(repeat_c).reshape(3, -1) 
+ 
+    # Bloch phase 
+    phase_N = np.exp(2j * np.pi * np.dot(q_c, R_cN)) 
+    phase_Na = phase_N.repeat(len(atoms)) 
+    m_Na = newatoms.get_masses() 
+ 
+    # Repeat and multiply by Bloch phase factor 
+    mode_av = u_klav[ind, mode] 
+    n_a = np.linalg.norm(mode_av, axis=1) 
+    mode_av /= np.max(n_a) 
+    mode_Nav = (np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] * amplitude / m_Na[:, np.newaxis]) 
+
+    filename = 'mode-q-{}-{}-{}-mode-{}.traj'.format(q_c[0], q_c[1], q_c[2], mode)
+    traj = Trajectory(filename, 'w')  
+
+    for x in np.linspace(0, 2 * np.pi, nimages, endpoint=False):  
+        newatoms.set_positions((pos_Nav + np.exp(1.j * x) * mode_Nav).real) 
+        traj.write(newatoms)  
+      
+    traj.close()
 
 if __name__ == "__main__":
     main.cli()
