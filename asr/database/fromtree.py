@@ -1,6 +1,10 @@
-from typing import Union
-from asr.core import command, option, argument, chdir
+"""Functionality for converting a folder tree to an ASE database."""
+
+from typing import Union, List
+from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
+from pathlib import Path
+import glob
 
 
 def parse_kd(key_descriptions):
@@ -60,31 +64,38 @@ tmpkd = parse_kd({key: value
                   for key, value in dct.items()})
 
 
-def get_kvp_kd(resultsdct):
-    # Parse key descriptions to get long,
-    # short, units and key value pairs
-    key_descriptions = {}
+def get_key_value_pairs(resultsdct):
+    """Extract key-value-pairs from results dictionary."""
     kvp = {}
     for key, desc in tmpkd.items():
-        key_descriptions[key] = \
-            (desc['shortdesc'], desc['longdesc'], desc['units'])
-
         if (key in resultsdct and desc['iskvp']
            and resultsdct[key] is not None):
             kvp[key] = resultsdct[key]
 
-    return kvp, key_descriptions
+    return kvp
 
 
-def collect(filename):
-    from pathlib import Path
+def collect_file(filename: str):
+    """Collect a single file.
+
+    Parameters
+    ----------
+    filename: str
+
+    Returns
+    -------
+    kvp: dict
+        Key-value pairs
+    data: dict
+        Dict with keys=filenames where filenames is the input filename
+        and any additional files that were created or required by this recipe.
+    links: dict
+        Dict with keys
+
+    """
     from asr.core import read_json
     data = {}
-
-    # resultfile = f'results-{recipe.name}.json'
     results = read_json(filename)
-    msg = f'{filename} already in data!'
-    assert filename not in data, msg
     data[filename] = results
 
     # Find and try to collect related files for this resultsfile
@@ -111,32 +122,74 @@ def collect(filename):
         data[extrafile] = dct
 
     links = results.get('__links__', {})
-    kvp, key_descriptions = get_kvp_kd(results)
-    return kvp, key_descriptions, data, links
+    kvp = get_key_value_pairs(results)
+    return kvp, data, links
 
 
-tests = [
-    {'cli': ['asr run setup.materials',
-             ('asr run "database.totree materials.json --run'
-              ' --atomsname structure.json"'),
-             'asr run "database.fromtree tree/*/*/*/"',
-             ('asr run "database.totree database.db '
-              '-t newtree/{formula} --run"')],
-     'results': [{'file': 'newtree/Ag/structure.json'}]},
-    {'cli': ['asr run setup.materials',
-             'asr run "database.totree materials.json -s natoms<2 --run'
-             ' -t tree/{formula} --atomsname structure.json"',
-             'asr run structureinfo tree/*/',
-             'asr run "database.fromtree tree/*/"',
-             'asr run "database.totree database.db '
-             '-t newtree/{formula} --run"'],
-     'results': [{'file': 'newtree/Ag/structure.json'},
-                 {'file': 'newtree/Ag/results-asr.structureinfo.json'}]}
-]
+def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
+    """Collect data from a material folder."""
+    from ase.io import read
+    from ase.parallel import world
+    from asr.database.material_fingerprint import main as mf
+    from fnmatch import fnmatch
+
+    with chdir(folder):
+        kvp = {'folder': str(folder)}
+        data = {'__links__': {}}
+
+        if not Path(atomsname).is_file():
+            return None, None, None
+
+        if world.size == 1:
+            if not mf.done:
+                mf()
+
+        atoms = read(atomsname, parallel=False)
+        data[atomsname] = read_json(atomsname)
+        for filename in glob.glob('*'):
+            for pattern in patterns:
+                if fnmatch(filename, pattern):
+                    break
+            else:
+                continue
+            tmpkvp, tmpkd, tmpdata, tmplinks = \
+                collect_file(str(filename))
+            if tmpkvp or tmpkd or tmpdata or tmplinks:
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
+                data['__links__'].update(tmplinks)
+    return atoms, kvp, data
 
 
-@command('asr.database.fromtree',
-         tests=tests)
+def make_data_identifiers(filenames: List[str]):
+    """Make key-value-pairs for identifying data files.
+
+    This function looks at the keys of `data` and identifies any
+    result files. If a result file has been identified a key value
+    pair with name has_asr_name=True will be returned. I.e. if
+    results-asr.gs@calculate.json is in `data` a key-value-pair with
+    name `has_asr_gs_calculate=True` will be generated
+
+    Parameters
+    ----------
+    filenames: List[str]
+        List of file names.
+
+    Returns
+    -------
+    dict
+        Dict containing identifying key-value-pairs,
+        i.e. {'has_asr_gs_calculate': True}.
+    """
+    kvp = {}
+    for key in filter(lambda x: x.startswith('results-'), filenames):
+        recipe = key[8:-5].replace('.', '_').replace('@', '_')
+        name = f'has_{recipe}'
+        kvp[name] = True
+    return kvp
+
+
+@command('asr.database.fromtree')
 @argument('folders', nargs=-1, type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
@@ -147,12 +200,6 @@ def main(folders: Union[str, None] = None,
          dbname: str = 'database.db', metadata_from_file: str = None):
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
-    from ase.io import read
-    from asr.core import read_json
-    import glob
-    from pathlib import Path
-    from fnmatch import fnmatch
-    from asr.database.material_fingerprint import main as mf
     from ase.parallel import world
 
     def item_show_func(item):
@@ -193,39 +240,14 @@ def main(folders: Union[str, None] = None,
             else:
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
                       flush=True)
-            with chdir(folder):
-                kvp = {'folder': str(folder)}
-                data = {'__links__': {}}
+            atoms, key_value_pairs, data = collect_folder(folder,
+                                                          atomsname,
+                                                          patterns)
 
-                if not Path(atomsname).is_file():
-                    continue
-
-                if world.size == 1:
-                    if not mf.done:
-                        mf()
-
-                atoms = read(atomsname, parallel=False)
-                data[atomsname] = read_json(atomsname)
-                for filename in glob.glob('*'):
-                    for pattern in patterns:
-                        if fnmatch(filename, pattern):
-                            break
-                    else:
-                        continue
-                    tmpkvp, tmpkd, tmpdata, tmplinks = \
-                        collect(str(filename))
-                    if tmpkvp or tmpkd or tmpdata or tmplinks:
-                        kvp.update(tmpkvp)
-                        data.update(tmpdata)
-                        data['__links__'].update(tmplinks)
-
-            for key in filter(lambda x: x.startswith('results-'), data.keys()):
-                recipe = key[8:-5].replace('.', '_').replace('@', '_')
-                name = f'has_{recipe}'
-                kvp[name] = True
-
-            keys.update(kvp.keys())
-            db.write(atoms, data=data, **kvp)
+            identifier_kvp = make_data_identifiers(data.keys())
+            key_value_pairs.update(identifier_kvp)
+            keys.update(key_value_pairs.keys())
+            db.write(atoms, data=data, **key_value_pairs)
 
     metadata['keys'] = sorted(list(keys))
     db.metadata = metadata
