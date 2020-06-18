@@ -60,20 +60,3 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
     func = recipe.get_wrapped_function()
     type_hints = typing.get_type_hints(func)
     assert set(type_hints) == set(params), f'Missing type hints: {recipe.name}'
-
-    for name, param in params.items():
-        if 'is_flag' in param:
-            tp = bool
-        else:
-            tp = param['type']
-
-        # Cast special click types to primitive types
-        if tp not in [str, int, float, bool]:
-            tp = map_click_types[type(tp)](tp)
-
-        tp2 = type_hints[name]
-
-        if tp2 in map_typing_types:
-            # Cast special typing types to primitive types
-            tp2 = map_typing_types[tp2]
-        assert tp == tp2, name
