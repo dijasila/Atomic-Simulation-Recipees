@@ -391,7 +391,7 @@ def main(folders: Union[str, None] = None,
                  f'number of materials changed: {nmatdb} != {nmat}')
 
     if world.rank == 0:
-        # Check integrity of database
+        print('Check integrity of database.')
         with connect(dbname, serial=True) as db:
             uids = set()
             child_uids = set()
@@ -403,6 +403,9 @@ def main(folders: Union[str, None] = None,
                 raise MissingUIDS(
                     'Missing child uids in collected database. '
                     'Did you collect all subfolders?')
+
+        for name in Path().glob(f'{dbname}.*.db'):
+            name.unlink()
 
 
 if __name__ == '__main__':
