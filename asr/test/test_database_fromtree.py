@@ -34,13 +34,16 @@ def folder_tree():
 def make_tree(folder: str):
     tree = set()
     for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
-        rel_path = str(Path(root).relative_to(folder))
-        tree.add(rel_path)
+        for filename in [''] + files:
+            name = Path(root) / filename
+            rel_path = str(name.relative_to(folder))
+            tree.add(rel_path)
     return tree
 
 
 @pytest.mark.ci
-def test_database_fromtree(asr_tmpdir, folder_tree):
+def test_database_fromtree_totree(asr_tmpdir, folder_tree):
+    """Make sure a database can be packed and unpacked faithfully."""
     from asr.database.fromtree import main as fromtree
     from asr.database.totree import main as totree
     from ase.db import connect
@@ -62,9 +65,9 @@ def test_database_fromtree(asr_tmpdir, folder_tree):
 
     links = row.data['__links__']
     assert set(linkfolders) == set(links)
-
     totree('database.db', tree_structure='tree/{row.formula}',
            run=True)
     tree1 = make_tree('materials')
     tree2 = make_tree('tree')
+    assert {'.', 'Si2'}.issubset(tree1)
     assert tree1 == tree2
