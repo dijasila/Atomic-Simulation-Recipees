@@ -123,9 +123,8 @@ def collect_file(filename: Path):
             dct = {'pointer': str(file.absolute())}
         data[extrafile] = dct
 
-    links = results.get('__links__', {})
     kvp = get_key_value_pairs(results)
-    return kvp, data, links
+    return kvp, data
 
 
 def collect_links_to_child_folders(folder, atomsname):
@@ -174,26 +173,17 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
         kvp = {'folder': str(folder)}
         data = {'__links__': {}}
         data[atomsname] = read_json(atomsname)
-        files = []
         for name in Path().glob('*'):
-            if name.is_dir() or name.is_symlink():
+            if name.is_dir():
                 links = collect_links_to_child_folders(name, atomsname)
                 data['__links__'].update(links)
                 continue
 
             for pattern in patterns:
                 if fnmatch(name, pattern):
-                    files.append(name)
-            else:
-                continue
-
-            if name.is_file():
-                tmpkvp, tmpdata, links = collect_file(name)
-            elif name.is_dir() or name.is_symlink():
-                links = collect_links_to_child_folders(name)
-
-            kvp.update(tmpkvp)
-            data.update(tmpdata)
+                    tmpkvp, tmpdata = collect_file(name)
+                    kvp.update(tmpkvp)
+                    data.update(tmpdata)
 
     return atoms, kvp, data
 

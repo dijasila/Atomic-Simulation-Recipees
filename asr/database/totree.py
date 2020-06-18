@@ -62,15 +62,6 @@ def make_folder_tree(*, folders, chunks,
                         write_func(folder / extrafile, content)
             elif filename == '__links__':
                 pass
-                # for destdir, identifier in results.items():
-                #     if identifier not in folders:
-                #         print(f'{folder}: Unknown unique identifier '
-                #               f'{identifier}! Cannot link to'
-                #               f' {destdir}.')
-                #     else:
-                #         srcdir = cwd / folders[identifier][0]
-                #         (folder / destdir).symlink_to(srcdir,
-                #                                       target_is_directory=True)
             else:
                 path = results.get('pointer')
                 srcfile = Path(path).resolve()
@@ -167,7 +158,7 @@ def make_folder_dict(rows, tree_structure):
         'by the --atomsname option')
 def main(database: str, run: bool = False, selection: str = '',
          tree_structure: str = ('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
-                                '{spg}-{wyck}-{uid}'),
+                                '{spg}-{wyck}'),
          sort: str = None, atomsname: str = 'structure.json',
          chunks: int = 1, copy: bool = False,
          patterns: str = '*', create_folders: bool = True,
@@ -188,10 +179,6 @@ def main(database: str, run: bool = False, selection: str = '',
       in which case the formula will be sorted by metal atoms
     * {wyck}: Unique wyckoff positions. The unique alphabetically
       sorted Wyckoff positions.
-    * {uid}: This is a unique identifier which starts at 0 and adds 1 if
-      collisions (cases where two materials would go to the same folder)
-      occur. In practice, if two materials would be unpacked in A-0/
-      they would now be unpacked in A-0/ and A-1/.
 
     By default, the atomic structures will be saved into an unrelaxed.json
     file which is be ready to be relaxed. This filename can be changed with
