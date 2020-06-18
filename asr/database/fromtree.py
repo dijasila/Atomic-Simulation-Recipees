@@ -330,7 +330,7 @@ def main(folders: Union[str, None] = None,
                       f'({ifol + 1}/{nfolders})',
                       flush=True)
             else:
-                print(f'Collecting folder {folder} ({ifol}/{nfolders})',
+                print(f'Collecting folder {folder} ({ifol + 1}/{nfolders})',
                       flush=True)
 
             atoms, key_value_pairs, data = collect_folder(Path(folder),
@@ -375,6 +375,17 @@ def main(folders: Union[str, None] = None,
             assert nmatdb == nmat, \
                 ('Merging of databases went wrong, '
                  f'number of materials changed: {nmatdb} != {nmat}')
+
+        # Check integrity of database
+        with connect(dbname, serial=True) as db:
+            uids = set()
+            child_uids = set()
+            for row in db.select():
+                uids.add(row.uid)
+                child_uids.update(set(row.data['__links__'].values()))
+            assert child_uids.issubset(uids), \
+                ('Missing child uids in collected database. '
+                 'Did you collect all subfolders?')
 
 
 if __name__ == '__main__':

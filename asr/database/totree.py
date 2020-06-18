@@ -127,7 +127,12 @@ def make_folder_dict(rows, tree_structure):
         folders[identifier] = (folder, row)
 
     for child_uid, links in child_uids.items():
-        parentfolder = folders[links['parentuid']][0]
+        parent_uid = links['parentuid']
+        if child_uid not in folders:
+            print(f'Parent (uid={parent_uid}) has unknown child '
+                  f'(uid={child_uid}).')
+            continue
+        parentfolder = folders[parent_uid][0]
         childfolder = str(Path().joinpath(parentfolder, links['path']))
         folders[child_uid] = (childfolder, folders[child_uid][1])
 
