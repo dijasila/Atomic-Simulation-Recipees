@@ -9,6 +9,10 @@ import os
 import glob
 
 
+class MissingUIDS(Exception):
+    pass
+
+
 def parse_key_descriptions(key_descriptions):
     """Parse key descriptions.
 
@@ -371,6 +375,7 @@ def main(folders: Union[str, None] = None,
                 ('Merging of databases went wrong, '
                  f'number of materials changed: {nmatdb} != {nmat}')
 
+    if world.rank == 0:
         # Check integrity of database
         with connect(dbname, serial=True) as db:
             uids = set()
@@ -378,9 +383,10 @@ def main(folders: Union[str, None] = None,
             for row in db.select():
                 uids.add(row.uid)
                 child_uids.update(set(row.data['__links__'].values()))
-            assert child_uids.issubset(uids), \
-                ('Missing child uids in collected database. '
-                 'Did you collect all subfolders?')
+            if not child_uids.issubset(uids):
+                raise MissingUIDS(
+                    'Missing child uids in collected database. '
+                    'Did you collect all subfolders?')
 
 
 if __name__ == '__main__':

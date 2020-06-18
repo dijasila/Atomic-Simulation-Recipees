@@ -71,3 +71,12 @@ def test_database_fromtree_totree(asr_tmpdir, folder_tree):
     tree2 = make_tree('tree')
     assert {'.', 'Si2'}.issubset(tree1)
     assert tree1 == tree2
+
+
+@pytest.mark.ci
+def test_database_fromtree_raises_when_missing_uids(asr_tmpdir, folder_tree):
+    """Make sure a database can be packed and unpacked faithfully."""
+    from asr.database.fromtree import main as fromtree
+    from asr.database.fromtree import MissingUIDS
+    with pytest.raises(MissingUIDS):
+        fromtree(folders=['materials/Si2'])
