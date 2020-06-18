@@ -30,9 +30,13 @@ import os
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
+@option('--general_algorithm', type=bool, 
+        help='Sets up general supercells that break the initial symmetry '
+        'of the bravais lattice, as well as choosing the most uniform '
+        'configuration with least atoms in the supercell.')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
          maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False,
-         halfinteger=False):
+         halfinteger=False, general_algorithm=False):
     """
     Sets up defect structures for a given host.
 
@@ -120,9 +124,7 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
 
 
 def setup_supercell(structure, max_lattice, is_2D):
-    """Set up the supercell of a given structure depending.
-
-    Set up the supercell of a given structure depending on a
+    """Set up the supercell of a given structure depending on a
     maximum supercell lattice vector length for 2D or 3D structures.
 
     Parameters
@@ -578,6 +580,15 @@ def setup_halfinteger():
                     foldername + '/sj_+0.5/structure.json')
 
     return None
+
+
+def create_general_supercell(size=15.)
+    """
+    Creates supercell of a form that breaks initial bravais lattice symmetry
+    as well as tries to find the most uniform configuration containing the
+    least number of atoms.
+    """
+    print('INFO: set up general supercell.')
 
 
 def collect_data():
