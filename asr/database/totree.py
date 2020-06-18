@@ -1,4 +1,5 @@
 from asr.core import command, argument, option
+from pathlib import Path
 
 
 def make_folder_tree(*, folders, chunks,
@@ -8,7 +9,6 @@ def make_folder_tree(*, folders, chunks,
                      atomsname,
                      create_folders):
     """Write folder tree to disk."""
-    from pathlib import Path
     from os import makedirs, link
     from ase.io import write
     from asr.core import write_json
@@ -61,15 +61,16 @@ def make_folder_tree(*, folders, chunks,
                                              func)
                         write_func(folder / extrafile, content)
             elif filename == '__links__':
-                for destdir, identifier in results.items():
-                    if identifier not in folders:
-                        print(f'{folder}: Unknown unique identifier '
-                              f'{identifier}! Cannot link to'
-                              f' {destdir}.')
-                    else:
-                        srcdir = cwd / folders[identifier][0]
-                        (folder / destdir).symlink_to(srcdir,
-                                                      target_is_directory=True)
+                pass
+                # for destdir, identifier in results.items():
+                #     if identifier not in folders:
+                #         print(f'{folder}: Unknown unique identifier '
+                #               f'{identifier}! Cannot link to'
+                #               f' {destdir}.')
+                #     else:
+                #         srcdir = cwd / folders[identifier][0]
+                #         (folder / destdir).symlink_to(srcdir,
+                #                                       target_is_directory=True)
             else:
                 path = results.get('pointer')
                 srcfile = Path(path).resolve()
@@ -95,7 +96,19 @@ def make_folder_dict(rows, tree_structure):
     folderlist = []
     err = []
     nc = 0
+    child_uids = {}
     for row in rows:
+        identifier = row.get('uid', row.id)
+        links = row.data.get('__links__')
+        if links:
+            for path, link in links.items():
+                assert link not in child_uids
+                child_uids[link] = {'path': path, 'parentuid': identifier}
+
+    for row in rows:
+        identifier = row.get('uid', row.id)
+        if identifier in child_uids:
+            continue
         atoms = row.toatoms()
         formula = atoms.symbols.formula
         st = atoms.symbols.formula.stoichiometry()[0]
@@ -114,33 +127,18 @@ def make_folder_dict(rows, tree_structure):
             magstate = None
 
         # Add a unique identifier
-        if 'uid' in tree_structure:
-            for uid in range(0, 10):
-                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
-                                               formula=formula,
-                                               mag=magstate,
-                                               uid=uid, row=row)
-                if folder not in folderlist:
-                    break
-            else:
-                msg = ('Too many collisions (>10):\n' + '\n'.join(err[-9:]))
-                raise RuntimeError(msg)
-
-            if uid > 0:
-                nc += 1
-                err += [f'Collision: {folder}']
-        else:
-            try:
-                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
-                                               formula=formula,
-                                               mag=magstate,
-                                               row=row)
-            except AttributeError:
-                continue
+        folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                       formula=formula,
+                                       mag=magstate,
+                                       row=row)
         assert folder not in folderlist, f'Collision in folder: {folder}!'
         folderlist.append(folder)
-        identifier = row.get('uid', row.id)
         folders[identifier] = (folder, row)
+
+    for child_uid, links in child_uids.items():
+        parentfolder = folders[links['parentuid']]
+        childfolder = str(Path().joinpaths(parentfolder, links['path']))
+        folders[child_uid] = childfolder
 
     print(f'Number of collisions: {nc}')
     for er in err:
