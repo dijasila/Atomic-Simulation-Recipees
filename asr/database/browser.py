@@ -231,10 +231,10 @@ def layout(row: AtomsRow,
 
 
 @command('asr.database.browser')
-@option('--database')
+@option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database='database.db', only_figures=False):
+def main(database: str = 'database.db', only_figures: bool = False):
     """Open results in web browser."""
     import subprocess
     from pathlib import Path

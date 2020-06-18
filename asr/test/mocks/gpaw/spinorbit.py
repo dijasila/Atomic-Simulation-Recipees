@@ -31,6 +31,7 @@ def get_spinorbit_eigenvalues(
     s_kvm[:, 2, ::2] = 1
     s_kvm[:, 2, ::2] = -1
     e_km = e_ksn.reshape((nk, -1))
+    e_km.sort(-1)  # Make sure eigenvalues are in ascending order
     if return_spin:
         return e_km.T, s_kvm
     else:

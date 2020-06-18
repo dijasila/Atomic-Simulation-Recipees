@@ -20,17 +20,18 @@ def get_kpts_size(atoms, kptdensity):
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='480:20h')
-@option('--gs', help='Ground state on which BSE is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
-@option('--nv_s', help='Valence bands included')
-@option('--nc_s', help='Conduction bands included')
+@option('--gs', help='Ground state on which BSE is based', type=str)
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--nv_s', help='Valence bands included', type=float)
+@option('--nc_s', help='Conduction bands included', type=float)
 @option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
-              nv_s=-2.3, nc_s=2.3):
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+              mode: str = 'BSE', bandfactor: int = 6,
+              nv_s: float = -2.3, nc_s: float = 2.3):
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
@@ -273,9 +274,8 @@ def webpanel(row, key_descriptions):
 
 
 @command(module='asr.bse',
-         requires=['bse_polx.csv', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json'],
-         dependencies=['asr.bse@calculate', 'asr.gs', 'asr.structureinfo'],
+         requires=['bse_polx.csv', 'results-asr.gs.json'],
+         dependencies=['asr.bse@calculate', 'asr.gs'],
          webpanel=webpanel)
 def main():
     import numpy as np
@@ -295,8 +295,8 @@ def main():
     if Path('bse_eigx.dat').is_file():
         E = np.loadtxt('bse_eigx.dat')[0, 1]
 
-        info = read_json('results-asr.structureinfo.json')
-        magstate = info['magstate']
+        magstateresults = read_json('results-asr.magstate.json')
+        magstate = magstateresults['magstate']
 
         gsresults = read_json('results-asr.gs.json')
         if magstate == 'NM':

@@ -52,8 +52,8 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
-@argument('databases', nargs=-1)
-def main(databases):
+@argument('databases', nargs=-1, type=str)
+def main(databases: List[str]):
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -267,6 +267,10 @@ def plot(row, fname):
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
 
+    for it, legend in enumerate(legends):
+        ax.scatter([], [], facecolor='none', marker='o',
+                   edgecolor=f'C{it + 2}', label=legend)
+
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         for i, j in simplices:
@@ -298,15 +302,17 @@ def plot(row, fname):
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
+        plt.legend(loc='lower left')
     else:
         x, y, _, hull, simplices = pd.plot2d3()
         names = [ref['label'] for ref in references]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        ax.plot(x[hull], y[hull], 's', color='C0', label='On hull')
-        ax.plot(x[~hull], y[~hull], 's', color='C2', label='Above hull')
-        for a, b, name in zip(x, y, names):
-            ax.text(a - 0.02, b, name, ha='right', va='top')
+        ax.scatter(x, y, facecolor='none', marker='o', edgecolor=colors)
+
+        for a, b, name, on_hull in zip(x, y, names, hull):
+            if on_hull:
+                ax.text(a - 0.02, b, name, ha='right', va='top')
         A, B, C = pd.symbols
         bfrac = count.get(B, 0) / sum(count.values())
         cfrac = count.get(C, 0) / sum(count.values())
@@ -314,13 +320,9 @@ def plot(row, fname):
         ax.plot([bfrac + cfrac / 2],
                 [cfrac],
                 'o', color='C1', label='This material')
+        plt.legend(loc='upper left')
         plt.axis('off')
 
-    for it, legend in enumerate(legends):
-        ax.scatter([], [], facecolor='none', marker='o',
-                   edgecolor=f'C{it + 2}', label=legend)
-
-    plt.legend(loc='lower left')
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()

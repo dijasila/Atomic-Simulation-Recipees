@@ -2,18 +2,20 @@ from asr.core import command, option, argument
 
 
 @command('asr.database.clonetree')
-@argument('patterns', nargs=-1, required=False, metavar='PATTERN')
-@argument('destination', metavar='DESTDIR')
-@argument('source', metavar='SRCDIR')
+@argument('patterns', nargs=-1, required=False, metavar='PATTERN',
+          type=str)
+@argument('destination', metavar='DESTDIR', type=str)
+@argument('source', metavar='SRCDIR', type=str)
 @option('--copy/--symlink', is_flag=True)
-@option('--map-files')
-@option('--dont-contain')
-@option('--must-contain')
-@option('--dry-run')
-@option('--glob-pattern')
-def main(source, destination, patterns,
-         copy=False, map_files=None, dont_contain=None,
-         must_contain=None, dry_run=False, glob_pattern='**/'):
+@option('--map-files', type=str)
+@option('--dont-contain', type=str)
+@option('--must-contain', type=str)
+@option('--dry-run', type=bool)
+@option('--glob-pattern', type=str)
+def main(source: str, destination: str, patterns: str,
+         copy: bool = False, map_files: str = None, dont_contain: str = None,
+         must_contain: str = None, dry_run: bool = False,
+         glob_pattern: str = '**/'):
     """Tool for copying or symlinking a tree of files."""
     import fnmatch
     from pathlib import Path

@@ -1,5 +1,4 @@
 from asr.relax import BrokenSymmetryError
-from pathlib import Path
 import pytest
 import numpy as np
 
@@ -8,13 +7,13 @@ import numpy as np
 def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
     """Test that the relaxation recipe actually produces a structure.json."""
     from asr.relax import main as relax
-    from ase.io import write, read
+    from ase.io import read
 
-    write('unrelaxed.json', test_material)
-    relax(calculator={
-        "name": "gpaw",
-        "kpts": {"density": 2, "gamma": True},
-    })
+    relax(test_material,
+          calculator={
+              "name": "gpaw",
+              "kpts": {"density": 2, "gamma": True},
+          })
     read('structure.json')
 
 
@@ -38,13 +37,13 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
             [initial_magmoms] * len(test_material))
 
     test_material.write('unrelaxed.json')
-    main()
+    main.cli([])
 
     relaxed = read('structure.json')
     assert relaxed.has('initial_magmoms')
 
     if final_magmoms > 0.1:
-        assert relaxed.get_initial_magnetic_moments().all()
+        assert all(relaxed.get_magnetic_moments() == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
 
@@ -63,8 +62,7 @@ def test_relax_emt(asr_tmpdir_w_params, name):
     from ase.build import bulk
 
     unrelaxed = bulk(name)
-    unrelaxed.write('unrelaxed.json')
-    relax(calculator={'name': 'emt'})
+    relax(unrelaxed, calculator={'name': 'emt'})
 
 
 @pytest.mark.ci
@@ -83,9 +81,8 @@ def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
         return np.random.rand(3, 3)
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
-    unrelaxed.write('unrelaxed.json')
     with pytest.raises(BrokenSymmetryError) as excinfo:
-        relax(calculator={'name': 'emt'}, enforce_symmetry=False)
+        relax(unrelaxed, calculator={'name': 'emt'}, enforce_symmetry=False)
 
     assert 'The symmetry was broken during the relaxation!' in str(excinfo.value)
 
@@ -114,12 +111,10 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
         self.atoms.atoms.set_scaled_positions(sposoriginal_ac)
         yield False
 
-    diamond.write('unrelaxed.json')
-
     monkeypatch.setattr(SpgAtoms, 'get_forces', get_forces)
     monkeypatch.setattr(SpgAtoms, 'get_stress', get_stress)
     monkeypatch.setattr(myBFGS, 'irun', irun)
-    main(calculator={'name': 'emt'})
+    main(diamond, calculator={'name': 'emt'})
 
     captured = capsys.readouterr()
     assert "The spacegroup has changed during relaxation. " in captured.out
@@ -127,8 +122,10 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_si_gpaw(asr_tmpdir_w_params):
+def test_relax_si_gpaw(asr_tmpdir):
+    from pathlib import Path
     from asr.setup.materials import main as setupmaterial
+    from asr.setup.params import main as setupparams
     from asr.relax import main as relax
     setupmaterial.cli(["-s", "Si2"])
     Path("materials.json").rename("unrelaxed.json")
@@ -136,24 +133,26 @@ def test_relax_si_gpaw(asr_tmpdir_w_params):
         "{'mode':{'ecut':200,'dedecut':'estimate',...},"
         "'kpts':{'density':1,'gamma':True},...}"
     )
-    results = relax.cli(["--calculator", relaxargs])
+    setupparams(['asr.relax:calculator', relaxargs])
+    results = relax.cli([])
     assert abs(results["c"] - 3.978) < 0.001
 
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_relax_bn_gpaw(asr_tmpdir_w_params):
-    from asr.setup.materials import main as setupmaterial
+def test_relax_bn_gpaw(asr_tmpdir):
+    from asr.setup.params import main as setupparams
+    from .materials import BN
     from asr.relax import main as relax
     from asr.core import read_json
 
-    setupmaterial.cli(["-s", "BN,natoms=2"])
-    Path("materials.json").rename("unrelaxed.json")
+    BN.write('unrelaxed.json')
     relaxargs = (
         "{'mode':{'ecut':300,'dedecut':'estimate',...},"
         "'kpts':{'density':2,'gamma':True},...}"
     )
-    relax.cli(["--calculator", relaxargs])
+    setupparams(['asr.relax:calculator', relaxargs])
+    relax.cli([])
 
     results = read_json("results-asr.relax.json")
     assert results["c"] > 5

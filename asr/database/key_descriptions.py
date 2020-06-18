@@ -12,6 +12,10 @@ key_descriptions = {
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
+    "magstate": {
+        "magstate": "KVP: Magnetic state",
+        "is_magnetic": "KVP: Material is magnetic !Magnetic!",
+    },
     "gs": {
         "forces": "Forces on atoms [eV/Angstrom]",
         "stresses": "Stress on unit cell [`eV/Angstrom^{dim-1}`]",
@@ -133,8 +137,6 @@ key_descriptions = {
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
     },
     "structureinfo": {
-        "magstate": "KVP: Magnetic state",
-        "is_magnetic": "KVP: Material is magnetic !Magnetic!",
         "cell_area": "KVP: Area of unit-cell [`Ang^2`]",
         "has_inversion_symmetry": "KVP: Material has inversion symmetry",
         "stoichiometry": "KVP: Stoichiometry",
@@ -167,7 +169,7 @@ key_descriptions = {
         'KVP: Conduction band effective mass, direction 3 [`m_e`]',
     },
     "database.fromtree": {
-        "folder": "KVP: Relative path to original folder",
+        "folder": "KVP: Path to collection folder",
     }
 }
 
@@ -192,8 +194,8 @@ key_descriptions['extra'] = extras
 
 
 @command()
-@argument('database')
-def main(database):
+@argument('database', type=str)
+def main(database: str):
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys

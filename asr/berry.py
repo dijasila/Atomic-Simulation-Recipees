@@ -6,10 +6,10 @@ from asr.core import command, option, read_json
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='120:10h')
-@option('--gs', help='Ground state')
-@option('--kpar', help='K-points along path')
-@option('--kperp', help='K-points orthogonal to path')
-def calculate(gs='gs.gpw', kpar=120, kperp=7):
+@option('--gs', help='Ground state', type=str)
+@option('--kpar', help='K-points along path', type=int)
+@option('--kperp', help='K-points orthogonal to path', type=int)
+def calculate(gs: str = 'gs.gpw', kpar: int = 120, kperp: int = 7):
     """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
@@ -116,7 +116,7 @@ def calculate(gs='gs.gpw', kpar=120, kperp=7):
         return
 
 
-def plot_phases(name='0'):
+def plot_phases(name='0', fname='berry', show=False):
     import pylab as plt
 
     results = read_json('results-asr.berry@calculate.json')
@@ -154,7 +154,10 @@ def plot_phases(name='0'):
     plt.yticks([0, np.pi, 2 * np.pi], [r'$0$', r'$\pi$', r'$2\pi$'], size=20)
     plt.axis([0, Nk, 0, 2 * np.pi])
     plt.tight_layout()
-    plt.show()
+    figname = f'{fname}-phi{name}.png'
+    plt.savefig(figname)
+    if show:
+        plt.show()
 
 
 def webpanel(row, key_descriptions):

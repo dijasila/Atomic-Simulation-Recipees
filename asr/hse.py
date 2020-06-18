@@ -6,9 +6,9 @@ from asr.core import command, option, read_json
          creates=['hse_nowfs.gpw', 'hse-snapshot.json'],
          requires=['gs.gpw', 'results-asr.gs.json'],
          resources='24:10h')
-@option('--kptdensity', help='K-point density')
-@option('--emptybands', help='number of empty bands to include')
-def calculate(kptdensity=12, emptybands=20):
+@option('--kptdensity', help='K-point density', type=float)
+@option('--emptybands', help='number of empty bands to include', type=int)
+def calculate(kptdensity: float = 8.0, emptybands: int = 20):
     """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
@@ -270,7 +270,6 @@ def webpanel(row, key_descriptions):
 
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
-         # tests=...,
          requires=['bs.gpw',
                    'hse_nowfs.gpw',
                    'results-asr.bandstructure.json',
@@ -281,7 +280,7 @@ def main():
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW
-    from asr.utils.gpw2eigs import fermi_level
+    from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
@@ -298,7 +297,8 @@ def main():
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
+    efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
+                               nspins=eps_skn.shape[0])
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -325,8 +325,7 @@ def main():
 
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
-    efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=calc.get_number_of_electrons() * 2)
+    efermi_soc = fermi_level(calc, eigenvalues=eps, nspins=2)
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
