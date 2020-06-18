@@ -92,7 +92,12 @@ def make_folder_dict(rows, tree_structure):
         links = row.data.get('__links__')
         if links:
             for path, link in links.items():
-                assert link not in child_uids
+                if link in child_uids:
+                    existing_path = child_uids[link]['path']
+                    assert (existing_path.startswith(path) or
+                            path.startswith(existing_path))
+                    if path.startswith(existing_path):
+                        continue
                 child_uids[link] = {'path': path, 'parentuid': identifier}
 
     for row in rows:

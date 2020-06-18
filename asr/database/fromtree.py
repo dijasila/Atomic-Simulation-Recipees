@@ -181,11 +181,6 @@ def collect_links_to_child_folders(folder: Path, atomsname):
     for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
         this_folder = Path(root).resolve()
 
-        # Away cyclic symlinks
-        if this_folder in visited_dirs:
-            dirs[:] = []
-            continue
-
         visited_dirs.add(this_folder)
         if atomsname in files:
             with chdir(this_folder):
