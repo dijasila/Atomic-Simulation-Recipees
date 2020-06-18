@@ -233,7 +233,7 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
         atoms = read(atomsname, parallel=False)
 
         kvp = {'folder': str(folder)}
-        data = {}
+        data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
         for name in Path().glob('*'):
             if name.is_dir():
@@ -246,7 +246,8 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
                     tmpkvp, tmpdata = collect_file(name)
                     kvp.update(tmpkvp)
                     data.update(tmpdata)
-
+        if not data['__children__']:
+            del data['__children__']
     return atoms, kvp, data
 
 
@@ -278,13 +279,24 @@ def make_data_identifiers(filenames: List[str]):
     return kvp
 
 
+def recurse_through_folders(folder, atomsname):
+    """Find all folders from folder that contain atomsname."""
+    folders = []
+    for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
+        if atomsname in files:
+            folders.append(root)
+    return folders
+
 @command('asr.database.fromtree')
 @argument('folders', nargs=-1, type=str)
+@option('-r', '--recursive', is_flag=True,
+        help='Recurse and collect subdirectories.')
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
 @option('-m', '--metadata-from-file', help='Get metadata from file.',
         type=str)
 def main(folders: Union[str, None] = None,
+         recursive: bool = False,
          patterns: str = 'info.json,results-asr.*.json',
          dbname: str = 'database.db', metadata_from_file: str = None):
     """Collect ASR data from folder tree into an ASE database."""
@@ -302,8 +314,13 @@ def main(folders: Union[str, None] = None,
         for folder in folders:
             tmpfolders.extend(glob.glob(folder))
         folders = tmpfolders
-
     folders.sort()
+
+    if recursive:
+        assert len(folders) == 1, \
+            "Please don't combine recursive and multiple folders."
+        folders = recurse_through_folders(folders[0], atomsname)
+
     patterns = patterns.split(',')
     # We use absolute path because of chdir below!
     dbpath = Path(dbname).absolute()
@@ -380,7 +397,8 @@ def main(folders: Union[str, None] = None,
             child_uids = set()
             for row in db.select():
                 uids.add(row.uid)
-                child_uids.update(set(row.data['__children__'].values()))
+                children = row.data.get('__children__', {})
+                child_uids.update(set(children.values()))
             if not child_uids.issubset(uids):
                 raise MissingUIDS(
                     'Missing child uids in collected database. '

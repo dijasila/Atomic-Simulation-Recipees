@@ -59,7 +59,7 @@ def make_folder_tree(*, folders, chunks,
                         write_func = getattr(importlib.import_module(mod),
                                              func)
                         write_func(folder / extrafile, content)
-            elif filename == '__links__':
+            elif filename in {'__links__', '__children__'}:
                 pass
             else:
                 path = results.get('pointer')

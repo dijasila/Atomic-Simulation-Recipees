@@ -49,22 +49,22 @@ def test_database_fromtree_totree(asr_tmpdir, folder_tree):
     from ase.db import connect
 
     folders = [folder[0] for folder in folder_tree]
-    fromtree(folders=folders)
+    fromtree(folders=['materials'], recursive=True)
 
     db = connect('database.db')
     assert len(db) == len(folders)
 
     row = db.get(folder=folder_tree[0][0])
-    linkfolders = []
+    childfolders = []
     for folder in folder_tree[1:]:
         try:
-            link = str(Path(folder[0]).relative_to('materials/Si2'))
-            linkfolders.append(link)
+            child = str(Path(folder[0]).relative_to('materials/Si2'))
+            childfolders.append(child)
         except ValueError:
             pass
 
-    links = row.data['__links__']
-    assert set(linkfolders) == set(links)
+    children = row.data['__children__']
+    assert set(childfolders) == set(children)
     totree('database.db', tree_structure='tree/{row.formula}',
            run=True)
     tree1 = make_tree('materials')
