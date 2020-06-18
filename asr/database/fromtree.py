@@ -3,7 +3,9 @@
 from typing import Union, List
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
+from asr.database.material_fingerprint import main as mf
 from pathlib import Path
+import os
 import glob
 
 
@@ -64,7 +66,7 @@ tmpkd = parse_kd({key: value
                   for key, value in dct.items()})
 
 
-def get_key_value_pairs(resultsdct):
+def get_key_value_pairs(resultsdct: dict):
     """Extract key-value-pairs from results dictionary."""
     kvp = {}
     for key, desc in tmpkd.items():
@@ -75,7 +77,7 @@ def get_key_value_pairs(resultsdct):
     return kvp
 
 
-def collect_file(filename: str):
+def collect_file(filename: Path):
     """Collect a single file.
 
     Parameters
@@ -96,7 +98,7 @@ def collect_file(filename: str):
     from asr.core import read_json
     data = {}
     results = read_json(filename)
-    data[filename] = results
+    data[str(filename)] = results
 
     # Find and try to collect related files for this resultsfile
     files = results.get('__files__', {})
@@ -126,17 +128,40 @@ def collect_file(filename: str):
     return kvp, data, links
 
 
+def collect_links_to_child_folders(folder, atomsname):
+    """Collect links to all subfolders."""
+    from ase.parallel import world
+    links = {}
+    visited_dirs = set()
+
+    for root, dirs, files in os.walk(folder, topdown=True, followlinks=True):
+        this_folder = Path(root).resolve()
+
+        # Away cyclic symlinks
+        if this_folder in visited_dirs:
+            dirs[:] = []
+            continue
+
+        visited_dirs.add(this_folder)
+        if atomsname in files:
+            with chdir(this_folder):
+                if world.size == 1:
+                    if not mf.done:
+                        mf()
+                mfres = read_json(
+                    'results-asr.database.material_fingerprint.json')
+                uid = mfres['uid']
+                links[root] = uid
+    return links
+
+
 def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
     """Collect data from a material folder."""
     from ase.io import read
     from ase.parallel import world
-    from asr.database.material_fingerprint import main as mf
     from fnmatch import fnmatch
 
-    with chdir(folder):
-        kvp = {'folder': str(folder)}
-        data = {'__links__': {}}
-
+    with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
             return None, None, None
 
@@ -145,19 +170,31 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
                 mf()
 
         atoms = read(atomsname, parallel=False)
+
+        kvp = {'folder': str(folder)}
+        data = {'__links__': {}}
         data[atomsname] = read_json(atomsname)
-        for filename in glob.glob('*'):
+        files = []
+        for name in Path().glob('*'):
+            if name.is_dir() or name.is_symlink():
+                links = collect_links_to_child_folders(name, atomsname)
+                data['__links__'].update(links)
+                continue
+
             for pattern in patterns:
-                if fnmatch(filename, pattern):
-                    break
+                if fnmatch(name, pattern):
+                    files.append(name)
             else:
                 continue
-            tmpkvp, tmpdata, tmplinks = \
-                collect_file(str(filename))
+
+            if name.is_file():
+                tmpkvp, tmpdata, links = collect_file(name)
+            elif name.is_dir() or name.is_symlink():
+                links = collect_links_to_child_folders(name)
 
             kvp.update(tmpkvp)
             data.update(tmpdata)
-            data['__links__'].update(tmplinks)
+
     return atoms, kvp, data
 
 
@@ -240,7 +277,8 @@ def main(folders: Union[str, None] = None,
             else:
                 print(f'Collecting folder {folder} ({ifol}/{nfolders})',
                       flush=True)
-            atoms, key_value_pairs, data = collect_folder(folder,
+
+            atoms, key_value_pairs, data = collect_folder(Path(folder),
                                                           atomsname,
                                                           patterns)
 
