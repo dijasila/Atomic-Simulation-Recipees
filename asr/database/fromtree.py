@@ -314,13 +314,13 @@ def main(folders: Union[str, None] = None,
         for folder in folders:
             tmpfolders.extend(glob.glob(folder))
         folders = tmpfolders
-    folders.sort()
 
     if recursive:
         assert len(folders) == 1, \
             "Please don't combine recursive and multiple folders."
         folders = recurse_through_folders(folders[0], atomsname)
 
+    folders.sort()
     patterns = patterns.split(',')
     # We use absolute path because of chdir below!
     dbpath = Path(dbname).absolute()
