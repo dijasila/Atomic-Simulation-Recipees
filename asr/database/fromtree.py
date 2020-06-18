@@ -155,7 +155,27 @@ def collect_links_to_child_folders(folder, atomsname):
 
 
 def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
-    """Collect data from a material folder."""
+    """Collect data from a material folder.
+
+    Parameters
+    ----------
+    folder: Path
+        Path to folder.
+    atomsname: str
+        Name of file containing atoms, i.e. 'structure.json'.
+    patterns: List[str]
+        List of patterns marking which files to include.
+
+    Returns
+    -------
+    atoms: Atoms
+        Atomic structure.
+    kvp: dict
+        Key-value-pairs.
+    data: dict
+        Dictionary containing data files.
+
+    """
     from ase.io import read
     from ase.parallel import world
     from fnmatch import fnmatch
