@@ -20,9 +20,9 @@ def test_database_totree(asr_tmpdir_w_params):
     main(database=dbname, run=True)
 
     assert Path('tree').is_dir()
-    assert Path('tree/A/123/Ag-A-123-c-0/structure.json').is_file()
-    assert Path('tree/A/227/Si2-A-227-b-0/structure.json').is_file()
-    assert Path('tree/AB/187/BN-AB-187-b-d-0/structure.json').is_file()
+    assert Path('tree/A/123/Ag-A-123-c/structure.json').is_file()
+    assert Path('tree/A/227/Si2-A-227-b/structure.json').is_file()
+    assert Path('tree/AB/187/BN-AB-187-b-d/structure.json').is_file()
 
 
 @pytest.fixture
@@ -54,9 +54,9 @@ def test_database_totree_files_and_hard_links(make_test_db):
 
     dbname = 'database.db'
     main(database=dbname, run=True, copy=True)
-    hardlink = Path('tree/AB/187/BN-AB-187-b-d-0/hardlinkedfile.txt')
-    filejson = Path('tree/AB/187/BN-AB-187-b-d-0/file.json')
-    assert Path('tree/AB/187/BN-AB-187-b-d-0/structure.json').is_file()
+    hardlink = Path('tree/AB/187/BN-AB-187-b-d/hardlinkedfile.txt')
+    filejson = Path('tree/AB/187/BN-AB-187-b-d/file.json')
+    assert Path('tree/AB/187/BN-AB-187-b-d/structure.json').is_file()
     assert filejson.is_file()
     assert hardlink.is_file()
 
