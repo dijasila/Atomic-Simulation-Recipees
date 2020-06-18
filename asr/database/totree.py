@@ -15,7 +15,6 @@ def make_folder_tree(*, folders, chunks,
     import importlib
     from fnmatch import fnmatch
 
-    cwd = Path('.').absolute()
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
         if chunks > 1:
             chunkno = i % chunks
