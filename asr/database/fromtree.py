@@ -9,7 +9,21 @@ import os
 import glob
 
 
-def parse_kd(key_descriptions):
+def parse_key_descriptions(key_descriptions):
+    """Parse key descriptions.
+
+    This function parses a dictionary of key descriptions. A valid key
+    description looks like::
+
+        `KVP: Long description !short description! [unit]`
+
+    - KVP: marks a key as a key-value-pair.
+    - !short description!: gives a short description of the key.
+    - [unit]: Marks the unit of the key.
+    - The rest of the text will be interpreted as the long description
+      of the key.
+
+    """
     import re
 
     tmpkd = {}
@@ -61,13 +75,28 @@ def parse_kd(key_descriptions):
     return tmpkd
 
 
-tmpkd = parse_kd({key: value
-                  for dct in asr_kd.values()
-                  for key, value in dct.items()})
+tmpkd = parse_key_descriptions(
+    {key: value
+     for dct in asr_kd.values()
+     for key, value in dct.items()})
 
 
 def get_key_value_pairs(resultsdct: dict):
-    """Extract key-value-pairs from results dictionary."""
+    """Extract key-value-pairs from results dictionary.
+
+    Note to determine which key in the results dictionary is a
+    key-value-pair we parse the data in `asr.database.key_descriptions`.
+
+    Parameters
+    ----------
+    resultsdct: dict
+        Dictionary containing asr results file.
+
+    Returns
+    -------
+    kvp: dict
+        key-value-pairs.
+    """
     kvp = {}
     for key, desc in tmpkd.items():
         if (key in resultsdct and desc['iskvp']
@@ -127,8 +156,24 @@ def collect_file(filename: Path):
     return kvp, data
 
 
-def collect_links_to_child_folders(folder, atomsname):
-    """Collect links to all subfolders."""
+def collect_links_to_child_folders(folder: Path, atomsname):
+    """Collect links to all subfolders.
+
+    Parameters
+    ----------
+    folder: Path
+        Path to folder.
+    atomsname: str
+        Name of file containing atoms, i.e. 'structure.json'.
+
+    Returns
+    -------
+    links: dict
+        Dictionary with key=relative path to child material and
+        value=uid of child material, i.e.: {'strains':
+        'Si2-abcdefghiklmn'}.
+
+    """
     from ase.parallel import world
     links = {}
     visited_dirs = set()
@@ -173,7 +218,7 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
     kvp: dict
         Key-value-pairs.
     data: dict
-        Dictionary containing data files.
+        Dictionary containing data files and links.
 
     """
     from ase.io import read
