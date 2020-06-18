@@ -172,20 +172,18 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
     Returns
     -------
-    links: dict
+    children: dict
         Dictionary with key=relative path to child material and
         value=uid of child material, i.e.: {'strains':
         'Si2-abcdefghiklmn'}.
 
     """
     from ase.parallel import world
-    links = {}
-    visited_dirs = set()
+    children = {}
 
     for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
         this_folder = Path(root).resolve()
 
-        visited_dirs.add(this_folder)
         if atomsname in files:
             with chdir(this_folder):
                 if world.size == 1:
@@ -194,8 +192,8 @@ def collect_links_to_child_folders(folder: Path, atomsname):
                 mfres = read_json(
                     'results-asr.database.material_fingerprint.json')
                 uid = mfres['uid']
-                links[root] = uid
-    return links
+                children[root] = uid
+    return children
 
 
 def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
@@ -235,12 +233,12 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
         atoms = read(atomsname, parallel=False)
 
         kvp = {'folder': str(folder)}
-        data = {'__links__': {}}
+        data = {}
         data[atomsname] = read_json(atomsname)
         for name in Path().glob('*'):
             if name.is_dir():
-                links = collect_links_to_child_folders(name, atomsname)
-                data['__links__'].update(links)
+                children = collect_links_to_child_folders(name, atomsname)
+                data['__children__'].update(children)
                 continue
 
             for pattern in patterns:
@@ -382,7 +380,7 @@ def main(folders: Union[str, None] = None,
             child_uids = set()
             for row in db.select():
                 uids.add(row.uid)
-                child_uids.update(set(row.data['__links__'].values()))
+                child_uids.update(set(row.data['__children__'].values()))
             if not child_uids.issubset(uids):
                 raise MissingUIDS(
                     'Missing child uids in collected database. '
