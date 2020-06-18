@@ -99,6 +99,7 @@ def make_folder_dict(rows, tree_structure):
     for row in rows:
         identifier = row.get('uid', row.id)
         if identifier in child_uids:
+            folders[identifier] = (None, row)
             continue
         atoms = row.toatoms()
         formula = atoms.symbols.formula
@@ -127,9 +128,9 @@ def make_folder_dict(rows, tree_structure):
         folders[identifier] = (folder, row)
 
     for child_uid, links in child_uids.items():
-        parentfolder = folders[links['parentuid']]
-        childfolder = str(Path().joinpaths(parentfolder, links['path']))
-        folders[child_uid] = childfolder
+        parentfolder = folders[links['parentuid']][0]
+        childfolder = str(Path().joinpath(parentfolder, links['path']))
+        folders[child_uid] = (childfolder, folders[child_uid][1])
 
     print(f'Number of collisions: {nc}')
     for er in err:

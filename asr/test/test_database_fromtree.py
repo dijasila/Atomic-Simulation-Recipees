@@ -5,24 +5,25 @@ from ase.io import read
 import pytest
 import os
 from pathlib import Path
-from .materials import Si
+from .materials import Si, Fe
 
 
 @pytest.fixture
 def folder_tree():
     """Set up a tree like folder structure."""
     from asr.setup.displacements import main as displacements
-    folders = [('Si/', Si),
-               ('Si/repeated', Si.repeat((2, 1, 1)))]
+    folders = [('materials/Si2', Si),
+               ('materials/Si2/repeated', Si.repeat((2, 1, 1))),
+               ('materials/Fe', Fe)]
 
     for folder, atoms in folders:
         os.makedirs(folder)
         atoms.write(Path(folder) / 'structure.json')
 
-    with chdir('Si/'):
+    with chdir('materials/Si2/'):
         displacement_results = displacements()
         displacement_folders = [
-            ('Si/' + folder, read(Path(folder) / 'structure.json'))
+            ('materials/Si2/' + folder, read(Path(folder) / 'structure.json'))
             for folder in displacement_results['folders']
         ]
 
@@ -30,18 +31,40 @@ def folder_tree():
     return folders
 
 
+def make_tree(folder: str):
+    tree = set()
+    for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
+        rel_path = str(Path(root).relative_to(folder))
+        tree.add(rel_path)
+    return tree
+
+
 @pytest.mark.ci
 def test_database_fromtree(asr_tmpdir, folder_tree):
     from asr.database.fromtree import main as fromtree
+    from asr.database.totree import main as totree
     from ase.db import connect
 
-    folders = [folder_tree[0][0]]
+    folders = [folder[0] for folder in folder_tree]
     fromtree(folders=folders)
 
     db = connect('database.db')
-    assert len(db) == 1
+    assert len(db) == len(folders)
 
-    row = db.get(1)
-    linkfolders = [folder[0][3:] for folder in folder_tree[1:]]
+    row = db.get(folder=folder_tree[0][0])
+    linkfolders = []
+    for folder in folder_tree[1:]:
+        try:
+            link = str(Path(folder[0]).relative_to('materials/Si2'))
+            linkfolders.append(link)
+        except ValueError:
+            pass
+
     links = row.data['__links__']
     assert set(linkfolders) == set(links)
+
+    totree('database.db', tree_structure='tree/{row.formula}',
+           run=True)
+    tree1 = make_tree('materials')
+    tree2 = make_tree('tree')
+    assert tree1 == tree2

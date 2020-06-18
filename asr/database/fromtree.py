@@ -133,7 +133,7 @@ def collect_links_to_child_folders(folder, atomsname):
     links = {}
     visited_dirs = set()
 
-    for root, dirs, files in os.walk(folder, topdown=True, followlinks=True):
+    for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
         this_folder = Path(root).resolve()
 
         # Away cyclic symlinks
