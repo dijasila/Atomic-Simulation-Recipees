@@ -148,8 +148,10 @@ key_descriptions = {
         'asr_id': 'KVP: Material unique ID',
         'uid': 'KVP: Unique identifier'
     },
-    "info.json": {
+    "info": {
         'material_type': 'KVP: Material type.',
+    },
+    "info.json": {
         'class': 'KVP: Material class',
         'doi': 'KVP: Monolayer reported DOI',
         'icsd_id': 'KVP: ICSD id of parent bulk structure',
