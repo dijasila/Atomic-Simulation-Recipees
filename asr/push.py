@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option
 
 
@@ -8,7 +9,8 @@ from asr.core import command, option
 @option('-m', '--mode', type=int, help='Mode index')
 @option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
-def main(momentum=[0, 0, 0], mode=0, amplitude=0.1):
+def main(momentum: List[float] = [0, 0, 0], mode: int = 0,
+         amplitude: float = 0.1):
     """Push structure along some phonon mode and relax structure."""
     import numpy as np
     q_c = momentum

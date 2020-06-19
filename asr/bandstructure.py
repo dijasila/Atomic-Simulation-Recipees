@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, option
 
 tests = []
@@ -34,9 +35,10 @@ tests.append({'description': 'Test band structure of 2D-BN.',
          dependencies=['asr.gs@calculate'],
          tests=tests)
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints')
-@option('--emptybands')
-def calculate(kptpath=None, npoints=400, emptybands=20):
+@option('--npoints', type=int)
+@option('--emptybands', type=int)
+def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
+              emptybands: int = 20):
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -290,7 +292,7 @@ def plot_with_colors(bs,
 
     vlines2back(ax.lines)
     shape = energies.shape
-    xcoords = np.vstack([bs.xcoords] * shape[1])
+    xcoords = np.vstack([bs.xcoords] * shape[0])
     if sortcolors:
         perm = (-colors).argsort(axis=None)
         energies = energies.ravel()[perm].reshape(shape)
@@ -320,7 +322,7 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
@@ -496,7 +498,7 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
-    from ase.dft.band_structure import get_band_structure
+    from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     from asr.core import read_json
     import copy
@@ -535,8 +537,13 @@ def main():
     bsresults = bs.todict()
 
     theta, phi = get_spin_axis()
+
+    # We use a larger symmetry tolerance because we want to correctly
+    # color spins which doesn't always happen due to slightly broken
+    # symmetries, hence tolerance=1e-2.
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi)
+        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
     bsresults['efermi'] = efermi

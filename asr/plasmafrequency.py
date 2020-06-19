@@ -14,19 +14,30 @@ def get_kpts_size(atoms, density):
 
 
 @command('asr.plasmafrequency',
-         creates=['es_plasma.gpw'])
-@option('--kptdensity', help='k-point density')
-def calculate(kptdensity=20):
+         creates=['es_plasma.gpw'],
+         dependencies=['asr.gs@calculate'],
+         requires=['gs.gpw'])
+@option('--kptdensity', help='k-point density', type=float)
+def calculate(kptdensity: float = 20):
     """Calculate excited states for polarizability calculation."""
     from gpaw import GPAW
+    from ase.parallel import world
+    from pathlib import Path
 
     calc_old = GPAW('gs.gpw', txt=None)
     kpts = get_kpts_size(atoms=calc_old.atoms, density=kptdensity)
     nval = calc_old.wfs.nvalence
-    calc = GPAW('gs.gpw', fixdensity=True, kpts=kpts,
-                nbands=2 * nval, txt='gsplasma.txt')
-    calc.get_potential_energy()
-    calc.write('es_plasma.gpw', 'all')
+    try:
+        calc = GPAW('gs.gpw', fixdensity=True, kpts=kpts,
+                    nbands=2 * nval, txt='gsplasma.txt')
+        calc.get_potential_energy()
+        calc.write('es_plasma.gpw', 'all')
+    except Exception:
+        if world.rank == 0:
+            es_file = Path("es_plasma.gpw")
+            if es_file.is_file():
+                es_file.unlink()
+        world.barrier()
 
 
 def webpanel(row, key_descriptions):
@@ -44,17 +55,18 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.plasmafrequency',
-         requires=['es_plasma.gpw'],
          webpanel=webpanel,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
-def main(tetra=True):
+def main(tetra: bool = True):
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
     from ase.io import read
     import numpy as np
     from ase.units import Hartree, Bohr
+    from pathlib import Path
+    from ase.parallel import world
 
     atoms = read('structure.json')
     nd = sum(atoms.pbc)
@@ -74,10 +86,16 @@ def main(tetra=True):
                   'domega0': 0.2,
                   'ecut': 1}
 
-    df = DielectricFunction('es_plasma.gpw', **kwargs)
-    df.get_polarizability(q_c=[0, 0, 0], direction='x',
-                          pbc=[True, True, False],
-                          filename=None)
+    try:
+        df = DielectricFunction('es_plasma.gpw', **kwargs)
+        df.get_polarizability(q_c=[0, 0, 0], direction='x',
+                              pbc=[True, True, False],
+                              filename=None)
+    finally:
+        world.barrier()
+        if world.rank == 0:
+            es_file = Path("es_plasma.gpw")
+            es_file.unlink()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv,
             '__key_descriptions__': {'plasmafreq_vv':

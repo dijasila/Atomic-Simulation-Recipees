@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option, argument
 
 import tempfile
@@ -10,7 +11,7 @@ import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
-from ase.utils import formula_metal
+from ase.formula import Formula
 import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
@@ -19,7 +20,7 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(keys=None):
+def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_kd
     from ase.db.web import create_key_descriptions
@@ -27,7 +28,15 @@ def create_key_descriptions(keys=None):
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
-    if keys is None:
+
+    if db is not None:
+        metadata = db.metadata
+        if 'keys' not in metadata:
+            raise KeyError('Missing list of keys for database. '
+                           'To fix this either: run database.fromtree again. '
+                           'or python -m asr.database.set_metadata DATABASEFILE.')
+        keys = metadata.get('keys')
+    else:
         keys = list(flatten.keys())
 
     kd = {}
@@ -45,8 +54,7 @@ def create_key_descriptions(keys=None):
 
 
 class Summary:
-    def __init__(self, row, key_descriptions, create_layout,
-                 subscript=None, prefix=''):
+    def __init__(self, row, key_descriptions, create_layout, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
@@ -63,9 +71,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = formula_metal(row.numbers)
-        if subscript:
-            self.formula = subscript.sub(r'<sub>\1</sub>', self.formula)
+        self.formula = Formula(
+            Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -123,7 +130,7 @@ def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
-    db = connect(database)
+    db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", database)
 
@@ -131,15 +138,10 @@ def initialize_project(database):
     (tmpdir / name).mkdir()
 
     metadata = db.metadata
-    if 'keys' not in metadata:
-        raise KeyError('Missing list of keys for database. '
-                       'To fix this either: run database.fromtree again. '
-                       'or python -m asr.database.set_metadata DATABASEFILE.')
-    keys = metadata.get('keys')
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(keys),
+        "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
@@ -159,10 +161,10 @@ def initialize_project(database):
 
 
 @command()
-@argument("databases", nargs=-1)
-@option("--host", help="Host address.")
+@argument("databases", nargs=-1, type=str)
+@option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases, host="0.0.0.0", test=False):
+def main(databases: List[str], host: str = "0.0.0.0", test: bool = False):
     for database in databases:
         initialize_project(database)
 

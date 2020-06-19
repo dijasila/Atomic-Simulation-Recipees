@@ -1,26 +1,24 @@
 from asr.core import command, option, read_json
-from contextlib import contextmanager
 
 
 @command(module='asr.hse',
          dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-         creates=['hse_nowfs.gpw', 'hse-restart.json'],
+         creates=['hse_nowfs.gpw', 'hse-snapshot.json'],
          requires=['gs.gpw', 'results-asr.gs.json'],
          resources='24:10h')
-@option('--kptdensity', help='K-point density')
-@option('--emptybands', help='number of empty bands to include')
-def calculate(kptdensity=12, emptybands=20):
+@option('--kptdensity', help='K-point density', type=float)
+@option('--emptybands', help='number of empty bands to include', type=int)
+def calculate(kptdensity: float = 8.0, emptybands: int = 20):
     """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
-    with cleanup('hse.gpw'):
-        eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
-        mpi.world.barrier()
-        eigs_soc = hse_spinorbit(eigs)
-        mpi.world.barrier()
-        results = {'hse_eigenvalues': eigs,
-                   'hse_eigenvalues_soc': eigs_soc}
-        return results
+    eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
+    mpi.world.barrier()
+    eigs_soc = hse_spinorbit(eigs)
+    mpi.world.barrier()
+    results = {'hse_eigenvalues': eigs,
+               'hse_eigenvalues_soc': eigs_soc}
+    return results
 
 
 # XXX move to utils? [also in asr.polarizability]
@@ -37,50 +35,35 @@ def get_kpts_size(atoms, kptdensity):
 
 
 def hse(kptdensity, emptybands):
-    import os
     import numpy as np
     import gpaw.mpi as mpi
     from gpaw import GPAW
-    from gpaw.xc.exx import EXX
-    from gpaw.xc.tools import vxc
+    from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)
-    if not os.path.isfile('hse.gpw'):
-        calc = GPAW('gs.gpw', txt=None)
-        atoms = calc.get_atoms()
-        pbc = atoms.pbc.tolist()
-        ND = np.sum(pbc)
-        if ND == 3 or ND == 1:
-            kpts = {'density': kptdensity, 'gamma': True, 'even': False}
-        elif ND == 2:
-            kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
+    calc = GPAW('gs.gpw', txt=None, parallel={'band': 1, 'kpt': 1})
+    atoms = calc.get_atoms()
+    pbc = atoms.pbc.tolist()
+    ND = np.sum(pbc)
+    if ND == 3 or ND == 1:
+        kpts = {'density': kptdensity, 'gamma': True, 'even': False}
+    elif ND == 2:
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
 
-        calc.set(nbands=-emptybands,
-                 fixdensity=True,
-                 kpts=kpts,
-                 convergence={'bands': -convbands},
-                 txt='hse.txt')
-        calc.get_potential_energy()
-        calc.write('hse.gpw', 'all')
-        calc.write('hse_nowfs.gpw')
-    mpi.world.barrier()
-
-    calc = GPAW('hse.gpw', txt=None)
-    ns = calc.get_number_of_spins()
-    nk = len(calc.get_ibz_k_points())
+    calc.set(nbands=-emptybands,
+             fixdensity=True,
+             kpts=kpts,
+             convergence={'bands': -convbands},
+             txt='hse.txt')
+    calc.get_potential_energy()
+    calc.write('hse_nowfs.gpw')
     nb = calc.get_number_of_bands()
-
-    hse_calc = EXX('hse.gpw', xc='HSE06', bands=[0, nb - convbands])
-    hse_calc.calculate(restart='hse-restart.json')
-    vxc_hse_skn = hse_calc.get_eigenvalue_contributions()
-
-    vxc_pbe_skn = vxc(calc, 'PBE')[:, :, :-convbands]
-    e_pbe_skn = np.zeros((ns, nk, nb))
-    for s in range(ns):
-        for k in range(nk):
-            e_pbe_skn[s, k, :] = calc.get_eigenvalues(spin=s, kpt=k)
-    e_pbe_skn = e_pbe_skn[:, :, :-convbands]
-
+    result = non_self_consistent_eigenvalues(calc,
+                                             'HSE06',
+                                             n1=0,
+                                             n2=nb - convbands,
+                                             snapshot='hse-snapshot.json')
+    e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
     dct = {}
@@ -166,22 +149,6 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     results['bandstructure'] = singleprec_dict(dct)
 
     return results
-
-
-# XXX move to utils?
-@contextmanager
-def cleanup(*files):
-    import os
-    import gpaw.mpi as mpi
-
-    try:
-        yield
-    finally:
-        mpi.world.barrier()
-        if mpi.world.rank == 0:
-            for f in files:
-                if os.path.isfile(f):
-                    os.remove(f)
 
 
 def bs_hse(row,
@@ -313,14 +280,14 @@ def main():
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW
-    from asr.utils.gpw2eigs import fermi_level
+    from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
     calc = GPAW('hse_nowfs.gpw', txt=None)
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
-    nbands = results_hse['hse_eigenvalues']['e_hse_skn'].shape[2]
+    nbands = data['e_hse_skn'].shape[2]
     delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
@@ -330,7 +297,8 @@ def main():
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
     calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
-    efermi_nosoc = fermi_level(calc, eps_skn=eps_skn)
+    efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
+                               nspins=eps_skn.shape[0])
     gap, p1, p2 = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_nosoc,
@@ -357,8 +325,7 @@ def main():
 
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
-    efermi_soc = fermi_level(calc, eps_skn=eps,
-                             nelectrons=calc.get_number_of_electrons() * 2)
+    efermi_soc = fermi_level(calc, eigenvalues=eps, nspins=2)
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,

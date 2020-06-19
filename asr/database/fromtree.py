@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, option, argument, chdir
 from asr.database.key_descriptions import key_descriptions as asr_kd
 
@@ -136,12 +137,14 @@ tests = [
 
 @command('asr.database.fromtree',
          tests=tests)
-@argument('folders', nargs=-1)
-@option('--patterns', help='Only select files matching pattern.')
-@option('--dbname', help='Database name.')
-@option('-m', '--metadata-from-file', help='Get metadata from file.')
-def main(folders=None, patterns='info.json,results-asr.*.json',
-         dbname='database.db', metadata_from_file=None):
+@argument('folders', nargs=-1, type=str)
+@option('--patterns', help='Only select files matching pattern.', type=str)
+@option('--dbname', help='Database name.', type=str)
+@option('-m', '--metadata-from-file', help='Get metadata from file.',
+        type=str)
+def main(folders: Union[str, None] = None,
+         patterns: str = 'info.json,results-asr.*.json',
+         dbname: str = 'database.db', metadata_from_file: str = None):
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
     from ase.io import read
@@ -150,7 +153,7 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
     from pathlib import Path
     from fnmatch import fnmatch
     from asr.database.material_fingerprint import main as mf
-    from gpaw.mpi import world
+    from ase.parallel import world
 
     def item_show_func(item):
         return str(item)
@@ -197,8 +200,9 @@ def main(folders=None, patterns='info.json,results-asr.*.json',
                 if not Path(atomsname).is_file():
                     continue
 
-                if not mf.done:
-                    mf()
+                if world.size == 1:
+                    if not mf.done:
+                        mf()
 
                 atoms = read(atomsname, parallel=False)
                 data[atomsname] = read_json(atomsname)

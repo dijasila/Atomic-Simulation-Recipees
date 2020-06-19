@@ -41,13 +41,17 @@ def get_kpts_size(atoms, density):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option(
-    '--gs', help='Ground state on which response is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
+    '--gs', help='Ground state on which response is based',
+    type=str)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
+def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
+         xc: str = 'RPA', bandfactor: int = 5):
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW
@@ -88,58 +92,66 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
         raise NotImplementedError(
             'Polarizability not implemented for 1D and 2D structures')
 
-    if not Path('es.gpw').is_file():
-        calc_old = GPAW(gs, txt=None)
-        nval = calc_old.wfs.nvalence
+    try:
+        if not Path('es.gpw').is_file():
+            calc_old = GPAW(gs, txt=None)
+            nval = calc_old.wfs.nvalence
 
-        calc = GPAW(
-            gs,
-            txt='es.txt',
-            fixdensity=True,
-            nbands=(bandfactor + 1) * nval,
-            convergence={'bands': bandfactor * nval},
-            occupations={'name': 'fermi-dirac',
-                         'width': 1e-4},
-            kpts=kpts)
-        calc.get_potential_energy()
-        calc.write('es.gpw', mode='all')
+            calc = GPAW(
+                gs,
+                txt='es.txt',
+                fixdensity=True,
+                nbands=(bandfactor + 1) * nval,
+                convergence={'bands': bandfactor * nval},
+                occupations={'name': 'fermi-dirac',
+                             'width': 1e-4},
+                kpts=kpts)
+            calc.get_potential_energy()
+            calc.write('es.gpw', mode='all')
 
-    df = DielectricFunction('es.gpw', **dfkwargs)
-    alpha0x, alphax = df.get_polarizability(
-        q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
-        xc=xc)
-    alpha0y, alphay = df.get_polarizability(
-        q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
-        xc=xc)
-    alpha0z, alphaz = df.get_polarizability(
-        q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
-        xc=xc)
+        df = DielectricFunction('es.gpw', **dfkwargs)
+        alpha0x, alphax = df.get_polarizability(
+            q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
+            xc=xc)
+        alpha0y, alphay = df.get_polarizability(
+            q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
+            xc=xc)
+        alpha0z, alphaz = df.get_polarizability(
+            q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
+            xc=xc)
 
-    plasmafreq_vv = df.chi0.plasmafreq_vv
+        plasmafreq_vv = df.chi0.plasmafreq_vv
 
-    frequencies = df.get_frequencies()
-    data = {
-        'alpha0x_w': np.array(alpha0x),
-        'alphax_w': np.array(alphax),
-        'alpha0y_w': np.array(alpha0y),
-        'alphay_w': np.array(alphay),
-        'alpha0z_w': np.array(alpha0z),
-        'alphaz_w': np.array(alphaz),
-        'plasmafreq_vv': plasmafreq_vv,
-        'frequencies': frequencies
-    }
+        frequencies = df.get_frequencies()
+        data = {
+            'alpha0x_w': np.array(alpha0x),
+            'alphax_w': np.array(alphax),
+            'alpha0y_w': np.array(alpha0y),
+            'alphay_w': np.array(alphay),
+            'alpha0z_w': np.array(alpha0z),
+            'alphaz_w': np.array(alphaz),
+            'plasmafreq_vv': plasmafreq_vv,
+            'frequencies': frequencies
+        }
 
-    data['alphax_el'] = data['alphax_w'][0].real
-    data['alphay_el'] = data['alphay_w'][0].real
-    data['alphaz_el'] = data['alphaz_w'][0].real
+        data['alphax_el'] = data['alphax_w'][0].real
+        data['alphay_el'] = data['alphay_w'][0].real
+        data['alphaz_el'] = data['alphaz_w'][0].real
 
-    data['__key_descriptions__'] = {
-        'alphax_el': 'KVP: Static electronic polarizability,'
-        ' x-direction [Ang]',
-        'alphay_el': 'KVP: Static electronic polarizability,'
-        ' y-direction [Ang]',
-        'alphaz_el': 'KVP: Static electronic polarizability,'
-        ' z-direction [Ang]'}
+        data['__key_descriptions__'] = {
+            'alphax_el': 'KVP: Static electronic polarizability,'
+            ' x-direction [Ang]',
+            'alphay_el': 'KVP: Static electronic polarizability,'
+            ' y-direction [Ang]',
+            'alphaz_el': 'KVP: Static electronic polarizability,'
+            ' z-direction [Ang]'}
+
+    finally:
+        world.barrier()
+        if world.rank == 0:
+            es_file = Path("es.gpw")
+            if es_file.is_file():
+                es_file.unlink()
 
     return data
 

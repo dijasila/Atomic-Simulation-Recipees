@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, read_json
 
 from collections import defaultdict
 
@@ -12,7 +12,7 @@ from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase.units import Hartree
 
-from asr.core import magnetic_atoms, read_json
+from asr.utils import magnetic_atoms
 
 
 # ---------- GPAW hacks ---------- #
@@ -20,7 +20,7 @@ from asr.core import magnetic_atoms, read_json
 
 # Hack the density of states
 class SOCDOS(DOS):
-    def __init__(self, gpw, **kwargs):
+    def __init__(self, gpw, npts=401, **kwargs):
         """Hack to make DOS class work with spin orbit coupling.
 
         Parameters
@@ -28,33 +28,54 @@ class SOCDOS(DOS):
         gpw : str
             The SOCDOS takes a filename of the GPAW calculator object and loads
             it, instead of the normal ASE compliant calculator object.
+        npts : int
+            see ase.dft.dos.DOS
+
         """
         # Initiate DOS with serial communicator instead
         from gpaw import GPAW
         import gpaw.mpi as mpi
-        from asr.utils.gpw2eigs import gpw2eigs
+        from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
+        # Initiate calculator object and get the spin-orbit eigenvalues
         calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-        DOS.__init__(self, calc, **kwargs)
-
-        # Hack the number of spins
-        self.nspins = 1
-
-        # Hack the eigenvalues
         theta, phi = get_spin_axis()
-        e_skm, ef = gpw2eigs(gpw, theta=theta, phi=phi)
-        if e_skm.ndim == 2:
-            e_skm = e_skm[np.newaxis]
-        e_skn = e_skm - ef
-        bzkpts = calc.get_bz_k_points()
-        size, offset = k2so(bzkpts)
-        bz2ibz = calc.get_bz_to_ibz_map()
-        shape = (self.nspins, ) + tuple(size) + (-1, )
-        self.e_skn = e_skn[:, bz2ibz].reshape(shape)
+        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
+
+        # Only the rank=0 should have an actual DOS object.
+        # The others receive the output as a broadcast.
+        self.world = mpi.world
+        if mpi.world.rank == 0:
+            DOS.__init__(self, calc, npts=npts, **kwargs)
+
+            # Hack the number of spins
+            self.nspins = 1
+
+            # Hack the eigenvalues
+            if e_skm.ndim == 2:
+                e_skm = e_skm[np.newaxis]
+            e_skn = e_skm - ef
+            bzkpts = calc.get_bz_k_points()
+            size, offset = k2so(bzkpts)
+            bz2ibz = calc.get_bz_to_ibz_map()
+            shape = (self.nspins, ) + tuple(size) + (-1, )
+            self.e_skn = e_skn[:, bz2ibz].reshape(shape)
+        else:
+            self.npts = npts
 
     def get_dos(self):
-        return DOS.get_dos(self, spin=0)
+        """Interface to DOS.get_dos."""
+        # Rank=0 calculates the dos
+        if self.world.rank == 0:
+            dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
+        else:
+            dos = np.empty(self.npts)
+
+        # Broadcast result
+        self.world.broadcast(dos, 0)
+
+        return dos
 
 
 # Hack the local density of states to keep spin-orbit results and not
@@ -224,7 +245,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity=20.0, emptybands=20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20):
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -248,13 +269,13 @@ def main():
 
     results = {}
 
-    # Calculate pdos
-    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
-    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
-
     # Calculate the dos at the Fermi energy
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
+
+    # Calculate pdos
+    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Log key descriptions
     kd = {}
@@ -306,6 +327,7 @@ def calculate_pdos(calc, gpw, soc=True):
         chemical symbols in Atoms object
     efermi : float
         Fermi energy
+
     """
     from gpaw import GPAW
     import gpaw.mpi as mpi
@@ -399,6 +421,7 @@ def get_l_a(zs):
         keys are atomic indices and values are a string such as 'spd'
         that determines which angular momentum to project onto or a
         given atom
+
     """
     lantha = range(58, 72)
     acti = range(90, 104)
@@ -445,6 +468,7 @@ def get_ordered_syl_dict(dct_syl, symbols):
     -------
     outdct_syl : OrderedDict
         Sorted dct_syl
+
     """
     from collections import OrderedDict
 
@@ -474,6 +498,7 @@ def get_yl_colors(dct_syl):
     -------
     color_yl : OrderedDict
         Color strings for each symbol and angular momentum
+
     """
     from collections import OrderedDict
 
@@ -498,8 +523,7 @@ def plot_pdos_soc(*args, **kwargs):
 
 
 def plot_pdos(row, filename, soc=True,
-              figsize=(5.5, 5),
-              lw=1, loc='best'):
+              figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -576,7 +600,6 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
 
     # Set up axis limits
@@ -605,6 +628,10 @@ def plot_pdos(row, filename, soc=True,
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
         ax.set_ylabel(r'$E$ [eV]')
+
+    # Set up legend
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
+               ncol=3, mode="expand", borderaxespad=0.)
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
