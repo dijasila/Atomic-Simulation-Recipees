@@ -287,6 +287,7 @@ def recurse_through_folders(folder, atomsname):
             folders.append(root)
     return folders
 
+
 @command('asr.database.fromtree')
 @argument('folders', nargs=-1, type=str)
 @option('-r', '--recursive', is_flag=True,

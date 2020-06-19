@@ -94,8 +94,8 @@ def make_folder_dict(rows, tree_structure):
             for path, child_uid in children.items():
                 if child_uid in child_uids:
                     existing_path = child_uids[child_uid]['path']
-                    assert (existing_path.startswith(path) or
-                            path.startswith(existing_path))
+                    assert (existing_path.startswith(path)
+                            or path.startswith(existing_path))
                     if path.startswith(existing_path):
                         continue
                 child_uids[child_uid] = {'path': path, 'parentuid': identifier}
