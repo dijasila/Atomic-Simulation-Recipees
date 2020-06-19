@@ -60,7 +60,7 @@ def test_pdos_full(asr_tmpdir_w_params):
                      nbands=nb,
                      idiotproof=False)
 
-        Li1.set_calculator(calc1)
+        Li1.calc = calc1
         Li1.get_potential_energy()
 
         calc1.write('Li1.gpw')
@@ -78,7 +78,7 @@ def test_pdos_full(asr_tmpdir_w_params):
                      nbands=nb,
                      idiotproof=False)
 
-        Li2.set_calculator(calc2)
+        Li2.calc = calc2
         Li2.get_potential_energy()
 
         calc2.write('Li2.gpw')
