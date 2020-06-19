@@ -22,7 +22,7 @@ def make_folder_tree(*, folders, chunks,
         now = datetime.now()
         percentage_completed = (i + 1) / nfolders * 100
         timed_print(f'{now:%H:%M:%S} {i + 1}/{nfolders} '
-                    f'{percentage_completed:.1}', wait=30)
+                    f'{percentage_completed:.1f}%', wait=30)
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
