@@ -4,6 +4,10 @@ from asr.core import command, option
 import click
 import os
 
+# TODO: clean up structure
+# TODO: update docs
+# TODO: update nomenclature for general algorithm
+
 
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
