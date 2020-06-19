@@ -13,16 +13,18 @@ def test_database_totree(asr_tmpdir_w_params):
     for atoms in std_test_materials:
         db.write(atoms)
 
-    main(database=dbname)
+    main(database=dbname,
+         tree_structure='tree/{stoi}/{spg}/{formula:abc}')
 
     assert not Path('tree').is_dir()
 
-    main(database=dbname, run=True)
+    main(database=dbname, run=True,
+         tree_structure='tree/{stoi}/{spg}/{formula:abc}')
 
     assert Path('tree').is_dir()
-    assert Path('tree/A/123/Ag-A-123-c/structure.json').is_file()
-    assert Path('tree/A/227/Si2-A-227-b/structure.json').is_file()
-    assert Path('tree/AB/187/BN-AB-187-b-d/structure.json').is_file()
+    assert Path('tree/A/123/Ag/structure.json').is_file()
+    assert Path('tree/A/227/Si2/structure.json').is_file()
+    assert Path('tree/AB/187/BN/structure.json').is_file()
 
 
 @pytest.fixture
@@ -53,10 +55,11 @@ def test_database_totree_files_and_hard_links(make_test_db):
     import os
 
     dbname = 'database.db'
-    main(database=dbname, run=True, copy=True)
-    hardlink = Path('tree/AB/187/BN-AB-187-b-d/hardlinkedfile.txt')
-    filejson = Path('tree/AB/187/BN-AB-187-b-d/file.json')
-    assert Path('tree/AB/187/BN-AB-187-b-d/structure.json').is_file()
+    main(database=dbname, run=True, copy=True,
+         tree_structure='tree/{stoi}/{spg}/{formula:abc}')
+    hardlink = Path('tree/AB/187/BN/hardlinkedfile.txt')
+    filejson = Path('tree/AB/187/BN/file.json')
+    assert Path('tree/AB/187/BN/structure.json').is_file()
     assert filejson.is_file()
     assert hardlink.is_file()
 

@@ -113,6 +113,7 @@ def make_folder_dict(rows, tree_structure):
                 atoms.numbers)
         stoi = atoms.symbols.formula.stoichiometry()
         st = stoi[0]
+        reduced_formula = stoi[1]
         dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3,
                                               angle_tolerance=0.1)
         sg = dataset['number']
@@ -124,6 +125,7 @@ def make_folder_dict(rows, tree_structure):
 
         # Add a unique identifier
         folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                       reduced_formula=reduced_formula,
                                        formula=formula,
                                        mag=magstate,
                                        row=row)
@@ -167,8 +169,9 @@ def make_folder_dict(rows, tree_structure):
         help='Write atoms object to file with name given '
         'by the --atomsname option')
 def main(database: str, run: bool = False, selection: str = '',
-         tree_structure: str = ('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
-                                '{spg}-{wyck}'),
+         tree_structure: str = (
+             'tree/{stoi}/{reduced_formula:abc}/{row.uid}'
+         ),
          sort: str = None, atomsname: str = 'structure.json',
          chunks: int = 1, copy: bool = False,
          patterns: str = '*', create_folders: bool = True,
@@ -187,6 +190,8 @@ def main(database: str, run: bool = False, selection: str = '',
     * {spg}: Material spacegroup number
     * {formula}: Chemical formula. A possible variant is {formula:metal}
       in which case the formula will be sorted by metal atoms
+    * {reduced_formula}: Reduced chemical formula. Like {formula}
+      except the formula has been reduced, i.e., Mo2S4 -> MoS2.
     * {wyck}: Unique wyckoff positions. The unique alphabetically
       sorted Wyckoff positions.
 
@@ -212,6 +217,7 @@ def main(database: str, run: bool = False, selection: str = '',
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
     >>> asr run "database.totree database.db --sort natoms --chunks 2 --run"
+
     """
     from pathlib import Path
     from ase.db import connect
