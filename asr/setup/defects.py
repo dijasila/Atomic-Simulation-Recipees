@@ -582,13 +582,14 @@ def setup_halfinteger():
     return None
 
 
-def create_general_supercell(structure, size=15.)
+def create_general_supercell(structure, size=15.):
     """
     Creates supercell of a form that breaks initial bravais lattice symmetry
     as well as tries to find the most uniform configuration containing the
     least number of atoms. Only works in 2D so far!
     """
     from ase.build import make_supercell
+    import numpy as np
     # b1 = n1*a1 + m1*a2
     # b2 = n2*a1 + m2*a2
     # we restrict ourselves such that m1=0
@@ -596,26 +597,33 @@ def create_general_supercell(structure, size=15.)
     # P = [[n1, 0, 0], [n2, m2, 0], [0, 0, 1]]
     print('INFO: set up general supercell.')
     sc_structuredict = {}
-    for n1 in range(10):
-        for n2 in range(10):
-            for m2 in range(10):
+    for n1 in range(2, 10):
+        for n2 in range(0, 5):
+            for m2 in range(2, 10):
                 # set up transformation, only for symmetry broken setup
                 if not (n1 == m2 and n2 == 0):
                     P = np.array([[n1, 0, 0], [n2, m2, 0], [0, 0, 1]])
                     sc_structure = make_supercell(prim=structure, P=P)
                     # now implement the postprocessing
-                    sc_structuredict[str(n1)+str(n2)+'0'+str(m2)] =
-                        {'structure': sc_structure}
+                    sc_structuredict[str(n1)+str(0)+str(n2)+str(m2)] = {
+                        'structure': sc_structure}
     print('INFO: created all possible linear combinations of the old lattice')
 
+    from ase.visualize import view
     # check physical distance between defects
-    for element in sc_structuredict:
+    indexlist = []
+    structurelist = []
+    numatoms_list = []
+    stdev_list = []
+    for i, element in enumerate(sc_structuredict):
         cell = sc_structuredict[element]['structure'].get_cell()
-        distance_xx = np.sqrt(cell[0]**2)
-        distance_yy = np.sqrt(cell[1]**2)
-        distance_xy = np.sqrt((cell[0] + cell[1])**2)
-        distance_-xy = np.sqrt((-cell[0] + cell[1])**2)
-        distances = [distance_xx, distance_yy, distance_xy, distance_-xy]
+        distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
+        distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
+        distance_xy = np.sqrt((cell[0][0] + cell[1][0])**2 +
+                (cell[0][1] + cell[1][1])**2 + (cell[0][2] + cell[1][2])**2)
+        distance_mxy = np.sqrt((-cell[0][0] + cell[1][0])**2 +
+                (-cell[0][1] + cell[1][1])**2 + (-cell[0][2] + cell[1][2])**2)
+        distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
         stdev = np.std(distances)
         sc_structuredict[element]['distances'] = distances
         sc_structuredict[element]['stdev'] = stdev
@@ -623,8 +631,25 @@ def create_general_supercell(structure, size=15.)
             sc_structuredict[element]['suitable'] = False
         elif min(distances) > size:
             sc_structuredict[element]['suitable'] = True
+            indexlist.append(i)
+            stdev_list.append(stdev)
+            numatoms_list.append(len(sc_structuredict[element]['structure']))
+            structurelist.append(sc_structuredict[element]['structure'])
 
+    lowlist = []
+    lowstruclist = []
+    for j, structure in enumerate(structurelist):
+        if len(structure) == min(numatoms_list):
+            print(min(numatoms_list))
+            lowlist.append(stdev_list[j])
+            lowstruclist.append(structure)
+    for k, structure in enumerate(lowstruclist):
+        if lowlist[k] == min(lowlist):
+            print('INFO: optimal structure found: {}'.format(structure))
+            finalstruc = structure
 
+    from ase.io import write
+    write('teststruc.json', finalstruc)
 
 
 
