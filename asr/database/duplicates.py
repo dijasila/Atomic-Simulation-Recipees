@@ -55,7 +55,7 @@ def main(database: str,
     from ase.db import connect
     from asr.core import read_json
     from asr.database.rmsd import main as rmsd
-    from asr.database.rmsd import _timed_print
+    from asr.utils import timed_print
     assert database != databaseout, \
         'You cannot read and write from the same database.'
 
@@ -93,7 +93,7 @@ def main(database: str,
     with connect(databaseout) as filtereddb:
         for row in db.select():
             now = datetime.now()
-            _timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
+            timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
 
             if row.get(uid_key) in exclude_uids:
                 continue
