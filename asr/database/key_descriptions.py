@@ -148,8 +148,10 @@ key_descriptions = {
         'asr_id': 'KVP: Material unique ID',
         'uid': 'KVP: Unique identifier'
     },
-    "info": {
-        'material_type': 'KVP: Material type.',
+    "setinfo": {
+        'first_class_material': (
+            'KVP: A first class material marks a physical material. '
+            '!First class material! [bool]'),
     },
     "info.json": {
         'class': 'KVP: Material class',
