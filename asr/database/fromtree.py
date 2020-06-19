@@ -297,7 +297,7 @@ def recurse_through_folders(folder, atomsname):
         type=str)
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
-         patterns: str = 'info.json,results-asr.*.json',
+         patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db', metadata_from_file: str = None):
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
