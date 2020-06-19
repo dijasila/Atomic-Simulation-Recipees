@@ -16,11 +16,34 @@ class KeyValuePair(click.ParamType):
         return key, value
 
 
+protected_keys = {'material_type': {'primary', 'secondary'}}
+
+
+def check_key_value(key, value):
+    """Check validity of any protected key value pairs."""
+    if key in protected_keys:
+        allowed_values = protected_keys[key]
+        if value not in allowed_values:
+            raise ValueError(
+                f'Protected {key}={value} not in allowed values: '
+                f'{allowed_values}.'
+            )
+
+
 @command('asr.info')
 @argument('key_value_pairs', metavar='key:value', nargs=-1,
           type=KeyValuePair())
 def main(key_value_pairs: List):
-    """Set additional key value pairs."""
+    """Set additional key value pairs.
+
+    Some key valye pairs are protected and can assume a limited set of
+    values::
+
+        - `material_type`: `primary`, `secondary`.
+
+    These extra key value pairs are stored in info.json.
+
+    """
     infofile = Path('info.json')
     if infofile.is_file():
         info = read_json(infofile)
@@ -28,6 +51,7 @@ def main(key_value_pairs: List):
         info = {}
 
     for key, value in key_value_pairs:
+        check_key_value(key, value)
         if value == '':
             info.pop(key, None)
         else:
