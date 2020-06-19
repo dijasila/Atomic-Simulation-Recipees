@@ -317,9 +317,10 @@ def main(folders: Union[str, None] = None,
         folders = tmpfolders
 
     if recursive:
-        assert len(folders) == 1, \
-            "Please don't combine recursive and multiple folders."
-        folders = recurse_through_folders(folders[0], atomsname)
+        newfolders = []
+        for folder in folders:
+            newfolders += recurse_through_folders(folder, atomsname)
+        folders = newfolders
 
     folders.sort()
     patterns = patterns.split(',')
