@@ -3,7 +3,7 @@
 from asr.core import command, argument, read_json, write_json
 import click
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 
 class KeyValuePair(click.ParamType):
@@ -33,7 +33,7 @@ def check_key_value(key, value):
 @command('asr.info')
 @argument('key_value_pairs', metavar='key:value', nargs=-1,
           type=KeyValuePair())
-def main(key_value_pairs: List):
+def main(key_value_pairs: List[Tuple[str, str]]):
     """Set additional key value pairs.
 
     Some key valye pairs are protected and can assume a limited set of
