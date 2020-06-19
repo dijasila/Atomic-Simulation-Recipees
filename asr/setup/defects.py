@@ -254,8 +254,11 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
-    elif general_algorithm = True:
+    elif general_algorithm == True:
         pristine = create_general_supercell(structure)
+        N_x = 0
+        N_y = 0
+        N_z = 0
     else:
         N_x = sc[0]
         N_y = sc[1]
