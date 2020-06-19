@@ -14,11 +14,12 @@ class KeyValuePair(click.ParamType):
         """Convert string to a (key, value) tuple."""
         assert ':' in value
         key, value = value.split(':')
-        value = literal_eval(value)
+        if not value == '':
+            value = literal_eval(value)
         return key, value
 
 
-protected_keys = {'primary': {True, False}}
+protected_keys = {'first_class_material': {True, False}}
 
 
 def check_key_value(key, value):
@@ -41,7 +42,7 @@ def main(key_value_pairs: List[Tuple[str, str]]):
     Some key valye pairs are protected and can assume a limited set of
     values::
 
-        - `primary`: True, False
+        - `first_class_material`: True, False
 
     These extra key value pairs are stored in info.json.
 
@@ -53,10 +54,10 @@ def main(key_value_pairs: List[Tuple[str, str]]):
         info = {}
 
     for key, value in key_value_pairs:
-        check_key_value(key, value)
         if value == '':
             info.pop(key, None)
         else:
+            check_key_value(key, value)
             info[key] = value
 
     write_json(infofile, info)
