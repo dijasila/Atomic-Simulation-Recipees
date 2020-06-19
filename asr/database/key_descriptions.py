@@ -149,6 +149,7 @@ key_descriptions = {
         'uid': 'KVP: Unique identifier'
     },
     "info.json": {
+        'material_type': 'KVP: Material type.',
         'class': 'KVP: Material class',
         'doi': 'KVP: Monolayer reported DOI',
         'icsd_id': 'KVP: ICSD id of parent bulk structure',
