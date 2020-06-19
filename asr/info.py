@@ -1,6 +1,7 @@
 """Manually set key-value-pairs for material."""
 
 from asr.core import command, argument, read_json, write_json
+from ast import literal_eval
 import click
 from pathlib import Path
 from typing import List, Tuple
@@ -13,10 +14,11 @@ class KeyValuePair(click.ParamType):
         """Convert string to a (key, value) tuple."""
         assert ':' in value
         key, value = value.split(':')
+        value = literal_eval(value)
         return key, value
 
 
-protected_keys = {'material_type': {'primary', 'secondary'}}
+protected_keys = {'primary': {True, False}}
 
 
 def check_key_value(key, value):
@@ -39,7 +41,7 @@ def main(key_value_pairs: List[Tuple[str, str]]):
     Some key valye pairs are protected and can assume a limited set of
     values::
 
-        - `material_type`: `primary`, `secondary`.
+        - `primary`: True, False
 
     These extra key value pairs are stored in info.json.
 
@@ -56,4 +58,5 @@ def main(key_value_pairs: List[Tuple[str, str]]):
             info.pop(key, None)
         else:
             info[key] = value
+
     write_json(infofile, info)
