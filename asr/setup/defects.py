@@ -112,7 +112,8 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
                                        charge_states=chargestates,
                                        vacancies=vacancies, sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
-                                       vacuum=vacuum, nopbc=nopbc)
+                                       vacuum=vacuum, nopbc=nopbc,
+                                       general_algorithm=general_algorithm)
 
         # based on this dictionary, create a folder structure for all defects
         # and respective charge states
@@ -216,7 +217,7 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
-                  max_lattice, is_2D, vacuum, nopbc):
+                  max_lattice, is_2D, vacuum, nopbc, general_algorithm):
     """
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
@@ -249,10 +250,12 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0:
+    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0 and general_algorithm == False:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
+    elif general_algorithm = True:
+        pristine = create_general_supercell(structure)
     else:
         N_x = sc[0]
         N_y = sc[1]
@@ -648,10 +651,7 @@ def create_general_supercell(structure, size=15.):
             print('INFO: optimal structure found: {}'.format(structure))
             finalstruc = structure
 
-    from ase.io import write
-    write('teststruc.json', finalstruc)
-
-
+    return finalstruc
 
 
 def collect_data():
