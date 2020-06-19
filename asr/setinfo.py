@@ -33,18 +33,31 @@ def check_key_value(key, value):
             )
 
 
-@command('asr.info')
+@command('asr.setinfo')
 @argument('key_value_pairs', metavar='key:value', nargs=-1,
           type=KeyValuePair())
 def main(key_value_pairs: List[Tuple[str, str]]):
     """Set additional key value pairs.
 
-    Some key valye pairs are protected and can assume a limited set of
+    These extra key value pairs are stored in info.json.  To set a key
+    value pair simply do::
+
+        asr run "setinfo key1:'mystr' key2:1 key3:True"
+
+    The values supplied values will be interpred and the result will
+    be {'key1': 'mystr', 'key2': 1, 'key3': True}
+
+    Some key value pairs are protected and can assume a limited set of
     values::
 
         - `first_class_material`: True, False
 
-    These extra key value pairs are stored in info.json.
+    To delete an existing key-value-pair in info.json supply an empty
+    string as a value, i.e.:
+
+    asr run "setinfo mykey:"
+
+    would delete "mykey".
 
     """
     infofile = Path('info.json')

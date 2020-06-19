@@ -1,6 +1,7 @@
+"""Tests of the asr.setinfo module."""
 import pytest
 from asr.core import read_json
-from asr.info import main
+from asr.setinfo import main
 
 
 @pytest.mark.ci
