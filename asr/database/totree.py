@@ -1,5 +1,7 @@
 from asr.core import command, argument, option
+from asr.utils import timed_print
 from pathlib import Path
+import datetime
 
 
 def make_folder_tree(*, folders, chunks,
@@ -15,7 +17,12 @@ def make_folder_tree(*, folders, chunks,
     import importlib
     from fnmatch import fnmatch
 
+    nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
+        now = datetime.now()
+        percentage_completed = (i + 1) / nfolders * 100
+        timed_print(f'{now:%H:%M:%S} {i + 1}/{nfolders} '
+                    f'{percentage_completed:.1}', wait=30)
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
