@@ -1,7 +1,7 @@
 from asr.core import command, argument, option
 from asr.utils import timed_print
 from pathlib import Path
-import datetime
+from datetime import datetime
 
 
 def make_folder_tree(*, folders, chunks,
