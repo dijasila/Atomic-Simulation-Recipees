@@ -1,0 +1,47 @@
+"""Run integrity checks of database."""
+
+from asr.core import command, argument
+from ase.db import connect
+
+
+@command('asr.database.check',
+         save_results_file=False)
+@argument('dbname', type=str)
+def main(dbname: str):
+    """Run a check of a database.
+
+    Check whether all child uids exists and whether there are any
+    duplicate uids.
+
+    """
+    print(f'Check integrity of database={dbname}.')
+    with connect(dbname, serial=True) as db:
+        uids = set()
+        duplicate_uids = set()
+        child_uids = set()
+        for row in db.select():
+            if row.uid in uids:
+                duplicate_uids.add(row.uid)
+            else:
+                uids.add(row.uid)
+            children = row.data.get('__children__', {})
+            child_uids.update(set(children.values()))
+
+    missing_child_uids = child_uids - uids
+    nmissing_childs = len(missing_child_uids)
+
+    if missing_child_uids:
+        print(f'Missing {nmissing_childs} child uids in collected database. '
+              'Child uids:')
+        for uid in missing_child_uids:
+            print(' ' * 4, uid)
+
+    nduplicates = len(duplicate_uids)
+    if duplicate_uids:
+        print(f'{nduplicates} duplicate uids in collected database. '
+              'Duplicate uids:')
+        for uid in duplicate_uids:
+            print(' ' * 4, uid)
+
+    return {'missing_child_uids': missing_child_uids,
+            'duplicate_uids': duplicate_uids}

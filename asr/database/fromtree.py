@@ -4,6 +4,7 @@ from typing import Union, List
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
+from asr.database.check import main as check_database
 from pathlib import Path
 import os
 import glob
@@ -393,19 +394,18 @@ def main(folders: Union[str, None] = None,
                  f'number of materials changed: {nmatdb} != {nmat}')
 
     if world.rank == 0:
-        print('Check integrity of database.')
-        with connect(dbname, serial=True) as db:
-            uids = set()
-            child_uids = set()
-            for row in db.select():
-                uids.add(row.uid)
-                children = row.data.get('__children__', {})
-                child_uids.update(set(children.values()))
-            if not child_uids.issubset(uids):
-                raise MissingUIDS(
-                    'Missing child uids in collected database. '
-                    'Did you collect all subfolders?')
+        results = check_database(dbname)
+        missing_child_uids = results['missing_child_uids']
+        duplicate_uids = results['duplicate_uids']
 
+        if missing_child_uids:
+            raise MissingUIDS(
+                'Missing child uids in collected database. '
+                'Did you collect all subfolders?')
+
+        if duplicate_uids:
+            raise MissingUIDS(
+                'Duplicate uids in database.')
         for name in Path().glob(f'{dbname}.*.db'):
             name.unlink()
 
