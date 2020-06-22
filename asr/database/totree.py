@@ -30,12 +30,10 @@ def make_folder_tree(*, folders, chunks,
             folder = str(Path().joinpath(*parts))
 
         folder = Path(folder)
-        folder_has_been_created = False
 
         if write_atoms_file:
-            if not folder_has_been_created:
+            if not folder.is_dir():
                 makedirs(folder)
-                folder_has_been_created = True
             write(folder / atomsname, row.toatoms())
 
         for filename, results in row.data.items():
@@ -45,9 +43,8 @@ def make_folder_tree(*, folders, chunks,
             else:
                 continue
 
-            if not folder_has_been_created and create_folders:
+            if not folder.is_dir() and create_folders:
                 makedirs(folder)
-                folder_has_been_created = True
 
             if (folder / filename).is_file():
                 continue
