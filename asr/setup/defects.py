@@ -592,7 +592,7 @@ def setup_halfinteger():
     return None
 
 
-def create_general_supercell(structure, size=15.):
+def create_general_supercell(structure, size=12.5):
     """
     Creates supercell of a form that breaks initial bravais lattice symmetry
     as well as tries to find the most uniform configuration containing the
@@ -608,7 +608,7 @@ def create_general_supercell(structure, size=15.):
     print('INFO: set up general supercell.')
     sc_structuredict = {}
     for n1 in range(2, 10):
-        for n2 in range(0, 5):
+        for n2 in range(0, 10):
             for m2 in range(2, 10):
                 # set up transformation, only for symmetry broken setup
                 if not (n1 == m2 and n2 == 0):
