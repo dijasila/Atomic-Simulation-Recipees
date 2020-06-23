@@ -136,11 +136,6 @@ def main():
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
 
-    dim, cluster = cluster_check(atoms)
-    info['primary_dimensionality'] = dim
-    for nd in range(4):
-        info[f'clusters_{nd}D'] = cluster[nd]
-
     info['__key_descriptions__'] = {
         'magstate': 'KVP: Magnetic state',
         'is_magnetic': 'KVP: Material is magnetic (Magnetic)',
@@ -152,20 +147,6 @@ def main():
         'crystal_prototype': 'KVP: Crystal prototype'}
 
     return info
-
-
-def cluster_check(atoms):
-    """
-    Cluser and dimensionality analysis of the input structure.
-
-    Analyzes the primary dimensionality of the input structure
-    and analyze clusters following Mahler, et. al.
-    Physical Review Materials 3 (3), 034003.
-    """
-    from ase.geometry.dimensionality import analyze_dimensionality
-    cluster_data = analyze_dimensionality(atoms)[0]
-
-    return cluster_data.dimtype, cluster_data.h
 
 
 if __name__ == '__main__':
