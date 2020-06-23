@@ -34,13 +34,13 @@ import os
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm', type=bool, 
+@option('--general_algorithm', 
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
          maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False,
-         halfinteger=False, general_algorithm=False):
+         halfinteger=False, general_algorithm=None):
     """
     Sets up defect structures for a given host.
 
@@ -258,8 +258,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
-    elif general_algorithm == True:
-        pristine = create_general_supercell(structure)
+    elif general_algorithm is not None:
+        pristine = create_general_supercell(structure, general_algorithm)
         N_x = 0
         N_y = 0
         N_z = 0
