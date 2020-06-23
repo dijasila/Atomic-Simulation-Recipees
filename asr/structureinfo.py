@@ -138,7 +138,8 @@ def main():
 
     dim, cluster = cluster_check(atoms)
     info['primary_dimensionality'] = dim
-    info['clusters'] = cluster
+    for nd in range(4):
+        info[f'{nd}D_clusters'] = cluster[nd]
 
     info['__key_descriptions__'] = {
         'magstate': 'KVP: Magnetic state',
@@ -150,7 +151,10 @@ def main():
         'spgnum': 'KVP: Space group number',
         'crystal_prototype': 'KVP: Crystal prototype',
         'primary_dimensionality': 'Dim. with max. scoring parameter',
-        'clusters': 'cluster number of dim. (0d, 1d, 2d, 3d)'}
+        '0D_clusters': 'KVP: Number of 0D clusters.',
+        '1D_clusters': 'KVP: Number of 1D clusters.',
+        '2D_clusters': 'KVP: Number of 2D clusters.',
+        '3D_clusters': 'KVP: Number of 3D clusters.'}
 
     return info
 
