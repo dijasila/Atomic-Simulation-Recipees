@@ -1,9 +1,9 @@
-from asr.core import command, argument, AtomsFile
+from asr.core import command, option, AtomsFile
 from ase import Atoms
 
 
 @command('asr.dimensionality')
-@argument('atoms', type=AtomsFile(), default='structure.json')
+@option('--atoms', type=AtomsFile(), default='structure.json')
 def main(atoms: Atoms):
     """Make cluster and dimensionality analysis of the input structure.
 
