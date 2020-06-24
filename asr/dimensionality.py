@@ -22,13 +22,13 @@ def main(atoms: Atoms):
         interval['cdim'] = cdim
 
     results = {'k_intervals': k_intervals}
-    primary_interval = interval[0]
+    primary_interval = k_intervals[0]
     dim_primary = primary_interval['dimtype']
     dim_primary_score = primary_interval['score']
 
     results['dim_primary'] = dim_primary
     results['dim_primary_score'] = dim_primary_score
     for nd in range(4):
-        results[f'dim_nclusters_{nd}D'] = primary_interval[nd]
+        results[f'dim_nclusters_{nd}D'] = primary_interval['h'][nd]
 
     return results
