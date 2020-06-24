@@ -259,7 +259,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     elif general_algorithm is not None:
-        pristine = create_general_supercell(structure, general_algorithm)
+        pristine = create_general_supercell(structure, size=float(general_algorithm))
         N_x = 0
         N_y = 0
         N_z = 0
@@ -607,9 +607,9 @@ def create_general_supercell(structure, size=12.5):
     # P = [[n1, 0, 0], [n2, m2, 0], [0, 0, 1]]
     print('INFO: set up general supercell.')
     sc_structuredict = {}
-    for n1 in range(2, 10):
-        for n2 in range(0, 10):
-            for m2 in range(2, 10):
+    for n1 in range(1, 10):
+        for n2 in range(0, 3):
+            for m2 in range(1, 10):
                 # set up transformation, only for symmetry broken setup
                 if not (n1 == m2 and n2 == 0):
                     P = np.array([[n1, 0, 0], [n2, m2, 0], [0, 0, 1]])
