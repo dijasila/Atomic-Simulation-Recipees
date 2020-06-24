@@ -1,5 +1,5 @@
 from asr.core import command, argument, get_recipes
-
+from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -186,6 +186,11 @@ key_descriptions = {
         "folder": "KVP: Path to collection folder",
     }
 }
+
+# Dimensionality key descrioptions:
+for dimtype in get_dimtypes():
+    key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
+        f'KVP: Dimensionality score of dimtype={dimtype}'
 
 # Piezoelectrictensor key_descriptions
 piezokd = {}
