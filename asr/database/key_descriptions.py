@@ -143,15 +143,19 @@ key_descriptions = {
         "spacegroup": "KVP: Space group",
         "spgnum": "KVP: Space group number",
         "crystal_prototype": "KVP: Crystal prototype",
-        'primary_dimensionality': 'KVP: Dim. with max. scoring parameter',
-        'clusters_0D': 'KVP: Number of 0D clusters.',
-        'clusters_1D': 'KVP: Number of 1D clusters.',
-        'clusters_2D': 'KVP: Number of 2D clusters.',
-        'clusters_3D': 'KVP: Number of 3D clusters.'
     },
     "database.material_fingerprint": {
         'asr_id': 'KVP: Material unique ID',
         'uid': 'KVP: Unique identifier'
+    },
+    "dimensionality": {
+        'dim_primary': 'KVP: Dim. with max. scoring parameter',
+        'dim_primary_score': ('KVP: Dimensionality scoring parameter '
+                              'of primary dimensionality.'),
+        'dim_nclusters_0D': 'KVP: Number of 0D clusters.',
+        'dim_nclusters_1D': 'KVP: Number of 1D clusters.',
+        'dim_nclusters_2D': 'KVP: Number of 2D clusters.',
+        'dim_nclusters_3D': 'KVP: Number of 3D clusters.',
     },
     "setinfo": {
         'first_class_material': (
