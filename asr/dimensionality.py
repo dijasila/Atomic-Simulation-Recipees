@@ -20,4 +20,15 @@ def main(atoms: Atoms):
     for interval in k_intervals:
         cdim = {int(key): value for key, value in interval['cdim'].items()}
         interval['cdim'] = cdim
-    return {'k_intervals': k_intervals}
+
+    results = {'k_intervals': k_intervals}
+    primary_interval = interval[0]
+    dim_primary = primary_interval['dimtype']
+    dim_primary_score = primary_interval['score']
+
+    results['dim_primary'] = dim_primary
+    results['dim_primary_score'] = dim_primary_score
+    for nd in range(4):
+        results[f'dim_nclusters_{nd}D'] = primary_interval[nd]
+
+    return results
