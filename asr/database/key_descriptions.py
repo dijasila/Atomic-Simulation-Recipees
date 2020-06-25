@@ -31,6 +31,8 @@ key_descriptions = {
         "gap_dir": "KVP: Direct band gap !Dir. band gap! [eV]",
         "gap_dir_nosoc":
         "KVP: Direct gap w/o soc. !Dir. gap wo. soc.! [eV]",
+        "gap_nosoc":
+        "KVP: Gap w/o soc. !Gap wo. soc.! [eV]",
         "workfunction": "KVP: Work function (avg. if finite dipole) [eV]",
     },
     "gw": {
@@ -156,6 +158,10 @@ key_descriptions = {
         'dim_nclusters_1D': 'KVP: Number of 1D clusters.',
         'dim_nclusters_2D': 'KVP: Number of 2D clusters.',
         'dim_nclusters_3D': 'KVP: Number of 3D clusters.',
+        'dim_threshold_0D': 'KVP: 0D dimensionality threshold.',
+        'dim_threshold_1D': 'KVP: 1D dimensionality threshold.',
+        'dim_threshold_2D': 'KVP: 2D dimensionality threshold.',
+        'dim_threshold_3D': 'KVP: 3D dimensionality threshold.',
     },
     "setinfo": {
         'first_class_material': (
