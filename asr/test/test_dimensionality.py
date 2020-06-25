@@ -15,8 +15,8 @@ def test_dimensionality(asr_tmpdir, test_material):
     scores = [results[f'dim_score_{dimtype}'] for dimtype in dimtypes]
     assert results[f'dim_score_{primary}'] == max(scores)
 
-    # 3 is reasonable
-    assert results[f'dim_threshold_{nd}D'] < 1
+    # 1.3 is reasonable. Most physical materials lie around 1
+    assert results[f'dim_threshold_{nd}D'] < 1.3
     # These keys should not be contained in results
     for i in range(nd + 1, 4):
         assert f'dim_threshold_{i}D' not in results

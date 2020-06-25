@@ -197,7 +197,8 @@ def collect_links_to_child_folders(folder: Path, atomsname):
     return children
 
 
-def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
+def collect_folder(folder: Path, atomsname: str, patterns: List[str],
+                   children_patterns=[]):
     """Collect data from a material folder.
 
     Parameters
@@ -237,18 +238,18 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str]):
         data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
         for name in Path().glob('*'):
-            if name.is_dir():
+            if name.is_dir() and any(fnmatch(name, pattern)
+                                     for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-                continue
+            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
+                tmpkvp, tmpdata = collect_file(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
 
-            for pattern in patterns:
-                if fnmatch(name, pattern):
-                    tmpkvp, tmpdata = collect_file(name)
-                    kvp.update(tmpkvp)
-                    data.update(tmpdata)
         if not data['__children__']:
             del data['__children__']
+
     return atoms, kvp, data
 
 
@@ -293,12 +294,14 @@ def recurse_through_folders(folder, atomsname):
 @argument('folders', nargs=-1, type=str)
 @option('-r', '--recursive', is_flag=True,
         help='Recurse and collect subdirectories.')
+@option('--children-patterns', type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
 @option('-m', '--metadata-from-file', help='Get metadata from file.',
         type=str)
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
+         children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db', metadata_from_file: str = None):
     """Collect ASR data from folder tree into an ASE database."""
@@ -325,7 +328,9 @@ def main(folders: Union[str, None] = None,
 
     folders.sort()
     patterns = patterns.split(',')
-    # We use absolute path because of chdir below!
+    children_patterns = children_patterns.split(',')
+
+    # We use absolute path because of chdir in collect_folder()!
     dbpath = Path(dbname).absolute()
     metadata = {}
     if metadata_from_file:
@@ -350,9 +355,11 @@ def main(folders: Union[str, None] = None,
                 print(f'Collecting folder {folder} ({ifol + 1}/{nfolders})',
                       flush=True)
 
-            atoms, key_value_pairs, data = collect_folder(Path(folder),
-                                                          atomsname,
-                                                          patterns)
+            atoms, key_value_pairs, data = collect_folder(
+                Path(folder),
+                atomsname,
+                patterns,
+                children_patterns=children_patterns)
 
             if atoms is None:
                 continue
