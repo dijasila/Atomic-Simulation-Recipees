@@ -39,7 +39,7 @@ class SOCDOS(DOS):
         from asr.magnetic_anisotropy import get_spin_axis
 
         # Initiate calculator object and get the spin-orbit eigenvalues
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+        calc = GPAW(gpw, txt=None)
         theta, phi = get_spin_axis()
         e_skm, ef = calc2eigs(calc, theta=theta, phi=phi)
 
