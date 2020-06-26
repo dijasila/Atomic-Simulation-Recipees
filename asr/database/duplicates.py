@@ -120,7 +120,7 @@ def main(database: str,
             print(f'        {uid} ' + ' '.join(f'{key}=' + str(row.get(key))
                                                for key in filterkeys))
         print('    Including:')
-        for uid in exclude:
+        for uid in include:
             row = db.get(f'{uid_key}={uid}')
             print(f'        {uid} ' + ' '.join(f'{key}=' + str(row.get(key))
                                                for key in filterkeys))
