@@ -110,19 +110,20 @@ def main(database: str,
         filtereddb.metadata = db.metadata
 
     filterkeys = [key for _, key in ops_and_keys]
-    for group in duplicate_groups:
+    for ig, group in enumerate(duplicate_groups):
         include = group['include']
         exclude = group['exclude']
-        print('Excluding:')
+        print(f'Group #{ig}')
+        print('    Excluding:')
         for uid in exclude:
             row = db.get(f'{uid_key}={uid}')
-            print(f'    {uid}' + ' '.join(f'{key}=' + str(row.get(key))
-                                          for key in filterkeys))
-        print('Including:')
+            print(f'        {uid} ' + ' '.join(f'{key}=' + str(row.get(key))
+                                               for key in filterkeys))
+        print('    Including:')
         for uid in exclude:
             row = db.get(f'{uid_key}={uid}')
-            print(f'    {uid}' + ' '.join(f'{key}=' + str(row.get(key))
-                                          for key in filterkeys))
+            print(f'        {uid} ' + ' '.join(f'{key}=' + str(row.get(key))
+                                               for key in filterkeys))
 
     print(f'Excluded {len(exclude_uids)} materials.')
     return {'duplicate_groups': duplicate_groups,
