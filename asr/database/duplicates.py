@@ -161,7 +161,7 @@ def pick_rows_according_to_filter(db, duplicate_ids, filterstring, uid_key):
     """
     rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
     filters = filterstring.split(',')
-    sorts = {'<=', '>=', '==', '>', '<'}
+    sorts = ['<=', '>=', '==', '>', '<']
     ops_and_keys = []
     for filt in filters:
         for op in sorts:
