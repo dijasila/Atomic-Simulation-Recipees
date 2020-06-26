@@ -60,6 +60,8 @@ def main(database: str,
     assert database != databaseout, \
         'You cannot read and write from the same database.'
 
+    ops_and_keys = parse_filter_string(filterstring)
+
     if not rmsd.done:
         rmsd(database, comparison_keys=comparison_keys)
     rmsd_results = read_json('results-asr.database.rmsd.json')
@@ -82,7 +84,7 @@ def main(database: str,
 
         # Pick the preferred row according to filterstring
         include = filter_uids(db, duplicate_uids,
-                              filterstring, uid_key)
+                              ops_and_keys, uid_key)
         # Book keeping
         already_checked_uids.update(duplicate_uids)
 
@@ -107,10 +109,20 @@ def main(database: str,
 
         filtereddb.metadata = db.metadata
 
+    filterkeys = [key for _, key in ops_and_keys]
     for group in duplicate_groups:
         include = group['include']
         exclude = group['exclude']
-        print(f'include={include} and exclude={exclude}')
+        print('Excluding:')
+        for uid in exclude:
+            row = db.get(f'{uid_key}={uid}')
+            print(f'    {uid}' + ' '.join(f'{key}=' + str(row.get(key))
+                                          for key in filterkeys))
+        print('Including:')
+        for uid in exclude:
+            row = db.get(f'{uid_key}={uid}')
+            print(f'    {uid}' + ' '.join(f'{key}=' + str(row.get(key))
+                                          for key in filterkeys))
 
     print(f'Excluded {len(exclude_uids)} materials.')
     return {'duplicate_groups': duplicate_groups,
@@ -131,7 +143,7 @@ def compare(value1, value2, comparator):
         return value1 == value2
 
 
-def filter_uids(db, duplicate_ids, filterstring, uid_key):
+def filter_uids(db, duplicate_ids, ops_and_keys, uid_key):
     """Get most important rows according to filterstring.
 
     Parameters
@@ -140,15 +152,14 @@ def filter_uids(db, duplicate_ids, filterstring, uid_key):
         Open database connection.
     duplicate_ids: iterable
         Set of possible duplicate materials.
-    filterstring: str
-        Comma separated string of filters. A simple filter could be '<energy'
-        which only pick a material if no other material with lower energy
-        exists (in other words: chose the lowest energy materials). '<' means
-        'smallest'. Other accepted operators are {'<=', '>=', '>', '<', '=='}.
+    ops_and_keys: List[Tuple(str, str)]
+        List of filters where the first element of the tuple is the comparison
+        operator and the second is the to compare i.e.: [('<',
+        'energy')]. Other accepted operators are {'<=', '>=', '>', '<', '=='}.
         Additional filters can be added to construct more complex filters,
-        i.e., '<energy,<=natoms' means that a material is only picked if no
-        other materials with lower energy AND fewer or same number of atoms
-        exists.
+        i.e., `[('<', 'energy'), ('<=', 'natoms')]` means that a material is
+        only picked if no other materials with lower energy AND fewer or same
+        number of atoms exists.
     uid_key: str
         The UID key of the database connection which the duplicate_ids
         parameters are refererring to.
@@ -160,17 +171,6 @@ def filter_uids(db, duplicate_ids, filterstring, uid_key):
 
     """
     rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
-    filters = filterstring.split(',')
-    sorts = ['<=', '>=', '==', '>', '<']
-    ops_and_keys = []
-    for filt in filters:
-        for op in sorts:
-            if filt.startswith(op):
-                break
-        else:
-            raise ValueError(f'Unknown sorting operator in filterstring={filt}.')
-        key = filt[len(op):]
-        ops_and_keys.append((op, key))
 
     filtered_uids = set()
     for candidaterow in rows:
@@ -182,6 +182,34 @@ def filter_uids(db, duplicate_ids, filterstring, uid_key):
             filtered_uids.add(candidaterow.get(f'{uid_key}'))
 
     return filtered_uids
+
+
+def parse_filter_string(filterstring):
+    """Parse a comma separated filter string.
+
+    Parameters
+    ----------
+    filterstring: str
+        Comma separated filter string, i.e. '<energy,<=natoms'
+
+    Returns
+    -------
+    ops_and_keys: List[Tuple(str, str)]
+        For the above example would return [('<', 'energy'), ('<=', 'natoms')].
+
+    """
+    filters = filterstring.split(',')
+    sorts = ['<=', '>=', '==', '>', '<']
+    ops_and_keys = []
+    for filt in filters:
+        for op in sorts:
+            if filt.startswith(op):
+                break
+        else:
+            raise ValueError(f'Unknown sorting operator in filterstring={filt}.')
+        key = filt[len(op):]
+        ops_and_keys.append((op, key))
+    return ops_and_keys
 
 
 if __name__ == '__main__':
