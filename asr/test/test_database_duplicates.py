@@ -46,12 +46,13 @@ def test_database_duplicates(duplicates_test_db):
     from asr.database.duplicates import main
 
     results = main('duplicates.db', 'duplicates_removed.db',
-                   filterstring='<natoms,<id')
+                   filterstring='<=natoms,<id')
 
     assert Path('duplicates_removed.db').is_file()
     nduplicates = len(duplicates_test_db[1])
     duplicate_groups = results['duplicate_groups']
-    assert duplicate_groups[1] == list(range(1, nduplicates + 1))
+    assert duplicate_groups[0]['include'] == [1]
+    assert duplicate_groups[0]['exclude'] == list(range(2, nduplicates + 1))
 
 
 @pytest.mark.ci
@@ -60,10 +61,11 @@ def test_database_duplicates_filter_magstate(duplicates_test_db):
 
     results = main('duplicates.db', 'duplicates_removed.db',
                    comparison_keys='magstate',
-                   filterstring='<natoms,<id')
+                   filterstring='<=natoms,<id')
 
     duplicate_groups = results['duplicate_groups']
-    assert duplicate_groups[1] == [1, 3, 4, 5, 6]
+    assert duplicate_groups[0]['include'] == [1]
+    assert duplicate_groups[0]['exclude'] == [3, 4, 5, 6]
 
 
 @pytest.mark.ci
@@ -73,7 +75,7 @@ def test_database_duplicates_no_duplicates(duplicates_test_db):
     # Setting comparison_key = id makes removes all duplicates.
     results = main('duplicates.db', 'duplicates_removed.db',
                    comparison_keys='id',
-                   filterstring='<natoms,<id')
+                   filterstring='<=natoms,<id')
 
     duplicate_groups = results['duplicate_groups']
     assert not duplicate_groups

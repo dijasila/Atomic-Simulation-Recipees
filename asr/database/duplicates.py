@@ -65,33 +65,32 @@ def main(database: str,
     rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
-    duplicate_groups = {}
+    duplicate_groups = []
     db = connect(database)
     exclude_uids = set()
     already_checked_uids = set()
-
-    for uid, rmsd_dict in rmsd_by_id.items():
+    nrmsd = len(rmsd_by_id)
+    print('Filtering materials...')
+    for irmsd, (uid, rmsd_dict) in enumerate(rmsd_by_id.items()):
         if uid in already_checked_uids:
             continue
+        now = datetime.now()
+        timed_print(f'{now:%H:%M:%S}: {irmsd}/{nrmsd}', wait=30)
         duplicate_uids = set(key for key, value in rmsd_dict.items()
                              if value is not None and value < rmsd_tol)
         duplicate_uids.add(uid)
 
         # Pick the preferred row according to filterstring
-        preferred_rows = pick_rows_according_to_filter(db, duplicate_uids,
-                                                       filterstring, uid_key)
-        preferred_uids = {preferred_row.get(uid_key)
-                          for preferred_row in preferred_rows}
-
+        include = filter_uids(db, duplicate_uids,
+                              filterstring, uid_key)
         # Book keeping
         already_checked_uids.update(duplicate_uids)
 
-        exclude = duplicate_uids - preferred_uids
+        exclude = duplicate_uids - include
         if exclude:
             exclude_uids.update(exclude)
-            dup_uids = list(duplicate_uids)
-            for preferred_uid in preferred_uids:
-                duplicate_groups[preferred_uid] = dup_uids
+            duplicate_groups.append({'exclude': list(exclude),
+                                     'include': list(include)})
 
     if databaseout is not None:
         nmat = len(db)
@@ -108,9 +107,10 @@ def main(database: str,
 
         filtereddb.metadata = db.metadata
 
-    for preferred_uid, group in duplicate_groups.items():
-        print(f'Chose {uid_key}={preferred_uid} out of')
-        print('    ', ', '.join([str(item) for item in group]))
+    for group in duplicate_groups:
+        include = group['include']
+        exclude = group['exclude']
+        print(f'include={include} and exclude={exclude}')
 
     print(f'Excluded {len(exclude_uids)} materials.')
     return {'duplicate_groups': duplicate_groups,
@@ -131,7 +131,7 @@ def compare(value1, value2, comparator):
         return value1 == value2
 
 
-def pick_rows_according_to_filter(db, duplicate_ids, filterstring, uid_key):
+def filter_uids(db, duplicate_ids, filterstring, uid_key):
     """Get most important rows according to filterstring.
 
     Parameters
@@ -155,8 +155,8 @@ def pick_rows_according_to_filter(db, duplicate_ids, filterstring, uid_key):
 
     Returns
     -------
-    picked_rows: `list`
-        List of filtered rows.
+    filtered_uids: `set`
+        Set of filtered uids.
 
     """
     rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
@@ -172,16 +172,16 @@ def pick_rows_according_to_filter(db, duplicate_ids, filterstring, uid_key):
         key = filt[len(op):]
         ops_and_keys.append((op, key))
 
-    picked_rows = []
+    filtered_uids = set()
     for candidaterow in rows:
         better_candidates = {
             row for row in rows
             if all(compare(row[key], candidaterow[key], op)
                    for op, key in ops_and_keys)}
         if not better_candidates:
-            picked_rows.append(candidaterow)
+            filtered_uids.add(candidaterow.get(f'{uid_key}'))
 
-    return picked_rows
+    return filtered_uids
 
 
 if __name__ == '__main__':
