@@ -113,17 +113,18 @@ def main(database: str,
     for ig, group in enumerate(duplicate_groups):
         include = group['include']
         exclude = group['exclude']
-        print(f'Group #{ig}')
+        min_rmsd = min(value for value in rmsd_by_id[include[0]].values()
+                       if value is not None)
+        print(f'Group #{ig} min_rmsd={min_rmsd}')
         print('    Excluding:')
         for uid in exclude:
-            min_rmsd = min(rmsd_by_id[uid].values())
             row = db.get(f'{uid_key}={uid}')
-            print(f'        {uid} min_rmsd={min_rmsd}'
+            print(f'        {uid} '
                   + ' '.join(f'{key}=' + str(row.get(key)) for key in filterkeys))
         print('    Including:')
         for uid in include:
             row = db.get(f'{uid_key}={uid}')
-            print(f'        {uid} min_rmsd={min_rmsd}'
+            print(f'        {uid} '
                   + ' '.join(f'{key}=' + str(row.get(key)) for key in filterkeys))
 
     print(f'Excluded {len(exclude_uids)} materials.')
