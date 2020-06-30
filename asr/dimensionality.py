@@ -57,7 +57,7 @@ def main(atoms: Atoms):
     from ase.geometry.dimensionality import analyze_dimensionality
     k_intervals = [dict(interval._asdict())
                    for interval in
-                   analyze_dimensionality(atoms)]
+                   analyze_dimensionality(atoms, merge=False)]
 
     dim_scores = {}
     dim_thresholds = {i: None for i in range(4)}  # 1000 is arbitrary
