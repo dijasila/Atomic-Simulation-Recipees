@@ -78,9 +78,10 @@ def main(database: str,
             continue
         now = datetime.now()
         timed_print(f'{now:%H:%M:%S}: {irmsd}/{nrmsd}', wait=30)
-        duplicate_uids = set(key for key, value in rmsd_dict.items()
-                             if value is not None and value < rmsd_tol)
-        duplicate_uids.add(uid)
+        duplicate_uids = find_duplicate_group(uid, rmsd_by_id, rmsd_tol)
+        # duplicate_uids = set(key for key, value in rmsd_dict.items()
+        #                      if value is not None and value < rmsd_tol)
+        # duplicate_uids.add(uid)
 
         # Pick the preferred row according to filterstring
         include = filter_uids(db, duplicate_uids,
@@ -213,6 +214,24 @@ def parse_filter_string(filterstring):
         key = filt[len(op):]
         ops_and_keys.append((op, key))
     return ops_and_keys
+
+
+def find_duplicate_group(uid, rmsd_by_id, rmsd_tol,
+                         already_considered_uids=None):
+    if already_considered_uids is None:
+        already_considered_uids = {uid}
+    else:
+        already_considered_uids.add(uid)
+
+    duplicate_uids = set(key for key, value in rmsd_by_id[uid].items()
+                         if value is not None and value < rmsd_tol)
+    new_uids = duplicate_uids - already_considered_uids
+    if new_uids:
+        for new_uid in new_uids:
+            find_duplicate_group(new_uid, rmsd_by_id, rmsd_tol,
+                                 already_considered_uids=already_considered_uids)
+
+    return already_considered_uids
 
 
 if __name__ == '__main__':
