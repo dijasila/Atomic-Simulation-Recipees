@@ -9,6 +9,16 @@ class NoGapError(Exception):
 # This mass is only used to limit bandstructure plots
 MAXMASS = 10
 
+def set_default(settings):
+    if 'erange1' not in settings:
+        settings['erange1'] = 250e-3
+    if 'nkpts1' not in settings:
+        settings['nkpts1'] = 19
+    if 'erange2' not in settings:
+        settings['erange2'] = 1e-3
+    if 'nkpts2' not in settings:
+        settings['nkpts2'] = 9
+
 
 @command('asr.emasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
@@ -30,6 +40,7 @@ def refine(gpwfilename: str = 'gs.gpw',
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
+    set_default(settings)
     socs = [True]
 
     for soc in socs:
@@ -177,7 +188,7 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
     nkpts = settings['nkpts2']
     erange = settings['erange2']
     kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
-                            erange=erange, nkpts=nkpts)
+                            erange=erange, npoints=nkpts)
 
     gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
 
@@ -431,10 +442,10 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(emodel_k) - erange * 0.25
                 y2 = np.min(emodel_k) + erange * 0.75
-                axes.set_ylim(y1, y2)
-
+                # axes.set_ylim(y1, y2)
+                
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
-                axes.set_xlim(-my_range, my_range)
+                # axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -495,10 +506,10 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(emodel_k) - erange * 0.75
                 y2 = np.max(emodel_k) + erange * 0.25
-                axes.set_ylim(y1, y2)
+                # axes.set_ylim(y1, y2)
 
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
-                axes.set_xlim(-my_range, my_range)
+                # axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -830,7 +841,7 @@ def embands(gpw, soc, bandtype, delta=0.1):
     return masses
 
 
-def wideMAE(masses, bt, cell_cv, erange=25e-3):
+def wideMAE(masses, bt, cell_cv, erange=1e-3):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Ha
     import numpy as np
@@ -846,18 +857,20 @@ def wideMAE(masses, bt, cell_cv, erange=25e-3):
         c = masses['c']
         k_kc = fit_data['kpts_kc']
         k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
-        e_k = fit_data['e_k']
+        e_k = fit_data['e_k'] / Ha
+        assert bt == fit_data['bt']
 
         if bt == "vb":
             ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            assert (np.abs(e_k[ks] - np.max(e_k)) < erange).all()
             sk_kv = k_kv[ks]
         else:
             ks = np.where(np.abs(e_k - np.min(e_k)) < erange)
             sk_kv = k_kv[ks]
+            assert (np.abs(e_k[ks] - np.min(e_k)) < erange).all()
 
         emodel_k = evalmodel(sk_kv, c, thirdorder=True)
-
-        mae = np.mean(np.abs(emodel_k - e_k[ks]))
+        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha # eV
         maes.append(mae)
 
     return maes
@@ -1017,6 +1030,16 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     f3z, f30, f3xxx, f3yyy = c3[8:12]
     f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
 
+    if ndim == 2:
+        def check_zero(v, i):
+            assert np.allclose(v, 0), "Value was {} for index {}".format(v, i)
+
+        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz,
+                 f3yyz, f3zzx, f3zzy, f3xyz]
+        for i, z in enumerate(zeros):
+            check_zero(z, i)
+
+
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
     # if bandtype == 'vb':
     #     assert extremum_type == 'max'
@@ -1029,8 +1052,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     ke_v = np.array([xm, ym, zm])
 
     assert not (np.isnan(ke_v)).any()
-    if ndim == 2:
-        assert np.allclose(zm, 0), zm
 
     d3xx = (2 * f3xx) + (6 * f3xxx * xm) + (2 * f3xxy * ym) + (2 * f3xxz * zm)
     d3yy = (2 * f3yy) + (6 * f3yyy * ym) + (2 * f3yyx * xm) + (2 * f3yyz * zm)
@@ -1042,6 +1063,11 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     hessian3 = np.array([[d3xx, d3xy, d3xz],
                          [d3xy, d3yy, d3yz],
                          [d3xz, d3yz, d3zz]])
+    # if ndim == 1:
+    #     hessian3[1:, 1:] = 0.0
+    # elif ndim == 2:
+    #     hessian3[2, :] = 0.0
+    #     hessian3[:, 2] = 0.0
 
     v3_n, w3_vn = np.linalg.eigh(hessian3)
     assert not (np.isnan(w3_vn)).any()
@@ -1053,16 +1079,12 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     mass2_u = np.zeros_like(v2_n)
     npno = np.logical_not
     npis = np.isclose
-    mass2_u[npno(npis(v2_n, 0))] = 1 / v2_n[npno(npis(v2_n, 0))]
 
+    v3_n[npis(v3_n, 0)] = np.nan
+    v2_n[npis(v2_n, 0)] = np.nan
+
+    mass2_u = 1 / v2_n
     mass_u = 1 / v3_n
-    if ndim == 1:
-        mass_u[0] = np.nan
-        mass_u[1] = np.nan
-        assert not np.isnan(mass_u[2])
-    elif ndim == 2:
-        mass_u[2] = np.nan
-        assert not np.isnan(mass_u[:2]).any()
 
     sort_args = np.argsort(mass_u)
 
