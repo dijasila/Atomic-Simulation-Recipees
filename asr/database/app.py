@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option, argument
 
 import tempfile
@@ -10,7 +11,7 @@ import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
-from ase.utils import formula_metal
+from ase.formula import Formula
 import warnings
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
@@ -53,8 +54,7 @@ def create_key_descriptions(db=None):
 
 
 class Summary:
-    def __init__(self, row, key_descriptions, create_layout,
-                 subscript=None, prefix=''):
+    def __init__(self, row, key_descriptions, create_layout, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
@@ -71,9 +71,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = formula_metal(row.numbers)
-        if subscript:
-            self.formula = subscript.sub(r'<sub>\1</sub>', self.formula)
+        self.formula = Formula(
+            Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -162,10 +161,10 @@ def initialize_project(database):
 
 
 @command()
-@argument("databases", nargs=-1)
-@option("--host", help="Host address.")
+@argument("databases", nargs=-1, type=str)
+@option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases, host="0.0.0.0", test=False):
+def main(databases: List[str], host: str = "0.0.0.0", test: bool = False):
     for database in databases:
         initialize_project(database)
 

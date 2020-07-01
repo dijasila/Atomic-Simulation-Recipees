@@ -1,3 +1,4 @@
+from typing import List
 from pathlib import Path
 
 import numpy as np
@@ -5,8 +6,8 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 
-from asr.core import command, option
-from asr.core import write_json
+from asr.core import command, option, DictStr
+from asr.core import read_json, write_json
 
 
 def lattice_vectors(N_c):
@@ -21,35 +22,79 @@ def lattice_vectors(N_c):
     return R_cN
 
 
+def distance_to_sc(nd, atoms, dist_max):
+    if nd >= 1:
+        for x in range(2, 20):
+            atoms_x = atoms.repeat((x, 1, 1))
+            indices_x = [a for a in range(len(atoms_x))]
+            dist_x = []
+            for a in range(len(atoms)):
+                dist = max(atoms_x.get_distances(a, indices_x, mic=True))
+                dist_x.append(dist)
+            if max(dist_x) > dist_max:
+                x_size = x - 1
+                break
+        supercell = [x_size, 1, 1]
+    if nd >= 2:
+        for y in range(2, 20):
+            atoms_y = atoms.repeat((1, y, 1))
+            indices_y = [a for a in range(len(atoms_y))]
+            dist_y = []
+            for a in range(len(atoms)):
+                dist = max(atoms_y.get_distances(a, indices_y, mic=True))
+                dist_y.append(dist)
+            if max(dist_y) > dist_max:
+                y_size = y - 1
+                supercell = [x_size, y_size, 1]
+                break
+    if nd >= 3:
+        for z in range(2, 20):
+            atoms_z = atoms.repeat((1, 1, z))
+            indices_z = [a for a in range(len(atoms_z))]
+            dist_z = []
+            for a in range(len(atoms)):
+                dist = max(atoms_z.get_distances(a, indices_z, mic=True))
+                dist_z.append(dist)
+            if max(dist_z) > dist_max:
+                z_size = z - 1
+                supercell = [x_size, y_size, z_size]
+                break
+    return supercell
+
+
 @command(
     "asr.phonopy",
     requires=["structure.json", "gs.gpw"],
     dependencies=["asr.gs@calculate"],
 )
-@option("--n", type=int, help="Supercell size")
 @option("--d", type=float, help="Displacement size")
-@option('-c', '--calculator', help='Calculator params.')
-def calculate(n=2, d=0.05,
-              calculator={'name': 'gpaw',
-                          'mode': {'name': 'pw', 'ecut': 800},
-                          'xc': 'PBE',
-                          'basis': 'dzp',
-                          'kpts': {'density': 6.0, 'gamma': True},
-                          'occupations': {'name': 'fermi-dirac',
-                                          'width': 0.05},
-                          'convergence': {'forces': 1.0e-4},
-                          'symmetry': {'point_group': False},
-                          'txt': 'phonons.txt',
-                          'charge': 0}):
+@option("--dist_max", type=float,
+        help="Maximum distance between atoms in the supercell")
+@option("--fsname", help="Name for forces file", type=str)
+@option('--sc', nargs=3, type=int,
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def calculate(d: float = 0.05, fsname: str = 'phonons',
+              sc: List[int] = [0, 0, 0], dist_max: float = 7.0,
+              calculator: dict = {'name': 'gpaw',
+                                  'mode': {'name': 'pw', 'ecut': 800},
+                                  'xc': 'PBE',
+                                  'basis': 'dzp',
+                                  'kpts': {'density': 6.0, 'gamma': True},
+                                  'occupations': {'name': 'fermi-dirac',
+                                                  'width': 0.05},
+                                  'convergence': {'forces': 1.0e-4},
+                                  'symmetry': {'point_group': False},
+                                  'txt': 'phonons.txt',
+                                  'charge': 0}):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
-
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob("phonon.*.json"):
+        for f in Path().glob(fsname + ".*.json"):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
@@ -69,12 +114,16 @@ def calculate(n=2, d=0.05,
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.get_pbc())
+    sc = list(map(int, sc))
+    if np.array(sc).any() == 0:
+        sc = distance_to_sc(nd, atoms, dist_max)
+
     if nd == 3:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
     elif nd == 1:
-        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
+        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
@@ -99,13 +148,17 @@ def calculate(n=2, d=0.05,
         # Sign of the displacement
         sign = ["+", "-"][n % 2]
 
-        filename = "phonons.{0}{1}.json".format(a, sign)
+        filename = fsname + ".{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
+            forces = read_json(filename)["force"]
+            # Number of forces equals to the number of atoms in the supercell
+            assert len(forces) == len(atoms) * np.prod(sc), (
+                "Wrong supercell size!")
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
-        atoms_N.set_calculator(calc)
+        atoms_N.calc = calc
         forces = atoms_N.get_forces()
 
         drift_force = forces.sum(axis=0)
@@ -167,28 +220,30 @@ def webpanel(row, key_descriptions):
     webpanel=webpanel,
     dependencies=["asr.phonopy@calculate"],
 )
-def main():
-    from asr.core import read_json
-
+@option("--rc", type=float, help="Cutoff force constants matrix")
+def main(rc: float = None):
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
     dct = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
-    n = dct["__params__"]["n"]
+    sc = dct["__params__"]["sc"]
     d = dct["__params__"]["d"]
+    dist_max = dct["__params__"]["dist_max"]
+    fsname = dct["__params__"]["fsname"]
 
     nd = sum(atoms.get_pbc())
+
+    sc = list(map(int, sc))
+    if np.array(sc).any() == 0:
+        sc = distance_to_sc(nd, atoms, dist_max)
     if nd == 3:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, n]]
-        N_c = (n, n, n)
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
-        supercell = [[n, 0, 0], [0, n, 0], [0, 0, 1]]
-        N_c = (n, n, 1)
+        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
     elif nd == 1:
-        supercell = [[n, 0, 0], [0, 1, 0], [0, 0, 1]]
-        N_c = (n, 1, 1)
+        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
 
     phonopy_atoms = PhonopyAtoms(
         symbols=atoms.symbols,
@@ -213,27 +268,47 @@ def main():
         # Sign of the diplacement
         sign = ["+", "-"][i % 2]
 
-        filename = "phonons.{0}{1}.json".format(a, sign)
+        filename = fsname + ".{0}{1}.json".format(a, sign)
 
         forces = read_json(filename)["force"]
         # Number of forces equals to the number of atoms in the supercell
-        assert len(forces) == len(atoms) * n ** nd, "Wrong supercell size!"
+        assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 
         set_of_forces.append(forces)
 
     phonon.produce_force_constants(
         forces=set_of_forces, calculate_full_force_constants=False
     )
+    if rc is not None:
+        phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
-    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
+    nqpts = 100
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
-    omega_kl = np.zeros((len(q_qc), 3 * len(atoms)))
-    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3))
+    omega_kl = np.zeros((nqpts, 3 * len(atoms)))
+
+    # Calculating phonon frequencies along a path in the BZ
+    for q, q_c in enumerate(path.kpts):
+        omega_l = phonon.get_frequencies(q_c)
+        omega_kl[q] = omega_l * THzToEv
+
+    R_cN = lattice_vectors(sc)
+    C_N = phonon.get_force_constants()
+    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(sc), 3, 3)
+    C_N = C_N.transpose(2, 0, 3, 1, 4)
+    C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
+
+    # Calculating hessian and eigenvectors at high symmetry points of the BZ
+    eigs_kl = []
+    q_qc = list(path.special_points.values())
+    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3), dtype=complex)
 
     for q, q_c in enumerate(q_qc):
-        omega_l, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
-        omega_kl[q] = omega_l * THzToEv
+        phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
+        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
+        eigs_kl.append(np.linalg.eigvalsh(C_q))
+        _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
         u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
         if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
@@ -246,21 +321,8 @@ def main():
 
     irreps = list(irreps)
 
-    R_cN = lattice_vectors(N_c)
-    C_N = phonon.get_force_constants()
-    C_N = C_N.reshape(len(atoms), len(atoms), n**nd, 3, 3)
-    C_N = C_N.transpose(2, 0, 3, 1, 4)
-    C_N = C_N.reshape(n**nd, 3 * len(atoms), 3 * len(atoms))
-
-    eigs = []
-
-    for q_c in q_qc:
-        phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
-        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * C_N, axis=0)
-        eigs.append(np.linalg.eigvalsh(C_q))
-
-    eigs = np.array(eigs)
-    mineig = np.min(eigs)
+    eigs_kl = np.array(eigs_kl)
+    mineig = np.min(eigs_kl)
 
     if mineig < -2:
         dynamic_stability = 1
@@ -269,24 +331,18 @@ def main():
     else:
         dynamic_stability = 3
 
+    phi_anv = phonon.get_force_constants()
+
     results = {'omega_kl': omega_kl,
+               'eigs_kl': eigs_kl,
+               'phi_anv': phi_anv,
                'irr_l': irreps,
                'q_qc': q_qc,
+               'path': path,
                'u_klav': u_klav,
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
 
-    # Next calculate an approximate phonon band structure
-    nqpts = 100
-    freqs_kl = np.zeros((nqpts, 3 * len(atoms)))
-    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
-
-    for q, q_c in enumerate(path.kpts):
-        freqs = phonon.get_frequencies(q_c) * THzToEv
-        freqs_kl[q] = freqs
-
-    results['interp_freqs_kl'] = freqs_kl
-    results['path'] = path
     results['__key_descriptions__'] = \
         {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
          'dynamic_stability_level': 'KVP: Dynamic stability level'}
@@ -326,36 +382,19 @@ def plot_phonons(row, fname):
 
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
 
     data = row.data.get("results-asr.phonopy.json")
     path = data["path"]
-    energies = data["interp_freqs_kl"]
+    energies = data["omega_kl"]
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)
-    bs.plot(label="Interpolated")
-
-    exact_indices = []
-    for q_c in data["q_qc"]:
-        diff_kc = path.kpts - q_c
-        diff_kc -= np.round(diff_kc)
-        inds = np.argwhere(np.all(np.abs(diff_kc) < 1e-3, 1))
-        exact_indices.extend(inds.tolist())
-
-    en_exact = np.zeros_like(energies) + np.nan
-    for ind in exact_indices:
-        en_exact[ind] = energies[ind]
-
-    bs2 = BandStructure(path=path, energies=en_exact[None])
-    bs2.plot(
-        ax=plt.gca(),
-        ls="",
-        marker="o",
+    bs.plot(
         color="k",
         emin=np.min(energies * 1.1),
         emax=np.max(energies * 1.1),
-        ylabel="Phonon frequencies [eV]",
-        label="Exact",
+        ylabel="Phonon frequencies [meV]",
     )
+
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()

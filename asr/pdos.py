@@ -245,7 +245,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity=20.0, emptybands=20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20):
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -523,8 +523,7 @@ def plot_pdos_soc(*args, **kwargs):
 
 
 def plot_pdos(row, filename, soc=True,
-              figsize=(5.5, 5),
-              lw=1, loc='best'):
+              figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -601,7 +600,6 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
 
     # Set up axis limits
@@ -630,6 +628,10 @@ def plot_pdos(row, filename, soc=True,
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
         ax.set_ylabel(r'$E$ [eV]')
+
+    # Set up legend
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
+               ncol=3, mode="expand", borderaxespad=0.)
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()

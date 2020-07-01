@@ -169,7 +169,7 @@ key_descriptions = {
         'KVP: Conduction band effective mass, direction 3 [`m_e`]',
     },
     "database.fromtree": {
-        "folder": "KVP: Relative path to original folder",
+        "folder": "KVP: Path to collection folder",
     }
 }
 
@@ -194,8 +194,8 @@ key_descriptions['extra'] = extras
 
 
 @command()
-@argument('database')
-def main(database):
+@argument('database', type=str)
+def main(database: str):
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys

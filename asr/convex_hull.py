@@ -52,8 +52,8 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
-@argument('databases', nargs=-1)
-def main(databases):
+@argument('databases', nargs=-1, type=str)
+def main(databases: List[str]):
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the

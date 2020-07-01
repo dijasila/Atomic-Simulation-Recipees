@@ -8,8 +8,8 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
     from gpaw.response.g0w0 import G0W0
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     gpaw.GPAW._get_band_gap.return_value = 1
-    mocker.patch.object(gpaw.GPAW, "get_fermi_level")
-    gpaw.GPAW.get_fermi_level.return_value = 0.5
+    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
+    gpaw.GPAW._get_fermi_level.return_value = 0.5
 
     from asr.gw import main
     test_material.write("structure.json")
@@ -24,7 +24,8 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
 
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
-        main()
+        results = main()
+        assert results['gap_gw'] == pytest.approx(1)
         get_webcontent()
     else:
         with pytest.raises(NotImplementedError):

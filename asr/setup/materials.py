@@ -5,7 +5,7 @@ from asr.core import command, option
          creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection=''):
+def main(selection: str = ''):
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and

@@ -17,7 +17,7 @@ MAXMASS = 10
          creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def refine(gpwfilename='gs.gpw'):
+def refine(gpwfilename: str = 'gs.gpw'):
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -37,7 +37,7 @@ def refine(gpwfilename='gs.gpw'):
             gpw2 = name + '.gpw'
 
             if not gap > 0:
-                raise NoGapError('Gap was zero')
+                raise NoGapError('Gap was zero: {}'.format(gap))
             if os.path.exists(gpw2):
                 continue
             gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
@@ -658,7 +658,7 @@ def check_soc(spin_band_dict):
          webpanel=webpanel)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename='gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -1042,6 +1042,10 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                         [dxy, dyy, dyz],
                         [dxz, dyz, dzz]])
     v2_n, vecs = np.linalg.eigh(hessian)
+    mass2_u = np.zeros_like(v2_n)
+    npno = np.logical_not
+    npis = np.isclose
+    mass2_u[npno(npis(v2_n, 0))] = 1 / v2_n[npno(npis(v2_n, 0))]
 
     mass_u = 1 / v3_n
     if ndim == 1:
@@ -1062,7 +1066,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                ke_v=ke_v,
                c=c3,
                r=r3,
-               mass2_u=1 / v2_n,
+               mass2_u=mass2_u,
                eigenvectors2_vu=vecs,
                ke2_v=ke2_v,
                c2=c,

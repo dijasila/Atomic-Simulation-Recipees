@@ -4,16 +4,18 @@ from asr.core import command
 
 def get_magstate(calc):
     """Determine the magstate of calc."""
-    magmom = calc.get_magnetic_moment()
-    if abs(magmom) > 0.02:
+    magmoms = calc.get_property('magmoms', allow_calculation=False)
+
+    if magmoms is None or abs(magmoms).max() < 0.1:
+        return 'nm'
+
+    maxmom = magmoms.max()
+    minmom = magmoms.min()
+    if abs(magmoms).max() >= 0.1 and \
+       abs(maxmom - minmom) < abs(maxmom):
         return 'fm'
 
-    magmoms = calc.get_magnetic_moments()
-    if abs(magmom) < 0.02 and abs(magmoms).max() > 0.1:
-        return 'afm'
-
-    # Material is essentially non-magnetic
-    return 'nm'
+    return 'afm'
 
 
 def webpanel(row, key_descriptions):
@@ -34,11 +36,11 @@ def webpanel(row, key_descriptions):
 def main():
     """Determine magnetic state."""
     from gpaw import GPAW
-    calc = GPAW('gs.gpw')
+    calc = GPAW('gs.gpw', txt=None)
     magstate = get_magstate(calc)
 
     results = {'magstate': magstate.upper(),
-               'is_magnetic': magstate != 'NM'}
+               'is_magnetic': magstate != 'nm'}
 
     return results
 

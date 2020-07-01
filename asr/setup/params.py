@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, argument
 
 
@@ -15,9 +16,9 @@ tests = [
 
 @command('asr.setup.params',
          tests=tests)
-@argument('params', nargs=-1,
+@argument('params', nargs=-1, type=str,
           metavar='recipe:option arg recipe:option arg')
-def main(params=None):
+def main(params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default
@@ -34,7 +35,7 @@ def main(params=None):
     defparamdict = {}
     recipes = get_recipes()
     for recipe in recipes:
-        defparams = recipe.defparams
+        defparams = recipe.get_defaults()
         defparamdict[recipe.name] = defparams
 
     p = Path('params.json')
