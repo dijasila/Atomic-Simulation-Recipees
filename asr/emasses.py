@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, DictStr
 
 
 class NoGapError(Exception):
@@ -17,7 +17,14 @@ MAXMASS = 10
          creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def refine(gpwfilename: str = 'gs.gpw'):
+@option('-s', '--settings', help='Settings for the two refinements',
+        type=DictStr())
+def refine(gpwfilename: str = 'gs.gpw',
+           settings: dict = {
+               'erange1': 250e-3,
+               'nkpts1': 19,
+               'erange2': 1e-3,
+               'nkpts2': 9}):
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -40,15 +47,17 @@ def refine(gpwfilename: str = 'gs.gpw'):
                 raise NoGapError('Gap was zero: {}'.format(gap))
             if os.path.exists(gpw2):
                 continue
-            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
-            nonsc_sphere(gpw=gpwrefined, fallback=gpwfilename, soc=soc, bandtype=bt)
+            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc,
+                                            bandtype=bt, settings=settings)
+            nonsc_sphere(gpw=gpwrefined, fallback=gpwfilename, soc=soc,
+                         bandtype=bt, settings=settings)
 
 
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
 
-def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
+def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     from gpaw import GPAW
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
@@ -69,11 +78,13 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
     # Make a sphere of kpts of high density
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 9)
+    min_nkpts = settings['nkpts1']
+    erange = settings['erange1']
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
     nkpts = nkpts + (1 - (nkpts % 2))
     assert nkpts % 2 != 0
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
-                           erange=500e-3, m=1.0,
+                           erange=erange, m=1.0,
                            dimensionality=ndim)
 
     # Position sphere around VBM if bandtype == vb
@@ -89,7 +100,8 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     fname = '_refined'
     calc.set(kpts=newk_kc,
              symmetry='off',
-             txt=fname + '.txt')
+             txt=fname + '.txt',
+             fixdensity=True)
     atoms = calc.get_atoms()
     atoms.get_potential_energy()
     calc.write(fname + '.gpw')
@@ -126,7 +138,8 @@ def get_gapskn(gpw, fallback=None, soc=True):
     return gap, (s1, k1, n1), (s2, k2, n2)
 
 
-def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False, bandtype=None):
+def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
+                 bandtype=None, settings=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
     Writes the files:
@@ -161,7 +174,10 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False, bandtype=None):
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
 
-    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim)
+    nkpts = settings['nkpts2']
+    erange = settings['erange2']
+    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
+                            erange=erange, nkpts=nkpts)
 
     gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
 
@@ -174,7 +190,8 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False, bandtype=None):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
                  symmetry='off',
-                 txt=name + '.txt')
+                 txt=name + '.txt',
+                 fixdensity=True)
         atoms = calc.get_atoms()
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
@@ -999,15 +1016,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     f3xz, f3yz, f3x, f3y = c3[4:8]
     f3z, f30, f3xxx, f3yyy = c3[8:12]
     f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
-
-    if ndim == 2:
-        def check_zero(v, i):
-            assert np.allclose(v, 0), "Value was {} for index {}".format(v, i)
-
-        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz,
-                 f3yyz, f3zzx, f3zzy, f3xyz]
-        for i, z in enumerate(zeros):
-            check_zero(z, i)
 
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
     # if bandtype == 'vb':
