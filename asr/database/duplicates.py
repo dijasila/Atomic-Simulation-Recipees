@@ -113,9 +113,9 @@ def main(database: str,
         exclude = group['exclude']
         max_rmsd = 0
         for uid in include + exclude:
-            max_rmsd = max(max_rmsd,
-                           max(value for value in rmsd_by_id[uid].values()
-                               if value is not None and value < rmsd_tol)
+            max_rmsd = max([max_rmsd,
+                            max(value for value in rmsd_by_id[uid].values()
+                                if value is not None and value < rmsd_tol)])
         print(f'Group #{ig} max_rmsd={max_rmsd}')
         print('    Excluding:')
         for uid in exclude:
