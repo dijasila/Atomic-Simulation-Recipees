@@ -1,4 +1,3 @@
-from typing import List
 from pathlib import Path
 from asr.core import command, option
 import click
@@ -537,12 +536,14 @@ def create_folder_structure(structure, structure_dict, chargestates,
                         write(charge_folder_name + '/unrelaxed.json', struc)
                     elif i < 0:
                         os.system(
-                            'ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(
-                                charge_folder_name, i + 1, charge_folder_name))
+                            'ln -s {}/../charge_{}/structure.json {}'
+                            '/unrelaxed.json'.format(charge_folder_name,
+                                                     i + 1, charge_folder_name))
                     elif i > 0:
                         os.system(
-                            'ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(
-                                charge_folder_name, i - 1, charge_folder_name))
+                            'ln -s {}/../charge_{}/structure.json {}'
+                            '/unrelaxed.json'.format(charge_folder_name,
+                                                     i - 1, charge_folder_name))
 
     return None
 
@@ -620,10 +621,14 @@ def create_general_supercell(structure, size=12.5):
         cell = sc_structuredict[element]['structure'].get_cell()
         distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
         distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
-        distance_xy = np.sqrt((cell[0][0] + cell[1][0])**2 +
-                              (cell[0][1] + cell[1][1])**2 + (cell[0][2] + cell[1][2])**2)
-        distance_mxy = np.sqrt((-cell[0][0] + cell[1][0])**2 +
-                               (-cell[0][1] + cell[1][1])**2 + (-cell[0][2] + cell[1][2])**2)
+        distance_xy = np.sqrt((
+            cell[0][0] + cell[1][0])**2 + (
+            cell[0][1] + cell[1][1])**2 + (
+            cell[0][2] + cell[1][2])**2)
+        distance_mxy = np.sqrt((
+            -cell[0][0] + cell[1][0])**2 + (
+            -cell[0][1] + cell[1][1])**2 + (
+            -cell[0][2] + cell[1][2])**2)
         distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
         stdev = np.std(distances)
         sc_structuredict[element]['distances'] = distances
