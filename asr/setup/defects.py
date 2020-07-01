@@ -4,10 +4,7 @@ from asr.core import command, option
 import click
 import os
 
-# TODO: clean up structure
 # TODO: update docs
-# TODO: update nomenclature for general algorithm
-
 
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
@@ -44,44 +41,43 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     """
     Sets up defect structures for a given host.
 
-    Recipe setting up all possible defects within a reasonable supercell as
-    well as the respective pristine system for a given input structure.
-    Defects include: vacancies, anti-site defects. For a given primitive input
-    structure this recipe will create a directory tree in the following way:
-
-    For the example of MoS2:
+    Recipe setting up all possible defects within a reasonable supercell as well as the
+    respective pristine system for a given input structure. Defects include: vacancies,
+    intrinsic substitutional defects. For a given primitive input structure this recipe
+    will create a directory tree in the following way (for the example of MoS2):
 
     - There has to be a 'unrelaxed.json' file with the primitive structure
       of the desired system in the folder you run setup.defects. The tree
-      structure will then look like this
+      structure will then look like this:
 
-    .                                                                        '
-    ├── general_parameters.json                                              '
-    ├── MoS2_231.v_at_b0                                                     '
-    │   ├── charge_0                                                         '
-    │   │   ├── params.json                                                  '
-    │   │   └── unrelaxed.json                                               '
-    │   ├── charge_1                                                         '
-    │   │   ├── ...                                                          '
-    │   │   .                                                                '
-    │   .                                                                    '
-    │                                                                        '
-    ├── MoS2_231.Mo_at_i1                                                    '
-    │   ├── charge_0                                                         '
-    .   .                                                                    '
-    .                                                                        '
-    ├── pristine_sc                                                          '
-    │   ├── params.json                                                  '
-    │   └── unrelaxed.json                                               '
-    ├── results_setup.defects.json                                           '
-    └── unrelaxed.json                                                       '
+    .                                                                                   '
+    ├── general_parameters.json                                                         '
+    ├── MoS2_331.v_S                                                                    '
+    │   ├── charge_0                                                                    '
+    │   │   ├── params.json                                                             '
+    │   │   └── unrelaxed.json                                                          '
+    │   ├── charge_1                                                                    '
+    │   │   ├── params.json                                                             '
+    │   │   └── unrelaxed.json -> ./../charge_0/structure.json                          '
+    │   .                                                                               '
+    │                                                                                   '
+    ├── MoS2_231.Mo_S                                                                   '
+    │   ├── charge_0                                                                    '
+    .   .                                                                               '
+    .                                                                                   '
+    ├── pristine_sc                                                                     '
+    │   ├── params.json                                                                 '
+    │   └── structure.json                                                              '
+    ├── results_setup.defects.json                                                      '
+    └── unrelaxed.json                                                                  '
 
     - Here, the notation for the defects is the following:
-      'formula_supercellsize.defect_at_substitutionposition' where 'v'
-      denotes a vacancy
-    - In the resulting folders you can find the unrelaxed structures, as
-      well as a 'params.json' file which contains the charge states of the
-      different defect structures.
+      'formula_supercellsize.defect_sustitutionposition' where 'v' denotes a vacancy
+    - When the general algorithm is used to set up symmetry broken supercells, the
+      foldernames will contain '000' instead of the supersize.
+    - In the resulting folders you can find the unrelaxed structures, as well as a
+      'params.json' file which contains specific parameters as well as the charge states
+      of the different defect structures.
     """
     from ase.io import read
     import numpy as np
