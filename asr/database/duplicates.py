@@ -79,9 +79,6 @@ def main(database: str,
         now = datetime.now()
         timed_print(f'{now:%H:%M:%S}: {irmsd}/{nrmsd}', wait=30)
         duplicate_uids = find_duplicate_group(uid, rmsd_by_id, rmsd_tol)
-        # duplicate_uids = set(key for key, value in rmsd_dict.items()
-        #                      if value is not None and value < rmsd_tol)
-        # duplicate_uids.add(uid)
 
         # Pick the preferred row according to filterstring
         include = filter_uids(db, duplicate_uids,
@@ -114,9 +111,12 @@ def main(database: str,
     for ig, group in enumerate(duplicate_groups):
         include = group['include']
         exclude = group['exclude']
-        min_rmsd = min(value for value in rmsd_by_id[include[0]].values()
-                       if value is not None)
-        print(f'Group #{ig} min_rmsd={min_rmsd}')
+        max_rmsd = 0
+        for uid in include + exclude:
+            max_rmsd = max(max_rmsd,
+                           max(value for value in rmsd_by_id[uid].values()
+                               if value is not None and value < rmsd_tol)
+        print(f'Group #{ig} max_rmsd={max_rmsd}')
         print('    Excluding:')
         for uid in exclude:
             row = db.get(f'{uid_key}={uid}')
