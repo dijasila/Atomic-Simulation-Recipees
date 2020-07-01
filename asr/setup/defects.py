@@ -22,10 +22,10 @@ import os
         help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
-@option('--vacuum', type=float,
+@option('--uniform_vacuum', type=bool,
         help='Pass some float value to choose vacuum for 2D case manually, '
         ' it will be chosen automatically otherwise.')
-@option('--nopbc', is_flag=True,
+@option('--nopbc', type=bool,
         help='Keep the periodic boundary conditions as they are. If this '
         'option is not used, pbc will be enforced for correct defect '
         'calculations')
@@ -39,7 +39,7 @@ import os
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
 def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True, vacuum=None, nopbc=False,
+         maxsize=8, intrinsic=True, vacancies=True, uniform_vacuum=False, nopbc=True,
          halfinteger=False, general_algorithm=None):
     """
     Sets up defect structures for a given host.
@@ -82,25 +82,19 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
     - In the resulting folders you can find the unrelaxed structures, as
       well as a 'params.json' file which contains the charge states of the
       different defect structures.
-
     """
     from ase.io import read
     import numpy as np
 
+    # only run SJ setup if halfinteger is True
     if halfinteger:
         setup_halfinteger()
+    # otherwise, run complete setup of defect structures
     elif not halfinteger:
         # first, read input atomic structure and store it in ase's atoms object
         structure = read(atomfile)
         print('INFO: starting recipe for setting up defect systems of '
               '{} host system.'.format(structure.symbols))
-
-        if vacuum is None:
-            print('INFO: no vacuum specified. Choose it accordingly to L_z ~ '
-                  'L_xy automatically.'.format(vacuum))
-        elif type(vacuum) is float:
-            print('Vacuum is: {}'.format(vacuum))
-
         # check dimensionality of initial parent structure
         nd = int(np.sum(structure.get_pbc()))
         if nd == 3:
@@ -110,13 +104,18 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
         elif nd == 1:
             raise NotImplementedError('Setup defects not implemented for 1D '
                                       f'structures')
+        if uniform_vacuum and nd == 2:
+            print('INFO: choose vacuum according to L_z ~ '
+                  'L_xy automatically.')
+        elif uniform_vacuum and nd == 2:
+            print('INFO: keep initial vacuum for this 2D structure')
         # set up the different defect systems and store their properties
         # in a dictionary
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                        charge_states=chargestates,
                                        vacancies=vacancies, sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
-                                       vacuum=vacuum, nopbc=nopbc,
+                                       vacuum=uniform_vacuum, nopbc=nopbc,
                                        general_algorithm=general_algorithm)
 
         # based on this dictionary, create a folder structure for all defects
@@ -202,17 +201,21 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
         a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
         a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
         a = (a1 + a2) / 2.
-        if vacuum is None:
+        if vacuum is True:
             vacuum = a
+            print('INFO: apply vacuum size to the supercell of the 2D structure'
+                  'with {} Å.'.format(vacuum))
+        elif vacuum is False:
+            vacuum = oldvac
+            print('INFO: keep vacuum according to the initial 2D structure'
+                  'with {} Å.'.format(vacuum))
         cell[2][2] = vacuum
         pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
         structure_sc.set_cell(cell)
         structure_sc.set_positions(pos)
-        print('INFO: apply vacuum size to the supercell of the 2D structure'
-              'with {} Å.'.format(vacuum))
     elif not is_2D:
         print('INFO: no vacuum to be applied since this is a 3D structure.')
-    if not nopbc:
+    if nopbc == False:
         structure_sc.set_pbc([True, True, True])
         print('INFO: overwrite pbc and apply them in all three directions for'
               ' subsequent defect calculations.')
@@ -260,6 +263,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     elif general_algorithm is not None:
         pristine = create_general_supercell(structure, size=float(general_algorithm))
+        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
         N_x = 0
         N_y = 0
         N_z = 0
@@ -323,8 +327,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 sitename = vacancy.get_chemical_symbols()[i]
                 vacancy.pop(i)
                 vacancy.rattle()
-                string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
-                         formula, N_x, N_y, N_z, wyckoffs[i], i)
+                # string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
+                #          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 string = 'defects.{0}_{1}{2}{3}.v_{4}'.format(
                          formula, N_x, N_y, N_z, sitename)
                 charge_dict = {}
