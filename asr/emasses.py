@@ -9,6 +9,7 @@ class NoGapError(Exception):
 # This mass is only used to limit bandstructure plots
 MAXMASS = 10
 
+
 def set_default(settings):
     if 'erange1' not in settings:
         settings['erange1'] = 250e-3
@@ -442,10 +443,10 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(emodel_k) - erange * 0.25
                 y2 = np.min(emodel_k) + erange * 0.75
-                # axes.set_ylim(y1, y2)
-                
+                axes.set_ylim(y1, y2)
+
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
-                # axes.set_xlim(-my_range, my_range)
+                axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -506,10 +507,10 @@ def make_the_plots(row, *args):
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(emodel_k) - erange * 0.75
                 y2 = np.max(emodel_k) + erange * 0.25
-                # axes.set_ylim(y1, y2)
+                axes.set_ylim(y1, y2)
 
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
-                # axes.set_xlim(-my_range, my_range)
+                axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
                 cbar.set_label(rf'$\langle S_{sdir} \rangle$')
@@ -870,7 +871,7 @@ def wideMAE(masses, bt, cell_cv, erange=1e-3):
             assert (np.abs(e_k[ks] - np.min(e_k)) < erange).all()
 
         emodel_k = evalmodel(sk_kv, c, thirdorder=True)
-        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha # eV
+        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha  # eV
         maes.append(mae)
 
     return maes
@@ -1039,14 +1040,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
         for i, z in enumerate(zeros):
             check_zero(z, i)
 
-
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
-    # if bandtype == 'vb':
-    #     assert extremum_type == 'max'
-    # elif bandtype == 'cb':
-    #     assert extremum_type == 'min'
-    # else:
-    #     raise NotImplementedError("Incorrect bandtype: {}".format(bandtype))
     xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3,
                                         extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
@@ -1063,11 +1057,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     hessian3 = np.array([[d3xx, d3xy, d3xz],
                          [d3xy, d3yy, d3yz],
                          [d3xz, d3yz, d3zz]])
-    # if ndim == 1:
-    #     hessian3[1:, 1:] = 0.0
-    # elif ndim == 2:
-    #     hessian3[2, :] = 0.0
-    #     hessian3[:, 2] = 0.0
 
     v3_n, w3_vn = np.linalg.eigh(hessian3)
     assert not (np.isnan(w3_vn)).any()
@@ -1077,7 +1066,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                         [dxz, dyz, dzz]])
     v2_n, vecs = np.linalg.eigh(hessian)
     mass2_u = np.zeros_like(v2_n)
-    npno = np.logical_not
     npis = np.isclose
 
     v3_n[npis(v3_n, 0)] = np.nan
