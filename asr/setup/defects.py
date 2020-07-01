@@ -37,7 +37,7 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
          maxsize=8, intrinsic=True, vacancies=True, uniform_vacuum=False, nopbc=True,
          halfinteger=False, general_algorithm=None):
     """
-    Sets up defect structures for a given host.
+    Set up defect structures for a given host and create folder structure.
 
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
@@ -117,8 +117,7 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
 
 
 def setup_supercell(structure, max_lattice, is_2D):
-    """Set up the supercell of a given structure depending on a
-    maximum supercell lattice vector length for 2D or 3D structures.
+    """Set up the supercell of a given structure.
 
     Parameters
     ----------
@@ -169,6 +168,8 @@ def setup_supercell(structure, max_lattice, is_2D):
 
 def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     """
+    Apply vacuum to 2D structures.
+
     Either sets the vacuum automatically for the 2D case (in such a way that
     L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
     passes in case one is dealing with a 3D structure.
@@ -215,6 +216,8 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
 def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                   max_lattice, is_2D, vacuum, nopbc, general_algorithm):
     """
+    Set up defects for a particular input structure.
+
     Sets up all possible defects (i.e. vacancies, intrinsic anti-sites,
     extrinsic point defects('extrinsic=True')) for a given structure.
 
@@ -550,6 +553,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
 
 def setup_halfinteger():
     """
+    Set up folders for SJ calculations.
+
     Sets up halfinteger folder which copies params.json and changes the q
     keyword as well as copying the relaxed structure into those folders.
     """
@@ -587,6 +592,8 @@ def setup_halfinteger():
 
 def create_general_supercell(structure, size=12.5):
     """
+    Use algorithm to generate general supercell.
+
     Creates supercell of a form that breaks initial bravais lattice symmetry
     as well as tries to find the most uniform configuration containing the
     least number of atoms. Only works in 2D so far!
