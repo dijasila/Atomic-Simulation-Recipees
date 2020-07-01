@@ -104,11 +104,6 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
         elif nd == 1:
             raise NotImplementedError('Setup defects not implemented for 1D '
                                       f'structures')
-        if uniform_vacuum and nd == 2:
-            print('INFO: choose vacuum according to L_z ~ '
-                  'L_xy automatically.')
-        elif uniform_vacuum and nd == 2:
-            print('INFO: keep initial vacuum for this 2D structure')
         # set up the different defect systems and store their properties
         # in a dictionary
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
@@ -203,11 +198,11 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
         a = (a1 + a2) / 2.
         if vacuum is True:
             vacuum = a
-            print('INFO: apply vacuum size to the supercell of the 2D structure'
+            print('INFO: apply vacuum size to the supercell of the 2D structure '
                   'with {} Å.'.format(vacuum))
         elif vacuum is False:
             vacuum = oldvac
-            print('INFO: keep vacuum according to the initial 2D structure'
+            print('INFO: keep vacuum according to the initial 2D structure '
                   'with {} Å.'.format(vacuum))
         cell[2][2] = vacuum
         pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
@@ -621,7 +616,7 @@ def create_general_supercell(structure, size=12.5):
                     # now implement the postprocessing
                     sc_structuredict[str(n1)+str(0)+str(n2)+str(m2)] = {
                         'structure': sc_structure}
-    print('INFO: created all possible linear combinations of the old lattice')
+    print('INFO: created all possible linear combinations of the old lattice.')
 
     from ase.visualize import view
     # check physical distance between defects
@@ -654,7 +649,6 @@ def create_general_supercell(structure, size=12.5):
     lowstruclist = []
     for j, structure in enumerate(structurelist):
         if len(structure) == min(numatoms_list):
-            print(min(numatoms_list))
             lowlist.append(stdev_list[j])
             lowstruclist.append(structure)
     for k, structure in enumerate(lowstruclist):
