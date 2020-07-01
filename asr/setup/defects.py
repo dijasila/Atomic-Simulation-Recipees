@@ -4,7 +4,6 @@ from asr.core import command, option
 import click
 import os
 
-# TODO: update docs
 
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
@@ -31,7 +30,7 @@ import os
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm', 
+@option('--general_algorithm',
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
@@ -50,26 +49,26 @@ def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
       of the desired system in the folder you run setup.defects. The tree
       structure will then look like this:
 
-    .                                                                                   '
-    ├── general_parameters.json                                                         '
-    ├── MoS2_331.v_S                                                                    '
-    │   ├── charge_0                                                                    '
-    │   │   ├── params.json                                                             '
-    │   │   └── unrelaxed.json                                                          '
-    │   ├── charge_1                                                                    '
-    │   │   ├── params.json                                                             '
-    │   │   └── unrelaxed.json -> ./../charge_0/structure.json                          '
-    │   .                                                                               '
-    │                                                                                   '
-    ├── MoS2_231.Mo_S                                                                   '
-    │   ├── charge_0                                                                    '
-    .   .                                                                               '
-    .                                                                                   '
-    ├── pristine_sc                                                                     '
-    │   ├── params.json                                                                 '
-    │   └── structure.json                                                              '
-    ├── results_setup.defects.json                                                      '
-    └── unrelaxed.json                                                                  '
+    .                                                                                  '
+    ├── general_parameters.json                                                        '
+    ├── MoS2_331.v_S                                                                   '
+    │   ├── charge_0                                                                   '
+    │   │   ├── params.json                                                            '
+    │   │   └── unrelaxed.json                                                         '
+    │   ├── charge_1                                                                   '
+    │   │   ├── params.json                                                            '
+    │   │   └── unrelaxed.json -> ./../charge_0/structure.json                         '
+    │   .                                                                              '
+    │                                                                                  '
+    ├── MoS2_231.Mo_S                                                                  '
+    │   ├── charge_0                                                                   '
+    .   .                                                                              '
+    .                                                                                  '
+    ├── pristine_sc                                                                    '
+    │   ├── params.json                                                                '
+    │   └── structure.json                                                             '
+    ├── results_setup.defects.json                                                     '
+    └── unrelaxed.json                                                                 '
 
     - Here, the notation for the defects is the following:
       'formula_supercellsize.defect_sustitutionposition' where 'v' denotes a vacancy
@@ -206,7 +205,7 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
         structure_sc.set_positions(pos)
     elif not is_2D:
         print('INFO: no vacuum to be applied since this is a 3D structure.')
-    if nopbc == False:
+    if nopbc is False:
         structure_sc.set_pbc([True, True, True])
         print('INFO: overwrite pbc and apply them in all three directions for'
               ' subsequent defect calculations.')
@@ -248,7 +247,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0 and general_algorithm == False:
+    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0 and general_algorithm is False:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
@@ -307,7 +306,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
-    wyckoffs = dataset.get('wyckoffs')
 
     finished_list = []
     if vacancies:
@@ -318,8 +316,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                 sitename = vacancy.get_chemical_symbols()[i]
                 vacancy.pop(i)
                 vacancy.rattle()
-                # string = 'defects.{0}_{1}{2}{3}.v_{4}{5}'.format(
-                #          formula, N_x, N_y, N_z, wyckoffs[i], i)
                 string = 'defects.{0}_{1}{2}{3}.v_{4}'.format(
                          formula, N_x, N_y, N_z, sitename)
                 charge_dict = {}
@@ -383,9 +379,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         sitename = defect.get_chemical_symbols()[i]
                         defect[i].symbol = element
                         defect.rattle()
-                        # string = 'defects.{0}_{1}{2}{3}.{4}_at_{5}{6}'.format(
-                        #          formula, N_x, N_y, N_z, element,
-                        #          wyckoffs[i], i)
                         string = 'defects.{0}_{1}{2}{3}.{4}_{5}'.format(
                                  formula, N_x, N_y, N_z, element,
                                  sitename)
@@ -543,9 +536,13 @@ def create_folder_structure(structure, structure_dict, chargestates,
                     if i == 0:
                         write(charge_folder_name + '/unrelaxed.json', struc)
                     elif i < 0:
-                        os.system('ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(charge_folder_name, i+1, charge_folder_name))
+                        os.system(
+                            'ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(
+                                charge_folder_name, i + 1, charge_folder_name))
                     elif i > 0:
-                        os.system('ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(charge_folder_name, i-1, charge_folder_name))
+                        os.system(
+                            'ln -s {}/../charge_{}/structure.json {}/unrelaxed.json'.format(
+                                charge_folder_name, i - 1, charge_folder_name))
 
     return None
 
@@ -610,11 +607,10 @@ def create_general_supercell(structure, size=12.5):
                     P = np.array([[n1, 0, 0], [n2, m2, 0], [0, 0, 1]])
                     sc_structure = make_supercell(prim=structure, P=P)
                     # now implement the postprocessing
-                    sc_structuredict[str(n1)+str(0)+str(n2)+str(m2)] = {
+                    sc_structuredict[str(n1) + str(0) + str(n2) + str(m2)] = {
                         'structure': sc_structure}
     print('INFO: created all possible linear combinations of the old lattice.')
 
-    from ase.visualize import view
     # check physical distance between defects
     indexlist = []
     structurelist = []
@@ -625,9 +621,9 @@ def create_general_supercell(structure, size=12.5):
         distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
         distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
         distance_xy = np.sqrt((cell[0][0] + cell[1][0])**2 +
-                (cell[0][1] + cell[1][1])**2 + (cell[0][2] + cell[1][2])**2)
+                              (cell[0][1] + cell[1][1])**2 + (cell[0][2] + cell[1][2])**2)
         distance_mxy = np.sqrt((-cell[0][0] + cell[1][0])**2 +
-                (-cell[0][1] + cell[1][1])**2 + (-cell[0][2] + cell[1][2])**2)
+                               (-cell[0][1] + cell[1][1])**2 + (-cell[0][2] + cell[1][2])**2)
         distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
         stdev = np.std(distances)
         sc_structuredict[element]['distances'] = distances
