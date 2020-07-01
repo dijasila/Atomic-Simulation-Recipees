@@ -663,31 +663,5 @@ def collect_data():
     return None
 
 
-# def webpanel(row, key_descriptions):
-#    from asr.browser import fig, table
-#
-#    if 'something' not in row.data:
-#        return None, []
-#
-#    table1 = table(row,
-#                   'Property',
-#                   ['something'],
-#                   kd=key_descriptions)
-#    panel = ('Title',
-#             [[fig('something.png'), table1]])
-#    things = [(create_plot, ['something.png'])]
-#    return panel, things
-
-
-# def create_plot(row, fname):
-#    import matplotlib.pyplot as plt
-#
-#    data = row.data.something
-#    fig = plt.figure()
-#    ax = fig.gca()
-#    ax.plot(data.things)
-#    plt.savefig(fname)
-
-
 if __name__ == '__main__':
     main.cli()
