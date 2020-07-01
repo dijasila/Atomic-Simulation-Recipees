@@ -15,6 +15,7 @@ key_descriptions = {
     "magstate": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
+        "nspins": "KVP: Number of spins in calculator !n-spins!",
     },
     "gs": {
         "forces": "Forces on atoms [eV/Angstrom]",
