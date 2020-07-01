@@ -11,7 +11,7 @@ def test_setup_defects_supercell():
     atoms = std_test_materials[1]
     write('unrelaxed.json', atoms)
     atoms = atoms.repeat((3, 3, 1))
-    main(supercell=[3, 3, 1], vacuum=15.0)
+    main(supercell=[3, 3, 1])
     pristine = read('defects.pristine_sc/structure.json')
     for i in range(len(atoms.get_scaled_positions())):
         assert atoms.get_scaled_positions(
