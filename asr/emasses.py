@@ -248,22 +248,6 @@ def get_bt_ks(bandtype, k1_c, k2_c):
     return bandtypes, ks
 
 
-def get_ndims_from_row(row):
-    import numpy as np
-    results = row.data.get('results-asr.emasses.json')
-
-    for k in results.keys():
-        if '(' in k and ')' in k:
-            count_dirs = 0
-            for k2 in results[k].keys():
-                if 'effmass' in k2:
-                    value = results[k][k2]
-                    if not (value is None) and not np.isnan(value):
-                        count_dirs += 1
-            break
-    return count_dirs
-
-
 def convert_key_to_tuple(key):
     k = key.replace("(", "").replace(")", "")
     ks = k.split(",")
