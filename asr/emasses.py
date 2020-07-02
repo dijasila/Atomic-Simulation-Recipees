@@ -94,6 +94,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     erange = settings['erange1']
     nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
     nkpts = nkpts + (1 - (nkpts % 2))
+    # Ensure that we include the found VBM/CBM
     assert nkpts % 2 != 0
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
                            erange=erange, m=1.0,
@@ -106,7 +107,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     elif bandtype == 'cb':
         newk_kc = k_kc[k2] + ksphere
     else:
-        raise ValueError(f'Bandtype {bandtype} not recognized')
+        raise ValueError(f'Bandtype "{bandtype}" not recognized')
 
     # Calculate energies for new k-grid
     fname = '_refined'
@@ -130,7 +131,7 @@ def get_gapskn(gpw, fallback=None, soc=True):
     theta, phi = get_spin_axis()
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
-        e_skn = e_skn[np.newaxis]
+        e_skn = e_skn[np.newaxis, :, :]
 
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
@@ -140,7 +141,7 @@ def get_gapskn(gpw, fallback=None, soc=True):
         theta, phi = get_spin_axis()
         e_skn, efermi = gpw2eigs(fallback, soc=soc, theta=theta, phi=phi)
         if e_skn.ndim == 2:
-            e_skn = e_skn[np.newaxis]
+            e_skn = e_skn[np.newaxis, :, :]
 
         gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                                   output=None)
@@ -232,15 +233,6 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
     kpts_kv /= Bohr
     kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
     return kpts_kc
-
-    # print(kpts_kv)
-
-    # a = np.linspace(-1, 1, npoints)
-    # X, Y, Z = np.meshgrid(a, a, a)
-    # indices = X**2 + Y**2 + Z**2 <= 1.0
-    # sh = X.shape
-    # x, y, z = X[indices], Y[indices], Z[indices]
-    # kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
 
 
 def get_bt_ks(bandtype, k1_c, k2_c):
