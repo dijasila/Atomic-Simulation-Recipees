@@ -388,7 +388,8 @@ def main(folders: Union[str, None] = None,
                     with connect(f'{dbrankname}', serial=True) as db:
                         for row in db.select():
                             kvp = row.get('key_value_pairs', {})
-                            db2.write(row, data=row.get('data'), **kvp)
+                            data = row.get('data')
+                            db2.write(row.toatoms(), data=data, **kvp)
                             nmat += 1
                     keys.update(set(db.metadata['keys']))
 
@@ -400,19 +401,20 @@ def main(folders: Union[str, None] = None,
                 ('Merging of databases went wrong, '
                  f'number of materials changed: {nmatdb} != {nmat}')
 
+    results = check_database(dbname)
+    missing_child_uids = results['missing_child_uids']
+    duplicate_uids = results['duplicate_uids']
+
+    if missing_child_uids:
+        raise MissingUIDS(
+            'Missing child uids in collected database. '
+            'Did you collect all subfolders?')
+
+    if duplicate_uids:
+        raise MissingUIDS(
+            'Duplicate uids in database.')
+
     if world.rank == 0:
-        results = check_database(dbname)
-        missing_child_uids = results['missing_child_uids']
-        duplicate_uids = results['duplicate_uids']
-
-        if missing_child_uids:
-            raise MissingUIDS(
-                'Missing child uids in collected database. '
-                'Did you collect all subfolders?')
-
-        if duplicate_uids:
-            raise MissingUIDS(
-                'Duplicate uids in database.')
         for name in Path().glob(f'{dbname}.*.db'):
             name.unlink()
 
