@@ -50,13 +50,13 @@ def refine(gpwfilename: str = 'gs.gpw',
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+        if not gap > 0:
+            raise NoGapError('Gap was zero: {}'.format(gap))
 
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
 
-            if not gap > 0:
-                raise NoGapError('Gap was zero: {}'.format(gap))
             if os.path.exists(gpw2):
                 continue
             gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc,
