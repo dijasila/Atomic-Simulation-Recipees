@@ -69,13 +69,13 @@ def get_material_from_folder(folder='.'):
         Output material instance
 
     """
-    from asr.database.fromtree import collect
+    from asr.database.fromtree import collect_file
     from ase.io import read
     kvp = {}
     data = {}
     for filename in Path(folder).glob('results-*.json'):
-        tmpkvp, tmpkd, tmpdata, tmplinks = collect(str(filename))
-        if tmpkvp or tmpkd or tmpdata or tmplinks:
+        tmpkvp, tmpdata = collect_file(filename)
+        if tmpkvp or tmpdata:
             kvp.update(tmpkvp)
             data.update(tmpdata)
 
