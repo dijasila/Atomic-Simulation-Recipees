@@ -401,6 +401,7 @@ def main(folders: Union[str, None] = None,
                 ('Merging of databases went wrong, '
                  f'number of materials changed: {nmatdb} != {nmat}')
 
+    world.barrier()
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']

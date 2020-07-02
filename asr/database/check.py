@@ -14,7 +14,6 @@ def main(dbname: str):
     duplicate uids.
 
     """
-    print(f'Check integrity of database={dbname}.')
     with connect(dbname, serial=True) as db:
         uids = set()
         missing_uids = set()
