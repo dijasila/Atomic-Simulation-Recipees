@@ -282,6 +282,13 @@ def get_emass_dict_from_row(row):
     ordered_vb_indices = sorted(vb_indices, key=lambda el: -el[1])
 
     def get_the_dict(ordered_indices, name, offset_sym):
+        # Write a dictionary that will be turned into a table
+        # The dict keys are the table row name
+        # and the dict values are the effective masses
+        # key: name offset_sym(bol) offset_num direction i
+        # E.g. key: VB -2 direction 2
+        # value: <number> m_e
+        # E.g. value: 0.41 m_e
         my_dict = {}
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
@@ -314,6 +321,12 @@ def get_range(mass, _erange):
 
 
 def make_the_plots(row, *args):
+    # Loop through directions, each direction is a column
+    # For direction i, loop through cbs and plot on fig
+    # -- Plot also quadratic fit from curvature/effective mass value
+    # For direction i, loop through vbs and plot on fig
+    # Make a final column containing a table with the numerical values
+    # for the effective masses
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
     import matplotlib.pyplot as plt
@@ -438,7 +451,6 @@ def make_the_plots(row, *args):
             plt.savefig(fname)
         plt.close()
 
-        # axes.clear()
         # VB plots
         y1 = None
         y2 = None
@@ -504,17 +516,7 @@ def make_the_plots(row, *args):
         plt.close()
 
         plt_count += 1
-    # Make final column with table of numerical vals
 
-    # Make table
-
-    # Algo:
-    # Loop through directions, each direction is a column
-    # For direction i, loop through cbs and plot on fig
-    # -- Plot also quadratic fit from curvature/effective mass value
-    # For direction i, loop through vbs and plot on fig
-    # Make a final column containing a table with the numerical values
-    # for the effective masses
     assert len(cb_fnames) == len(vb_fnames), \
         'Num cb plots: {}\nNum vb plots: {}'.format(
         len(cb_fnames), len(vb_fnames))
@@ -543,8 +545,6 @@ def custom_table(values_dict, title):
 
 
 def webpanel(row, key_descriptions):
-    # from asr.database.browser import table
-
     columns, fnames = create_columns_fnames(row)
 
     electron_dict, hole_dict = get_emass_dict_from_row(row)
@@ -692,8 +692,6 @@ def main(gpwfilename: str = 'gs.gpw'):
             except ValueError:
                 tb = traceback.format_exc()
                 print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
-            # else:
-            #     _savemass(soc=soc, bt=bt, mass=masses)
 
     return good_results
 
@@ -856,7 +854,7 @@ def wideMAE(masses, bt, cell_cv, erange=1e-3):
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
                                   spin, band,
-                                  erange=500e-3, npoints=91,
+                                  erange=250e-3, npoints=91,
                                   nbands=1):
     from pathlib import Path
     from ase.units import Hartree, Bohr
@@ -878,7 +876,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
         if not Path(name).is_file():
             with file_barrier([name]):
-                # embzcut stuff
                 kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
                 _max = np.sqrt(2 * MAXMASS * erange / Hartree)
                 if kmax > _max:
@@ -985,6 +982,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
     """
     import numpy as np
+    from ase.parallel import parprint
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     dxx = 2 * c[0]
     dyy = 2 * c[1]
@@ -1007,16 +1005,9 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     f3z, f30, f3xxx, f3yyy = c3[8:12]
     f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
 
-    if ndim == 2:
-        def check_zero(v, i):
-            assert np.allclose(v, 0), "Value was {} for index {}".format(v, i)
-
-        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz,
-                 f3yyz, f3zzx, f3zzy, f3xyz]
-        for i, z in enumerate(zeros):
-            check_zero(z, i)
-
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
+    if extremum_type == 'saddlepoint':
+        parprint(f'Found a saddlepoint for bandtype {bandtype}')
     xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3,
                                         extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
