@@ -22,7 +22,7 @@ app.jinja_loader.searchpath.append(str(path))
 
 def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_kd
+    from asr.database.fromtree import parse_key_descriptions
     from ase.db.web import create_key_descriptions
 
     flatten = {key: value
@@ -48,7 +48,7 @@ def create_key_descriptions(db=None):
         kd[key] = description
 
     kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
-          key, desc in parse_kd(kd).items()}
+          key, desc in parse_key_descriptions(kd).items()}
 
     return create_key_descriptions(kd)
 
