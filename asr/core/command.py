@@ -268,14 +268,14 @@ class ASRCommand:
                                  params.items()])
 
         # If we have a cache entry then simply return that.
-        cached_result = self.cache.get_cache(*args, **kwargs)
+        cached_result = self.cache.get_cache(**params)
         if cached_result is not None:
             parprint(f'Returning cached result for {self.name}({paramstring})')
             return cached_result
 
         created_files = self.get_created_files(*args, **kwargs)
-        if not self.cache.is_initiated(*args, **kwargs):
-            self.cache.initiate(*args, **kwargs)
+        if not self.cache.is_initiated(**params):
+            self.cache.initiate(**params)
             for filename in created_files:
                 assert not Path(filename).is_file(), \
                     '{filename} already exists!'
