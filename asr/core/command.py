@@ -1,6 +1,7 @@
 """Module implementing the ASRCommand class and related decorators."""
 from . import (read_json, write_json, md5sum,
                file_barrier, unlink, clickify_docstring)
+from .cache import ASRCache
 from ase.parallel import parprint
 import click
 import copy
@@ -116,7 +117,7 @@ class ASRCommand:
         """
         assert callable(main), 'The wrapped object should be callable'
 
-        name = f'{module}@{main.__name__}'
+        name = f'{namespace}@{main.__name__}'
 
         # By default we omit @main if function is called main
         if name.endswith('@main'):
@@ -127,9 +128,6 @@ class ASRCommand:
         self.name = name
 
         self.cache = ASRCache('results-{name}.json')
-        # Commands can have dependencies. This is just a list of
-        # pack.module.module@function that points to other functions
-        # dot name like "recipe.name".
         self.dependencies = dependencies or []
 
         # Figure out the parameters for this function
@@ -143,7 +141,6 @@ class ASRCommand:
         sig = inspect.signature(self._main)
         self.signature = sig
 
-        # Setup the CLI
         update_wrapper(self, self._main)
 
     def get_signature(self):
@@ -262,34 +259,36 @@ class ASRCommand:
         place to start.
         """
 
+        signature = self.get_signature()
+        bound_arguments = signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+        params = copy.deepcopy(dict(bound_arguments.arguments))
+
+        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
+                                 params.items()])
+
         # If we have a cache entry then simply return that.
         cached_result = self.cache.get_cache(*args, **kwargs)
         if cached_result is not None:
+            parprint(f'Returning cached result for {self.name}({paramstring})')
             return cached_result
 
-        self.cache.initiate(*args, **kwargs)
         created_files = self.get_created_files(*args, **kwargs)
-        for filename in created_files:
-            assert not Path(filename).is_file(), \
-                '{filename} already exists!'
+        if not self.cache.is_initiated(*args, **kwargs):
+            self.cache.initiate(*args, **kwargs)
+            for filename in created_files:
+                assert not Path(filename).is_file(), \
+                    '{filename} already exists!'
 
         for dependency in self.dependencies:
             dependency()
 
-        # Use the wrapped functions signature to create dictionary of
-        # parameters
-        signature = self.get_signature()
-        bound_arguments = signature.bind(*args, **kwargs)
-        bound_arguments.apply_defaults()
-        params = dict(bound_arguments.arguments)
-        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
-                                 params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
         tstart = time.time()
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
-            results = self._main(**copy.deepcopy(params)) or {}
+            results = self._main(**params) or {}
         tend = time.time()
         results['__asr_name__'] = self.name
         from ase.parallel import world
