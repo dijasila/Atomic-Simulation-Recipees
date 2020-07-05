@@ -104,15 +104,8 @@ class ASRCommand:
     package_dependencies = ('asr', 'ase', 'gpaw')
 
     def __init__(self, main,
-                 module=None,
-                 requires=None,
-                 dependencies=None,
-                 creates=None,
-                 log=None,
-                 webpanel=None,
-                 save_results_file=True,
-                 tests=None,
-                 resources=None):
+                 namespace=None,
+                 dependencies=None):
         """Construct an instance of an ASRCommand.
 
         Parameters
@@ -122,13 +115,6 @@ class ASRCommand:
 
         """
         assert callable(main), 'The wrapped object should be callable'
-
-        if module is None:
-            module = main.__module__
-            if module == '__main__':
-                import inspect
-                mod = inspect.getmodule(main)
-                module = str(mod).split('\'')[1]
 
         name = f'{module}@{main.__name__}'
 
@@ -140,21 +126,7 @@ class ASRCommand:
         self._main = main
         self.name = name
 
-        # Does the wrapped function want to save results files?
-        self.save_results_file = save_results_file
-
-        # What files are created?
-        self._creates = creates
-
-        # Is there additional information to log about the current execution
-        self.log = log
-
-        # Properties of this function
-        self._requires = requires
-
-        # Tell ASR how to present the data in a webpanel
-        self.webpanel = webpanel
-
+        self.cache = ASRCache('results-{name}.json')
         # Commands can have dependencies. This is just a list of
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
@@ -216,48 +188,10 @@ class ASRCommand:
         return defparams
 
     @property
-    def requires(self):
-        if self._requires:
-            if callable(self._requires):
-                return self._requires()
-            else:
-                return self._requires
-        return []
-
-    def is_requirements_met(self):
-        for filename in self.requires:
-            if not Path(filename).is_file():
-                return False
-        return True
-
-    @property
     def diskspace(self):
         if callable(self._diskspace):
             return self._diskspace()
         return self._diskspace
-
-    @property
-    def created_files(self):
-        creates = []
-        if self._creates:
-            if callable(self._creates):
-                creates += self._creates()
-            else:
-                creates += self._creates
-        return creates
-
-    @property
-    def creates(self):
-        creates = self.created_files
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
-        return creates
-
-    @property
-    def done(self):
-        if Path(f'results-{self.name}.json').exists():
-            return True
-        return False
 
     def get_parameters(self):
         """Get the parameters of this function."""
@@ -327,27 +261,27 @@ class ASRCommand:
         understand what happens when you execute an ASRCommand this is a good
         place to start.
         """
-        # Run this recipes dependencies but only if it actually creates
-        # a file that is in __requires__
-        for dep in self.dependencies:
-            recipe = get_recipe_from_name(dep)
-            if recipe.done:
-                continue
 
-            recipe()
+        # If we have a cache entry then simply return that.
+        cached_result = self.cache.get_cache(*args, **kwargs)
+        if cached_result is not None:
+            return cached_result
 
-        assert self.is_requirements_met(), \
-            (f'{self.name}: Some required files are missing: {self.requires}. '
-             'This could be caused by incorrect dependencies.')
+        self.cache.initiate(*args, **kwargs)
+        created_files = self.get_created_files(*args, **kwargs)
+        for filename in created_files:
+            assert not Path(filename).is_file(), \
+                '{filename} already exists!'
+
+        for dependency in self.dependencies:
+            dependency()
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
         signature = self.get_signature()
         bound_arguments = signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
-
         params = dict(bound_arguments.arguments)
-
         paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
@@ -356,31 +290,23 @@ class ASRCommand:
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
             results = self._main(**copy.deepcopy(params)) or {}
-        results['__asr_name__'] = self.name
         tend = time.time()
-
+        results['__asr_name__'] = self.name
         from ase.parallel import world
         results['__resources__'] = {'time': tend - tstart,
                                     'ncores': world.size}
 
-        if self.log:
-            log = results.get('__log__', {})
-            log.update(self.log(**copy.deepcopy(params)))
-
-        # Do we have to store some digests of previous calculations?
-        if self.creates:
+        if created_files:
             results['__creates__'] = {}
-            for filename in self.creates:
-                if filename.startswith('results-'):
-                    # Don't log own results file
-                    continue
+            for filename in created_files:
                 hexdigest = md5sum(filename)
                 results['__creates__'][filename] = hexdigest
 
         # Also make hexdigests of results-files for dependencies
-        if self.requires:
+        required_files = self.get_required_files(*args, **kwargs)
+        if required_files:
             results['__requires__'] = {}
-            for filename in self.requires:
+            for filename in required_files:
                 hexdigest = md5sum(filename)
                 results['__requires__'][filename] = hexdigest
 
@@ -390,14 +316,8 @@ class ASRCommand:
         # Update with hashes for packages dependencies
         results.update(self.get_execution_info())
 
-        if self.save_results_file:
-            name = self.name
-            write_json(f'results-{name}.json', results)
-
-            # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults-{name}.json')
-            if tmppath.exists():
-                unlink(tmppath)
+        if self.save_cache:
+            self.cache.add(results, args=(args, kwargs))
 
         return results
 
