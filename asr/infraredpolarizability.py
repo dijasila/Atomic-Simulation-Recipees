@@ -226,15 +226,6 @@ def main(nfreq: int = 300, eta: float = 1e-2):
         "alphaz": alphaz_lat + alphaz_el,
     }
 
-    results["__key_descriptions__"] = {
-        "alphax_lat": "KVP: Static ionic polarizability, x-direction [Ang]",
-        "alphay_lat": "KVP: Static ionic polarizability, y-direction [Ang]",
-        "alphaz_lat": "KVP: Static ionic polarizability, z-direction [Ang]",
-        "alphax": "KVP: Static total polarizability, x-direction [Ang]",
-        "alphay": "KVP: Static total polarizability, y-direction [Ang]",
-        "alphaz": "KVP: Static total polarizability, z-direction [Ang]",
-    }
-
     return results
 
 

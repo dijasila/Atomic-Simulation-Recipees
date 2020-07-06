@@ -1,13 +1,5 @@
 from asr.core import command, option
 
-tests = [{'cli': ['ase build -x diamond Si structure.json',
-                  'asr run "setup.strains --kptdensity 2.0"',
-                  'asr run "setup.params asr.relax:calculator '
-                  '''{'mode':{'ecut':200},'kpts':(v1,1,1),...}" strains*/''',
-                  'asr run relax strains*/',
-                  'asr run database.material_fingerprint strains*/',
-                  'asr run stiffness']}]
-
 
 def webpanel(row, key_descriptions):
     import numpy as np
@@ -101,8 +93,7 @@ def webpanel(row, key_descriptions):
 
 
 @command(module='asr.stiffness',
-         webpanel=webpanel,
-         tests=tests)
+         webpanel=webpanel)
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 def main(strain_percent: float = 1.0):
     from asr.setup.strains import (get_strained_folder_name,
@@ -173,26 +164,25 @@ def main(strain_percent: float = 1.0):
         data['c_23'] = stiffness[1, 2]
         data['c_13'] = stiffness[0, 2]
         data['c_12'] = stiffness[0, 1]
-        kd['c_11'] = 'KVP: Stiffness tensor: 11-component [N/m]'
-        kd['c_22'] = 'KVP: Stiffness tensor: 22-component [N/m]'
-        kd['c_33'] = 'KVP: Stiffness tensor: 33-component [N/m]'
-        kd['c_23'] = 'KVP: Stiffness tensor: 23-component [N/m]'
-        kd['c_13'] = 'KVP: Stiffness tensor: 13-component [N/m]'
-        kd['c_12'] = 'KVP: Stiffness tensor: 12-component [N/m]'
         kd['speed_of_sound_x'] = 'KVP: Speed of sound in x direction [m/s]'
         kd['speed_of_sound_y'] = 'KVP: Speed of sound in y direction [m/s]'
         kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
     elif nd == 1:
         cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
-        stiffness = stiffness[2, 2] * area * 1e-20
+        stiffness = stiffness[[2], [2]] * area * 1e-20
         # typical values for 1D are of the order of 10^(-10) N
-        stiffness = stiffness * 1.0e10
-        kd['stiffness_tensor'] = 'Stiffness tensor [10^(-10) N]'
-    else:
+        kd['stiffness_tensor'] = 'Stiffness tensor [N]'
+    elif nd == 3:
         # typical values for 3D are of the order of 100 GPa [= 100*10^9 N/m^2]
-        stiffness = stiffness / 1.0e9
-        kd['stiffness_tensor'] = 'Stiffness tensor [10^9 N/m^2]'
+        kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
+    else:
+        raise RuntimeError('Cannot compute stiffness tensor of 0D material.')
+
+    stiffness_shape = stiffness.shape
+    for i in range(stiffness_shape[0]):
+        for j in range(stiffness_shape[1]):
+            data['c_{i}{j}'] = stiffness[i, j]
 
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness

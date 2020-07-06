@@ -49,8 +49,8 @@ key_descriptions = {
         "gap_gw": "KVP: Band gap (GW) [eV]",
         "kvbm": "k-point of GW valence band maximum",
         "kcbm": "k-point of GW conduction band minimum",
-        "efermi_gw_nosoc": "Fermi energy w/o soc. (GW) [eV]",
-        "efermi_gw_soc": "Fermi energy (GW) [eV]",
+        "efermi_gw_nosoc": "Fermi level w/o soc. (GW) [eV]",
+        "efermi_gw_soc": "Fermi level (GW) [eV]",
     },
     "hse": {
         "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE) [eV]",
@@ -65,8 +65,8 @@ key_descriptions = {
         "gap_hse": "KVP: Band gap (HSE) [eV]",
         "kvbm": "k-point of HSE valence band maximum",
         "kcbm": "k-point of HSE conduction band minimum",
-        "efermi_hse_nosoc": "Fermi energy w/o soc. (HSE) [eV]",
-        "efermi_hse_soc": "Fermi energy (HSE) [eV]",
+        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
+        "efermi_hse_soc": "Fermi level (HSE) [eV]",
     },
     "infraredpolarizability": {
         "alphax_lat": "KVP: Static lattice polarizability (x) [Ang]",
@@ -94,10 +94,10 @@ key_descriptions = {
         "pdos_soc":
         "Projected density of states !PDOS!",
         "dos_at_ef_nosoc":
-        "KVP: Density of states at the Fermi energy w/o soc."
+        "KVP: Density of states at the Fermi level w/o soc."
         "!DOS at ef no soc.! [states/(eV * unit cell)]",
         "dos_at_ef_soc":
-        "KVP: Density of states at the Fermi energy"
+        "KVP: Density of states at the Fermi level"
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
@@ -198,6 +198,11 @@ key_descriptions = {
 for dimtype in get_dimtypes():
     key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
         f'KVP: Dimensionality score of dimtype={dimtype}'
+
+for i in range(6):
+    for j in range(6):
+        key_descriptions["stiffness"]["c_{i}{j}"] = \
+            "KVP: Stiffness tensor, {i}{j}-component [`N/m^{dim-1}`]"]
 
 # Piezoelectrictensor key_descriptions
 piezokd = {}
