@@ -44,7 +44,7 @@ def calculate(calculator: dict = {
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     atoms.get_forces()
     try:
         atoms.get_stress()
@@ -176,6 +176,7 @@ def main():
 
     results['gaps_nosoc'] = gaps(calc, soc=False)
     results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
+    results['gap_nosoc'] = results['gaps_nosoc']['gap']
     results.update(gaps(calc, soc=True))
     # Vacuum level is calculated for c2db backwards compability
     if int(np.sum(atoms.get_pbc())) == 2:

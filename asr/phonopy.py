@@ -158,7 +158,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
-        atoms_N.set_calculator(calc)
+        atoms_N.calc = calc
         forces = atoms_N.get_forces()
 
         drift_force = forces.sum(axis=0)
@@ -382,7 +382,7 @@ def plot_phonons(row, fname):
 
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
 
     data = row.data.get("results-asr.phonopy.json")
     path = data["path"]

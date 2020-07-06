@@ -21,7 +21,7 @@ def calculate(gs: str = 'gs.gpw'):
     if sum(magnetic) == 2:
         calc.reset()
         calc.set(txt='gs_2mag.txt')
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         atoms.get_potential_energy()
         calc.write('gs_2mag.gpw')
 
@@ -38,7 +38,7 @@ def calculate(gs: str = 'gs.gpw'):
         atoms.set_initial_magnetic_moments(magmoms_e)
         calc.reset()
         calc.set(txt='exchange.txt')
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         atoms.get_potential_energy()
         calc.write('exchange.gpw')
 
@@ -51,7 +51,7 @@ def calculate(gs: str = 'gs.gpw'):
         atoms = atoms.repeat((2, 1, 1))
         calc.reset()
         calc.set(txt='gs_2mag.txt')
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         atoms.get_potential_energy()
         calc.write('gs_2mag.gpw')
 
@@ -67,7 +67,7 @@ def calculate(gs: str = 'gs.gpw'):
         atoms.set_initial_magnetic_moments(magmoms_e)
         calc.reset()
         calc.set(txt='exchange.txt')
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         atoms.get_potential_energy()
         calc.write('exchange.gpw')
 

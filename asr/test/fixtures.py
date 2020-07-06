@@ -55,7 +55,7 @@ def _get_webcontent(name='database.db'):
     from asr.database.fromtree import main as fromtree
     from asr.database.material_fingerprint import main as mf
     mf()
-    fromtree()
+    fromtree(recursive=True)
     content = ""
     from asr.database import app as appmodule
     from pathlib import Path

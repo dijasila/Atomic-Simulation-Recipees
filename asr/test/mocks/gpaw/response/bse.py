@@ -19,7 +19,7 @@ class BSE:
             fd = open(filename, 'w')
             for iw, w in enumerate(w_w):
                 print('%.9f, %.9f, %.9f' %
-                      (w, 1.0, 0.0), file=fd)
+                      (w, 1.0, 0.1), file=fd)
             fd.close()
 
         if write_eig is not None:

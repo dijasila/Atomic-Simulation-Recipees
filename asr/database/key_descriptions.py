@@ -1,5 +1,5 @@
 from asr.core import command, argument, get_recipes
-
+from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -15,6 +15,7 @@ key_descriptions = {
     "magstate": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
+        "nspins": "KVP: Number of spins in calculator !n-spins!",
     },
     "gs": {
         "forces": "Forces on atoms [eV/Angstrom]",
@@ -31,6 +32,8 @@ key_descriptions = {
         "gap_dir": "KVP: Direct band gap !Dir. band gap! [eV]",
         "gap_dir_nosoc":
         "KVP: Direct gap w/o soc. !Dir. gap wo. soc.! [eV]",
+        "gap_nosoc":
+        "KVP: Gap w/o soc. !Gap wo. soc.! [eV]",
         "workfunction": "KVP: Work function (avg. if finite dipole) [eV]",
     },
     "gw": {
@@ -148,6 +151,24 @@ key_descriptions = {
         'asr_id': 'KVP: Material unique ID',
         'uid': 'KVP: Unique identifier'
     },
+    "dimensionality": {
+        'dim_primary': 'KVP: Dim. with max. scoring parameter',
+        'dim_primary_score': ('KVP: Dimensionality scoring parameter '
+                              'of primary dimensionality.'),
+        'dim_nclusters_0D': 'KVP: Number of 0D clusters.',
+        'dim_nclusters_1D': 'KVP: Number of 1D clusters.',
+        'dim_nclusters_2D': 'KVP: Number of 2D clusters.',
+        'dim_nclusters_3D': 'KVP: Number of 3D clusters.',
+        'dim_threshold_0D': 'KVP: 0D dimensionality threshold.',
+        'dim_threshold_1D': 'KVP: 1D dimensionality threshold.',
+        'dim_threshold_2D': 'KVP: 2D dimensionality threshold.',
+        'dim_threshold_3D': 'KVP: 3D dimensionality threshold.',
+    },
+    "setinfo": {
+        'first_class_material': (
+            'KVP: A first class material marks a physical material. '
+            '!First class material! [bool]'),
+    },
     "info.json": {
         'class': 'KVP: Material class',
         'doi': 'KVP: Monolayer reported DOI',
@@ -172,6 +193,11 @@ key_descriptions = {
         "folder": "KVP: Path to collection folder",
     }
 }
+
+# Dimensionality key descrioptions:
+for dimtype in get_dimtypes():
+    key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
+        f'KVP: Dimensionality score of dimtype={dimtype}'
 
 # Piezoelectrictensor key_descriptions
 piezokd = {}

@@ -151,7 +151,7 @@ def get_bs_sampling(bsp, npoints=40):
     Parameters
     ----------
     bsp : obj
-        ase.dft.band_structure.BandStructurePlot object
+        ase.spectrum.band_structure.BandStructurePlot object
     npoints : int
         number of k-points to sample along band structure
 
@@ -300,7 +300,7 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data

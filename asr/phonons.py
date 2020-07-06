@@ -23,7 +23,9 @@ def creates():
 
 def todict(filename):
     from ase.utils import pickleload
-    return {'content': pickleload(open(filename, 'rb'))}
+    with open(filename, 'rb') as fd:
+        content = pickleload(fd)
+    return {'content': content}
 
 
 def topckl(filename, dct):
@@ -246,7 +248,7 @@ def plot_phonons(row, fname):
 
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
     data = row.data.get('results-asr.phonons.json')
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
@@ -263,7 +265,8 @@ def plot_bandstructure(row, fname):
 
     bs = BandStructure(path=path, energies=en_exact[None])
     bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
-            emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
+            emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15),
+                                                      0.0001]),
             ylabel='Phonon frequencies [meV]')
     plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
     plt.legend(ncol=1, loc='upper center')
