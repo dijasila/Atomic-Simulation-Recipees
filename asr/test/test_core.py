@@ -75,8 +75,8 @@ def test_core(asr_tmpdir_w_params):
     assert resultfile.is_file()
 
     reciperesults = read_json(resultfile)
-    assert all(reciperesults["x"] == [3] * 3)
-    assert all(reciperesults["y"] == [4] * 4)
+    assert reciperesults["x"] == [3] * 3
+    assert reciperesults["y"] == [4] * 4
 
     assert reciperesults["__params__"]["nx"] == 3
     assert reciperesults["__params__"]["ny"] == 4
