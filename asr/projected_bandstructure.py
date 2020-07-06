@@ -14,7 +14,7 @@ def webpanel(row, key_descriptions):
                          [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': projected_bs_pbe,
                                     'filenames': ['pbe-projected-bs.png']}],
-             'sort': 14}
+             'sort': 13}
 
     return [panel]
 
