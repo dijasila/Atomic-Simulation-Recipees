@@ -112,9 +112,9 @@ key_descriptions = {
         "[`eV/Ang^0.5`]",
     },
     "polarizability": {
-        "alphax_el": "KVP: Static electronic polarizability (x) [Ang]",
-        "alphay_el": "KVP: Static electronic polarizability (y) [Ang]",
-        "alphaz_el": "KVP: Static electronic polarizability (z) [Ang]",
+        "alphax_el": "KVP: Static interband polarizability (x) [Ang]",
+        "alphay_el": "KVP: Static interband polarizability (y) [Ang]",
+        "alphaz_el": "KVP: Static interband polarizability (z) [Ang]",
     },
     "relax": {
         "etot": "Total energy [eV]",

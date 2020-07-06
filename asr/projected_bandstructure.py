@@ -9,7 +9,7 @@ from asr.core import command
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Projected band structure and DOS (PBE)',
              'columns': [[fig('pbe-projected-bs.png', link='empty')], []],
              'plot_descriptions': [{'function': projected_bs_pbe,
                                     'filenames': ['pbe-projected-bs.png']}],
