@@ -230,7 +230,7 @@ def webpanel(row, key_descriptions):
               f'{row.cbm_gw - row.efermi:.2f} eV']])
 
     panel = {'title': 'Electronic band structure (GW)',
-             'columns': [[fig('gw-bs.png')], [prop]],
+             'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
