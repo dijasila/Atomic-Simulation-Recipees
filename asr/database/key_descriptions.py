@@ -201,8 +201,8 @@ for dimtype in get_dimtypes():
 
 for i in range(6):
     for j in range(6):
-        key_descriptions["stiffness"]["c_{i}{j}"] = \
-            "KVP: Stiffness tensor, {i}{j}-component [`N/m^{dim-1}`]"
+        key_descriptions["stiffness"][f"c_{i}{j}"] = \
+            f"KVP: Stiffness tensor, {i}{j}-component [`N/m^" + "{dim-1}`]"
 
 # Piezoelectrictensor key_descriptions
 piezokd = {}

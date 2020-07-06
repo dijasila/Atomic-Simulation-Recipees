@@ -51,8 +51,9 @@ def webpanel(row, key_descriptions):
                                                       key=lambda x: x.real))])
     else:
         rows = []
+        eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eigs.real:.2f} * 10^(-10) N']])
+                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
 
     for ir, tmprow in enumerate(rows):
         for ic, item in enumerate(tmprow):
@@ -71,10 +72,7 @@ def webpanel(row, key_descriptions):
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
-    if nd == 1:
-        dynstab = ['low', 'high'][eigs > 0]
-    else:
-        dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    dynstab = ['low', 'high'][int(eigs.min() > 0)]
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
@@ -170,7 +168,7 @@ def main(strain_percent: float = 1.0):
     elif nd == 1:
         cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
-        stiffness = stiffness[[2], [2]] * area * 1e-20
+        stiffness = stiffness[[2], :][:, [2]] * area * 1e-20
         # typical values for 1D are of the order of 10^(-10) N
         kd['stiffness_tensor'] = 'Stiffness tensor [N]'
     elif nd == 3:
@@ -182,7 +180,7 @@ def main(strain_percent: float = 1.0):
     stiffness_shape = stiffness.shape
     for i in range(stiffness_shape[0]):
         for j in range(stiffness_shape[1]):
-            data['c_{i}{j}'] = stiffness[i, j]
+            data[f'c_{i}{j}'] = stiffness[i, j]
 
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness
