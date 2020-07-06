@@ -209,8 +209,6 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
-    if not row.get('gap_gw', 0) > 0:
-        return []
 
     prop = table(row, 'Property', [
         'gap_gw', 'gap_dir_gw',
