@@ -109,7 +109,7 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
     # check that stiffness_tensor is symmetric
     stiffness_tensor = results['stiffness_tensor']
     diff = stiffness_tensor - stiffness_tensor.T
-    assert np.max(diff) < 1e-08
+    assert np.max(np.abs(diff)) < 1e-08
 
     content = get_webcontent()
     assert 'Dynamical(stiffness)' in content, content
