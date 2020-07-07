@@ -71,7 +71,7 @@ def bs_gw(row,
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    ax.plot([], [], **style, label='GW')
+    ax.plot([], [], **style, label='G0W0')
     plt.legend(loc='upper right')
 
     if not show_legend:
@@ -227,7 +227,7 @@ def webpanel(row, key_descriptions):
              ['Conduction band minimum wrt. Fermi level (G0W0)',
               f'{row.cbm_gw - row.efermi:.2f} eV']])
 
-    panel = {'title': 'Electronic band structure (GW)',
+    panel = {'title': 'Electronic band structure (G0W0)',
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
