@@ -48,7 +48,7 @@ def make_folder_tree(*, folders, chunks,
                 else:
                     continue
 
-            if (folder / filename).is_file():
+            if (folder / filename).is_file() and not update_tree:
                 continue
 
             # We treat json differently
