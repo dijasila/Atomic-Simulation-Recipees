@@ -402,8 +402,7 @@ def main(folders: Union[str, None] = None,
                     data = row.get('data')
                     db2.write(row.toatoms(), data=data, **kvp)
                     nmat += 1
-                keys.update(set(db.metadata['keys']))
-
+            keys.update(set(db.metadata['keys']))
             print('Done. Setting metadata.', flush=True)
             metadata['keys'] = sorted(list(keys))
             db2.metadata = metadata
