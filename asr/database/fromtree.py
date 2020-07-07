@@ -383,6 +383,7 @@ def main(folders: Union[str, None] = None,
 
     for proc in processes:
         proc.join()
+        assert proc.exitcode == 0
 
     # Then we have to collect the separately collected databases
     # to a single final database file.
