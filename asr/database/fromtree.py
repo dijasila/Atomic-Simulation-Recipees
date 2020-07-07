@@ -287,15 +287,19 @@ def recurse_through_folders(folder, atomsname):
     return folders
 
 
-def collect_folders(myfolders, atomsname=None, patterns=None, children_patterns=None,
-                    mydbname=None, ijob=None):
+def collect_folders(folders: List[str],
+                    atomsname: str = None,
+                    patterns: List[str] = None,
+                    children_patterns: List[str] = None,
+                    dbname: str = None,
+                    jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     from ase.db import connect
-    nfolders = len(myfolders)
+    nfolders = len(folders)
     keys = set()
-    with connect(mydbname, serial=True) as db:
-        for ifol, folder in enumerate(myfolders):
-            print(f'Collecting folder {folder} ({ifol + 1}/{nfolders})',
+    with connect(dbname, serial=True) as db:
+        for ifol, folder in enumerate(folders):
+            print(f'Job #{jobid} Collecting folder {folder} ({ifol + 1}/{nfolders})',
                   flush=True)
 
             atoms, key_value_pairs, data = collect_folder(
@@ -368,7 +372,8 @@ def main(folders: Union[str, None] = None,
             target=collect_folders,
             args=(folders[jobid::njobs], ),
             kwargs={
-                'jobid': jobid, 'dbname': jobdbname,
+                'jobid': jobid,
+                'dbname': jobdbname,
                 'atomsname': atomsname,
                 'patterns': patterns,
                 'children_patterns': children_patterns
@@ -389,6 +394,7 @@ def main(folders: Union[str, None] = None,
     with connect(dbname, serial=True) as db2:
         for jobid in range(njobs):
             jobdbname = f'{dbname}.{jobid}.db'
+            assert Path(jobdbname).is_file()
             print(f'Merging {jobdbname} into {dbname}', flush=True)
             with connect(f'{jobdbname}', serial=True) as db:
                 for row in db.select():
