@@ -72,7 +72,7 @@ def webpanel(row, key_descriptions):
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
-    dynstab = ['low', 'high'][int(eigs.min() > 0)]
+    dynstab = row.dynamic_stability_stiffness
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
     row = ['Dynamical (stiffness)',
@@ -138,8 +138,7 @@ def main(strain_percent: float = 1.0):
     stiffness *= 10**30 / J
 
     # Now do some post processing
-    data = {'__key_descriptions__': {}}
-    kd = data['__key_descriptions__']
+    data = {}
     nd = np.sum(atoms.pbc)
     if nd == 2:
         cell = atoms.get_cell()
@@ -156,31 +155,18 @@ def main(strain_percent: float = 1.0):
         speed_y = np.sqrt(stiffness[1, 1] / area_density)
         data['speed_of_sound_x'] = speed_x
         data['speed_of_sound_y'] = speed_y
-        data['c_11'] = stiffness[0, 0]
-        data['c_22'] = stiffness[1, 1]
-        data['c_33'] = stiffness[2, 2]
-        data['c_23'] = stiffness[1, 2]
-        data['c_13'] = stiffness[0, 2]
-        data['c_12'] = stiffness[0, 1]
-        kd['speed_of_sound_x'] = 'KVP: Speed of sound in x direction [m/s]'
-        kd['speed_of_sound_y'] = 'KVP: Speed of sound in y direction [m/s]'
-        kd['stiffness_tensor'] = 'Stiffness tensor [N/m]'
     elif nd == 1:
         cell = atoms.get_cell()
         area = atoms.get_volume() / cell[2, 2]
         stiffness = stiffness[[2], :][:, [2]] * area * 1e-20
         # typical values for 1D are of the order of 10^(-10) N
-        kd['stiffness_tensor'] = 'Stiffness tensor [N]'
-    elif nd == 3:
-        # typical values for 3D are of the order of 100 GPa [= 100*10^9 N/m^2]
-        kd['stiffness_tensor'] = 'Stiffness tensor [N/m^2]'
-    else:
+    elif nd == 0:
         raise RuntimeError('Cannot compute stiffness tensor of 0D material.')
 
     stiffness_shape = stiffness.shape
     for i in range(stiffness_shape[0]):
         for j in range(stiffness_shape[1]):
-            data[f'c_{i}{j}'] = stiffness[i, j]
+            data[f'c_{i + 1}{j + 1}'] = stiffness[i, j]
 
     data['__links__'] = links
     data['stiffness_tensor'] = stiffness
@@ -190,6 +176,8 @@ def main(strain_percent: float = 1.0):
     else:
         eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
+    dynamic_stability_stiffness = ['low', 'high'][int(eigs.min() > 0)]
+    data['dynamic_stability_stiffness'] = dynamic_stability_stiffness
     return data
 
 

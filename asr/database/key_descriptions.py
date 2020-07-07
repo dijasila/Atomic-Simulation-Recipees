@@ -102,7 +102,7 @@ key_descriptions = {
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
-        "dynamic_stability_level": "KVP: Dynamic stability level",
+        "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
@@ -129,15 +129,11 @@ key_descriptions = {
         "gamma": "Cell parameter gamma [deg]",
     },
     "stiffness": {
-        "c_11": "KVP: Stiffness tensor, 11-component [`N/m^{dim-1}`]",
-        "c_22": "KVP: Stiffness tensor, 22-component [`N/m^{dim-1}`]",
-        "c_33": "KVP: Stiffness tensor, 33-component [`N/m^{dim-1}`]",
-        "c_23": "KVP: Stiffness tensor, 23-component [`N/m^{dim-1}`]",
-        "c_13": "KVP: Stiffness tensor, 13-component [`N/m^{dim-1}`]",
-        "c_12": "KVP: Stiffness tensor, 12-component [`N/m^{dim-1}`]",
         "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
         "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
+        "dynamic_stability_stiffness":
+        "KVP: Stiffness dynamic stability (low/high)",
     },
     "structureinfo": {
         "cell_area": "KVP: Area of unit-cell [`Ang^2`]",

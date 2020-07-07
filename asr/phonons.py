@@ -124,7 +124,7 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_level')
+    dynstab = row.get('dynamic_stability_phonons')
     high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
     low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
     row = ['Dynamical (phonons)',
@@ -200,7 +200,7 @@ def main(mingo: bool = True):
                'q_qc': q_qc,
                'modes_kl': u_kl,
                'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
+               'dynamic_stability_phonons': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
@@ -208,9 +208,6 @@ def main(mingo: bool = True):
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl
     results['path'] = path
-    results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
-         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 
