@@ -299,7 +299,8 @@ def collect_folders(folders: List[str],
     keys = set()
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(folders):
-            print(f'Job #{jobid} Collecting folder {folder} ({ifol + 1}/{nfolders})',
+            print(f'Subprocess #{jobid} Collecting folder {folder} '
+                  f'({ifol + 1}/{nfolders})',
                   flush=True)
 
             atoms, key_value_pairs, data = collect_folder(
@@ -352,10 +353,12 @@ def main(folders: Union[str, None] = None,
         folders = tmpfolders
 
     if recursive:
+        print('Recursing through folder tree...')
         newfolders = []
         for folder in folders:
             newfolders += recurse_through_folders(folder, atomsname)
         folders = newfolders
+        print('Done.')
 
     folders.sort()
     patterns = patterns.split(',')
@@ -366,6 +369,7 @@ def main(folders: Union[str, None] = None,
     name = dbpath.name
 
     # Delegate collection of database to subprocesses to reduce I/O time.
+    print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
         jobdbname = dbpath.parent / f'{name}.{jobid}.db'
@@ -405,7 +409,7 @@ def main(folders: Union[str, None] = None,
                     db2.write(row.toatoms(), data=data, **kvp)
                     nmat += 1
             keys.update(set(db.metadata['keys']))
-    print('Done. Setting metadata.', flush=True)
+    print('Done.', flush=True)
     metadata['keys'] = sorted(list(keys))
     db2.metadata = metadata
     nmatdb = len(db2)
