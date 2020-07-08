@@ -3,6 +3,7 @@
 from typing import Union, List
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
+from asr.database.key_descriptions import main as set_key_descriptions
 from asr.database.material_fingerprint import main as mf
 from asr.database.check import main as check_database
 import multiprocessing
@@ -296,7 +297,6 @@ def collect_folders(folders: List[str],
     """Collect `myfolders` to `mydbname`."""
     from ase.db import connect
     nfolders = len(folders)
-    keys = set()
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(folders):
             print(f'Subprocess #{jobid} Collecting folder {folder} '
@@ -314,11 +314,7 @@ def collect_folders(folders: List[str],
 
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
-            keys.update(key_value_pairs.keys())
             db.write(atoms, data=data, **key_value_pairs)
-
-    metadata = {'keys': sorted(list(keys))}
-    db.metadata = metadata
 
 
 @command('asr.database.fromtree')
@@ -395,8 +391,6 @@ def main(folders: Union[str, None] = None,
     print(f'Merging separate database files to {dbname}',
           flush=True)
     nmat = 0
-    keys = set()
-    metadata = {}
     with connect(dbname, serial=True) as db2:
         for jobid in range(njobs):
             jobdbname = f'{dbname}.{jobid}.db'
@@ -408,15 +402,13 @@ def main(folders: Union[str, None] = None,
                     data = row.get('data')
                     db2.write(row.toatoms(), data=data, **kvp)
                     nmat += 1
-            keys.update(set(db.metadata['keys']))
     print('Done.', flush=True)
-    metadata['keys'] = sorted(list(keys))
-    db2.metadata = metadata
     nmatdb = len(db2)
     assert nmatdb == nmat, \
         ('Merging of databases went wrong, '
          f'number of materials changed: {nmatdb} != {nmat}')
 
+    set_key_descriptions(dbname)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
