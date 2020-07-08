@@ -405,13 +405,13 @@ def main(folders: Union[str, None] = None,
                     db2.write(row.toatoms(), data=data, **kvp)
                     nmat += 1
             keys.update(set(db.metadata['keys']))
-            print('Done. Setting metadata.', flush=True)
-            metadata['keys'] = sorted(list(keys))
-            db2.metadata = metadata
-            nmatdb = len(db2)
-            assert nmatdb == nmat, \
-                ('Merging of databases went wrong, '
-                 f'number of materials changed: {nmatdb} != {nmat}')
+    print('Done. Setting metadata.', flush=True)
+    metadata['keys'] = sorted(list(keys))
+    db2.metadata = metadata
+    nmatdb = len(db2)
+    assert nmatdb == nmat, \
+        ('Merging of databases went wrong, '
+         f'number of materials changed: {nmatdb} != {nmat}')
 
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
