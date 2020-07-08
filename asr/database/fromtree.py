@@ -363,11 +363,12 @@ def main(folders: Union[str, None] = None,
 
     # We use absolute path because of chdir in collect_folder()!
     dbpath = Path(dbname).absolute()
+    name = dbpath.name
 
     # Delegate collection of database to subprocesses to reduce I/O time.
     processes = []
     for jobid in range(njobs):
-        jobdbname = dbpath.parent / f'{dbname}.{jobid}.db'
+        jobdbname = dbpath.parent / f'{name}.{jobid}.db'
         proc = multiprocessing.Process(
             target=collect_folders,
             args=(folders[jobid::njobs], ),
