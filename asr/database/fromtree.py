@@ -3,7 +3,6 @@
 from typing import Union, List
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
-from asr.database.key_descriptions import main as set_key_descriptions
 from asr.database.material_fingerprint import main as mf
 from asr.database.check import main as check_database
 import multiprocessing
@@ -318,6 +317,9 @@ def collect_folders(folders: List[str],
             keys.update(key_value_pairs.keys())
             db.write(atoms, data=data, **key_value_pairs)
 
+    metadata = {'keys': sorted(list(keys))}
+    db.metadata = metadata
+
 
 @command('asr.database.fromtree')
 @argument('folders', nargs=-1, type=str)
@@ -336,6 +338,7 @@ def main(folders: Union[str, None] = None,
          dbname: str = 'database.db',
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
+    from ase.db import connect
 
     def item_show_func(item):
         return str(item)
@@ -369,12 +372,13 @@ def main(folders: Union[str, None] = None,
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
+        jobdbname = dbpath.parent / f'{name}.{jobid}.db'
         proc = multiprocessing.Process(
             target=collect_folders,
             args=(folders[jobid::njobs], ),
             kwargs={
                 'jobid': jobid,
-                'dbname': dbname,
+                'dbname': jobdbname,
                 'atomsname': atomsname,
                 'patterns': patterns,
                 'children_patterns': children_patterns
@@ -386,7 +390,33 @@ def main(folders: Union[str, None] = None,
         proc.join()
         assert proc.exitcode == 0
 
-    set_key_descriptions(dbname)
+    # Then we have to collect the separately collected databases
+    # to a single final database file.
+    print(f'Merging separate database files to {dbname}',
+          flush=True)
+    nmat = 0
+    keys = set()
+    metadata = {}
+    with connect(dbname, serial=True) as db2:
+        for jobid in range(njobs):
+            jobdbname = f'{dbname}.{jobid}.db'
+            assert Path(jobdbname).is_file()
+            print(f'Merging {jobdbname} into {dbname}', flush=True)
+            with connect(f'{jobdbname}', serial=True) as db:
+                for row in db.select():
+                    kvp = row.get('key_value_pairs', {})
+                    data = row.get('data')
+                    db2.write(row.toatoms(), data=data, **kvp)
+                    nmat += 1
+            keys.update(set(db.metadata['keys']))
+    print('Done.', flush=True)
+    metadata['keys'] = sorted(list(keys))
+    db2.metadata = metadata
+    nmatdb = len(db2)
+    assert nmatdb == nmat, \
+        ('Merging of databases went wrong, '
+         f'number of materials changed: {nmatdb} != {nmat}')
+
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
