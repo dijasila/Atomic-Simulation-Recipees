@@ -239,7 +239,6 @@ def main(database: str):
     for ir, row in enumerate(db.select(include_data=False)):
         if ir % 100 == 0:
             print(ir)
-        print(row.key_value_pairs.keys())
         keys.update(set(row.key_value_pairs.keys()))
 
     metadata = db.metadata
