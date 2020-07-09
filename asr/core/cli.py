@@ -120,11 +120,11 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
     }
     if njobs > 1:
         processes = []
-        for job in range(jobs):
+        for job in range(njobs):
             kwargs['job_num'] = job
             proc = multiprocessing.Process(
                 target=run_command,
-                args=(folders[job::jobs], ),
+                args=(folders[job::njobs], ),
                 kwargs=kwargs,
             )
             processes.append(proc)
