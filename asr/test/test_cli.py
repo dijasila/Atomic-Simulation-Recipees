@@ -52,7 +52,7 @@ def test_asr_run(asr_tmpdir_w_params):
     pathlib.Path("folder3").mkdir()
     pathlib.Path("folder4").mkdir()
 
-    result = runner.invoke(cli, ['run', '--jobs', '2',
+    result = runner.invoke(cli, ['run', '--njobs', '2',
                                  'setup.params asr.relax:d3 True',
                                  'folder3', 'folder4'])
     assert result.exit_code == 0

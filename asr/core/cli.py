@@ -55,14 +55,14 @@ def cli():
               help='COMMAND is not a recipe.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Show what would happen without doing anything.')
-@click.option('-j', '--jobs', type=int, default=1,
+@click.option('-j', '--njobs', type=int, default=1,
               help='Run COMMAND in serial on JOBS processes.')
 @click.option('-S', '--skip-if-done', is_flag=True,
               help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
               help='Continue to next folder when encountering error.')
 @click.pass_context
-def run(ctx, command, folders, not_recipe, dry_run, jobs,
+def run(ctx, command, folders, not_recipe, dry_run, njobs,
         skip_if_done, dont_raise):
     r"""Run recipe or python function in multiple folders.
 
@@ -118,7 +118,7 @@ def run(ctx, command, folders, not_recipe, dry_run, jobs,
         'not_recipe': not_recipe,
         'command': command
     }
-    if jobs > 1:
+    if njobs > 1:
         processes = []
         for job in range(jobs):
             kwargs['job_num'] = job
