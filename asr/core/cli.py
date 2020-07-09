@@ -142,7 +142,7 @@ def append_job(string: str, job_num: Union[int, None] = None):
     if job_num is None:
         return string
     else:
-        return 'Job #{job_num}: {string}'
+        return f'Job #{job_num}: {string}'
 
 
 def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
