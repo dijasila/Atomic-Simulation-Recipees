@@ -1,7 +1,15 @@
-from asr.core import read_json
+import sys
+from typing import Union
+from asr.core import read_json, chdir, ASRCommand
 import click
 from pathlib import Path
 import subprocess
+from ase.parallel import parprint
+from functools import partial
+import importlib
+
+
+prt = partial(parprint, flush=True)
 
 
 def format(content, indent=0, title=None, pad=2):
@@ -41,30 +49,25 @@ def cli():
 
 
 @cli.command()
-@click.option('-s', '--shell', is_flag=True,
-              help='Interpret COMMAND as shell command.')
+@click.argument('command', nargs=1)
+@click.argument('folders', nargs=-1)
 @click.option('-n', '--not-recipe', is_flag=True,
               help='COMMAND is not a recipe.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Show what would happen without doing anything.')
-@click.option('-j', '--jobs', type=int,
+@click.option('-j', '--jobs', type=int, default=1,
               help='Run COMMAND in serial on JOBS processes.')
 @click.option('-S', '--skip-if-done', is_flag=True,
               help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
               help='Continue to next folder when encountering error.')
-@click.argument('command', nargs=1)
-@click.argument('folders', nargs=-1)
 @click.pass_context
-def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
+def run(ctx, command, folders, not_recipe, dry_run, jobs,
         skip_if_done, dont_raise):
-    r"""Run recipe, python function or shell command in multiple folders.
+    r"""Run recipe or python function in multiple folders.
 
-    Can run an ASR recipe or a shell command. For example, the syntax
+    Can run an ASR recipe or a python function. For example, the syntax
     "asr run recipe" will run the relax recipe in the current folder.
-
-    To run a shell script use the syntax 'asr run --shell "echo Hello!"'.
-    This example would run "echo Hello!" in the current folder.
 
     Provide extra arguments to the recipe using 'asr run "recipe --arg1
     --arg2"'.
@@ -77,9 +80,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
 
     If you dont actually wan't to run the command, i.e., if it is a
     dangerous command, then use the "asr run --dry-run ..." syntax
-    where ... could be any of the above commands. For example,
-    'asr run --dry-run --shell "echo Hello!" \\*/' would run "echo Hello!"
-    in all folders of the current directory.
+    where ... could be any of the above commands.
 
     Examples
     --------
@@ -101,70 +102,54 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
     Run relax recipe in two folders sequentially
     >>> asr run relax folder1/ folder2/
 
-    Run a shell command in this folder
-    >>> asr run --shell "ase convert gs.gpw structure.json"
-
-    Run a shell command in "folder1/"
-    >>> asr run --shell "ase convert gs.gpw structure.json" folder1/
-
-    Don't actually do anything just show what would be done
-    >>> asr run --dry-run --shell "mv str1.json str2.json" folder1/ folder2/
-
     """
-    import subprocess
-    from ase.parallel import parprint
-    from asr.core import chdir
-    from functools import partial
+    import multiprocessing
 
-    prt = partial(parprint, flush=True)
-
+    nfolders = len(folders)
     if not folders:
         folders = ['.']
     else:
-        prt(f'Number of folders: {len(folders)}')
+        prt(f'Number of folders: {nfolders}')
 
-    nfolders = len(folders)
-
-    if jobs:
-        assert jobs <= nfolders, 'Too many jobs and too few folders!'
+    kwargs = {
+        'skip_if_done': skip_if_done,
+        'dont_raise': dont_raise,
+        'dry_run': dry_run,
+        'not_recipe': not_recipe,
+        'command': command
+    }
+    if jobs > 1:
         processes = []
         for job in range(jobs):
-            cmd = 'python3 -m asr run'.split()
-            myfolders = folders[job::jobs]
-            if skip_if_done:
-                cmd.append('--skip-if-done')
-            if dont_raise:
-                cmd.append('--dont-raise')
-            if shell:
-                cmd.append('--shell')
-            if dry_run:
-                cmd.append('--dry-run')
-            cmd.append(command)
-            cmd.extend(myfolders)
-            process = subprocess.Popen(cmd)
-            processes.append(process)
+            kwargs['job_num'] = job
+            proc = multiprocessing.Process(
+                target=run_command,
+                args=(folders[job::jobs], ),
+                kwargs=kwargs,
+            )
+            processes.append(proc)
+            proc.start()
 
-        for process in processes:
-            returncode = process.wait()
-            assert returncode == 0
-        return
+        for proc in processes:
+            proc.join()
+            assert proc.exitcode == 0
+    else:
+        run_command(folders, **kwargs)
 
-    # Identify function that should be executed
-    if shell:
-        command = command.strip()
-        if dry_run:
-            prt(f'Would run shell command "{command}" '
-                f'in {nfolders} folders.')
-            return
 
-        for i, folder in enumerate(folders):
-            with chdir(Path(folder)):
-                prt(f'Running {command} in {folder} ({i + 1}/{nfolders})')
-                subprocess.run(command.split())
-        return
+def append_job(string: str, job_num: Union[int, None] = None):
+    """Append job number to message if provided."""
+    if job_num is None:
+        return string
+    else:
+        return 'Job #{job_num}: {string}'
 
-    # If not shell then we assume that the command is a call
-    # to a python module or a recipe
+
+def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
+                skip_if_done: bool, dont_raise: bool,
+                job_num: Union[int, None] = None):
+    """Run command in folders."""
+    nfolders = len(folders)
     module, *args = command.split()
     function = None
     if '@' in module:
@@ -172,29 +157,28 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
 
     if not_recipe:
         assert function, \
-            ('If this is not a recipe you have to specify a '
-             'specific function to execute.')
+            append_job('If this is not a recipe you have to specify a '
+                       'specific function to execute.', job_num=job_num)
     else:
         if not module.startswith('asr.'):
             module = f'asr.{module}'
 
-    import importlib
-    mod = importlib.import_module(module)
     if not function:
         function = 'main'
-    assert hasattr(mod, function), f'{module}@{function} doesn\'t exist'
+
+    mod = importlib.import_module(module)
+    assert hasattr(mod, function), \
+        append_job(f'{module}@{function} doesn\'t exist.', job_num=job_num)
     func = getattr(mod, function)
 
-    from asr.core import ASRCommand
     if isinstance(func, ASRCommand):
         is_asr_command = True
     else:
         is_asr_command = False
 
-    import sys
     if dry_run:
-        prt(f'Would run {module}@{function} '
-            f'in {nfolders} folders.')
+        prt(append_job(f'Would run {module}@{function} '
+                       f'in {nfolders} folders.', job_num=job_num))
         return
 
     for i, folder in enumerate(folders):
@@ -202,7 +186,8 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
             try:
                 if skip_if_done and func.done:
                     continue
-                prt(f'In folder: {folder} ({i + 1}/{nfolders})')
+                prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
+                               job_num=job_num))
                 if is_asr_command:
                     func.cli(args=args)
                 else:
@@ -214,7 +199,7 @@ def run(ctx, shell, not_recipe, dry_run, command, folders, jobs,
                 if not dont_raise:
                     raise
                 else:
-                    prt(e)
+                    prt(append_job(e, job_num=job_num))
             except SystemExit:
                 print('Unexpected error:', sys.exc_info()[0])
                 if not dont_raise:

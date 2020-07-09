@@ -178,7 +178,7 @@ def main(databases: List[str]):
     if len(count) == 1:
         ehull = hform
     else:
-        pd = PhaseDiagram(pdrefs)
+        pd = PhaseDiagram(pdrefs, verbose=False)
         e0, indices, coefs = pd.decompose(formula)
         ehull = hform - e0 / len(atoms)
         results['indices'] = indices.tolist()
