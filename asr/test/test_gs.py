@@ -13,6 +13,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     from asr.core import read_json
     from asr.gs import calculate, main
     from ase.io import write
+    from ase.parallel import world
     import gpaw
     import gpaw.occupations
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
@@ -44,12 +45,13 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         assert results.get("gap") == approx(0)
 
-    content = get_webcontent()
-    resultgap = results.get("gap")
-    assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
-    assert "<td>Fermilevel</td>" in content, content
-    assert "<td>Magneticstate</td><td>NM</td>" in \
-        content, content
+    if world.size == 1:
+        content = get_webcontent()
+        resultgap = results.get("gap")
+        assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
+        assert "<td>Fermilevel</td>" in content, content
+        assert "<td>Magneticstate</td><td>NM</td>" in \
+            content, content
 
 
 @pytest.mark.ci

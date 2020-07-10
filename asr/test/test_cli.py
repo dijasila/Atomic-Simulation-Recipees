@@ -49,14 +49,10 @@ def test_asr_run(asr_tmpdir_w_params):
     assert pathlib.Path("folder1", "params.json").is_file()
     assert pathlib.Path("folder2", "params.json").is_file()
 
-    pathlib.Path('str1.json').write_text("")
-    result = runner.invoke(cli, ['run', '--shell', 'mv str1.json str2.json'])
-    assert pathlib.Path("str2.json").is_file()
-
     pathlib.Path("folder3").mkdir()
     pathlib.Path("folder4").mkdir()
 
-    result = runner.invoke(cli, ['run', '--jobs', '2',
+    result = runner.invoke(cli, ['run', '--njobs', '2',
                                  'setup.params asr.relax:d3 True',
                                  'folder3', 'folder4'])
     assert result.exit_code == 0
