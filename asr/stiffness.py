@@ -120,7 +120,6 @@ def main(strain_percent: float = 1.0):
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
-            structurefile = folder / 'structure.json'
             with chdir(folder):
                 if not relax.done:
                     relax()
@@ -130,6 +129,7 @@ def main(strain_percent: float = 1.0):
             mf = read_json(folder / ('results-asr.database.'
                                      'material_fingerprint.json'))
             links[str(folder)] = mf['uid']
+            structurefile = folder / 'structure.json'
             structure = read(str(structurefile))
             # The structure already has the stress if it was
             # calculated
