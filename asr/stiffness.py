@@ -94,13 +94,18 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel)
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 def main(strain_percent: float = 1.0):
-    from asr.setup.strains import (get_strained_folder_name,
-                                   get_relevant_strains)
+    """Calculate stiffness tensor."""
+    from asr.setup.strains import main as setupstrains
+    from asr.setup.strains import get_relevant_strains, get_strained_folder_name
+    from asr.relax import main as relax
     from ase.io import read
     from ase.units import J
     from asr.core import read_json, chdir
     from asr.database.material_fingerprint import main as computemf
     import numpy as np
+
+    if not setupstrains.done:
+        setupstrains(strain_percent=strain_percent)
 
     atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
@@ -117,6 +122,9 @@ def main(strain_percent: float = 1.0):
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             structurefile = folder / 'structure.json'
             with chdir(folder):
+                if not relax.done:
+                    relax()
+
                 if not computemf.done:
                     computemf()
             mf = read_json(folder / ('results-asr.database.'
