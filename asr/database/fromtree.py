@@ -3,7 +3,6 @@
 from typing import Union, List
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
-from asr.database.key_descriptions import main as set_key_descriptions
 from asr.database.material_fingerprint import main as mf
 from asr.database.check import main as check_database
 import multiprocessing
@@ -335,6 +334,7 @@ def main(folders: Union[str, None] = None,
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
+    from asr.database.key_descriptions import main as set_key_descriptions
 
     def item_show_func(item):
         return str(item)
