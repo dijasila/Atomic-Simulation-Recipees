@@ -43,7 +43,9 @@ class Results(ASRResults):
 # Issues: restarting already started calculation
 # Locking reading of results file.
 
-@command("test_recipe", dependencies=[test_recipe])
+@command("test_recipe",
+         dependencies=[test_recipe],
+         version='1.0')
 @argument("nx",
           type=int,
           description="Number of x's.",
@@ -58,7 +60,6 @@ def test_recipe_dependency(nx: int,
                            ny: float = 4,
                            gs_filename: str = 'gs.gpw') -> Results:
     """Return a list of threes and fours.
-
 
     Returns
     -------

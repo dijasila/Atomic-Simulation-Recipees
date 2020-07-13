@@ -2,6 +2,7 @@
 from . import (read_json, write_json, md5sum,
                file_barrier, unlink, clickify_docstring)
 from .cache import ASRCache
+from typing import List, Dict
 from ase.parallel import parprint
 import click
 import copy
@@ -10,6 +11,26 @@ from importlib import import_module
 from pathlib import Path
 import inspect
 from functools import update_wrapper
+
+
+def get_md5_checksums(filenames: List[str]) -> Dict[str, str]:
+    """Get md5 checksums of a list of files."""
+    checksums = {}
+    for filename in filenames:
+        hexdigest = md5sum(filename)
+        checksums[filename] = hexdigest
+    return checksums
+
+
+def does_files_exist(filenames: List[str]) -> List[bool]:
+    """Check whether files exist."""
+    return [Path(filename).is_file() for filename in filenames]
+
+
+def format_param_string(params: dict):
+    """Represent params as comma separated string."""
+    return ', '.join([f'{key}={repr(value)}' for key, value in
+                      params.items()])
 
 
 def _paramerrormsg(func, msg):
@@ -106,7 +127,9 @@ class ASRCommand:
 
     def __init__(self, main,
                  namespace=None,
-                 dependencies=None):
+                 dependencies=None,
+                 version=None,
+                 package_dependencies=None):
         """Construct an instance of an ASRCommand.
 
         Parameters
@@ -250,80 +273,100 @@ class ASRCommand:
         """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
-    def main(self, *args, **kwargs):
-        """Return results from wrapped function.
+    def apply_defaults(self, *args, **kwargs):
+        """Apply defaults to args and kwargs.
 
-        This is the main function of an ASRCommand. It takes care of reading
-        parameters, creating metadata, checksums etc. If you want to
-        understand what happens when you execute an ASRCommand this is a good
-        place to start.
+        Reads the signature of the wrapped function and applies the
+        defaults where relevant.
+
         """
-
         signature = self.get_signature()
         bound_arguments = signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
         params = copy.deepcopy(dict(bound_arguments.arguments))
+        return params
 
-        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
-                                 params.items()])
+    def main(self, *args, **kwargs):
+        """Return results from wrapped function.
 
-        # If we have a cache entry then simply return that.
+        This is the main function of an ASRCommand. It takes care of
+        reading parameters, creating metadata, checksums etc. If you
+        want to understand what happens when you execute an ASRCommand
+        this is a good place to start.
+
+        Implementation goes as follows::
+
+            1. Parse input parameters
+            2. Check if a cached result already exists
+               and return that if it does.
+            --- Otherwise
+            3. Run all dependencies.
+            4. Get execution metadata, ie., code_versions, created files and
+               required files.
+            5. 
+
+        """
+        # TODO: Signal handling and cleanup of large files.
+        # TODO: Converting old result files to new format.
+
+        params = self.apply_defaults(*args, **kwargs)
+        param_string = format_param_string(params)
+
         cached_result = self.cache.get_cache(**params)
-        if cached_result is not None:
-            parprint(f'Returning cached result for {self.name}({paramstring})')
+        if cached_result.is_done():
+            parprint('Returning cached result for '
+                     f'{self.name}({param_string})')
             return cached_result
-
-        created_files = self.get_created_files(*args, **kwargs)
-        if not self.cache.is_initiated(**params):
-            self.cache.initiate(**params)
-            for filename in created_files:
-                assert not Path(filename).is_file(), \
-                    '{filename} already exists!'
 
         for dependency in self.dependencies:
             dependency()
 
-        parprint(f'Running {self.name}({paramstring})')
+        code_versions = self.get_code_versions(**params)
+        created_files = self.get_created_files(**params)
+        required_files = self.get_required_files(**params)
+        assert all(does_files_exist(required_files)), \
+            f'Missing required files (required_files={required_files}).'
+        required_md5_checksums = get_md5_checksums(required_files)
+        if cached_result.is_initiated():
+            cached_result.validate(code_versions=code_versions,
+                                   version=self.version,
+                                   checksums=required_md5_checksums)
+        else:
+            assert not any(does_files_exist(created_files)), \
+                f'Some files already exist (created_files={created_files})'
+            cached_result = self.cache.initiate(
+                **params,
+                versions=code_versions,
+                version=self.version,
+                checksums=required_md5_checksums
+            )
+
+        parprint(f'Running {self.name}({param_string})')
 
         tstart = time.time()
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
             results = self._main(**params) or {}
         tend = time.time()
-        results['__asr_name__'] = self.name
+
         from ase.parallel import world
-        results['__resources__'] = {'time': tend - tstart,
-                                    'ncores': world.size}
-
-        if created_files:
-            results['__creates__'] = {}
-            for filename in created_files:
-                hexdigest = md5sum(filename)
-                results['__creates__'][filename] = hexdigest
-
-        # Also make hexdigests of results-files for dependencies
-        required_files = self.get_required_files(*args, **kwargs)
-        if required_files:
-            results['__requires__'] = {}
-            for filename in required_files:
-                hexdigest = md5sum(filename)
-                results['__requires__'][filename] = hexdigest
-
-        # Save parameters
-        results.update({'__params__': params})
-
-        # Update with hashes for packages dependencies
-        results.update(self.get_execution_info())
-
+        metadata = {
+            'asr_name': self.name,
+            'resources': {'time': tend - tstart,
+                          'ncores': world.size},
+        }
+        created_md5_checksums = get_md5_checksums(created_files)
+        cached_result.update(results=results,
+                             checksums=created_md5_checksums,
+                             metadata=metadata)
         if self.save_cache:
-            self.cache.add(results, args=(args, kwargs))
+            self.cache.add(cached_result)
 
-        return results
+        return cached_result
 
-    def get_execution_info(self):
-        """Get parameter and software version information as a dictionary."""
+    def get_code_versions(self) -> dict:
+        """Get software version information as a dictionary."""
         from ase.utils import search_current_git_hash
-        exeinfo = {}
         modnames = self.package_dependencies
         versions = {}
         for modname in modnames:
@@ -337,9 +380,7 @@ class ASRCommand:
                 versions[f'{modname}'] = f'{version}-{githash}'
             else:
                 versions[f'{modname}'] = f'{version}'
-        exeinfo['__versions__'] = versions
-
-        return exeinfo
+        return versions
 
 
 def command(*args, **kwargs):
