@@ -117,7 +117,6 @@ key_descriptions = {
         "alphaz_el": "KVP: Static interband polarizability (z) [Ang]",
     },
     "relax": {
-        "etot": "Total energy [eV]",
         "edft": "DFT total enrgy [eV]",
         "spos": "Array: Scaled positions",
         "symbols": "Array: Chemical symbols",
