@@ -1,5 +1,9 @@
-from asr.core import command, option, argument
+from asr.core import command, option, argument, AtomsFile
 import numpy as np
+
+
+class CHCError(ValueError):
+    pass
 
 
 def gscheck(us):
@@ -94,12 +98,11 @@ def mgsls(us):
     for k in range(ndim - 1):
         newu -= projuv(us[k], newu)
 
-
     for k in range(ndim - 1):
-        assert np.allclose(np.dot(newu, us[k]), 0), f"newu: {newu}, ip: {np.dot(newu, us[k])}"
+        msg = f"newu: {newu}, ip: {np.dot(newu, us[k])}"
+        assert np.allclose(np.dot(newu, us[k]), 0), msg
 
     us.append(newu)
-    
 
     # gscheck(us)
     return newu
@@ -134,7 +137,7 @@ class Hyperplane:
                     print(ref.formula)
 
                 raise e
-        
+
     def contains(self, pt):
         if len(self.vectors) == 0:
             return True
@@ -164,16 +167,15 @@ class Line:
         assert len(self.normal_vectors) == self.ndim - 1
 
     def intersects(self, plane):
+        # TODO Improve readability of this function
         assert self.ndim == len(plane.pts)
         if len(plane.vectors) == 0:
             return True
         normals = self.normal_vectors + [plane.normal_vector]
-        NM = np.vstack(normals).T
-        parallel = np.allclose(np.linalg.det(NM), 0)
+        A = np.vstack([N.T for N in normals])
+        parallel = np.allclose(np.linalg.det(A), 0)
         if parallel:
             return plane.contains(self.base_point)
-
-        A = np.vstack([N.T for N in normals])
 
         bp = [np.dot(N, self.base_point) for N in self.normal_vectors]
         bp = bp + [np.dot(plane.normal_vector, plane.base_point)]
@@ -183,9 +185,13 @@ class Line:
 
         s = self.find_s(P)
         ts = plane.find_ts(P, contained=True)
-        if s < 0 or s > 1 or any((t < 0 or t > 1) for t in ts):
+        if s < 0 or s > 1 or any((t < 0 or t > 1) for t in ts) or sum(ts) > 1:
             return False
         elif np.allclose(s, 0) or np.allclose(s, 1):
+            # This check is not purely geometrical and thus
+            # should be put somewhere else (in calculate_intermediates)
+            # but I cant be bothered to this now.
+            # Sorry, future person!
             return False
         else:
             return True
@@ -264,7 +270,6 @@ class Intermediate:
             x = self.references[0].count[reac] / self.references[0].natoms
 
             return hof, [x]
-            
 
         def ref2vec(_ref):
             _vec = np.zeros(len(elements))
@@ -281,13 +286,15 @@ class Intermediate:
             x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
             err = np.sum(np.abs(A.dot(x) - b))
             if err > 1e-4:
-                raise ValueError(f'Could not find solution')
+                for ref in self.references:
+                    print(ref.formula, ref.hform)
+                raise ValueError(f'Could not find solution.')
         else:
             x = np.linalg.solve(A, b)
 
         # hforms = np.array([ref.hform for ref in self.references])
         hforms = np.array([ref.energy for ref in self.references])
-                
+
         counts = np.array([sum(ref.count.values()) for ref in self.references])
         norm = x.dot(counts)
 
@@ -318,7 +325,7 @@ class LeanIntermediate:
         assert not np.allclose(rc, 0.0)
         self.reactant_content = rc
         self.label = str(round(1 - rc, 2)) + reference.formula
-        
+
     def to_result(self):
         thns = (self.reference.formula, self.reference.hform)
         strs = [f'Reference: {thns}',
@@ -332,9 +339,9 @@ class LeanIntermediate:
         dct["mat_ref"] = self.mat_ref.to_dict()
         dct["react_ref"] = self.reactant_ref.to_dict()
         dct["ref"] = self.reference.to_dict()
-        
+
         return dct
-        
+
     def from_dict(dct):
         mat_ref = Reference.from_dict(dct["mat_ref"])
         react_ref = Reference.from_dict(dct["react_ref"])
@@ -356,7 +363,6 @@ class Reference:
         for k, v in self.Formula.count().items():
             self.count[k] = v
         self.symbols = list(self.Formula.count().keys())
-        
 
     def __str__(self):
         """
@@ -375,10 +381,12 @@ class Reference:
         are equal.
         """
         if type(other) != Reference:
+            raise ValueError("Dont compare Reference to non-Reference")
             return False
         else:
             import numpy as np
-            feq = self.formula == other.formula
+            from asr.fere import formulas_eq
+            feq = formulas_eq(self.formula, other.formula)
             heq = np.allclose(self.hform, other.hform)
             return feq and heq
 
@@ -474,7 +482,6 @@ def filrefs(refs):
 
         minref = min(vals, key=lambda t: t[1])
 
-
         nrefs.append(minref)
 
     return nrefs
@@ -482,17 +489,15 @@ def filrefs(refs):
 
 def chcut_plot(row, *args):
     import matplotlib.pyplot as plt
-    from asr.fere import formulas_eq
     from ase import Atoms
 
     data = row.data.get('results-asr.chc.json')
     mat_ref = Reference.from_dict(data['_matref'])
 
-
     if mat_ref.natoms <= 2:
-        refs = filrefs(data.get('_refs'))    
+        refs = filrefs(data.get('_refs'))
         nrefs = []
-    
+
         for (form, v) in refs:
             atoms = Atoms(form)
             e = v * len(atoms)
@@ -500,11 +505,11 @@ def chcut_plot(row, *args):
 
         from ase.phasediagram import PhaseDiagram
         pd = PhaseDiagram(nrefs, verbose=False)
-        fig = plt.figure(figsize=(4, 3), dpi=150)
+        plt.figure(figsize=(4, 3), dpi=150)
         pd.plot(ax=plt.gca(), dims=2, show=False)
         plt.savefig("./chcconvexhull.png")
         plt.close()
-    
+
     mat_ref = Reference.from_dict(data['_matref'])
     reactant_ref = Reference.from_dict(data['_reactant_ref'])
     intermediates = [Intermediate.from_dict(im)
@@ -535,35 +540,38 @@ def chcut_plot(row, *args):
                    'results-asr.convex_hull.json'],
          webpanel=webpanel)
 @argument('dbs', nargs=-1)
+@option('-a', '--atoms', help='Atoms to be relaxed.',
+        type=AtomsFile(), default='structure.json')
 @option('-r', '--reactant', type=str,
         help='Reactant to add to convex hull')
-def main(dbs, reactant='O'):
+def main(dbs, atoms, reactant='O'):
+    # Do type hints
     if len(dbs) == 0:
         raise ValueError('Must supply at least one database')
 
     from ase.db import connect
+    from ase.formula import Formula
     dbs = [connect(db) for db in dbs]
     results = {}
-    formula, elements = read_structure('structure.json')
+    formula = str(atoms.symbols)
+    elements = list(Formula(formula).count().keys())
+    # formula, elements = read_structure("structure.json")
 
     if reactant in elements:
-        return results
+        raise CHCError('Reactant is in elements')
 
     elements.append(reactant)
 
     mat_ref = results2ref(formula)
+
     reactant_ref = Reference(reactant, 0.0)
     references = [mat_ref, reactant_ref]
-
     append_references(elements, dbs, references)
-    
     refs = convex_hull(references, mat_ref)
-    
     if len(elements) > 2:
         intermediates = calculate_intermediates(mat_ref, reactant_ref, refs)
     else:
         intermediates = refs2ims(mat_ref, reactant_ref, refs)
-
     mum = mu_adjustment(mat_ref, reactant_ref, intermediates)
 
     results['intermediates'] = [im.to_result() for im in intermediates]
@@ -594,15 +602,36 @@ def results2ref(formula):
     return Reference(formula, data["hform"])
 
 
+def get_hof(formula, energy, db):
+    from ase.formula import Formula
+    formula = Formula(formula)
+    elements = list(formula.count().keys())
+    hof = energy
+    for el in elements:
+        for row in db.select(f"{el}, ns=1"):
+            _formula = Formula(row.formula)
+            nels = len(list(_formula.count().keys()))
+            if nels > 1:
+                continue
+            energy_per_el = row.energy / sum(_formula.count().values())
+            hof += - formula.count()[el] * energy_per_el
+            break
+
+    return hof / sum(formula.count().values())
+
+
 def row2ref(row, dbs):
     if hasattr(row, "hform"):
         return Reference(row.formula, row.hform)
     elif hasattr(row, "de"):
         return Reference(row.formula, row.de)
+    elif hasattr(row, "hof"):
+        return Reference(row.formula, row.hof)
     else:
-        from asr.fere import get_hof, MaterialNotFoundError
-        from ase.formula import Formula
-        hof = get_hof(dbs[0], Formula(row.formula), row=row)
+        # from asr.fere import get_hof
+        # from ase.formula import Formula
+        # hof = get_hof(dbs[0], Formula(row.formula), row=row)
+        hof = get_hof(row.formula, row.energy, dbs[0])
         return Reference(row.formula, hof)
 
 
@@ -611,11 +640,12 @@ def convex_hull(references, mat_ref):
     from ase.phasediagram import PhaseDiagram
     pd = PhaseDiagram([(ref.formula, ref.energy) for ref in references],
                       verbose=False)
-    filtered_refs = []
     hull = pd.hull
-    for i, x in enumerate(hull):
-        if x:
-            filtered_refs.append(references[i])
+    filtered_refs = [references[i] for i, x in enumerate(hull) if x]
+    # filtered_refs = []
+    # for i, x in enumerate(hull):
+    #     if x:
+    #         filtered_refs.append(references[i])
 
     if not any(x == mat_ref for x in filtered_refs):
         filtered_refs.append(mat_ref)
@@ -624,55 +654,49 @@ def convex_hull(references, mat_ref):
 
 
 def append_references(elements, dbs, references):
-    # For each material in DB add material to references
-    # if all elements in material are in elements-list
-    # and material is not already in db??
 
-    def rowin(_row, _rowls):
-        _ref = row2ref(_row, dbs)
-        for _orow in _rowls:
-            _oref = row2ref(_orow, dbs)
-            if _oref == _ref:
+    def _refin(ref, refls):
+        for other_ref in refls:
+            if other_ref == ref:
                 return True
-
         return False
 
-    def elementcheck(_row):
+    def _elementcheck(row):
         from ase.formula import Formula
-        _formula = Formula(_row.formula)
-        _elements = list(_formula.count().keys())
-        return all(_el in elements for _el in _elements)
+        formula = Formula(row.formula)
+        _elements = list(formula.count().keys())
+        return all(el in elements for el in _elements)
 
-    selected_rows = []
+    selected_refs = []
     for element in elements:
         for db in dbs:
             for row in db.select(element):
-                if not elementcheck(row):
+                if not _elementcheck(row):
                     continue
-                if rowin(row, selected_rows):
+                ref = row2ref(row, dbs)
+                if _refin(ref, selected_refs):
                     continue
-                selected_rows.append(row)
+                selected_refs.append(ref)
 
-    new_refs = map(lambda r: row2ref(r, dbs), selected_rows)
-
-    references.extend(new_refs)
+    references.extend(selected_refs)
 
     return
 
 
 def mu_adjustment(mat_ref, reactant_ref, intermediates):
     def f(im):
-        x = (mat_ref.hform - im.hform)
+        x = (im.hform - mat_ref.hform)
         if np.allclose(im.reactant_content, 0):
-            print("Mat ref:", mat_ref.formula)
-            for ref in im.references:
-                print(str(ref))
+            print("Bling blong")
+            print(im.reactant_ref.formula)
+            for i, ref in enumerate(im.references):
+                print(f"Ref {i}:", ref.formula)
+            raise ValueError('An Intermediate has 0 reactant content')
         x /= im.reactant_content
         return x
 
-    adjustments = map(f, intermediates)
-    return max(adjustments, default=0.0)
-
+    adjustments = list(map(f, intermediates))
+    return min(adjustments, default=0.0)
 
 
 def get_coords(ref, elements):
@@ -683,11 +707,15 @@ def get_coords(ref, elements):
 
 
 def calculate_intermediates(mat_ref, reactant_ref, refs):
-    reactant = reactant_ref.formula
-    _refs = [mat_ref] + refs + [Reference(reactant, 0.0)]
+    import numpy as np
+    # Take out refs that consists of a single element and have
+    # positive heat of formation. They will never be on the hull
+    # but may destabilize hull algorithm.
+    _refs = [r for r in refs if not (r.hform > 0 and len(r.symbols) == 1)]
+    _refs = [mat_ref] + _refs + [reactant_ref]
 
     # Ordered list of unique elements
-    elements = list(mat_ref.count.keys()) + [reactant]
+    elements = list(mat_ref.count.keys()) + [reactant_ref.formula]
     # elements = list(set(flatten(map(lambda r: r.to_elements(), _refs))))
 
     chrefs = [ConvexHullReference.from_reference(ref, elements)
@@ -696,25 +724,20 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
     if any(r.is_single() and r.hform < 0 for r in chrefs):
         raise ValueError('Cannot have reference phase with negative HoF')
 
-    chrefs = [r for r in chrefs if not r.is_single() or np.allclose(r.hform, 0)]
-
-    # Dont like this because ref object is used differently different places
-    # And data content varies with time
-    # for ref in refs:
-    #     ref.construct_coordinates(elements)
-
     # Line and planes are representation of the geometrical objects
     # plus information needed for this specific algorithm
     # e.g. heat of formation and chemical formula
-    line, planes = convex_hull_planes(chrefs, mat_ref.formula, reactant)
+    line, planes = convex_hull_planes(chrefs, mat_ref.formula, reactant_ref.formula)
     ims = []
     for plane in planes:
         if line.intersects(plane):
             refs = plane.references
             if mat_ref in refs:
                 continue
-            im = Intermediate(refs, mat_ref, Reference(reactant, 0.0))
+            im = Intermediate(refs, mat_ref, reactant_ref)
             ims.append(im)
+
+    ims = [im for im in ims if not np.allclose(im.reactant_content, 0)]
 
     return ims
 
@@ -743,6 +766,9 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
     # Get facet that points "downwards" in energy directions
     # This depends on energy being the last dimension
     _onhull = eqs[:, -2] < 0
+    # hull.simplices is a list of tuples
+    # The tuples are the indices of the cornes of the
+    # simplices.
     simplex_indices = hull.simplices[_onhull]
     onhull = np.zeros(len(hull.points), bool)
     for simplex in simplex_indices:
@@ -755,7 +781,12 @@ def convex_hull_planes(chrefs, mat_formula, react_formula):
     plane_inds = []
     for indices in simplex_indices:
         for i in range(len(indices)):
+            # Remove point i from simplex.
+            # This leaves us with a hyperplane
+            # of dimension 1 lower than embedding space.
             ind = list(indices[:i]) + list(indices[i + 1:])
+            # Check whether this tuple has already been considered
+            # up to permutations
             if _permutecontain(ind, plane_inds):
                 continue
             plane_inds.append(ind)
@@ -805,13 +836,12 @@ def is_independent(v1, v2):
 def refs2ims(mat_ref, reactant_ref, refs):
     from asr.fere import formulas_eq
     ims = []
-    react_symbol = reactant_ref.symbols[0]
     for ref in refs:
         if formulas_eq(ref.formula, mat_ref.formula):
             continue
         if formulas_eq(ref.formula, reactant_ref.formula):
             continue
-        
+
         lim = LeanIntermediate(mat_ref, reactant_ref, ref)
 
         ims.append(lim)
