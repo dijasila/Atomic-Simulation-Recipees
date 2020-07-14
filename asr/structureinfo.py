@@ -133,7 +133,11 @@ def main():
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
     info['spgnum'] = number
-    info['pointgroup'] = pg
+    from ase.db.core import str_represents, convert_str_to_int_float_or_str
+    if str_represents(pg):
+        info['pointgroup'] = convert_str_to_int_float_or_str(pg)
+    else:
+        info['pointgroup'] = pg
 
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
