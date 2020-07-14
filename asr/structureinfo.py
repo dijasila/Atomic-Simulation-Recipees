@@ -46,7 +46,7 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'pointgroup', 
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'pointgroup',
         'ICSD_id', 'COD_id'
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
