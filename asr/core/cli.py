@@ -61,9 +61,12 @@ def cli():
               help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
               help='Continue to next folder when encountering error.')
+@click.option('--update', is_flag=True, default=False,
+              help="Update existing results files. "
+              "Only runs a recipe if it is already done.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
-        skip_if_done, dont_raise):
+        skip_if_done, dont_raise, update):
     r"""Run recipe or python function in multiple folders.
 
     Can run an ASR recipe or a python function. For example, the syntax
@@ -111,7 +114,11 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
     else:
         prt(f'Number of folders: {nfolders}')
 
+    if update:
+        assert not skip_if_done
+
     kwargs = {
+        'update': update,
         'skip_if_done': skip_if_done,
         'dont_raise': dont_raise,
         'dry_run': dry_run,
@@ -147,13 +154,19 @@ def append_job(string: str, job_num: Union[int, None] = None):
 
 def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 skip_if_done: bool, dont_raise: bool,
-                job_num: Union[int, None] = None):
+                job_num: Union[int, None] = None,
+                update: bool = False):
     """Run command in folders."""
     nfolders = len(folders)
     module, *args = command.split()
     function = None
     if '@' in module:
         module, function = module.split('@')
+
+    if update:
+        assert not skip_if_done, \
+            append_job('Cannot combine --update with --skip-if-done.',
+                       job_num=job_num)
 
     if not_recipe:
         assert function, \
@@ -185,6 +198,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
         with chdir(Path(folder)):
             try:
                 if skip_if_done and func.done:
+                    continue
+                elif update and not func.done:
                     continue
                 prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
                                job_num=job_num))
