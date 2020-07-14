@@ -46,8 +46,8 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'ICSD_id',
-        'COD_id'
+        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'pointgroup', 
+        'ICSD_id', 'COD_id'
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
     rows = basictable['rows']
@@ -127,11 +127,13 @@ def main():
     stoi = atoms.symbols.formula.stoichiometry()[0]
     sg = dataset['international']
     number = dataset['number']
+    pg = dataset['pointgroup']
     w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_prototype = f'{stoi}-{number}-{w}'
     info['crystal_prototype'] = crystal_prototype
     info['spacegroup'] = sg
     info['spgnum'] = number
+    info['pointgroup'] = pg
 
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
@@ -144,6 +146,7 @@ def main():
         'stoichiometry': 'KVP: Stoichiometry',
         'spacegroup': 'KVP: Space group',
         'spgnum': 'KVP: Space group number',
+        'pointgroup': 'KVP: Point group',
         'crystal_prototype': 'KVP: Crystal prototype'}
 
     return info
