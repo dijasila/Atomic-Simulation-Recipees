@@ -1,8 +1,10 @@
 import pytest
 from pytest import approx
+from ase import Atoms
 from asr.core import command, argument, option, returns, read_json,\
     describe, DictStr
 from typing import List, NamedTuple
+from asr.core import AtomsFile
 
 
 @command("test_recipe")
@@ -40,9 +42,6 @@ class Results(ASRResults):
     gaps_nosoc: GapResults
 
 
-# Issues: restarting already started calculation
-# Locking reading of results file.
-
 @command("test_recipe",
          dependencies=[test_recipe],
          version='1.0')
@@ -77,6 +76,63 @@ def test_recipe_dependency(nx: int,
 gsresults = gs()
 
 gs.params.gs_filename
+
+
+@command('asr.relax',
+         version='1.0')
+@argument("atoms",
+          help='Atoms to be relaxed.',
+          type=Atoms,
+          hash=Atoms.hash,
+          cli_type='option',
+          cli_typecast=AtomsFile(),
+          cli_default='unrelaxed.json')
+@argument("outatoms",
+          type=str,
+          default='structure.json',
+          creates=True)
+@argument("tmpatoms",
+          type=Trajectory,
+          creates=True,
+          cli_typecast=TrajectoryFile(must_exist=False),
+          cli_default='relax.traj')
+@argument('--tmp-atoms', help='File containing recent progress.',
+          type=AtomsFile(must_exist=False), default='relax.traj')
+@argument('--tmp-atoms-file', help='File to store snapshots of relaxation.',
+          default='relax.traj', type=str)
+@argument('-c', '--calculator', help='Calculator and its parameters.',
+          type=DictStr())
+@argument('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+@argument('--fixcell/--dont-fixcell',
+          help="Don't relax stresses.",
+          is_flag=True)
+@argument('--allow-symmetry-breaking/--dont-allow-symmetry-breaking',
+          help='Allow symmetries to be broken during relaxation.',
+          is_flag=True)
+@argument('--fmax', help='Maximum force allowed.', type=float)
+@argument('--enforce-symmetry/--dont-enforce-symmetry',
+          help='Symmetrize forces and stresses.', is_flag=True)
+
+def test_realistic_recipe(atoms: Atoms,
+         calculator: dict = {'name': 'gpaw',
+                             'mode': {'name': 'pw', 'ecut': 800},
+                             'xc': 'PBE',
+                             'kpts': {'density': 6.0, 'gamma': True},
+                             'basis': 'dzp',
+                             'symmetry': {'symmorphic': False},
+                             'convergence': {'forces': 1e-4},
+                             'txt': 'relax.txt',
+                             'occupations': {'name': 'fermi-dirac',
+                                             'width': 0.05},
+                             'charge': 0},
+         tmp_atoms: Atoms = None,
+         tmp_atoms_file: str = 'relax.traj',
+         d3: bool = False,
+         fixcell: bool = False,
+         allow_symmetry_breaking: bool = False,
+         fmax: float = 0.01,
+         enforce_symmetry: bool = True):
+    pass
 
 
 @command("test_recipe")

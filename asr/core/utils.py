@@ -150,6 +150,32 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
     world.barrier()
 
 
+@contextmanager
+def cleanup_files(paths: List[Union[str, Path]],
+                  world=None,
+                  delete=True):
+    """Context manager for cleaning up temporary files.
+
+    After the with-block all temporary files will have been deleted.
+
+    Do "with cleanup_files(['something.txt']):"
+
+    This will remove the file upon exiting the context manager.
+
+    """
+    if world is None:
+        world = parallel.world
+
+    try:
+        yield
+    finally:
+        for i, path in enumerate(paths):
+            if isinstance(path, str):
+                path = Path(path)
+            if world.rank == 0 and path.is_file():
+                path.unlink()
+
+
 def singleprec_dict(dct):
     assert isinstance(dct, dict), f'Input {dct} is not dict.'
 

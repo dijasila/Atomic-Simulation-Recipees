@@ -1,9 +1,11 @@
 """Module implementing the ASRCommand class and related decorators."""
 from . import (read_json, write_json, md5sum,
-               file_barrier, unlink, clickify_docstring)
+               file_barrier, unlink, clickify_docstring,
+               clean_files)
 from .cache import ASRCache
 from typing import List, Dict
 from ase.parallel import parprint
+import atexit
 import click
 import copy
 import time
@@ -303,12 +305,14 @@ class ASRCommand:
             3. Run all dependencies.
             4. Get execution metadata, ie., code_versions, created files and
                required files.
-            5. 
 
         """
-        # TODO: Signal handling and cleanup of large files.
+        # TODO: Signal handling and cleanup of large files. Use atexit module.
         # TODO: Converting old result files to new format.
+        # TODO: Also do checksums of dependencies?
+        #       How to handle if a recipe is called by another recipe.
 
+        # Locking reading of results file.
         params = self.apply_defaults(*args, **kwargs)
         param_string = format_param_string(params)
 
@@ -318,12 +322,10 @@ class ASRCommand:
                      f'{self.name}({param_string})')
             return cached_result
 
-        for dependency in self.dependencies:
-            dependency()
-
         code_versions = self.get_code_versions(**params)
         created_files = self.get_created_files(**params)
         required_files = self.get_required_files(**params)
+        temporary_files = self.get_temporary_files(**params)
         assert all(does_files_exist(required_files)), \
             f'Missing required files (required_files={required_files}).'
         required_md5_checksums = get_md5_checksums(required_files)
@@ -332,6 +334,9 @@ class ASRCommand:
                                    version=self.version,
                                    checksums=required_md5_checksums)
         else:
+            assert not any(does_files_exist(temporary_files)), \
+                ('Some temporary files already exist '
+                 f'(temporary_files={temporary_files})')
             assert not any(does_files_exist(created_files)), \
                 f'Some files already exist (created_files={created_files})'
             cached_result = self.cache.initiate(
@@ -343,11 +348,18 @@ class ASRCommand:
 
         parprint(f'Running {self.name}({param_string})')
 
-        tstart = time.time()
+        # We register an exit handler to handle unexpected exits.
+        atexit.register(clean_files, files=temporary_files)
+
         # Execute the wrapped function
-        with file_barrier(self.created_files, delete=False):
-            results = self._main(**params) or {}
-        tend = time.time()
+        with register_dependencies:
+            for dependency in self.dependencies:
+                dependency()
+            tstart = time.time()
+            with (clean_files(temporary_files),
+                  file_barrier(created_files, delete=False)):
+                results = self._main(**params) or {}
+            tend = time.time()
 
         from ase.parallel import world
         metadata = {
