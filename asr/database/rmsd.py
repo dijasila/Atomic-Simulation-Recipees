@@ -155,21 +155,22 @@ def main(database: str, databaseout: Union[str, None] = None,
 
     rows = {}
     for row in db.select(include_data=False):
-        rows[row.get(uid_key)] = (row.toatoms(), row)
+        rows[row.get(uid_key)] = (row.toatoms(),
+                                  row,
+                                  Formula(row.formula).reduce()[0])
 
     print('Calculating RMSDs for all materials...')
     nmat = len(rows)
     rmsd_by_id = {}
-    for rowid, (atoms, row) in rows.items():
+    for rowid, (atoms, row, reduced_formula) in rows.items():
         now = datetime.now()
         timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-        formula = Formula(row.formula).reduce()[0]
-        for otherrowid, (otheratoms, otherrow) in rows.items():
+        for otherrowid, (otheratoms, otherrow,
+                         other_reduced_formula) in rows.items():
             if rowid == otherrowid:
                 continue
 
-            otherformula = Formula(otherrow.formula).reduce()[0]
-            if not formula == otherformula:
+            if not reduced_formula == other_reduced_formula:
                 continue
 
             # Skip calculation if it has been performed already
