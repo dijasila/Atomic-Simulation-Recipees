@@ -69,7 +69,8 @@ def main(database: str,
     ops_and_keys = parse_filter_string(filterstring)
 
     if not rmsd.done:
-        rmsd(database, comparison_keys=comparison_keys)
+        rmsd(database, comparison_keys=comparison_keys,
+             max_rmsd=max_rmsd)
     rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
