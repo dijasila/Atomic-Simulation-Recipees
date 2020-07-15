@@ -81,6 +81,11 @@ def main(database: str,
     exclude_uids = set()
     already_checked_uids = set()
     nrmsd = len(rmsd_by_id)
+    rows = {}
+
+    for row in db.select(include_data=False):
+        rows[row.get(uid_key)] = row
+
     print('Filtering materials...')
     for irmsd, (uid, rmsd_dict) in enumerate(rmsd_by_id.items()):
         if uid in already_checked_uids:
@@ -90,7 +95,7 @@ def main(database: str,
         duplicate_uids = find_duplicate_group(uid, rmsd_by_id, rmsd_tol)
 
         # Pick the preferred row according to filterstring
-        include = filter_uids(db, duplicate_uids,
+        include = filter_uids(rows, duplicate_uids,
                               ops_and_keys, uid_key)
         # Book keeping
         already_checked_uids.update(duplicate_uids)
@@ -102,13 +107,13 @@ def main(database: str,
                                      'include': list(include)})
 
     if databaseout is not None:
-        nmat = len(db)
+        nmat = len(rows)
         with connect(databaseout) as filtereddb:
-            for row in db.select():
+            for uid, row in rows.items():
                 now = datetime.now()
                 timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
 
-                if row.get(uid_key) in exclude_uids:
+                if uid in exclude_uids:
                     continue
                 filtereddb.write(atoms=row.toatoms(),
                                  data=row.data,
@@ -128,12 +133,12 @@ def main(database: str,
         print(f'Group #{ig} max_rmsd={max_rmsd}')
         print('    Excluding:')
         for uid in exclude:
-            row = db.get(f'{uid_key}={uid}')
+            row = rows[uid]
             print(f'        {uid} '
                   + ' '.join(f'{key}=' + str(row.get(key)) for key in filterkeys))
         print('    Including:')
         for uid in include:
-            row = db.get(f'{uid_key}={uid}')
+            row = rows[uid]
             print(f'        {uid} '
                   + ' '.join(f'{key}=' + str(row.get(key)) for key in filterkeys))
 
@@ -156,13 +161,13 @@ def compare(value1, value2, comparator):
         return value1 == value2
 
 
-def filter_uids(db, duplicate_ids, ops_and_keys, uid_key):
+def filter_uids(all_rows, duplicate_ids, ops_and_keys, uid_key):
     """Get most important rows according to filterstring.
 
     Parameters
     ----------
-    db: Database connection
-        Open database connection.
+    all_rows: dict
+        Dictionary with key=uid and value=row.
     duplicate_ids: iterable
         Set of possible duplicate materials.
     ops_and_keys: List[Tuple(str, str)]
@@ -183,7 +188,7 @@ def filter_uids(db, duplicate_ids, ops_and_keys, uid_key):
         Set of filtered uids.
 
     """
-    rows = [db.get(f'{uid_key}={uid}') for uid in duplicate_ids]
+    rows = [all_rows[uid] for uid in duplicate_ids]
 
     filtered_uids = set()
     for candidaterow in rows:
