@@ -15,15 +15,15 @@ from datetime import datetime
         help='Keys that have to be identical for materials to be identical.',
         type=str)
 @option('-r', '--rmsd-tol', help='RMSD tolerance.', type=float)
-@option('--max-rmsd',
-        help='Maximum allowed rmsd before RMSD calculation is skipped.',
-        type=float)
+@option('--skip-distance-calc', default=False, is_flag=True,
+        help="Skip distance calculation. Only match structures "
+        "based on their reduced formula and comparison_keys.")
 def main(database: str,
          databaseout: str = None,
          filterstring: str = '<=natoms,<energy',
          comparison_keys: str = '',
          rmsd_tol: float = 0.3,
-         max_rmsd: float = 1.0):
+         skip_distance_calc: bool = False):
     """Filter out duplicates of a database.
 
     Parameters
@@ -47,8 +47,10 @@ def main(database: str,
     rmsd_tol : float
         Tolerance on RMSD between materials for them to be considered
         to be duplicates.
-    max_rmsd : float
-        Maximum allowed rmsd before RMSD calculation is skipped.
+    skip_distance_calc : bool
+        If true, only use reduced formula and comparison_keys to match
+        structures. Skip calculating distances between structures. The
+        output rmsd's will be 0 for matching structures.
 
     Returns
     -------
@@ -70,7 +72,7 @@ def main(database: str,
 
     if not rmsd.done:
         rmsd(database, comparison_keys=comparison_keys,
-             max_rmsd=max_rmsd)
+             skip_distance_calc=skip_distance_calc)
     rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
