@@ -15,11 +15,15 @@ from datetime import datetime
         help='Keys that have to be identical for materials to be identical.',
         type=str)
 @option('-r', '--rmsd-tol', help='RMSD tolerance.', type=float)
+@option('--max-rmsd',
+        help='Maximum allowed rmsd before RMSD calculation is skipped.',
+        type=float)
 def main(database: str,
          databaseout: str = None,
          filterstring: str = '<=natoms,<energy',
          comparison_keys: str = '',
-         rmsd_tol: float = 0.3):
+         rmsd_tol: float = 0.3,
+         max_rmsd: float = 1.0):
     """Filter out duplicates of a database.
 
     Parameters
@@ -43,6 +47,8 @@ def main(database: str,
     rmsd_tol : float
         Tolerance on RMSD between materials for them to be considered
         to be duplicates.
+    max_rmsd : float
+        Maximum allowed rmsd before RMSD calculation is skipped.
 
     Returns
     -------
