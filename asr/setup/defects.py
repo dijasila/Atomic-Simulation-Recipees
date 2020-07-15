@@ -485,7 +485,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
     gen_params['supercell'] = [N_x, N_y, N_z]
     gen_params['intrinsic'] = intrinsic
     gen_params['vacancies'] = vacancies
-    write_json('general_parameters.json', gen_params)
+    # write_json('general_parameters.json', gen_params)
 
     # then, create a seperate folder for each possible defect
     # configuration of this parent folder, as well as the pristine
