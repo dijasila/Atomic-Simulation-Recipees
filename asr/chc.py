@@ -1,5 +1,7 @@
 from asr.core import command, option, argument, AtomsFile
 import numpy as np
+from typing import List
+from ase import Atoms
 
 
 class CHCError(ValueError):
@@ -544,7 +546,9 @@ def chcut_plot(row, *args):
         type=AtomsFile(), default='structure.json')
 @option('-r', '--reactant', type=str,
         help='Reactant to add to convex hull')
-def main(dbs, atoms, reactant='O'):
+def main(dbs: List[str],
+         atoms: Atoms,
+         reactant: str = 'O'):
     # Do type hints
     if len(dbs) == 0:
         raise ValueError('Must supply at least one database')
