@@ -541,7 +541,7 @@ def chcut_plot(row, *args):
          requires=['structure.json',
                    'results-asr.convex_hull.json'],
          webpanel=webpanel)
-@argument('dbs', nargs=-1)
+@argument('dbs', nargs=-1, type=str)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='structure.json')
 @option('-r', '--reactant', type=str,
