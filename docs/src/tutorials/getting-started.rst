@@ -104,7 +104,7 @@ above ``relax`` recipe we would do
    >>> cli(args=['run', '-h'], prog_name="asr", standalone_mode=False)
    Usage: asr run [OPTIONS] COMMAND [FOLDERS]...
    <BLANKLINE>
-     Run recipe, python function or shell command in multiple folders.
+     Run recipe or python function in multiple folders.
    ...
 
 .. code-block:: console

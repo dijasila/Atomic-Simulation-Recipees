@@ -99,9 +99,6 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
     Specify an argument
     >>> asr run "relax --ecut 600"
 
-    Run a recipe in parallel with an argument
-    >>> asr run -p 2 "relax --ecut 600"
-
     Run relax recipe in two folders sequentially
     >>> asr run relax folder1/ folder2/
 
