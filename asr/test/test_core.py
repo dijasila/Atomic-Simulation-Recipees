@@ -78,12 +78,15 @@ gsresults = gs()
 gs.params.gs_filename
 
 
+# XXX What about created files.
+# All objects must have a __hash__ attribute.
+
+
 @command('asr.relax',
          version='1.0')
 @argument("atoms",
-          help='Atoms to be relaxed.',
+          help='Atomic structure to be relaxed.',
           type=Atoms,
-          hash=Atoms.hash,
           cli_type='option',
           cli_typecast=AtomsFile(),
           cli_default='unrelaxed.json')
@@ -96,12 +99,10 @@ gs.params.gs_filename
           creates=True,
           cli_typecast=TrajectoryFile(must_exist=False),
           cli_default='relax.traj')
-@argument('--tmp-atoms', help='File containing recent progress.',
-          type=AtomsFile(must_exist=False), default='relax.traj')
-@argument('--tmp-atoms-file', help='File to store snapshots of relaxation.',
-          default='relax.traj', type=str)
-@argument('-c', '--calculator', help='Calculator and its parameters.',
-          type=DictStr())
+@argument("calculator",
+          type=ASRCalculator,
+          help='Calculator and its parameters.',
+          cli_typecast=CalcFromDictStr())
 @argument('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 @argument('--fixcell/--dont-fixcell',
           help="Don't relax stresses.",
