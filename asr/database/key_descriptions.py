@@ -24,7 +24,7 @@ key_descriptions = {
         "evac": "KVP: Vacuum level !Vacuum level! [eV]",
         "evacdiff":
         "KVP: Vacuum level difference !Vacuum level difference! [eV]",
-        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Ang]",
+        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Ang/unit cell]",
         "efermi": "KVP: Fermi level !Fermi level! [eV]",
         "gap": "KVP: Band gap !Band gap! [eV]",
         "vbm": "KVP: Valence band maximum !Val. band maximum! [eV]",
