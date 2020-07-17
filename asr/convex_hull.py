@@ -145,13 +145,11 @@ def main(databases: List[str]):
         rows = []
         # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
-        energy_key = metadata.get('energy_key', 'energy')
         dbdata[database] = {'rows': rows,
-                            'metadata': metadata,
-                            'energy_key': energy_key}
+                            'metadata': metadata}
 
     ref_database = databases[0]
-    ref_metadata = dbdata[0]['metadata']
+    ref_metadata = dbdata[ref_database]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
     ref_energies = get_reference_energies(atoms, ref_database,
                                           energy_key=ref_energy_key)
@@ -162,7 +160,7 @@ def main(databases: List[str]):
     references = []
     for data in dbdata.values():
         metadata = data['metadata']
-        energy_key = metadata['energy_key']
+        energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
             hformref = hof(row[energy_key],
                            row.count_atoms(), ref_energies)
