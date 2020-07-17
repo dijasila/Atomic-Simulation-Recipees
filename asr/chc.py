@@ -496,7 +496,7 @@ def chcut_plot(row, *args):
     data = row.data.get('results-asr.chc.json')
     mat_ref = Reference.from_dict(data['_matref'])
 
-    if mat_ref.natoms <= 2:
+    if len(mat_ref.symbols) <= 2:
         refs = filrefs(data.get('_refs'))
         nrefs = []
 
