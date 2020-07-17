@@ -2,6 +2,7 @@
 from . import (read_json, write_json, md5sum,
                file_barrier, unlink, clickify_docstring,
                clean_files)
+from .dependency_register import register_dependencies
 from .cache import ASRCache
 from typing import List, Dict
 from ase.parallel import parprint
@@ -352,14 +353,18 @@ class ASRCommand:
         atexit.register(clean_files, files=temporary_files)
 
         # Execute the wrapped function
+        register_dependencies.append([])
         with register_dependencies:
             for dependency in self.dependencies:
                 dependency()
+
             tstart = time.time()
             with (clean_files(temporary_files),
                   file_barrier(created_files, delete=False)):
                 results = self._main(**params) or {}
             tend = time.time()
+
+        my_dependencies = register_dependencies.pop()
 
         from ase.parallel import world
         metadata = {
