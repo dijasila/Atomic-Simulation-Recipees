@@ -75,7 +75,7 @@ def main(databases: List[str]):
           reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
           "DFT" means bare DFT references energies. "DFT+D3" indicate that the
           reference also include the D3 dispersion correction.
-        - key (optional): Indicates the key-value-pair that represents
+        - energy_key (optional): Indicates the key-value-pair that represents
           the total energy of a material from. If not specified the
           default value of 'energy' will be used.
 
@@ -92,7 +92,7 @@ def main(databases: List[str]):
             'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
             'label': '{row.formula}',
             'method': 'DFT',
-            'key': 'energy',
+            'energy_key': 'total_energy',
         }
 
     Parameters
@@ -142,16 +142,19 @@ def main(databases: List[str]):
              f'inconsistent methods: {mymethod} (this material) != '
              f'{dbmethod} ({database})')
 
-        if 'key' not in metadata:
-            metadata['key'] = 'energy'
-
         rows = []
         # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
+        energy_key = metadata.get('energy_key', 'energy')
         dbdata[database] = {'rows': rows,
-                            'metadata': metadata}
+                            'metadata': metadata,
+                            'energy_key': energy_key}
 
-    ref_energies = get_reference_energies(atoms, databases[0])
+    ref_database = databases[0]
+    ref_metadata = dbdata[0]['metadata']
+    ref_energy_key = ref_metadata.get('energy_key', 'energy')
+    ref_energies = get_reference_energies(atoms, ref_database,
+                                          energy_key=ref_energy_key)
     hform = hof(energy,
                 count,
                 ref_energies)
@@ -159,9 +162,10 @@ def main(databases: List[str]):
     references = []
     for data in dbdata.values():
         metadata = data['metadata']
-        key = metadata['key']
+        energy_key = metadata['energy_key']
         for row in data['rows']:
-            hformref = hof(row[key], row.count_atoms(), ref_energies)
+            hformref = hof(row[energy_key],
+                           row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -211,7 +215,7 @@ def main(databases: List[str]):
     return results
 
 
-def get_reference_energies(atoms, references):
+def get_reference_energies(atoms, references, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
@@ -220,7 +224,7 @@ def get_reference_energies(atoms, references):
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
-            e_ref = row.energy / row.natoms
+            e_ref = row[energy_key] / row.natoms
             assert symbol not in ref_energies
             ref_energies[symbol] = e_ref
 
