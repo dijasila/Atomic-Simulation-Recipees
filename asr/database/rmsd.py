@@ -83,8 +83,12 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
         type=str)
 @option('-r', '--max-rmsd', help='Maximum allowed RMSD.',
         type=float)
+@option('--skip-distance-calc', default=False, is_flag=True,
+        help="Skip distance calculation. Only match structures "
+        "based on their reduced formula and comparison_keys.")
 def main(database: str, databaseout: Union[str, None] = None,
-         comparison_keys: str = '', max_rmsd: float = 1.0):
+         comparison_keys: str = '', max_rmsd: float = 1.0,
+         skip_distance_calc: bool = False):
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If
@@ -120,6 +124,10 @@ def main(database: str, databaseout: Union[str, None] = None,
         rows to be compared. Eg. 'magstate,natoms'. Default is ''.
     max_rmsd : float
         Maximum rmsd allowed for RMSD to be calculated.
+    skip_distance_calc : bool
+        If true, only use reduced formula and comparison_keys to match
+        structures. Skip calculating distances between structures. The
+        output rmsd's will be 0 for matching structures.
 
     Returns
     -------
@@ -147,21 +155,22 @@ def main(database: str, databaseout: Union[str, None] = None,
 
     rows = {}
     for row in db.select(include_data=False):
-        rows[row.get(uid_key)] = (row.toatoms(), row)
+        rows[row.get(uid_key)] = (row.toatoms(),
+                                  row,
+                                  Formula(row.formula).reduce()[0])
 
     print('Calculating RMSDs for all materials...')
     nmat = len(rows)
     rmsd_by_id = {}
-    for rowid, (atoms, row) in rows.items():
+    for rowid, (atoms, row, reduced_formula) in rows.items():
         now = datetime.now()
         timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-        formula = Formula(row.formula).reduce()[0]
-        for otherrowid, (otheratoms, otherrow) in rows.items():
+        for otherrowid, (otheratoms, otherrow,
+                         other_reduced_formula) in rows.items():
             if rowid == otherrowid:
                 continue
 
-            otherformula = Formula(otherrow.formula).reduce()[0]
-            if not formula == otherformula:
+            if not reduced_formula == other_reduced_formula:
                 continue
 
             # Skip calculation if it has been performed already
@@ -172,9 +181,13 @@ def main(database: str, databaseout: Union[str, None] = None,
                not all(row.get(key) == otherrow.get(key)
                        for key in comparison_keys):
                 continue
-            rmsd = get_rmsd(atoms, otheratoms,
-                            adaptor=adaptor,
-                            matcher=matcher)
+
+            if not skip_distance_calc:
+                rmsd = get_rmsd(atoms, otheratoms,
+                                adaptor=adaptor,
+                                matcher=matcher)
+            else:
+                rmsd = 0
             update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd)
             update_rmsd(rmsd_by_id, otherrowid, rowid, rmsd)
 

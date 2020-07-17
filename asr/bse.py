@@ -222,7 +222,7 @@ def absorption(row, filename, direction='x'):
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
     ax.set_title(f'{direction}-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
     else:

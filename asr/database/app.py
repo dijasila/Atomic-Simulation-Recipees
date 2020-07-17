@@ -132,7 +132,7 @@ def initialize_project(database):
 
     db = connect(database, serial=True)
     metadata = db.metadata
-    name = metadata.get("name", database)
+    name = metadata.get("name", Path(database).name)
 
     # Make temporary directory
     (tmpdir / name).mkdir()

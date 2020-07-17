@@ -101,13 +101,9 @@ def main():
     """
     import numpy as np
     from ase.io import read
-    from pathlib import Path
 
     atoms = read('structure.json')
     info = {}
-
-    folder = Path().cwd()
-    info['folder'] = str(folder)
 
     formula = atoms.get_chemical_formula(mode='metal')
     stoichimetry = get_reduced_formula(formula, stoichiometry=True)

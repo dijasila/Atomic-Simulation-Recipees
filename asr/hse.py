@@ -251,7 +251,7 @@ def webpanel(row, key_descriptions):
 
     panel = {'title': 'Electronic band structure (HSE)',
              'columns': [[fig('hse-bs.png')],
-                         [hse]],
+                         [fig('bz-with-gaps.png'), hse]],
              'plot_descriptions': [{'function': bs_hse,
                                     'filenames': ['hse-bs.png']}],
              'sort': 15}
