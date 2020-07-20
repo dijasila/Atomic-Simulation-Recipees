@@ -9,6 +9,8 @@ import multiprocessing
 from pathlib import Path
 import os
 import glob
+import sys
+import traceback
 
 
 class MissingUIDS(Exception):
@@ -287,12 +289,12 @@ def recurse_through_folders(folder, atomsname):
     return folders
 
 
-def collect_folders(folders: List[str],
-                    atomsname: str = None,
-                    patterns: List[str] = None,
-                    children_patterns: List[str] = None,
-                    dbname: str = None,
-                    jobid: int = None):
+def _collect_folders(folders: List[str],
+                     atomsname: str = None,
+                     patterns: List[str] = None,
+                     children_patterns: List[str] = None,
+                     dbname: str = None,
+                     jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     from ase.db import connect
     nfolders = len(folders)
@@ -314,6 +316,29 @@ def collect_folders(folders: List[str],
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
             db.write(atoms, data=data, **key_value_pairs)
+
+
+def collect_folders(folders: List[str],
+                    atomsname: str = None,
+                    patterns: List[str] = None,
+                    children_patterns: List[str] = None,
+                    dbname: str = None,
+                    jobid: int = None):
+    """Collect `myfolders` to `mydbname`.
+
+    This wraps _collect_folders and handles printing exception traceback, which
+    is broken using multiproces.
+
+    """
+    try:
+        return _collect_folders(folders=folders, atomsname=atomsname,
+                                patterns=patterns,
+                                children_patterns=children_patterns,
+                                dbname=dbname,
+                                jobid=jobid)
+    except Exception:
+        # Put all exception text into an exception and raise that
+        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
 @command('asr.database.fromtree')
@@ -382,9 +407,9 @@ def main(folders: Union[str, None] = None,
         processes.append(proc)
         proc.start()
 
-    for proc in processes:
+    for jobid, proc in enumerate(processes):
         proc.join()
-        assert proc.exitcode == 0
+        assert proc.exitcode == 0, f'Error in Job #{jobid}.'
 
     # Then we have to collect the separately collected databases
     # to a single final database file.
