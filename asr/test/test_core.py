@@ -85,7 +85,7 @@ class ASRRelaxResults(ASRResults):
         The relaxed atoms object.
     etot: float
         Total energy of relaxed structure (can include D3 correction).
-    eft: float
+    edft: float
         Total energy of structure (always excluding D3 correction).
     a: float
         Cell parameter "a".
@@ -116,9 +116,32 @@ class ASRRelaxResults(ASRResults):
     gamma: float
     spos: np.ndarray
 
+    structure_description = 'The relaxed atoms object.'
+    etot_description = ('Total energy of relaxed structure '
+                        '(can include D3 correction).')
+    edft_description = ('Total energy of structure '
+                        '(always excluding D3 correction).')
+    a_description = 'Cell parameter "a".'
+    b_description = 'Cell parameter "b".'
+    c_description = 'Cell parameter "c".'
+    alpha_description = 'Cell parameter "alpha".'
+    beta_description = 'Cell parameter "beta".'
+    gamma_description = 'Cell parameter "gamma".'
+    spos_description = 'Scaled atomic positions of relaxed structure.'
+
+    def __format__(self, fmt: str) -> str:
+        """Format results as str.
+
+        Valid formats ``'webpanel'``, ``str``.
+
+        """
+        if fmt == 'webpanel':
+            return self.webpanel()
+
 
 @command('asr.relax',
-         version=(1, 0, 0))
+         version=(1, 0, 0),
+         returns=ASRRelaxResults)
 @argument("atoms",
           help='Atomic structure to be relaxed.',
           type=Atoms,
