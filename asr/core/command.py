@@ -308,43 +308,52 @@ class ASRCommand:
                required files.
 
         """
-        # TODO: Signal handling and cleanup of large files. Use atexit module.
+        # Inspired by: lab-notebook, provenance, invoke, fabric, joblib
+        # TODO: Tag results with random run #ID.
         # TODO: Converting old result files to new format.
         # TODO: Also do checksums of dependencies?
         #       How to handle if a recipe is called by another recipe.
+        # TODO: Save date and time.
+        # TODO: We should call external files side effects.
+        # TODO: When to register current run as a dependency.
+        # TODO: Locking reading of results file.
+        # TODO: Use time stamp for hashing files as well.
+        # TODO: Easy to design a system for pure functions,
+        # but we need side effects as well.
+        # TODO: Should we have an ignore keyword?
 
-        # Locking reading of results file.
-        params = self.apply_defaults(*args, **kwargs)
-        param_string = format_param_string(params)
+        parameters = self.apply_defaults(*args, **kwargs)
+        parameter_string = format_param_string(parameters)
 
-        cached_result = self.cache.get_cache(**params)
+        cached_result = self.cache.get_result(parameters=parameters)
         if cached_result.is_done():
+            self.verify_created_files(parameters=parameters)
             parprint('Returning cached result for '
-                     f'{self.name}({param_string})')
+                     f'{self.name}({parameter_string})')
             return cached_result
 
-        code_versions = self.get_code_versions(**params)
-        created_files = self.get_created_files(**params)
-        required_files = self.get_required_files(**params)
-        temporary_files = self.get_temporary_files(**params)
+        # Inputs
+        code_versions = self.get_code_versions(parameters=parameters)
+        required_files = self.get_required_files(parameters=parameters)
+        temporary_files = self.get_temporary_files(parameters=parameters)
+
         assert all(does_files_exist(required_files)), \
             f'Missing required files (required_files={required_files}).'
-        required_md5_checksums = get_md5_checksums(required_files)
+
         if cached_result.is_initiated():
             cached_result.validate(code_versions=code_versions,
-                                   version=self.version,
-                                   checksums=required_md5_checksums)
+                                   version=self.version)
         else:
             assert not any(does_files_exist(temporary_files)), \
                 ('Some temporary files already exist '
                  f'(temporary_files={temporary_files})')
             assert not any(does_files_exist(created_files)), \
                 f'Some files already exist (created_files={created_files})'
-            cached_result = self.cache.initiate(
-                **params,
+
+            self.cache.initiate(
+                **parameters,
                 versions=code_versions,
                 version=self.version,
-                checksums=required_md5_checksums
             )
 
         parprint(f'Running {self.name}({param_string})')
@@ -353,7 +362,6 @@ class ASRCommand:
         atexit.register(clean_files, files=temporary_files)
 
         # Execute the wrapped function
-        register_dependencies.append([])
         with register_dependencies:
             for dependency in self.dependencies:
                 dependency()
@@ -373,9 +381,9 @@ class ASRCommand:
                           'ncores': world.size},
         }
         created_md5_checksums = get_md5_checksums(created_files)
-        cached_result.update(results=results,
-                             checksums=created_md5_checksums,
-                             metadata=metadata)
+        results.update(results=results,
+                       checksums=created_md5_checksums,
+                       metadata=metadata)
         if self.save_cache:
             self.cache.add(cached_result)
 

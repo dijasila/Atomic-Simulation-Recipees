@@ -1,10 +1,11 @@
 import pytest
+from typing import Union
 from pytest import approx
-from ase import Atoms
-from asr.core import command, argument, option, returns, read_json,\
-    describe, DictStr
+from ase import Atoms, Trajectory
+from asr.core import command, argument, option, returns, read_json, DictStr, \
+    AtomsFile, ASRCalculator, CalcStr, TrajectoryFile
 from typing import List, NamedTuple
-from asr.core import AtomsFile
+import numpy as np
 
 
 @command("test_recipe")
@@ -73,67 +74,147 @@ def test_recipe_dependency(nx: int,
     return {'x': x, 'y': y}
 
 
-gsresults = gs()
-
-gs.params.gs_filename
-
-
 # XXX What about created files.
 # All objects must have a __hash__ attribute.
 
 
+class ASRRelaxResults(ASRResults):
+    """Results of relax recipe.
+
+    structure: Atoms
+        The relaxed atoms object.
+    etot: float
+        Total energy of relaxed structure (can include D3 correction).
+    eft: float
+        Total energy of structure (always excluding D3 correction).
+    a: float
+        Cell parameter "a".
+    b: float
+        Cell parameter "b".
+    c: float
+        Cell parameter "c".
+    alpha: float
+        Cell parameter "alpha".
+    beta: float
+        Cell parameter "beta".
+    gamma: float
+        Cell parameter "gamma".
+    spos: np.ndarray
+        Scaled atomic positions of relaxed structure.
+
+    """
+
+    __version__ = 1
+    structure: Atoms
+    etot: float
+    edft: float
+    a: float
+    b: float
+    c: float
+    alpha: float
+    beta: float
+    gamma: float
+    spos: np.ndarray
+
+
 @command('asr.relax',
-         version='1.0')
+         version=(1, 0, 0))
 @argument("atoms",
           help='Atomic structure to be relaxed.',
           type=Atoms,
-          cli_type='option',
+          cli_argtype='option',
           cli_typecast=AtomsFile(),
           cli_default='unrelaxed.json')
 @argument("outatoms",
           type=str,
-          default='structure.json',
-          creates=True)
+          side_effect=True,
+          cli_default='structure.json',
+          cli_argtype='option',
+          cli_typecast=str)
 @argument("tmpatoms",
           type=Trajectory,
-          creates=True,
+          side_effect=True,
+          cli_argtype='option',
           cli_typecast=TrajectoryFile(must_exist=False),
           cli_default='relax.traj')
 @argument("calculator",
           type=ASRCalculator,
           help='Calculator and its parameters.',
-          cli_typecast=CalcFromDictStr())
-@argument('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
-@argument('--fixcell/--dont-fixcell',
+          has_package_dependencies=True,
+          cli_typecast=CalcStr(),
+          cli_argtype='option')
+@argument('d3',
+          type=bool,
+          help='Relax with vdW D3.',
+          cli_argtype='flag',
+          cli_default=False)
+@argument('fixcell',
+          type=bool,
           help="Don't relax stresses.",
-          is_flag=True)
-@argument('--allow-symmetry-breaking/--dont-allow-symmetry-breaking',
+          cli_argtype='flag',
+          cli_default=False)
+@argument('allow-symmetry-breaking',
+          type=bool,
           help='Allow symmetries to be broken during relaxation.',
-          is_flag=True)
-@argument('--fmax', help='Maximum force allowed.', type=float)
-@argument('--enforce-symmetry/--dont-enforce-symmetry',
-          help='Symmetrize forces and stresses.', is_flag=True)
+          cli_argtype='flag',
+          cli_default=False)
+@argument('fmax',
+          type=float,
+          help='Force convergence criterium.',
+          cli_argtype='option',
+          cli_typecast=float,
+          cli_default=1e-2)
+@argument('enforce_symmetry',
+          help='Symmetrize forces and stresses.',
+          type=bool,
+          cli_argtype='flag',
+          cli_default=False)
+def recipe(
+        atoms: Atoms,
+        outatoms: str = 'structure.json',
+        calculator: ASRCalculator = ASRCalculator(
+            {
+                'name': 'gpaw',
+                'mode': {'name': 'pw', 'ecut': 800},
+                'xc': 'PBE',
+                'kpts': {'density': 6.0, 'gamma': True},
+                'basis': 'dzp',
+                'symmetry': {'symmorphic': False},
+                'convergence': {'forces': 1e-4},
+                'txt': 'relax.txt',
+                'occupations': {'name': 'fermi-dirac',
+                                'width': 0.05},
+                'charge': 0,
+            }
+        ),
+        tmp_atoms: Union[Trajectory, None] = None,
+        d3: bool = False,
+        fixcell: bool = False,
+        allow_symmetry_breaking: bool = False,
+        fmax: float = 0.01,
+        enforce_symmetry: bool = False) -> ASRRelaxResults:
+    """Use all functionality recipe."""
+    # ...
+    # Do something and relax structure.
+    # ...
+    structure = Atoms()
+    structure.write(outatoms)
 
-def test_realistic_recipe(atoms: Atoms,
-         calculator: dict = {'name': 'gpaw',
-                             'mode': {'name': 'pw', 'ecut': 800},
-                             'xc': 'PBE',
-                             'kpts': {'density': 6.0, 'gamma': True},
-                             'basis': 'dzp',
-                             'symmetry': {'symmorphic': False},
-                             'convergence': {'forces': 1e-4},
-                             'txt': 'relax.txt',
-                             'occupations': {'name': 'fermi-dirac',
-                                             'width': 0.05},
-                             'charge': 0},
-         tmp_atoms: Atoms = None,
-         tmp_atoms_file: str = 'relax.traj',
-         d3: bool = False,
-         fixcell: bool = False,
-         allow_symmetry_breaking: bool = False,
-         fmax: float = 0.01,
-         enforce_symmetry: bool = True):
-    pass
+    a, b, c = 3, 3, 3
+    alpha, beta, gamma = 90, 90, 90
+    etot = -100
+    edft = -99
+
+    return ASRRelaxResults(structure=structure,
+                           etot=etot,
+                           edft=edft,
+                           a=a,
+                           b=b,
+                           c=c,
+                           alpha=alpha,
+                           beta=beta,
+                           gamma=gamma,
+                           spos=structure.get_scaled_positions())
 
 
 @command("test_recipe")
