@@ -18,7 +18,7 @@ def test_database_totree(asr_tmpdir_w_params):
 
     assert not Path('tree').is_dir()
 
-    main(database=dbname, run=True,
+    main(database=dbname, run=True, atomsfile='structure.json',
          tree_structure='tree/{stoi}/{spg}/{formula:abc}')
 
     assert Path('tree').is_dir()
@@ -55,7 +55,7 @@ def test_database_totree_files_and_hard_links(make_test_db):
     import os
 
     dbname = 'database.db'
-    main(database=dbname, run=True, copy=True,
+    main(database=dbname, run=True, copy=True, atomsfile='structure.json',
          tree_structure='tree/{stoi}/{spg}/{formula:abc}')
     hardlink = Path('tree/AB/187/BN/hardlinkedfile.txt')
     filejson = Path('tree/AB/187/BN/file.json')

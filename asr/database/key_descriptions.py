@@ -24,7 +24,7 @@ key_descriptions = {
         "evac": "KVP: Vacuum level !Vacuum level! [eV]",
         "evacdiff":
         "KVP: Vacuum level difference !Vacuum level difference! [eV]",
-        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Ang]",
+        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Ang/unit cell]",
         "efermi": "KVP: Fermi level !Fermi level! [eV]",
         "gap": "KVP: Band gap !Band gap! [eV]",
         "vbm": "KVP: Valence band maximum !Val. band maximum! [eV]",
@@ -37,20 +37,20 @@ key_descriptions = {
         "workfunction": "KVP: Work function (avg. if finite dipole) [eV]",
     },
     "gw": {
-        "vbm_gw_nosoc": "Valence band maximum w/o soc. (GW) [eV]",
-        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (GW) [eV]",
-        "gap_dir_gw_nosoc": "Direct gap w/o soc. (GW) [eV]",
-        "gap_gw_nosoc": "Gap w/o soc. (GW) [eV]",
-        "kvbm_nosoc": "k-point of GW valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of GW conduction band minimum w/o soc",
-        "vbm_gw": "KVP: Valence band maximum (GW) [eV]",
-        "cbm_gw": "KVP: Conduction band minimum (GW) [eV]",
-        "gap_dir_gw": "KVP: Direct band gap (GW) [eV]",
-        "gap_gw": "KVP: Band gap (GW) [eV]",
-        "kvbm": "k-point of GW valence band maximum",
-        "kcbm": "k-point of GW conduction band minimum",
-        "efermi_gw_nosoc": "Fermi energy w/o soc. (GW) [eV]",
-        "efermi_gw_soc": "Fermi energy (GW) [eV]",
+        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G0W0) [eV]",
+        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G0W0) [eV]",
+        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G0W0) [eV]",
+        "gap_gw_nosoc": "Gap w/o soc. (G0W0) [eV]",
+        "kvbm_nosoc": "k-point of G0W0 valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of G0W0 conduction band minimum w/o soc",
+        "vbm_gw": "KVP: Valence band maximum (G0W0) [eV]",
+        "cbm_gw": "KVP: Conduction band minimum (G0W0) [eV]",
+        "gap_dir_gw": "KVP: Direct band gap (G0W0) [eV]",
+        "gap_gw": "KVP: Band gap (G0W0) [eV]",
+        "kvbm": "k-point of G0W0 valence band maximum",
+        "kcbm": "k-point of G0W0 conduction band minimum",
+        "efermi_gw_nosoc": "Fermi level w/o soc. (G0W0) [eV]",
+        "efermi_gw_soc": "Fermi level (G0W0) [eV]",
     },
     "hse": {
         "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE) [eV]",
@@ -65,8 +65,8 @@ key_descriptions = {
         "gap_hse": "KVP: Band gap (HSE) [eV]",
         "kvbm": "k-point of HSE valence band maximum",
         "kcbm": "k-point of HSE conduction band minimum",
-        "efermi_hse_nosoc": "Fermi energy w/o soc. (HSE) [eV]",
-        "efermi_hse_soc": "Fermi energy (HSE) [eV]",
+        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
+        "efermi_hse_soc": "Fermi level (HSE) [eV]",
     },
     "infraredpolarizability": {
         "alphax_lat": "KVP: Static lattice polarizability (x) [Ang]",
@@ -94,15 +94,15 @@ key_descriptions = {
         "pdos_soc":
         "Projected density of states !PDOS!",
         "dos_at_ef_nosoc":
-        "KVP: Density of states at the Fermi energy w/o soc."
+        "KVP: Density of states at the Fermi level w/o soc."
         "!DOS at ef no soc.! [states/(eV * unit cell)]",
         "dos_at_ef_soc":
-        "KVP: Density of states at the Fermi energy"
+        "KVP: Density of states at the Fermi level"
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
-        "dynamic_stability_level": "KVP: Dynamic stability level",
+        "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
@@ -112,12 +112,11 @@ key_descriptions = {
         "[`eV/Ang^0.5`]",
     },
     "polarizability": {
-        "alphax_el": "KVP: Static electronic polarizability (x) [Ang]",
-        "alphay_el": "KVP: Static electronic polarizability (y) [Ang]",
-        "alphaz_el": "KVP: Static electronic polarizability (z) [Ang]",
+        "alphax_el": "KVP: Static interband polarizability (x) [Ang]",
+        "alphay_el": "KVP: Static interband polarizability (y) [Ang]",
+        "alphaz_el": "KVP: Static interband polarizability (z) [Ang]",
     },
     "relax": {
-        "etot": "Total energy [eV]",
         "edft": "DFT total enrgy [eV]",
         "spos": "Array: Scaled positions",
         "symbols": "Array: Chemical symbols",
@@ -129,15 +128,11 @@ key_descriptions = {
         "gamma": "Cell parameter gamma [deg]",
     },
     "stiffness": {
-        "c_11": "KVP: Stiffness tensor, 11-component [`N/m^{dim-1}`]",
-        "c_22": "KVP: Stiffness tensor, 22-component [`N/m^{dim-1}`]",
-        "c_33": "KVP: Stiffness tensor, 33-component [`N/m^{dim-1}`]",
-        "c_23": "KVP: Stiffness tensor, 23-component [`N/m^{dim-1}`]",
-        "c_13": "KVP: Stiffness tensor, 13-component [`N/m^{dim-1}`]",
-        "c_12": "KVP: Stiffness tensor, 12-component [`N/m^{dim-1}`]",
         "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
         "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
+        "dynamic_stability_stiffness":
+        "KVP: Stiffness dynamic stability (low/high)",
     },
     "structureinfo": {
         "cell_area": "KVP: Area of unit-cell [`Ang^2`]",
@@ -199,6 +194,11 @@ for dimtype in get_dimtypes():
     key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
         f'KVP: Dimensionality score of dimtype={dimtype}'
 
+for i in range(6):
+    for j in range(6):
+        key_descriptions["stiffness"][f"c_{i}{j}"] = \
+            f"KVP: Stiffness tensor, {i}{j}-component [`N/m^" + "{dim-1}`]"
+
 # Piezoelectrictensor key_descriptions
 piezokd = {}
 for i in range(1, 4):
@@ -238,7 +238,6 @@ def main(database: str):
     for ir, row in enumerate(db.select(include_data=False)):
         if ir % 100 == 0:
             print(ir)
-        print(row.key_value_pairs.keys())
         keys.update(set(row.key_value_pairs.keys()))
 
     metadata = db.metadata

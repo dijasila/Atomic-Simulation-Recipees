@@ -5,6 +5,7 @@ from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.check import main as check_database
+import multiprocessing
 from pathlib import Path
 import os
 import glob
@@ -179,7 +180,6 @@ def collect_links_to_child_folders(folder: Path, atomsname):
         'Si2-abcdefghiklmn'}.
 
     """
-    from ase.parallel import world
     children = {}
 
     for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
@@ -187,9 +187,8 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
         if atomsname in files:
             with chdir(this_folder):
-                if world.size == 1:
-                    if not mf.done:
-                        mf()
+                if not mf.done:
+                    mf()
                 mfres = read_json(
                     'results-asr.database.material_fingerprint.json')
                 uid = mfres['uid']
@@ -221,16 +220,14 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
 
     """
     from ase.io import read
-    from ase.parallel import world
     from fnmatch import fnmatch
 
     with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
             return None, None, None
 
-        if world.size == 1:
-            if not mf.done:
-                mf()
+        if not mf.done:
+            mf()
 
         atoms = read(atomsname, parallel=False)
 
@@ -290,6 +287,35 @@ def recurse_through_folders(folder, atomsname):
     return folders
 
 
+def collect_folders(folders: List[str],
+                    atomsname: str = None,
+                    patterns: List[str] = None,
+                    children_patterns: List[str] = None,
+                    dbname: str = None,
+                    jobid: int = None):
+    """Collect `myfolders` to `mydbname`."""
+    from ase.db import connect
+    nfolders = len(folders)
+    with connect(dbname, serial=True) as db:
+        for ifol, folder in enumerate(folders):
+            print(f'Subprocess #{jobid} Collecting folder {folder} '
+                  f'({ifol + 1}/{nfolders})',
+                  flush=True)
+
+            atoms, key_value_pairs, data = collect_folder(
+                Path(folder),
+                atomsname,
+                patterns,
+                children_patterns=children_patterns)
+
+            if atoms is None:
+                continue
+
+            identifier_kvp = make_data_identifiers(data.keys())
+            key_value_pairs.update(identifier_kvp)
+            db.write(atoms, data=data, **key_value_pairs)
+
+
 @command('asr.database.fromtree')
 @argument('folders', nargs=-1, type=str)
 @option('-r', '--recursive', is_flag=True,
@@ -297,16 +323,18 @@ def recurse_through_folders(folder, atomsname):
 @option('--children-patterns', type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
-@option('-m', '--metadata-from-file', help='Get metadata from file.',
-        type=str)
+@option('--njobs', type=int,
+        help='Delegate collection of database to NJOBS subprocesses. '
+        'Can significantly speed up database collection.')
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
-         dbname: str = 'database.db', metadata_from_file: str = None):
+         dbname: str = 'database.db',
+         njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
-    from ase.parallel import world
+    from asr.database.key_descriptions import main as set_key_descriptions
 
     def item_show_func(item):
         return str(item)
@@ -321,10 +349,12 @@ def main(folders: Union[str, None] = None,
         folders = tmpfolders
 
     if recursive:
+        print('Recursing through folder tree...')
         newfolders = []
         for folder in folders:
             newfolders += recurse_through_folders(folder, atomsname)
         folders = newfolders
+        print('Done.')
 
     folders.sort()
     patterns = patterns.split(',')
@@ -332,76 +362,53 @@ def main(folders: Union[str, None] = None,
 
     # We use absolute path because of chdir in collect_folder()!
     dbpath = Path(dbname).absolute()
-    metadata = {}
-    if metadata_from_file:
-        metadata.update(read_json(metadata_from_file))
+    name = dbpath.name
 
-    if world.size > 1:
-        mydbname = dbpath.parent / f'{dbname}.{world.rank}.db'
-        myfolders = folders[world.rank::world.size]
-    else:
-        mydbname = str(dbpath)
-        myfolders = folders
+    # Delegate collection of database to subprocesses to reduce I/O time.
+    print(f'Delegating database collection to {njobs} subprocesses.')
+    processes = []
+    for jobid in range(njobs):
+        jobdbname = dbpath.parent / f'{name}.{jobid}.db'
+        proc = multiprocessing.Process(
+            target=collect_folders,
+            args=(folders[jobid::njobs], ),
+            kwargs={
+                'jobid': jobid,
+                'dbname': jobdbname,
+                'atomsname': atomsname,
+                'patterns': patterns,
+                'children_patterns': children_patterns
+            })
+        processes.append(proc)
+        proc.start()
 
-    nfolders = len(myfolders)
-    keys = set()
-    with connect(mydbname, serial=True) as db:
-        for ifol, folder in enumerate(myfolders):
-            if world.size > 1:
-                print(f'Collecting folder {folder} on rank {world.rank} '
-                      f'({ifol + 1}/{nfolders})',
-                      flush=True)
-            else:
-                print(f'Collecting folder {folder} ({ifol + 1}/{nfolders})',
-                      flush=True)
+    for proc in processes:
+        proc.join()
+        assert proc.exitcode == 0
 
-            atoms, key_value_pairs, data = collect_folder(
-                Path(folder),
-                atomsname,
-                patterns,
-                children_patterns=children_patterns)
+    # Then we have to collect the separately collected databases
+    # to a single final database file.
+    print(f'Merging separate database files to {dbname}',
+          flush=True)
+    nmat = 0
+    with connect(dbname, serial=True) as db2:
+        for jobid in range(njobs):
+            jobdbname = f'{dbname}.{jobid}.db'
+            assert Path(jobdbname).is_file()
+            print(f'Merging {jobdbname} into {dbname}', flush=True)
+            with connect(f'{jobdbname}', serial=True) as db:
+                for row in db.select():
+                    kvp = row.get('key_value_pairs', {})
+                    data = row.get('data')
+                    db2.write(row.toatoms(), data=data, **kvp)
+                    nmat += 1
+    print('Done.', flush=True)
+    nmatdb = len(db2)
+    assert nmatdb == nmat, \
+        ('Merging of databases went wrong, '
+         f'number of materials changed: {nmatdb} != {nmat}')
 
-            if atoms is None:
-                continue
-
-            identifier_kvp = make_data_identifiers(data.keys())
-            key_value_pairs.update(identifier_kvp)
-            keys.update(key_value_pairs.keys())
-            db.write(atoms, data=data, **key_value_pairs)
-
-    metadata['keys'] = sorted(list(keys))
-    db.metadata = metadata
-
-    if world.size > 1:
-        # Then we have to collect the separately collected databases
-        # to a single final database file.
-        world.barrier()
-        if world.rank == 0:
-            print(f'Merging separate database files to {dbname}',
-                  flush=True)
-            nmat = 0
-            keys = set()
-            with connect(dbname, serial=True) as db2:
-                for rank in range(world.size):
-                    dbrankname = f'{dbname}.{rank}.db'
-                    print(f'Merging {dbrankname} into {dbname}', flush=True)
-                    with connect(f'{dbrankname}', serial=True) as db:
-                        for row in db.select():
-                            kvp = row.get('key_value_pairs', {})
-                            data = row.get('data')
-                            db2.write(row.toatoms(), data=data, **kvp)
-                            nmat += 1
-                    keys.update(set(db.metadata['keys']))
-
-            print('Done. Setting metadata.', flush=True)
-            metadata['keys'] = sorted(list(keys))
-            db2.metadata = metadata
-            nmatdb = len(db2)
-            assert nmatdb == nmat, \
-                ('Merging of databases went wrong, '
-                 f'number of materials changed: {nmatdb} != {nmat}')
-
-    world.barrier()
+    set_key_descriptions(dbname)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
@@ -415,9 +422,8 @@ def main(folders: Union[str, None] = None,
         raise MissingUIDS(
             'Duplicate uids in database.')
 
-    if world.rank == 0:
-        for name in Path().glob(f'{dbname}.*.db'):
-            name.unlink()
+    for name in Path().glob(f'{dbname}.*.db'):
+        name.unlink()
 
 
 if __name__ == '__main__':
