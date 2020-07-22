@@ -3,7 +3,7 @@ from typing import Union
 from pytest import approx
 from ase import Atoms, Trajectory
 from asr.core import command, argument, option, returns, read_json, DictStr, \
-    AtomsFile, ASRCalculator, CalcStr, TrajectoryFile
+    AtomsStr, ASRCalculator, CalcStr, TrajectoryFile
 from typing import List, NamedTuple
 import numpy as np
 
@@ -146,7 +146,7 @@ class ASRRelaxResults(ASRResults):
           help='Atomic structure to be relaxed.',
           type=Atoms,
           cli_argtype='option',
-          cli_typecast=AtomsFile(),
+          cli_typecast=AtomsStr(),
           cli_default='unrelaxed.json')
 @argument("outatoms",
           type=str,

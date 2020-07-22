@@ -311,8 +311,6 @@ class ASRCommand:
         # Inspired by: lab-notebook, provenance, invoke, fabric, joblib
         # TODO: Tag results with random run #ID.
         # TODO: Converting old result files to new format.
-        # TODO: Also do checksums of dependencies?
-        #       How to handle if a recipe is called by another recipe.
         # TODO: Save date and time.
         # TODO: We should call external files side effects.
         # TODO: When to register current run as a dependency.
@@ -321,6 +319,15 @@ class ASRCommand:
         # TODO: Easy to design a system for pure functions,
         # but we need side effects as well.
         # TODO: Should we have an ignore keyword?
+        # TODO: Some parameters need to know about others in order
+        # to properly initialize, eg., in GPAW the poisson solver need
+        # to know about the dimensionality to set dipole layer and also to
+        # get the setup fingerprints, also 1D materials need higher
+        # kpoint density.
+        # TODO: SHA256 vs MD5 speeeeeeed?
+        # TODO: All arguments requires a JSON serialization method.
+        # TODO: How do Django make data migrations?
+        # TODO: Require completely flat ASRResults data structure?
 
         parameters = self.apply_defaults(*args, **kwargs)
         parameter_string = format_param_string(parameters)

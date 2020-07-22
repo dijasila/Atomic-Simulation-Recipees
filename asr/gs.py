@@ -1,23 +1,53 @@
-from asr.core import command, option, DictStr
+from asr.core import command, argument, AtomsStr, ASRCalculator, CalcStr, \
+    ASRResults
+from ase import Atoms
+from asr.magnetic_anisotropy import main as magnetic_anisotropy
+from asr.structureinfo import main as structureinfo
+import numpy as np
+from typing import Tuple
 
 
-@command(module='asr.gs',
-         creates=['gs.gpw'],
-         requires=['structure.json'],
-         resources='8:10h')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gs.txt',
-        'charge': 0}):
+def resources(parameters):
+    """Get resources of ground state calculation."""
+    return dict(cores=8, time='10h')
+
+
+@command(namespace='asr.gs',
+         resources=resources)
+@argument("atoms",
+          help='Atomic structure.',
+          type=Atoms,
+          cli_argtype='option',
+          cli_typecast=AtomsStr(),
+          cli_default='structure.json')
+@argument('calculator',
+          help='Calculator params.',
+          type=ASRCalculator,
+          has_package_dependencies=True,
+          cli_argtype='option',
+          cli_typecast=CalcStr())
+@argument('filename',
+          help='Filename of groundstate file.',
+          type=str,
+          side_effect=True,
+          cli_argtype='option',
+          cli_default='gs.gpw')
+def calculate(
+        atoms: Atoms,
+        calculator: ASRCalculator = ASRCalculator(
+            name='gpaw',
+            mode={'name': 'pw', 'ecut': 800},
+            xc='PBE',
+            basis='dzp',
+            kpts={'density': 12.0, 'gamma': True},
+            occupations={'name': 'fermi-dirac',
+                         'width': 0.05},
+            convergence={'bands': 'CBM+3.0'},
+            nbands='200%',
+            txt='gs.txt',
+            charge=0),
+        filename: str = 'gs.gpw'
+) -> None:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -25,33 +55,20 @@ def calculate(calculator: dict = {
     for storing any derived quantities. See asr.gs@postprocessing for more
     information.
     """
-    import numpy as np
-    from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
     from asr.relax import set_initial_magnetic_moments
-    atoms = read('structure.json')
 
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
 
-    nd = np.sum(atoms.pbc)
-    if nd == 2:
-        assert not atoms.pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        calculator['poissonsolver'] = {'dipolelayer': 'xy'}
-
-    from ase.calculators.calculator import get_calculator_class
-    name = calculator.pop('name')
-    calc = get_calculator_class(name)(**calculator)
-
-    atoms.calc = calc
+    atoms.calc = calculator
     atoms.get_forces()
     try:
         atoms.get_stress()
     except PropertyNotImplementedError:
         pass
     atoms.get_potential_energy()
-    atoms.calc.write('gs.gpw')
+    atoms.calc.write(filename)
 
 
 def webpanel(row, key_descriptions):
@@ -129,23 +146,110 @@ def bz_soc(row, fname):
     plt.savefig(fname)
 
 
-@command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
-         webpanel=webpanel)
-def main():
+class GapResults(ASRResults):
+    """Band gap results."""
+
+    gap: float
+    gap_description: str = 'The band gap [eV].'
+    vbm: float
+    vbm_description: str = 'The valence band maximum [eV].'
+    cbm: float
+    cbm_description: str = 'The conduction band minimum [eV].'
+    gap_dir: float
+    gap_dir_description: str = 'The direct band gap [eV].'
+    vbm_dir: float
+    vbm_dir_description: str = 'The direct valence band maximum [eV].'
+    cbm_dir: float
+    cbm_dir_description: str = 'The direct conduction band minimum [eV].'
+    k_vbm_c: Tuple[float, float, float]
+    k_vbm_c_description: str = (
+        'The k-point coordinate of the valence band maximum '
+        'in units of the reciprocal lattice vectors.'
+    )
+    k_cbm_c: Tuple[float, float, float]
+    k_cbm_c_description: str = (
+        'The k-point coordinate of the conduction band minimum '
+        'in units of the reciprocal lattice vectors.'
+    )
+    k_vbm_dir_c: Tuple[float, float, float]
+    k_vbm_c_description: str = (
+        'The k-point coordinate of the direct valence band maximum '
+        'in units of the reciprocal lattice vectors.'
+    )
+    k_cbm_dir_c: Tuple[float, float, float]
+    k_cbm_c_description: str = (
+        'The k-point coordinate of the direct conduction band minimum '
+        'in units of the reciprocal lattice vectors.'
+    )
+    skn1: Tuple[int, int, int]
+    skn1_description: str = (
+        '(spin, k-point, band) indices of the valence band maximum.'
+    )
+    skn2: Tuple[int, int, int]
+    skn2_description: str = (
+        '(spin, k-point, band) indices of the conduction band minimum.'
+    )
+    skn1_dir: Tuple[int, int, int]
+    skn1_description: str = (
+        '(spin, k-point, band) indices of the direct valence band maximum.'
+    )
+    skn2_dir: Tuple[int, int, int]
+    skn2_dir_description: str = \
+        '(spin, k-point, band) indices of the direct conduction band minimum.'
+
+    efermi: float
+    efermi_description: str = 'The Fermi level [eV].'
+
+
+class ASRGSResults(ASRResults):
+    """Results of the ground state recipe."""
+
+    forces: np.ndarray
+    forces_description = 'Forces on atoms [eV/Angstrom]',
+    stresses: np.ndarray
+    stresses_description: str = 'Stress on unit cell [eV/Angstrom^dim]'
+    etot: float
+    etot_description: str = 'Total energy (Tot. En.) [eV]'
+    evac: float
+    evac_description: str = 'Vacuum level (Vacuum level) [eV]'
+    evacdiff: float
+    evacdiff_description: str = \
+        'Vacuum level shift (Vacuum level shift) [eV]'
+    dipz_description: str = 'Out-of-plane dipole [e * Ang]'
+    efermi_description: str = 'Fermi level (Fermi level) [eV]'
+    gap_description: str = 'Band gap (Band gap) [eV]'
+    vbm_description: str = 'Valence band maximum (Val. band max.) [eV]'
+    cbm_description: str = 'Conduction band minimum (Cond. band max.) [eV]'
+    gap_dir_description: str = 'Direct band gap (Dir. band gap) [eV]'
+    vbm_dir_description: str = \
+        'Direct valence band maximum (Dir. val. band max.) [eV]'
+    cbm_dir_description: str = \
+        'Direct conduction band minimum (Dir. cond. band max.) [eV]'
+    gap_dir_nosoc: str = \
+        'Direct gap without SOC (Dir. gap wo. soc.) [eV]'
+    gaps_nosoc: GapResults
+    gaps_nosoc_description: str = \
+        'Band gap results without spin-out correction.'
+
+
+@command(namespace='asr.gs',
+         dependencies=[calculate,
+                       magnetic_anisotropy,
+                       structureinfo],
+         returns=ASRGSResults)
+def main() -> ASRGSResults:
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
-    from ase.io import read
     from asr.calculators import get_calculator
     from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
-    atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
+    calculate_results = calculate()
+    gsfile = calculate_results.parameters.filename
+    calc = get_calculator()(gsfile,
+                            txt=None,
                             communicator=serial_comm)
+    atoms = calc.atoms
     pbc = atoms.pbc
     ndim = np.sum(pbc)
 
@@ -215,7 +319,7 @@ def main():
     return results
 
 
-def gaps(calc, soc=True):
+def gaps(calc, soc=True) -> GapResults:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
