@@ -56,8 +56,8 @@ def main(momentum: List[float] = [0, 0, 0], mode: int = 0,
     # Repeat and multiply by Bloch phase factor 
     mode_av = u_klav[ind, mode] 
     n_a = np.linalg.norm(mode_av, axis=1) 
-    mode_av /= np.max(n_a) 
-    mode_Nav = (np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] * amplitude / m_Na[:, np.newaxis])
+    mode2_av = mode_av / np.max(n_a) 
+    mode_Nav = (np.vstack(N * [mode2_av]) * phase_Na[:, np.newaxis] * amplitude / m_Na[:, np.newaxis])
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
     # Write unrelaxed.json file to folder
