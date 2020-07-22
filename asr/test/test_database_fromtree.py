@@ -42,14 +42,15 @@ def make_tree(folder: str):
 
 
 @pytest.mark.ci
-def test_database_fromtree_totree(asr_tmpdir, folder_tree):
+@pytest.mark.parametrize('njobs', [1, 2, 8])
+def test_database_fromtree_totree(asr_tmpdir, folder_tree, njobs):
     """Make sure a database can be packed and unpacked faithfully."""
     from asr.database.fromtree import main as fromtree
     from asr.database.totree import main as totree
     from ase.db import connect
 
     folders = [folder[0] for folder in folder_tree]
-    fromtree(folders=['materials'], recursive=True)
+    fromtree(folders=['materials'], recursive=True, njobs=njobs)
 
     db = connect('database.db')
     assert len(db) == len(folders)

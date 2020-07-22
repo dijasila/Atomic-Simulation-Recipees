@@ -411,7 +411,7 @@ def bs_pbe(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -423,68 +423,14 @@ def webpanel(row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
-    key_descriptions_noxc = {
-        k: rmxclabel(d, xcs)
-        for k, d in key_descriptions.items()
-    }
-
-    if row.get('gap', 0) > 0.0:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-    else:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-
-    gap = row.get('gap')
-    if gap > 0:
-        if row.get('evac'):
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
-        else:
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         [fig('bz-with-gaps.png'), pbe]],
+                         [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14.5}
+             'sort': 12}
 
     return [panel]
 

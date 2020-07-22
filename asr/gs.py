@@ -86,14 +86,14 @@ def webpanel(row, key_descriptions):
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': [row]}]],
-               'plot_descriptions': [{'function': bz_soc,
+               'plot_descriptions': [{'function': bz_with_band_extremums,
                                       'filenames': ['bz-with-gaps.png']}],
                'sort': 10}
 
     return [panel, summary]
 
 
-def bz_soc(row, fname):
+def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np

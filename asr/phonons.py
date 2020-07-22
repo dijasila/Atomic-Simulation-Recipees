@@ -124,15 +124,13 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
+    dynstab = row.get('dynamic_stability_phonons')
     high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
-    medium = 'Min. Hessian eig. > -2 eV/Ang^2'
-    low = 'Min. Hessian eig.  < -2 eV/Ang^2'
+    low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
     row = ['Dynamical (phonons)',
            '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[dynstab].upper())]
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+               low, high, dynstab.upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -193,18 +191,16 @@ def main(mingo: bool = True):
     eigs = np.array(eigs)
     mineig = np.min(eigs)
 
-    if mineig < -2:
-        dynamic_stability = 1
-    elif mineig < -1e-5:
-        dynamic_stability = 2
+    if mineig < -0.01:
+        dynamic_stability = 'low'
     else:
-        dynamic_stability = 3
+        dynamic_stability = 'high'
 
     results = {'omega_kl': omega_kl,
                'q_qc': q_qc,
                'modes_kl': u_kl,
                'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
+               'dynamic_stability_phonons': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
@@ -212,9 +208,6 @@ def main(mingo: bool = True):
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl
     results['path'] = path
-    results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
-         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 

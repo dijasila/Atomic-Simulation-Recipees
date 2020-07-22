@@ -5,11 +5,10 @@ from datetime import datetime
 
 
 def make_folder_tree(*, folders, chunks,
-                     write_atoms_file,
                      copy,
                      patterns,
-                     atomsname,
-                     create_folders):
+                     atomsfile,
+                     update_tree):
     """Write folder tree to disk."""
     from os import makedirs, link
     from ase.io import write
@@ -31,10 +30,10 @@ def make_folder_tree(*, folders, chunks,
 
         folder = Path(folder)
 
-        if write_atoms_file:
+        if not update_tree and atomsfile:
             if not folder.is_dir():
                 makedirs(folder)
-            write(folder / atomsname, row.toatoms())
+            write(folder / atomsfile, row.toatoms())
 
         for filename, results in row.data.items():
             for pattern in patterns:
@@ -43,10 +42,13 @@ def make_folder_tree(*, folders, chunks,
             else:
                 continue
 
-            if not folder.is_dir() and create_folders:
-                makedirs(folder)
+            if not folder.is_dir():
+                if not update_tree:
+                    makedirs(folder)
+                else:
+                    continue
 
-            if (folder / filename).is_file():
+            if (folder / filename).is_file() and not update_tree:
                 continue
 
             # We treat json differently
@@ -58,6 +60,7 @@ def make_folder_tree(*, folders, chunks,
                 for extrafile, content in files.items():
 
                     if '__tofile__' in content:
+                        # TODO: This should _really_ be handled differently.
                         tofile = content.pop('__tofile__')
                         mod, func = tofile.split('@')
                         write_func = getattr(importlib.import_module(mod),
@@ -161,25 +164,24 @@ def make_folder_dict(rows, tree_structure):
 @option('--sort', help='Sort the generated materials '
         '(only useful when dividing chunking tree)', type=str)
 @option('--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
-@option('--atomsname', help='Filename to unpack atomic structure to', type=str)
+@option('--atomsfile',
+        help="Filename to unpack atomic structure to. "
+        "By default, don't write atoms file.",
+        type=str)
 @option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
         type=int)
 @option('--patterns',
         help="Comma separated patterns. Only unpack files matching patterns",
         type=str)
-@option('--create-folders/--dont-create-folders', is_flag=True,
-        help='Dont make new folders. Useful when writing to an existing tree.')
-@option('--write-atoms-file/--dont-write-atoms-file', is_flag=True,
-        help='Write atoms object to file with name given '
-        'by the --atomsname option')
+@option('--update-tree', is_flag=True,
+        help='Update results files in existing folder tree.')
 def main(database: str, run: bool = False, selection: str = '',
          tree_structure: str = (
              'tree/{stoi}/{reduced_formula:abc}/{row.uid}'
          ),
-         sort: str = None, atomsname: str = 'structure.json',
+         sort: str = None, atomsfile: str = None,
          chunks: int = 1, copy: bool = False,
-         patterns: str = '*', create_folders: bool = True,
-         write_atoms_file: bool = True):
+         patterns: str = '*', update_tree: bool = False):
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -198,10 +200,6 @@ def main(database: str, run: bool = False, selection: str = '',
       except the formula has been reduced, i.e., Mo2S4 -> MoS2.
     * {wyck}: Unique wyckoff positions. The unique alphabetically
       sorted Wyckoff positions.
-
-    By default, the atomic structures will be saved into an unrelaxed.json
-    file which is be ready to be relaxed. This filename can be changed with
-    the --atomsname switch.
 
     Examples
     --------
@@ -253,9 +251,9 @@ def main(database: str, run: bool = False, selection: str = '',
         return
 
     make_folder_tree(folders=folders, chunks=chunks,
-                     write_atoms_file=write_atoms_file, copy=copy,
-                     patterns=patterns, atomsname=atomsname,
-                     create_folders=create_folders)
+                     atomsfile=atomsfile, copy=copy,
+                     patterns=patterns,
+                     update_tree=update_tree)
 
 
 if __name__ == '__main__':
