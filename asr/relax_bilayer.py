@@ -93,4 +93,5 @@ def main(atoms: Atoms,
     curve = np.array(energy_curve)
 
     return {'heights': curve[:, 0],
-            'energies': curve[:, 1]}
+            'energies': curve[:, 1],
+            'optimal_height:' hmin}
