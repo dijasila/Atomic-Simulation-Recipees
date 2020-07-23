@@ -268,55 +268,39 @@ def main() -> ASRGSResults:
                 {'dipolelayer': 'xy'}, \
                 ('The ground state has a finite dipole moment along aperiodic '
                  'axis but calculation was without dipole correction.')
-
+            
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    results = {'forces': forces,
-               'stresses': stresses,
-               'etot': etot}
+    gaps_nosoc = gaps(calc, soc=False)
+    gaps_soc = gaps(calc, soc=True)
+    gap_dir_nosoc = gaps_nosoc['gap_dir']
+    gap_nosoc = gaps_nosoc['gap']
 
-    results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
-    results['gap_nosoc'] = results['gaps_nosoc']['gap']
-    results.update(gaps(calc, soc=True))
-    # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:
-        vac = vacuumlevels(atoms, calc)
-        results['vacuumlevels'] = vac
-        results['dipz'] = vac['dipz']
-        results['evac'] = vac['evacmean']
-        results['evacdiff'] = vac['evacdiff']
-        results['workfunction'] = results['evac'] - results['efermi']
+    vac = vacuumlevels(atoms, calc)
+    results['vacuumlevels'] = vac
+    dipz = vac['dipz']
+    evac = vac['evacmean']
+    evacdiff = vac['evacdiff']
+    workfunction = results['evac'] - results['efermi']
 
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-    results['__setup_fingerprints__'] = fingerprint
-    results['__key_descriptions__'] = {
-        # Saved arrays
-        'forces': 'Forces on atoms [eV/Angstrom]',
-        'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-        # Key value pairs
-        'etot': 'KVP: Total energy (Tot. En.) [eV]',
-        'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-        'evacdiff': 'KVP: Vacuum level shift (Vacuum level shift) [eV]',
-        'dipz': 'KVP: Out-of-plane dipole [e * Ang]',
-        'efermi': 'KVP: Fermi level (Fermi level) [eV]',
-        'gap': 'KVP: Band gap (Band gap) [eV]',
-        'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
-        'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
-        'gap_dir': 'KVP: Direct band gap (Dir. band gap) [eV]',
-        'vbm_dir': ('KVP: Direct valence band maximum '
-                    '(Dir. val. band max.) [eV]'),
-        'cbm_dir': ('KVP: Direct conduction band minimum '
-                    '(Dir. cond. band max.) [eV]'),
-        'gap_dir_nosoc': ('KVP: Direct gap without SOC '
-                          '(Dir. gap wo. soc.) [eV]')}
+    return ASRGSResults(forces=forces,
+                        stresses=stresses,
+                        etot=etot,
+                        evac=evac,
+                        evacdiff=evacdiff,
+                        dipz=dipz,
+                        efermi=gaps_soc.efermi,
+                        gap=gaps_soc.gap,
+                        vbm=gaps_soc.vbm,
+                        cbm=gaps_soc.cbm,
+                        gap_dir=gaps_soc.gap_dir,
+                        vbm_dir=gaps_soc.vbm_dir,
+                        cbm_dir=gaps_soc.cbm_dir,
+                        gap_dir_nosoc=gap_dir_nosoc)
 
-    return results
 
 
 def gaps(calc, soc=True) -> GapResults:
