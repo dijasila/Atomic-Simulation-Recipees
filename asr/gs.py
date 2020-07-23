@@ -1,4 +1,4 @@
-from asr.core import command, argument, AtomsStr, ASRCalculator, CalcStr, \
+from asr.core import command, argument, AtomsFromFile, ASRCalculator, CalcFromStr, \
     ASRResults
 from ase import Atoms
 from asr.magnetic_anisotropy import main as magnetic_anisotropy
@@ -18,14 +18,14 @@ def resources(parameters):
           help='Atomic structure.',
           type=Atoms,
           cli_argtype='option',
-          cli_typecast=AtomsStr(),
+          cli_typecast=AtomsFromFile(),
           cli_default='structure.json')
 @argument('calculator',
           help='Calculator params.',
           type=ASRCalculator,
           has_package_dependencies=True,
           cli_argtype='option',
-          cli_typecast=CalcStr())
+          cli_typecast=CalcFromStr())
 @argument('filename',
           help='Filename of groundstate file.',
           type=str,
@@ -205,7 +205,7 @@ class ASRGSResults(ASRResults):
     """Results of the ground state recipe."""
 
     forces: np.ndarray
-    forces_description = 'Forces on atoms [eV/Angstrom]',
+    forces_description = 'Forces on atoms [eV/Angstrom]'
     stresses: np.ndarray
     stresses_description: str = 'Stress on unit cell [eV/Angstrom^dim]'
     etot: float

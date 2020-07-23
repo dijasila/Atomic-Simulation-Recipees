@@ -79,33 +79,11 @@ def test_recipe_dependency(nx: int,
 
 
 class ASRRelaxResults(ASRResults):
-    """Results of relax recipe.
+    """Results of relax recipe."""
 
+    __results_version__ = 1
     structure: Atoms
-        The relaxed atoms object.
-    etot: float
-        Total energy of relaxed structure (can include D3 correction).
-    edft: float
-        Total energy of structure (always excluding D3 correction).
-    a: float
-        Cell parameter "a".
-    b: float
-        Cell parameter "b".
-    c: float
-        Cell parameter "c".
-    alpha: float
-        Cell parameter "alpha".
-    beta: float
-        Cell parameter "beta".
-    gamma: float
-        Cell parameter "gamma".
-    spos: np.ndarray
-        Scaled atomic positions of relaxed structure.
-
-    """
-
-    __version__ = 1
-    structure: Atoms
+    """My structure docs."""
     etot: float
     edft: float
     a: float
@@ -116,37 +94,34 @@ class ASRRelaxResults(ASRResults):
     gamma: float
     spos: np.ndarray
 
-    structure_description = 'The relaxed atoms object.'
-    etot_description = ('Total energy of relaxed structure '
-                        '(can include D3 correction).')
-    edft_description = ('Total energy of structure '
-                        '(always excluding D3 correction).')
-    a_description = 'Cell parameter "a".'
-    b_description = 'Cell parameter "b".'
-    c_description = 'Cell parameter "c".'
-    alpha_description = 'Cell parameter "alpha".'
-    beta_description = 'Cell parameter "beta".'
-    gamma_description = 'Cell parameter "gamma".'
-    spos_description = 'Scaled atomic positions of relaxed structure.'
+    # TODO: Make descriptions a dict.
+    KVP = ['a', 'b', 'c']
+    descriptions = {'structure': 'The relaxed atoms object.',
+                    'etot': ('Total energy of relaxed structure '
+                             '(can include D3 correction).'),
+                    'edft': ('Total energy of structure '
+                             '(always excluding D3 correction).'),
+                    'a_description': 'Cell parameter "a".',
+                    'b_description': 'Cell parameter "b".',
+                    'c_description': 'Cell parameter "c".',
+                    'alpha_description': 'Cell parameter "alpha".',
+                    'beta_description': 'Cell parameter "beta".',
+                    'gamma_description': 'Cell parameter "gamma".',
+                    'spos_description': 'Scaled atomic positions of relaxed structure.'}
 
-    def __format__(self, fmt: str) -> str:
-        """Format results as str.
-
-        Valid formats ``'webpanel'``, ``str``.
-
-        """
-        if fmt == 'webpanel':
-            return self.webpanel()
+    def webpanel(self):
+        pass
 
 
 @command('asr.relax',
-         version=(1, 0, 0),
+         version=1,
          returns=ASRRelaxResults)
 @argument("atoms",
           help='Atomic structure to be relaxed.',
           type=Atoms,
+          cli_alias=['-a'],
           cli_argtype='option',
-          cli_typecast=AtomsStr(),
+          cli_typecast=AtomsFromStr(),
           cli_default='unrelaxed.json')
 @argument("outatoms",
           type=str,
@@ -158,13 +133,13 @@ class ASRRelaxResults(ASRResults):
           type=Trajectory,
           side_effect=True,
           cli_argtype='option',
-          cli_typecast=TrajectoryFile(must_exist=False),
+          cli_typecast=TrajectoryFromFile(must_exist=False),
           cli_default='relax.traj')
 @argument("calculator",
           type=ASRCalculator,
           help='Calculator and its parameters.',
           has_package_dependencies=True,
-          cli_typecast=CalcStr(),
+          cli_typecast=CalcFromStr(),
           cli_argtype='option')
 @argument('d3',
           type=bool,
@@ -228,6 +203,7 @@ def recipe(
     etot = -100
     edft = -99
 
+    # Raise Error if key is unknown or missing.
     return ASRRelaxResults(structure=structure,
                            etot=etot,
                            edft=edft,

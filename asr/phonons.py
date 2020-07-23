@@ -6,7 +6,8 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.core import command, option
+from asr.core import command, argument
+from asr.gs import calculate as calculate_ground_state
 
 
 def creates():
@@ -42,16 +43,20 @@ def topckl(filename, dct):
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=creates)
-@option('-n', help='Supercell size', type=int)
-@option('--ecut', help='Energy cutoff', type=float)
-@option('--kptdensity', help='Kpoint density', type=float)
-@option('--fconverge', help='Force convergence criterium', type=float)
-def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
+         dependencies=[calculate_ground_state])
+@argument('n', help='Supercell size', type=int)
+@argument('ecut', help='Energy cutoff', type=float)
+@argument('--kptdensity', help='Kpoint density', type=float)
+@argument('--fconverge', help='Force convergence criterium', type=float)
+@argument('')
+def calculate(n: int = 2, ecut: float = 800,
+              kptdensity: float = 6.0,
               fconverge: float = 1e-4):
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
+    gs_calculate_results = calculate_ground_state()
+
+    # TODO: 
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -60,7 +65,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     world.barrier()
 
     atoms = read('structure.json')
-    gsold = get_calculator()('gs.gpw', txt=None)
+    gsold = get_calculator()(gs_calculate_results.parameters.filename, txt=None)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic

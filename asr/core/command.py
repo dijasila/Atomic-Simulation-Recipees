@@ -332,6 +332,7 @@ class ASRCommand:
         parameters = self.apply_defaults(*args, **kwargs)
         parameter_string = format_param_string(parameters)
 
+        register_dependencies.register(self.name)
         cached_result = self.cache.get_result(parameters=parameters)
         if cached_result.is_done():
             self.verify_created_files(parameters=parameters)
@@ -342,6 +343,7 @@ class ASRCommand:
         # Inputs
         code_versions = self.get_code_versions(parameters=parameters)
         required_files = self.get_required_files(parameters=parameters)
+        created_files = self.get_created_files(parameters=parameters)
         temporary_files = self.get_temporary_files(parameters=parameters)
 
         assert all(does_files_exist(required_files)), \
@@ -363,12 +365,13 @@ class ASRCommand:
                 version=self.version,
             )
 
-        parprint(f'Running {self.name}({param_string})')
+        parprint(f'Running {self.name}({parameter_string})')
 
         # We register an exit handler to handle unexpected exits.
         atexit.register(clean_files, files=temporary_files)
 
         # Execute the wrapped function
+        # Register dependencies implement stack like data structure.
         with register_dependencies:
             for dependency in self.dependencies:
                 dependency()
@@ -376,9 +379,8 @@ class ASRCommand:
             tstart = time.time()
             with (clean_files(temporary_files),
                   file_barrier(created_files, delete=False)):
-                results = self._main(**params) or {}
+                results = self._main(**parameters)
             tend = time.time()
-
         my_dependencies = register_dependencies.pop()
 
         from ase.parallel import world
