@@ -20,7 +20,7 @@ ASR comes with a simple command-line interface which can be invoked using
      find     Find result files.
      list     List and search for recipes.
      results  Show results for a specific recipe.
-     run      Run recipe, python function or shell command in multiple folders.
+     run      Run recipe or python function in multiple folders.
    ...
 
 .. code-block:: console
@@ -35,7 +35,7 @@ ASR comes with a simple command-line interface which can be invoked using
      find     Find result files.
      list     List and search for recipes.
      results  Show results for a specific recipe.
-     run      Run recipe, python function or shell command in multiple folders.
+     run      Run recipe or python function in multiple folders.
 
 From this output it is clear that the ``asr`` command has multiple
 sub-commands, but let's highlight a couple: ``list`` and ``run``. The
@@ -104,7 +104,7 @@ above ``relax`` recipe we would do
    >>> cli(args=['run', '-h'], prog_name="asr", standalone_mode=False)
    Usage: asr run [OPTIONS] COMMAND [FOLDERS]...
    <BLANKLINE>
-     Run recipe, python function or shell command in multiple folders.
+     Run recipe or python function in multiple folders.
    ...
 
 .. code-block:: console
