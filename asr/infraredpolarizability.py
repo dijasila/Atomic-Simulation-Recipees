@@ -71,7 +71,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsx_w.real, label='real')
         ax = plt.gca()
         ax.set_title("x-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -83,7 +83,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsy_w.real, label='real')
         ax = plt.gca()
         ax.set_title("y-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -95,7 +95,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsz_w.real, label='real')
         ax = plt.gca()
         ax.set_title("z-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -113,8 +113,8 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ax_w.real, label='real')
         ax = plt.gca()
         ax.set_title("x-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
@@ -125,8 +125,8 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ay_w.real, label='real')
         ax = plt.gca()
         ax.set_title("y-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
@@ -137,8 +137,8 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, az_w.real, label='real')
         ax = plt.gca()
         ax.set_title("z-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
@@ -156,9 +156,9 @@ def create_plot(row, *fnames):
     ],
     webpanel=webpanel,
 )
-@option("--nfreq", help="Number of frequency points")
-@option("--eta", help="Relaxation rate")
-def main(nfreq=300, eta=1e-2):
+@option("--nfreq", help="Number of frequency points", type=int)
+@option("--eta", help="Relaxation rate", type=float)
+def main(nfreq: int = 300, eta: float = 1e-2):
     from ase.io import read
 
     # Get relevant atomic structure
@@ -224,15 +224,6 @@ def main(nfreq=300, eta=1e-2):
         "alphax": alphax_lat + alphax_el,
         "alphay": alphay_lat + alphay_el,
         "alphaz": alphaz_lat + alphaz_el,
-    }
-
-    results["__key_descriptions__"] = {
-        "alphax_lat": "KVP: Static ionic polarizability, x-direction [Ang]",
-        "alphay_lat": "KVP: Static ionic polarizability, y-direction [Ang]",
-        "alphaz_lat": "KVP: Static ionic polarizability, z-direction [Ang]",
-        "alphax": "KVP: Static total polarizability, x-direction [Ang]",
-        "alphay": "KVP: Static total polarizability, y-direction [Ang]",
-        "alphaz": "KVP: Static total polarizability, z-direction [Ang]",
     }
 
     return results

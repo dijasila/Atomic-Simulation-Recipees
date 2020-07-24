@@ -1,8 +1,24 @@
-from asr.core import command, option
+from asr.core import command, option, DictStr
 
 
 class NoGapError(Exception):
     pass
+
+
+# More that 90% of masses are less than this
+# This mass is only used to limit bandstructure plots
+MAXMASS = 10
+
+
+def set_default(settings):
+    if 'erange1' not in settings:
+        settings['erange1'] = 250e-3
+    if 'nkpts1' not in settings:
+        settings['nkpts1'] = 19
+    if 'erange2' not in settings:
+        settings['erange2'] = 1e-3
+    if 'nkpts2' not in settings:
+        settings['nkpts2'] = 9
 
 
 @command('asr.emasses',
@@ -12,12 +28,20 @@ class NoGapError(Exception):
          creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def refine(gpwfilename='gs.gpw'):
+@option('-s', '--settings', help='Settings for the two refinements',
+        type=DictStr())
+def refine(gpwfilename: str = 'gs.gpw',
+           settings: dict = {
+               'erange1': 250e-3,
+               'nkpts1': 19,
+               'erange2': 1e-3,
+               'nkpts2': 9}):
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
+    set_default(settings)
     socs = [True]
 
     for soc in socs:
@@ -26,24 +50,26 @@ def refine(gpwfilename='gs.gpw'):
                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
+        if not gap > 0:
+            raise NoGapError('Gap was zero: {}'.format(gap))
 
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
 
-            if not gap > 0:
-                raise NoGapError('Gap was zero')
             if os.path.exists(gpw2):
                 continue
-            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc, bandtype=bt)
-            nonsc_sphere(gpw=gpwrefined, soc=soc, bandtype=bt)
+            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc,
+                                            bandtype=bt, settings=settings)
+            nonsc_sphere(gpw=gpwrefined, fallback=gpwfilename, soc=soc,
+                         bandtype=bt, settings=settings)
 
 
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
 
-def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
+def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     from gpaw import GPAW
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
@@ -52,6 +78,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     # Get calc and current kpts
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
+
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
 
@@ -60,14 +87,17 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
-    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
-                                            output=None)
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                              output=None)
     # Make a sphere of kpts of high density
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), 19)
+    min_nkpts = settings['nkpts1']
+    erange = settings['erange1']
+    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
     nkpts = nkpts + (1 - (nkpts % 2))
+    # Ensure that we include the found VBM/CBM
     assert nkpts % 2 != 0
     ksphere = kptsinsphere(cell_cv, npoints=nkpts,
-                           erange=500e-3, m=1.0,
+                           erange=erange, m=1.0,
                            dimensionality=ndim)
 
     # Position sphere around VBM if bandtype == vb
@@ -77,20 +107,52 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None):
     elif bandtype == 'cb':
         newk_kc = k_kc[k2] + ksphere
     else:
-        raise ValueError(f'Bandtype {bandtype} not recognized')
+        raise ValueError(f'Bandtype "{bandtype}" not recognized')
 
     # Calculate energies for new k-grid
     fname = '_refined'
     calc.set(kpts=newk_kc,
              symmetry='off',
-             txt=fname + '.txt')
+             txt=fname + '.txt',
+             fixdensity=True)
     atoms = calc.get_atoms()
     atoms.get_potential_energy()
     calc.write(fname + '.gpw')
     return fname + '.gpw'
 
 
-def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
+def get_gapskn(gpw, fallback=None, soc=True):
+    import numpy as np
+    from ase.dft.bandgap import bandgap
+    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.utils.gpw2eigs import gpw2eigs
+    from ase.parallel import parprint
+
+    theta, phi = get_spin_axis()
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    if e_skn.ndim == 2:
+        e_skn = e_skn[np.newaxis, :, :]
+
+    gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                              output=None)
+
+    if np.allclose(gap, 0) and fallback is not None:
+        parprint("Something went wrong. Using fallback gpw.")
+        theta, phi = get_spin_axis()
+        e_skn, efermi = gpw2eigs(fallback, soc=soc, theta=theta, phi=phi)
+        if e_skn.ndim == 2:
+            e_skn = e_skn[np.newaxis, :, :]
+
+        gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
+                                                  output=None)
+    if np.allclose(gap, 0):
+        raise ValueError(f"Gap is still zero!")
+
+    return gap, (s1, k1, n1), (s2, k2, n2)
+
+
+def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
+                 bandtype=None, settings=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
     Writes the files:
@@ -111,10 +173,6 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         for both cb and vb
     """
     from gpaw import GPAW
-    import numpy as np
-    from asr.utils.gpw2eigs import gpw2eigs
-    from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
@@ -129,15 +187,12 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
     k_kc = calc.get_ibz_k_points()
     cell_cv = calc.atoms.get_cell()
 
-    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim)
+    nkpts = settings['nkpts2']
+    erange = settings['erange2']
+    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
+                            erange=erange, npoints=nkpts)
 
-    theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
-    if e_skn.ndim == 2:
-        e_skn = e_skn[np.newaxis]
-
-    _, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
-                                            output=None)
+    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
@@ -148,7 +203,8 @@ def nonsc_sphere(gpw='gs.gpw', soc=False, bandtype=None):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
                  symmetry='off',
-                 txt=name + '.txt')
+                 txt=name + '.txt',
+                 fixdensity=True)
         atoms = calc.get_atoms()
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
@@ -178,15 +234,6 @@ def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
     kpts_kc = kpoint_convert(cell_cv=cell_cv, ckpts_kv=kpts_kv)
     return kpts_kc
 
-    # print(kpts_kv)
-
-    # a = np.linspace(-1, 1, npoints)
-    # X, Y, Z = np.meshgrid(a, a, a)
-    # indices = X**2 + Y**2 + Z**2 <= 1.0
-    # sh = X.shape
-    # x, y, z = X[indices], Y[indices], Z[indices]
-    # kpts_kv = np.vstack([x, y * yfactor, z * zfactor]).T
-
 
 def get_bt_ks(bandtype, k1_c, k2_c):
     if bandtype is None:
@@ -199,22 +246,6 @@ def get_bt_ks(bandtype, k1_c, k2_c):
         bandtypes = ('cb', )
         ks = (k2_c, )
     return bandtypes, ks
-
-
-def get_ndims_from_row(row):
-    import numpy as np
-    results = row.data.get('results-asr.emasses.json')
-
-    for k in results.keys():
-        if '(' in k and ')' in k:
-            count_dirs = 0
-            for k2 in results[k].keys():
-                if 'effmass' in k2:
-                    value = results[k][k2]
-                    if not (value is None) and not np.isnan(value):
-                        count_dirs += 1
-            break
-    return count_dirs
 
 
 def convert_key_to_tuple(key):
@@ -251,6 +282,13 @@ def get_emass_dict_from_row(row):
     ordered_vb_indices = sorted(vb_indices, key=lambda el: -el[1])
 
     def get_the_dict(ordered_indices, name, offset_sym):
+        # Write a dictionary that will be turned into a table
+        # The dict keys are the table row name
+        # and the dict values are the effective masses
+        # key: name offset_sym(bol) offset_num direction i
+        # E.g. key: VB -2 direction 2
+        # value: <number> m_e
+        # E.g. value: 0.41 m_e
         my_dict = {}
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
@@ -283,6 +321,12 @@ def get_range(mass, _erange):
 
 
 def make_the_plots(row, *args):
+    # Loop through directions, each direction is a column
+    # For direction i, loop through cbs and plot on fig
+    # -- Plot also quadratic fit from curvature/effective mass value
+    # For direction i, loop through vbs and plot on fig
+    # Make a final column containing a table with the numerical values
+    # for the effective masses
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
     import matplotlib.pyplot as plt
@@ -295,6 +339,7 @@ def make_the_plots(row, *args):
     cell_cv = row.cell
 
     reference = row.get('evac', efermi)
+
     label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
     columns = []
     cb_fnames = []
@@ -369,11 +414,10 @@ def make_the_plots(row, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_k = fit_data['e_k'] - reference
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.min(e_k) - np.min(emodel_k)
+            emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -390,7 +434,7 @@ def make_the_plots(row, *args):
                 y2 = np.min(emodel_k) + erange * 0.75
                 axes.set_ylim(y1, y2)
 
-                my_range = get_range(abs(mass), erange)
+                my_range = get_range(min(MAXMASS, abs(mass)), erange)
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
@@ -405,9 +449,8 @@ def make_the_plots(row, *args):
         if should_plot:
             fname = args[plt_count]
             plt.savefig(fname)
-            plt.close()
+        plt.close()
 
-        # axes.clear()
         # VB plots
         y1 = None
         y2 = None
@@ -428,7 +471,6 @@ def make_the_plots(row, *args):
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            e_k = fit_data['e_k'] - reference
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
@@ -438,7 +480,7 @@ def make_the_plots(row, *args):
             kpts_kv *= Bohr
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.max(e_k) - np.max(emodel_k)
+            emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -455,7 +497,7 @@ def make_the_plots(row, *args):
                 y2 = np.max(emodel_k) + erange * 0.25
                 axes.set_ylim(y1, y2)
 
-                my_range = get_range(abs(mass), erange)
+                my_range = get_range(min(MAXMASS, abs(mass)), erange)
                 axes.set_xlim(-my_range, my_range)
 
                 cbar = fig.colorbar(things, ax=axes)
@@ -471,20 +513,10 @@ def make_the_plots(row, *args):
             nplts = len(args)
             fname = args[plt_count + nplts // 2]
             plt.savefig(fname)
-            plt.close()
+        plt.close()
 
         plt_count += 1
-    # Make final column with table of numerical vals
 
-    # Make table
-
-    # Algo:
-    # Loop through directions, each direction is a column
-    # For direction i, loop through cbs and plot on fig
-    # -- Plot also quadratic fit from curvature/effective mass value
-    # For direction i, loop through vbs and plot on fig
-    # Make a final column containing a table with the numerical values
-    # for the effective masses
     assert len(cb_fnames) == len(vb_fnames), \
         'Num cb plots: {}\nNum vb plots: {}'.format(
         len(cb_fnames), len(vb_fnames))
@@ -513,8 +545,6 @@ def custom_table(values_dict, title):
 
 
 def webpanel(row, key_descriptions):
-    # from asr.database.browser import table
-
     columns, fnames = create_columns_fnames(row)
 
     electron_dict, hole_dict = get_emass_dict_from_row(row)
@@ -530,7 +560,7 @@ def webpanel(row, key_descriptions):
              [{'function': make_the_plots,
                'filenames': fnames
                }],
-             'sort': 12}
+             'sort': 14}
     return [panel]
 
 
@@ -633,7 +663,7 @@ def check_soc(spin_band_dict):
          webpanel=webpanel)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename='gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw'):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -655,16 +685,13 @@ def main(gpwfilename='gs.gpw'):
             try:
                 masses = embands(gpw2,
                                  soc=soc,
-                                 bandtype=bt,
-                                 efermi=efermi)
+                                 bandtype=bt)
 
                 # This function modifies the last argument
                 unpack_masses(masses, soc, bt, good_results)
             except ValueError:
                 tb = traceback.format_exc()
                 print(gpw2 + ':\n' + '=' * len(gpw2) + '\n', tb)
-            # else:
-            #     _savemass(soc=soc, bt=bt, mass=masses)
 
     return good_results
 
@@ -726,7 +753,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
-def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
+def embands(gpw, soc, bandtype, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
     Parameters
@@ -754,11 +781,10 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     ndim = calc.atoms.pbc.sum()
 
     theta, phi = get_spin_axis()
-    e_skn, efermi2 = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
-    if efermi is None:
-        efermi = efermi2
+    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
+
     vb_ind, cb_ind = get_vb_cb_indices(e_skn=e_skn, efermi=efermi, delta=delta)
 
     indices = vb_ind if bandtype == 'vb' else cb_ind
@@ -790,7 +816,7 @@ def embands(gpw, soc, bandtype, efermi=None, delta=0.1):
     return masses
 
 
-def wideMAE(masses, bt, cell_cv, erange=25e-3):
+def wideMAE(masses, bt, cell_cv, erange=1e-3):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Ha
     import numpy as np
@@ -806,18 +832,20 @@ def wideMAE(masses, bt, cell_cv, erange=25e-3):
         c = masses['c']
         k_kc = fit_data['kpts_kc']
         k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
-        e_k = fit_data['e_k']
+        e_k = fit_data['e_k'] / Ha
+        assert bt == fit_data['bt']
 
         if bt == "vb":
             ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            assert (np.abs(e_k[ks] - np.max(e_k)) < erange).all()
             sk_kv = k_kv[ks]
         else:
-            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            ks = np.where(np.abs(e_k - np.min(e_k)) < erange)
             sk_kv = k_kv[ks]
+            assert (np.abs(e_k[ks] - np.min(e_k)) < erange).all()
 
         emodel_k = evalmodel(sk_kv, c, thirdorder=True)
-
-        mae = np.mean(np.abs(emodel_k - e_k[ks]))
+        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha  # eV
         maes.append(mae)
 
     return maes
@@ -826,7 +854,7 @@ def wideMAE(masses, bt, cell_cv, erange=25e-3):
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
                                   spin, band,
-                                  erange=500e-3, npoints=91,
+                                  erange=250e-3, npoints=91,
                                   nbands=1):
     from pathlib import Path
     from ase.units import Hartree, Bohr
@@ -848,8 +876,10 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
         if not Path(name).is_file():
             with file_barrier([name]):
-                # embzcut stuff
                 kmax = np.sqrt(2 * abs(mass) * erange / Hartree)
+                _max = np.sqrt(2 * MAXMASS * erange / Hartree)
+                if kmax > _max:
+                    kmax = _max
                 assert not np.isnan(kmax)
                 kd_v = masses_dict['eigenvectors_vu'][:, u]
                 assert not (np.isnan(kd_v)).any()
@@ -881,13 +911,12 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                    kpts_kc=k_kc,
                    e_k=e_km[:, band],
                    spin_k=sz_km[:, band])
-        if nbands != 1:
-            if bt == "vb":
-                dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
-                dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
-            else:
-                dct['e_km'] = e_km[:, band:band + nbands]
-                dct['spin_km'] = sz_km[:, band:band + nbands]
+        if bt == "vb":
+            dct['e_km'] = e_km[:, band - nbands + 1:band + 1]
+            dct['spin_km'] = sz_km[:, band - nbands + 1:band + 1]
+        else:
+            dct['e_km'] = e_km[:, band:band + nbands]
+            dct['spin_km'] = sz_km[:, band:band + nbands]
 
         results_dicts.append(dct)
 
@@ -953,6 +982,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
     """
     import numpy as np
+    from ase.parallel import parprint
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     dxx = 2 * c[0]
     dyy = 2 * c[1]
@@ -975,29 +1005,14 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     f3z, f30, f3xxx, f3yyy = c3[8:12]
     f3zzz, f3xxy, f3xxz, f3yyx, f3yyz, f3zzx, f3zzy, f3xyz = c3[12:]
 
-    if ndim == 2:
-        def check_zero(v, i):
-            assert np.allclose(v, 0), "Value was {} for index {}".format(v, i)
-
-        zeros = [f3zz, f3xz, f3yz, f3z, f3zzz, f3xxz,
-                 f3yyz, f3zzx, f3zzy, f3xyz]
-        for i, z in enumerate(zeros):
-            check_zero(z, i)
-
     extremum_type = get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=ndim)
-    # if bandtype == 'vb':
-    #     assert extremum_type == 'max'
-    # elif bandtype == 'cb':
-    #     assert extremum_type == 'min'
-    # else:
-    #     raise NotImplementedError("Incorrect bandtype: {}".format(bandtype))
+    if extremum_type == 'saddlepoint':
+        parprint(f'Found a saddlepoint for bandtype {bandtype}')
     xm, ym, zm = get_3rd_order_extremum(xm, ym, zm, c3,
                                         extremum_type, ndim=ndim)
     ke_v = np.array([xm, ym, zm])
 
     assert not (np.isnan(ke_v)).any()
-    if ndim == 2:
-        assert np.allclose(zm, 0), zm
 
     d3xx = (2 * f3xx) + (6 * f3xxx * xm) + (2 * f3xxy * ym) + (2 * f3xxz * zm)
     d3yy = (2 * f3yy) + (6 * f3yyy * ym) + (2 * f3yyx * xm) + (2 * f3yyz * zm)
@@ -1017,11 +1032,14 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                         [dxy, dyy, dyz],
                         [dxz, dyz, dzz]])
     v2_n, vecs = np.linalg.eigh(hessian)
+    mass2_u = np.zeros_like(v2_n)
+    npis = np.isclose
 
+    v3_n[npis(v3_n, 0)] = np.nan
+    v2_n[npis(v2_n, 0)] = np.nan
+
+    mass2_u = 1 / v2_n
     mass_u = 1 / v3_n
-    for u, v3 in enumerate(v3_n):
-        if np.allclose(v3, 0):
-            mass_u[u] = np.nan
 
     sort_args = np.argsort(mass_u)
 
@@ -1033,7 +1051,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
                ke_v=ke_v,
                c=c3,
                r=r3,
-               mass2_u=1 / v2_n,
+               mass2_u=mass2_u,
                eigenvectors2_vu=vecs,
                ke2_v=ke2_v,
                c2=c,

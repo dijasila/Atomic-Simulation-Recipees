@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option
 import numpy as np
 
@@ -19,9 +20,11 @@ def webpanel(row, key_descriptions):
 
 
 @command(webpanel=webpanel)
-@option('--strains', help='Strain percentages')
-@option('--ktol', help='Distance that ')
-def main(strains=[-1.0, 0.0, 1.0], ktol=0.1):
+@option('--strains', help='Strain percentages', type=float)
+@option('--ktol',
+        help='Distance in k-space that extremum is allowed to move.',
+        type=float)
+def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1):
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit

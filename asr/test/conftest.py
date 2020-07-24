@@ -10,7 +10,8 @@ from ase.utils import devnull
 import pytest
 from .fixtures import (mockgpaw, test_material, asr_tmpdir,  # noqa
                        asr_tmpdir_w_params, get_webcontent,  # noqa
-                       set_asr_test_environ_variable)  # noqa
+                       set_asr_test_environ_variable,  # noqa
+                       duplicates_test_db)  # noqa
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -41,3 +42,8 @@ def pytest_configure(config):
 
     config.addinivalue_line("addopts", "--doctest-modules")
     config.addinivalue_line("filterwarnings", "once::Warning")
+    config.addinivalue_line("filterwarnings", "ignore:::matplotlib")
+    config.addinivalue_line("filterwarnings",
+                            "ignore:numpy.ufunc size changed.*")
+    config.addinivalue_line("filterwarnings",
+                            "ignore:numpy.dtype size changed.*")

@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, read_json
 
 from collections import defaultdict
 
@@ -12,7 +12,7 @@ from ase.dft.dos import linear_tetrahedron_integration as lti
 
 from ase.units import Hartree
 
-from asr.core import magnetic_atoms, read_json
+from asr.utils import magnetic_atoms
 
 
 # ---------- GPAW hacks ---------- #
@@ -214,22 +214,16 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig
     # PDOS without spin-orbit coupling
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Projected band structure and DOS (PBE)',
              'columns': [[],
                          [fig('pbe-pdos_nosoc.png', link='empty')]],
              'plot_descriptions': [{'function': plot_pdos_nosoc,
                                     'filenames': ['pbe-pdos_nosoc.png']}],
-             'sort': 14}
+             'sort': 13}
 
-    # Another panel to make sure sorting is correct
-    panel2 = {'title': 'Electronic band structure and projected DOS (PBE)',
-              'columns': [[],
-                          [table(row, 'Property', ['dos_at_ef_nosoc'],
-                                 kd=key_descriptions)]]}
-
-    return [panel, panel2]
+    return [panel]
 
 
 # ---------- Main functionality ---------- #
@@ -245,7 +239,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity=20.0, emptybands=20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20):
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -526,8 +520,7 @@ def plot_pdos_soc(*args, **kwargs):
 
 
 def plot_pdos(row, filename, soc=True,
-              figsize=(5.5, 5),
-              lw=1, loc='best'):
+              figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -604,7 +597,6 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
 
     # Set up axis limits
@@ -633,6 +625,10 @@ def plot_pdos(row, filename, soc=True,
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
         ax.set_ylabel(r'$E$ [eV]')
+
+    # Set up legend
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
+               ncol=3, mode="expand", borderaxespad=0.)
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()

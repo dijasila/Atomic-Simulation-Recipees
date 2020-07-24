@@ -77,7 +77,7 @@ def plot_fermi(row, fname,
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 3))
-    ax = lat.plot_bz(vectors=False)
+    ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
     plt.savefig(fname, dpi=dpi)
     plt.close()
@@ -105,8 +105,6 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
     cbar.set_label('$\\langle S_z \\rangle$')
-    # ax.annotate('Fermi surface', xy=(0.5, 1), ha='center',
-    #             va='top', xycoords='axes fraction')
 
     return cbaxes
 
@@ -123,7 +121,8 @@ def main():
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
-                                  theta=theta, phi=phi)
+                                  theta=theta, phi=phi,
+                                  symmetry_tolerance=1e-2)
     eigs_mk = eigs_km.T
     eigs_mk -= ef
     calc = GPAW('gs.gpw', txt=None)
