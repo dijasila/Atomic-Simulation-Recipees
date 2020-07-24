@@ -12,6 +12,14 @@ def resources(parameters):
     return dict(cores=8, time='10h')
 
 
+class ASRGSCalculateResults(ASRResults):
+    """Results of asr.gs@calculate."""
+
+    gs_filename: str
+    side_effects = ['gs_filename']
+    desriptions = {'gs_filename': 'Ground state file name.'}
+
+
 @command(namespace='asr.gs',
          resources=resources)
 @argument("atoms",
@@ -47,7 +55,7 @@ def calculate(
             txt='gs.txt',
             charge=0),
         filename: str = 'gs.gpw'
-) -> None:
+) -> ASRGSCalculateResults:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -69,6 +77,8 @@ def calculate(
         pass
     atoms.get_potential_energy()
     atoms.calc.write(filename)
+
+    return ASRGSCalculateResults(gs_filename=filename)
 
 
 def webpanel(row, key_descriptions):

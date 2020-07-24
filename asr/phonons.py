@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List, Dict
 
 import numpy as np
 
@@ -6,12 +7,11 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.core import command, argument
+from asr.core import command, argument, ASRResults, set_docstring
 from asr.gs import calculate as calculate_ground_state
 
 
-def creates():
-    atoms = read('structure.json')
+def creates(atoms):
     natoms = len(atoms)
     filenames = ['phonon.eq.pckl']
     for a in range(natoms):
@@ -41,22 +41,31 @@ def topckl(filename, dct):
         fd.close()
 
 
+@set_docstring
+class ASRPhononsCalculateResults(ASRResults):
+    """Results of asr phonons."""
+
+    phonon_force_files: List[str]
+    side_effects: List[str] = ['phonon_force_files']
+    key_descriptions: Dict[str, str] = {
+        'phonon_force_files': 'Filenames of phonon force files.'
+    }
+
+
 @command('asr.phonons',
-         requires=['structure.json', 'gs.gpw'],
          dependencies=[calculate_ground_state])
 @argument('n', help='Supercell size', type=int)
 @argument('ecut', help='Energy cutoff', type=float)
 @argument('--kptdensity', help='Kpoint density', type=float)
 @argument('--fconverge', help='Force convergence criterium', type=float)
-@argument('')
 def calculate(n: int = 2, ecut: float = 800,
               kptdensity: float = 6.0,
-              fconverge: float = 1e-4):
+              fconverge: float = 1e-4) -> ASRPhononsCalculateResults:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
+
     gs_calculate_results = calculate_ground_state()
 
-    # TODO: 
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -64,8 +73,8 @@ def calculate(n: int = 2, ecut: float = 800,
                 f.unlink()
     world.barrier()
 
-    atoms = read('structure.json')
-    gsold = get_calculator()(gs_calculate_results.parameters.filename, txt=None)
+    gsold = get_calculator()(gs_calculate_results.gs_filename, txt=None)
+    atoms = gsold.atoms
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
@@ -104,15 +113,9 @@ def calculate(n: int = 2, ecut: float = 800,
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    # Read creates files
-    files = {}
-    for filename in creates():
-        dct = todict(filename)
-        dct['__tofile__'] = 'asr.phonons@topckl'
-        files[filename] = dct
-    data = {'__files__': files}
-    fd.close()
-    return data
+    return ASRPhononsCalculateResults(
+        phonon_force_files=[*creates(atoms)],
+        phonon_output_file='phonons.txt')
 
 
 def requires():
@@ -155,6 +158,10 @@ def webpanel(row, key_descriptions):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo: bool = True):
     from asr.core import read_json
+
+    asr_phonons_results = calculate()
+    force_files = asr_phonons_results.phonon_force_files
+
     dct = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = dct['__params__']['n']
