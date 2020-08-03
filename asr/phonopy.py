@@ -280,6 +280,7 @@ def main(rc: float = None):
     if rc is not None:
         phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
+    phonon.save(settings={'force_constants': True})
 
     nqpts = 100
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
@@ -289,7 +290,7 @@ def main(rc: float = None):
     # Calculating phonon frequencies along a path in the BZ
     for q, q_c in enumerate(path.kpts):
         omega_l = phonon.get_frequencies(q_c)
-        omega_kl[q] = omega_l * THzToEv
+        omega_kl[q] = omega_l * THzToEv * 1000
 
     R_cN = lattice_vectors(sc)
     C_N = phonon.get_force_constants()
