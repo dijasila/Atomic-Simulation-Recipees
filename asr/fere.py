@@ -134,15 +134,20 @@ def multiply_formula(prod, j):
     return Formula.from_dict({k: v * j for k, v in form.count().items()})
 
 
-def safe_get(db, prod):
+def safe_get(db, prod, query=''):
     result = None
-    for j in range(20):
+    for j in range(50):
         formula = multiply_formula(prod, j + 1)
         try:
-            result = db.get("formula={}".format(formula))
+            q = ',' + query if query != '' else ''
+            result = db.get("formula={}".format(formula) + q)
             break
-        except KeyError:
-            continue
+        except Exception as e:
+            if type(e) == KeyError:
+                continue
+            else:
+                print("formula={}".format(formula) + q)
+                raise e
 
     if result is None:
         raise MaterialNotFoundError("Could not find {} in db".format(prod))
@@ -150,11 +155,11 @@ def safe_get(db, prod):
     return result
 
 
-def get_hof(db, formula):
+def get_hof(db, formula, query='', row=None):
     from ase.formula import Formula
 
     elements = list(formula.count().keys())
-    row = safe_get(db, str(formula))
+    row = row or safe_get(db, str(formula), query=query)
     dbformula = Formula(str(row.formula))
     hof = row.energy
     for el in elements:

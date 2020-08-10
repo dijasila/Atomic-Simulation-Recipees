@@ -140,6 +140,7 @@ key_descriptions = {
         "stoichiometry": "KVP: Stoichiometry",
         "spacegroup": "KVP: Space group",
         "spgnum": "KVP: Space group number",
+        "pointgroup": "KVP: Point group",
         "crystal_prototype": "KVP: Crystal prototype",
     },
     "database.material_fingerprint": {
