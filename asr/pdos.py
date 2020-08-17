@@ -38,16 +38,16 @@ class SOCDOS(DOS):
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        # Initiate calculator object and get the spin-orbit eigenvalues
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-        theta, phi = get_spin_axis()
-        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
-
         # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
         self.world = mpi.world
-        if mpi.world.rank == 0:
-            DOS.__init__(self, calc, npts=npts, **kwargs)
+        if self.world.rank == 0:
+            # Initiate calculator object and get the spin-orbit eigenvalues
+            calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            theta, phi = get_spin_axis()
+            e_skm, ef = calc2eigs(calc0, theta=theta, phi=phi, ranks=[0])
+
+            DOS.__init__(self, calc0, npts=npts, comm=calc0.world, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
@@ -56,9 +56,9 @@ class SOCDOS(DOS):
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
-            bzkpts = calc.get_bz_k_points()
+            bzkpts = calc0.get_bz_k_points()
             size, offset = k2so(bzkpts)
-            bz2ibz = calc.get_bz_to_ibz_map()
+            bz2ibz = calc0.get_bz_to_ibz_map()
             shape = (self.nspins, ) + tuple(size) + (-1, )
             self.e_skn = e_skn[:, bz2ibz].reshape(shape)
         else:
@@ -257,6 +257,7 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20):
 def main():
     from gpaw import GPAW
     from asr.core import singleprec_dict
+    from ase.parallel import parprint
 
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
@@ -264,11 +265,15 @@ def main():
     results = {}
 
     # Calculate the dos at the Fermi energy
+    parprint('\nComputing dos at Ef', flush=True)
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
+    parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
 
     # Calculate pdos
+    parprint('\nComputing pdos', flush=True)
     results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    parprint('\nComputing pdos with spin-orbit coupling', flush=True)
     results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Log key descriptions
@@ -328,7 +333,6 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
-    from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
@@ -362,7 +366,6 @@ def calculate_pdos(calc, gpw, soc=True):
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
-    parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
     if mpi.world.rank == 0:
         pb = ProgressBar()
     else:
