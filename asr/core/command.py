@@ -328,6 +328,23 @@ class ASRCommand:
         # TODO: All arguments requires a JSON serialization method.
         # TODO: How do Django make data migrations?
         # TODO: Require completely flat ASRResults data structure?
+        # TODO: Should we have a way to Signal ASR (think click.Context)?
+        # TODO: The caching database could be of a non-relational format (would be similar to current format).
+
+        # REQ: Recipe must be able to run multiple times and cache their results (think LRU-cache).
+        # REQ: Must be possible to change implementation of recipe
+        #      without invalidating previous results
+        # REQ: Must support side-effects such as files written to disk.
+        # REQ: Must store information about code versions
+        # REQ: Must be able to read defaults from configuration file on
+        #      a per-folder basis.
+        # REQ: Must support chaining of recipes (dependencies).
+        # REQ: Caching database should be simple and decentralized (think sqlite).
+        # REQ: Caching database should be plain text.
+        # REQ: Returned object should be self-contained (think ase BandStructure object).
+        # REQ: Returned objects must be able to present themselves as figures and HTML.
+        # REQ: Must be delocalized from ASR (ie. must be able to have a seperate set of recipes locally, non-related to asr).
+        # REQ: Must also have a packaging mechanism for entire projects (ie. ASE databases).
 
         parameters = self.apply_defaults(*args, **kwargs)
         parameter_string = format_param_string(parameters)

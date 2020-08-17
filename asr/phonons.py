@@ -7,7 +7,7 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.core import command, argument, ASRResults, set_docstring
+from asr.core import command, argument, ASRResults, set_docstring, ASRContext
 from asr.gs import calculate as calculate_ground_state
 
 
@@ -65,13 +65,13 @@ class ASRPhononsCalculateResultsVer1(ASRPhononsCalculateResults):
     }
 
 
-@command('asr.phonons',
-         dependencies=[calculate_ground_state])
+@command('asr.phonons', pass_context=True)
 @argument('n', help='Supercell size', type=int)
 @argument('ecut', help='Energy cutoff', type=float)
 @argument('--kptdensity', help='Kpoint density', type=float)
 @argument('--fconverge', help='Force convergence criterium', type=float)
-def calculate(n: int = 2, ecut: float = 800,
+def calculate(ctx: ASRContext,
+              n: int = 2, ecut: float = 800,
               kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRPhononsCalculateResultsVer1:
     """Calculate atomic forces used for phonon spectrum."""
@@ -164,7 +164,6 @@ def webpanel(row, key_descriptions):
 
 
 @command('asr.phonons',
-         requires=requires,
          webpanel=webpanel,
          dependencies=['asr.phonons@calculate'])
 @option('--mingo/--no-mingo', is_flag=True,
