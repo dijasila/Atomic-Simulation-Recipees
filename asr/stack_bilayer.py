@@ -248,6 +248,7 @@ def main(atoms: Atoms):
 
     rotated_mats, labels, translations, transforms, protos = things
 
+    
     for mat, label, transl, tform, proto in zip(*things):
         if not os.path.isdir(label):
             os.mkdir(label)
@@ -259,3 +260,5 @@ def main(atoms: Atoms):
         transform_data = {'rotation': tform[0],
                           'translation': tform[1]}
         write_json(f'{label}/transformdata.json', transform_data)
+
+    return {'folders': labels}
