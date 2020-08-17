@@ -46,19 +46,22 @@ def initial_displacement(atoms):
         type=DictStr())
 @option('-n', '--name', help='Name of final structure file',
         default='structure.json')
+@option('--tol', help='Convergence threshold',
+        type=float, default=1e-4)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
                            'mode': 'interlayer',
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
-         name='structure.json'):
+         name='structure.json',
+         tol=1e-4):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
     import scipy.optimize as sciop
     from asr.stack_bilayer import translation
-
+    
     top_layer = read('toplayer.json')
 
     t_c = read_json('translation.json')['translation_vector'].astype(float)
@@ -75,15 +78,17 @@ def main(atoms: Atoms,
                           h, t_c, settings, callback_fn)
 
     d0 = initial_displacement(atoms)
+    atoms.cell[2, 2] += 2 * d0
 
-    opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead")
+    opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
+                                tol=tol)
     if mpi.rank == 0:
         np.save('energy_curve.npy', np.array(energy_curve))
 
     if not opt_result.success:
         raise ValueError('Relaxation failed')
 
-    hmin = opt_result.x
+    hmin = opt_result.x[0]
 
     final_atoms = translation(t_c[0], t_c[1], hmin,
                               top_layer, atoms)
@@ -94,4 +99,8 @@ def main(atoms: Atoms,
 
     return {'heights': curve[:, 0],
             'energies': curve[:, 1],
-            'optimal_height:' hmin}
+            'optimal_height': hmin}
+
+
+if __name__ == '__main__':
+    main.cli()
