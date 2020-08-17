@@ -21,7 +21,8 @@ class ASRGSCalculateResults(ASRResults):
 
 
 @command(namespace='asr.gs',
-         resources=resources)
+         resources=resources,
+         version=0)
 @argument("atoms",
           help='Atomic structure.',
           type=Atoms,

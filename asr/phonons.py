@@ -45,6 +45,19 @@ def topckl(filename, dct):
 class ASRPhononsCalculateResults(ASRResults):
     """Results of asr phonons."""
 
+    version: int = 0
+    phonon_force_files: List[str]
+    side_effects: List[str] = ['phonon_force_files']
+    key_descriptions: Dict[str, str] = {
+        'phonon_force_files': 'Filenames of phonon force files.'
+    }
+
+
+@set_docstring
+class ASRPhononsCalculateResultsVer1(ASRPhononsCalculateResults):
+    """Results of asr phonons."""
+
+    version: int = 1
     phonon_force_files: List[str]
     side_effects: List[str] = ['phonon_force_files']
     key_descriptions: Dict[str, str] = {
@@ -60,7 +73,7 @@ class ASRPhononsCalculateResults(ASRResults):
 @argument('--fconverge', help='Force convergence criterium', type=float)
 def calculate(n: int = 2, ecut: float = 800,
               kptdensity: float = 6.0,
-              fconverge: float = 1e-4) -> ASRPhononsCalculateResults:
+              fconverge: float = 1e-4) -> ASRPhononsCalculateResultsVer1:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
