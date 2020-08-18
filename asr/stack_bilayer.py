@@ -262,3 +262,7 @@ def main(atoms: Atoms):
         write_json(f'{label}/transformdata.json', transform_data)
 
     return {'folders': labels}
+
+
+if __name__ == '__main__':
+    main.cli()

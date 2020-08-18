@@ -74,3 +74,7 @@ def main(atoms: Atoms,
         os.mkdir(foldername)
 
     stacked.write(f'{foldername}/structure.json')
+
+
+if __name__ == '__main__':
+    main.cli()
