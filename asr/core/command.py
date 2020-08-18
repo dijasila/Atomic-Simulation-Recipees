@@ -332,6 +332,7 @@ class ASRCommand:
         # TODO: Should we have a way to Signal ASR (think click.Context)?
         # TODO: The caching database could be of a non-relational format (would be similar to current format).
         # TODO: Should Result objects have some sort of verification mechanism? Like checking acoustic sum rules?
+        # TODO: Make clean run environment class?
 
         # REQ: Recipe must be able to run multiple times and cache their results (think LRU-cache).
         # REQ: Must be possible to change implementation of recipe
