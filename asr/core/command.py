@@ -2,7 +2,8 @@
 from . import (read_json, write_json, md5sum,
                file_barrier, unlink, clickify_docstring,
                clean_files)
-from .dependency_register import register_dependencies
+from .temporary_directory import temporary_directory
+from .dependencies import dependency_stack
 from .cache import ASRCache
 from typing import List, Dict
 from ase.parallel import parprint
@@ -330,6 +331,7 @@ class ASRCommand:
         # TODO: Require completely flat ASRResults data structure?
         # TODO: Should we have a way to Signal ASR (think click.Context)?
         # TODO: The caching database could be of a non-relational format (would be similar to current format).
+        # TODO: Should Result objects have some sort of verification mechanism? Like checking acoustic sum rules?
 
         # REQ: Recipe must be able to run multiple times and cache their results (think LRU-cache).
         # REQ: Must be possible to change implementation of recipe
@@ -345,41 +347,42 @@ class ASRCommand:
         # REQ: Returned objects must be able to present themselves as figures and HTML.
         # REQ: Must be delocalized from ASR (ie. must be able to have a seperate set of recipes locally, non-related to asr).
         # REQ: Must also have a packaging mechanism for entire projects (ie. ASE databases).
+        # REQ: Must be possible to call as a simple python function thus circumventing CLI.
+        # REQ: Must be able to call without scripting, eg. through a CLI.
+        # REQ: Must support all ASE calculators.
 
-        parameters = self.apply_defaults(*args, **kwargs)
-        parameter_string = format_param_string(parameters)
+        parameters = self.apply_defaults_to_parameters(*args, **kwargs)
+        parameter_string = pretty_format_parameter_string(parameters)
 
-        register_dependencies.register(self.name)
-        cached_result = self.cache.get_result(parameters=parameters)
-        if cached_result.is_done():
-            self.verify_created_files(parameters=parameters)
+        result = self.cache.get_cached_result(parameters=parameters)
+        if result is None:
+            result = self.create_results_object()
+
+        dependency_stack.register_result_id(result.id)
+        if result.is_completed():
+            result.verify_side_effects()
             parprint('Returning cached result for '
                      f'{self.name}({parameter_string})')
-            return cached_result
+            return result
 
-        # Inputs
         code_versions = self.get_code_versions(parameters=parameters)
-        required_files = self.get_required_files(parameters=parameters)
-        created_files = self.get_created_files(parameters=parameters)
         temporary_files = self.get_temporary_files(parameters=parameters)
 
-        assert all(does_files_exist(required_files)), \
-            f'Missing required files (required_files={required_files}).'
-
-        if cached_result.is_initiated():
-            cached_result.validate(code_versions=code_versions,
-                                   version=self.version)
+        if result.is_initiated():
+            result.validate(code_versions=code_versions,
+                            version=self.version)
+            execution_directory = result.get_execution_directory()
         else:
             assert not any(does_files_exist(temporary_files)), \
                 ('Some temporary files already exist '
                  f'(temporary_files={temporary_files})')
-            assert not any(does_files_exist(created_files)), \
-                f'Some files already exist (created_files={created_files})'
 
+            execution_directory = get_temporary_directory_name(result.id)
             self.cache.initiate(
-                **parameters,
+                parameters,
                 versions=code_versions,
                 version=self.version,
+                execution_directory=execution_directory,
             )
 
         parprint(f'Running {self.name}({parameter_string})')
@@ -389,16 +392,16 @@ class ASRCommand:
 
         # Execute the wrapped function
         # Register dependencies implement stack like data structure.
-        with register_dependencies:
+        with dependency_stack as my_dependencies:
             for dependency in self.dependencies:
                 dependency()
 
-            tstart = time.time()
-            with (clean_files(temporary_files),
+            with (chdir(temporary_directory),
+                  clean_files(temporary_files),
                   file_barrier(created_files, delete=False)):
+                tstart = time.time()
                 results = self._main(**parameters)
-            tend = time.time()
-        my_dependencies = register_dependencies.pop()
+                tend = time.time()
 
         from ase.parallel import world
         metadata = {

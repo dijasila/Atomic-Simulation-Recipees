@@ -70,8 +70,7 @@ class ASRPhononsCalculateResultsVer1(ASRPhononsCalculateResults):
 @argument('ecut', help='Energy cutoff', type=float)
 @argument('--kptdensity', help='Kpoint density', type=float)
 @argument('--fconverge', help='Force convergence criterium', type=float)
-def calculate(ctx: ASRContext,
-              n: int = 2, ecut: float = 800,
+def calculate(n: int = 2, ecut: float = 800,
               kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRPhononsCalculateResultsVer1:
     """Calculate atomic forces used for phonon spectrum."""
