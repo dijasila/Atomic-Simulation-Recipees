@@ -1,12 +1,19 @@
 from asr.core import command, option, AtomsFile, DictStr
 import numpy as np
 from ase import Atoms
+import os
 
 
-def get_energy(base, top, h, t_c, settings, callback):
+def get_energy(base, top, h, t_c, settings, callback, memo):
     from ase.calculators.dftd3 import DFTD3
     from gpaw import GPAW, PW
     from asr.stack_bilayer import translation
+
+    try:
+        h0, e0 = next(t for t in memo if np.allclose(t[0], h))
+        return e0
+    except StopIteration:
+        pass
 
     calc = GPAW(mode=PW(800),
                 xc=settings['xc'],
@@ -66,7 +73,11 @@ def main(atoms: Atoms,
 
     t_c = read_json('translation.json')['translation_vector'].astype(float)
 
-    energy_curve = []
+    if os.path.exists('energy_curve.npy'):
+        energy_curve = np.load('energy_curve.npy', allow_pickle=True)
+        energy_curve = [(d, e) for d, e in energy_curve]
+    else:
+        energy_curve = []
 
     def callback_fn(h, energy):
         energy_curve.append((h, energy))
@@ -75,7 +86,8 @@ def main(atoms: Atoms,
 
     def energy_fn(h):
         return get_energy(atoms, top_layer,
-                          h, t_c, settings, callback_fn)
+                          h, t_c, settings,
+                          callback_fn, energy_curve)
 
     d0 = initial_displacement(atoms)
     atoms.cell[2, 2] += 2 * d0
