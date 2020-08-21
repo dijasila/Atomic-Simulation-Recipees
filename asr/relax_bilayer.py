@@ -32,7 +32,7 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
 
     e = atoms.get_potential_energy()
 
-    callback(h, e)
+    callback(h[0], e)
 
     return e
 
@@ -55,6 +55,8 @@ def initial_displacement(atoms):
         default='structure.json')
 @option('--tol', help='Convergence threshold',
         type=float, default=1e-4)
+@option('-v', '--vacuum', help='Vacuum',
+        type=float, default=20)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
@@ -62,13 +64,13 @@ def main(atoms: Atoms,
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
          name='structure.json',
-         tol=1e-4):
+         tol=1e-4,
+         vacuum=20):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
     import scipy.optimize as sciop
     from asr.stack_bilayer import translation
-    
     top_layer = read('toplayer.json')
 
     t_c = read_json('translation.json')['translation_vector'].astype(float)
@@ -90,7 +92,8 @@ def main(atoms: Atoms,
                           callback_fn, energy_curve)
 
     d0 = initial_displacement(atoms)
-    atoms.cell[2, 2] += 2 * d0
+    atoms.cell[2, 2] = vacuum
+    # atoms.cell[2, 2] += 4 * d0
 
     opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
                                 tol=tol)
@@ -104,8 +107,8 @@ def main(atoms: Atoms,
 
     final_atoms = translation(t_c[0], t_c[1], hmin,
                               top_layer, atoms)
-
-    final_atoms.write(name)
+    if mpi.rank == 0:
+        final_atoms.write(name)
 
     curve = np.array(energy_curve)
 
