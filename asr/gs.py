@@ -12,12 +12,64 @@ def resources(parameters):
     return dict(cores=8, time='10h')
 
 
+@set_docstring
 class ASRGSCalculateResults(ASRResults):
     """Results of asr.gs@calculate."""
 
+    version: int = 0
+    prev_version: ASRResultsVer0
     gs_filename: str
-    side_effects = ['gs_filename']
     desriptions = {'gs_filename': 'Ground state file name.'}
+
+    parameters:
+    asr_recipe_name:
+    kvp = ['vbm']
+
+    def webpanel(self):
+        """Make ase.db compatible webpanel."""
+        pass
+
+    def __str__(self):
+        pass
+
+    def __format__(self):
+        pass
+
+    def to_json(self):
+        pass
+
+    def from_json(self):
+        pass
+
+
+@set_docstring
+class ASRGSCalculateResults(ASRResults):
+    """Results of asr.gs@calculate."""
+
+    version: int = 1
+    prev_version: ASRResultsVer0
+
+    gap: float
+    forces: np.ndarray
+
+    desriptions = {'gs_filename': 'Ground state file name.'}
+    parameters: dict
+
+    def webpanel(self):
+        """Make ase.db compatible webpanel."""
+        pass
+
+    def __str__(self):
+        pass
+
+    def __format__(self):
+        pass
+
+    def to_json(self):
+        pass
+
+    def from_json(self):
+        pass
 
 
 @command(namespace='asr.gs',
