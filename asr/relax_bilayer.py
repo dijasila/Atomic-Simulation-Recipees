@@ -21,6 +21,7 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
                 symmetry={'symmorphic': False},
                 occupations={'name': 'fermi-dirac',
                              'width': 0.05},
+                poissonsolver={"dipolelayer": "xy"},
                 charge=0,
                 txt='relax_bilayer.txt')
     if settings['d3']:
@@ -37,13 +38,11 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
     return e
 
 
-def initial_displacement(atoms):
+def initial_displacement(atoms, distance):
     maxz = np.max(atoms.positions[:, 2])
     minz = np.min(atoms.positions[:, 2])
 
-    d0 = 3
-
-    return d0 + (maxz - minz)
+    return distance + (maxz - minz)
 
 
 @command('asr.relax_bilayer')
@@ -55,17 +54,17 @@ def initial_displacement(atoms):
         default='structure.json')
 @option('--tol', help='Convergence threshold',
         type=float, default=1e-4)
-@option('-v', '--vacuum', help='Vacuum',
-        type=float, default=20)
+@option('-d', '--distance', help='Initial Distance',
+        type=float, default=3)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
                            'mode': 'interlayer',
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
-         name='structure.json',
+         name='../structure.json',
          tol=1e-4,
-         vacuum=20):
+         distance=3):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
@@ -91,9 +90,9 @@ def main(atoms: Atoms,
                           h, t_c, settings,
                           callback_fn, energy_curve)
 
-    d0 = initial_displacement(atoms)
-    atoms.cell[2, 2] = vacuum
-    # atoms.cell[2, 2] += 4 * d0
+    d0 = initial_displacement(atoms, distance)
+    # atoms.cell[2, 2] = vacuum
+    atoms.cell[2, 2] *= 2
 
     opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
                                 tol=tol)
