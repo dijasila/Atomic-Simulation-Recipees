@@ -204,6 +204,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     else:
         raise ValueError(f'Invalid cell type: {cell_type}')
 
+
     auxs = list(zip(final_mats, final_labels,
                     translations, final_transforms))
 
@@ -222,14 +223,20 @@ def translation(x, y, z, rotated, base):
 
     return stacked
 
+# def webpanel
 
-@command('asr.stack_bilayer')
+
+@command(module='asr.stack_bilayer', requires=['structure.json'])
 @option('-a', '--atoms', help='Monolayer to be stacked',
         type=AtomsFile(), default='structure.json')
 def main(atoms: Atoms):
+    from ase.io import read
+    # atoms = read("structure.json")
+
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
     import os
+
     from asr.core import write_json
     # Increase z vacuum
     atoms.cell[2, 2] *= 2
@@ -242,9 +249,11 @@ def main(atoms: Atoms):
 
     rotated_mats, labels, transforms = get_rotated_mats(atoms)
 
+
     things = build_layers(atoms, cell_type,
                           rotated_mats,
                           labels, transforms)
+
 
     rotated_mats, labels, translations, transforms, protos = things
 
@@ -253,6 +262,10 @@ def main(atoms: Atoms):
         if not os.path.isdir(label):
             os.mkdir(label)
 
+        mat.cell[2, 2] /= 2
+        spos_av = mat.get_positions()
+        spos_av[:, 2] -= mat.cell[2, 2] / 2
+        mat.set_positions(spos_av)
         mat.write(f'{label}/toplayer.json')
         proto.write(f'{label}/bilayerprototype.json')
         dct = {'translation_vector': transl}
