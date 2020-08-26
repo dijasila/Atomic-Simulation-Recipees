@@ -67,10 +67,8 @@ def main():
     """
     import numpy as np
     from asr.core import read_json
-    from gpaw.mpi import world
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
-    from pathlib import Path
 
     magstateresults = read_json('results-asr.magstate.json')
     magstate = magstateresults['magstate']
@@ -129,9 +127,6 @@ def main():
                     'E_z': E_z * 1e3,
                     'dE_zx': dE_zx * 1e3,
                     'dE_zy': dE_zy * 1e3})
-    world.barrier()
-    if world.rank == 0:
-        Path('gs_nosym.gpw').unlink()
     return results
 
 
