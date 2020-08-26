@@ -1,171 +1,13 @@
-from asr.core import command, option, read_json
-
 from collections import defaultdict
 
 import numpy as np
-
 from ase import Atoms
-from ase.units import Ha
-from ase.dft.kpoints import get_monkhorst_pack_size_and_offset as k2so
-from ase.dft.dos import DOS
-from ase.dft.dos import linear_tetrahedron_integration as lti
 
-from ase.units import Hartree
-
+from asr.core import command, option, read_json
 from asr.utils import magnetic_atoms
 
 
-# ---------- GPAW hacks ---------- #
-
-
-# Hack the density of states
-class SOCDOS(DOS):
-    def __init__(self, gpw, npts=401, **kwargs):
-        """Hack to make DOS class work with spin orbit coupling.
-
-        Parameters
-        ----------
-        gpw : str
-            The SOCDOS takes a filename of the GPAW calculator object and loads
-            it, instead of the normal ASE compliant calculator object.
-        npts : int
-            see ase.dft.dos.DOS
-
-        """
-        # Initiate DOS with serial communicator instead
-        from gpaw import GPAW
-        import gpaw.mpi as mpi
-        from asr.utils.gpw2eigs import calc2eigs
-        from asr.magnetic_anisotropy import get_spin_axis
-
-        # Only the rank=0 should have an actual DOS object.
-        # The others receive the output as a broadcast.
-        self.world = mpi.world
-        if self.world.rank == 0:
-            # Initiate calculator object and get the spin-orbit eigenvalues
-            calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-            theta, phi = get_spin_axis()
-            e_skm, ef = calc2eigs(calc0, theta=theta, phi=phi, ranks=[0])
-
-            DOS.__init__(self, calc0, npts=npts, comm=calc0.world, **kwargs)
-
-            # Hack the number of spins
-            self.nspins = 1
-
-            # Hack the eigenvalues
-            if e_skm.ndim == 2:
-                e_skm = e_skm[np.newaxis]
-            e_skn = e_skm - ef
-            bzkpts = calc0.get_bz_k_points()
-            size, offset = k2so(bzkpts)
-            bz2ibz = calc0.get_bz_to_ibz_map()
-            shape = (self.nspins, ) + tuple(size) + (-1, )
-            self.e_skn = e_skn[:, bz2ibz].reshape(shape)
-        else:
-            self.npts = npts
-
-    def get_dos(self):
-        """Interface to DOS.get_dos."""
-        # Rank=0 calculates the dos
-        if self.world.rank == 0:
-            dos = np.ascontiguousarray(DOS.get_dos(self, spin=0))
-        else:
-            dos = np.empty(self.npts)
-
-        # Broadcast result
-        self.world.broadcast(dos, 0)
-
-        return dos
-
-
-# Hack the local density of states to keep spin-orbit results and not
-# compute them repeatedly
-class SOCDescriptor:
-    """Descriptor for spin-orbit corrections.
-
-    [Developed and tested for raw_spinorbit_orbital_LDOS only]
-    """
-
-    def __init__(self, paw):
-        self.paw = paw
-
-        # Log eigenvalues and wavefunctions for multiple spin directions
-        self.theta_d = []
-        self.phi_d = []
-        self.eps_dmk = []
-        self.v_dknm = []
-
-    def calculate_soc_eig(self, theta, phi):
-        from gpaw.spinorbit import get_spinorbit_eigenvalues
-        eps_mk, v_knm = get_spinorbit_eigenvalues(self.paw, return_wfs=True,
-                                                  theta=theta, phi=phi)
-        self.theta_d.append(theta)
-        self.phi_d.append(phi)
-        self.eps_dmk.append(eps_mk)
-        self.v_dknm.append(v_knm)
-
-    def get_soc_eig(self, theta=0, phi=0):
-        # Check if eigenvalues have been computed already
-        for d, (t, p) in enumerate(zip(self.theta_d, self.phi_d)):
-            if abs(t - theta) < np.pi * 1.e-4 and abs(p - phi) < np.pi * 1.e-4:
-                return self.eps_dmk[d], self.v_dknm[d]
-        # Calculate if not
-        self.calculate_soc_eig(theta, phi)
-        return self.eps_dmk[-1], self.v_dknm[-1]
-
-
-def raw_spinorbit_orbital_LDOS_hack(paw, a, spin, angular='spdf',
-                                    theta=0, phi=0):
-    """Hack raw_spinorbit_orbital_LDOS."""
-    from gpaw.utilities.dos import get_angular_projectors
-    from gpaw.spinorbit import get_spinorbit_projections
-
-    # Attach SOCDescriptor to the calculator object
-    if not hasattr(paw, 'socd'):
-        paw.socd = SOCDescriptor(paw)
-
-    # Get eigenvalues and wavefunctions from SOCDescriptor
-    eps_mk, v_knm = paw.socd.get_soc_eig(theta, phi)
-    e_mk = eps_mk / Hartree
-
-    # Do the rest as usual:
-    ns = paw.wfs.nspins
-    w_k = paw.wfs.kd.weight_k
-    nk = len(w_k)
-    nb = len(e_mk)
-
-    if a < 0:
-        # Allow list-style negative indices; we'll need the positive a for the
-        # dictionary lookup later
-        a = len(paw.wfs.setups) + a
-
-    setup = paw.wfs.setups[a]
-    energies = np.empty(nb * nk)
-    weights_xi = np.empty((nb * nk, setup.ni))
-    x = 0
-    for k, w in enumerate(w_k):
-        energies[x:x + nb] = e_mk[:, k]
-        P_ami = get_spinorbit_projections(paw, k, v_knm[k])
-        if ns == 2:
-            weights_xi[x:x + nb, :] = w * np.absolute(P_ami[a][:, spin::2])**2
-        else:
-            weights_xi[x:x + nb, :] = w * np.absolute(P_ami[a][:, 0::2])**2 / 2
-            weights_xi[x:x + nb, :] += w * np.absolute(P_ami[a][:,
-                                                                1::2])**2 / 2
-        x += nb
-
-    if angular is None:
-        return energies, weights_xi
-    elif isinstance(angular, int):
-        return energies, weights_xi[:, angular]
-    else:
-        projectors = get_angular_projectors(setup, angular, type='bound')
-        weights = np.sum(np.take(weights_xi,
-                                 indices=projectors, axis=1), axis=1)
-        return energies, weights
-
-
-# ---------- Recipe tests ---------- #
+# Recipe tests:
 
 params = "{'mode':{'ecut':200,...},'kpts':{'density':2.0},...}"
 ctests = []
@@ -258,23 +100,28 @@ def main():
     from gpaw import GPAW
     from asr.core import singleprec_dict
     from ase.parallel import parprint
+    from asr.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
-    calc = GPAW('pdos.gpw', txt=None)
+    calc = GPAW('pdos.gpw')
+
+    dos1 = calc.dos()
+    theta, phi = get_spin_axis()
+    dos2 = calc.dos(soc=True, theta=theta, phi=phi)
 
     results = {}
 
     # Calculate the dos at the Fermi energy
     parprint('\nComputing dos at Ef', flush=True)
-    results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
+    results['dos_at_ef_nosoc'] = dos1.dos_at([0.0])[0]
     parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
-    results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
+    results['dos_at_ef_soc'] = dos2.dos_at([0.0])[0]
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    results['pdos_nosoc'] = singleprec_dict(pdos(dos1, calc))
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
+    results['pdos_soc'] = singleprec_dict(pdos(dos2, calc))
 
     # Log key descriptions
     kd = {}
@@ -301,19 +148,19 @@ def main():
 # ----- PDOS ----- #
 
 
-def pdos(calc, gpw, soc=True):
+def pdos(dos, calc):
     """Do a single pdos calculation.
 
     Main functionality to do a single pdos calculation.
     """
     # Do calculation
-    e_e, pdos_syl, symbols, ef = calculate_pdos(calc, gpw, soc=soc)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(dos, calc)
 
     return {'pdos_syl': pdos_syl, 'symbols': symbols,
             'energies': e_e, 'efermi': ef}
 
 
-def calculate_pdos(calc, gpw, soc=True):
+def calculate_pdos(dos, calc):
     """Calculate the projected density of states.
 
     Returns
@@ -328,74 +175,42 @@ def calculate_pdos(calc, gpw, soc=True):
         Fermi energy
 
     """
-    from gpaw import GPAW
     import gpaw.mpi as mpi
-    from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
-    from asr.magnetic_anisotropy import get_spin_axis
-    world = mpi.world
-
-    if soc and world.rank == 0:
-        calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
 
     zs = calc.atoms.get_atomic_numbers()
     chem_symbols = calc.atoms.get_chemical_symbols()
     efermi = calc.get_fermi_level()
     l_a = get_l_a(zs)
-    kd = calc.wfs.kd
-
-    if soc:
-        ldos = raw_spinorbit_orbital_LDOS_hack
-    else:
-        ldos = raw_orbital_LDOS
 
     ns = calc.get_number_of_spins()
-    theta, phi = get_spin_axis()
     gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = np.linspace(e1 - 3, e2 + 3, 500)
+    dos.energies = e_e
 
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
     # species, their pdos are added together.
     pdos_syl = defaultdict(float)
-    # Set up progressbar
     s_i = [s for s in range(ns) for a in l_a for l in l_a[a]]
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
+    print(sal_i, ns)
+    # Set up progressbar
     if mpi.world.rank == 0:
         pb = ProgressBar()
     else:
         devnull = DevNull()
         pb = ProgressBar(devnull)
+
     for _, (spin, a, l) in pb.enumerate(sal_i):
         symbol = chem_symbols[a]
 
-        if soc:
-            if world.rank == 0:  # GPAW soc is done in serial
-                energies, weights = ldos(calc0, a, spin, l, theta, phi)
-                mpi.broadcast((energies, weights))
-            else:
-                energies, weights = mpi.broadcast(None)
-        else:
-            energies, weights = ldos(calc, a, spin, l)
-
-        # Reshape energies
-        energies.shape = (kd.nibzkpts, -1)
-        energies = energies[kd.bz2ibz_k]
-        energies.shape = tuple(kd.N_c) + (-1, )
-
-        # Get true weights and reshape
-        weights.shape = (kd.nibzkpts, -1)
-        weights /= kd.weight_k[:, np.newaxis]
-        w = weights[kd.bz2ibz_k]
-        w.shape = tuple(kd.N_c) + (-1, )
-
-        # Linear tetrahedron integration
-        p = lti(calc.atoms.cell, energies * Ha, e_e, w)
+        p = dos.pdos(a, 'spdfg'.index(l), spin, 0.0).get_weights()
 
         # Store in dictionary
         key = ','.join([str(spin), str(symbol), str(l)])
@@ -433,18 +248,6 @@ def get_l_a(zs):
         else:
             l_a[a] = 'spd' if mag else 'sp'
     return l_a
-
-
-# ----- DOS at Fermi energy ----- #
-
-
-def dos_at_ef(calc, gpw, soc=True):
-    """Get dos at the Fermi energy."""
-    if soc:
-        dos = SOCDOS(gpw, width=0.0, window=(-0.1, 0.1), npts=3)
-    else:
-        dos = DOS(calc, width=0.0, window=(-0.1, 0.1), npts=3)
-    return dos.get_dos()[1]
 
 
 # ---------- Plotting ---------- #

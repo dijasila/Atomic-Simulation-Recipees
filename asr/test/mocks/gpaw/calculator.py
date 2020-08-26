@@ -407,3 +407,12 @@ class ASRCalculator(Calculator):
     def diagonalize_full_hamiltonian(self, ecut=None):
         """Diagonalize full Hamiltonian."""
         pass
+
+    def dos(self, soc=False, theta=0.0, phi=0.0):
+        return DOSCalculator()
+
+
+class DOSCalculator:
+    def dos_at(self, energies):
+        return np.ones_like(energies)
+
