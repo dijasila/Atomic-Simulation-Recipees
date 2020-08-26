@@ -415,4 +415,3 @@ class ASRCalculator(Calculator):
 class DOSCalculator:
     def dos_at(self, energies):
         return np.ones_like(energies)
-
