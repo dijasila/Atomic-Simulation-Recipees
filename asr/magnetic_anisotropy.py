@@ -66,11 +66,10 @@ def main():
         phi: Azimuthal angle in radians
     """
     import numpy as np
-    from asr.core import file_barrier, read_json
-    from gpaw.mpi import world, serial_comm
+    from asr.core import read_json
+    from gpaw.mpi import world
     from gpaw.spinorbit import get_anisotropy
     from gpaw import GPAW
-    from gpaw.utilities.ibz2bz import ibz2bz
     from pathlib import Path
 
     magstateresults = read_json('results-asr.magstate.json')
@@ -100,16 +99,12 @@ def main():
         results['spin_axis'] = 'z'
         return results
 
-    with file_barrier(['gs_nosym.gpw']):
-        ibz2bz('gs.gpw', 'gs_nosym.gpw')
     width = 0.001
     nbands = None
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
+    calc = GPAW('gs.gpw')
     E_x = get_anisotropy(calc, theta=np.pi / 2, nbands=nbands,
                          width=width)
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
     E_z = get_anisotropy(calc, theta=0.0, nbands=nbands, width=width)
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
     E_y = get_anisotropy(calc, theta=np.pi / 2, phi=np.pi / 2,
                          nbands=nbands, width=width)
 
