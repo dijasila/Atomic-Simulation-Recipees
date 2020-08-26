@@ -199,7 +199,7 @@ def calculate_pdos(dos, calc):
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
-    print(sal_i, ns)
+
     # Set up progressbar
     if mpi.world.rank == 0:
         pb = ProgressBar()
