@@ -1,5 +1,5 @@
 import numpy as np
-from asr.core import command, option, file_barrier
+from asr.core import command, option
 
 
 @command(module='asr.exchange',
@@ -76,18 +76,11 @@ def get_parameters(gs, exchange, txt=False,
                    dis_cut=0.2, line=False, a0=None):
     """Extract Heisenberg parameters."""
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
     from gpaw.spinorbit import get_anisotropy
     from ase.dft.bandgap import bandgap
-    from gpaw.utilities.ibz2bz import ibz2bz
 
-    with file_barrier(['gs_2mag_nosym.gpw']):
-        ibz2bz(gs, 'gs_2mag_nosym.gpw')
-    with file_barrier(['exchange_nosym.gpw']):
-        ibz2bz(exchange, 'exchange_nosym.gpw')
-
-    calc_gs_2mag = GPAW('gs_2mag_nosym.gpw', communicator=serial_comm, txt=None)
-    calc_exchange = GPAW('exchange_nosym.gpw', communicator=serial_comm, txt=None)
+    calc_gs_2mag = GPAW(gs)
+    calc_exchange = GPAW(exchange)
     m_gs = calc_gs_2mag.get_magnetic_moment()
     m_ex = calc_exchange.get_magnetic_moment()
     if np.abs(m_gs) > np.abs(m_ex):
@@ -120,23 +113,19 @@ def get_parameters(gs, exchange, txt=False,
 
     gap_fm, p1, p2 = bandgap(calc_fm, output=None)
     gap_afm, p1, p2 = bandgap(calc_afm, output=None)
-    if gap_fm > 0 and gap_afm > 0:
-        width = 0.001
-    else:
-        width = None
 
     E_fm_x = get_anisotropy(calc_fm, theta=np.pi / 2, phi=0,
-                            width=width, nbands=nbands) / 2
+                            nbands=nbands) / 2
     E_fm_y = get_anisotropy(calc_fm, theta=np.pi / 2, phi=np.pi / 2,
-                            width=width, nbands=nbands) / 2
+                            nbands=nbands) / 2
     E_fm_z = get_anisotropy(calc_fm, theta=0, phi=0,
-                            width=width, nbands=nbands) / 2
+                            nbands=nbands) / 2
     E_afm_x = get_anisotropy(calc_afm, theta=np.pi / 2, phi=0,
-                             width=width, nbands=nbands) / 2
+                             nbands=nbands) / 2
     E_afm_y = get_anisotropy(calc_afm, theta=np.pi / 2, phi=np.pi / 2,
-                             width=width, nbands=nbands) / 2
+                             nbands=nbands) / 2
     E_afm_z = get_anisotropy(calc_afm, theta=0, phi=0,
-                             width=width, nbands=nbands) / 2
+                             nbands=nbands) / 2
     E_fm_x = (E_fm_x + E_fm_y) / 2
     E_afm_x = (E_afm_x + E_afm_y) / 2
 
