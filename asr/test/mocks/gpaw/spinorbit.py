@@ -1,26 +1,25 @@
 import numpy as np
 
 
-def get_spinorbit_eigenvalues(
+def soc_eigenstates(
         calc,
-        bands=None,
-        gw_kn=None,
-        return_spin=False,
-        return_wfs=False,
+        n1=None,
+        n2=None,
         scale=1.0,
         theta=0.0,
         phi=0.0,
-):
+        eigenvalues=None):
 
     nk = len(calc.get_ibz_k_points())
     nspins = 2
     nbands = calc.get_number_of_bands()
-    bands = list(range(nbands))
+    n1 = n1 or 0
+    n2 = n2 or nbands
 
     e_ksn = np.array(
         [
             [
-                calc.get_eigenvalues(kpt=k, spin=s)[bands]
+                calc.get_eigenvalues(kpt=k, spin=s)[n1:n2]
                 for s in range(nspins)
             ]
             for k in range(nk)
@@ -32,11 +31,21 @@ def get_spinorbit_eigenvalues(
     s_kvm[:, 2, ::2] = -1
     e_km = e_ksn.reshape((nk, -1))
     e_km.sort(-1)  # Make sure eigenvalues are in ascending order
-    if return_spin:
-        return e_km.T, s_kvm
-    else:
-        return e_km.T
+    return SOC(e_km, s_kvm, calc.get_fermi_level())
+
+
+class SOC:
+    def __init__(self, e_km, s_kvm, fermi_level):
+        self.eig_km = e_km
+        self.s_kmv = s_kvm.transpose((0, 2, 1))
+        self.fermi_level = fermi_level
+
+    def eigenvalues(self):
+        return self.eig_km
+
+    def spin_projections(self):
+        return self.s_kmv
 
 
 def get_anisotropy(*args, **kwargs):
-    return 0
+    return 0.0
