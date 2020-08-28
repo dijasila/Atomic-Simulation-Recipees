@@ -539,14 +539,12 @@ def create_folder_structure(structure, structure_dict, chargestates,
                         write(charge_folder_name + '/unrelaxed.json', struc)
                     elif i < 0:
                         os.system(
-                            'ln -s {}/../charge_{}/structure.json {}'
-                            '/unrelaxed.json'.format(charge_folder_name,
-                                                     i + 1, charge_folder_name))
+                            'ln -s ../charge_{}/structure.json {}'
+                            '/unrelaxed.json'.format(i + 1, charge_folder_name))
                     elif i > 0:
                         os.system(
-                            'ln -s {}/../charge_{}/structure.json {}'
-                            '/unrelaxed.json'.format(charge_folder_name,
-                                                     i - 1, charge_folder_name))
+                            'ln -s ../charge_{}/structure.json {}'
+                            '/unrelaxed.json'.format(i - 1, charge_folder_name))
 
     return None
 
