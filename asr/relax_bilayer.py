@@ -53,9 +53,11 @@ def initial_displacement(atoms, distance):
 @option('-n', '--name', help='Name of final structure file',
         default='structure.json')
 @option('--tol', help='Convergence threshold',
-        type=float, default=1e-4)
+        type=float, default=1e-2)
 @option('-d', '--distance', help='Initial Distance',
         type=float, default=3)
+@option('-v', '--vacuum', help='Extra vacuum',
+        type=float, default=6)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
@@ -63,8 +65,9 @@ def main(atoms: Atoms,
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
          name='../structure.json',
-         tol=1e-4,
-         distance=3):
+         tol=1e-2,
+         distance=3,
+         vacuum=6):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
@@ -92,7 +95,8 @@ def main(atoms: Atoms,
 
     d0 = initial_displacement(atoms, distance)
     # atoms.cell[2, 2] = vacuum
-    atoms.cell[2, 2] *= 2
+    # atoms.cell[2, 2] *= 2
+    atoms.cell[2, 2] += vacuum
 
     opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
                                 tol=tol)
