@@ -501,11 +501,11 @@ def create_folder_structure(structure, structure_dict, chargestates,
         if structure_dict[element].get('structure') is not None:
             struc = structure_dict[element].get('structure')
             params = structure_dict[element].get('parameters')
-            try:
-                write(folder_name + '/structure.json', struc)
-                write_json(folder_name + '/params.json', params)
-            except FileExistsError:
-                print('WARNING: files already exist inside this folder.')
+            # try:
+            #     write(folder_name + '/structure.json', struc)
+            write_json(folder_name + '/params.json', params)
+            # except FileExistsError:
+            #     print('WARNING: files already exist inside this folder.')
         else:
             sub_dict = structure_dict[element]
             j = 0
@@ -535,9 +535,10 @@ def create_folder_structure(structure, structure_dict, chargestates,
                     params = sub_dict[sub_element].get(
                         charge_name).get('parameters')
                     write_json(charge_folder_name + '/params.json', params)
-                    if i == 0:
-                        write(charge_folder_name + '/unrelaxed.json', struc)
-                    elif i < 0:
+                    # if i == 0:
+                    #     write(charge_folder_name + '/unrelaxed.json', struc)
+                    # elif i < 0:
+                    if i < 0:
                         os.system(
                             'ln -s ../charge_{}/structure.json {}'
                             '/unrelaxed.json'.format(i + 1, charge_folder_name))
