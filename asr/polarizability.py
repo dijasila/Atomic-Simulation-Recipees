@@ -41,13 +41,17 @@ def get_kpts_size(atoms, density):
          requires=['gs.gpw'],
          webpanel=webpanel)
 @option(
-    '--gs', help='Ground state on which response is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
+    '--gs', help='Ground state on which response is based',
+    type=str)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
+def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
+         xc: str = 'RPA', bandfactor: int = 5):
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW
@@ -210,14 +214,14 @@ def polarizability(row, fx, fy, fz):
                 np.real(alphax_w),
                 '--',
                 c='C1',
-                label='real interband')
+                label='real (interband)')
         else:
             ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
     ax.set_title('x-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
@@ -242,14 +246,14 @@ def polarizability(row, fx, fy, fz):
                 np.real(alphay_w),
                 '--',
                 c='C1',
-                label='real interband')
+                label='real (interband)')
         else:
             ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
     ax.set_title('y-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
@@ -262,7 +266,7 @@ def polarizability(row, fx, fy, fz):
     ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
     ax.set_title('z-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
     ax.legend()

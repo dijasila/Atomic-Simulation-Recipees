@@ -52,8 +52,8 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          webpanel=webpanel)
-@argument('databases', nargs=-1)
-def main(databases):
+@argument('databases', nargs=-1, type=str)
+def main(databases: List[str]):
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -75,6 +75,9 @@ def main(databases):
           reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
           "DFT" means bare DFT references energies. "DFT+D3" indicate that the
           reference also include the D3 dispersion correction.
+        - energy_key (optional): Indicates the key-value-pair that represents
+          the total energy of a material from. If not specified the
+          default value of 'energy' will be used.
 
     The name and link keys are given as f-strings and can this refer to
     key-value-pairs in the given database. For example, valid metadata looks
@@ -89,6 +92,7 @@ def main(databases):
             'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
             'label': '{row.formula}',
             'method': 'DFT',
+            'energy_key': 'total_energy',
         }
 
     Parameters
@@ -144,7 +148,11 @@ def main(databases):
         dbdata[database] = {'rows': rows,
                             'metadata': metadata}
 
-    ref_energies = get_reference_energies(atoms, databases[0])
+    ref_database = databases[0]
+    ref_metadata = dbdata[ref_database]['metadata']
+    ref_energy_key = ref_metadata.get('energy_key', 'energy')
+    ref_energies = get_reference_energies(atoms, ref_database,
+                                          energy_key=ref_energy_key)
     hform = hof(energy,
                 count,
                 ref_energies)
@@ -152,8 +160,10 @@ def main(databases):
     references = []
     for data in dbdata.values():
         metadata = data['metadata']
+        energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
-            hformref = hof(row.energy, row.count_atoms(), ref_energies)
+            hformref = hof(row[energy_key],
+                           row.count_atoms(), ref_energies)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -178,7 +188,7 @@ def main(databases):
     if len(count) == 1:
         ehull = hform
     else:
-        pd = PhaseDiagram(pdrefs)
+        pd = PhaseDiagram(pdrefs, verbose=False)
         e0, indices, coefs = pd.decompose(formula)
         ehull = hform - e0 / len(atoms)
         results['indices'] = indices.tolist()
@@ -203,7 +213,7 @@ def main(databases):
     return results
 
 
-def get_reference_energies(atoms, references):
+def get_reference_energies(atoms, references, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
@@ -212,7 +222,7 @@ def get_reference_energies(atoms, references):
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
-            e_ref = row.energy / row.natoms
+            e_ref = row[energy_key] / row.natoms
             assert symbol not in ref_energies
             ref_energies[symbol] = e_ref
 

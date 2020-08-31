@@ -16,8 +16,10 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'],
          webpanel=webpanel)
 @option('--name', type=str)
-@option('--kptdensity', help='K point kptdensity')
-def main(name='dos.gpw', kptdensity=50):
+@option('--filename', type=str)
+@option('--kptdensity', help='K point kptdensity', type=float)
+def main(name: str = 'dos.gpw', filename: str = 'dos.json',
+         kptdensity: float = 12.0):
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW

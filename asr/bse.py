@@ -20,17 +20,18 @@ def get_kpts_size(atoms, kptdensity):
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='480:20h')
-@option('--gs', help='Ground state on which BSE is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
-@option('--nv_s', help='Valence bands included')
-@option('--nc_s', help='Conduction bands included')
+@option('--gs', help='Ground state on which BSE is based', type=str)
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--nv_s', help='Valence bands included', type=float)
+@option('--nc_s', help='Conduction bands included', type=float)
 @option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
-              nv_s=-2.3, nc_s=2.3):
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+              mode: str = 'BSE', bandfactor: int = 6,
+              nv_s: float = -2.3, nc_s: float = 2.3):
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
@@ -221,7 +222,7 @@ def absorption(row, filename, direction='x'):
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
     ax.set_title(f'{direction}-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
     else:

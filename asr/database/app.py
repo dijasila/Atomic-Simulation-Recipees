@@ -1,3 +1,4 @@
+from typing import List
 from asr.core import command, option, argument
 
 import tempfile
@@ -21,7 +22,7 @@ app.jinja_loader.searchpath.append(str(path))
 
 def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_kd
+    from asr.database.fromtree import parse_key_descriptions
     from ase.db.web import create_key_descriptions
 
     flatten = {key: value
@@ -47,7 +48,7 @@ def create_key_descriptions(db=None):
         kd[key] = description
 
     kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
-          key, desc in parse_kd(kd).items()}
+          key, desc in parse_key_descriptions(kd).items()}
 
     return create_key_descriptions(kd)
 
@@ -131,7 +132,7 @@ def initialize_project(database):
 
     db = connect(database, serial=True)
     metadata = db.metadata
-    name = metadata.get("name", database)
+    name = metadata.get("name", Path(database).name)
 
     # Make temporary directory
     (tmpdir / name).mkdir()
@@ -160,10 +161,10 @@ def initialize_project(database):
 
 
 @command()
-@argument("databases", nargs=-1)
-@option("--host", help="Host address.")
+@argument("databases", nargs=-1, type=str)
+@option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases, host="0.0.0.0", test=False):
+def main(databases: List[str], host: str = "0.0.0.0", test: bool = False):
     for database in databases:
         initialize_project(database)
 

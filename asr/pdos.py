@@ -38,16 +38,16 @@ class SOCDOS(DOS):
         from asr.utils.gpw2eigs import calc2eigs
         from asr.magnetic_anisotropy import get_spin_axis
 
-        # Initiate calculator object and get the spin-orbit eigenvalues
-        calc = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
-        theta, phi = get_spin_axis()
-        e_skm, ef = calc2eigs(calc, theta=theta, phi=phi, ranks=[0])
-
         # Only the rank=0 should have an actual DOS object.
         # The others receive the output as a broadcast.
         self.world = mpi.world
-        if mpi.world.rank == 0:
-            DOS.__init__(self, calc, npts=npts, **kwargs)
+        if self.world.rank == 0:
+            # Initiate calculator object and get the spin-orbit eigenvalues
+            calc0 = GPAW(gpw, communicator=mpi.serial_comm, txt=None)
+            theta, phi = get_spin_axis()
+            e_skm, ef = calc2eigs(calc0, theta=theta, phi=phi, ranks=[0])
+
+            DOS.__init__(self, calc0, npts=npts, comm=calc0.world, **kwargs)
 
             # Hack the number of spins
             self.nspins = 1
@@ -56,9 +56,9 @@ class SOCDOS(DOS):
             if e_skm.ndim == 2:
                 e_skm = e_skm[np.newaxis]
             e_skn = e_skm - ef
-            bzkpts = calc.get_bz_k_points()
+            bzkpts = calc0.get_bz_k_points()
             size, offset = k2so(bzkpts)
-            bz2ibz = calc.get_bz_to_ibz_map()
+            bz2ibz = calc0.get_bz_to_ibz_map()
             shape = (self.nspins, ) + tuple(size) + (-1, )
             self.e_skn = e_skn[:, bz2ibz].reshape(shape)
         else:
@@ -214,22 +214,16 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig
     # PDOS without spin-orbit coupling
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Projected band structure and DOS (PBE)',
              'columns': [[],
                          [fig('pbe-pdos_nosoc.png', link='empty')]],
              'plot_descriptions': [{'function': plot_pdos_nosoc,
                                     'filenames': ['pbe-pdos_nosoc.png']}],
-             'sort': 14}
+             'sort': 13}
 
-    # Another panel to make sure sorting is correct
-    panel2 = {'title': 'Electronic band structure and projected DOS (PBE)',
-              'columns': [[],
-                          [table(row, 'Property', ['dos_at_ef_nosoc'],
-                                 kd=key_descriptions)]]}
-
-    return [panel, panel2]
+    return [panel]
 
 
 # ---------- Main functionality ---------- #
@@ -245,7 +239,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity=20.0, emptybands=20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20):
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -263,6 +257,7 @@ def calculate(kptdensity=20.0, emptybands=20):
 def main():
     from gpaw import GPAW
     from asr.core import singleprec_dict
+    from ase.parallel import parprint
 
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw', txt=None)
@@ -270,11 +265,15 @@ def main():
     results = {}
 
     # Calculate the dos at the Fermi energy
+    parprint('\nComputing dos at Ef', flush=True)
     results['dos_at_ef_nosoc'] = dos_at_ef(calc, 'pdos.gpw', soc=False)
+    parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
     results['dos_at_ef_soc'] = dos_at_ef(calc, 'pdos.gpw', soc=True)
 
     # Calculate pdos
+    parprint('\nComputing pdos', flush=True)
     results['pdos_nosoc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=False))
+    parprint('\nComputing pdos with spin-orbit coupling', flush=True)
     results['pdos_soc'] = singleprec_dict(pdos(calc, 'pdos.gpw', soc=True))
 
     # Log key descriptions
@@ -334,7 +333,6 @@ def calculate_pdos(calc, gpw, soc=True):
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
     from ase.utils import DevNull
-    from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
     world = mpi.world
 
@@ -368,7 +366,6 @@ def calculate_pdos(calc, gpw, soc=True):
     a_i = [a for s in range(ns) for a in l_a for l in l_a[a]]
     l_i = [l for s in range(ns) for a in l_a for l in l_a[a]]
     sal_i = [(s, a, l) for (s, a, l) in zip(s_i, a_i, l_i)]
-    parprint('\nComputing pdos %s' % ('with spin-orbit coupling' * soc))
     if mpi.world.rank == 0:
         pb = ProgressBar()
     else:
@@ -523,8 +520,7 @@ def plot_pdos_soc(*args, **kwargs):
 
 
 def plot_pdos(row, filename, soc=True,
-              figsize=(5.5, 5),
-              lw=1, loc='best'):
+              figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
@@ -601,7 +597,6 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.legend(loc=loc)
     ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
 
     # Set up axis limits
@@ -630,6 +625,10 @@ def plot_pdos(row, filename, soc=True,
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
         ax.set_ylabel(r'$E$ [eV]')
+
+    # Set up legend
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
+               ncol=3, mode="expand", borderaxespad=0.)
 
     plt.savefig(filename, bbox_inches='tight')
     plt.close()

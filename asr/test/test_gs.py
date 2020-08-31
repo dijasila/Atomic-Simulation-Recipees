@@ -13,6 +13,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     from asr.core import read_json
     from asr.gs import calculate, main
     from ase.io import write
+    from ase.parallel import world
     import gpaw
     import gpaw.occupations
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
@@ -25,7 +26,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     calculate(
         calculator={
             "name": "gpaw",
-            "kpts": {"density": 2, "gamma": True},
+            "kpts": {"density": 6, "gamma": True},
         },
     )
 
@@ -38,19 +39,19 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
         spy.assert_called()
 
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
-    assert results.get("efermi") == approx(fermi_level)
+    assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:
         assert results.get("gap") == approx(gap)
     else:
         assert results.get("gap") == approx(0)
 
-    content = get_webcontent()
-    resultgap = results.get("gap")
-    assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
-    assert f"<td>Fermilevel</td><td>{fermi_level:0.3f}eV</td>" in \
-        content, content
-    assert "<td>Magneticstate</td><td>NM</td>" in \
-        content, content
+    if world.size == 1:
+        content = get_webcontent()
+        resultgap = results.get("gap")
+        assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
+        assert "<td>Fermilevel</td>" in content, content
+        assert "<td>Magneticstate</td><td>NM</td>" in \
+            content, content
 
 
 @pytest.mark.ci
@@ -73,7 +74,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-@pytest.mark.parametrize('atoms,parameters,magstate', [
+@pytest.mark.parametrize('atoms,parameters,results', [
     (Si,
      {
          'asr.gs@calculate': {
@@ -85,7 +86,8 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
              },
          }
      },
-     'NM'),
+     {'magstate': 'NM',
+      'gap': pytest.approx(0.55, abs=0.01)}),
     (Fe,
      {
          'asr.gs@calculate': {
@@ -97,15 +99,18 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
              },
          }
      },
-     'FM')
+     {'magstate': 'FM', 'gap': 0.0})
 ])
-def test_gs_integration_gpaw(asr_tmpdir, atoms, parameters, magstate):
+def test_gs_integration_gpaw(asr_tmpdir, atoms, parameters, results):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.core import read_json
     from asr.gs import main as groundstate
     from asr.setup.params import main as setupparams
     atoms.write('structure.json')
     setupparams(parameters)
-    groundstate()
+    gsresults = groundstate()
+
+    assert gsresults['gap'] == results['gap']
+
     magstateresults = read_json('results-asr.magstate.json')
-    assert magstateresults["magstate"] == magstate
+    assert magstateresults["magstate"] == results['magstate']

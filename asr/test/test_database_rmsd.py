@@ -87,6 +87,31 @@ def test_database_rmsd_rattled(test_material):
 
 
 @pytest.mark.ci
+@pytest.mark.parametrize('atom_index', [0, -1])
+@pytest.mark.parametrize('axis', [0, 1, 2])
+@pytest.mark.parametrize('displacement', [0.01, 0.02])
+def test_database_rmsd_move_one_atom(test_material,
+                                     atom_index, axis, displacement):
+    """Test that rmsd=0 when comparing rotated structures."""
+    import numpy as np
+    from asr.database.rmsd import get_rmsd
+
+    pbc_c = test_material.get_pbc()
+    repeat = np.array([1, 1, 1], int)
+    repeat[np.argwhere(pbc_c)[0, 0]] = 2
+    atoms = test_material.repeat(repeat)
+    translations_av = np.zeros((len(atoms), 3), float)
+    translations_av[atom_index, axis] = displacement
+    atoms.translate(translations_av)
+    rmsd = get_rmsd(test_material, atoms)
+    # Logic of the formula below:
+    # The reference stucture is displaced according to the average displacement
+    # of all atoms hence the second term.
+    disp = displacement - displacement / len(atoms)
+    assert rmsd == pytest.approx(disp)
+
+
+@pytest.mark.ci
 @pytest.mark.parametrize('atoms1,atoms2', [
     (
         Atoms(symbols='Co2S2',

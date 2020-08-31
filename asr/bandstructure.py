@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, option
 
 tests = []
@@ -34,9 +35,10 @@ tests.append({'description': 'Test band structure of 2D-BN.',
          dependencies=['asr.gs@calculate'],
          tests=tests)
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints')
-@option('--emptybands')
-def calculate(kptpath=None, npoints=400, emptybands=20):
+@option('--npoints', type=int)
+@option('--emptybands', type=int)
+def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
+              emptybands: int = 20):
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -320,7 +322,7 @@ def bs_pbe(row,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
@@ -477,7 +479,7 @@ def pdos_bs_pbe(row,
 
 
 def webpanel(row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -489,68 +491,14 @@ def webpanel(row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
-    key_descriptions_noxc = {
-        k: rmxclabel(d, xcs)
-        for k, d in key_descriptions.items()
-    }
-
-    if row.get('gap', 0) > 0.0:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-    else:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-
-    gap = row.get('gap')
-    if gap > 0:
-        if row.get('evac'):
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
-        else:
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         [fig('bz-with-gaps.png'), pbe]],
+                         [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14.5}
+             'sort': 12}
 
     return [panel]
 
@@ -564,7 +512,7 @@ def webpanel(row, key_descriptions):
          webpanel=webpanel)
 def main():
     from gpaw import GPAW
-    from ase.dft.band_structure import get_band_structure
+    from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     from asr.core import read_json
     import copy

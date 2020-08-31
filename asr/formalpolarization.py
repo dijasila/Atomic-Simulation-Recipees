@@ -12,7 +12,7 @@ The central recipe of this module is :func:`asr.formalpolarization.main`.
 
 """
 import numpy as np
-from asr.core import command, option
+from asr.core import command, option, DictStr
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -66,7 +66,7 @@ def get_wavefunctions(atoms, name, calculator):
     from ase.calculators.calculator import get_calculator_class
     calcname = calculator.pop("name")
     calc = get_calculator_class(calcname)(**calculator)
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     atoms.get_potential_energy()
     calc.write(name, 'all')
 
@@ -87,10 +87,10 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
 
 
 @command('asr.formalpolarization')
-@option('--gpwname', help='Formal polarization gpw file name.')
-@option('--calculator', help='Calculator parameters.')
-def main(gpwname='formalpol.gpw',
-         calculator={
+@option('--gpwname', help='Formal polarization gpw file name.', type=str)
+@option('--calculator', help='Calculator parameters.', type=DictStr())
+def main(gpwname: str = 'formalpol.gpw',
+         calculator: dict = {
              'name': 'gpaw',
              'mode': {'name': 'pw', 'ecut': 800},
              'xc': 'PBE',
@@ -98,6 +98,7 @@ def main(gpwname='formalpol.gpw',
              'kpts': {'density': 12.0},
              'occupations': {'name': 'fermi-dirac',
                              'width': 0.05},
+             'symmetry': 'off',
              'convergence': {'eigenstates': 1e-11,
                              'density': 1e-7},
              'txt': 'formalpol.txt',

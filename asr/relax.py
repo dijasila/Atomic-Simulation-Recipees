@@ -11,13 +11,13 @@ The relax recipe has a couple of note-worthy features::
     and raises an error if this happens.
 """
 
+from pathlib import Path
 import numpy as np
-from ase.io import read, write, Trajectory
-from ase.io.formats import UnknownFileTypeError
+from ase.io import write, Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.core import command, option
+from asr.core import command, option, AtomsFile, DictStr
 from math import sqrt
 import time
 
@@ -137,7 +137,7 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
+def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
 
@@ -178,10 +178,11 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
+    name = Path(tmp_atoms_file).with_suffix('').name
     try:
-        trajfile = Trajectory(name + '.traj', 'a', atoms)
+        trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
         opt = myBFGS(filter,
-                     logfile=name + '.log',
+                     logfile=name,
                      trajectory=trajfile)
 
         # fmax=0 here because we have implemented our own convergence criteria
@@ -227,78 +228,49 @@ def relax(atoms, name, emin=-np.inf, smask=None, dftd3=True,
     return atoms
 
 
-def BN_check():
-    # Check that 2D-BN doesn't relax to its 3D form
-    from asr.core import read_json
-    results = read_json('results-asr.relax.json')
-    assert results['c'] > 5
-
-
-tests = []
-testargs = ("{'mode':{'ecut':300,'dedecut':'estimate',...},"
-            "'kpts':{'density':2,'gamma':True},...}")
-tests.append({'description': 'Test relaxation of Si.',
-              'tags': ['gitlab-ci'],
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
-tests.append({'description': 'Test relaxation of Si (cores=2).',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run -p 2 "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'results': [{'file': 'results-asr.relax.json',
-                           'c': (3.88, 0.001)}]})
-tests.append({'description': 'Test relaxation of 2D-BN.',
-              'name': 'test_asr.relax_2DBN',
-              'cli': ['asr run "setup.materials -s BN,natoms=2"',
-                      'ase convert materials.json unrelaxed.json',
-                      f'asr run "relax -c {testargs}"',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"'],
-              'test': BN_check})
-
-
-def log(*args, **kwargs):
-    atoms = read('unrelaxed.json')
-
-    return {'atoms': atoms.todict()}
-
-
 def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
 @command('asr.relax',
-         requires=['unrelaxed.json'],
-         creates=['structure.json'],
-         log=log)
-@option('-c', '--calculator', help='Calculator and its parameters.')
-@option('--d3/--nod3', help='Relax with vdW D3')
-@option('--fixcell', is_flag=True, help='Don\'t relax stresses')
-@option('--allow-symmetry-breaking', is_flag=True,
-        help='Allow symmetries to be broken during relaxation')
-@option('--fmax', help='Maximum force allowed')
-@option('--enforce-symmetry', is_flag=True,
-        help='Symmetrize forces and stresses.')
-def main(calculator={'name': 'gpaw',
-                     'mode': {'name': 'pw', 'ecut': 800},
-                     'xc': 'PBE',
-                     'kpts': {'density': 6.0, 'gamma': True},
-                     'basis': 'dzp',
-                     'symmetry': {'symmorphic': False},
-                     'convergence': {'forces': 1e-4},
-                     'txt': 'relax.txt',
-                     'occupations': {'name': 'fermi-dirac',
-                                     'width': 0.05},
-                     'charge': 0},
-         d3=False, fixcell=False, allow_symmetry_breaking=False,
-         fmax=0.01, enforce_symmetry=True):
+         creates=['structure.json'])
+@option('-a', '--atoms', help='Atoms to be relaxed.',
+        type=AtomsFile(), default='unrelaxed.json')
+@option('--tmp-atoms', help='File containing recent progress.',
+        type=AtomsFile(must_exist=False), default='relax.traj')
+@option('--tmp-atoms-file', help='File to store snapshots of relaxation.',
+        default='relax.traj', type=str)
+@option('-c', '--calculator', help='Calculator and its parameters.',
+        type=DictStr())
+@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+@option('--fixcell/--dont-fixcell',
+        help="Don't relax stresses.",
+        is_flag=True)
+@option('--allow-symmetry-breaking/--dont-allow-symmetry-breaking',
+        help='Allow symmetries to be broken during relaxation.',
+        is_flag=True)
+@option('--fmax', help='Maximum force allowed.', type=float)
+@option('--enforce-symmetry/--dont-enforce-symmetry',
+        help='Symmetrize forces and stresses.', is_flag=True)
+def main(atoms: Atoms,
+         calculator: dict = {'name': 'gpaw',
+                             'mode': {'name': 'pw', 'ecut': 800},
+                             'xc': 'PBE',
+                             'kpts': {'density': 6.0, 'gamma': True},
+                             'basis': 'dzp',
+                             'symmetry': {'symmorphic': False},
+                             'convergence': {'forces': 1e-4},
+                             'txt': 'relax.txt',
+                             'occupations': {'name': 'fermi-dirac',
+                                             'width': 0.05},
+                             'charge': 0},
+         tmp_atoms: Atoms = None,
+         tmp_atoms_file: str = 'relax.traj',
+         d3: bool = False,
+         fixcell: bool = False,
+         allow_symmetry_breaking: bool = False,
+         fmax: float = 0.01,
+         enforce_symmetry: bool = True):
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in
@@ -330,12 +302,13 @@ def main(calculator={'name': 'gpaw',
     """
     from ase.calculators.calculator import get_calculator_class
 
-    try:
-        atoms = read('relax.traj')
-    except (IOError, UnknownFileTypeError):
-        atoms = read('unrelaxed.json', parallel=False)
-        if not atoms.has('initial_magmoms'):
-            set_initial_magnetic_moments(atoms)
+    if tmp_atoms is not None:
+        atoms = tmp_atoms
+
+    # Make our own copy
+    atoms = atoms.copy()
+    if not atoms.has('initial_magmoms'):
+        set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
@@ -363,19 +336,18 @@ def main(calculator={'name': 'gpaw',
 
     calc = Calculator(**calculator)
     # Relax the structure
-    atoms = relax(atoms, name='relax', dftd3=d3,
+    atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                   fixcell=fixcell,
                   allow_symmetry_breaking=allow_symmetry_breaking,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     # If the maximum magnetic moment on all atoms is big then
     magmoms = atoms.get_magnetic_moments()
-    magmom = calc.get_magnetic_moment()
-    if abs(magmom) < 0.02 and not abs(magmoms).max() > 0.1:
+    if not abs(magmoms).max() > 0.1:
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
         # Relax the structure
-        atoms = relax(atoms, name='relax', dftd3=d3,
+        atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                       fixcell=fixcell,
                       allow_symmetry_breaking=allow_symmetry_breaking,
                       dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
@@ -402,7 +374,7 @@ def main(calculator={'name': 'gpaw',
         for setup in calc.setups:
             fingerprint[setup.symbol] = setup.fingerprint
         results['__log__'] = {'nvalence': calc.setups.nvalence,
-                              'setup_fingerprints__': fingerprint}
+                              'setup_fingerprints': fingerprint}
 
     results['__key_descriptions__'] = \
         {'etot': 'Total energy [eV]',

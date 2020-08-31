@@ -9,11 +9,12 @@ from asr.core import command
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
-             'columns': [[fig('pbe-projected-bs.png', link='empty')], []],
+    panel = {'title': 'Projected band structure and DOS (PBE)',
+             'columns': [[fig('pbe-projected-bs.png', link='empty')],
+                         [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': projected_bs_pbe,
                                     'filenames': ['pbe-projected-bs.png']}],
-             'sort': 14}
+             'sort': 13.5}
 
     return [panel]
 
@@ -151,7 +152,7 @@ def get_bs_sampling(bsp, npoints=40):
     Parameters
     ----------
     bsp : obj
-        ase.dft.band_structure.BandStructurePlot object
+        ase.spectrum.band_structure.BandStructurePlot object
     npoints : int
         number of k-points to sample along band structure
 
@@ -300,7 +301,7 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data
@@ -395,8 +396,7 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
                                      linewidth=0.0))
     # Generate legend
     plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
-               title='Fraction of orbital projection weights:',
-               bbox_to_anchor=(0., -0.08, 1., 0.), loc='upper left',
+               bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
                ncol=3, mode="expand", borderaxespad=0.)
 
     # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())

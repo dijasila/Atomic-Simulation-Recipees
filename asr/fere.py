@@ -134,15 +134,20 @@ def multiply_formula(prod, j):
     return Formula.from_dict({k: v * j for k, v in form.count().items()})
 
 
-def safe_get(db, prod):
+def safe_get(db, prod, query=''):
     result = None
-    for j in range(20):
+    for j in range(50):
         formula = multiply_formula(prod, j + 1)
         try:
-            result = db.get("formula={}".format(formula))
+            q = ',' + query if query != '' else ''
+            result = db.get("formula={}".format(formula) + q)
             break
-        except KeyError:
-            continue
+        except Exception as e:
+            if type(e) == KeyError:
+                continue
+            else:
+                print("formula={}".format(formula) + q)
+                raise e
 
     if result is None:
         raise MaterialNotFoundError("Could not find {} in db".format(prod))
@@ -150,11 +155,11 @@ def safe_get(db, prod):
     return result
 
 
-def get_hof(db, formula):
+def get_hof(db, formula, query='', row=None):
     from ase.formula import Formula
 
     elements = list(formula.count().keys())
-    row = safe_get(db, str(formula))
+    row = row or safe_get(db, str(formula), query=query)
     dbformula = Formula(str(row.formula))
     hof = row.energy
     for el in elements:
@@ -235,21 +240,24 @@ def create_corrected_db(newname, db, reactions, els_dMu):
 
 
 @command("asr.fere", resources="1:1h")
-@option("--newdbname", help="Name of the new db file")
-@option("--dbname", help="Name of the base db file")
+@option("--newdbname", help="Name of the new db file", type=str)
+@option("--dbname", help="Name of the base db file", type=str)
 @option(
-    "--reactionsname", help="File containing reactions and energies with which to fit"
+    "--reactionsname",
+    help="File containing reactions and energies with which to fit",
+    type=str,
 )
 @option(
     "--referencesname",
     help="File containing the elements"
     + " whose references energies should be adjusted",
+    type=str,
 )
 def main(
-    newdbname="newdb.db",
-    dbname="db.db",
-    reactionsname="reactions.txt",
-    referencesname="references.txt",
+    newdbname: str = "newdb.db",
+    dbname: str = "db.db",
+    reactionsname: str = "reactions.txt",
+    referencesname: str = "references.txt",
 ):
     from ase.db import connect
     import os

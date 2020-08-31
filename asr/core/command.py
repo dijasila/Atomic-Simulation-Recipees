@@ -1,6 +1,6 @@
 """Module implementing the ASRCommand class and related decorators."""
-from . import (parse_dict_string, read_json, write_json, md5sum,
-               file_barrier, unlink)
+from . import (read_json, write_json, md5sum,
+               file_barrier, unlink, clickify_docstring)
 from ase.parallel import parprint
 import click
 import copy
@@ -171,23 +171,49 @@ class ASRCommand:
         sig = inspect.signature(self._main)
         self.signature = sig
 
+        # Setup the CLI
+        update_wrapper(self, self._main)
+
+    def get_signature(self):
+        """Return signature with updated defaults based on params.json."""
         myparams = []
-        defparams = {}
-        for key, value in sig.parameters.items():
+        for key, value in self.signature.parameters.items():
             assert key in self.myparams, \
-                f'You havent provided a description for {key}'
-            if value.default is not inspect.Parameter.empty:
-                defparams[key] = value.default
+                f'Missing description for param={key}.'
             myparams.append(key)
 
-        myparams = [k for k, v in sig.parameters.items()]
+        # Check that all annotated parameters can be found in the
+        # actual function signature.
+        myparams = [k for k, v in self.signature.parameters.items()]
         for key in self.myparams:
-            assert key in myparams, f'Param: {key} is unknown'
-        self.defparams = defparams
+            assert key in myparams, f'param={key} is unknown.'
 
-        # Setup the CLI
-        self.setup_cli()
-        update_wrapper(self, self._main)
+        if Path('params.json').is_file():
+            # Read defaults from params.json.
+            paramsettings = read_json('params.json').get(self.name, {})
+            if paramsettings:
+                signature_parameters = dict(self.signature.parameters)
+                for key, new_default in paramsettings.items():
+                    assert key in signature_parameters, \
+                        f'Unknown param in params.json: param={key}.'
+                    parameter = signature_parameters[key]
+                    signature_parameters[key] = parameter.replace(
+                        default=new_default)
+
+                new_signature = self.signature.replace(
+                    parameters=[val for val in signature_parameters.values()])
+                return new_signature
+
+        return self.signature
+
+    def get_defaults(self):
+        """Get default parameters based on signature and params.json."""
+        signature = self.get_signature()
+        defparams = {}
+        for key, value in signature.parameters.items():
+            if value.default is not inspect.Parameter.empty:
+                defparams[key] = value.default
+        return defparams
 
     @property
     def requires(self):
@@ -233,6 +259,10 @@ class ASRCommand:
             return True
         return False
 
+    def get_parameters(self):
+        """Get the parameters of this function."""
+        return self.myparams
+
     def setup_cli(self):
         # Click CLI Interface
         CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -240,51 +270,24 @@ class ASRCommand:
         cc = click.command
         co = click.option
 
-        def clickify_docstring(doc):
-            if doc is None:
-                return
-            doc_n = doc.split('\n')
-            clickdoc = []
-            skip = False
-            for i, line in enumerate(doc_n):
-                if skip:
-                    skip = False
-                    continue
-                lspaces = len(line) - len(line.lstrip(' '))
-                spaces = ' ' * lspaces
-                bb = spaces + '\b'
-                if line.endswith('::'):
-                    skip = True
-
-                    if not doc_n[i - 1].strip(' '):
-                        clickdoc.pop(-1)
-                        clickdoc.extend([bb, line, bb])
-                    else:
-                        clickdoc.extend([line, bb])
-                elif ('-' in line
-                      and (spaces + '-' * (len(line) - lspaces)) == line):
-                    clickdoc.insert(-1, bb)
-                    clickdoc.append(line)
-                else:
-                    clickdoc.append(line)
-            doc = '\n'.join(clickdoc)
-
-            return doc
-
         help = clickify_docstring(self._main.__doc__) or ''
 
         command = cc(context_settings=CONTEXT_SETTINGS,
                      help=help)(self.main)
 
         # Convert parameters into CLI Parameters!
-        for name, param in self.myparams.items():
+        defparams = self.get_defaults()
+        for name, param in self.get_parameters().items():
             param = param.copy()
             alias = param.pop('alias')
             argtype = param.pop('argtype')
             name2 = param.pop('name')
             assert name == name2
             assert name in self.myparams
-            default = self.defparams.get(name, None)
+            if 'default' in param:
+                default = param.pop('default')
+            else:
+                default = defparams.get(name, None)
 
             if argtype == 'option':
                 command = co(show_default=True, default=default,
@@ -293,7 +296,7 @@ class ASRCommand:
                 assert argtype == 'argument'
                 command = click.argument(*alias, **param)(command)
 
-        self._cli = command
+        return command
 
     def cli(self, args=None):
         """Parse parameters from command line and call wrapped function.
@@ -304,10 +307,16 @@ class ASRCommand:
             List of command line arguments. If None: Read arguments from
             sys.argv.
         """
-        return self._cli(standalone_mode=False,
-                         prog_name=f'asr run {self.name}', args=args)
+        command = self.setup_cli()
+        return command(standalone_mode=False,
+                       prog_name=f'asr run {self.name}', args=args)
+
+    def get_wrapped_function(self):
+        """Return wrapped function."""
+        return self._main
 
     def __call__(self, *args, **kwargs):
+        """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
     def main(self, *args, **kwargs):
@@ -333,34 +342,11 @@ class ASRCommand:
 
         # Use the wrapped functions signature to create dictionary of
         # parameters
-        bound_arguments = self.signature.bind(*args, **kwargs)
+        signature = self.get_signature()
+        bound_arguments = signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
 
         params = dict(bound_arguments.arguments)
-        for key, value in params.items():
-            assert key in self.myparams, f'Unknown key: {key} {params}'
-            # Default type
-            if key not in self.defparams:
-                continue
-            if self.defparams[key] is None:
-                continue
-            tp = type(self.defparams[key])
-
-            if tp != type(value):
-                # Dicts has to be treated specially
-                if tp == dict:
-                    dct = copy.deepcopy(self.defparams[key])
-                    dct = parse_dict_string(value, dct=dct)
-                    params[key] = dct
-                else:
-                    params[key] = tp(value)
-
-        # Read arguments from params.json and overwrite params
-        if Path('params.json').is_file():
-            paramsettings = read_json('params.json').get(self.name, {})
-            for key, value in paramsettings.items():
-                assert key in self.myparams, f'Unknown key: {key} {params}'
-                params[key] = value
 
         paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                  params.items()])
