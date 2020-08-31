@@ -246,7 +246,9 @@ class RelaxResults(ASRResults):
     beta: float
     gamma: float
     key_descriptions = \
-        {'etot': 'Total energy [eV]',
+        {'atoms': 'Relaxed atomic structure',
+         'trajectory': 'Path taken when relaxing structure.',
+         'etot': 'Total energy [eV]',
          'edft': 'DFT total energy [eV]',
          'spos': 'Array: Scaled positions',
          'symbols': 'Array: Chemical symbols',
@@ -375,31 +377,25 @@ def main(atoms: Atoms,
     etot = atoms.get_potential_energy()
 
     cellpar = atoms.cell.cellpar()
-    results = {'etot': etot,
-               'edft': edft,
-               'a': cellpar[0],
-               'b': cellpar[1],
-               'c': cellpar[2],
-               'alpha': cellpar[3],
-               'beta': cellpar[4],
-               'gamma': cellpar[5],
-               'spos': atoms.get_scaled_positions(),
-               'symbols': atoms.get_chemical_symbols()}
 
-    # Calculator specific metadata
-    if calculatorname == 'gpaw':
-        # Get setup fingerprints
-        fingerprint = {}
-        for setup in calc.setups:
-            fingerprint[setup.symbol] = setup.fingerprint
-        results['__log__'] = {'nvalence': calc.setups.nvalence,
-                              'setup_fingerprints': fingerprint}
+    # XXX
+    # metadata = calc.get_metadata()
 
-    # For nm set magnetic moments to zero XXX
     # Save atomic structure
     write('structure.json', atoms)
-
-    return results
+    trajectory = Trajectory(tmp_atoms_file, 'r', atoms)
+    return RelaxResults(atoms=atoms,
+                        etot=etot,
+                        edft=edft,
+                        a=cellpar[0],
+                        b=cellpar[1],
+                        c=cellpar[2],
+                        alpha=cellpar[3],
+                        beta=cellpar[4],
+                        gamma=cellpar[5],
+                        spos=atoms.get_scaled_positions(),
+                        symbols=atoms.get_chemical_symbols(),
+                        trajectory=trajectory)
 
 
 if __name__ == '__main__':
