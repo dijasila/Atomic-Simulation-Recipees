@@ -66,7 +66,7 @@ def main(atoms: Atoms,
                            'kpts': {'density': 6.0, 'gamma': True}},
          name='../structure.json',
          tol=1e-2,
-         distance=3,
+         distance=5,
          vacuum=6):
     from asr.core import read_json
     from ase.io import read
@@ -76,6 +76,13 @@ def main(atoms: Atoms,
     top_layer = read('toplayer.json')
 
     t_c = read_json('translation.json')['translation_vector'].astype(float)
+
+    d0 = initial_displacement(atoms, distance)
+    maxz = np.max(atoms.positions[:, 2])
+    minz = np.min(atoms.positions[:, 2])
+    w = maxz - minz
+    atoms.cell[2, 2] += vacuum + w
+    top_layer.cell = atoms.cell
 
     if os.path.exists('energy_curve.npy'):
         energy_curve = np.load('energy_curve.npy', allow_pickle=True)
@@ -92,11 +99,6 @@ def main(atoms: Atoms,
         return get_energy(atoms, top_layer,
                           h, t_c, settings,
                           callback_fn, energy_curve)
-
-    d0 = initial_displacement(atoms, distance)
-    # atoms.cell[2, 2] = vacuum
-    # atoms.cell[2, 2] *= 2
-    atoms.cell[2, 2] += vacuum
 
     opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
                                 tol=tol)
@@ -117,7 +119,8 @@ def main(atoms: Atoms,
 
     return {'heights': curve[:, 0],
             'energies': curve[:, 1],
-            'optimal_height': hmin}
+            'optimal_height': hmin,
+            'energy': opt_result.fun}
 
 
 if __name__ == '__main__':
