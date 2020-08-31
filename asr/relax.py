@@ -10,14 +10,14 @@ The relax recipe has a couple of note-worthy features::
   - It continously checks after each step that no symmetries are broken,
     and raises an error if this happens.
 """
-
+from typing import List
 from pathlib import Path
 import numpy as np
 from ase.io import write, Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.core import command, option, AtomsFile, DictStr
+from asr.core import command, option, AtomsFile, DictStr, set_docstring, ASRResults
 from math import sqrt
 import time
 
@@ -231,6 +231,33 @@ def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
+@set_docstring
+class RelaxResults(ASRResults):
+    version: int = 0
+
+    etot: float
+    edft: float
+    spos: np.ndarray
+    symbols: List[str]
+    a: float
+    b: float
+    c: float
+    alpha: float
+    beta: float
+    gamma: float
+    key_descriptions = \
+        {'etot': 'Total energy [eV]',
+         'edft': 'DFT total energy [eV]',
+         'spos': 'Array: Scaled positions',
+         'symbols': 'Array: Chemical symbols',
+         'a': 'Cell parameter a [Ang]',
+         'b': 'Cell parameter b [Ang]',
+         'c': 'Cell parameter c [Ang]',
+         'alpha': 'Cell parameter alpha [deg]',
+         'beta': 'Cell parameter beta [deg]',
+         'gamma': 'Cell parameter gamma [deg]'}
+
+
 @command('asr.relax',
          creates=['structure.json'])
 @option('-a', '--atoms', help='Atoms to be relaxed.',
@@ -367,18 +394,6 @@ def main(atoms: Atoms,
             fingerprint[setup.symbol] = setup.fingerprint
         results['__log__'] = {'nvalence': calc.setups.nvalence,
                               'setup_fingerprints': fingerprint}
-
-    results['__key_descriptions__'] = \
-        {'etot': 'Total energy [eV]',
-         'edft': 'DFT total energy [eV]',
-         'spos': 'Array: Scaled positions',
-         'symbols': 'Array: Chemical symbols',
-         'a': 'Cell parameter a [Ang]',
-         'b': 'Cell parameter b [Ang]',
-         'c': 'Cell parameter c [Ang]',
-         'alpha': 'Cell parameter alpha [deg]',
-         'beta': 'Cell parameter beta [deg]',
-         'gamma': 'Cell parameter gamma [deg]'}
 
     # For nm set magnetic moments to zero XXX
     # Save atomic structure

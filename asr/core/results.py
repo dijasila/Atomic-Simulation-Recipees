@@ -3,8 +3,7 @@ from typing import get_type_hints, List, Any
 
 
 def get_object_descriptions(obj):
-
-    return obj.descriptions
+    return obj.key_descriptions
 
 
 def get_object_types(obj):
@@ -18,15 +17,19 @@ def format_key_description_pair(key: str, attr_type: type, description: str):
 def set_docstring(obj) -> str:
     descriptions = get_object_descriptions(obj)
     types = get_object_types(obj)
-    assert set(types) == set(descriptions)
-    docstring_parts: List[str] = []
+    type_keys = set(types)
+    description_keys = set(descriptions)
+    assert set(descriptions).issubset(set(types)), (type_keys, description_keys)
+    docstring_parts: List[str] = [obj.__doc__ or '', '', 'Parameters', '----------']
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
         string = format_key_description_pair(key, attr_type, description)
         docstring_parts.append(string)
+    docstring = "\n".join(docstring_parts)
 
-    return "\n".join(docstring_parts)
+    obj.__doc__ = docstring
+    return obj
 
 
 class WebPanel:
@@ -59,13 +62,17 @@ class ASRResults:
     ----------
     version : int
         The version number.
+    webpanel : WebPanel
+        Functionality for producting ASE compatible web-panels.
+    prev_version : ASRResults
+        Pointer to a previous results format.
     """
 
     version: int = 0
     webpanel: WebPanel = WebPanel()
     prev_version: Any = None
 
-    def __init__(self, dct):
+    def __init__(self, **dct):
         """Initialize results from dict."""
         self._dct = dct
 
@@ -75,7 +82,7 @@ class ASRResults:
 
     def __contains__(self, item):
         """Determine if item in self.dct."""
-        return item in self.dct
+        return item in self._dct
 
     def __iter__(self):
         """Iterate over keys."""
@@ -88,13 +95,20 @@ class ASRResults:
         return self.key
 
     def values(self):
-        """Wrap self.dct.values."""
+        """Wrap self._dct.values."""
         return self._dct.values()
 
     def items(self):
-        """Wrap self.dct.items."""
+        """Wrap self._dct.items."""
         return self._dct.items()
 
     def keys(self):
-        """Wrap self.dct.keys."""
+        """Wrap self._dct.keys."""
         return self._dct.keys()
+
+    def __str__(self):
+        """Convert data to string."""
+        string_parts = []
+        for key, value in self.items():
+            string_parts.append(f'{key}={value}')
+        return "\n".join(string_parts)
