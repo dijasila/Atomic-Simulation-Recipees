@@ -24,7 +24,7 @@ def calculate(calculator={'name': 'gpaw',
                           'occupations': {'name': 'fermi-dirac',
                                           'width': 0.05},
                           'convergence': {'bands': 'CBM+3.0'},
-                          'nbands': '300%',
+                          'nbands': '200%',
                           'txt': 'gs.txt',
                           'charge': 0}):
     """Calculate ground state file.
