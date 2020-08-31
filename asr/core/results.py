@@ -1,7 +1,36 @@
 """Implements ASRResults object and related quantities."""
+from typing import get_type_hints, List
+
+
+def get_object_descriptions(obj):
+
+    return obj.descriptions
+
+
+def get_object_types(obj):
+    return get_type_hints(obj)
+
+
+def format_key_description_pair(key: str, attr_type: type, description: str):
+    return f'{key}: {attr_type}\n    {description}'
+
+
+def set_docstring(obj):
+    descriptions = get_object_descriptions(obj)
+    types = get_object_types(obj)
+    assert set(types) == set(descriptions)
+    docstring_parts: List[str] = []
+    for key in descriptions:
+        description = descriptions[key]
+        attr_type = types[key]
+        string = format_key_description_pair(key, attr_type, description)
+        docstring_parts.append(string)
+
+    return "\n".join(docstring_parts)
 
 
 class WebPanel:
+    """Web-panel for presenting results."""
 
     pass
 
@@ -10,9 +39,17 @@ class ASRResults:
     """Base class for describing results generated with recipes.
 
     WIP: Over time, by default, this class should be immutable.
+
+    Attributes
+    ----------
+    version : int
+        The version number.
     """
 
-    def __init__(self, dct, webpanel: WebPanel = WebPanel):
+    version: int = 0
+
+    def __init__(self, dct,
+                 webpanel: WebPanel):
         """Initialize results from dict."""
         self._check_dct(dct)
         self._dct = dct
