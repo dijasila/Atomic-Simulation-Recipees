@@ -24,7 +24,8 @@ def set_default(settings):
 @command('asr.emasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.structureinfo',
-                       'asr.magnetic_anisotropy'],
+                       'asr.magnetic_anisotropy',
+                       'asr.gs'],
          creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
