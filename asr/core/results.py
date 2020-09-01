@@ -77,9 +77,10 @@ class ASRResults:
     webpanel: WebPanel = WebPanel()
     prev_version: Any = None
 
-    def __init__(self, **dct):
+    def __init__(self, metadata={}, **dct):
         """Initialize results from dict."""
         self._dct = dct
+        self.metadata = metadata
 
     def __getitem__(self, item):
         """Get item from self.dct."""
@@ -98,6 +99,23 @@ class ASRResults:
         if key in self.keys():
             return self._dct[key]
         return self.key
+
+    def set_metadata(self, metadata):
+        """Set results metadata."""
+        self.metadata = metadata
+
+    def get_metadata(self):
+        return self.metadata
+
+    def to_json(self, filename):
+        from asr.core import write_json
+        write_json(filename, dict(data=self._dct, metadata=self.metadata)
+
+    @classmethod
+    def from_json(cls):
+        from asr.core import read_json
+        tmp = read_json(filename)
+        return cls(**tmp['data'], metadata=tmp['metadata'])
 
     def values(self):
         """Wrap self._dct.values."""

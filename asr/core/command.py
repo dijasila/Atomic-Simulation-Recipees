@@ -380,13 +380,13 @@ class ASRCommand:
                 hexdigest = md5sum(filename)
                 metadata['creates'][filename] = hexdigest
 
-        # Also make hexdigests of results-files for dependencies
         if self.requires:
             metadata['requires'] = {}
             for filename in self.requires:
                 hexdigest = md5sum(filename)
                 metadata['requires'][filename] = hexdigest
 
+        results.set_metadata(metadata)
         if self.save_results_file:
             name = self.name
             to_json(results, f'results-{name}.json')
