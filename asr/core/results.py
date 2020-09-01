@@ -3,24 +3,29 @@ from typing import get_type_hints, List, Any
 
 
 def get_object_descriptions(obj):
+    """Get key descriptions of object."""
     return obj.key_descriptions
 
 
 def get_object_types(obj):
+    """Get type hints of object."""
     return get_type_hints(obj)
 
 
 def format_key_description_pair(key: str, attr_type: type, description: str):
+    """Format a key-type-description for a docstring."""
     return f'{key}: {attr_type}\n    {description}'
 
 
 def set_docstring(obj) -> str:
+    """Parse key descriptions on object and make pretty docstring."""
     descriptions = get_object_descriptions(obj)
     types = get_object_types(obj)
     type_keys = set(types)
     description_keys = set(descriptions)
-    assert set(descriptions).issubset(set(types)), (type_keys, description_keys)
-    docstring_parts: List[str] = [obj.__doc__ or '', '', 'Parameters', '----------']
+    assert set(descriptions).issubset(set(types)), description_keys - type_keys
+    docstring_parts: List[str] = [obj.__doc__ or '',
+                                  '', 'Parameters', '----------']
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]

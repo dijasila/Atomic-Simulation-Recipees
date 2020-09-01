@@ -11,6 +11,11 @@ import inspect
 from functools import update_wrapper
 
 
+def to_json(obj, filename):
+    """Write an object to a json file."""
+    obj.to_json(filename)
+
+
 def _paramerrormsg(func, msg):
     return f'Problem in {func.__module__}@{func.__name__}. {msg}'
 
@@ -352,75 +357,62 @@ class ASRCommand:
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
-        tstart = time.time()
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
+            tstart = time.time()
             results = self._main(**copy.deepcopy(params)) or {}
-        results['__asr_name__'] = self.name
-        tend = time.time()
+            tend = time.time()
 
         from ase.parallel import world
-        results['__resources__'] = {'time': tend - tstart,
-                                    'ncores': world.size}
-
-        if self.log:
-            log = results.get('__log__', {})
-            log.update(self.log(**copy.deepcopy(params)))
-
+        metadata = dict(asr_name=self.name,
+                        resources=dict(time=tend - tstart,
+                                       ncores=world.size),
+                        params=params,
+                        code_versions=get_execution_info(
+                            self.package_dependencies))
         # Do we have to store some digests of previous calculations?
         if self.creates:
-            results['__creates__'] = {}
+            metadata['creates'] = {}
             for filename in self.creates:
                 if filename.startswith('results-'):
                     # Don't log own results file
                     continue
                 hexdigest = md5sum(filename)
-                results['__creates__'][filename] = hexdigest
+                metadata['creates'][filename] = hexdigest
 
         # Also make hexdigests of results-files for dependencies
         if self.requires:
-            results['__requires__'] = {}
+            metadata['requires'] = {}
             for filename in self.requires:
                 hexdigest = md5sum(filename)
-                results['__requires__'][filename] = hexdigest
-
-        # Save parameters
-        results.update({'__params__': params})
-
-        # Update with hashes for packages dependencies
-        results.update(self.get_execution_info())
+                metadata['requires'][filename] = hexdigest
 
         if self.save_results_file:
             name = self.name
-            write_json(f'results-{name}.json', results)
-
-            # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults-{name}.json')
-            if tmppath.exists():
-                unlink(tmppath)
+            to_json(results, f'results-{name}.json')
 
         return results
 
-    def get_execution_info(self):
-        """Get parameter and software version information as a dictionary."""
-        from ase.utils import search_current_git_hash
-        exeinfo = {}
-        modnames = self.package_dependencies
-        versions = {}
-        for modname in modnames:
-            try:
-                mod = import_module(modname)
-            except ModuleNotFoundError:
-                continue
-            githash = search_current_git_hash(mod)
-            version = mod.__version__
-            if githash:
-                versions[f'{modname}'] = f'{version}-{githash}'
-            else:
-                versions[f'{modname}'] = f'{version}'
-        exeinfo['__versions__'] = versions
 
-        return exeinfo
+def get_execution_info(package_dependencies):
+    """Get parameter and software version information as a dictionary."""
+    from ase.utils import search_current_git_hash
+    exeinfo = {}
+    versions = {}
+    for modname in package_dependencies:
+        try:
+            mod = import_module(modname)
+        except ModuleNotFoundError:
+            continue
+        githash = search_current_git_hash(mod)
+        version = mod.__version__
+        if githash:
+            versions[f'{modname}'] = f'{version}-{githash}'
+        else:
+            versions[f'{modname}'] = f'{version}'
+    exeinfo['__versions__'] = versions
+
+    return exeinfo
 
 
 def command(*args, **kwargs):

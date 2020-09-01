@@ -235,6 +235,8 @@ def set_initial_magnetic_moments(atoms):
 class RelaxResults(ASRResults):
     version: int = 0
 
+    atoms: Atoms
+    trajectory: Trajectory
     etot: float
     edft: float
     spos: np.ndarray
