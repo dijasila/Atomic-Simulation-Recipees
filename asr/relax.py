@@ -236,7 +236,7 @@ class RelaxResults(ASRResults):
     version: int = 0
 
     atoms: Atoms
-    trajectory: Trajectory
+    images: List[Atoms]
     etot: float
     edft: float
     spos: np.ndarray
@@ -249,7 +249,7 @@ class RelaxResults(ASRResults):
     gamma: float
     key_descriptions = \
         {'atoms': 'Relaxed atomic structure',
-         'trajectory': 'Path taken when relaxing structure.',
+         'images': 'Path taken when relaxing structure.',
          'etot': 'Total energy [eV]',
          'edft': 'DFT total energy [eV]',
          'spos': 'Array: Scaled positions',
@@ -385,7 +385,11 @@ def main(atoms: Atoms,
 
     # Save atomic structure
     write('structure.json', atoms)
-    trajectory = Trajectory(tmp_atoms_file, 'r', atoms)
+
+    trajectory = Trajectory(tmp_atoms_file, 'r')
+    images = []
+    for image in trajectory:
+        images.append(image)
     return RelaxResults(atoms=atoms,
                         etot=etot,
                         edft=edft,
@@ -397,7 +401,7 @@ def main(atoms: Atoms,
                         gamma=cellpar[5],
                         spos=atoms.get_scaled_positions(),
                         symbols=atoms.get_chemical_symbols(),
-                        trajectory=trajectory)
+                        images=images)
 
 
 if __name__ == '__main__':

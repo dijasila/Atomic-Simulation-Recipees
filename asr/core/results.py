@@ -109,7 +109,7 @@ class ASRResults:
 
     def to_json(self, filename):
         from asr.core import write_json
-        write_json(filename, dict(data=self._dct, metadata=self.metadata)
+        write_json(filename, dict(data=self._dct, metadata=self.metadata))
 
     @classmethod
     def from_json(cls):
