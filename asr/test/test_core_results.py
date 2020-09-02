@@ -27,3 +27,10 @@ def test_results_object(capsys):
     assert captured.out == 'a=1\n'
 
     assert isinstance(results.format_as('ase_webpanel'), list)
+
+    html = results.format_as('html')
+    html2 = format(results, 'html')
+    assert html == html2
+    assert f'{results:html}' == html
+
+    format(results, 'json')

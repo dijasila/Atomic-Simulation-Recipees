@@ -81,47 +81,15 @@ class ASRResults:
     version: int = 0
     prev_version: Any = None
 
-    def __init__(self, metadata={}, **dct):
+    def __init__(self, metadata={}, **data):
         """Initialize results from dict."""
-        self._dct = dct
-        self.metadata = metadata
+        self._data = data
+        self._metadata = metadata
 
-    @classmethod
-    def from_json(cls, filename):
-        """Initialize from json file."""
-        from asr.core import read_json
-        tmp = read_json(filename)
-        return cls(**tmp['data'], metadata=tmp['metadata'])
-
-    def __getitem__(self, item):
-        """Get item from self.dct."""
-        return self._dct[item]
-
-    def __contains__(self, item):
-        """Determine if item in self.dct."""
-        return item in self._dct
-
-    def __iter__(self):
-        """Iterate over keys."""
-        return self._dct.__iter__()
-
-    def __getattr__(self, key):
-        """Get attribute."""
-        if key in self.keys():
-            return self._dct[key]
-        return self.key
-
-    def values(self):
-        """Wrap self._dct.values."""
-        return self._dct.values()
-
-    def items(self):
-        """Wrap self._dct.items."""
-        return self._dct.items()
-
-    def keys(self):
-        """Wrap self._dct.keys."""
-        return self._dct.keys()
+    @property
+    def data(self) -> dict:
+        """Get results data."""
+        return self._data
 
     @property
     def metadata(self) -> dict:
@@ -133,15 +101,58 @@ class ASRResults:
         """Set results metadata."""
         self._metadata = metadata
 
+    @classmethod
+    def from_json(cls, filename):
+        """Initialize from json file."""
+        from asr.core import read_json
+        tmp = read_json(filename)
+        return cls(**tmp['data'], metadata=tmp['metadata'])
+
+    def __getitem__(self, item):
+        """Get item from self.dct."""
+        return self.data[item]
+
+    def __contains__(self, item):
+        """Determine if item in self.dct."""
+        return item in self.data
+
+    def __iter__(self):
+        """Iterate over keys."""
+        return self.data.__iter__()
+
+    def __getattr__(self, key):
+        """Get attribute."""
+        if key in self.keys():
+            return self.data[key]
+        return self.key
+
+    def values(self):
+        """Wrap self.data.values."""
+        return self.data.values()
+
+    def items(self):
+        """Wrap self.data.items."""
+        return self.data.items()
+
+    def keys(self):
+        """Wrap self.data.keys."""
+        return self.data.keys()
+
     def get_formats(self):
         """Get implemented result formats."""
         formats = {'json': encode_json,
                    'html': encode_html,
+                   'dict': encode_dict,
                    'ase_webpanel': webpanel}
         return formats
 
     def format_as(self, fmt: str = '') -> Any:
         """Format Results as string."""
+        formats = self.get_formats()
+        return formats[fmt](self)
+
+    def __format__(self, fmt: str) -> str:
+        """Encode results as string."""
         formats = self.get_formats()
         return formats[fmt](self)
 
@@ -156,11 +167,16 @@ class ASRResults:
 def encode_json(results: ASRResults):
     """Encode a ASRResults object as json."""
     from ase.io.jsonio import MyEncoder
-    data = {'data': results.get_data(),
-            'metadata': results.get_metadata()}
+    data = results.format_as('dict')
     return MyEncoder(indent=1).encode(data)
 
 
 def encode_html(results: ASRResults):
     """Encode a ASRResults object as html."""
     return str(results)
+
+
+def encode_dict(results: ASRResults):
+    """Encode ASRResults object as dict."""
+    return {'data': results.data,
+            'metadata': results.metadata}
