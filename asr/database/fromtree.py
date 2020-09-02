@@ -433,6 +433,9 @@ def main(folders: Union[str, None] = None,
         ('Merging of databases went wrong, '
          f'number of materials changed: {nmatdb} != {nmat}')
 
+    for name in Path().glob(f'{dbname}.*.db'):
+        name.unlink()
+
     set_key_descriptions(dbname)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
@@ -446,9 +449,6 @@ def main(folders: Union[str, None] = None,
     if duplicate_uids:
         raise MissingUIDS(
             'Duplicate uids in database.')
-
-    for name in Path().glob(f'{dbname}.*.db'):
-        name.unlink()
 
 
 if __name__ == '__main__':
