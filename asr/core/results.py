@@ -69,8 +69,9 @@ class ASRResults:
         The version number.
     webpanel : WebPanel
         Functionality for producting ASE compatible web-panels.
-    prev_version : ASRResults
-        Pointer to a previous results format.
+    prev_version : ASRResults or None
+        Pointer to a previous results format. If none, this is the
+        final version.
     """
 
     version: int = 0
@@ -81,6 +82,19 @@ class ASRResults:
         """Initialize results from dict."""
         self._dct = dct
         self.metadata = metadata
+
+    def to_json(self, filename):
+        """Write results to file."""
+        from asr.core import write_json
+        write_json(filename,
+                   dict(data=self._dct,
+                        metadata=self.metadata))
+
+    @classmethod
+    def from_json(cls):
+        from asr.core import read_json
+        tmp = read_json(filename)
+        return cls(**tmp['data'], metadata=tmp['metadata'])
 
     def __getitem__(self, item):
         """Get item from self.dct."""
@@ -100,23 +114,6 @@ class ASRResults:
             return self._dct[key]
         return self.key
 
-    def set_metadata(self, metadata):
-        """Set results metadata."""
-        self.metadata = metadata
-
-    def get_metadata(self):
-        return self.metadata
-
-    def to_json(self, filename):
-        from asr.core import write_json
-        write_json(filename, dict(data=self._dct, metadata=self.metadata))
-
-    @classmethod
-    def from_json(cls):
-        from asr.core import read_json
-        tmp = read_json(filename)
-        return cls(**tmp['data'], metadata=tmp['metadata'])
-
     def values(self):
         """Wrap self._dct.values."""
         return self._dct.values()
@@ -128,6 +125,22 @@ class ASRResults:
     def keys(self):
         """Wrap self._dct.keys."""
         return self._dct.keys()
+
+    def set_metadata(self, metadata):
+        """Set results metadata."""
+        self.metadata = metadata
+
+    def get_metadata(self):
+        """Get results metadata."""
+        return self.metadata
+
+    def __format__(self, fmt: str = '') -> Any:
+        """Format Results as string."""
+        formats = {'json': self.encode_json,
+                   'html': self.encode_html,
+                   'ase_webpanel': self.webpanel}
+
+        return formats[fmt]()
 
     def __str__(self):
         """Convert data to string."""
