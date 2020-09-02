@@ -55,13 +55,17 @@ class WebPanel:
                  'header': ['key', 'value'],
                  'rows': rows}
         columns = [[table]]
-        return columns
+        panel = {'title': 'Basic electronic properties (PBE)',
+                 'columns': columns,
+                 'sort': 1}
+        return [panel]
+
+
+webpanel = WebPanel()
 
 
 class ASRResults:
     """Base class for describing results generated with recipes.
-
-    WIP: Over time, by default, this class should be immutable.
 
     Attributes
     ----------
@@ -75,7 +79,6 @@ class ASRResults:
     """
 
     version: int = 0
-    webpanel: WebPanel = WebPanel()
     prev_version: Any = None
 
     def __init__(self, metadata={}, **dct):
@@ -83,15 +86,9 @@ class ASRResults:
         self._dct = dct
         self.metadata = metadata
 
-    def to_json(self, filename):
-        """Write results to file."""
-        from asr.core import write_json
-        write_json(filename,
-                   dict(data=self._dct,
-                        metadata=self.metadata))
-
     @classmethod
-    def from_json(cls):
+    def from_json(cls, filename):
+        """Initialize from json file."""
         from asr.core import read_json
         tmp = read_json(filename)
         return cls(**tmp['data'], metadata=tmp['metadata'])
@@ -126,21 +123,27 @@ class ASRResults:
         """Wrap self._dct.keys."""
         return self._dct.keys()
 
-    def set_metadata(self, metadata):
-        """Set results metadata."""
-        self.metadata = metadata
-
-    def get_metadata(self):
+    @property
+    def metadata(self) -> dict:
         """Get results metadata."""
-        return self.metadata
+        return self._metadata
 
-    def __format__(self, fmt: str = '') -> Any:
+    @metadata.setter
+    def metadata(self, metadata) -> None:
+        """Set results metadata."""
+        self._metadata = metadata
+
+    def get_formats(self):
+        """Get implemented result formats."""
+        formats = {'json': encode_json,
+                   'html': encode_html,
+                   'ase_webpanel': webpanel}
+        return formats
+
+    def format_as(self, fmt: str = '') -> Any:
         """Format Results as string."""
-        formats = {'json': self.encode_json,
-                   'html': self.encode_html,
-                   'ase_webpanel': self.webpanel}
-
-        return formats[fmt]()
+        formats = self.get_formats()
+        return formats[fmt](self)
 
     def __str__(self):
         """Convert data to string."""
@@ -148,3 +151,16 @@ class ASRResults:
         for key, value in self.items():
             string_parts.append(f'{key}={value}')
         return "\n".join(string_parts)
+
+
+def encode_json(results: ASRResults):
+    """Encode a ASRResults object as json."""
+    from ase.io.jsonio import MyEncoder
+    data = {'data': results.get_data(),
+            'metadata': results.get_metadata()}
+    return MyEncoder(indent=1).encode(data)
+
+
+def encode_html(results: ASRResults):
+    """Encode a ASRResults object as html."""
+    return str(results)
