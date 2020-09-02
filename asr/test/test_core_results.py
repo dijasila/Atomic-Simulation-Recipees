@@ -33,4 +33,6 @@ def test_results_object(capsys):
     assert html == html2
     assert f'{results:html}' == html
 
-    format(results, 'json')
+    json = format(results, 'json')
+    newresults = MyResults.from_json(json)
+    assert newresults == results
