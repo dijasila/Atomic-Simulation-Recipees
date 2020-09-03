@@ -41,6 +41,7 @@ class WebPanel:
     """Web-panel for presenting results."""
 
     def __call__(self, results):
+        """Create ASE compatible webpanel."""
         return self.webpanel(results)
 
     def webpanel(self, results):
