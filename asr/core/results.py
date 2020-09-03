@@ -1,5 +1,11 @@
 """Implements ASRResults object and related quantities."""
 from typing import get_type_hints, List, Any
+from ase.io import jsonio
+
+
+def read_json(json):
+    """Decode a json-serialized string to object."""
+    return jsonio.decode(json)
 
 
 def get_object_descriptions(obj):
@@ -65,6 +71,13 @@ class WebPanel:
 webpanel = WebPanel()
 
 
+class UnknownASRResultsFormat(Exception):
+    pass
+
+
+protected_metadata_keys = {'version'}
+
+
 class ASRResults:
     """Base class for describing results generated with recipes.
 
@@ -85,7 +98,7 @@ class ASRResults:
     def __init__(self, metadata={}, **data):
         """Initialize results from dict."""
         self._data = data
-        self._metadata = metadata
+        self.metadata = metadata
 
     @property
     def data(self) -> dict:
@@ -100,21 +113,33 @@ class ASRResults:
     @metadata.setter
     def metadata(self, metadata) -> None:
         """Set results metadata."""
+        assert not protected_metadata_keys.intersection(metadata.keys()), \
+            f'You cannot write metadata with keys={protected_metadata_keys}.'
+        metadata = {key: value for key, value in metadata.items()}
+        metadata['version'] = self.version
         self._metadata = metadata
 
     @classmethod
     def from_json(cls, filename):
         """Initialize from json file."""
-        from asr.core import read_json
         tmp = read_json(filename)
+        version = tmp['metadata'].pop('version')
+
+        # Go through all previous implementations.
+        while version != cls.version and cls.prev_version is not None:
+            cls = cls.prev_version
+
+        if not version == cls.version:
+            raise UnknownASRResultsFormat(
+                'Unknown version number: version={version}')
         return cls(**tmp['data'], metadata=tmp['metadata'])
 
     def __getitem__(self, item):
-        """Get item from self.dct."""
+        """Get item from self.data."""
         return self.data[item]
 
     def __contains__(self, item):
-        """Determine if item in self.dct."""
+        """Determine if item in self.data."""
         return item in self.data
 
     def __iter__(self):
@@ -125,7 +150,7 @@ class ASRResults:
         """Get attribute."""
         if key in self.keys():
             return self.data[key]
-        return self.key
+        return super().__getattr__(self, key)
 
     def values(self):
         """Wrap self.data.values."""
@@ -163,6 +188,12 @@ class ASRResults:
         for key, value in self.items():
             string_parts.append(f'{key}={value}')
         return "\n".join(string_parts)
+
+    def __eq__(self, other):
+        """Compare two results objects."""
+        if not isinstance(other, type(self)):
+            return False
+        return self.format_as('dict') == other.format_as('dict')
 
 
 def encode_json(results: ASRResults):

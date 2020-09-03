@@ -36,3 +36,6 @@ def test_results_object(capsys):
     json = format(results, 'json')
     newresults = MyResults.from_json(json)
     assert newresults == results
+
+    otherresults = MyResults(a=2)
+    assert not otherresults == results
