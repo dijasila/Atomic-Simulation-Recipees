@@ -120,19 +120,26 @@ class ASRResults:
         self._metadata = metadata
 
     @classmethod
-    def from_json(cls, filename):
-        """Initialize from json file."""
-        tmp = read_json(filename)
-        version = tmp['metadata'].pop('version')
-
-        # Go through all previous implementations.
+    def from_data(cls, data, metadata, version):
+        """Instantiate results from data, metadata, version specification."""
+        # Walk through all previous implementations.
         while version != cls.version and cls.prev_version is not None:
             cls = cls.prev_version
 
         if not version == cls.version:
             raise UnknownASRResultsFormat(
                 'Unknown version number: version={version}')
-        return cls(**tmp['data'], metadata=tmp['metadata'])
+        return cls(**data, metadata=metadata)
+
+    @classmethod
+    def from_json(cls, json):
+        """Initialize from json string."""
+        tmp = read_json(json)
+        metadata = tmp['metadata']
+        version = metadata.pop('version')
+        data = tmp['data']
+
+        return cls.from_data(data, metadata, version)
 
     def __getitem__(self, item):
         """Get item from self.data."""
