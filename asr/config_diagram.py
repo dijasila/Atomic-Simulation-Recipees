@@ -1,4 +1,4 @@
-from asr.core import command, option, read_json, write_json
+from asr.core import command, read_json, write_json
 
 
 def webpanel(row, key_descriptions):
@@ -20,7 +20,7 @@ def calculate():
 
     setup = read_json('results-asr.setup.cc-diagram.json')
     folders = setup['folders']
-    state = setup['__params__']["state"]
+    state = setup['__params__']['state']
 
     calc = GPAW('gs.gpw', txt=None)
     if state == 'excited':
@@ -33,7 +33,7 @@ def calculate():
         atoms = read(folder + '/structure.json')
         atoms.set_calculator(calc)
         # atoms.get_potential_energy()
-        energy = 0.05**2 / 2 * 15.4669**2 * Q**2
+        energy = 0.06155**2 / 2 * 15.4669**2 * Q**2
         params['energy'] = energy
         write_json(folder + '/params.json', params)
 
@@ -41,8 +41,7 @@ def calculate():
 @command("asr.config_diagram",
          webpanel=webpanel,
          dependencies=["asr.config_diagram@calculate"])
-@option("--unit", type=str, help="Units of the effective frequency meV or eV")
-def main(unit: str = 'meV'):
+def main():
     """Estrapolate the frequencies of the ground and
        excited one-dimensional mode and their relative
        Huang-Rhys factors"""
@@ -52,6 +51,7 @@ def main(unit: str = 'meV'):
 
     setup = read_json('results-asr.setup.cc-diagram.json')
     folders = setup['folders']
+    delta_Q = setup['delta_Q']
 
     energies_n = []
     Q_n = []
@@ -71,16 +71,18 @@ def main(unit: str = 'meV'):
     z = np.polyfit(Q_n, energies_n, 2)
 
     # Conversion factor
-    s = np.sqrt(units._e * units._amu) * 1e-10 / units._hbar / 1000
-    if unit == 'eV':
-        s = np.sqrt(units._e * units._amu) * 1e-10 / units._hbar
+    s = np.sqrt(units._e * units._amu) * 1e-10 / units._hbar
 
     # Estrapolation of the effective frequency
     omega = sqrt(2 * z[0] / s**2)
 
+    # Estrapolation of the Huang-Rhys factor
+    S = s**2 * delta_Q**2 * omega / 2
+
     results = {'Q_n': Q_n,
                'energies_n': energies_n,
-               'omega': omega}
+               'omega': omega,
+               'S': S}
 
     return results
 

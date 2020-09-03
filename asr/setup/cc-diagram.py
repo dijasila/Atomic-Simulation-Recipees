@@ -30,7 +30,6 @@ def main(state: str = 'ground', npoints: int = 5):
         cc-{state}-{displacement%}
 
     """
-    from ase.parallel import world
     from gpaw import restart
 
     name_1 = 'gs.gpw'
@@ -45,21 +44,21 @@ def main(state: str = 'ground', npoints: int = 5):
 
     folders = []
 
-    delta_r = atoms_2.positions - atoms_1.positions
-
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
     m_a = atoms_1.get_masses()
     pos_ai = atoms_1.positions.copy()
 
+    delta_R = atoms_2.positions - atoms_1.positions
+    delta_Q = ((delta_R**2).sum(axis=-1) * m_a).sum()
+
     for displ in displ_n:
-        Q = (((displ * delta_r)**2).sum(axis=-1) * m_a).sum()
+        Q = (((displ * delta_R)**2).sum(axis=-1) * m_a).sum()
 
         folder = Path('cc-' + state + '-{}%'.format(int(displ * 100)))
 
-        if world.rank == 0:
-            create_displacements_folder(folder)
+        create_displacements_folder(folder)
 
-        atoms_1.positions += displ * delta_r
+        atoms_1.positions += displ * delta_R
         atoms_1.write(folder / 'structure.json')
         folders.append(str(folder))
 
@@ -68,5 +67,7 @@ def main(state: str = 'ground', npoints: int = 5):
         params = {'Q': Q, 'displ': displ}
         write_json(folder / 'params.json', params)
 
-    world.barrier()
-    return {'folders': folders}
+    results = {'folders': folders,
+               'delta_Q': delta_Q}
+
+    return results
