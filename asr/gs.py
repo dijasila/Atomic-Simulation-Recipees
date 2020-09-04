@@ -280,7 +280,7 @@ def get_gap_info(soc, direct, calc):
     # e1 is VBM, e2 is CBM
     if soc:
         theta, phi = get_spin_axis()
-        e_km, efermi = calc2eigs(calc, ranks=[0],
+        e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,

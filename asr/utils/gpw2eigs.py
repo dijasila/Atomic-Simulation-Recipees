@@ -14,13 +14,13 @@ def calc2eigs(calc, soc=True,
     dct = {'eps_nosoc_skn': eps_nosoc_skn,
            'efermi_nosoc': efermi_nosoc}
     if soc:
-        result = soc_eigenstates(calc, bands=bands,
+        result = soc_eigenstates(calc,
                                  theta=theta,
                                  phi=phi)
-        eps_km = result['eigenvalues']
-        s_kvm = result['spin_projections']
+        eps_km = result.eigenvalues()
+        s_kvm = result.spin_projections().transpose((0, 2, 1))
         eps_km.sort(axis=-1)
-        efermi = fermi_level(calc, eps_km[np.newaxis], nspins=2)
+        efermi = result.fermi_level
         symmetry = _atoms2symmetry_gpaw(calc.atoms,
                                         tolerance=symmetry_tolerance)
 
