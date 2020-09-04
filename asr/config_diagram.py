@@ -26,7 +26,7 @@ def calculate(state: str = 'ground', npoints: int = 5):
     pos_ai = atoms_1.positions.copy()
 
     delta_R = atoms_2.positions - atoms_1.positions
-    delta_Q = ((delta_R**2).sum(axis=-1) * m_a).sum()
+    delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
     zpl = abs(atoms_1.get_potential_energy() - atoms_2.get_potential_energy())
 
     Q_n = []
@@ -37,9 +37,9 @@ def calculate(state: str = 'ground', npoints: int = 5):
         Q_n.append(sqrt(Q2) * np.sign(displ))
 
         atoms_1.positions += displ * delta_R
-        atoms_1.positions = pos_ai
         atoms_1.set_calculator(calc_1)
         # atoms_1.get_potential_energy()
+        atoms_1.positions = pos_ai
 
         energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
@@ -132,7 +132,7 @@ def plot_cc_diagram(row, fname):
 
     Q_n = np.array(data['Q_n'])
     ZPL = data['ZPL']
-    delta_Q = data['delta_Q']**0.5
+    delta_Q = data['delta_Q']
     q = np.linspace(Q_n[0] - delta_Q * 0.2, Q_n[-1] + delta_Q * 0.2, 100)
 
     omega_g = data_g['omega']
