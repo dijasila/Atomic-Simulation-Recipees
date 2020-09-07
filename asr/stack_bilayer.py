@@ -167,12 +167,10 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     translations = []
     for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
         top_positions = flatten(toplayer)
-        print(f"# OF COMBOS {len(top_positions) * len(base_positions)}")
 
         for pos1 in base_positions:
             for pos2 in top_positions:
                 move = pos1 - pos2
-                print(move, move[0], move[1])
                 move_c = np.array([move[0], move[1], 0.0])
                 move_c = cell.scaled_positions(move_c)
                 total_translation = move_c + t_c
