@@ -73,7 +73,7 @@ def get_rotated_mats(atoms: Atoms):
         inversion = '-Iz' if np.allclose(U_cc[2, 2], -1) else ''
         label = f'({U_cc[0, 0]}, {U_cc[0, 1]}, {U_cc[1, 0]}, {U_cc[1, 1]})' + inversion
         # labels.append(f'{str(atoms.symbols)}-{str(i)}')
-        labels.append(f'{str(atoms.symbols)}-2-' + label)
+        labels.append(f'{str(atoms.get_chemical_formula())}-2-' + label)
         transforms.append((U_cc, t_c))
 
     auxs = list(zip(labels, transforms))
@@ -107,7 +107,7 @@ def atomseq(atoms1, atoms2, full=False):
     from asr.database.rmsd import get_rmsd
 
     identical = same_positions(atoms1, atoms2)
-    if full:
+    if full and not identical:
         # Can return None for very different structures
         rmsd = get_rmsd(atoms1, atoms2) or 1
         identical = identical or rmsd < 1e-3
@@ -167,6 +167,8 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     translations = []
     for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
         top_positions = flatten(toplayer)
+        if len(top_positions) * len(base_positions) > 20:
+            top_positions = top_positions[:1]
 
         for pos1 in base_positions:
             for pos2 in top_positions:
@@ -196,79 +198,6 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
 
 def pretty_float(arr):
     return f'({str(round(arr[0], 2))}, {str(round(arr[1], 2))})'
-
-
-def _build_layers(atoms, cell_type, rotated_mats, labels, transforms):
-    unit_cell = atoms.get_cell_lengths_and_angles()
-
-    layers = []
-    translations = []
-    final_mats = []
-    final_labels = []
-    final_transforms = []
-
-    positions = atoms.get_positions()
-    a, b, c = unit_cell[:3]
-
-    if cell_type == 'hexagonal':
-        for (mat, label, tform) in zip(rotated_mats,
-                                       labels,
-                                       transforms):
-            # Appender stacks the layers and adds an additional
-            # translation of xy and modifies the label by
-            # adding a suffix.
-            # Then the results are appended to appropriate lists.
-            def appender(x, y, suff):
-                append_material(x, y, mat, atoms, tform, label, suff, layers,
-                                final_mats, translations, final_labels,
-                                final_transforms)
-
-            appender(0, 0, '00')
-
-            x = positions[1, 0]
-            y = positions[1, 1]
-            appender(x, y, '11')
-
-            x = positions[1, 0] * 2
-            y = positions[1, 1] * 2
-            appender(x, y, '22')
-
-    elif cell_type in ['oblique', 'rectangular', 'square', 'centered']:
-        for (mat, label, tform) in zip(rotated_mats,
-                                       labels,
-                                       transforms):
-            # Appender stacks the layers and adds an additional
-            # translation of xy and modifies the label by
-            # adding a suffix.
-            # Then the results are appended to appropriate lists.
-            def appender(x, y, suff):
-                append_material(x, y, mat, atoms, tform, label, suff, layers,
-                                final_mats, translations, final_labels,
-                                final_transforms)
-
-            appender(0, 0, '00')
-
-            x = a / 2.0
-            y = 0.0
-            appender(x, y, '10')
-
-            x = 0.0
-            y = b / 2.0
-            appender(x, y, '01')
-
-            x = a / 2.0
-            y = b / 2.0
-            appender(x, y, '11')
-    else:
-        raise ValueError(f'Invalid cell type: {cell_type}')
-
-    auxs = list(zip(final_mats, final_labels,
-                    translations, final_transforms))
-
-    un_layers, un_auxs = unique_materials(layers, auxs, full=True)
-    mats, labels, translations, tforms = zip(*un_auxs)
-
-    return mats, labels, translations, tforms, un_layers
 
 
 def translation(x, y, z, rotated, base):
