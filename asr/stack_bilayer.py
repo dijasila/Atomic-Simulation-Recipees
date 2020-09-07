@@ -159,12 +159,12 @@ def append_material(x, y, mat, atoms, tform, label, labelsuffix,
 def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     base_positions = flatten(atoms)
     cell = atoms.cell
-    
+
     full_labels = []
     bilayers = []
     toplayers = []
     symmetries = []
-    translations = []    
+    translations = []
     for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
         top_positions = flatten(toplayer)
         print(f"# OF COMBOS {len(top_positions) * len(base_positions)}")
@@ -178,21 +178,21 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
                 total_translation = move_c + t_c
                 translation_label = pretty_float(total_translation)
                 full_label = label + "-" + translation_label
-                
+
                 full_labels.append(full_label)
                 bilayer = translation(move[0], move[1], 12, toplayer, atoms)
                 bilayers.append(bilayer)
-                
+
                 toplayers.append(toplayer)
 
                 symmetries.append((U_cc, t_c))
-                
+
                 translations.append(move)
 
     auxs = list(zip(toplayers, full_labels, translations, symmetries))
     unique_layers, unique_auxs = unique_materials(bilayers, auxs, full=True)
     tops, labels, translations, syms = zip(*unique_auxs)
-    
+
     return tops, labels, translations, syms, unique_layers
 
 
@@ -264,7 +264,6 @@ def _build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     else:
         raise ValueError(f'Invalid cell type: {cell_type}')
 
-
     auxs = list(zip(final_mats, final_labels,
                     translations, final_transforms))
 
@@ -290,9 +289,6 @@ def translation(x, y, z, rotated, base):
 @option('-a', '--atoms', help='Monolayer to be stacked',
         type=AtomsFile(), default='structure.json')
 def main(atoms: Atoms):
-    from ase.io import read
-    # atoms = read("structure.json")
-
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
     import os
@@ -308,7 +304,6 @@ def main(atoms: Atoms):
     cell_type = get_cell_type(atoms)
 
     rotated_mats, labels, transforms = get_rotated_mats(atoms)
-
 
     things = build_layers(atoms, cell_type,
                           rotated_mats,
