@@ -74,8 +74,7 @@ def main(atoms: Atoms,
     import scipy.optimize as sciop
     from asr.stack_bilayer import translation
     top_layer = read('toplayer.json')
-
-    t_c = read_json('translation.json')['translation_vector'].astype(float)
+    t_c = np.array(read_json('translation.json')['translation_vector']).astype(float)
 
     d0 = initial_displacement(atoms, distance)
     maxz = np.max(atoms.positions[:, 2])

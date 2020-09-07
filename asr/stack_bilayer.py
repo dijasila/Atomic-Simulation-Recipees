@@ -1,9 +1,22 @@
 from asr.core import command, option, AtomsFile
 from ase import Atoms
+import numpy as np
 
 
 class StackingError(ValueError):
     pass
+
+
+def flatten(atoms):
+    flats = []
+    for atom in atoms:
+        pos = atom.position[:2]
+        if any(np.allclose(x, pos) for x in flats):
+            continue
+        else:
+            flats.append(pos)
+
+    return flats
 
 
 def get_cell_type(atoms):
@@ -57,7 +70,10 @@ def get_rotated_mats(atoms: Atoms):
         rotated_atoms.wrap(pbc=[1, 1, 1])
 
         final_mats.append(rotated_atoms)
-        labels.append(f'{str(atoms.symbols)}-{str(i)}')
+        inversion = '-Iz' if np.allclose(U_cc[2, 2], -1) else ''
+        label = f'({U_cc[0, 0]}, {U_cc[0, 1]}, {U_cc[1, 0]}, {U_cc[1, 1]})' + inversion
+        # labels.append(f'{str(atoms.symbols)}-{str(i)}')
+        labels.append(f'{str(atoms.symbols)}-2-' + label)
         transforms.append((U_cc, t_c))
 
     auxs = list(zip(labels, transforms))
@@ -141,6 +157,50 @@ def append_material(x, y, mat, atoms, tform, label, labelsuffix,
 
 
 def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
+    base_positions = flatten(atoms)
+    cell = atoms.cell
+    
+    full_labels = []
+    bilayers = []
+    toplayers = []
+    symmetries = []
+    translations = []    
+    for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
+        top_positions = flatten(toplayer)
+        print(f"# OF COMBOS {len(top_positions) * len(base_positions)}")
+
+        for pos1 in base_positions:
+            for pos2 in top_positions:
+                move = pos1 - pos2
+                print(move, move[0], move[1])
+                move_c = np.array([move[0], move[1], 0.0])
+                move_c = cell.scaled_positions(move_c)
+                total_translation = move_c + t_c
+                translation_label = pretty_float(total_translation)
+                full_label = label + "-" + translation_label
+                
+                full_labels.append(full_label)
+                bilayer = translation(move[0], move[1], 12, toplayer, atoms)
+                bilayers.append(bilayer)
+                
+                toplayers.append(toplayer)
+
+                symmetries.append((U_cc, t_c))
+                
+                translations.append(move)
+
+    auxs = list(zip(toplayers, full_labels, translations, symmetries))
+    unique_layers, unique_auxs = unique_materials(bilayers, auxs, full=True)
+    tops, labels, translations, syms = zip(*unique_auxs)
+    
+    return tops, labels, translations, syms, unique_layers
+
+
+def pretty_float(arr):
+    return f'({str(round(arr[0], 2))}, {str(round(arr[1], 2))})'
+
+
+def _build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     unit_cell = atoms.get_cell_lengths_and_angles()
 
     layers = []
@@ -254,10 +314,8 @@ def main(atoms: Atoms):
                           rotated_mats,
                           labels, transforms)
 
-
     rotated_mats, labels, translations, transforms, protos = things
 
-    
     for mat, label, transl, tform, proto in zip(*things):
         if not os.path.isdir(label):
             os.mkdir(label)
