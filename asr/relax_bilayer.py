@@ -76,20 +76,22 @@ def main(atoms: Atoms,
     top_layer = read('toplayer.json')
     if not np.allclose(top_layer.cell, atoms.cell):
         top_layer.cell = atoms.cell.copy()
-        atom_pos1 = atoms.positions[0, :]
-        top_pos1 = top_layer.positions[0, :]
-        delta = atom_pos1[2] - top_pos1[2]
-        top_layer.positions[:, 2] += delta
+        top_layer.center()
+        top_layer.write("corrected.json")
 
     # assert(np.allclose(top_layer.cell, atoms.cell))
     t_c = np.array(read_json('translation.json')['translation_vector']).astype(float)
-    
+
     d0 = initial_displacement(atoms, distance)
     maxz = np.max(atoms.positions[:, 2])
     minz = np.min(atoms.positions[:, 2])
     w = maxz - minz
     atoms.cell[2, 2] += vacuum + w
     top_layer.cell = atoms.cell
+
+    start_structure = translation(t_c[0], t_c[1], d0, top_layer,
+                                  atoms)
+    start_structure.write("startstructure.json")
 
     if os.path.exists('energy_curve.npy'):
         energy_curve = np.load('energy_curve.npy', allow_pickle=True)
