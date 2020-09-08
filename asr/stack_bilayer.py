@@ -71,7 +71,7 @@ def get_rotated_mats(atoms: Atoms):
 
         final_mats.append(rotated_atoms)
         inversion = '-Iz' if np.allclose(U_cc[2, 2], -1) else ''
-        label = f'({U_cc[0, 0]}, {U_cc[0, 1]}, {U_cc[1, 0]}, {U_cc[1, 1]})' + inversion
+        label = f'{U_cc[0, 0]}_{U_cc[0, 1]}_{U_cc[1, 0]}_{U_cc[1, 1]}' + inversion
         # labels.append(f'{str(atoms.symbols)}-{str(i)}')
         labels.append(f'{str(atoms.get_chemical_formula())}-2-' + label)
         transforms.append((U_cc, t_c))
@@ -109,7 +109,7 @@ def atomseq(atoms1, atoms2, full=False):
     identical = same_positions(atoms1, atoms2)
     if full and not identical:
         # Can return None for very different structures
-        rmsd = get_rmsd(atoms1, atoms2) or 1
+        rmsd = get_rmsd(atoms1.copy(), atoms2.copy()) or 1
         identical = identical or rmsd < 1e-3
 
     return identical
@@ -172,6 +172,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
 
         for pos1 in base_positions:
             for pos2 in top_positions:
+                top = toplayer.copy()
                 move = pos1 - pos2
                 move_c = np.array([move[0], move[1], 0.0])
                 move_c = cell.scaled_positions(move_c)
@@ -183,7 +184,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
                 bilayer = translation(move[0], move[1], 12, toplayer, atoms)
                 bilayers.append(bilayer)
 
-                toplayers.append(toplayer)
+                toplayers.append(top)
 
                 symmetries.append((U_cc, t_c))
 
@@ -197,7 +198,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
 
 
 def pretty_float(arr):
-    return f'({str(round(arr[0], 2))}, {str(round(arr[1], 2))})'
+    return f'{str(round(arr[0], 2))}_{str(round(arr[1], 2))}'
 
 
 def translation(x, y, z, rotated, base):
@@ -236,12 +237,9 @@ def main(atoms: Atoms):
                           rotated_mats,
                           labels, transforms)
 
-    rotated_mats, labels, translations, transforms, protos = things
-
     for mat, label, transl, tform, proto in zip(*things):
         if not os.path.isdir(label):
             os.mkdir(label)
-
         mat.cell[2, 2] /= 2
         spos_av = mat.get_positions()
         spos_av[:, 2] -= mat.cell[2, 2] / 2
