@@ -95,7 +95,7 @@ i.e.,
 The `setup.params` recipe can be run multiple times to specify
 multiple defaults. For example, running
 
-.. code-block::
+.. code-block:: console
 
    $ asr run "setup.params asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
    $ asr run "setup.params asr.gs@calculate:calculator {'mode':{'ecut':600,...},...}"
@@ -104,7 +104,7 @@ would set both the `kpts` and `mode` keys of the
 `asr.gs@calculate:calculator` argument. Two parameters can also be
 specified simultaneously by using
 
-.. code-block::
+.. code-block:: console
 
    $ asr run "setup.params asr.gs@calculate:calculator asr.relax:d3 True asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
 
