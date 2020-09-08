@@ -31,12 +31,11 @@ can run
 
    $ asr run "setup.params asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
 
-or directly from the Python API
-
 .. doctest::
+   :hide:
 
    >>> from asr.setup.params import main
-   >>> main.cli(args=['asr.gs@calculate:calculator', {'kpts':{...,'density':8.0},...}])
+   >>> main(['asr.gs@calculate:calculator', "{'kpts':{...,'density':8.0},...}"])
 
 This generates a file `params.json` with the contents printed
 above.', i.e.,
