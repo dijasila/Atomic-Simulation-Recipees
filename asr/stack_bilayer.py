@@ -198,7 +198,18 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
 
 
 def pretty_float(arr):
-    return f'{str(round(arr[0], 2))}_{str(round(arr[1], 2))}'
+    f1 = round(arr[0], 2)
+    if np.allclose(f1, 0.0):
+        s1 = "0"
+    else:
+        s1 = str(f1)
+    f2 = round(arr[1], 2)
+    if np.allclose(f2, 0.0):
+        s2 = "0"
+    else:
+        s2 = str(f2)
+    
+    return f'{s1}_{s2}'
 
 
 def translation(x, y, z, rotated, base):
