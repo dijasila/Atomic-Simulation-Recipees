@@ -2,12 +2,12 @@ from asr.core import command, option, AtomsFile, DictStr
 import numpy as np
 from ase import Atoms
 import os
+from asr.stack_bilayer import translation
 
 
 def get_energy(base, top, h, t_c, settings, callback, memo):
     from ase.calculators.dftd3 import DFTD3
     from gpaw import GPAW, PW
-    from asr.stack_bilayer import translation
 
     try:
         h0, e0 = next(t for t in memo if np.allclose(t[0], h))
@@ -74,8 +74,16 @@ def main(atoms: Atoms,
     import scipy.optimize as sciop
     from asr.stack_bilayer import translation
     top_layer = read('toplayer.json')
-    t_c = np.array(read_json('translation.json')['translation_vector']).astype(float)
+    if not np.allclose(top_layer.cell, atoms.cell):
+        top_layer.cell = atoms.cell.copy()
+        atom_pos1 = atoms.positions[0, :]
+        top_pos1 = top_layer.positions[0, :]
+        delta = atom_pos1[2] - top_pos1[2]
+        top_layer.positions[:, 2] += delta
 
+    # assert(np.allclose(top_layer.cell, atoms.cell))
+    t_c = np.array(read_json('translation.json')['translation_vector']).astype(float)
+    
     d0 = initial_displacement(atoms, distance)
     maxz = np.max(atoms.positions[:, 2])
     minz = np.min(atoms.positions[:, 2])
