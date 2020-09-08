@@ -14,14 +14,14 @@ used to generate and manipulate it. The general syntax when using the
 
    >>> from asr.setup.params import main
    >>> main.cli(args=['-h'])
-   asr run asr.setup.params [OPTIONS] recipe:option arg recipe:option arg
+   Usage: asr run asr.setup.params [OPTIONS] recipe:option arg recipe:option arg
    ...
 
 
 .. code-block:: console
 
    $ asr run "setup.params -h"
-   asr run asr.setup.params [OPTIONS] recipe:option arg recipe:option arg
+   Usage: asr run asr.setup.params [OPTIONS] recipe:option arg recipe:option arg
    ...
 
 For example, to set custom default of the `asr.gs@calculate` recipe we
@@ -35,10 +35,12 @@ can run
    :hide:
 
    >>> from asr.setup.params import main
-   >>> main(['asr.gs@calculate:calculator', "{'kpts':{...,'density':8.0},...}"])
+   >>> main(params=['asr.gs@calculate:calculator', "{'kpts':{...,'density':8.0},...}"])
+   Running...
+   ...{'calculator': {'kpts': {'density': 8.0, 'gamma': True},...
 
-This generates a file `params.json` with the contents printed
-above.', i.e.,
+This generates a file `params.json` with the contents printed above.',
+i.e.,
 
 .. code-block:: json
    :caption: params.json
