@@ -73,9 +73,11 @@ above.', i.e.,
    }
 
 
-The ellipsis operator ("...") is used for recipe arguments
-which dict-type defaults and indicates that the only the default
-values of the specified keys should be updated.
+.. note::
+   
+   The ellipsis operator ("...") is used for recipe arguments which
+   dict-type defaults and indicates that the only the default values
+   of the specified keys should be updated.
 
 .. warning::
 
