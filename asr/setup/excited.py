@@ -1,19 +1,7 @@
-# NEW excited setup recipe
 from pathlib import Path
 import numpy as np
-# from __future__ import print_function
-from ase.build import niggli_reduce
-from gpaw import GPAW, PW, FermiDirac
-from ase import Atoms
-from ase.parallel import parprint, MPI4PY, world
-import sys
-import re
-import math
-import os
-from asr.core import chdir, read_json, write_json, command, option
-from ase.io import read, write
-from gpaw.occupations import FixedOccupations
-from gpaw import restart
+from gpaw import GPAW
+from asr.core import read_json, write_json, command, option
 from gpaw.response.pair import PairDensity
 
 # TODO:
