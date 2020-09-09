@@ -173,7 +173,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         write_json(filename, {"force": forces})
 
     phonon.produce_force_constants(
-        forces=set_of_forces, 
+        forces=set_of_forces,
         calculate_full_force_constants=False)
     phonon.symmetrize_force_constants()
 
@@ -286,9 +286,9 @@ def main(rc: float = None):
             try:
                 ob = phonon._irreps
                 for nr, (deg, irr) in enumerate(
-                    zip(ob._degenerate_sets, ob._ir_labels)):
+                        zip(ob._degenerate_sets, ob._ir_labels)):
                     irreps += [irr] * len(deg)
-            except:
+            except AttributeError:
                 continue
 
     irreps = list(irreps)
