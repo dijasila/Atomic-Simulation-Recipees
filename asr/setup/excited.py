@@ -47,43 +47,46 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().parameters
     params_gs = calc.parameters
+    params_gs.pop('width')
     params_relax['name'] = 'gpaw'
     params_gs['name'] = 'gpaw'
     newparams = {'asr.gs@calculate': {'calculator': params_gs},
                  'asr.relax': {'calculator': params_relax}}
 
     # spin channel 1
-    occ_n_alpha = np.hstack((np.ones(n1 - n),
-                             np.zeros(m),
-                             np.ones(1),
-                             np.zeros(n3 - (n1 - n) - m - 1)))
-    occ_n_beta = np.hstack((np.ones(n2), np.zeros(n3 - n2)))
-    p_spin0 = newparams.copy()
-    p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
-                                                                'numbers':
-                                                                [occ_n_alpha,
-                                                                    occ_n_beta]}
-    p_spin0['asr.gs@calculate']['calculator']['nbands'] = n3
-    p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
-                                                         'numbers':
-                                                         [occ_n_alpha, occ_n_beta]}
-    p_spin0['asr.relax']['calculator']['nbands'] = n3
-    write_json('excited_spin0/params.json', p_spin0)
+    if spin == 0 or spin == 2:
+        occ_n_alpha = np.hstack((np.ones(n1 - n),
+                                 np.zeros(m),
+                                 np.ones(1),
+                                 np.zeros(n3 - (n1 - n) - m - 1)))
+        occ_n_beta = np.hstack((np.ones(n2), np.zeros(n3 - n2)))
+        p_spin0 = newparams.copy()
+        p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
+                                                                    'numbers':
+                                                                    [occ_n_alpha,
+                                                                        occ_n_beta]}
+        p_spin0['asr.gs@calculate']['calculator']['nbands'] = n3
+        p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
+                                                             'numbers':
+                                                             [occ_n_alpha, occ_n_beta]}
+        p_spin0['asr.relax']['calculator']['nbands'] = n3
+        write_json('excited_spin0/params.json', p_spin0)
     # spin channel 2
-    occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
-    occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
-                            np.zeros(n3 - (n2 - n) - m - 1)))
-    p_spin1 = newparams.copy()
-    p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
-                                                                'numbers':
-                                                                [occ_n_alpha,
-                                                                    occ_n_beta]}
-    p_spin1['asr.gs@calculate']['calculator']['nbands'] = n3
-    p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
-                                                         'numbers':
-                                                         [occ_n_alpha, occ_n_beta]}
-    p_spin1['asr.relax']['calculator']['nbands'] = n3
-    write_json('excited_spin1/params.json', p_spin1)
+    if spin == 1 or spin ==2:
+        occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
+        occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
+                                np.zeros(n3 - (n2 - n) - m - 1)))
+        p_spin1 = newparams.copy()
+        p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
+                                                                    'numbers':
+                                                                    [occ_n_alpha,
+                                                                        occ_n_beta]}
+        p_spin1['asr.gs@calculate']['calculator']['nbands'] = n3
+        p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
+                                                             'numbers':
+                                                             [occ_n_alpha, occ_n_beta]}
+        p_spin1['asr.relax']['calculator']['nbands'] = n3
+        write_json('excited_spin1/params.json', p_spin1)
 
     return None
 
