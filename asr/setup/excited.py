@@ -6,12 +6,6 @@ from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
 
-# TODO:
-# - restructure commands, options and default arguments
-# - if no params.json present, get parameters from the calculator
-# - implement separate creation of folders and links for the
-#   different spin channels
-
 
 @command('asr.setup.excited')
 @option('--n', help='State from which an electron will be removed. 1'
