@@ -12,9 +12,13 @@ from gpaw.response.pair import PairDensity
 
 
 @command('asr.setup.excited')
-@option('--n', help='from_state', type=str)
-@option('--m', help='to_state', type=str)
-# @option('--spin', help='Which spin channel is considered for excitation', type=int)
+@option('--n', help='State from which an electron will be removed. 1'
+        ' corresponds to the highest occupied state, 2 corresponds to the'
+        ' second highest occupied state, and so on.', type=int)
+@option('--m', help='Unoccupied state into which the removed atom will be'
+        ' placed. 1 corresponds to the lowest unoccupied state, 2'
+        'corresponds to the second lowest unoccupied stated, and so on.',
+        type=int)
 def main(n: int = 1, m: int = 1):
     """Set up folder structure and parameters for excited state calculations.
 
