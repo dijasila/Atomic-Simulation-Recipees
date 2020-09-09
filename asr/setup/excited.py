@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import os
 from gpaw import GPAW
 from asr.core import read_json, write_json, command, option
 from gpaw.response.pair import PairDensity
@@ -33,21 +34,32 @@ def main(n: int = 1, m: int = 1):
                              np.zeros(m),
                              np.ones(1),
                              np.zeros(n3 - (n1 - n) - m - 1)))
-    occ_n_beta = np.hstack((np.ones(n2),np.zeros(n3-n2)))
+    occ_n_beta = np.hstack((np.ones(n2), np.zeros(n3 - n2)))
     params = read_json('params.json')
     p_spin0 = params.copy()
-    p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed', 'numbers': [occ_n_alpha, occ_n_beta]}
+    p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
+                                                                'numbers':
+                                                                [occ_n_alpha,
+                                                                    occ_n_beta]}
     p_spin0['asr.gs@calculate']['calculator']['nbands'] = n3
-    p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed', 'numbers': [occ_n_alpha, occ_n_beta]}
+    p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
+                                                         'numbers':
+                                                         [occ_n_alpha, occ_n_beta]}
     p_spin0['asr.relax']['calculator']['nbands'] = n3
     write_json('excited_spin0/params.json', p_spin0)
     # spin channel 2
-    occ_n_alpha = np.hstack((np.ones(n1),np.zeros(n3-n1)))
-    occ_n_beta = np.hstack((np.ones(n2-n),np.zeros(m),np.ones(1),np.zeros(n3-(n2-n)-m-1))) 
+    occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
+    occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
+                            np.zeros(n3 - (n2 - n) - m - 1)))
     p_spin1 = params.copy()
-    p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed', 'numbers': [occ_n_alpha, occ_n_beta]}
+    p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
+                                                                'numbers':
+                                                                [occ_n_alpha,
+                                                                    occ_n_beta]}
     p_spin1['asr.gs@calculate']['calculator']['nbands'] = n3
-    p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed', 'numbers': [occ_n_alpha, occ_n_beta]}
+    p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
+                                                         'numbers':
+                                                         [occ_n_alpha, occ_n_beta]}
     p_spin1['asr.relax']['calculator']['nbands'] = n3
     write_json('excited_spin1/params.json', p_spin1)
 
@@ -62,6 +74,6 @@ def create_excited_folders():
 
     return None
 
+
 if __name__ == '__main__':
     main.cli()
-
