@@ -8,7 +8,6 @@ from gpaw.response.pair import PairDensity
 # TODO:
 # - restructure commands, options and default arguments
 # - possibly, include spin option
-# - implement check for already existing folders
 # - write a test
 
 
@@ -19,7 +18,14 @@ from gpaw.response.pair import PairDensity
 def main(n: int = 1, m: int = 1):
     """Set up folder structure and parameters for excited state calculations.
 
-    # TODO: add thorough description of the recipe
+    This recipe creates two folders for calculations of excited states. Run
+    the recipe inside a folder where a finished groundstate calculation,
+    relaxed structure of the groundstate, and params.json is present. Within
+    the newly created folders, a unrelaxed.json structure gets linked (which
+    is the relaxed ground state structure), as well as writing a params.json
+    file containing all of the parameters from the parent groundstate calcu-
+    lation plus parameters for fixed occupations and number of bands that are
+    needed for excited state calculations.
     """
     calc = GPAW('gs.gpw', txt=None)
     create_excited_folders()
