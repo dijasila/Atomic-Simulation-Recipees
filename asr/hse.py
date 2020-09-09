@@ -62,12 +62,10 @@ def hse(kptdensity, emptybands):
     e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
-    dct = {}
-    if mpi.world.rank == 0:
-        dct = dict(vxc_hse_skn=vxc_hse_skn,
-                   e_pbe_skn=e_pbe_skn,
-                   vxc_pbe_skn=vxc_pbe_skn,
-                   e_hse_skn=e_hse_skn)
+    dct = dict(vxc_hse_skn=vxc_hse_skn,
+               e_pbe_skn=e_pbe_skn,
+               vxc_pbe_skn=vxc_pbe_skn,
+               e_hse_skn=e_hse_skn)
     return dct, calc
 
 
@@ -84,7 +82,6 @@ def hse_spinorbit(dct, calc):
                           theta=theta, phi=phi)
     dct_soc['e_hse_mk'] = soc.eigenvalues().T
     dct_soc['s_hse_mk'] = soc.spin_projections()[:, :, get_spin_index()].T
-
     return dct_soc
 
 
@@ -264,7 +261,7 @@ def main():
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
-    calc = GPAW('hse_nowfs.gpw', txt=None)
+    calc = GPAW('hse_nowfs.gpw')
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
@@ -275,7 +272,6 @@ def main():
     results['__key_descriptions__'] = {}
     results_calc = read_json('results-asr.hse@calculate.json')
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
-    calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
     efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
                                nspins=eps_skn.shape[0])
@@ -306,13 +302,14 @@ def main():
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eigenvalues=eps, nspins=2)
+    bzkpts = calc.get_bz_k_points()
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        kvbm = ibzkpts[p1[1]]
-        kcbm = ibzkpts[p2[1]]
+        kvbm = bzkpts[p1[1]]
+        kcbm = bzkpts[p2[1]]
         vbm = eps[p1]
         cbm = eps[p2]
         subresults = {'vbm_hse': vbm,
