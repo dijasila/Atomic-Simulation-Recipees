@@ -67,6 +67,7 @@ def main(strain_percent: float = 1,
                              'width': 0.05},
              'convergence': {'eigenstates': 1e-11,
                              'density': 1e-7},
+             'symmetry': 'off',
              'txt': 'formalpol.txt',
              'charge': 0
          }):

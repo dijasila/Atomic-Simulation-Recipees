@@ -416,6 +416,6 @@ class DOSCalculator:
     def dos_at(self, energies):
         return np.ones_like(energies)
 
-    def pdos(self, a, l, spin, width):
+    def pdos(self, a, l, m, spin, width):
         from ase.spectrum.dosdata import GridDOSData
         return GridDOSData(self.energies, np.ones_like(self.energies))
