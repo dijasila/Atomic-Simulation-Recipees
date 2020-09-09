@@ -37,7 +37,6 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     needed for excited state calculations.
     """
     atoms, calc = restart('gs.gpw', txt=None)
-    create_excited_folders()
 
     n3 = calc.get_number_of_bands()
     Pair = PairDensity(calc)
@@ -70,9 +69,10 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
                                                              'numbers':
                                                              [occ_n_alpha, occ_n_beta]}
         p_spin0['asr.relax']['calculator']['nbands'] = n3
+        create_excited_folders(0)
         write_json('excited_spin0/params.json', p_spin0)
     # spin channel 2
-    if spin == 1 or spin ==2:
+    if spin == 1 or spin == 2:
         occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
         occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
                                 np.zeros(n3 - (n2 - n) - m - 1)))
@@ -86,21 +86,22 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
                                                              'numbers':
                                                              [occ_n_alpha, occ_n_beta]}
         p_spin1['asr.relax']['calculator']['nbands'] = n3
+        create_excited_folders(1)
         write_json('excited_spin1/params.json', p_spin1)
 
     return None
 
 
-def create_excited_folders():
-    if not (Path('./excited_spin0').is_dir()
-            and Path('./excited_spin1').is_dir()):
-        Path('./excited_spin0').mkdir()
-        Path('./excited_spin1').mkdir()
-        os.system('ln -s ./../structure.json excited_spin0/unrelaxed.json')
-        os.system('ln -s ./../structure.json excited_spin1/unrelaxed.json')
+def create_excited_folders(channel):
+    foldername = './excited_spin{}'.format(int(channel))
+    if not Path(foldername).is_dir():
+        Path(foldername).mkdir()
+        os.system('ln -s ./../structure.json '
+                  'excited_spin{}/unrelaxed.json'.format(int(channel)))
     else:
-        print('WARNING: excited folders already exist! Overwrite params.json'
-              ' and keep already linked strucrures.')
+        print('WARNING: excited folder already exists! Overwrite params.json'
+              ' in {}/ and keep already linked structures.'.format(
+                  foldername))
 
     return None
 
