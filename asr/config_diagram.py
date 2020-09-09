@@ -121,7 +121,6 @@ def main():
 
 def plot_cc_diagram(row, fname):
     from matplotlib import pyplot as plt
-    from asr.core import read_json
 
     data = row.data.get('results-asr.config_diagram.json')
     data_g = data['ground']
@@ -155,7 +154,7 @@ def plot_cc_diagram(row, fname):
             markeredgecolor='C1', markeredgewidth=0.9)
 
     ax.set_xlabel(r'Q$\;(amu^{1/2}\AA)$', size=14)
-    ax.set_ylabel(r'E(Q) $-$ E(0) (eV)', size=14)
+    ax.set_ylabel('Energy (eV)', size=14)
     ax.set_xlim(-1.3 * delta_Q, 2 * delta_Q * 1.15)
     ax.set_ylim(-1 / 5 * ZPL, 1.1 * max(ene_e) + 6 / 5 * ZPL)
 
