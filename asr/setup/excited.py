@@ -7,7 +7,7 @@ from gpaw.response.pair import PairDensity
 
 # TODO:
 # - restructure commands, options and default arguments
-# - possible, include spin option
+# - possibly, include spin option
 # - implement check for already existing folders
 # - write a test
 
@@ -67,10 +67,15 @@ def main(n: int = 1, m: int = 1):
 
 
 def create_excited_folders():
-    Path('./excited_spin0').mkdir()
-    Path('./excited_spin1').mkdir()
-    os.system('ln -s ./../structure.json excited_spin0/unrelaxed.json')
-    os.system('ln -s ./../structure.json excited_spin1/unrelaxed.json')
+    if not (Path('./excited_spin0').is_dir()
+            and Path('./excited_spin1').is_dir()):
+        Path('./excited_spin0').mkdir()
+        Path('./excited_spin1').mkdir()
+        os.system('ln -s ./../structure.json excited_spin0/unrelaxed.json')
+        os.system('ln -s ./../structure.json excited_spin1/unrelaxed.json')
+    else:
+        print('WARNING: excited folders already exist! Overwrite params.json'
+              ' and keep already linked strucrures.')
 
     return None
 
