@@ -141,8 +141,11 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
                     scaled_positions=scell.get_scaled_positions(),
                     cell=scell.get_cell(),
                     pbc=atoms.pbc)
+
     if is_magnetic():
         atoms_N.set_initial_magnetic_moments(scell.get_magnetic_moments())
+
+    set_of_forces = []
 
     for n, cell in enumerate(displaced_sc):
         # Displacement number
@@ -154,6 +157,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
 
         if Path(filename).is_file():
             forces = read_json(filename)["force"]
+            set_of_forces.append(forces)
             # Number of forces equals to the number of atoms in the supercell
             assert len(forces) == len(atoms) * np.prod(sc), (
                 "Wrong supercell size!")
@@ -166,8 +170,14 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         drift_force = forces.sum(axis=0)
         for force in forces:
             force -= drift_force / forces.shape[0]
-
         write_json(filename, {"force": forces})
+
+    phonon.produce_force_constants(
+        forces=set_of_forces, 
+        calculate_full_force_constants=False)
+    phonon.symmetrize_force_constants()
+
+    phonon.save(settings={'force_constants': True})
 
 
 def requires():
@@ -224,63 +234,24 @@ def webpanel(row, key_descriptions):
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
 def main(rc: float = None):
-    from phonopy import Phonopy
-    from phonopy.structure.atoms import PhonopyAtoms
+    import phonopy
     from phonopy.units import THzToEv
 
     dct = read_json("results-asr.phonopy@calculate.json")
-    atoms = read("structure.json")
-    sc = dct["__params__"]["sc"]
-    d = dct["__params__"]["d"]
     dist_max = dct["__params__"]["dist_max"]
-    fsname = dct["__params__"]["fsname"]
-
+    atoms = read("structure.json")
     nd = sum(atoms.get_pbc())
-
+    sc = dct["__params__"]["sc"]
     sc = list(map(int, sc))
+
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
-    if nd == 3:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
-    elif nd == 2:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
-    elif nd == 1:
-        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
 
-    phonopy_atoms = PhonopyAtoms(
-        symbols=atoms.symbols,
-        cell=atoms.get_cell(),
-        scaled_positions=atoms.get_scaled_positions(),
-    )
+    phonon = phonopy.load('phonopy_params.yaml')
 
-    phonon = Phonopy(phonopy_atoms, supercell)
-
-    phonon.generate_displacements(distance=d, is_plusminus=True)
-    displaced_sc = phonon.get_supercells_with_displacements()
-
-    set_of_forces = []
-
-    for i, cell in enumerate(displaced_sc):
-        # Displacement index
-        a = i // 2
-        # Sign of the diplacement
-        sign = ["+", "-"][i % 2]
-
-        filename = fsname + ".{0}{1}.json".format(a, sign)
-
-        forces = read_json(filename)["force"]
-        # Number of forces equals to the number of atoms in the supercell
-        assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
-
-        set_of_forces.append(forces)
-
-    phonon.produce_force_constants(
-        forces=set_of_forces, calculate_full_force_constants=False
-    )
     if rc is not None:
         phonon.set_force_constants_zero_with_radius(rc)
-    phonon.symmetrize_force_constants()
-    phonon.save(settings={'force_constants': True})
+        phonon.symmetrize_force_constants()
 
     nqpts = 100
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
@@ -311,12 +282,14 @@ def main(rc: float = None):
         u_klav[q] = u_ll.T.reshape(3 * len(atoms), len(atoms), 3)
         if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
-            ob = phonon._irreps
             irreps = []
-            for nr, (deg, irr) in enumerate(
-                zip(ob._degenerate_sets, ob._ir_labels)
-            ):
-                irreps += [irr] * len(deg)
+            try:
+                ob = phonon._irreps
+                for nr, (deg, irr) in enumerate(
+                    zip(ob._degenerate_sets, ob._ir_labels)):
+                    irreps += [irr] * len(deg)
+            except:
+                continue
 
     irreps = list(irreps)
 
