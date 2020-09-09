@@ -1,14 +1,16 @@
 from pathlib import Path
 import numpy as np
 import os
-from gpaw import GPAW
-from asr.core import read_json, write_json, command, option
+from gpaw import restart
+from ase.io import Trajectory
+from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
 
 # TODO:
 # - restructure commands, options and default arguments
-# - possibly, include spin option
-# - write a test
+# - if no params.json present, get parameters from the calculator
+# - implement separate creation of folders and links for the
+#   different spin channels
 
 
 @command('asr.setup.excited')
@@ -34,7 +36,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     lation plus parameters for fixed occupations and number of bands that are
     needed for excited state calculations.
     """
-    calc = GPAW('gs.gpw', txt=None)
+    atoms, calc = restart('gs.gpw', txt=None)
     create_excited_folders()
 
     n3 = calc.get_number_of_bands()
@@ -42,14 +44,21 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     n1 = Pair.nocc2
     n2 = Pair.nocc1
 
+    # extract old calculator parameters
+    params_relax = Trajectory('relax.traj')[-1].get_calculator().parameters
+    params_gs = calc.parameters
+    params_relax['name'] = 'gpaw'
+    params_gs['name'] = 'gpaw'
+    newparams = {'asr.gs@calculate': {'calculator': params_gs},
+                 'asr.relax': {'calculator': params_relax}}
+
     # spin channel 1
     occ_n_alpha = np.hstack((np.ones(n1 - n),
                              np.zeros(m),
                              np.ones(1),
                              np.zeros(n3 - (n1 - n) - m - 1)))
     occ_n_beta = np.hstack((np.ones(n2), np.zeros(n3 - n2)))
-    params = read_json('params.json')
-    p_spin0 = params.copy()
+    p_spin0 = newparams.copy()
     p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
                                                                 'numbers':
                                                                 [occ_n_alpha,
@@ -64,7 +73,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
     occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
                             np.zeros(n3 - (n2 - n) - m - 1)))
-    p_spin1 = params.copy()
+    p_spin1 = newparams.copy()
     p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
                                                                 'numbers':
                                                                 [occ_n_alpha,
