@@ -30,7 +30,18 @@ def main(spin: int = 2, state: int = 0, get_gapstates: bool = False):
         if spin == 1 or spin == 2:
             states_1 = return_gapstates(calc, spin=1)
     elif not get_gapstates:
-        states_0 = state
+        states_0 = [state]
+        states_1 = [state]
+
+    for band in states_0:
+        wf = calc.get_pseudo_wave_function(band=band, spin=0)
+        fname = 'wf.{0}_{1}.cube'.format(band, 0)
+        write(fname, atoms, data=wf)
+    for band in states_1:
+        wf = calc.get_pseudo_wave_function(band=band, spin=1)
+        fname = 'wf.{0}_{1}.cube'.format(band, 1)
+        write(fname, atoms, data=wf)
+
 
     return None
 
