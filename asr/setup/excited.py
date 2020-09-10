@@ -5,10 +5,6 @@ from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
-# TODO:
-# - redefine occupations for general approach
-# - compare spin channels for figuring out whether both channels are needed
-# - fix treatment of different spin channels inside the 'if' clauses
 
 
 @command('asr.setup.excited')
@@ -36,7 +32,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     """
     atoms, calc = restart('gs.gpw', txt=None)
 
-    n3 = calc.get_number_of_bands()
+    N_tot = calc.get_number_of_bands()
 
     # get occupations of the two different spin channels
     pdens = PairDensity(calc)
@@ -63,37 +59,43 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     # spin channel 1
     if spin == 0 or spin == 2:
         occ_n_alpha = np.hstack((np.ones(n1 - n),
-                                 np.zeros(m),
+                                 np.zeros(1),
+                                 np.ones(2 * n1 + 1),
+                                 np.zeros(m - 1),
                                  np.ones(1),
-                                 np.zeros(n3 - (n1 - n) - m - 1)))
-        occ_n_beta = np.hstack((np.ones(n2), np.zeros(n3 - n2)))
+                                 np.zeros(N_tot - n1 - m)))
+        occ_n_beta = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
         p_spin0 = newparams.copy()
         p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
                                                                     'numbers':
                                                                     [occ_n_alpha,
                                                                         occ_n_beta]}
-        p_spin0['asr.gs@calculate']['calculator']['nbands'] = n3
+        p_spin0['asr.gs@calculate']['calculator']['nbands'] = N_tot
         p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
                                                              'numbers':
                                                              [occ_n_alpha, occ_n_beta]}
-        p_spin0['asr.relax']['calculator']['nbands'] = n3
+        p_spin0['asr.relax']['calculator']['nbands'] = N_tot
         create_excited_folders(0)
         write_json('excited_spin0/params.json', p_spin0)
     # spin channel 2
     if spin == 1 or spin == 2:
-        occ_n_alpha = np.hstack((np.ones(n1), np.zeros(n3 - n1)))
-        occ_n_beta = np.hstack((np.ones(n2 - n), np.zeros(m), np.ones(1),
-                                np.zeros(n3 - (n2 - n) - m - 1)))
+        occ_n_alpha = np.hstack((np.ones(n1), np.zeros(N_tot - n1)))
+        occ_n_beta = np.hstack((np.ones(n2 - n),
+                                np.zeros(1),
+                                np.ones(2 * n2 + 1),
+                                np.zeros(m - 1),
+                                np.ones(1),
+                                np.zeros(N_tot - n2 - m)))
         p_spin1 = newparams.copy()
         p_spin1['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
                                                                     'numbers':
                                                                     [occ_n_alpha,
                                                                         occ_n_beta]}
-        p_spin1['asr.gs@calculate']['calculator']['nbands'] = n3
+        p_spin1['asr.gs@calculate']['calculator']['nbands'] = N_tot
         p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
                                                              'numbers':
                                                              [occ_n_alpha, occ_n_beta]}
-        p_spin1['asr.relax']['calculator']['nbands'] = n3
+        p_spin1['asr.relax']['calculator']['nbands'] = N_tot
         create_excited_folders(1)
         write_json('excited_spin1/params.json', p_spin1)
 
