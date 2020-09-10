@@ -24,12 +24,13 @@ def main(spin: int = 2, state: int = 0, get_gapstates: bool = False):
     """
 
     atoms, calc = restart('gs.gpw', txt=None)
-    if spin == 0 or spin == 2:
-        states_0 = return_gapstates(calc, spin=0)
-    elif spin == 1 or spin == 2:
-        states_1 = return_gapstates(calc, spin=1)
-
-    print(states_0, states_1)
+    if get_gapstates:
+        if spin == 0 or spin == 2:
+            states_0 = return_gapstates(calc, spin=0)
+        if spin == 1 or spin == 2:
+            states_1 = return_gapstates(calc, spin=1)
+    elif not get_gapstates:
+        states_0 = state
 
     return None
 
@@ -40,7 +41,7 @@ def return_gapstates(calc_def, spin=0):
     """
     from asr.core import read_json
 
-    _, calc_pris = restart('../../defects.pristine_sc/gs.gpw')
+    _, calc_pris = restart('../../defects.pristine_sc/gs.gpw', txt=None)
     results_pris = read_json('../../defects.pristine_sc/results-asr.gs.json')
     results_def = read_json('results-asr.gs.json')
     vbm = results_pris['vbm'] - results_pris['evac']
@@ -53,10 +54,7 @@ def return_gapstates(calc_def, spin=0):
     states_def = es_def + diff
 
     statelist = []
-    [statelist.append(i) for state, i in enumerate(states_def) if (
+    [statelist.append(i) for i, state in enumerate(states_def) if (
         state < cbm and state > vbm)]
-    # for state, i in enumerate(states_def):
-    #     if state < cbm and state > vbm:
-    #         statelist.append(i)
 
-    return stateist
+    return statelist
