@@ -11,7 +11,7 @@ from asr.core import command, option
 def calculate(gs: str = 'gs.gpw'):
     """Calculate two spin configurations."""
     from gpaw import GPAW
-    from asr.core import magnetic_atoms
+    from asr.utils import magnetic_atoms
 
     calc = GPAW(gs, fixdensity=False, txt=None)
     atoms = calc.atoms
