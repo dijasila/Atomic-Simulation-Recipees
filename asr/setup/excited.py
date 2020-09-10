@@ -7,9 +7,9 @@ from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
 # TODO:
 # - redefine occupations for general approach
-# - extract majority spin channel first
 # - compare spin channels for figuring out whether both channels are needed
 # - fix treatment of different spin channels inside the 'if' clauses
+
 
 @command('asr.setup.excited')
 @option('--n', help='State from which an electron will be removed. 1'
@@ -37,9 +37,19 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     atoms, calc = restart('gs.gpw', txt=None)
 
     n3 = calc.get_number_of_bands()
-    Pair = PairDensity(calc)
-    n1 = Pair.nocc2
-    n2 = Pair.nocc1
+
+    # get occupations of the two different spin channels
+    pdens = PairDensity(calc)
+    if pdens.nocc1 > pdens.nocc2:
+        n1 = pdens.nocc1
+        n2 = pdens.nocc2
+    elif pdens.nocc2 > pdens.nocc1:
+        n1 = pdens.nocc2
+        n2 = pdens.nocc1
+    elif pdens.nocc1 == pdens.nocc2:
+        n1 = pdens.nocc1
+        n2 = pdens.nocc2
+        spin = 0
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().parameters
