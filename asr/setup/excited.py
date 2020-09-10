@@ -5,7 +5,11 @@ from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
-
+# TODO:
+# - redefine occupations for general approach
+# - extract majority spin channel first
+# - compare spin channels for figuring out whether both channels are needed
+# - fix treatment of different spin channels inside the 'if' clauses
 
 @command('asr.setup.excited')
 @option('--n', help='State from which an electron will be removed. 1'
