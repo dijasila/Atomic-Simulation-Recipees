@@ -60,7 +60,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     if spin == 0 or spin == 2:
         occ_n_alpha = np.hstack((np.ones(n1 - n),
                                  np.zeros(1),
-                                 np.ones(2 * n1 + 1),
+                                 np.ones(n - 1),
                                  np.zeros(m - 1),
                                  np.ones(1),
                                  np.zeros(N_tot - n1 - m)))
@@ -82,7 +82,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
         occ_n_alpha = np.hstack((np.ones(n1), np.zeros(N_tot - n1)))
         occ_n_beta = np.hstack((np.ones(n2 - n),
                                 np.zeros(1),
-                                np.ones(2 * n2 + 1),
+                                np.ones(n - 1),
                                 np.zeros(m - 1),
                                 np.ones(1),
                                 np.zeros(N_tot - n2 - m)))
