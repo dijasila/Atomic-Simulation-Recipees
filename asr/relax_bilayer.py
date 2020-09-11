@@ -3,6 +3,7 @@ import numpy as np
 from ase import Atoms
 import os
 from asr.stack_bilayer import translation
+from gpaw import mpi
 
 
 def get_energy(base, top, h, t_c, settings, callback, memo):
@@ -64,7 +65,7 @@ def main(atoms: Atoms,
                            'mode': 'interlayer',
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
-         name='../structure.json',
+         name='structure.json',
          tol=1e-2,
          distance=5,
          vacuum=6):
@@ -121,15 +122,58 @@ def main(atoms: Atoms,
 
     final_atoms = translation(t_c[0], t_c[1], hmin,
                               top_layer, atoms)
-    if mpi.rank == 0:
-        final_atoms.write(name)
+
+    final_atoms.write("structure.json")
 
     curve = np.array(energy_curve)
 
-    return {'heights': curve[:, 0],
-            'energies': curve[:, 1],
-            'optimal_height': hmin,
-            'energy': opt_result.fun}
+    P = bilayer_stiffness(curve)
+
+    results = {'heights': curve[:, 0],
+               'energies': curve[:, 1],
+               'optimal_height': hmin,
+               'energy': opt_result.fun,
+               'curvature': P[2],
+               'FittingParams': P}
+
+    return results
+
+
+def webpanel():
+    """Return a webpanel showing the binding energy curve.
+
+    Also show the fit made to determine the stiffness.
+    """
+    raise NotImplementedError()
+
+
+def bilayer_stiffness(energy_curve):
+    """Calculate bilayer stiffness.
+
+    We define the bilayer stiffness as the curvature
+    of the binding energy curve at the minimum.
+    That is, we are calculating an effective spring
+    constant.
+
+    For now we include this property calculation here
+    since we can get it almost for free.
+    """
+
+    # We do a second order fit using points within
+    # 0.01 eV of minimum
+    ds = energy_curve[:, 0]
+    es = energy_curve[:, 1]
+    mine = np.min(es)
+    window = 0.01
+    
+    X = ds[np.abs(es - mine) < window]
+    Y = es[np.abs(es - mine) < window]
+    
+    I = np.array([X**0, X**1, X**2]).T
+    
+    P, residuals, rank, singulars = np.linalg.lstsq(I, Y, rcond=None)
+
+    return P
 
 
 if __name__ == '__main__':
