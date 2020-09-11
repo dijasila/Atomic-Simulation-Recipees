@@ -86,14 +86,10 @@ def get_rotated_mats(atoms: Atoms):
 def unique_materials(mats, auxs, full=False, rmsd_tol=None):
     unique_mats = []
     unique_auxs = []
-    c = 0
-    L = len(mats)
     for (mat, aux) in zip(mats, auxs):
         if not any(atomseq(mat, x, full=full, rmsd_tol=rmsd_tol) for x in unique_mats):
             unique_mats.append(mat)
             unique_auxs.append(aux)
-        c += 1
-        print(f"Handled {c}/{L} materials", flush=True)
 
     return unique_mats, unique_auxs
 
@@ -182,15 +178,23 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
                 translation_label = pretty_float(total_translation)
                 full_label = label + "-" + translation_label
 
-                full_labels.append(full_label)
                 bilayer = translation(move[0], move[1], 12, toplayer, atoms)
+
+                full_labels.append(full_label)
                 bilayers.append(bilayer)
-
                 toplayers.append(top)
-
                 symmetries.append((U_cc, t_c))
-
                 translations.append(move)
+
+    _labels, _bis, _tops, _syms, _ts = cell_specific_stacks(atoms, cell_type,
+                                                            rotated_mats, labels,
+                                                            transforms, rmsd_tol)
+
+    full_labels.extend(_labels)
+    bilayers.extend(_bis)
+    toplayers.extend(_tops)
+    symmetries.extend(_syms)
+    translations.extend(_ts)
 
     auxs = list(zip(toplayers, full_labels, translations, symmetries))
     unique_layers, unique_auxs = unique_materials(bilayers, auxs, full=True, rmsd_tol=rmsd_tol)
@@ -198,6 +202,58 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
 
     return tops, labels, translations, syms, unique_layers
 
+
+def cell_specific_stacks(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
+    full_labels = []
+    bilayers = []
+    toplayers = []
+    symmetries = []
+    final_transforms = []
+
+    positions = atoms.get_positions()
+    cell = atoms.cell
+    unit_cell = atoms.get_cell_lengths_and_angles()
+    a, b, c = unit_cell[:3]
+
+    def append_helper(x, y, top, atoms, label, symtup):
+        bilayer = translation(x, y, 12, top, atoms)
+        
+        move_c = np.array([x, y, 0.0])
+        move_c = cell.scaled_positions(move_c)
+        total_translation = move_c + t_c
+        translation_label = pretty_float(total_translation)
+        flabel = label + '-' + translation_label
+        
+        full_labels.append(flabel)
+        bilayers.append(bilayer)
+        toplayers.append(top.copy())
+        symmetries.append(symtup)
+        final_transforms.append(np.array([x, y]))
+    
+    if cell_type == 'hexagonal':
+        for top, lab, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
+            x = positions[1, 0]
+            y = positions[1, 1]
+            append_helper(x, y, top, atoms, lab, (U_cc, t_c))
+
+            x = 2 * positions[1, 0]
+            y = 2 * positions[1, 1]
+            append_helper(x, y, top, atoms, lab, (U_cc, t_c))
+    elif cell_type in ['oblique', 'rectangular', 'square', 'centered']:
+        for top, lab, stup in zip(rotated_mats, labels, transforms):
+            x = a / 2.0
+            y = 0.0
+            append_helper(x, y, top, atoms, lab, stup)
+
+            x = 0.0
+            y = b / 2.0
+            append_helper(x, y, top, atoms, lab, stup)
+
+            x = a / 2.0
+            y = b / 2.0
+            append_helper(x, y, top, atoms, lab, stup)
+
+    return full_labels, bilayers, toplayers, symmetries, final_transforms
 
 def pretty_float(arr):
     f1 = round(arr[0], 2)
@@ -222,7 +278,6 @@ def translation(x, y, z, rotated, base):
     stacked.wrap()
 
     return stacked
-
 # def webpanel
 
 
