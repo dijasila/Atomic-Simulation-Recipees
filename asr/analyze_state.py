@@ -1,3 +1,4 @@
+from ase.io import read
 from asr.core import command, option
 from gpaw import restart
 
@@ -28,7 +29,9 @@ def main(spin: int = 2,
     analysis on those states.
     """
 
-    atoms, calc = restart('gs.gpw', txt=None)
+    atoms = read('structure.json')
+    calc = GPAW('gs.gpw', txt=None, fixdensity=True)
+    e = calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
             states_0 = return_gapstates(calc, spin=0)
