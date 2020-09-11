@@ -14,7 +14,12 @@ from gpaw import restart
 @option('--get-gapstates/--dont-get-gapstates', help='Should all of the gap'
         ' states be saved and analyzed? Note, that if gap states are analysed'
         ' the --state option will be neglected.', is_flag=True)
-def main(spin: int = 2, state: int = 0, get_gapstates: bool = False):
+@option('--analyze/--dont-analyze', help='Not only create cube files of '
+        'specific states, but also analyze them.', is_flag=True)
+def main(spin: int = 2,
+         state: int = 0,
+         get_gapstates: bool = False,
+         analyze: bool = False):
     """Write out wavefunction and analyze it.
 
     This recipe reads in an existing gs.gpw file and writes out wavefunctions
@@ -41,6 +46,9 @@ def main(spin: int = 2, state: int = 0, get_gapstates: bool = False):
         wf = calc.get_pseudo_wave_function(band=band, spin=1)
         fname = 'wf.{0}_{1}.cube'.format(band, 1)
         write(fname, atoms, data=wf)
+
+    if analyze:
+        print('INFO: analyze chosen states.')
 
 
     return None
