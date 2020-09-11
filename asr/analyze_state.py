@@ -1,6 +1,6 @@
 from ase.io import read
 from asr.core import command, option
-from gpaw import restart
+from gpaw import GPAW
 
 
 @command(module='asr.analyze_state',
@@ -51,6 +51,7 @@ def main(spin: int = 2,
         write(fname, atoms, data=wf)
 
     if analyze:
+        # To be implemented
         print('INFO: analyze chosen states.')
 
 
