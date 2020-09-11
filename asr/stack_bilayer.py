@@ -7,11 +7,11 @@ class StackingError(ValueError):
     pass
 
 
-def flatten(atoms):
+def flatten(atoms, tol):
     flats = []
     for atom in atoms:
         pos = atom.position[:2]
-        if any(np.allclose(x, pos) for x in flats):
+        if any(np.allclose(x, pos, tol) for x in flats):
             continue
         else:
             flats.append(pos)
@@ -83,18 +83,22 @@ def get_rotated_mats(atoms: Atoms):
     return final_mats, labels, transforms
 
 
-def unique_materials(mats, auxs, full=False):
+def unique_materials(mats, auxs, full=False, rmsd_tol=None):
     unique_mats = []
     unique_auxs = []
+    c = 0
+    L = len(mats)
     for (mat, aux) in zip(mats, auxs):
-        if not any(atomseq(mat, x, full=full) for x in unique_mats):
+        if not any(atomseq(mat, x, full=full, rmsd_tol=rmsd_tol) for x in unique_mats):
             unique_mats.append(mat)
             unique_auxs.append(aux)
+        c += 1
+        print(f"Handled {c}/{L} materials", flush=True)
 
     return unique_mats, unique_auxs
 
 
-def atomseq(atoms1, atoms2, full=False):
+def atomseq(atoms1, atoms2, full=False, rmsd_tol=None):
     """Check equivalence of atoms1 and 2.
 
     Take two materials and go through each atom
@@ -110,7 +114,7 @@ def atomseq(atoms1, atoms2, full=False):
     if full and not identical:
         # Can return None for very different structures
         rmsd = get_rmsd(atoms1.copy(), atoms2.copy()) or 1
-        identical = identical or rmsd < 1e-3
+        identical = identical or rmsd < rmsd_tol
 
     return identical
 
@@ -156,8 +160,8 @@ def append_material(x, y, mat, atoms, tform, label, labelsuffix,
     final_transforms.append(tform)
 
 
-def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
-    base_positions = flatten(atoms)
+def build_layers(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
+    base_positions = flatten(atoms, rmsd_tol)
     cell = atoms.cell
 
     full_labels = []
@@ -166,9 +170,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
     symmetries = []
     translations = []
     for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
-        top_positions = flatten(toplayer)
-        if len(top_positions) * len(base_positions) > 20:
-            top_positions = top_positions[:1]
+        top_positions = flatten(toplayer, rmsd_tol)
 
         for pos1 in base_positions:
             for pos2 in top_positions:
@@ -191,7 +193,7 @@ def build_layers(atoms, cell_type, rotated_mats, labels, transforms):
                 translations.append(move)
 
     auxs = list(zip(toplayers, full_labels, translations, symmetries))
-    unique_layers, unique_auxs = unique_materials(bilayers, auxs, full=True)
+    unique_layers, unique_auxs = unique_materials(bilayers, auxs, full=True, rmsd_tol=rmsd_tol)
     tops, labels, translations, syms = zip(*unique_auxs)
 
     return tops, labels, translations, syms, unique_layers
@@ -227,7 +229,10 @@ def translation(x, y, z, rotated, base):
 @command(module='asr.stack_bilayer', requires=['structure.json'])
 @option('-a', '--atoms', help='Monolayer to be stacked',
         type=AtomsFile(), default='structure.json')
-def main(atoms: Atoms):
+@option('-t', '--rmsd-tol', help='Position comparison tolerance',
+        default=0.3)
+def main(atoms: Atoms,
+         rmsd_tol):
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
     import os
@@ -246,7 +251,7 @@ def main(atoms: Atoms):
 
     things = build_layers(atoms, cell_type,
                           rotated_mats,
-                          labels, transforms)
+                          labels, transforms, rmsd_tol)
 
     for mat, label, transl, tform, proto in zip(*things):
         if not os.path.isdir(label):
