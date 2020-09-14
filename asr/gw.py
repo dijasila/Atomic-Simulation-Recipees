@@ -320,8 +320,9 @@ def main():
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        kvbm = ibzkpts[p1[1]]
-        kcbm = ibzkpts[p2[1]]
+        bzkpts = calc.get_bz_k_points()
+        kvbm = bzkpts[p1[1]]
+        kcbm = bzkpts[p2[1]]
         vbm = eps_skn[p1]
         cbm = eps_skn[p2]
         subresults = {'vbm_gw': vbm,
