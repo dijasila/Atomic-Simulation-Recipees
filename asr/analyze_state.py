@@ -1,6 +1,6 @@
-from ase.io import read
+from ase.io import read, write
 from asr.core import command, option
-from gpaw import GPAW
+from gpaw import GPAW, restart
 
 
 @command(module='asr.analyze_state',
@@ -28,10 +28,9 @@ def main(spin: int = 2,
     all the defect states in the gap). Furthermore, it will feature some post
     analysis on those states.
     """
-
     atoms = read('structure.json')
     calc = GPAW('gs.gpw', txt=None, fixdensity=True)
-    e = calc.get_potential_energy()
+    calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
             states_0 = return_gapstates(calc, spin=0)
@@ -53,7 +52,6 @@ def main(spin: int = 2,
     if analyze:
         # To be implemented
         print('INFO: analyze chosen states.')
-
 
     return None
 
