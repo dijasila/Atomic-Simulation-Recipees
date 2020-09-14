@@ -32,7 +32,6 @@ def get_kpts_size(atoms, kptdensity):
 
 def hse(kptdensity, emptybands):
     import numpy as np
-    import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
