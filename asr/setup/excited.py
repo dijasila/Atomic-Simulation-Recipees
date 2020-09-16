@@ -48,9 +48,8 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
         spin = 0
 
     # extract old calculator parameters
-    params_relax = Trajectory('relax.traj')[-1].get_calculator().parameters
-    params_gs = calc.parameters
-    params_gs.pop('width')
+    params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
+    params_gs = calc.todict()
     params_relax['name'] = 'gpaw'
     params_gs['name'] = 'gpaw'
     newparams = {'asr.gs@calculate': {'calculator': params_gs},
