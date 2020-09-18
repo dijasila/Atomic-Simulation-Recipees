@@ -6,7 +6,8 @@ from ase.io import read
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
-from asr.database.material_fingerprint import get_uid_of_atoms
+from asr.database.material_fingerprint import get_uid_of_atoms, \
+    get_hash_of_atoms
 from asr.database.check import main as check_database
 import multiprocessing
 from pathlib import Path
@@ -204,7 +205,8 @@ def get_material_uid(atoms: Atoms):
         try:
             mf()
         except PermissionError:
-            return get_uid_of_atoms(atoms)
+            hash = get_hash_of_atoms(atoms)
+            return get_uid_of_atoms(atoms, hash)
 
     return read_json('results-asr.database.material_fingerprint.json')['uid']
 

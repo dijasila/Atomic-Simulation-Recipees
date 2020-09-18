@@ -90,6 +90,6 @@ def test_database_fromtree_works_without_write_permission(
     import stat
     os.chmod(folder_tree[0][0], stat.S_IRUSR | stat.S_IXUSR)
     try:
-        fromtree(folders=['materials/Si2'])
+        fromtree(folders=['materials/Si2'], recursive=True)
     finally:
         os.chmod(folder_tree[0][0], stat.S_IRUSR | stat.S_IXUSR | stat.S_IWUSR)
