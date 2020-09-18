@@ -234,7 +234,6 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
         Dictionary containing data files and links.
 
     """
-
     from fnmatch import fnmatch
 
     with chdir(folder.resolve()):
