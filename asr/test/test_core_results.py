@@ -13,6 +13,7 @@ class MyResults(ASRResults):
 
 def test_results_object(capsys):
     results = MyResults(a=1)
+    results.metadata = {'time': 'right now'}
     assert results.a == 1
     assert 'a' in results
     assert results.__doc__ == '\n'.join(['Generic results.',
@@ -34,7 +35,7 @@ def test_results_object(capsys):
     assert f'{results:html}' == html
 
     json = format(results, 'json')
-    newresults = MyResults.from_json(json)
+    newresults = MyResults.from_format(json, format='json')
     assert newresults == results
 
     otherresults = MyResults(a=2)

@@ -78,12 +78,16 @@ def encode_json(data):
 
 
 def write_json(filename, data):
+    write_file(filename, encode_json(data))
+
+
+def write_file(filename, text):
     from pathlib import Path
     from ase.parallel import world
 
     with file_barrier([filename]):
         if world.rank == 0:
-            Path(filename).write_text(encode_json(data))
+            Path(filename).write_text(text)
 
 
 def read_json(filename):

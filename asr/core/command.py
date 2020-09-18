@@ -1,6 +1,6 @@
 """Module implementing the ASRCommand class and related decorators."""
-from . import (read_json, write_json, md5sum,
-               file_barrier, unlink, clickify_docstring)
+from . import (read_json, write_file, md5sum,
+               file_barrier, clickify_docstring)
 from ase.parallel import parprint
 import click
 import copy
@@ -11,9 +11,10 @@ import inspect
 from functools import update_wrapper
 
 
-def to_json(obj, filename):
+def to_json(obj):
     """Write an object to a json file."""
-    obj.to_json(filename)
+    json_string = obj.format_as('json')
+    return json_string
 
 
 def _paramerrormsg(func, msg):
@@ -386,10 +387,11 @@ class ASRCommand:
                 hexdigest = md5sum(filename)
                 metadata['requires'][filename] = hexdigest
 
-        results.set_metadata(metadata)
+        results.metadata = metadata
         if self.save_results_file:
             name = self.name
-            to_json(results, f'results-{name}.json')
+            json_string = to_json(results)
+            write_file(f'results-{name}.json', json_string)
 
         return results
 
