@@ -1,9 +1,12 @@
 """Functionality for converting a folder tree to an ASE database."""
 
 from typing import Union, List
+from ase import Atoms
+from ase.io import read
 from asr.core import command, option, argument, chdir, read_json
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
+from asr.database.material_fingerprint import get_uid_of_atoms
 from asr.database.check import main as check_database
 import multiprocessing
 from pathlib import Path
@@ -189,13 +192,21 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
         if atomsname in files:
             with chdir(this_folder):
-                if not mf.done:
-                    mf()
-                mfres = read_json(
-                    'results-asr.database.material_fingerprint.json')
-                uid = mfres['uid']
+                atoms = read(atomsname, parallel=False)
+                uid = get_material_uid(atoms)
                 children[root] = uid
     return children
+
+
+def get_material_uid(atoms: Atoms):
+    """Get UID of atoms."""
+    if not mf.done:
+        try:
+            mf()
+        except PermissionError:
+            return get_uid_of_atoms(atoms)
+
+    return read_json('results-asr.database.material_fingerprint.json')['uid']
 
 
 def collect_folder(folder: Path, atomsname: str, patterns: List[str],
@@ -221,19 +232,18 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
         Dictionary containing data files and links.
 
     """
-    from ase.io import read
+
     from fnmatch import fnmatch
 
     with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
             return None, None, None
 
-        if not mf.done:
-            mf()
-
         atoms = read(atomsname, parallel=False)
 
-        kvp = {'folder': str(folder)}
+        uid = get_material_uid(atoms)
+        kvp = {'folder': str(folder),
+               'uid': uid}
         data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
         for name in Path().glob('*'):
