@@ -207,6 +207,55 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
     return results
 
 
+@command('asr.empZGW',
+         requires=['results-asr.gw@gw.json'],
+         dependencies=['asr.gw@gw'])
+@option('-c', '--correctgw', is_flag=True)
+@option('-z', '--empz', type=float, default=0.75,
+        help='Replacement Z for unphysical Zs')
+def empZGW(correctgw,
+           empz):
+    """Implements the empirical-Z method.
+
+    Implements the method described in https://arxiv.org/abs/2009.00314.
+
+    This method consists of replacing the G0W0 Z-value with the empirical
+    mean of Z-values (calculated from C2DB GW calculations) whenever the
+    G0W0 is "quasiparticle-inconsistent", i.e. the G0W0 Z is outside the
+    interval [0.5, 1.0]. The empirical mean Z was found to be
+
+    Z0 = 0.75.
+
+    Pseudocode:
+    For all states:
+        if Z not in [0.5, 1.0]:
+            set GW energy = E_KS + Z0 * (Sigma_GW - vxc + exx)
+
+    The last line can be implemented as
+
+    new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
+    """
+    gwresults = read_json('results-asr.gw@gw.json')
+    if not correctgw:
+        return gwresults
+
+    Z0 = empz
+    results = gwresults.copy()
+
+    Z_skn = gwresults['Z']
+    e_skn = gwresults['eps']
+    qp_skn = gwresults['qp']
+    results['qpGW'] = qp_skn.copy()
+
+    indices = np.logical_not(np.logical_and(Z_skn >= 0.5, Z_skn <= 1.0))
+    qp_skn[indices] = e_skn[indices] + \
+        (qp_skn[indices] - e_skn[indices]) * Z0 / Z_skn[indices]
+
+    results['qp'] = qp_skn
+
+    return results
+
+
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
 
@@ -247,9 +296,9 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+@command(requires=['results-asr.gw@empZGW.json', 'gs_gw_nowfs.gpw',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
+         dependencies=['asr.gw@empZGW', 'asr.gw@gs', 'asr.bandstructure'],
          webpanel=webpanel)
 def main():
     import numpy as np
