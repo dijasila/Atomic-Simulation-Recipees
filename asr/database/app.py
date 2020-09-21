@@ -116,11 +116,10 @@ def handle_query(args):
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
-    from asr.database.browser import layout
     project_name = project['name']
     uid = row.get(project['uid_key'])
     s = Summary(row,
-                create_layout=layout,
+                create_layout=layout_function,
                 key_descriptions=project['key_descriptions'],
                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
