@@ -210,11 +210,11 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
 @command('asr.empZGW',
          requires=['results-asr.gw@gw.json'],
          dependencies=['asr.gw@gw'])
-@option('-c', '--correctgw', is_flag=True)
+@option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
-def empZGW(correctgw,
-           empz):
+def empZGW(correctgw=False,
+           empz=0.75):
     """Implements the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.
