@@ -1,7 +1,86 @@
-"""Implements ASRResults object and related quantities."""
+"""Implements ASRResult object and related quantities."""
 from ase.io import jsonio
 import copy
-from typing import get_type_hints, List, Any
+from typing import get_type_hints, List, Any, Dict
+from abc import ABC, abstractmethod
+
+
+class ResultEncoder(ABC):
+    """Abstract encoder base class.
+
+    Encodes a results object as a specific format. Optionally
+    provides functionality for decoding.
+
+    """
+
+    def __call__(self, result):
+        """Encode result."""
+        return self.encode(result)
+
+    @abstractmethod
+    def encode(self, result):
+        """Encode result."""
+        raise NotImplementedError
+
+    def decode(self, formatted_results):
+        """Decode result."""
+        return NotImplemented
+
+
+class JSONEncoder(ResultEncoder):
+    """JSON ASRResult encoder."""
+
+    def encode(self, result: 'ASRResult'):
+        """Encode a ASRResult object as json."""
+        from ase.io.jsonio import MyEncoder
+        data = result.format_as('dict')
+        return MyEncoder(indent=1).encode(data)
+
+    def decode(self, json_string: str):
+        """Decode json string."""
+        tmp = jsonio.decode(json_string)
+        metadata = tmp['metadata']
+        version = metadata.pop('version')
+        data = tmp['data']
+        return data, metadata, version
+
+
+class HTMLEncoder(ResultEncoder):
+    """HTML ASRResult encoder."""
+
+    def encode(self, result: 'ASRResult'):
+        """Encode a ASRResult object as html."""
+        return str(result)
+
+
+class WebPanelEncoder(ResultEncoder):
+    """Encoder for ASE compatible webpanels."""
+
+    def encode(self, result):
+        """Make basic webpanel.
+
+        Simply prints all attributes.
+        """
+        rows = []
+        for key, value in result.items():
+            rows.append([key, value])
+        table = {'type': 'table',
+                 'header': ['key', 'value'],
+                 'rows': rows}
+        columns = [[table]]
+        panel = {'title': 'Basic electronic properties (PBE)',
+                 'columns': columns,
+                 'sort': 1}
+        return [panel]
+
+
+class DictEncoder(ResultEncoder):
+    """Dict ASRResult encoder."""
+
+    def encode(self, result: 'ASRResult'):
+        """Encode ASRResult object as dict."""
+        return {'data': result.data,
+                'metadata': result.metadata}
 
 
 def get_object_descriptions(obj):
@@ -27,7 +106,9 @@ def set_docstring(obj) -> str:
     description_keys = set(descriptions)
     assert set(descriptions).issubset(set(types)), description_keys - type_keys
     docstring_parts: List[str] = [obj.__doc__ or '',
-                                  '', 'Parameters', '----------']
+                                  '',
+                                  'Data attributes',
+                                  '---------------']
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
@@ -39,35 +120,7 @@ def set_docstring(obj) -> str:
     return obj
 
 
-class WebPanel:
-    """Web-panel for presenting results."""
-
-    def __call__(self, results):
-        """Create ASE compatible webpanel."""
-        return self.webpanel(results)
-
-    def webpanel(self, results):
-        """Make basic webpanel.
-
-        Simply prints all attributes.
-        """
-        rows = []
-        for key, value in results.items():
-            rows.append([key, value])
-        table = {'type': 'table',
-                 'header': ['key', 'value'],
-                 'rows': rows}
-        columns = [[table]]
-        panel = {'title': 'Basic electronic properties (PBE)',
-                 'columns': columns,
-                 'sort': 1}
-        return [panel]
-
-
-webpanel = WebPanel()
-
-
-class UnknownASRResultsFormat(Exception):
+class UnknownASRResultFormat(Exception):
     """Exception when encountering unknown results version number."""
 
     pass
@@ -76,17 +129,17 @@ class UnknownASRResultsFormat(Exception):
 protected_metadata_keys = {'version'}
 
 
-class ASRResults:
+class ASRResult:
     """Base class for describing results generated with recipes.
 
     A results object is a container for results generated with ASR. It
     contains data and metadata describing results and the
-    circumstances under which the results were generated,
+    circumstances under which the result were generated,
     respectively. The metadata has to be set manually through the
     ``metadata`` property. The wrapped data can be accessed through
     the ``data`` property or directly as an attribute on the object.
 
-    The results object provides the means of presenting the wrapped
+    The result object provides the means of presenting the wrapped
     data in different formats as obtained from the ``get_formats``
     method. To implement a new webpanel, inherit from this class and
     overwrite the ``get_formats`` method appropriately.
@@ -96,50 +149,57 @@ class ASRResults:
 
     Examples
     --------
-    >>> results = ASRResults(a=1)
-    >>> results.metadata = {'time': 'a good time.'}
-    >>> results.a
+    >>> result = ASRResult(a=1)
+    >>> result.metadata = {'time': 'a good time.'}
+    >>> result.a
     1
-    >>> results['a']
+    >>> result['a']
     1
-    >>> results.metadata
+    >>> result.metadata
     {'time': 'a good time.'}
-    >>> str(results)
+    >>> str(result)
     a=1
-    >>> 'a' in results
+    >>> 'a' in result
     True
-    >>> other_results = ASRResults(a=1)
-    >>> results == other_results
+    >>> other_result = ASRResult(a=1)
+    >>> result == other_result
     True
 
     Attributes
     ----------
     data
-        Associated results data.
+        Associated result data.
     metadata
-        Associated results metadata.
+        Associated result metadata.
     version : int
         The version number.
-    prev_version : ASRResults or None
-        Pointer to a previous results format. If none, this is the
+    prev_version : ASRResult or None
+        Pointer to a previous result format. If none, this is the
         final version.
+    key_descriptions: Dict[str, str]
+        Description of data attributes
 
     Methods
     -------
     get_formats
         Return implemented formats.
     from_format
-        Decode and instantiate results object from format.
+        Decode and instantiate result object from format.
     format_as
-        Encode results in a specific format.
+        Encode result in a specific format.
 
     """
 
     version: int = 0
     prev_version: Any = None
+    key_descriptions: Dict[str, str]
+    formats = {'json': JSONEncoder(),
+               'html': HTMLEncoder(),
+               'dict': DictEncoder(),
+               'ase_webpanel': WebPanelEncoder()}
 
     def __init__(self, metadata={}, **data):
-        """Initialize results from dict.
+        """Initialize result from dict.
 
         Parameters
         ----------
@@ -153,17 +213,17 @@ class ASRResults:
 
     @property
     def data(self) -> dict:
-        """Get results data."""
+        """Get result data."""
         return self._data
 
     @property
     def metadata(self) -> dict:
-        """Get results metadata."""
+        """Get result metadata."""
         return self._metadata
 
     @metadata.setter
     def metadata(self, metadata) -> None:
-        """Set results metadata."""
+        """Set result metadata."""
         assert not protected_metadata_keys.intersection(metadata.keys()), \
             f'You cannot write metadata with keys={protected_metadata_keys}.'
         # The following line is for copying the metadata into place.
@@ -173,31 +233,33 @@ class ASRResults:
 
     @classmethod
     def from_format(cls, input_data, format='json'):
-        """Instantiate results from format."""
+        """Instantiate result from format."""
         formats = cls.get_formats()
-        data, metadata, version = formats[format]['decode'](input_data)
+        data, metadata, version = formats[format].decode(input_data)
         # Walk through all previous implementations.
         while version != cls.version and cls.prev_version is not None:
             cls = cls.prev_version
 
         if not version == cls.version:
-            raise UnknownASRResultsFormat(
+            raise UnknownASRResultFormat(
                 'Unknown version number: version={version}')
         return cls(**data, metadata=metadata)
 
-    @staticmethod
-    def get_formats() -> dict:
+    @classmethod
+    def get_formats(cls) -> dict:
         """Get implemented result formats."""
-        formats = {'json': {'encode': encode_json, 'decode': decode_json},
-                   'html': {'encode': encode_html},
-                   'dict': {'encode': encode_dict},
-                   'ase_webpanel': {'encode': webpanel}}
-        return formats
+        try:
+            sup_formats = super(cls, cls).formats
+            my_formats = {key: value for key, value in sup_formats.items()}
+        except AttributeError:
+            my_formats = {}
+        my_formats.update(cls.formats)
+        return my_formats
 
     def format_as(self, fmt: str = '') -> Any:
-        """Format Results as string."""
+        """Format Result as string."""
         formats = self.get_formats()
-        return formats[fmt]['encode'](self)
+        return formats[fmt](self)
 
     # ---- Magic methods ----
 
@@ -232,9 +294,9 @@ class ASRResults:
         return self.data.keys()
 
     def __format__(self, fmt: str) -> str:
-        """Encode results as string."""
+        """Encode result as string."""
         formats = self.get_formats()
-        return formats[fmt]['encode'](self)
+        return formats[fmt](self)
 
     def __str__(self):
         """Convert data to string."""
@@ -244,34 +306,7 @@ class ASRResults:
         return "\n".join(string_parts)
 
     def __eq__(self, other):
-        """Compare two results objects."""
+        """Compare two result objects."""
         if not isinstance(other, type(self)):
             return False
         return self.format_as('dict') == other.format_as('dict')
-
-
-def decode_json(json_string: str):
-    """Decode json string."""
-    tmp = jsonio.decode(json_string)
-    metadata = tmp['metadata']
-    version = metadata.pop('version')
-    data = tmp['data']
-    return data, metadata, version
-
-
-def encode_json(results: ASRResults):
-    """Encode a ASRResults object as json."""
-    from ase.io.jsonio import MyEncoder
-    data = results.format_as('dict')
-    return MyEncoder(indent=1).encode(data)
-
-
-def encode_html(results: ASRResults):
-    """Encode a ASRResults object as html."""
-    return str(results)
-
-
-def encode_dict(results: ASRResults):
-    """Encode ASRResults object as dict."""
-    return {'data': results.data,
-            'metadata': results.metadata}

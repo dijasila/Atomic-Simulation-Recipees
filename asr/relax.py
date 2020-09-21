@@ -17,7 +17,7 @@ from ase.io import write, Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 
-from asr.core import command, option, AtomsFile, DictStr, set_docstring, ASRResults
+from asr.core import command, option, AtomsFile, DictStr, set_docstring, ASRResult
 from math import sqrt
 import time
 
@@ -232,7 +232,7 @@ def set_initial_magnetic_moments(atoms):
 
 
 @set_docstring
-class RelaxResults(ASRResults):
+class RelaxResult(ASRResult):
     version: int = 0
 
     atoms: Atoms
@@ -390,18 +390,18 @@ def main(atoms: Atoms,
     images = []
     for image in trajectory:
         images.append(image)
-    return RelaxResults(atoms=atoms,
-                        etot=etot,
-                        edft=edft,
-                        a=cellpar[0],
-                        b=cellpar[1],
-                        c=cellpar[2],
-                        alpha=cellpar[3],
-                        beta=cellpar[4],
-                        gamma=cellpar[5],
-                        spos=atoms.get_scaled_positions(),
-                        symbols=atoms.get_chemical_symbols(),
-                        images=images)
+    return RelaxResult(atoms=atoms,
+                       etot=etot,
+                       edft=edft,
+                       a=cellpar[0],
+                       b=cellpar[1],
+                       c=cellpar[2],
+                       alpha=cellpar[3],
+                       beta=cellpar[4],
+                       gamma=cellpar[5],
+                       spos=atoms.get_scaled_positions(),
+                       symbols=atoms.get_chemical_symbols(),
+                       images=images)
 
 
 if __name__ == '__main__':
