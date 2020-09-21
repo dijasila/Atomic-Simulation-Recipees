@@ -33,9 +33,9 @@ def main(spin: int = 2,
     calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
-            states_0 = return_gapstates(calc, spin=0)
+            states_0 = return_gapstates_fix(calc, spin=0)
         if spin == 1 or spin == 2:
-            states_1 = return_gapstates(calc, spin=1)
+            states_1 = return_gapstates_fix(calc, spin=1)
     elif not get_gapstates:
         states_0 = [state]
         states_1 = [state]
@@ -70,6 +70,28 @@ def return_gapstates(calc_def, spin=0):
 
     es_def = calc_def.get_eigenvalues() - results_def['evac']
     es_pris = calc_pris.get_eigenvalues() - results_pris['evac']
+
+    diff = es_pris[0] - es_def[0]
+    states_def = es_def + diff
+
+    statelist = []
+    [statelist.append(i) for i, state in enumerate(states_def) if (
+        state < cbm and state > vbm)]
+
+    return statelist
+
+
+def return_gapstates_fix(calc_def, spin=0):
+    """HOTFIX until spin-orbit works with ASR!"""
+
+    _, calc_pris = restart('../../defects.pristine_sc/gs.gpw', txt=None)
+    evac_pris = calc_pris.get_electrostatic_potential()[0,0,0]
+    evac_def = calc_def.get_electrostatic_potential()[0,0,0]
+
+    vbm, cbm = calc_pris.get_homo_lumo() - evac_pris
+
+    es_def = calc_def.get_eigenvalues() - evac_def
+    es_pris = calc_pris.get_eigenvalues() - evac_pris
 
     diff = es_pris[0] - es_def[0]
     states_def = es_def + diff
