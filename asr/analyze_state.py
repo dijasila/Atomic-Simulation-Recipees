@@ -29,7 +29,8 @@ def main(spin: int = 2,
     analysis on those states.
     """
     atoms = read('structure.json')
-    calc = GPAW('gs.gpw', txt=None, fixdensity=True)
+    print('INFO: run fixdensity calculation')
+    calc = GPAW('gs.gpw', txt='analyze_states.txt', fixdensity=True)
     calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
