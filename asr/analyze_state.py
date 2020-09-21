@@ -33,13 +33,16 @@ def main(spin: int = 2,
     calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
+            print('INFO: evaluate gapstates for first spin channel ...')
             states_0 = return_gapstates_fix(calc, spin=0)
         if spin == 1 or spin == 2:
+            print('INFO: evaluate gapstates for second spin channel ...')
             states_1 = return_gapstates_fix(calc, spin=1)
     elif not get_gapstates:
         states_0 = [state]
         states_1 = [state]
 
+    print('INFO: write wavefunctions of gapstates ...')
     for band in states_0:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
         fname = 'wf.{0}_{1}.cube'.format(band, 0)
