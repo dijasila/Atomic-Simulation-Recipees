@@ -5,6 +5,10 @@ from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
+# TODO: figure out how to extract occupations for the different spin channels
+#       separately
+# TODO: think about going away from the usage of PairDensity in order to
+#       achieve separate handling of spin channels
 
 
 @command('asr.setup.excited')
@@ -36,16 +40,8 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
 
     # get occupations of the two different spin channels
     pdens = PairDensity(calc)
-    if pdens.nocc1 > pdens.nocc2:
-        n1 = pdens.nocc1
-        n2 = pdens.nocc2
-    elif pdens.nocc2 > pdens.nocc1:
-        n1 = pdens.nocc2
-        n2 = pdens.nocc1
-    elif pdens.nocc1 == pdens.nocc2:
-        n1 = pdens.nocc1
-        n2 = pdens.nocc2
-        spin = 0
+    # n1 = pdens.nocc1 # number of completely filled bands
+    n2 = pdens.nocc2  # number of partially filled bands
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
@@ -57,12 +53,12 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
 
     # spin channel 1
     if spin == 0 or spin == 2:
-        occ_n_alpha = np.hstack((np.ones(n1 - n),
+        occ_n_alpha = np.hstack((np.ones(n2 - n),
                                  np.zeros(1),
                                  np.ones(n - 1),
                                  np.zeros(m - 1),
                                  np.ones(1),
-                                 np.zeros(N_tot - n1 - m)))
+                                 np.zeros(N_tot - n2 - m)))
         occ_n_beta = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
         p_spin0 = newparams.copy()
         p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
@@ -78,7 +74,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
         write_json('excited_spin0/params.json', p_spin0)
     # spin channel 2
     if spin == 1 or spin == 2:
-        occ_n_alpha = np.hstack((np.ones(n1), np.zeros(N_tot - n1)))
+        occ_n_alpha = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
         occ_n_beta = np.hstack((np.ones(n2 - n),
                                 np.zeros(1),
                                 np.ones(n - 1),
