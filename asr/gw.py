@@ -215,7 +215,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
         help='Replacement Z for unphysical Zs')
 def empZGW(correctgw=True,
            empz=0.75):
-    """Implements the empirical-Z method.
+    """Apply the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.
 
