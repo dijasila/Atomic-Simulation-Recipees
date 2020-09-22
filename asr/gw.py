@@ -207,13 +207,13 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
     return results
 
 
-@command('asr.empZGW',
-         requires=['results-asr.gw@gw.json'],
-         dependencies=['asr.gw@gw'])
+@command(requires=['results-asr.gw@gw.json'],
+         dependencies=['asr.gw@gw',
+                       'asr.gw@gs'])
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
-def empZGW(correctgw=False,
+def empZGW(correctgw=True,
            empz=0.75):
     """Implements the empirical-Z method.
 
@@ -235,6 +235,7 @@ def empZGW(correctgw=False,
 
     new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
     """
+    import numpy as np
     gwresults = read_json('results-asr.gw@gw.json')
     if not correctgw:
         return gwresults
@@ -309,7 +310,7 @@ def main():
     from types import SimpleNamespace
 
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
-    gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
+    gwresults = SimpleNamespace(**read_json('results-asr.gw@empZGW.json'))
 
     lb = gwresults.minband
     ub = gwresults.maxband
