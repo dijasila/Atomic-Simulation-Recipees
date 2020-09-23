@@ -3,7 +3,7 @@ from asr.core import command, option
 from gpaw import GPAW, restart
 
 
-@command(module='asr.analyze_state',
+@command(module='asr.wavefunction',
          requires=['gs.gpw', 'structure.json'],
          resources='12:1h')
 @option('--spin', help='Specify which spin channel you want to consider. '
