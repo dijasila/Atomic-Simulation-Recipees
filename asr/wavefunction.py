@@ -3,9 +3,9 @@ from asr.core import command, option
 from gpaw import GPAW, restart
 
 
-@command(module='asr.wavefunction',
-         requires=['gs.gpw', 'structure.json'],
-         resources='12:1h')
+@command(module='asr.wavefunction')
+#          requires=['gs.gpw', 'structure.json'],
+#          resources='12:1h')
 # @option('--spin', help='Specify which spin channel you want to consider. '
 #         'Choose 0 for the first spin channel, 1 for the second spin channel, '
 #         'and 2 if both should be considered.', type=int)
