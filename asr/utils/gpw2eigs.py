@@ -1,9 +1,10 @@
+
+
 def calc2eigs(calc, ranks, soc=True,
               return_spin=False,
               theta=0, phi=0, symmetry_tolerance=1e-7,
               width=None):
     from gpaw.spinorbit import get_spinorbit_eigenvalues
-    from gpaw import mpi
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
@@ -11,7 +12,7 @@ def calc2eigs(calc, ranks, soc=True,
     from .symmetry import _atoms2symmetry_gpaw
 
     dct = None
-    if mpi.world.rank in ranks:
+    if calc.world.rank in ranks:
         bands = range(calc.get_number_of_bands())
         eps_nosoc_skn = get_eigenvalues(calc)[..., bands]
         efermi_nosoc = calc.get_fermi_level()
@@ -47,7 +48,7 @@ def calc2eigs(calc, ranks, soc=True,
                         'efermi': efermi,
                         's_kvm': s_kvm})
 
-    dct = broadcast(dct, root=0, comm=mpi.world)
+    dct = broadcast(dct, root=0, comm=calc.world)
     if soc is None:
         raise NotImplementedError('soc=None is not implemented')
 
