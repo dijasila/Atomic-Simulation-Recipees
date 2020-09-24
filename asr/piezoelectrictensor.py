@@ -40,7 +40,7 @@ def webpanel(row, key_descriptions):
         rows=matrixtable(e_ij))
 
     e0table = dict(
-        header=['Clamped piezoelectric tensor (Å<sup>dim-1</sup>)', ''],
+        header=['Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)', ''],
         type='table',
         rows=matrixtable(e0_ij))
 
