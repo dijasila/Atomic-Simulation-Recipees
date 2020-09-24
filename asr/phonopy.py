@@ -186,43 +186,27 @@ def requires():
 
 def webpanel(row, key_descriptions):
     from asr.database.browser import table, fig
+    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
+    panel = {'title': 'Phonons',
+             'columns': [[fig('phonon_bs.png')], [phonontable]],
+             'plot_descriptions': [{'function': plot_bandstructure,
+                                    'filenames': ['phonon_bs.png']}],
+             'sort': 3}
 
-    panel = {
-        "title": "Phonon bandstructure",
-        "columns": [[fig("phonon_bs.png")], [phonontable]],
-        "plot_descriptions": [
-            {"function": plot_bandstructure, "filenames": ["phonon_bs.png"]}
-        ],
-        "sort": 3,
-    }
+    dynstab = row.get('dynamic_stability_phonons')
+    high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
+    low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
+    row = ['Dynamical (phonons)',
+           '<a href="#" data-toggle="tooltip" data-html="true" '
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+               low, high, dynstab.upper())]
 
-    dynstab = row.get("dynamic_stability_level")
-    stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0"
-    medium = "Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0"
-    low = "Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0"
-    row = [
-        "Phonons",
-        '<a href="#" data-toggle="tooltip" data-html="true" '
-        + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-            low, medium, high, stabilities[dynstab].upper()
-        ),
-    ]
-
-    summary = {
-        "title": "Summary",
-        "columns": [
-            [
-                {
-                    "type": "table",
-                    "header": ["Stability", "Category"],
-                    "rows": [row],
-                }
-            ]
-        ],
-    }
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Stability', 'Category'],
+                             'rows': [row]}]],
+               'sort': 2}
     return [panel, summary]
 
 
@@ -296,12 +280,10 @@ def main(rc: float = None):
     eigs_kl = np.array(eigs_kl)
     mineig = np.min(eigs_kl)
 
-    if mineig < -2:
-        dynamic_stability = 1
-    elif mineig < -1e-5:
-        dynamic_stability = 2
+    if mineig < -0.01:
+        dynamic_stability = 'low'
     else:
-        dynamic_stability = 3
+        dynamic_stability = 'high'
 
     phi_anv = phonon.get_force_constants()
 
@@ -313,7 +295,7 @@ def main(rc: float = None):
                'path': path,
                'u_klav': u_klav,
                'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
+               'dynamic_stability_phonons': dynamic_stability}
 
     results['__key_descriptions__'] = \
         {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
