@@ -257,12 +257,10 @@ def plot_bandstructure(row, fname):
         en_exact[ind] = energies[ind]
 
     bs = BandStructure(path=path, energies=en_exact[None])
-    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
+    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
             emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15),
                                                       0.0001]),
             ylabel='Phonon frequencies [meV]')
-    plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
-    plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
 
