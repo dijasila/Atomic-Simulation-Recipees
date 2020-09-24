@@ -110,9 +110,9 @@ def bz_with_band_extremums(row, fname):
         ax = plt.gca()
         icell_cv = np.linalg.inv(row.cell).T
         vbm_style = {'marker': 'o', 'facecolor': 'w',
-                     'edgecolors': 'C0', 's': 100, 'lw': 2,
+                     'edgecolors': 'C0', 's': 50, 'lw': 2,
                      'zorder': 4}
-        cbm_style = {'c': 'C1', 'marker': 'o', 's': 40, 'zorder': 5}
+        cbm_style = {'c': 'C1', 'marker': 'o', 's': 20, 'zorder': 5}
         cbm_sc = np.dot(op_scc.transpose(0, 2, 1), cbm_c)
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
