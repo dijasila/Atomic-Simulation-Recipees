@@ -3,6 +3,7 @@ from asr.core import command, option
 from gpaw import GPAW, restart
 
 
+# TODO: include spin channel handling automatically
 @command(module='asr.wavefunction',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
