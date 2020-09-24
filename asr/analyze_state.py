@@ -3,14 +3,10 @@ from asr.core import command, option
 from gpaw import GPAW, restart
 
 
-# TODO: include spin channel handling automatically
 @command(module='asr.analyze_state',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
          resources='12:1h')
-@option('--spin', help='Specify which spin channel you want to consider. '
-        'Choose 0 for the first spin channel, 1 for the second spin channel, '
-        'and 2 if both should be considered.', type=int)
 @option('--state', help='Specify the specific state (band number) that you '
         'want to consider. Note, that this argument is not used when the '
         'gap state flag is active.', type=int)
@@ -19,8 +15,7 @@ from gpaw import GPAW, restart
         ' the --state option will be neglected.', is_flag=True)
 @option('--analyze/--dont-analyze', help='Not only create cube files of '
         'specific states, but also analyze them.', is_flag=True)
-def main(spin: int = 2,
-         state: int = 0,
+def main(state: int = 0,
          get_gapstates: bool = False,
          analyze: bool = False):
     """Write out wavefunction and analyze it.
@@ -38,25 +33,20 @@ def main(spin: int = 2,
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     calc.get_potential_energy()
     if get_gapstates:
-        if spin == 0 or spin == 2:
-            print('INFO: evaluate gapstates for first spin channel ...')
-            states_0 = return_gapstates_fix(calc, spin=0)
-        if spin == 1 or spin == 2:
-            print('INFO: evaluate gapstates for second spin channel ...')
-            states_1 = return_gapstates_fix(calc, spin=1)
+            print('INFO: evaluate gapstates ...')
+            states = return_gapstates_fix(calc, spin=0)
     elif not get_gapstates:
-        states_0 = [state]
-        states_1 = [state]
+        states = [state]
 
     print('INFO: write wavefunctions of gapstates ...')
-    for band in states_0:
+    for band in states:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
         fname = 'wf.{0}_{1}.cube'.format(band, 0)
         write(fname, atoms, data=wf)
-    for band in states_1:
-        wf = calc.get_pseudo_wave_function(band=band, spin=1)
-        fname = 'wf.{0}_{1}.cube'.format(band, 1)
-        write(fname, atoms, data=wf)
+        if calc.get_number_of_spins() == 2:
+            wf = calc.get_pseudo_wave_function(band=band, spin=1)
+            fname = 'wf.{0}_{1}.cube'.format(band, 1)
+            write(fname, atoms, data=wf)
 
     if analyze:
         # To be implemented
