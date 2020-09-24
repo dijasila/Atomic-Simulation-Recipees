@@ -4,7 +4,7 @@ from gpaw import GPAW, restart
 
 
 # TODO: include spin channel handling automatically
-@command(module='asr.wavefunction',
+@command(module='asr.analyze_state',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
          resources='12:1h')
