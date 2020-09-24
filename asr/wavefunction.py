@@ -4,7 +4,8 @@ from gpaw import GPAW, restart
 
 
 @command(module='asr.wavefunction',
-         requires=['gs.gpw', 'structure.json'],
+         requires=['gs.gpw', 'structure.json',
+                   '../../defects.pristine_sc/gs.gpw'],
          resources='12:1h')
 @option('--spin', help='Specify which spin channel you want to consider. '
         'Choose 0 for the first spin channel, 1 for the second spin channel, '
@@ -32,7 +33,8 @@ def main(spin: int = 2,
     """
     atoms = read('structure.json')
     print('INFO: run fixdensity calculation')
-    calc = GPAW('gs.gpw', txt='analyze_states.txt', fixdensity=True)
+    calc = GPAW('gs.gpw', txt='analyze_states.txt')
+    calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     calc.get_potential_energy()
     if get_gapstates:
         if spin == 0 or spin == 2:
