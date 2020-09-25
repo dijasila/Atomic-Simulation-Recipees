@@ -6,7 +6,7 @@ from gpaw import GPAW, restart
 @command(module='asr.analyze_state',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
-         resources='12:1h')
+         resources='24:2h')
 @option('--state', help='Specify the specific state (band number) that you '
         'want to consider. Note, that this argument is not used when the '
         'gap state flag is active.', type=int)
