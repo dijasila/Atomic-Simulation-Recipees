@@ -5,6 +5,12 @@ from typing import get_type_hints, List, Any, Dict
 from abc import ABC, abstractmethod
 
 
+class DataFormat:
+    """Abstract data format."""
+
+    pass
+
+
 class ResultEncoder(ABC):
     """Abstract encoder base class.
 
