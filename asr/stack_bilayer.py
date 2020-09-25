@@ -1,7 +1,7 @@
 from asr.core import command, option, AtomsFile
 from ase import Atoms
 import numpy as np
-from asr.utils.bilayerutils import *
+from asr.utils.bilayerutils import translation, layername
 
 
 class StackingError(ValueError):
@@ -140,7 +140,6 @@ def same_positions(atoms1, atoms2):
 
 def build_layers(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     base_positions = flatten(atoms, rmsd_tol)
-    cell = atoms.cell
 
     bilayers = []
     toplayers = []
@@ -164,7 +163,7 @@ def build_layers(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     _bis, _tops, _syms, _ts = cell_specific_stacks(atoms, cell_type,
                                                    rotated_mats,
                                                    transforms, rmsd_tol)
-                
+
     bilayers.extend(_bis)
     toplayers.extend(_tops)
     symmetries.extend(_syms)
@@ -185,7 +184,6 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     final_transforms = []
 
     positions = atoms.get_positions()
-    cell = atoms.cell
     unit_cell = atoms.get_cell_lengths_and_angles()
     a, b, c = unit_cell[:3]
 
@@ -212,13 +210,13 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
             x = a / 2.0
             y = 0.0
             append_helper(x, y, top, atoms, stup)
-                                          
-            x = 0.0                       
-            y = b / 2.0                   
+
+            x = 0.0
+            y = b / 2.0
             append_helper(x, y, top, atoms, stup)
-                                          
-            x = a / 2.0                   
-            y = b / 2.0                   
+
+            x = a / 2.0
+            y = b / 2.0
             append_helper(x, y, top, atoms, stup)
 
     return bilayers, toplayers, symmetries, final_transforms
@@ -254,7 +252,8 @@ def main(atoms: Atoms,
     names = []
     for mat, transl, tform, proto in zip(*things):
         # Unpack and transform data needed to construct bilayer name
-        t = tform[1] + atoms.cell.scaled_positions(np.array([transl[0], transl[1], 0.0]))
+        t = tform[1] + \
+            atoms.cell.scaled_positions(np.array([transl[0], transl[1], 0.0]))
         name = layername(atoms.get_chemical_formula(), 2, tform[0], t)
         names.append(name)
 

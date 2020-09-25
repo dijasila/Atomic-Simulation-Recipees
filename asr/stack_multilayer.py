@@ -4,7 +4,6 @@ import numpy as np
 from asr.utils.bilayerutils import layername
 
 
-
 def stack(stacked, base, U_cc, t_c, tvec, h):
     from asr.utils.bilayerutils import translation as stack_trans
     new_layer = base.copy()
@@ -19,14 +18,14 @@ def inflate_vacuum(atoms, height, nlayers):
     """Inflate vacuum such that there is room for nlayers.
 
     Inflate vacuum enough so that nlayers can fit into the
-    unit cell. 
+    unit cell.
 
     The vacuum, defined as u_v[2] / 2 (half the z-component
     of the third lattice vector), should contain the nlayers
     and additional vacuum equal to the original amount of vacuum.
 
     Therefore the new vacuum should be
-    
+
     2 * new_vacuum = 2 * old_vacuum + (nlayers-1) * height
     or
     uz -> uz + (nlayers-1)*height
@@ -36,7 +35,7 @@ def inflate_vacuum(atoms, height, nlayers):
     uz = atoms.cell[2, 2]
 
     uz = uz + (nlayers - 1) * height
-    
+
     atoms.cell[2, 2] = uz
 
     return atoms
@@ -56,7 +55,7 @@ def main(atoms: Atoms,
     import os
     transform_data = read_json('transformdata.json')
     translation = np.array(read_json('translation.json')['translation_vector'])
-    
+
     U_cc = transform_data['rotation']
     t_c = transform_data['translation']
 
@@ -71,7 +70,8 @@ def main(atoms: Atoms,
         atoms = rotated
 
     f = atoms.get_chemical_formula()
-    t = atoms.cell.scaled_positions(np.array([translation[0], translation[1], 0.0])) + t_c
+    t = atoms.cell.scaled_positions(
+        np.array([translation[0], translation[1], 0.0])) + t_c
     foldername = layername(f, nlayers, U_cc, t)
     if not os.path.isdir(foldername):
         os.mkdir(foldername)

@@ -3,7 +3,6 @@ import numpy as np
 from ase import Atoms
 import os
 from asr.utils.bilayerutils import translation
-from gpaw import mpi
 
 
 def get_energy(base, top, h, t_c, settings, callback, memo):
@@ -158,19 +157,18 @@ def bilayer_stiffness(energy_curve):
     For now we include this property calculation here
     since we can get it almost for free.
     """
-
     # We do a second order fit using points within
     # 0.01 eV of minimum
     ds = energy_curve[:, 0]
     es = energy_curve[:, 1]
     mine = np.min(es)
     window = 0.01
-    
+
     X = ds[np.abs(es - mine) < window]
     Y = es[np.abs(es - mine) < window]
-    
+
     I = np.array([X**0, X**1, X**2]).T
-    
+
     P, residuals, rank, singulars = np.linalg.lstsq(I, Y, rcond=None)
 
     return P
