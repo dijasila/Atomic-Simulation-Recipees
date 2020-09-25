@@ -328,7 +328,7 @@ def plot(row, fname):
         cfrac = count.get(C, 0) / sum(count.values())
 
         ax.plot([bfrac + cfrac / 2],
-                [cfrac],
+                [cfrac * 3**0.5 / 2],
                 'o', color='C1', label='This material')
         plt.legend(loc='upper left')
         plt.axis('off')
