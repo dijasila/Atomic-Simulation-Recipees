@@ -10,7 +10,7 @@ def stack(stacked, base, U_cc, t_c, tvec, h):
     spos_ac = np.dot(spos_ac, U_cc.T) + t_c
     new_layer.set_scaled_positions(spos_ac)
     new_layer.wrap(pbc=[1, 1, 1])
-
+    print(tvec)
     return stack_trans(tvec[0], tvec[1], h, new_layer, stacked), new_layer
 
 
@@ -54,7 +54,7 @@ def main(atoms: Atoms,
     from asr.core import read_json
     import os
     transform_data = read_json('transformdata.json')
-    translation = read_json('translation.json')['translation_vector'].astype(float)
+    translation = np.array(read_json('translation.json')['translation_vector'])
     
     U_cc = transform_data['rotation']
     t_c = transform_data['translation']
@@ -65,8 +65,9 @@ def main(atoms: Atoms,
 
     for n in range(1, nlayers):
         stacked, rotated = stack(stacked, atoms,
-                                 U_cc, t_c, translation,
+                                 U_cc, t_c, translation * n,
                                  height * n)
+        print(rotated.get_scaled_positions())
         atoms = rotated
 
     foldername = atoms.get_chemical_formula() + f'-{nlayers}-layers'
