@@ -4,7 +4,6 @@ import os
 from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
-from gpaw.response.pair import PairDensity
 
 
 @command('asr.setup.excited')
@@ -33,7 +32,6 @@ def main(n: int = 1, m: int = 1):
 
     N_tot = calc.get_number_of_bands()
     E_F = calc.get_fermi_level()
-    spins = calc.get_number_of_spins()
 
     # set up lists of occupied eigenvalues for either one or both spins
     set_both = False
