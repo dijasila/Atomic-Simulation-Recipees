@@ -5,10 +5,8 @@ from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
-# TODO: figure out how to extract occupations for the different spin channels
-#       separately
-# TODO: think about going away from the usage of PairDensity in order to
-#       achieve separate handling of spin channels
+# TODO: change implementation to energy comparisons instead of
+#       using PairDensity fucntionality
 
 
 @command('asr.setup.excited')
@@ -37,11 +35,16 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     atoms, calc = restart('gs.gpw', txt=None)
 
     N_tot = calc.get_number_of_bands()
+    E_F = calc.get_fermi_level()
 
-    # get occupations of the two different spin channels
-    pdens = PairDensity(calc, ftol=0.1)
-    # n1 = pdens.nocc1 # number of completely filled bands
-    n2 = pdens.nocc2  # number of partially filled bands
+    occ_spin0 = []
+    occ_spin1 = []
+    ev_spin0 = calc.get_eigenvalues(spin=0)
+    ev_spin1 = calc.get_eigenvalues(spin=1)
+
+    # set up lists of occupied eigenvalues for both spins
+    [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
+    [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
