@@ -15,10 +15,7 @@ from gpaw.response.pair import PairDensity
         ' placed. 1 corresponds to the lowest unoccupied state, 2'
         'corresponds to the second lowest unoccupied stated, and so on.',
         type=int)
-@option('--spin', help='Specify which spin channel you want to excite the'
-        ' system in. Choose 0 for the first spin channel, 1 for the second'
-        ' spin channel, and 2 if both should be considered.')
-def main(n: int = 1, m: int = 1, spin: int = 2):
+def main(n: int = 1, m: int = 1):
     """Set up folder structure and parameters for excited state calculations.
 
     This recipe creates two folders for calculations of excited states. Run
