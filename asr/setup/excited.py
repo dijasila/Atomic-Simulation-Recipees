@@ -37,6 +37,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     spins = calc.get_number_of_spins()
 
     # set up lists of occupied eigenvalues for either one or both spins
+    set_both = False
     occ_spin0 = []
     ev_spin0 = calc.get_eigenvalues(spin=0)
     [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
@@ -46,6 +47,10 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
         ev_spin1 = calc.get_eigenvalues(spin=1)
         [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
         n2 = len(occ_spin1)
+        # if occupations for both spin channels are the same, only set up the
+        # first one (even though we have a spin-polarized calculation
+        if n1 != n2:
+            set_both = True
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
@@ -77,7 +82,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     write_json('excited_spin0/params.json', p_spin0)
     # for spin-polarized calculations, also create occupations for the second
     # spin channel
-    if calc.get_number_of_spins() == 2:
+    if calc.get_number_of_spins() == 2 and set_both:
         occ_n_alpha = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
         occ_n_beta = np.hstack((np.ones(n2 - n),
                                 np.zeros(1),
