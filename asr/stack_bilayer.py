@@ -216,6 +216,7 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, labels, transforms, rms
     a, b, c = unit_cell[:3]
 
     def append_helper(x, y, top, atoms, label, symtup):
+        U_cc, t_c = symtup
         bilayer = translation(x, y, 12, top, atoms)
         
         move_c = np.array([x, y, 0.0])
