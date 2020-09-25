@@ -256,10 +256,10 @@ class ASRResult:
         my_formats.update(cls.formats)
         return my_formats
 
-    def format_as(self, fmt: str = '') -> Any:
+    def format_as(self, fmt: str = '', **kwargs) -> Any:
         """Format Result as string."""
         formats = self.get_formats()
-        return formats[fmt](self)
+        return formats[fmt](self, **kwargs)
 
     # ---- Magic methods ----
 

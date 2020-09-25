@@ -263,7 +263,8 @@ class RelaxResult(ASRResult):
 
 
 @command('asr.relax',
-         creates=['structure.json'])
+         creates=['structure.json'],
+         returns=RelaxResult)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',

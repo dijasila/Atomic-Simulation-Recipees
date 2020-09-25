@@ -1,5 +1,5 @@
 from typing import Dict
-from asr.core import ASRResult, set_docstring, WebPanelEncoder
+from asr.core import ASRResult, set_docstring, WebPanelEncoder, command
 
 
 class MyWebPanel(WebPanelEncoder):
@@ -29,6 +29,12 @@ class MyResult(ASRResult):
     version: int = 1
     key_descriptions: Dict[str, str] = {'a': 'A description of "a".'}
     formats = {'ase_webpanel': webpanel}
+
+
+@command('test_core_results',
+         returns=MyResult)
+def recipe():
+    return MyResult()
 
 
 def test_results_object(capsys):
@@ -63,3 +69,13 @@ def test_results_object(capsys):
 
     otherresults = MyResult(a=2)
     assert not otherresults == results
+
+
+def test_reading_result():
+    result = MyResult()
+    parse_json(result)
+    jsonresult = result.format_as('json')
+
+    Resultsclass = recipe.returns
+
+    Results.from_format(jsonresult, 'json')
