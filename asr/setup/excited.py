@@ -39,7 +39,7 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     N_tot = calc.get_number_of_bands()
 
     # get occupations of the two different spin channels
-    pdens = PairDensity(calc)
+    pdens = PairDensity(calc, ftol=0.1)
     # n1 = pdens.nocc1 # number of completely filled bands
     n2 = pdens.nocc2  # number of partially filled bands
 
