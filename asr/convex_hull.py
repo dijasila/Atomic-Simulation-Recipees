@@ -1,6 +1,7 @@
 from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
+import numpy as np
 
 from asr.core import command, argument
 
@@ -328,7 +329,7 @@ def plot(row, fname):
         cfrac = count.get(C, 0) / sum(count.values())
 
         ax.plot([bfrac + cfrac / 2],
-                [cfrac],
+                [cfrac * np.sqrt(3) / 2],
                 'o', color='C1', label='This material')
         plt.legend(loc='upper left')
         plt.axis('off')
