@@ -5,8 +5,6 @@ from gpaw import restart
 from ase.io import Trajectory
 from asr.core import write_json, command, option
 from gpaw.response.pair import PairDensity
-# TODO: change implementation to energy comparisons instead of
-#       using PairDensity fucntionality
 
 
 @command('asr.setup.excited')
