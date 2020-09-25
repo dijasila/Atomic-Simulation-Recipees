@@ -1,39 +1,11 @@
 from typing import Union
-from asr.core import command, option
-
-tests = []
-params1 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-params2 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-tests.append({'description': 'Test band structure of Si.',
-              'name': 'asr.bandstructure_Si',
-              'tags': ['gitlab-ci'],
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params1} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-tests.append({'description': 'Test band structure of 2D-BN.',
-              'name': 'asr.bandstructure_2DBN',
-              'cli': ['asr run "setup.materials -s BN,natoms=2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params2} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
+from asr.core import command, option, ASRResult, singleprec_dict, set_docstring
 
 
 @command('asr.bandstructure',
          requires=['gs.gpw'],
          creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         tests=tests)
+         dependencies=['asr.gs@calculate'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
 @option('--emptybands', type=int)
@@ -435,6 +407,21 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@set_docstring
+class BandStructureResult(ASRResult):
+
+    version: int = 0
+
+    bs_soc: dict
+    bs_nosoc: dict
+
+    key_descriptions = \
+        {
+            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+        }
+
+
 @command('asr.bandstructure',
          requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
                    'results-asr.structureinfo.json',
@@ -508,11 +495,8 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
 
-    from asr.core import singleprec_dict
-    results['bs_soc'] = singleprec_dict(bsresults)
-    results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
-
-    return results
+    return BandStructureResult(bs_soc=singleprec_dict(bsresults),
+                               bs_nosoc=singleprec_dict(results['bs_nosoc']))
 
 
 if __name__ == '__main__':

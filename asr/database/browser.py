@@ -131,11 +131,53 @@ def merge_panels(page):
         page[title] = panel
 
 
+def get_new_webpanel_implementation(recipe, row, key_descriptions):
+    dct = row.data.get(f'results-{recipe.name}.json')
+    cls = recipe.returns
+    if 'ase_webpanel' not in cls.get_formats():
+        return []
+    result = cls.from_format(dct, format=dict)
+    try:
+        return result.format_as('ase_webpanel', row, key_descriptions)
+    except Exception:
+        traceback.print_exc()
+        return []
+
+
+def get_old_webpanel_implementation(recipe, row, key_descriptions):
+    if not recipe.webpanel:
+        return []
+    # We assume that there should be a results file in
+    if f'results-{recipe.name}.json' not in row.data:
+        return []
+    try:
+        return recipe.webpanel(row, key_descriptions)
+    except Exception:
+        traceback.print_exc()
+        return []
+
+
+def get_recipe_panels(filename, row, key_descriptions):
+    recipename = extract_recipe_from_filename(filename)
+    recipe = get_recipe_from_name(recipename)
+    cls = recipe.returns
+    if cls is not None:
+        return get_new_webpanel_implementation(filename, row,
+                                               key_descriptions)
+    else:
+        return get_old_webpanel_implementation(filename, row,
+                                               key_descriptions)
+
+
 def extract_recipe_from_filename(filename: str):
     """Parse filename and return recipe name."""
     pattern = re.compile('results-(.*)\.json')  # noqa
     m = pattern.match(filename)
     return m.group()
+
+
+def is_results_file(filename):
+    return filename.startswith('results-') and filename.endswith('.json')
 
 
 def layout(row: AtomsRow,
@@ -147,23 +189,12 @@ def layout(row: AtomsRow,
 
     # Locate all webpanels
     for filename in row.data:
-        recipename = extract_recipe_from_filename(filename)
-        recipe = get_recipe_from_name(recipename)
-        # We assume that there should be a results file in
-        dct = row.data.get(f'results-{recipe.name}.json')
-        if dct is None:
+        if not is_results_file(filename):
             continue
-        cls = recipe.returns
-        if 'ase_webpanel' not in cls.get_formats():
-            continue
-        result = cls.from_format(dct, format=dict)
-        try:
-            panels = result.format_as('ase_webpanel', row, key_descriptions)
-        except Exception:
-            traceback.print_exc()
-            panels = []
+        panels = get_recipe_panels(filename, row, key_descriptions)
+
         for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
+            assert 'title' in thispanel, f'No title in {filename} webpanel'
             panel = {'columns': [[], []],
                      'plot_descriptions': [],
                      'sort': 99}
