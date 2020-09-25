@@ -211,6 +211,11 @@ class ASRResult:
         self._data = data
         self.metadata = metadata
 
+        kd_keys = self.key_descriptions.keys()
+        data_keys = data.keys()
+        assert set(kd_keys) == set(data_keys), \
+            (kd_keys, data_keys)
+
     @property
     def data(self) -> dict:
         """Get result data."""

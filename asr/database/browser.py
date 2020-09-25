@@ -1,5 +1,6 @@
-from asr.core import command, option
+from asr.core import command, option, get_recipe_from_name
 import sys
+import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
@@ -130,24 +131,34 @@ def merge_panels(page):
         page[title] = panel
 
 
+def extract_recipe_from_filename(filename: str):
+    """Parse filename and return recipe name."""
+    pattern = re.compile('results-(.*)\.json')  # noqa
+    m = pattern.match(filename)
+    return m.group()
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
-    from asr.core import get_recipes
     page = {}
     exclude = set()
 
     # Locate all webpanels
-    recipes = get_recipes()
-    for recipe in recipes:
-        if not recipe.webpanel:
-            continue
+    for filename in row.data:
+        recipename = extract_recipe_from_filename(filename)
+        recipe = get_recipe_from_name(recipename)
         # We assume that there should be a results file in
-        if f'results-{recipe.name}.json' not in row.data:
+        dct = row.data.get(f'results-{recipe.name}.json')
+        if dct is None:
             continue
+        cls = recipe.returns
+        if 'ase_webpanel' not in cls.get_formats():
+            continue
+        result = cls.from_format(dct, format=dict)
         try:
-            panels = recipe.webpanel(row, key_descriptions)
+            panels = result.format_as('ase_webpanel', row, key_descriptions)
         except Exception:
             traceback.print_exc()
             panels = []

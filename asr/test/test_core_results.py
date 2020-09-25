@@ -16,8 +16,10 @@ class MyResultVer0(ASRResult):
     """Generic results."""
 
     a: int
+    b: int
     version: int = 0
-    key_descriptions: Dict[str, str] = {'a': 'A description of "a".'}
+    key_descriptions: Dict[str, str] = {'a': 'A description of "a".',
+                                        'b': 'A description of "b".'}
 
 
 @set_docstring
@@ -34,7 +36,7 @@ class MyResult(ASRResult):
 @command('test_core_results',
          returns=MyResult)
 def recipe():
-    return MyResult()
+    return MyResult(a=2)
 
 
 def test_results_object(capsys):
@@ -51,7 +53,7 @@ def test_results_object(capsys):
 
     formats = results.get_formats()
     assert formats['ase_webpanel'] == webpanel
-    assert set(formats) == set('json', 'html', 'dict', 'ase_webpanel')
+    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel'])
     print(results)
     captured = capsys.readouterr()
     assert captured.out == 'a=1\n'
@@ -72,10 +74,19 @@ def test_results_object(capsys):
 
 
 def test_reading_result():
-    result = MyResult()
-    parse_json(result)
+    result = recipe()
     jsonresult = result.format_as('json')
+    new_result = recipe.returns.from_format(jsonresult, format='json')
 
-    Resultsclass = recipe.returns
+    assert result == new_result
 
-    Results.from_format(jsonresult, 'json')
+
+def test_reading_old_result():
+    result_0 = MyResultVer0(a=1, b=2)
+    jsonresult = result_0.format_as('json')
+
+    result_1 = MyResult.from_format(jsonresult, 'json')
+    result_2 = MyResult.from_format(jsonresult, 'json')
+
+    assert result_0 == result_1
+    assert result_1 == result_2

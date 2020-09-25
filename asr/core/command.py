@@ -114,6 +114,7 @@ class ASRCommand:
                  requires=None,
                  dependencies=None,
                  creates=None,
+                 returns=None,
                  log=None,
                  webpanel=None,
                  save_results_file=True,
@@ -145,6 +146,10 @@ class ASRCommand:
         # Function to be executed
         self._main = main
         self.name = name
+
+        # Return type
+        # assert returns is not None, 'Please specify a return type!'
+        self.returns = returns
 
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
@@ -367,7 +372,9 @@ class ASRCommand:
         from ase.parallel import world
         metadata = dict(asr_name=self.name,
                         resources=dict(time=tend - tstart,
-                                       ncores=world.size),
+                                       ncores=world.size,
+                                       tstart=tstart,
+                                       tend=tend),
                         params=params,
                         code_versions=get_execution_info(
                             self.package_dependencies))
