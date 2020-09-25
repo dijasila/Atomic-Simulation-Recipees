@@ -36,15 +36,18 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
 
     N_tot = calc.get_number_of_bands()
     E_F = calc.get_fermi_level()
+    spins = calc.get_number_of_spins()
 
+    # set up lists of occupied eigenvalues for either one or both spins
     occ_spin0 = []
-    occ_spin1 = []
     ev_spin0 = calc.get_eigenvalues(spin=0)
-    ev_spin1 = calc.get_eigenvalues(spin=1)
-
-    # set up lists of occupied eigenvalues for both spins
     [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
-    [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
+    n1 = len(occ_spin0)
+    if calc.get_number_of_spins()  == 2:
+        occ_spin1 = []
+        ev_spin1 = calc.get_eigenvalues(spin=1)
+        [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
+        n2 = len(occ_spin1)
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
@@ -54,29 +57,29 @@ def main(n: int = 1, m: int = 1, spin: int = 2):
     newparams = {'asr.gs@calculate': {'calculator': params_gs},
                  'asr.relax': {'calculator': params_relax}}
 
-    # spin channel 1
-    if spin == 0 or spin == 2:
-        occ_n_alpha = np.hstack((np.ones(n2 - n),
-                                 np.zeros(1),
-                                 np.ones(n - 1),
-                                 np.zeros(m - 1),
-                                 np.ones(1),
-                                 np.zeros(N_tot - n2 - m)))
-        occ_n_beta = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
-        p_spin0 = newparams.copy()
-        p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
-                                                                    'numbers':
-                                                                    [occ_n_alpha,
-                                                                        occ_n_beta]}
-        p_spin0['asr.gs@calculate']['calculator']['nbands'] = N_tot
-        p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
-                                                             'numbers':
-                                                             [occ_n_alpha, occ_n_beta]}
-        p_spin0['asr.relax']['calculator']['nbands'] = N_tot
-        create_excited_folders(0)
-        write_json('excited_spin0/params.json', p_spin0)
-    # spin channel 2
-    if spin == 1 or spin == 2:
+    # create occupations array for the first spin channel
+    occ_n_alpha = np.hstack((np.ones(n1 - n),
+                             np.zeros(1),
+                             np.ones(n - 1),
+                             np.zeros(m - 1),
+                             np.ones(1),
+                             np.zeros(N_tot - n1 - m)))
+    occ_n_beta = np.hstack((np.ones(n1), np.zeros(N_tot - n1)))
+    p_spin0 = newparams.copy()
+    p_spin0['asr.gs@calculate']['calculator']['occupations'] = {'name': 'fixed',
+                                                                'numbers':
+                                                                [occ_n_alpha,
+                                                                    occ_n_beta]}
+    p_spin0['asr.gs@calculate']['calculator']['nbands'] = N_tot
+    p_spin0['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
+                                                         'numbers':
+                                                         [occ_n_alpha, occ_n_beta]}
+    p_spin0['asr.relax']['calculator']['nbands'] = N_tot
+    create_excited_folders(0)
+    write_json('excited_spin0/params.json', p_spin0)
+    # for spin-polarized calculations, also create occupations for the second
+    # spin channel
+    if calc.get_number_of_spins() == 2:
         occ_n_alpha = np.hstack((np.ones(n2), np.zeros(N_tot - n2)))
         occ_n_beta = np.hstack((np.ones(n2 - n),
                                 np.zeros(1),
