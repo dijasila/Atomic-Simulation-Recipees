@@ -1,6 +1,7 @@
 from asr.core import command, option, AtomsFile
 from ase import Atoms
 import numpy as np
+from asr.utils.bilayerutils import *
 
 
 class StackingError(ValueError):
@@ -53,7 +54,6 @@ def get_rotated_mats(atoms: Atoms):
     translations = symmetryC['translations']
 
     final_mats = []
-    labels = []
     transforms = []
 
     for i, (U_cc, t_c) in enumerate(zip(rotations, translations)):
@@ -70,17 +70,11 @@ def get_rotated_mats(atoms: Atoms):
         rotated_atoms.wrap(pbc=[1, 1, 1])
 
         final_mats.append(rotated_atoms)
-        inversion = '-Iz' if np.allclose(U_cc[2, 2], -1) else ''
-        label = f'{U_cc[0, 0]}_{U_cc[0, 1]}_{U_cc[1, 0]}_{U_cc[1, 1]}' + inversion
-        # labels.append(f'{str(atoms.symbols)}-{str(i)}')
-        labels.append(f'{str(atoms.get_chemical_formula())}-2-' + label)
         transforms.append((U_cc, t_c))
 
-    auxs = list(zip(labels, transforms))
-    final_mats, auxs = unique_materials(final_mats, auxs)
-    labels, transforms = zip(*auxs)
+    final_mats, transforms = unique_materials(final_mats, transforms)
 
-    return final_mats, labels, transforms
+    return final_mats, transforms
 
 
 def unique_materials(mats, auxs, full=False, rmsd_tol=None):
@@ -144,68 +138,47 @@ def same_positions(atoms1, atoms2):
     return True
 
 
-def append_material(x, y, mat, atoms, tform, label, labelsuffix,
-                    layers, final_mats, translations,
-                    final_labels, final_transforms):
-    d = 12  # The arbitrary distance between layers in the prototype
-    layered1 = translation(x, y, d, mat, atoms)
-    layers.append(layered1)
-    translations.append((x, y))
-    final_mats.append(mat.copy())
-    final_labels.append(label + '-' + labelsuffix)
-    final_transforms.append(tform)
-
-
-def build_layers(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
+def build_layers(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     base_positions = flatten(atoms, rmsd_tol)
     cell = atoms.cell
 
-    full_labels = []
     bilayers = []
     toplayers = []
     symmetries = []
     translations = []
-    for toplayer, label, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
+    for toplayer, (U_cc, t_c) in zip(rotated_mats, transforms):
         top_positions = flatten(toplayer, rmsd_tol)
 
         for pos1 in base_positions:
             for pos2 in top_positions:
                 top = toplayer.copy()
                 move = pos1 - pos2
-                move_c = np.array([move[0], move[1], 0.0])
-                move_c = cell.scaled_positions(move_c)
-                total_translation = move_c + t_c
-                translation_label = pretty_float(total_translation)
-                full_label = label + "-" + translation_label
 
                 bilayer = translation(move[0], move[1], 12, toplayer, atoms)
 
-                full_labels.append(full_label)
                 bilayers.append(bilayer)
                 toplayers.append(top)
                 symmetries.append((U_cc, t_c))
                 translations.append(move)
 
-    _labels, _bis, _tops, _syms, _ts = cell_specific_stacks(atoms, cell_type,
-                                                            rotated_mats, labels,
-                                                            transforms, rmsd_tol)
-
-    full_labels.extend(_labels)
+    _bis, _tops, _syms, _ts = cell_specific_stacks(atoms, cell_type,
+                                                   rotated_mats,
+                                                   transforms, rmsd_tol)
+                
     bilayers.extend(_bis)
     toplayers.extend(_tops)
     symmetries.extend(_syms)
     translations.extend(_ts)
 
-    auxs = list(zip(toplayers, full_labels, translations, symmetries))
+    auxs = list(zip(toplayers, translations, symmetries))
     unique_layers, unique_auxs = unique_materials(
         bilayers, auxs, full=True, rmsd_tol=rmsd_tol)
-    tops, labels, translations, syms = zip(*unique_auxs)
+    tops, translations, syms = zip(*unique_auxs)
 
-    return tops, labels, translations, syms, unique_layers
+    return tops, translations, syms, unique_layers
 
 
-def cell_specific_stacks(atoms, cell_type, rotated_mats, labels, transforms, rmsd_tol):
-    full_labels = []
+def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     bilayers = []
     toplayers = []
     symmetries = []
@@ -216,72 +189,39 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, labels, transforms, rms
     unit_cell = atoms.get_cell_lengths_and_angles()
     a, b, c = unit_cell[:3]
 
-    def append_helper(x, y, top, atoms, label, symtup):
+    def append_helper(x, y, top, atoms, symtup):
         U_cc, t_c = symtup
         bilayer = translation(x, y, 12, top, atoms)
 
-        move_c = np.array([x, y, 0.0])
-        move_c = cell.scaled_positions(move_c)
-        total_translation = move_c + t_c
-        translation_label = pretty_float(total_translation)
-        flabel = label + '-' + translation_label
-
-        full_labels.append(flabel)
         bilayers.append(bilayer)
         toplayers.append(top.copy())
         symmetries.append(symtup)
         final_transforms.append(np.array([x, y]))
 
     if cell_type == 'hexagonal':
-        for top, lab, (U_cc, t_c) in zip(rotated_mats, labels, transforms):
+        for top, (U_cc, t_c) in zip(rotated_mats, transforms):
             x = positions[1, 0]
             y = positions[1, 1]
-            append_helper(x, y, top, atoms, lab, (U_cc, t_c))
+            append_helper(x, y, top, atoms, (U_cc, t_c))
 
             x = 2 * positions[1, 0]
             y = 2 * positions[1, 1]
-            append_helper(x, y, top, atoms, lab, (U_cc, t_c))
+            append_helper(x, y, top, atoms, (U_cc, t_c))
     elif cell_type in ['oblique', 'rectangular', 'square', 'centered']:
-        for top, lab, stup in zip(rotated_mats, labels, transforms):
+        for top, stup in zip(rotated_mats, transforms):
             x = a / 2.0
             y = 0.0
-            append_helper(x, y, top, atoms, lab, stup)
+            append_helper(x, y, top, atoms, stup)
+                                          
+            x = 0.0                       
+            y = b / 2.0                   
+            append_helper(x, y, top, atoms, stup)
+                                          
+            x = a / 2.0                   
+            y = b / 2.0                   
+            append_helper(x, y, top, atoms, stup)
 
-            x = 0.0
-            y = b / 2.0
-            append_helper(x, y, top, atoms, lab, stup)
-
-            x = a / 2.0
-            y = b / 2.0
-            append_helper(x, y, top, atoms, lab, stup)
-
-    return full_labels, bilayers, toplayers, symmetries, final_transforms
-
-
-def pretty_float(arr):
-    f1 = round(arr[0], 2)
-    if np.allclose(f1, 0.0):
-        s1 = "0"
-    else:
-        s1 = str(f1)
-    f2 = round(arr[1], 2)
-    if np.allclose(f2, 0.0):
-        s2 = "0"
-    else:
-        s2 = str(f2)
-
-    return f'{s1}_{s2}'
-
-
-def translation(x, y, z, rotated, base):
-    stacked = base.copy()
-    rotated = rotated.copy()
-    rotated.translate([x, y, z])
-    stacked += rotated
-    stacked.wrap()
-
-    return stacked
-# def webpanel
+    return bilayers, toplayers, symmetries, final_transforms
 
 
 @command(module='asr.stack_bilayer', requires=['structure.json'])
@@ -305,28 +245,38 @@ def main(atoms: Atoms,
 
     cell_type = get_cell_type(atoms)
 
-    rotated_mats, labels, transforms = get_rotated_mats(atoms)
+    rotated_mats, transforms = get_rotated_mats(atoms)
 
     things = build_layers(atoms, cell_type,
                           rotated_mats,
-                          labels, transforms, rmsd_tol)
+                          transforms, rmsd_tol)
 
-    for mat, label, transl, tform, proto in zip(*things):
-        if not os.path.isdir(label):
-            os.mkdir(label)
+    names = []
+    for mat, transl, tform, proto in zip(*things):
+        # Unpack and transform data needed to construct bilayer name
+        t = tform[1] + atoms.cell.scaled_positions(np.array([transl[0], transl[1], 0.0]))
+        name = layername(atoms.get_chemical_formula(), 2, tform[0], t)
+        names.append(name)
+
+        if not os.path.isdir(name):
+            os.mkdir(name)
+
         mat.cell[2, 2] /= 2
         spos_av = mat.get_positions()
         spos_av[:, 2] -= mat.cell[2, 2] / 2
         mat.set_positions(spos_av)
-        mat.write(f'{label}/toplayer.json')
-        proto.write(f'{label}/bilayerprototype.json')
+        mat.write(f'{name}/toplayer.json')
+
+        proto.write(f'{name}/bilayerprototype.json')
+
         dct = {'translation_vector': transl}
-        write_json(f'{label}/translation.json', dct)
+        write_json(f'{name}/translation.json', dct)
+
         transform_data = {'rotation': tform[0],
                           'translation': tform[1]}
-        write_json(f'{label}/transformdata.json', transform_data)
+        write_json(f'{name}/transformdata.json', transform_data)
 
-    return {'folders': labels}
+    return {'folders': names}
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ from asr.core import command, option, AtomsFile, DictStr
 import numpy as np
 from ase import Atoms
 import os
-from asr.stack_bilayer import translation
+from asr.utils.bilayerutils import translation
 from gpaw import mpi
 
 
