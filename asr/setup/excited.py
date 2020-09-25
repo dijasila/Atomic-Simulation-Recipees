@@ -27,6 +27,8 @@ def main(n: int = 1, m: int = 1):
     lation plus parameters for fixed occupations and number of bands that are
     needed for excited state calculations.
     """
+    print('INFO: excite electron from {}. highest occupied to the {}. '
+          'lowest unoccupied orbital.'.format(n, m))
     atoms, calc = restart('gs.gpw', txt=None)
 
     N_tot = calc.get_number_of_bands()
@@ -39,7 +41,7 @@ def main(n: int = 1, m: int = 1):
     ev_spin0 = calc.get_eigenvalues(spin=0)
     [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
     n1 = len(occ_spin0)
-    if calc.get_number_of_spins()  == 2:
+    if calc.get_number_of_spins() == 2:
         occ_spin1 = []
         ev_spin1 = calc.get_eigenvalues(spin=1)
         [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
@@ -48,6 +50,10 @@ def main(n: int = 1, m: int = 1):
         # first one (even though we have a spin-polarized calculation
         if n1 != n2:
             set_both = True
+            print('INFO: set up occupations for both spin channels.')
+        else:
+            print('INFO: symmetric occupations in both spin channels. '
+                  'Only set up one folder for the first channel.')
 
     # extract old calculator parameters
     params_relax = Trajectory('relax.traj')[-1].get_calculator().todict()
