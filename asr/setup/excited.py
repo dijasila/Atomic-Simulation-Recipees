@@ -26,8 +26,12 @@ def main(n: int = 1, m: int = 1):
     lation plus parameters for fixed occupations and number of bands that are
     needed for excited state calculations.
     """
-    print('INFO: excite electron from {}. highest occupied to the {}. '
-          'lowest unoccupied orbital.'.format(n, m))
+    if n == 1 and m == 1:
+        print('INFO: excite HOMO -> LUMO transition.')
+    else:
+        print('INFO: excite electron from {}. highest occupied to the {}. '
+              'lowest unoccupied orbital.'.format(n, m))
+
     atoms, calc = restart('gs.gpw', txt=None)
 
     N_tot = calc.get_number_of_bands()
