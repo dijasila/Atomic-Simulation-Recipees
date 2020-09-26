@@ -81,3 +81,15 @@ def test_database_fromtree_raises_when_missing_uids(asr_tmpdir, folder_tree):
     from asr.database.fromtree import MissingUIDS
     with pytest.raises(MissingUIDS):
         fromtree(folders=['materials/Si2'])
+
+
+@pytest.mark.ci
+def test_database_fromtree_works_without_write_permission(
+        asr_tmpdir, folder_tree):
+    from asr.database.fromtree import main as fromtree
+    import stat
+    os.chmod(folder_tree[0][0], stat.S_IRUSR | stat.S_IXUSR)
+    try:
+        fromtree(folders=['materials/Si2'], recursive=True)
+    finally:
+        os.chmod(folder_tree[0][0], stat.S_IRUSR | stat.S_IXUSR | stat.S_IWUSR)
