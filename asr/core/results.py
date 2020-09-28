@@ -5,10 +5,49 @@ from typing import get_type_hints, List, Any, Dict
 from abc import ABC, abstractmethod
 
 
+class OldDataFormat:
+    """Old data format."""
+
+    def __init__(self, data, metadata={}):
+        dct = {'data': data}
+
+        self._dct = dct
+        self.set_metadata(metadata)
+
+    def get_data(self):
+        return self._dct['data']
+
+    def get_metadata(self):
+        metadata = {}
+        for key, value in self._dct.items():
+            if key.startswith('__') and key.endswith('__'):
+                metadata[key[2:-2]] = value
+        return metadata
+
+    def set_metadata(self, metadata):
+        for key in self._dct:
+            if key.startswith('__') and key.endswith('__'):
+                del self._dct[key]
+        for key, value in metadata.items():
+            self._dct['__' + key + '__'] = value
+
+
 class DataFormat:
     """Abstract data format."""
 
-    pass
+    def __init__(self, data, metadata={}):
+        dct = {'data': data,
+               'metadata': metadata}
+        self._dct = dct
+
+    def get_data(self):
+        return self._dct['data']
+
+    def get_metadata(self):
+        return self._dct['metadata']
+
+    def set_metadata(self, metadata):
+        self._dct['metadata'] = metadata
 
 
 class ResultEncoder(ABC):
@@ -204,7 +243,9 @@ class ASRResult:
                'dict': DictEncoder(),
                'ase_webpanel': WebPanelEncoder()}
 
-    def __init__(self, metadata={}, **data):
+    def __init__(self, validate=True, metadata={},
+                 dataformat=DataFormat,
+                 **data):
         """Initialize result from dict.
 
         Parameters
@@ -214,23 +255,23 @@ class ASRResult:
         metadata : dict
             Extra metadata describing code versions etc.
         """
-        self._data = data
-        self.metadata = metadata
+        if validate:
+            kd_keys = self.key_descriptions.keys()
+            data_keys = data.keys()
+            assert set(kd_keys) == set(data_keys), \
+                (kd_keys, data_keys)
 
-        kd_keys = self.key_descriptions.keys()
-        data_keys = data.keys()
-        assert set(kd_keys) == set(data_keys), \
-            (kd_keys, data_keys)
+        self._data = dataformat(data=data, metadata=metadata)
 
     @property
     def data(self) -> dict:
         """Get result data."""
-        return self._data
+        return self._data.get_data()
 
     @property
     def metadata(self) -> dict:
         """Get result metadata."""
-        return self._metadata
+        return self._data.get_metadata()
 
     @metadata.setter
     def metadata(self, metadata) -> None:
@@ -240,7 +281,7 @@ class ASRResult:
         # The following line is for copying the metadata into place.
         metadata = copy.deepcopy(metadata)
         metadata['version'] = self.version
-        self._metadata = metadata
+        self._data.set_metadata(metadata)
 
     @classmethod
     def from_format(cls, input_data, format='json'):

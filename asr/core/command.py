@@ -1,6 +1,6 @@
 """Module implementing the ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
-               file_barrier, clickify_docstring)
+               file_barrier, clickify_docstring, ASRResult)
 from ase.parallel import parprint
 import click
 import copy
@@ -366,8 +366,11 @@ class ASRCommand:
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
             tstart = time.time()
-            results = self._main(**copy.deepcopy(params)) or {}
+            result = self._main(**copy.deepcopy(params)) or {}
             tend = time.time()
+
+        if not isinstance(result, ASRResult):
+            result = ASRResult(**result, validate=False)
 
         from ase.parallel import world
         metadata = dict(asr_name=self.name,
@@ -394,13 +397,13 @@ class ASRCommand:
                 hexdigest = md5sum(filename)
                 metadata['requires'][filename] = hexdigest
 
-        results.metadata = metadata
+        result.metadata = metadata
         if self.save_results_file:
             name = self.name
-            json_string = to_json(results)
+            json_string = to_json(result)
             write_file(f'results-{name}.json', json_string)
 
-        return results
+        return result
 
 
 def get_execution_info(package_dependencies):
