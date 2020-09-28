@@ -264,7 +264,6 @@ def get_emass_dict_from_row(row, has_mae=False):
     else:
         results = row.data.get('results-asr.emasses.json')
 
-
     cb_indices = []
     vb_indices = []
     for k in results.keys():
@@ -310,7 +309,8 @@ def get_emass_dict_from_row(row, has_mae=False):
                         if abs(mass) > 3000 or np.sign(mass) != expectedsign:
                             mass_str = "N/A"
                         else:
-                            mass_str = str(round(abs(mass) * 100) / 100) + " m<sub>e</sub>"
+                            mass_str = str(round(abs(mass) * 100)
+                                           / 100) + " m<sub>e</sub>"
 
                         if has_mae:
                             mae = maes[direction - 1]
@@ -325,7 +325,7 @@ def get_emass_dict_from_row(row, has_mae=False):
 
                             if offset_num == 0:
                                 my_dict[f'{name}, direction {direction}'] = \
-                                        (f'{mass_str}',  maestr)
+                                    (f'{mass_str}', maestr)
                             else:
                                 my_dict['{} {} {}, direction {}'.format(
                                     name, offset_sym,
@@ -335,14 +335,13 @@ def get_emass_dict_from_row(row, has_mae=False):
                         else:
                             if offset_num == 0:
                                 my_dict[f'{name}, direction {direction}'] = \
-                                        f'{mass_str}'
+                                    f'{mass_str}'
                             else:
                                 my_dict['{} {} {}, direction {}'.format(
                                     name, offset_sym,
                                     offset_num, direction)] = \
                                     f'{mass_str}'
 
-                    
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -576,7 +575,6 @@ def custom_table(values_dict, title, has_mae=False):
         else:
             rows.append((k, values_dict[k]))
 
-        
     if has_mae:
         table = {'type': 'table',
                  'header': [title, 'Value', 'MAE (25 meV)']}
@@ -1331,13 +1329,13 @@ def iterateresults(results):
             yield k, newdct
 
 
-def evalmae(cell_cv, k_kc, e_k, bt, c, e_km, erange=25e-3):
+def evalmae(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Ha, Bohr
     import numpy as np
 
     erange = erange / Ha
-    
+
     k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
     e_k = e_k.copy() / Ha
 
@@ -1367,7 +1365,6 @@ def validate():
     i.e. the directions shown in the plots on the website.
     """
     from asr.core import read_json
-    import numpy as np
     from ase.io import read
     results = read_json('results-asr.emasses.json')
     myresults = results.copy()
@@ -1375,15 +1372,13 @@ def validate():
 
     for (sindex, kindex), data in iterateresults(results):
         # Get info on fit at this point in bandstructure
-        band = data['bandindex']
         fitinfo = data['fitcoeff']
         bt = data['info'].split('_')[0]
         maes = []
         for cutdata in data['bzcuts']:
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
-            e_km = cutdata['e_km']
-            mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo, e_km)
+            mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             maes.append(mae)
 
         prefix = data['info'] + '_'
