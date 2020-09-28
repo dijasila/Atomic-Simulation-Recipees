@@ -136,7 +136,7 @@ def get_new_webpanel_implementation(recipe, row, key_descriptions):
     cls = recipe.returns
     if 'ase_webpanel' not in cls.get_formats():
         return []
-    result = cls.from_format(dct, format=dict)
+    result = cls.from_format(dct, format='dict')
     try:
         return result.format_as('ase_webpanel', row, key_descriptions)
     except Exception:
@@ -162,10 +162,10 @@ def get_recipe_panels(filename, row, key_descriptions):
     recipe = get_recipe_from_name(recipename)
     cls = recipe.returns
     if cls is not None:
-        return get_new_webpanel_implementation(filename, row,
+        return get_new_webpanel_implementation(recipe, row,
                                                key_descriptions)
     else:
-        return get_old_webpanel_implementation(filename, row,
+        return get_old_webpanel_implementation(recipe, row,
                                                key_descriptions)
 
 
@@ -173,7 +173,7 @@ def extract_recipe_from_filename(filename: str):
     """Parse filename and return recipe name."""
     pattern = re.compile('results-(.*)\.json')  # noqa
     m = pattern.match(filename)
-    return m.group()
+    return m.group(1)
 
 
 def is_results_file(filename):

@@ -3,7 +3,7 @@
 from typing import Union, List
 from ase import Atoms
 from ase.io import read
-from asr.core import command, option, argument, chdir, read_json
+from asr.core import command, option, argument, chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
@@ -139,7 +139,12 @@ def collect_file(filename: Path):
     from asr.core import read_json
     data = {}
     results = read_json(filename)
-    data[str(filename)] = results
+    if isinstance(results, ASRResult):
+        dct = results.format_as('dict')
+    else:
+        dct = results
+
+    data[str(filename)] = dct
 
     # Find and try to collect related files for this resultsfile
     files = results.get('__files__', {})
@@ -162,6 +167,7 @@ def collect_file(filename: Path):
             dct = read_json(extrafile)
         else:
             dct = {'pointer': str(file.absolute())}
+
         data[extrafile] = dct
 
     kvp = get_key_value_pairs(results)

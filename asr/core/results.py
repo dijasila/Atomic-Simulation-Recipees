@@ -3,45 +3,63 @@ from ase.io import jsonio
 import copy
 from typing import get_type_hints, List, Any, Dict
 from abc import ABC, abstractmethod
+from . import get_recipe_from_name
 
 
-class OldDataFormat:
-    """Old data format."""
-
-    def __init__(self, data, metadata={}):
-        dct = {'data': data}
-
-        self._dct = dct
-        self.set_metadata(metadata)
-
-    def get_data(self):
-        return self._dct['data']
-
-    def get_metadata(self):
-        metadata = {}
-        for key, value in self._dct.items():
-            if key.startswith('__') and key.endswith('__'):
-                metadata[key[2:-2]] = value
-        return metadata
-
-    def set_metadata(self, metadata):
-        for key in self._dct:
-            if key.startswith('__') and key.endswith('__'):
-                del self._dct[key]
-        for key, value in metadata.items():
-            self._dct['__' + key + '__'] = value
+def read_old_data(dct):
+    metadata = {}
+    data = {}
+    for key, value in dct.items():
+        if key.startswith('__') and key.endswith('__'):
+            metadata[key[2:-2]] = value
+        else:
+            data[key] = value
+    return DataContainer(data=data, metadata=metadata, version=0)
 
 
-class DataFormat:
+def read_new_data(dct):
+    metadata = dct['metadata']
+    data = dct['data']
+    version = dct['version']
+    return DataContainer(data=data, metadata=metadata, version=version)
+
+
+class UnknownDataFormat(Exception):
+    """Unknown ASR Result format."""
+
+    pass
+
+
+def dct_to_result(dct):
+    """Parse dict and return result object."""
+    if 'metadata' in dct:
+        datacontainer = read_new_data(dct)
+    elif '__asr_name__' in dct:
+        datacontainer = read_old_data(dct)
+    else:
+        raise UnknownDataFormat
+    metadata = datacontainer.get_metadata()
+    asr_name = metadata['asr_name']
+    recipe = get_recipe_from_name(asr_name)
+    result = recipe.returns.from_format(datacontainer,
+                                        format='datacontainer')
+    return result
+
+
+class DataContainer:
     """Abstract data format."""
 
-    def __init__(self, data, metadata={}):
+    def __init__(self, data, metadata, version):
         dct = {'data': data,
-               'metadata': metadata}
+               'metadata': metadata,
+               'version': version}
         self._dct = dct
 
     def get_data(self):
         return self._dct['data']
+
+    def get_version(self):
+        return self._dct['version']
 
     def get_metadata(self):
         return self._dct['metadata']
@@ -72,6 +90,24 @@ class ResultEncoder(ABC):
         return NotImplemented
 
 
+class DataContainerEncoder(ResultEncoder):
+    """DataContainer ASRResult encoder."""
+
+    def encode(self, result: 'ASRResult'):
+        """Encode a ASRResult object as a DataContainer."""
+        dct = result.format_as('dict')
+        return DataContainer(data=dct['data'],
+                             metadata=dct['metadata'],
+                             version=dct['version'])
+
+    def decode(self, datacontainer: DataContainer):
+        """Decode datacontainer."""
+        metadata = datacontainer.get_metadata()
+        data = datacontainer.get_data()
+        version = datacontainer.get_version()
+        return data, metadata, version
+
+
 class JSONEncoder(ResultEncoder):
     """JSON ASRResult encoder."""
 
@@ -85,8 +121,8 @@ class JSONEncoder(ResultEncoder):
         """Decode json string."""
         tmp = jsonio.decode(json_string)
         metadata = tmp['metadata']
-        version = metadata.pop('version')
         data = tmp['data']
+        version = tmp['version']
         return data, metadata, version
 
 
@@ -125,7 +161,15 @@ class DictEncoder(ResultEncoder):
     def encode(self, result: 'ASRResult'):
         """Encode ASRResult object as dict."""
         return {'data': result.data,
-                'metadata': result.metadata}
+                'metadata': result.metadata,
+                'version': result.version}
+
+    def decode(self, dct: dict):
+        """Decode decode dict to data, metadata, version."""
+        metadata = dct['metadata']
+        version = dct['version']
+        data = dct['data']
+        return data, metadata, version
 
 
 def get_object_descriptions(obj):
@@ -171,10 +215,7 @@ class UnknownASRResultFormat(Exception):
     pass
 
 
-protected_metadata_keys = {'version'}
-
-
-class ASRResult:
+class ASRResult(object):
     """Base class for describing results generated with recipes.
 
     A results object is a container for results generated with ASR. It
@@ -241,10 +282,10 @@ class ASRResult:
     formats = {'json': JSONEncoder(),
                'html': HTMLEncoder(),
                'dict': DictEncoder(),
-               'ase_webpanel': WebPanelEncoder()}
+               'ase_webpanel': WebPanelEncoder(),
+               'datacontainer': DataContainerEncoder()}
 
-    def __init__(self, validate=True, metadata={},
-                 dataformat=DataFormat,
+    def __init__(self, metadata={},
                  **data):
         """Initialize result from dict.
 
@@ -255,14 +296,9 @@ class ASRResult:
         metadata : dict
             Extra metadata describing code versions etc.
         """
-        if validate:
-            kd_keys = self.key_descriptions.keys()
-            data_keys = data.keys()
-            assert set(kd_keys) == set(data_keys), \
-                (kd_keys, data_keys)
-
-        self._data = dataformat(data=data)
-        self.metadata = metadata
+        self._data = DataContainer(data=data,
+                                   metadata=metadata,
+                                   version=self.version)
 
     @property
     def data(self) -> dict:
@@ -277,11 +313,8 @@ class ASRResult:
     @metadata.setter
     def metadata(self, metadata) -> None:
         """Set result metadata."""
-        assert not protected_metadata_keys.intersection(metadata.keys()), \
-            f'You cannot write metadata with keys={protected_metadata_keys}.'
         # The following line is for copying the metadata into place.
         metadata = copy.deepcopy(metadata)
-        metadata['version'] = self.version
         self._data.set_metadata(metadata)
 
     @classmethod
@@ -332,7 +365,10 @@ class ASRResult:
         """Get attribute."""
         if key in self.keys():
             return self.data[key]
-        return super().__getattr__(self, key)
+
+    def get(self, key, *args):
+        """Wrap self.data.get."""
+        return self.data.get(key, *args)
 
     def values(self):
         """Wrap self.data.values."""

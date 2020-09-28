@@ -1,6 +1,7 @@
 """Module implementing the ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
-               file_barrier, clickify_docstring, ASRResult)
+               file_barrier, clickify_docstring, ASRResult,
+               get_recipe_from_name)
 from ase.parallel import parprint
 import click
 import copy
@@ -148,6 +149,8 @@ class ASRCommand:
         self.name = name
 
         # Return type
+        if returns is None:
+            returns = ASRResult
         # assert returns is not None, 'Please specify a return type!'
         self.returns = returns
 
@@ -369,8 +372,8 @@ class ASRCommand:
             result = self._main(**copy.deepcopy(params)) or {}
             tend = time.time()
 
-        if not isinstance(result, ASRResult):
-            result = ASRResult(**result, validate=False)
+        if not isinstance(result, self.returns):
+            result = self.returns(**result)
 
         from ase.parallel import world
         metadata = dict(asr_name=self.name,
@@ -409,7 +412,6 @@ class ASRCommand:
 def get_execution_info(package_dependencies):
     """Get parameter and software version information as a dictionary."""
     from ase.utils import search_current_git_hash
-    exeinfo = {}
     versions = {}
     for modname in package_dependencies:
         try:
@@ -422,9 +424,7 @@ def get_execution_info(package_dependencies):
             versions[f'{modname}'] = f'{version}-{githash}'
         else:
             versions[f'{modname}'] = f'{version}'
-    exeinfo['__versions__'] = versions
-
-    return exeinfo
+    return versions
 
 
 def command(*args, **kwargs):
@@ -452,53 +452,6 @@ def get_recipe_module_names():
     return modulenames
 
 
-def parse_mod_func(name):
-    # Split a module function reference like
-    # asr.relax@main into asr.relax and main.
-    mod, *func = name.split('@')
-    if not func:
-        func = ['main']
-
-    assert len(func) == 1, \
-        'You cannot have multiple : in your function description'
-
-    return mod, func[0]
-
-
-def get_dep_tree(name, reload=True):
-    # Get the tree of dependencies from recipe of "name"
-    # by following dependencies of dependencies
-    import importlib
-
-    tmpdeplist = [name]
-
-    for i in range(1000):
-        if i == len(tmpdeplist):
-            break
-        dep = tmpdeplist[i]
-        mod, func = parse_mod_func(dep)
-        module = importlib.import_module(mod)
-
-        assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
-        function = getattr(module, func)
-        dependencies = function.dependencies
-        # if not dependencies and hasattr(module, 'dependencies'):
-        #     dependencies = module.dependencies
-
-        for dependency in dependencies:
-            tmpdeplist.append(dependency)
-    else:
-        raise AssertionError('Unreasonably many dependencies')
-
-    tmpdeplist.reverse()
-    deplist = []
-    for dep in tmpdeplist:
-        if dep not in deplist:
-            deplist.append(dep)
-
-    return deplist
-
-
 def get_recipe_modules():
     # Get recipe modules
     import importlib
@@ -522,11 +475,3 @@ def get_recipes():
             if isinstance(attr, ASRCommand):
                 functions.append(attr)
     return functions
-
-
-def get_recipe_from_name(name):
-    # Get a recipe from a name like asr.gs@postprocessing
-    import importlib
-    mod, func = parse_mod_func(name)
-    module = importlib.import_module(mod)
-    return getattr(module, func)
