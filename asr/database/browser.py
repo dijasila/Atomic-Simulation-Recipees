@@ -1,4 +1,6 @@
-from asr.core import command, option, get_recipe_from_name
+from asr.core import command, option
+from asr.core.utils import dct_to_object
+import copy
 import sys
 import re
 from pathlib import Path
@@ -131,44 +133,6 @@ def merge_panels(page):
         page[title] = panel
 
 
-def get_new_webpanel_implementation(recipe, row, key_descriptions):
-    dct = row.data.get(f'results-{recipe.name}.json')
-    cls = recipe.returns
-    if 'ase_webpanel' not in cls.get_formats():
-        return []
-    result = cls.from_format(dct, format='dict')
-    try:
-        return result.format_as('ase_webpanel', row, key_descriptions)
-    except Exception:
-        traceback.print_exc()
-        return []
-
-
-def get_old_webpanel_implementation(recipe, row, key_descriptions):
-    if not recipe.webpanel:
-        return []
-    # We assume that there should be a results file in
-    if f'results-{recipe.name}.json' not in row.data:
-        return []
-    try:
-        return recipe.webpanel(row, key_descriptions)
-    except Exception:
-        traceback.print_exc()
-        return []
-
-
-def get_recipe_panels(filename, row, key_descriptions):
-    recipename = extract_recipe_from_filename(filename)
-    recipe = get_recipe_from_name(recipename)
-    cls = recipe.returns
-    if cls is not None:
-        return get_new_webpanel_implementation(recipe, row,
-                                               key_descriptions)
-    else:
-        return get_old_webpanel_implementation(recipe, row,
-                                               key_descriptions)
-
-
 def extract_recipe_from_filename(filename: str):
     """Parse filename and return recipe name."""
     pattern = re.compile('results-(.*)\.json')  # noqa
@@ -180,6 +144,19 @@ def is_results_file(filename):
     return filename.startswith('results-') and filename.endswith('.json')
 
 
+class RowWrapper:
+
+    def __init__(self, row):
+        self._row = row
+        self._data = copy.deepcopy(row.data)
+
+    def __getattr__(self, key):
+        """Wrap attribute lookup of AtomsRow."""
+        if key == 'data':
+            return self._data
+        return getattr(self._row, key)
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
@@ -187,11 +164,20 @@ def layout(row: AtomsRow,
     page = {}
     exclude = set()
 
+    row = RowWrapper(row)
+    for key, value in row.data.items():
+        obj = dct_to_object(value)
+        row.data[key] = obj
+        assert row.data[key] == obj
+
     # Locate all webpanels
     for filename in row.data:
         if not is_results_file(filename):
             continue
-        panels = get_recipe_panels(filename, row, key_descriptions)
+        result = row.data[filename]
+        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        if not panels:
+            continue
 
         for thispanel in panels:
             assert 'title' in thispanel, f'No title in {filename} webpanel'
