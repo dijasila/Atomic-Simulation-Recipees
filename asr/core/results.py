@@ -261,7 +261,8 @@ class ASRResult:
             assert set(kd_keys) == set(data_keys), \
                 (kd_keys, data_keys)
 
-        self._data = dataformat(data=data, metadata=metadata)
+        self._data = dataformat(data=data)
+        self.metadata = metadata
 
     @property
     def data(self) -> dict:
