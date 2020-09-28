@@ -16,6 +16,7 @@ import numpy as np
 from ase.io import write, Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
+from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import command, option, AtomsFile, DictStr, set_docstring, ASRResult
 from math import sqrt
@@ -366,7 +367,13 @@ def main(atoms: Atoms,
                   dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     # If the maximum magnetic moment on all atoms is big then
-    magmoms = atoms.get_magnetic_moments()
+    try:
+        magmoms = atoms.get_magnetic_moments()
+    except PropertyNotImplementedError:
+        # We assume this means that the magnetic moments are zero
+        # for this calculator.
+        magmoms = np.zeros(len(atoms))
+
     if not abs(magmoms).max() > 0.1:
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
