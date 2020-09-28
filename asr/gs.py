@@ -1,4 +1,4 @@
-from asr.core import command, option, DictStr
+from asr.core import command, option, DictStr, ASRResult
 
 
 @command(module='asr.gs',
@@ -54,7 +54,7 @@ def calculate(calculator: dict = {
     atoms.calc.write('gs.gpw')
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
 
     t = table(row, 'Property',
@@ -129,7 +129,13 @@ def bz_with_band_extremums(row, fname):
     plt.savefig(fname)
 
 
+class GSResult(ASRResult):
+
+    formats = {'ase_webpanel': webpanel}
+
+
 @command(module='asr.gs',
+         returns=GSResult,
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',

@@ -76,12 +76,12 @@ class ResultEncoder(ABC):
 
     """
 
-    def __call__(self, result):
+    def __call__(self, result, *args, **kwargs):
         """Encode result."""
-        return self.encode(result)
+        return self.encode(result, *args, **kwargs)
 
     @abstractmethod
-    def encode(self, result):
+    def encode(self, result, *args, **kwargs):
         """Encode result."""
         raise NotImplementedError
 
@@ -137,7 +137,7 @@ class HTMLEncoder(ResultEncoder):
 class WebPanelEncoder(ResultEncoder):
     """Encoder for ASE compatible webpanels."""
 
-    def encode(self, result):
+    def encode(self, result, row, key_descriptions):
         """Make basic webpanel.
 
         Simply prints all attributes.
@@ -149,7 +149,7 @@ class WebPanelEncoder(ResultEncoder):
                  'header': ['key', 'value'],
                  'rows': rows}
         columns = [[table]]
-        panel = {'title': 'Basic electronic properties (PBE)',
+        panel = {'title': 'Results',
                  'columns': columns,
                  'sort': 1}
         return [panel]
@@ -342,10 +342,10 @@ class ASRResult(object):
         my_formats.update(cls.formats)
         return my_formats
 
-    def format_as(self, fmt: str = '', **kwargs) -> Any:
+    def format_as(self, format: str = '', *args, **kwargs) -> Any:
         """Format Result as string."""
         formats = self.get_formats()
-        return formats[fmt](self, **kwargs)
+        return formats[format](self, *args, **kwargs)
 
     # ---- Magic methods ----
 
