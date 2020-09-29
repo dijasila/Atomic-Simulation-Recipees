@@ -12,7 +12,7 @@ from ase.db.row import AtomsRow
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     hulltable1 = table(row,

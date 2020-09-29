@@ -34,7 +34,7 @@ def collect_data(atoms):
     return kvp, kd, data
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.browser import fig, table
 
     if 'something' not in row.data:

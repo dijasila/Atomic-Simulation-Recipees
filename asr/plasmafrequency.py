@@ -40,7 +40,7 @@ def calculate(kptdensity: float = 20):
         world.barrier()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     if row.get('gap', 1) > 0.01:

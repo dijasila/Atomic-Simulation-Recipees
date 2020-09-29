@@ -545,7 +545,7 @@ def custom_table(values_dict, title):
     return table
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     columns, fnames = create_columns_fnames(row)
 
     electron_dict, hole_dict = get_emass_dict_from_row(row)

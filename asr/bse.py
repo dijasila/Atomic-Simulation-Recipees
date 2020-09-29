@@ -234,7 +234,7 @@ def absorption(row, filename, direction='x'):
     return ax
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
     from asr.database.browser import fig, table

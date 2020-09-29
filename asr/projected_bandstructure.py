@@ -6,7 +6,7 @@ from asr.core import command, ASRResult
 # ---------- Webpanel ---------- #
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Projected band structure and DOS (PBE)',

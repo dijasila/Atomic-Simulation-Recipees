@@ -1,7 +1,7 @@
 from asr.core import command, option, ASRResult
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     import numpy as np
 
     def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):

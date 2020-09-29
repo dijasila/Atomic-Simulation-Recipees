@@ -1,5 +1,4 @@
-from asr.core import command, option
-from asr.core.utils import dct_to_object
+from asr.core import command, option, dct_to_result
 import copy
 import sys
 import re
@@ -156,6 +155,10 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
+    def __contains__(self, key):
+        """Wrap contains of atomsrow."""
+        return self._row.__contains__(key)
+
 
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
@@ -166,7 +169,10 @@ def layout(row: AtomsRow,
 
     row = RowWrapper(row)
     for key, value in row.data.items():
-        obj = dct_to_object(value)
+        if is_results_file(key):
+            obj = dct_to_result(value)
+        else:
+            obj = key
         row.data[key] = obj
         assert row.data[key] == obj
 

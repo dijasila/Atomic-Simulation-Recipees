@@ -160,7 +160,7 @@ def plot_phases(name='0', fname='berry', show=False):
         plt.show()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     if row.Topology == 'Not checked':
         return []
 

@@ -207,7 +207,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
     return results
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     prop = table(row, 'Property', [

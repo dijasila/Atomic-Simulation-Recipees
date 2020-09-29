@@ -213,7 +213,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 # ---------- Webpanel ---------- #
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     # PDOS without spin-orbit coupling
     panel = {'title': 'Projected band structure and DOS (PBE)',

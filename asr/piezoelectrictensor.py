@@ -13,7 +13,7 @@ Recipes
 from asr.core import command, option, DictStr, ASRResult
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     def matrixtable(M, digits=2):
         table = M.tolist()
         shape = M.shape

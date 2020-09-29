@@ -14,7 +14,7 @@ def get_dimtypes():
     return ["".join(x for x, y in zip(string, s3) if y) + "D" for s3 in s2]
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
     dimtable = table(row, 'Dimensionality scores',
                      [f'dim_score_{dimtype}' for dimtype in get_dimtypes()],

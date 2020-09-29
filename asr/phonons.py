@@ -114,7 +114,7 @@ def requires():
     return creates() + ['results-asr.phonons@calculate.json']
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 

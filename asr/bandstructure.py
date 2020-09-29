@@ -382,7 +382,7 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     from typing import Tuple, List
 

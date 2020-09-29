@@ -88,7 +88,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     return plt.gca()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = ('Density of states (PBE)',

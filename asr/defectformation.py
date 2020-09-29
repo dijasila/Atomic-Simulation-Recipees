@@ -408,7 +408,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     return trans_array
 
 
-# def webpanel(row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
 #    from asr.database.browser import fig, table
 #
 #    if 'something' not in row.data:

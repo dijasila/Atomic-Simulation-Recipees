@@ -3,7 +3,7 @@ from asr.core import command, option, ASRResult
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     data = row.data.get('results-asr.deformationpotentials.json')
 
     defpot = data['deformation_potentials']

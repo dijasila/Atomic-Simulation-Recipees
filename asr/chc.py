@@ -451,7 +451,7 @@ class ConvexHullReference(Reference):
         return msg
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig as asrfig
 
     fname = './convexhullcut.png'

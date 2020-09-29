@@ -46,7 +46,8 @@ def test_berry_nontrivial(asr_tmpdir_w_params, topology, get_webcontent):
     structure.write('structure.json')
 
     from asr.core import write_json
-    dct = {}
+    dct = {'data': {}, 'metadata': {'asr_name': 'asr.berry@calculate'},
+           'version': 0}
     write_json('results-asr.berry@calculate.json', dct)
 
     # write topology.dat

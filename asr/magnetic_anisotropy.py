@@ -28,7 +28,7 @@ def spin_axis(theta, phi):
         return 'x'
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
     if row.get('magstate', 'NM') == 'NM':
         return []

@@ -18,7 +18,7 @@ def get_magstate(calc):
     return 'afm'
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
     rows = [['Magnetic state', row.magstate]]
     summary = {'title': 'Summary',

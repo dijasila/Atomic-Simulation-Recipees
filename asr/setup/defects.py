@@ -360,7 +360,7 @@ def collect_data():
     return None
 
 
-# def webpanel(row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
 #    from asr.browser import fig, table
 #
 #    if 'something' not in row.data:

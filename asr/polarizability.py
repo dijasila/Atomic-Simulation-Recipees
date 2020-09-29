@@ -2,7 +2,7 @@ from asr.core import command, option, ASRResult
 from click import Choice
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(row, 'Property', [
