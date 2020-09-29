@@ -230,12 +230,13 @@ def main(rc: float = None):
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    dct = read_json("results-asr.phonopy@calculate.json")
+    calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
-    sc = dct["__params__"]["sc"]
-    d = dct["__params__"]["d"]
-    dist_max = dct["__params__"]["dist_max"]
-    fsname = dct["__params__"]["fsname"]
+    params = calculateresult.metadata.get("params")
+    sc = params["sc"]
+    d = params["d"]
+    dist_max = params["dist_max"]
+    fsname = params["fsname"]
 
     nd = sum(atoms.get_pbc())
 

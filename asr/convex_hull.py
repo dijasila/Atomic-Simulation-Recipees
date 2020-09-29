@@ -120,7 +120,7 @@ def main(databases: List[str]):
         if Path(filename).is_file():
             results = read_json(filename)
             energy = results.get('etot')
-            usingd3 = results.get('__params__', {}).get('d3', False)
+            usingd3 = results.metadata.get('params').get('d3', False)
             break
 
     if usingd3:
