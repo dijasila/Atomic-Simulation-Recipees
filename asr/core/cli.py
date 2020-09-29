@@ -261,7 +261,7 @@ def results(name, show):
 
     """
     from matplotlib import pyplot as plt
-    from asr.core import get_recipe_from_name, dct_to_result
+    from asr.core import get_recipe_from_name
     from asr.core.material import (get_material_from_folder,
                                    make_panel_figures)
     recipe = get_recipe_from_name(name)
@@ -271,7 +271,7 @@ def results(name, show):
         f'No results file for {recipe.name}, so I cannot show the results!'
 
     material = get_material_from_folder('.')
-    result = dct_to_result(material.data[filename])
+    result = material.data[filename]
 
     if 'ase_webpanel' not in result.get_formats():
         print(f'{recipe.name} does not have any results to present!')

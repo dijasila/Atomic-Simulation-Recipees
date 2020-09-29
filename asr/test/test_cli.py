@@ -82,7 +82,7 @@ def test_asr_results_bandstructure(asr_tmpdir):
     from asr.core import write_file, ASRResult
     from .materials import BN
     import numpy as np
-    gsresult = ASRResult(etot=0.01, gap=0, k_vbm_c=None, k_cbm=None,
+    gsresult = ASRResult(etot=0.01, gap=0, k_vbm_c=None, k_cbm_c=None,
                          metadata=dict(asr_name='asr.gs'))
     structresult = ASRResult(spglib_dataset={'rotations': [np.eye(3)]},
                              metadata=dict(asr_name='asr.structureinfo'))
@@ -93,7 +93,7 @@ def test_asr_results_bandstructure(asr_tmpdir):
     BN.write('structure.json')
     runner = CliRunner()
     result = runner.invoke(cli, ['results', 'asr.gs'])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result
     assert 'Saved figures: bz-with-gaps.png' in result.output
 
 

@@ -69,6 +69,7 @@ def get_material_from_folder(folder='.'):
         Output material instance
 
     """
+    from asr.core import dct_to_object
     from asr.database.fromtree import collect_file
     from ase.io import read
     kvp = {}
@@ -78,6 +79,10 @@ def get_material_from_folder(folder='.'):
         if tmpkvp or tmpdata:
             kvp.update(tmpkvp)
             data.update(tmpdata)
+
+    for key, value in data.items():
+        obj = dct_to_object(value)
+        data[key] = obj
 
     atoms = read('structure.json', parallel=False)
     material = Material(atoms, kvp, data)
