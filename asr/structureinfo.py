@@ -1,4 +1,4 @@
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -88,10 +88,15 @@ tests = [{'description': 'Test SI.',
                   'asr run "database.browser --only-figures"']}]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.structureinfo',
          tests=tests,
          requires=['structure.json'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     """Get structural information of atomic structure.
 

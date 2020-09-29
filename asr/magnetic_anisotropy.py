@@ -1,4 +1,4 @@
-from asr.core import command, read_json
+from asr.core import command, read_json, ASRResult
 
 
 def get_spin_axis():
@@ -50,9 +50,14 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "database.browser --only-figures"']}]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.magnetic_anisotropy',
          tests=tests,
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.gs@calculate', 'asr.magstate'])
 def main():
     """Calculate the magnetic anisotropy.

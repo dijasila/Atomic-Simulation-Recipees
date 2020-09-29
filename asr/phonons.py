@@ -6,7 +6,7 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def creates():
@@ -140,9 +140,14 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.phonons',
          requires=requires,
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.phonons@calculate'])
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')

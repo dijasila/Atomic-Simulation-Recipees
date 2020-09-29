@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def get_kpts_size(atoms, density):
@@ -54,8 +54,13 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.plasmafrequency',
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')

@@ -6,8 +6,7 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 
-from asr.core import command, option, DictStr
-from asr.core import read_json, write_json
+from asr.core import command, option, DictStr, ASRResult, read_json, write_json
 
 
 def lattice_vectors(N_c):
@@ -214,10 +213,15 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(
     "asr.phonopy",
     requires=requires,
-    webpanel=webpanel,
+    returns=Result,
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")

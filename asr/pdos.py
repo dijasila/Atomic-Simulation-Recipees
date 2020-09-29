@@ -1,4 +1,4 @@
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult
 
 from collections import defaultdict
 
@@ -249,11 +249,16 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20):
 # ----- Fast steps ----- #
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.pdos',
          requires=['results-asr.gs.json', 'pdos.gpw'],
          tests=tests,
          dependencies=['asr.gs', 'asr.pdos@calculate'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     from gpaw import GPAW
     from asr.core import singleprec_dict

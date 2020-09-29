@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 from click import Choice
 
 
@@ -36,10 +36,15 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.polarizability',
          dependencies=['asr.structureinfo', 'asr.gs@calculate'],
          requires=['gs.gpw'],
-         webpanel=webpanel)
+         returns=Result)
 @option(
     '--gs', help='Ground state on which response is based',
     type=str)

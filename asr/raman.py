@@ -1,4 +1,4 @@
-from asr.core import command
+from asr.core import command, ASRResult
 import numpy as np
 
 
@@ -39,7 +39,12 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command('asr.raman', webpanel=webpanel)
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
+@command('asr.raman', returns=Result)
 def main():
     raise NotImplementedError
 

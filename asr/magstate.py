@@ -1,5 +1,5 @@
 """Module for determining magnetic state."""
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 def get_magstate(calc):
@@ -29,9 +29,14 @@ def webpanel(row, key_descriptions):
     return [summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.magstate',
          requires=['gs.gpw'],
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.gs@calculate'])
 def main():
     """Determine magnetic state."""

@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def webpanel(row, key_descriptions):
@@ -90,8 +90,13 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.stiffness',
-         webpanel=webpanel)
+         returns=Result)
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 def main(strain_percent: float = 1.0):
     """Calculate stiffness tensor."""
