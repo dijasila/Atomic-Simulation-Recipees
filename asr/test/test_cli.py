@@ -79,16 +79,17 @@ def test_asr_results_help():
 
 @pytest.mark.ci
 def test_asr_results_bandstructure(asr_tmpdir):
-    from asr.core import write_json
+    from asr.core import write_file, ASRResult
     from .materials import BN
     import numpy as np
-    write_json('results-asr.gs.json',
-               {'etot': 0.01,
-                'gap': 0,
-                'k_vbm_c': None,
-                'k_cbm_c': None})
-    write_json('results-asr.structureinfo.json',
-               {'spglib_dataset': {'rotations': [np.eye(3)]}})
+    gsresult = ASRResult(etot=0.01, gap=0, k_vbm_c=None, k_cbm=None,
+                         metadata=dict(asr_name='asr.gs'))
+    structresult = ASRResult(spglib_dataset={'rotations': [np.eye(3)]},
+                             metadata=dict(asr_name='asr.structureinfo'))
+
+    write_file('results-asr.gs.json', gsresult.format_as('json'))
+    write_file('results-asr.structureinfo.json',
+               structresult.format_as('json'))
     BN.write('structure.json')
     runner = CliRunner()
     result = runner.invoke(cli, ['results', 'asr.gs'])

@@ -102,7 +102,7 @@ def get_webpanels_from_material(material, recipe):
     """
     from asr.database.app import create_key_descriptions
     kd = create_key_descriptions()
-    return recipe.webpanel(material, kd)
+    return recipe.format_as('ase_webpanel', material, kd)
 
 
 def make_panel_figures(material, panels):

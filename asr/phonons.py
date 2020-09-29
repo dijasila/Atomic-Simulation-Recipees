@@ -153,9 +153,9 @@ class Result(ASRResult):
         help='Perform Mingo correction of force constant matrix')
 def main(mingo: bool = True):
     from asr.core import read_json
-    dct = read_json('results-asr.phonons@calculate.json')
+    calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
-    n = dct['__params__']['n']
+    n = calculateresult.metadata.get('params')['n']
     nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)

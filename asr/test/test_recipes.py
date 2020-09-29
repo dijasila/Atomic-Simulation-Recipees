@@ -2,7 +2,7 @@
 import typing
 import pytest
 from ase import Atoms
-from asr.core import get_recipes, DictStr, AtomsFile, ASRResult
+from asr.core import get_recipes, DictStr, AtomsFile
 import click
 
 all_recipes = get_recipes()
@@ -65,8 +65,3 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
 @pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_use_new_webpanel_implementation(recipe):
     assert recipe.webpanel is None
-
-
-@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
-def test_recipe_return_special_result_object(recipe):
-    assert not recipe.returns == ASRResult
