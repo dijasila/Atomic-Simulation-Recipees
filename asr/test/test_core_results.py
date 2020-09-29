@@ -53,12 +53,13 @@ def test_results_object(capsys):
 
     formats = results.get_formats()
     assert formats['ase_webpanel'] == webpanel
-    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel'])
+    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel',
+                                'datacontainer'])
     print(results)
     captured = capsys.readouterr()
     assert captured.out == 'a=1\n'
 
-    assert isinstance(results.format_as('ase_webpanel'), list)
+    assert isinstance(results.format_as('ase_webpanel', {}, {}), list)
 
     html = results.format_as('html')
     html2 = format(results, 'html')
