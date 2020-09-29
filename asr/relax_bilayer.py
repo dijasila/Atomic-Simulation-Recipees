@@ -15,7 +15,7 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
     except StopIteration:
         pass
 
-    calc = GPAW(mode=PW(800),
+    calc = GPAW(mode=PW(settings['PWE']),
                 xc=settings['xc'],
                 kpts=settings['kpts'],
                 symmetry={'symmorphic': False},
