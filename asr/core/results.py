@@ -215,6 +215,11 @@ class UnknownASRResultFormat(Exception):
     pass
 
 
+class MetaData:
+
+    pass
+
+
 class ASRResult(object):
     """Base class for describing results generated with recipes.
 
