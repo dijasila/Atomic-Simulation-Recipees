@@ -422,13 +422,18 @@ class BandStructureResult(ASRResult):
         }
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.bandstructure',
          requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
                    'results-asr.structureinfo.json',
                    'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
                        'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     from gpaw import GPAW
     from ase.spectrum.band_structure import get_band_structure

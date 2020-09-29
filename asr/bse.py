@@ -1,4 +1,4 @@
-from asr.core import command, option, file_barrier
+from asr.core import command, option, file_barrier, ASRResult
 from click import Choice
 
 
@@ -273,10 +273,15 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.bse',
          requires=['bse_polx.csv', 'results-asr.gs.json'],
          dependencies=['asr.bse@calculate', 'asr.gs'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     import numpy as np
     from pathlib import Path

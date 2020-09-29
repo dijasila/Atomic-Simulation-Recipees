@@ -2,7 +2,7 @@ from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
 
-from asr.core import command, argument
+from asr.core import command, argument, ASRResult
 
 from ase.db import connect
 from ase.io import read
@@ -46,12 +46,17 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.convex_hull',
          requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
-         webpanel=webpanel)
+         returns=Result)
 @argument('databases', nargs=-1, type=str)
 def main(databases: List[str]):
     """Calculate convex hull energies.

@@ -129,18 +129,17 @@ def bz_with_band_extremums(row, fname):
     plt.savefig(fname)
 
 
-class GSResult(ASRResult):
+class Result(ASRResult):
 
-    formats = {'ase_webpanel': webpanel}
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.gs',
-         returns=GSResult,
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
                        'asr.structureinfo'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np

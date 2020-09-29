@@ -1,4 +1,4 @@
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult
 from click import Choice
 
 
@@ -247,10 +247,15 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     import numpy as np
     from gpaw import GPAW

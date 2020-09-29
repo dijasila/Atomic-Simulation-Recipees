@@ -1,4 +1,4 @@
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult
 
 import numpy as np
 
@@ -145,6 +145,11 @@ def create_plot(row, *fnames):
         plt.savefig(fnames[2])
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(
     "asr.infraredpolarizability",
     dependencies=["asr.phonons", "asr.borncharges", "asr.polarizability"],
@@ -154,7 +159,7 @@ def create_plot(row, *fnames):
         "results-asr.borncharges.json",
         "results-asr.polarizability.json",
     ],
-    webpanel=webpanel,
+    returns=Result,
 )
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)

@@ -1,4 +1,4 @@
-from asr.core import command, option, DictStr
+from asr.core import command, option, DictStr, ASRResult
 
 
 class NoGapError(Exception):
@@ -651,6 +651,11 @@ def check_soc(spin_band_dict):
     return True
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.emasses',
          requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
@@ -661,7 +666,7 @@ def check_soc(spin_band_dict):
                        'asr.gs',
                        'asr.structureinfo',
                        'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
+         returns=Result)
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def main(gpwfilename: str = 'gs.gpw'):

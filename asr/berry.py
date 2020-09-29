@@ -1,5 +1,5 @@
 import numpy as np
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult
 
 
 @command(module='asr.berry',
@@ -179,10 +179,15 @@ def webpanel(row, key_descriptions):
     return [summary, basicelec]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.berry',
          requires=['results-asr.berry@calculate.json'],
          dependencies=['asr.berry@calculate'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     from pathlib import Path
     from ase.parallel import paropen

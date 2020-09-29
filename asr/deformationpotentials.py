@@ -1,5 +1,5 @@
 from typing import List
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 import numpy as np
 
 
@@ -19,7 +19,12 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command(webpanel=webpanel)
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
+@command(returns=Result)
 @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',

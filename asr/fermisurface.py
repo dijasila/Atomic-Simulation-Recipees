@@ -1,4 +1,4 @@
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 def bz_vertices(cell):
@@ -109,8 +109,13 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     return cbaxes
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.fermisurface',
-         webpanel=webpanel,
+         returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
 def main():

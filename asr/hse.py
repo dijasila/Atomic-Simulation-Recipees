@@ -1,4 +1,4 @@
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult
 
 
 @command(module='asr.hse',
@@ -268,6 +268,11 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
          requires=['bs.gpw',
@@ -275,7 +280,7 @@ def webpanel(row, key_descriptions):
                    'results-asr.bandstructure.json',
                    'results-asr.hse@calculate.json'],
          resources='1:10m',
-         webpanel=webpanel)
+         returns=Result)
 def main():
     """Interpolate HSE band structure along a given path."""
     import numpy as np

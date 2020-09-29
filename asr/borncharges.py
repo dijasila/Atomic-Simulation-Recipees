@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def webpanel(row, key_descriptions):
@@ -44,10 +44,15 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.borncharges',
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'],
-         webpanel=webpanel)
+         returns=Result)
 @option('--displacement', help='Atomic displacement (Å)', type=float)
 def main(displacement: float = 0.01):
     """Calculate Born charges."""
