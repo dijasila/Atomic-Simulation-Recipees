@@ -1,4 +1,4 @@
-from asr.core import command, option, argument, AtomsFile
+from asr.core import command, option, argument, AtomsFile, ASRResult
 import numpy as np
 from typing import List
 from ase import Atoms
@@ -537,10 +537,15 @@ def chcut_plot(row, *args):
     plt.savefig('./convexhullcut.png', bbox_inches='tight')
 
 
+class Result(ASRResult):
+
+    formats = {'ase_webpanel': webpanel}
+
+
 @command('asr.chc',
          requires=['structure.json',
                    'results-asr.convex_hull.json'],
-         webpanel=webpanel)
+         returns=Result)
 @argument('dbs', nargs=-1, type=str)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='structure.json')

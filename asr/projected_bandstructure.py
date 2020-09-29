@@ -1,6 +1,6 @@
 import numpy as np
 
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 # ---------- Webpanel ---------- #
@@ -19,6 +19,11 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {'ase_webpanel': webpanel}
+
+
 # ---------- Main functionality ---------- #
 
 
@@ -26,7 +31,7 @@ def webpanel(row, key_descriptions):
          requires=['results-asr.gs.json', 'bs.gpw',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gs', 'asr.bandstructure'],
-         webpanel=webpanel)
+         returns=Result)
 def main():
     from gpaw import GPAW
 
