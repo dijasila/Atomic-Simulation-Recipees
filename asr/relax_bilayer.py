@@ -66,11 +66,11 @@ def main(atoms: Atoms,
                            'mode': 'interlayer',
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True}},
-         name='structure.json',
-         tol=1e-2,
-         distance=5,
-         vacuum=6,
-         restart=False):
+         name: str = 'structure.json',
+         tol: float = 1e-2,
+         distance: float = 5,
+         vacuum: float = 6,
+         restart: bool = False):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi

@@ -228,7 +228,7 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
 @option('-t', '--rmsd-tol', help='Position comparison tolerance',
         default=0.3)
 def main(atoms: Atoms,
-         rmsd_tol):
+         rmsd_tol: float):
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
     import os

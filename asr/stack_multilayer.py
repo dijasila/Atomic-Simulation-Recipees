@@ -49,8 +49,8 @@ def inflate_vacuum(atoms, height, nlayers):
 @option('-n', '--nlayers', help='Number of layers',
         type=int, default=2)
 def main(atoms: Atoms,
-         height,
-         nlayers):
+         height: float,
+         nlayers: int):
     from asr.core import read_json
     import os
     transform_data = read_json('transformdata.json')
