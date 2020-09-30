@@ -1,5 +1,6 @@
 import sys
 from typing import Union
+import asr
 from asr.core import read_json, chdir, ASRCommand
 import click
 from pathlib import Path
@@ -44,6 +45,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version=asr.__version__)
 def cli():
     ...
 
