@@ -78,8 +78,10 @@ def main(atoms: Atoms,
     from asr.stack_bilayer import translation
 
     if restart:
-        if os.path.exists('energy_curve.npy'):
-            os.remove('energy_curve.npy')
+        if mpi.rank == 0:
+            if os.path.exists('energy_curve.npy'):
+                os.remove('energy_curve.npy')
+        mpi.world.barrier()
 
     top_layer = read('toplayer.json')
     if not np.allclose(top_layer.cell, atoms.cell):
