@@ -8,8 +8,6 @@ phase.
 
 The central recipe of this module is :func:`asr.formalpolarization.main`.
 
-.. autofunction:: asr.formalpolarization.main
-
 """
 import numpy as np
 from asr.core import command, option, DictStr

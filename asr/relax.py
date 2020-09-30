@@ -3,7 +3,7 @@
 By defaults read from "unrelaxed.json" from disk and relaxes
 structures and saves the final relaxed structure in "structure.json".
 
-The relax recipe has a couple of note-worthy features::
+The relax recipe has a couple of note-worthy features:
 
   - It automatically handles structures of any dimensionality
   - It tries to enforce symmetries
@@ -234,6 +234,8 @@ def set_initial_magnetic_moments(atoms):
 
 @set_docstring
 class Result(ASRResult):
+    """Result class for :py:func:`asr.relax.main`."""
+
     version: int = 0
 
     atoms: Atoms

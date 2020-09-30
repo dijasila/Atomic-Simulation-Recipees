@@ -4,10 +4,6 @@ Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is
 :func:`asr.piezoelectrictensor.main`.
 
-Recipes
--------
-.. autofunction:: asr.piezoelectrictensor.main
-
 """
 
 from asr.core import command, option, DictStr, ASRResult

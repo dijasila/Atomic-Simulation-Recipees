@@ -427,11 +427,16 @@ def get_execution_info(package_dependencies):
     return versions
 
 
+from functools import wraps
+
 def command(*args, **kwargs):
 
     def decorator(func):
-        return ASRCommand(func, *args, **kwargs)
+        @wraps(func)
+        def wrapper():
+            return ASRCommand(func, *args, **kwargs)
 
+        return wrapper
     return decorator
 
 

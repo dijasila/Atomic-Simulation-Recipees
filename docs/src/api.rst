@@ -12,7 +12,7 @@ API reference
 Recipes
 =======
 .. autosummary::
-   :template: autosummary/mytemplate.rst
+   :template: autosummary/recipetemplate.rst
    :toctree: generated
 
    bader
