@@ -54,15 +54,18 @@ def make_recipe_documentation(module):
     mod = importlib.import_module(module)
 
     members = inspect.getmembers(mod)
-    functions = [member for member in members if inspect.isfunction(member)]
-    classes = [member for member in members if inspect.isclass(member)]
+
+    functions = filter(
+        lambda member: inspect.getmodule(member) == mod,
+        filter(
+            inspect.isfunction,
+            (member for (name, member) in members)
+        )
+    )
     rst = [module,
            '=' * len(module)]
     for function in functions:
-        rst.append('.. autofunction: {module}.{function.__name__}')
-
-    for cls in classes:
-        rst.append('.. autofunction: {module}.{cls.__name__}')
+        rst.append(f'.. autofunction:: {module}.{function.__name__}')
 
     return rst
 
