@@ -17,10 +17,10 @@ def main(selection: str = ''):
     Examples
     --------
     Get all materials from database
-    >>> asr run setup.materials
+    $ asr run setup.materials
     In folder: . (1/1)
     Running asr.setup.materials(selection='')
-    PWD /scratch/mogje/asr
+    ...
     Created materials.json database containing 136 materials
 
     """

@@ -206,19 +206,19 @@ def main(database: str, run: bool = False, selection: str = '',
     For all these examples, suppose you have a database named "database.db".
 
     Unpack database using default parameters:
-    >>> asr run "database.totree database.db --run"
+    $ asr run "database.totree database.db --run"
     Don't actually unpack the database but do a dry-run:
-    >>> asr run "database.totree database.db"
+    $ asr run "database.totree database.db"
     Only select a part of the database to unpack:
-    >>> asr run "database.totree database.db --selection natoms<3 --run"
+    $ asr run "database.totree database.db --selection natoms<3 --run"
     Set custom folder tree-structure:
-    >>> asr run "database.totree database.db
-    >>> ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
+    $ asr run "database.totree database.db
+    ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
 
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-    >>> asr run "database.totree database.db --sort natoms --chunks 2 --run"
+    $ asr run "database.totree database.db --sort natoms --chunks 2 --run"
 
     """
     from pathlib import Path
