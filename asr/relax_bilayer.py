@@ -58,6 +58,8 @@ def initial_displacement(atoms, distance):
         type=float, default=3)
 @option('-v', '--vacuum', help='Extra vacuum',
         type=float, default=6)
+@option('--restart/--norestart', help='Delete memo and start relaxation from scratch',
+        is_flag=True)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
@@ -67,12 +69,18 @@ def main(atoms: Atoms,
          name='structure.json',
          tol=1e-2,
          distance=5,
-         vacuum=6):
+         vacuum=6,
+         restart=False):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
     import scipy.optimize as sciop
     from asr.stack_bilayer import translation
+
+    if restart:
+        if os.path.exists('energy_curve.npy'):
+            os.remove('energy_curve.npy')
+
     top_layer = read('toplayer.json')
     if not np.allclose(top_layer.cell, atoms.cell):
         top_layer.cell = atoms.cell.copy()
