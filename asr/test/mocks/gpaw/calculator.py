@@ -408,11 +408,17 @@ class ASRCalculator(Calculator):
         """Diagonalize full Hamiltonian."""
         pass
 
-    def dos(self, soc=False, theta=0.0, phi=0.0):
-        return DOSCalculator()
+    def dos(self, soc=False, theta=0.0, phi=0.0, shift_fermi_level=True):
+        return DOSCalculator(self.get_fermi_level())
+
+    def fixed_density(self, **kwargs):
+        return self
 
 
 class DOSCalculator:
+    def __init__(self, fermi_level):
+        self.fermi_level = fermi_level
+
     def dos_at(self, energies):
         return np.ones_like(energies)
 
