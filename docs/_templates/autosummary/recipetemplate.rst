@@ -1,23 +1,5 @@
 {{ fullname | escape | underline}}
 
-The main step of this recipe is:
-
-.. autofunction:: {{ fullname }}.main
-   :noindex:
-
-Invoke this recipe with
-
-.. code-block:: console
-
-   $ python3 -m {{ fullname }}
-
-or
-
-.. code-block:: console
-
-   $ asr run {{ fullname }}
-
-
 Documentation
 -------------
 

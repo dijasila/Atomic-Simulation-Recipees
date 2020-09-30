@@ -36,7 +36,6 @@ import shutil
 
 
 extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.autosummary',
               'sphinx.ext.viewcode',
               'sphinx.ext.intersphinx',
               'sphinx.ext.napoleon',
@@ -52,9 +51,6 @@ extensions = ['sphinx.ext.autodoc',
 
 # Hack for autosummary which doesn't update generated docs for some
 # reason
-gendocs = Path('src/generated')
-if gendocs.is_dir():
-    shutil.rmtree(gendocs)
 
 napoleon_numpy_docstring = True
 autosummary_generate = True
