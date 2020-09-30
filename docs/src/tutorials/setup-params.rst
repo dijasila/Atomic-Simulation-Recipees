@@ -36,8 +36,7 @@ can run
 
    >>> from asr.setup.params import main
    >>> main(params=['asr.gs@calculate:calculator', "{'kpts':{...,'density':8.0},...}"])
-   Running...
-   ...{'calculator': {'kpts': {'density': 8.0, 'gamma': True},...
+   Running...asr.setup.params...'density':8.0...
 
 This generates a file `params.json` with the contents printed above.',
 i.e.,

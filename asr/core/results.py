@@ -253,19 +253,20 @@ class MetaData:
     --------
     >>> metadata = MetaData(asr_name='asr.gs')
     >>> metadata
-    asr_name=gs
+    asr_name=asr.gs
     >>> metadata.code_versions = {'asr': '0.1.2'}
     >>> metadata
     asr_name=asr.gs
     code_versions={'asr': '0.1.2'}
     >>> metadata.set(resources={'time': 10}, params={'a': 1})
+    >>> metadata
     asr_name=asr.gs
     code_versions={'asr': '0.1.2'}
     resources={'time': 10}
     params={'a': 1}
     >>> metadata.to_dict()
-    {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},
-    'resources': {'time': 10}, 'params': {'a': 1}}
+    {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
+ 'resources': {'time': 10}, 'params': {'a': 1}}
     """
 
     accepted_keys = {'asr_name',
@@ -396,15 +397,15 @@ class ASRResult(object):
     Examples
     --------
     >>> result = ASRResult(a=1)
-    >>> result.metadata = {'time': 'a good time.'}
+    >>> result.metadata = {'resources': {'time': 'a good time.'}}
     >>> result.a
     1
     >>> result['a']
     1
     >>> result.metadata
-    {'time': 'a good time.'}
+    resources={'time': 'a good time.'}
     >>> str(result)
-    a=1
+    'a=1'
     >>> 'a' in result
     True
     >>> other_result = ASRResult(a=1)
@@ -559,4 +560,4 @@ class ASRResult(object):
         """Compare two result objects."""
         if not isinstance(other, type(self)):
             return False
-        return self.format_as('dict') == other.format_as('dict')
+        return self.data == other.data
