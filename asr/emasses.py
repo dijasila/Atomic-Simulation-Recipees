@@ -316,12 +316,12 @@ def get_emass_dict_from_row(row, has_mae=False):
                         if has_mae:
                             mae = maes[direction - 1]
                             f10 = np.log(mae) / np.log(10)
-                            f10 = round(f10)
+                            f10 = int(round(f10))
                             mae = mae / 10**(f10)
                             if mae < 1:
                                 f10 -= 1
                                 mae *= 10
-                            maestr = round(mae, 2)
+                            maestr = round(mae, 1)
                             maestr = str(maestr) + f'e{f10}'
 
                             if offset_num == 0:
