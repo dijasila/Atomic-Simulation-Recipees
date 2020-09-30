@@ -161,7 +161,7 @@ class DictEncoder(ResultEncoder):
     def encode(self, result: 'ASRResult'):
         """Encode ASRResult object as dict."""
         return {'data': result.data,
-                'metadata': result.metadata,
+                'metadata': result.metadata.to_dict(),
                 'version': result.version}
 
     def decode(self, dct: dict):
@@ -215,9 +215,164 @@ class UnknownASRResultFormat(Exception):
     pass
 
 
-class MetaData:
-
+class MetaDataNotSetError(Exception):
+    """Error raised when encountering unknown metadata key."""
     pass
+
+
+class MetaData:
+    """Metadata object.
+
+    Attributes
+    ----------
+    asr_name: str
+        The name of the corresponding recipe.
+    params: Dict[str, Any]
+        The parameters associated with the results.
+    resources: Dict[str, Union[str, float, int]]
+        The resources used when computing result.
+    code_versions: Dict[str, str]
+        The code versions and possibly git hashes of associated code.
+    requires: Dict[str, str]
+        The required files and their MD5 hashes.
+    creates: Dict[str, str]
+        The created files nad their MD5 hashes.
+
+    Methods
+    -------
+    __init__
+        Construct MetaData object.
+    __setattr__
+        Set metadata attributes.
+    set
+        Set multiple metadata attributes.
+    to_dict
+        Represent metadata as dictionary.
+
+    Examples
+    --------
+    >>> metadata = MetaData(asr_name='asr.gs')
+    >>> metadata
+    asr_name=gs
+    >>> metadata.code_versions = {'asr': '0.1.2'}
+    >>> metadata
+    asr_name=asr.gs
+    code_versions={'asr': '0.1.2'}
+    >>> metadata.set(resources={'time': 10}, params={'a': 1})
+    asr_name=asr.gs
+    code_versions={'asr': '0.1.2'}
+    resources={'time': 10}
+    params={'a': 1}
+    >>> metadata.to_dict()
+    {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},
+    'resources': {'time': 10}, 'params': {'a': 1}}
+    """
+
+    accepted_keys = {'asr_name',
+                     'params',
+                     'resources',
+                     'code_versions',
+                     'creates',
+                     'requires'}
+
+    def __init__(self, **kwargs):
+        """Initialize MetaData object."""
+        self._dct = {}
+        self.set(**kwargs)
+
+    def set(self, **kwargs):
+        """Set metadata values."""
+        for key, value in kwargs.items():
+            assert key in self.accepted_keys, 'Unknown MetaData key={key}.'
+            setattr(self, key, value)
+
+    def validate(self):
+        """Assert integrity of metadata."""
+        assert set(self._dct).issubset(self.accepted_keys)
+
+    @property
+    def asr_name(self):
+        """For example 'asr.gs'."""
+        return self._get('asr_name')
+
+    @asr_name.setter
+    def asr_name(self, value):
+        """Set asr_name."""
+        self._set('asr_name', value)
+
+    @property
+    def params(self):
+        """Return dict containing parameters."""
+        return self._get('params')
+
+    @params.setter
+    def params(self, value):
+        """Set params."""
+        self._set('params', value)
+
+    @property
+    def resources(self):
+        """Return resources."""
+        return self._get('resources')
+
+    @resources.setter
+    def resources(self, value):
+        """Set resources."""
+        self._set('resources', value)
+
+    @property
+    def code_versions(self):
+        """Return code versions."""
+        return self._get('code_versions')
+
+    @code_versions.setter
+    def code_versions(self, value):
+        """Set code_versions."""
+        self._set('code_versions', value)
+
+    @property
+    def creates(self):
+        """Return list of created files."""
+        return self._get('creates')
+
+    @creates.setter
+    def creates(self, value):
+        """Set creates."""
+        self._set('creates', value)
+
+    @property
+    def requires(self):
+        """Return list of required files."""
+        return self._get('requires')
+
+    @requires.setter
+    def requires(self, value):
+        """Set requires."""
+        self._set('requires', value)
+
+    def _set(self, key, value):
+        self._dct[key] = value
+
+    def _get(self, key):
+        if key not in self._dct:
+            raise MetaDataNotSetError(f'Metadata key={key} has not been set!')
+        return self._dct[key]
+
+    def to_dict(self):
+        """Format metadata as dict."""
+        return copy.deepcopy(self._dct)
+
+    def __str__(self):
+        """Represent as string."""
+        dct = self.to_dict()
+        lst = []
+        for key, value in dct.items():
+            lst.append(f'{key}={value}')
+        return '\n'.join(lst)
+
+    def __repr__(self):
+        """Represent object."""
+        return str(self)
 
 
 class ASRResult(object):
@@ -290,8 +445,7 @@ class ASRResult(object):
                'ase_webpanel': WebPanelEncoder(),
                'datacontainer': DataContainerEncoder()}
 
-    def __init__(self, metadata={},
-                 **data):
+    def __init__(self, metadata={}, **data):
         """Initialize result from dict.
 
         Parameters
@@ -299,28 +453,28 @@ class ASRResult(object):
         **data : key-value-pairs
             Input data to be wrapped.
         metadata : dict
-            Extra metadata describing code versions etc.
+            Dictionary containing metadata.
         """
-        self._data = DataContainer(data=data,
-                                   metadata=metadata,
-                                   version=self.version)
+        self._data = data
+        self._metadata = MetaData()
+        self.metadata.set(**metadata)
 
     @property
     def data(self) -> dict:
         """Get result data."""
-        return self._data.get_data()
+        return self._data
 
     @property
-    def metadata(self) -> dict:
+    def metadata(self) -> MetaData:
         """Get result metadata."""
-        return self._data.get_metadata()
+        return self._metadata
 
     @metadata.setter
     def metadata(self, metadata) -> None:
         """Set result metadata."""
         # The following line is for copying the metadata into place.
         metadata = copy.deepcopy(metadata)
-        self._data.set_metadata(metadata)
+        self._metadata.set(**metadata)
 
     @classmethod
     def from_format(cls, input_data, format='json'):
@@ -334,7 +488,9 @@ class ASRResult(object):
         if not version == cls.version:
             raise UnknownASRResultFormat(
                 'Unknown version number: version={version}')
-        return cls(**data, metadata=metadata)
+        result = cls(**data)
+        result.metadata = metadata
+        return result
 
     @classmethod
     def get_formats(cls) -> dict:

@@ -41,7 +41,7 @@ def recipe():
 
 def test_results_object(capsys):
     results = MyResult(a=1)
-    results.metadata = {'time': 'right now'}
+    results.metadata = {'resources': {'time': 'right now'}}
     assert results.a == 1
     assert 'a' in results
     assert results.__doc__ == '\n'.join(['Generic results.',

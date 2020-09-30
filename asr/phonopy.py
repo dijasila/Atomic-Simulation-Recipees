@@ -232,7 +232,7 @@ def main(rc: float = None):
 
     calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
-    params = calculateresult.metadata.get("params")
+    params = calculateresult.metadata.params
     sc = params["sc"]
     d = params["d"]
     dist_max = params["dist_max"]

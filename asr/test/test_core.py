@@ -40,7 +40,7 @@ def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
 def test_recipe_setting_overriding_defaults(asr_tmpdir, recipe):
     """Test that defaults are correctly overridden when setting parameter."""
     results = recipe(3, 3)
-    assert results.metadata.get('params') == {'nx': 3, 'ny': 3}
+    assert results.metadata.params == {'nx': 3, 'ny': 3}
     assert results['x'] == [3] * 3
     assert results['y'] == [4] * 3
 
@@ -79,8 +79,8 @@ def test_core(asr_tmpdir_w_params):
     assert reciperesults["x"] == [3] * 3
     assert reciperesults["y"] == [4] * 4
 
-    assert reciperesults.metadata.get("params")["nx"] == 3
-    assert reciperesults.metadata.get("params")["ny"] == 4
+    assert reciperesults.metadata.params["nx"] == 3
+    assert reciperesults.metadata.params["ny"] == 4
 
-    assert reciperesults.metadata.get("resources")["time"] == approx(0.1, abs=0.1)
-    assert reciperesults.metadata.get("resources")["ncores"] == 1
+    assert reciperesults.metadata.resources["time"] == approx(0.1, abs=0.1)
+    assert reciperesults.metadata.resources["ncores"] == 1

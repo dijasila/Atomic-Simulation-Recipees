@@ -155,7 +155,7 @@ def main(mingo: bool = True):
     from asr.core import read_json
     calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
-    n = calculateresult.metadata.get('params')['n']
+    n = calculateresult.metadata.params['n']
     nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
