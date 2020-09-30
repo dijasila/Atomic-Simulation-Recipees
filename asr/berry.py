@@ -1,3 +1,4 @@
+"""Topological analysis of electronic structure."""
 import numpy as np
 from asr.core import command, option, read_json, ASRResult
 

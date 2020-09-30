@@ -1,3 +1,4 @@
+"""Bader charges analysis."""
 from asr.core import command
 
 

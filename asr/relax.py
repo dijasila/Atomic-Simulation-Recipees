@@ -1,4 +1,4 @@
-"""Relax an atomic structure.
+"""Relax atomic structures.
 
 By defaults read from "unrelaxed.json" from disk and relaxes
 structures and saves the final relaxed structure in "structure.json".

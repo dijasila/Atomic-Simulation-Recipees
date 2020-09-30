@@ -1,3 +1,4 @@
+"""Electronic band structures."""
 from typing import Union
 from asr.core import command, option, ASRResult, singleprec_dict, set_docstring
 
