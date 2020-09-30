@@ -1,4 +1,4 @@
-"""Piezoelectric tensor module.
+"""Piezoelectric tensor.
 
 Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is

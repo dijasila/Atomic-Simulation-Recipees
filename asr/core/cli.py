@@ -1,3 +1,4 @@
+"""ASR command line interface."""
 import sys
 from typing import Union
 from asr.core import read_json, chdir, ASRCommand

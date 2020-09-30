@@ -1,3 +1,4 @@
+"""Clone folder tree."""
 from asr.core import command, option, argument
 
 

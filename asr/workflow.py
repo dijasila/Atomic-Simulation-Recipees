@@ -1,8 +1,10 @@
+"""Run workflow module.."""
 from typing import Union
 from asr.core import command, option
 
 
-@command('asr.workflow')
+@command('asr.workflow',
+         save_results_file=False)
 @option("--include", help="Comma separated list of includes.", type=str)
 @option("--exclude", help="Comma separated list of exludes.", type=str)
 def main(include: Union[str, None] = None,

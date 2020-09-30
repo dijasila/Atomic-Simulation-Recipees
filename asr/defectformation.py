@@ -1,3 +1,4 @@
+"""Defect formation energies."""
 from typing import Union
 from asr.core import command, option
 

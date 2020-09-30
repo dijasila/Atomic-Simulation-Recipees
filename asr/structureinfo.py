@@ -1,3 +1,4 @@
+"""Structural information."""
 from asr.core import command, ASRResult
 
 

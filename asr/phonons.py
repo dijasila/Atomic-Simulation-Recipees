@@ -1,3 +1,4 @@
+"""Phonon band structure and dynamical stability."""
 from pathlib import Path
 
 import numpy as np

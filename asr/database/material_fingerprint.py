@@ -1,3 +1,4 @@
+"""Unique hash of atomic structure."""
 from asr.core import command
 
 

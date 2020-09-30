@@ -1,7 +1,9 @@
+"""Merge ASE databases."""
 from asr.core import command, argument, option
 
 
-@command('asr.database.merge')
+@command('asr.database.merge',
+         save_results_file=False)
 @argument('databaseout', nargs=1, type=str)
 @argument('databases', nargs=-1, type=str)
 @option('--identifier', help='Identifier for matching database entries.',

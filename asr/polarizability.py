@@ -1,3 +1,4 @@
+"""Optical polarizability."""
 from asr.core import command, option, ASRResult
 from click import Choice
 

@@ -1,3 +1,4 @@
+"""Phonopy phonon band structure."""
 from typing import List
 from pathlib import Path
 

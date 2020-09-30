@@ -1,3 +1,4 @@
+"""Bethe Salpeter absorption spectrum."""
 from asr.core import command, option, file_barrier, ASRResult
 from click import Choice
 

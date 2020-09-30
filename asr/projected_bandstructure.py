@@ -1,3 +1,4 @@
+"""Orbital projected band structure."""
 import numpy as np
 
 from asr.core import command, ASRResult

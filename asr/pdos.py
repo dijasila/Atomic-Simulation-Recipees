@@ -1,3 +1,4 @@
+"""Projected density of states."""
 from asr.core import command, option, read_json, ASRResult
 
 from collections import defaultdict

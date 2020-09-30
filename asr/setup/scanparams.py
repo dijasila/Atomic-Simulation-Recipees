@@ -1,3 +1,4 @@
+"""Generate folder with different parameters."""
 from asr.core import command, argument, option
 
 

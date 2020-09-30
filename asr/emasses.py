@@ -1,3 +1,4 @@
+"""Effective masses."""
 from asr.core import command, option, DictStr, ASRResult
 
 

@@ -1,3 +1,4 @@
+"""Generate strained atomic structures."""
 from asr.core import command, option
 
 

@@ -1,3 +1,4 @@
+"""ASR Core functionality."""
 from .utils import (read_json, write_json, parse_dict_string,  # noqa
                     singleprec_dict, md5sum, file_barrier, unlink,
                     chdir, encode_json, recursive_update, write_file,  # noqa

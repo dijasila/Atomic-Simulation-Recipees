@@ -1,3 +1,4 @@
+"""Fitted elemental reference energies."""
 from asr.core import command, option
 
 

@@ -1,3 +1,4 @@
+"""Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path

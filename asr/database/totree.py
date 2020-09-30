@@ -1,3 +1,4 @@
+"""Convert database to folder tree."""
 from asr.core import command, argument, option
 from asr.utils import timed_print
 from pathlib import Path
@@ -156,7 +157,8 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
-@command('asr.database.totree')
+@command('asr.database.totree',
+         save_results_file=False)
 @argument('database', nargs=1, type=str)
 @option('--run/--dry-run', is_flag=True)
 @option('-s', '--selection', help='ASE-DB selection', type=str)

@@ -1,3 +1,4 @@
+"""Generate database with test systems."""
 from asr.core import command, option
 
 

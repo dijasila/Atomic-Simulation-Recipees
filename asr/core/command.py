@@ -1,4 +1,4 @@
-"""Module implementing the ASRCommand class and related decorators."""
+"""Implement ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
                file_barrier, clickify_docstring, ASRResult,
                get_recipe_from_name)

@@ -1,3 +1,4 @@
+"""Raman spectrum."""
 from asr.core import command, ASRResult
 import numpy as np
 

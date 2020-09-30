@@ -1,4 +1,4 @@
-"""Functionality for converting a folder tree to an ASE database."""
+"""Convert a folder tree to an ASE database."""
 
 from typing import Union, List
 from ase import Atoms
@@ -367,7 +367,7 @@ def collect_folders(folders: List[str],
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
-@command('asr.database.fromtree')
+@command('asr.database.fromtree', save_results_file=False)
 @argument('folders', nargs=-1, type=str)
 @option('-r', '--recursive', is_flag=True,
         help='Recurse and collect subdirectories.')

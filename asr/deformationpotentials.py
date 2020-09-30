@@ -1,3 +1,4 @@
+"""Deformation potentials."""
 from typing import List
 from asr.core import command, option, ASRResult
 import numpy as np

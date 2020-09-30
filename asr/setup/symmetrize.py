@@ -1,3 +1,4 @@
+"""Generate symmetrized atomic structure."""
 from asr.core import command, option
 
 

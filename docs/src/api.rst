@@ -90,7 +90,7 @@ Core sub-package
 
    core
    core.cli
-   core.command
+   core.command.command
    core.material
    core.results
    core.types

@@ -1,4 +1,4 @@
-"""Module for calculating formal polarization phase for a structure.
+"""Formal polarization phase.
 
 Module for calculating formal polarization phase as defined in the
 Modern Theory of Polarization. To learn more see more about this

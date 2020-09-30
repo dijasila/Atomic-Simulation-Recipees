@@ -1,3 +1,4 @@
+"""Magnetic anisotropy."""
 from asr.core import command, read_json, ASRResult
 
 

@@ -1,3 +1,4 @@
+"""Generate magnetic atomic structures."""
 from asr.core import command, option
 
 

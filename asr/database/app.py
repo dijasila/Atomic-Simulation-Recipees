@@ -1,3 +1,4 @@
+"""Database web application."""
 from typing import List
 from asr.core import command, option, argument
 

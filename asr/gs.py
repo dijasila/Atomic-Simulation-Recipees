@@ -1,3 +1,4 @@
+"""Electronic ground state properties."""
 from asr.core import command, option, DictStr, ASRResult
 
 

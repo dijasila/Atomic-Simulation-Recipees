@@ -1,3 +1,4 @@
+"""HSE band structure."""
 from asr.core import command, option, read_json, ASRResult
 
 
