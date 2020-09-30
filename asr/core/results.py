@@ -1,4 +1,26 @@
-"""Implements ASRResult object and related quantities."""
+"""Implements ASRResult object and related quantities.
+
+The most important class in this module is
+:py:class:`asr.core.results.ASRResult`, which is used to wrap results
+generated with ASR.
+
+:py:class:`asr.core.results.ASRResult` has a bunch of associated
+ encoders that implements different ways of representing results, and
+ potentially also implements ways to decode results. These encoders are:
+
+- :py:class:`asr.core.results.DictEncoder`
+- :py:class:`asr.core.results.JSONEncoder`
+- :py:class:`asr.core.results.HTMLEncoder`
+- :py:class:`asr.core.results.WebPanelEncoder`
+
+A dictionary representation of a result-object can be converted to a
+result object through :py:func:`asr.core.results.dct_to_result`.
+
+To support reading of different historical ASR dataformats we use an
+intermediate :py:class:`DataContainer` before constructing the final
+result-object.
+
+"""
 from ase.io import jsonio
 import copy
 from typing import get_type_hints, List, Any, Dict
@@ -6,7 +28,8 @@ from abc import ABC, abstractmethod
 from . import get_recipe_from_name
 
 
-def read_old_data(dct):
+def read_old_data(dct) -> 'DataContainer':
+    """Parse an old style result dictionary."""
     metadata = {}
     data = {}
     for key, value in dct.items():
@@ -17,7 +40,8 @@ def read_old_data(dct):
     return DataContainer(data=data, metadata=metadata, version=0)
 
 
-def read_new_data(dct):
+def read_new_data(dct) -> 'DataContainer':
+    """Parse a new style result dictionary."""
     metadata = dct['metadata']
     data = dct['data']
     version = dct['version']
@@ -33,8 +57,10 @@ class UnknownDataFormat(Exception):
 def dct_to_result(dct):
     """Parse dict and return result object."""
     if 'metadata' in dct:
+        # Then this is a new-style data-format
         datacontainer = read_new_data(dct)
     elif '__asr_name__' in dct:
+        # Then this is a old-style data-format
         datacontainer = read_old_data(dct)
     else:
         raise UnknownDataFormat
@@ -184,7 +210,8 @@ def get_object_types(obj):
 
 def format_key_description_pair(key: str, attr_type: type, description: str):
     """Format a key-type-description for a docstring."""
-    return f'{key}: {attr_type}\n    {description}'
+    return (f'{key}: {attr_type}\n'
+            f'    {description}')
 
 
 def set_docstring(obj) -> str:
@@ -196,8 +223,8 @@ def set_docstring(obj) -> str:
     assert set(descriptions).issubset(set(types)), description_keys - type_keys
     docstring_parts: List[str] = [obj.__doc__ or '',
                                   '',
-                                  'Data attributes',
-                                  '---------------']
+                                  'Attributes',
+                                  '----------']
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
@@ -505,7 +532,7 @@ class ASRResult(object):
         return my_formats
 
     def format_as(self, format: str = '', *args, **kwargs) -> Any:
-        """Format Result as string."""
+        """Format result in specific format."""
         formats = self.get_formats()
         return formats[format](self, *args, **kwargs)
 

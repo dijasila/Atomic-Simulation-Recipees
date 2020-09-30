@@ -233,7 +233,7 @@ def set_initial_magnetic_moments(atoms):
 
 
 @set_docstring
-class RelaxResult(ASRResult):
+class Result(ASRResult):
     version: int = 0
 
     atoms: Atoms
@@ -265,7 +265,7 @@ class RelaxResult(ASRResult):
 
 @command('asr.relax',
          creates=['structure.json'],
-         returns=RelaxResult)
+         returns=Result)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
@@ -398,18 +398,18 @@ def main(atoms: Atoms,
     images = []
     for image in trajectory:
         images.append(image)
-    return RelaxResult(atoms=atoms,
-                       etot=etot,
-                       edft=edft,
-                       a=cellpar[0],
-                       b=cellpar[1],
-                       c=cellpar[2],
-                       alpha=cellpar[3],
-                       beta=cellpar[4],
-                       gamma=cellpar[5],
-                       spos=atoms.get_scaled_positions(),
-                       symbols=atoms.get_chemical_symbols(),
-                       images=images)
+    return Result(atoms=atoms,
+                  etot=etot,
+                  edft=edft,
+                  a=cellpar[0],
+                  b=cellpar[1],
+                  c=cellpar[2],
+                  alpha=cellpar[3],
+                  beta=cellpar[4],
+                  gamma=cellpar[5],
+                  spos=atoms.get_scaled_positions(),
+                  symbols=atoms.get_chemical_symbols(),
+                  images=images)
 
 
 if __name__ == '__main__':
