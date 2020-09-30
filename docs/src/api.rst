@@ -90,7 +90,11 @@ Core sub-package
 
    core
    core.cli
+   core.command
    core.material
+   core.results
+   core.types
+   core.utils
 
 .. _api test:
 
