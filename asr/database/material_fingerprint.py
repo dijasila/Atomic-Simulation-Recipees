@@ -15,15 +15,12 @@ def todict(atoms):
     return d
 
 
-@command(module='asr.database.material_fingerprint')
-def main():
+def get_hash_of_atoms(atoms):
     import numpy as np
     from hashlib import md5
     import json
-    from ase.io import read
     from collections import OrderedDict
 
-    atoms = read('structure.json')
     dct = todict(atoms)
 
     for key, value in dct.items():
@@ -39,11 +36,22 @@ def main():
         orddct[key] = dct[key]
 
     hash = md5(json.dumps(orddct).encode()).hexdigest()
+    return hash
+
+
+def get_uid_of_atoms(atoms, hash):
     formula = atoms.symbols.formula
+    return f'{formula:abc}-' + hash[:12]
+
+
+@command(module='asr.database.material_fingerprint')
+def main():
+    from ase.io import read
+    atoms = read('structure.json')
+    hash = get_hash_of_atoms(atoms)
+    uid = get_uid_of_atoms(atoms, hash)
     results = {'asr_id': hash,
-               'uid': f'{formula:abc}-' + hash[:12]}
-    results['__key_descriptions__'] = {'asr_id': 'KVP: Material fingerprint',
-                                       'uid': 'KVP: Unique identifier'}
+               'uid': uid}
     return results
 
 
