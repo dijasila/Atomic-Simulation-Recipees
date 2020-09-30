@@ -50,8 +50,6 @@ def initial_displacement(atoms, distance):
         type=AtomsFile(), default='../structure.json')
 @option('-s', '--settings', help='Relaxation settings',
         type=DictStr())
-@option('-n', '--name', help='Name of final structure file',
-        default='structure.json')
 @option('--tol', help='Convergence threshold',
         type=float, default=1e-2)
 @option('-d', '--distance', help='Initial Distance',
