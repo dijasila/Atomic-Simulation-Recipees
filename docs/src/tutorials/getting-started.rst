@@ -14,6 +14,7 @@ ASR comes with a simple command-line interface which can be invoked using
    Usage: asr [OPTIONS] COMMAND [ARGS]...
    <BLANKLINE>
    Options:
+     --version   Show the version and exit.
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
