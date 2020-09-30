@@ -105,17 +105,17 @@ def main():
     # Get refined ground state with more k-points
     calc = GPAW('pdos.gpw')
 
-    dos1 = calc.dos()
+    dos1 = calc.dos(shift_fermi_level=False)
     theta, phi = get_spin_axis()
-    dos2 = calc.dos(soc=True, theta=theta, phi=phi)
+    dos2 = calc.dos(soc=True, theta=theta, phi=phi, shift_fermi_level=False)
 
     results = {}
 
     # Calculate the dos at the Fermi energy
     parprint('\nComputing dos at Ef', flush=True)
-    results['dos_at_ef_nosoc'] = dos1.dos_at([0.0])[0]
+    results['dos_at_ef_nosoc'] = dos1.dos_at([dos1.fermi_level])[0]
     parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
-    results['dos_at_ef_soc'] = dos2.dos_at([0.0])[0]
+    results['dos_at_ef_soc'] = dos2.dos_at([dos2.fermi_level])[0]
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
