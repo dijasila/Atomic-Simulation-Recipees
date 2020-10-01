@@ -51,7 +51,7 @@ def main(n: int = 1,
     [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
     n1 = len(occ_spin0)
     # check for threshold in excitation for first spin channel
-    if (ev_spin1[n1+1] - ev_spin1[n1]) < 0.5 and setup_smart:
+    if (ev_spin0[n1+1] - ev_spin0[n1]) < 0.5 and setup_smart:
         set_excitation = False
     if calc.get_number_of_spins() == 2:
         occ_spin1 = []
