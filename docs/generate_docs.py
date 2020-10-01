@@ -76,7 +76,7 @@ def make_recipe_documentation(module):
         '=' * len(title),
         '',
         '',
-        '.. contents::',
+        '.. contents:: Contents',
         '   :local:',
         '',
     ]
@@ -128,7 +128,7 @@ def make_recipe_documentation(module):
             ['',
              step_title,
              '^' * len(step_title),
-             f'   .. autofunction:: {module}.{step.__name__}',
+             f'.. autofunction:: {module}.{step.__name__}',
              '   :noindex:']
         )
 

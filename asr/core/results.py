@@ -478,7 +478,7 @@ class ASRResult(object):
     format_as
         Encode result in a specific format.
 
-    """
+    """ # noqa
 
     version: int = 0
     prev_version: Any = None
