@@ -12,7 +12,6 @@ def get_modules_from_path(path: str, recursive=False):
         for root, dirs, files in os.walk(path):
             for filename in files:
                 p = Path(root) / filename
-                print(p, p.suffix)
                 if p.suffix == '.py':
                     modules.append(p)
         return modules
@@ -34,9 +33,9 @@ def make_section(title, names, link):
              '-' * len(title),
              '',
              '.. autosummary::',
-             '   :toctree: generated',
+             '   :toctree: .',
              '']
-            + [f'    {name}'
+            + [f'   {name}'
                for name in sorted(
                    filter(
                        lambda x: '__' not in x, names)
@@ -52,7 +51,7 @@ def make_toctree(title, names, link):
              '',
              '.. toctree::',
              '']
-            + [f'    generated/{name}'
+            + [f'    {name}'
                for name in sorted(
                    filter(
                        lambda x: '__' not in x, names)
@@ -62,26 +61,67 @@ def make_toctree(title, names, link):
 def make_recipe_documentation(module):
     """Make recipe documentation."""
     mod = importlib.import_module(module)
-
     members = inspect.getmembers(mod)
+    steps = [value for (name, value) in members
+             if hasattr(value, '_is_recipe')]
 
-    functions = filter(
-        lambda member: inspect.getmodule(member) == mod,
-        filter(
-            inspect.isfunction,
-            (member for (name, member) in members)
+    title = f'{module}'
+    rst = [
+        f'.. _recipe_{module}:',
+        '',
+        title,
+        '=' * len(title),
+        '',
+        '',
+        '.. contents::',
+        '   :local:',
+        '',
+    ]
+
+    stepnames = [f'{module}@{step.__name__}'
+                 if step.__name__ != 'main' else module
+                 for step in steps]
+    nsteps = len(steps)
+    some_steps = 'a single step' if nsteps == 1 else f'{nsteps} steps'
+    pyfunclist = [f'  - :py:func:`{module}.{step.__name__}`'
+                  for step in steps]
+    summary = (['Summary',
+                '-------',
+                '',
+                f'This is the documentation for :py:mod:`{module}`-recipe.',
+                f'This recipe is comprised of {some_steps}, namely:',
+                '']
+               + pyfunclist
+               + [
+                   '',
+                   'Run this recipe through the CLI interface',
+                   '',
+                   '.. code-block:: console',
+                   '',
+                   f'   $ asr run {stepnames[-1]}',
+                   ''])
+
+    rst.extend(summary)
+
+    if mod.__doc__:
+        modrst = ['What does this recipe do?',
+                  '-------------------------']
+        modrst += mod.__doc__.splitlines()
+        rst.extend(modrst)
+
+    for step, stepname in zip(steps, stepnames):
+        rst.extend(
+            ['',
+             stepname,
+             '-' * len(stepname),
+             f'   .. autofunction:: {module}.{step.__name__}']
         )
-    )
-    rst = [module,
-           '=' * len(module)]
-    for function in functions:
-        rst.append(f'.. autofunction:: {module}.{function.__name__}')
 
     return rst
 
 
 def generate_api_summary():
-    """Generate docs/src/api.rst."""
+    """Generate docs/src/generated/api.rst."""
     rst = ['.. _API reference:',
            '',
            '=============',
@@ -105,23 +145,51 @@ def generate_api_summary():
             rst.extend(section)
 
     rst = '\n'.join(rst)
-    print(rst)
-    Path('docs/src/api.rst').write_text(rst)
+    Path('docs/src/generated/api.rst').write_text(rst)
+
+
+def get_recipe_modules():
+    paths = []
+    for package in ['asr', 'asr/setup']:
+        paths.extend(get_modules_from_path(package))
+
+    names = get_names_from_paths(paths)
+    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr'),
+                          names))
+    return names
+
+
+def generate_recipe_summary():
+    """Generate recipes.rst."""
+    rst = ['.. _recipes:',
+           '',
+           '=================',
+           'Available recipes',
+           '=================',
+           '',
+           '.. contents::',
+           '   :local:',
+           '']
+
+    modules = get_recipe_modules()
+
+    rst.extend(
+        ['.. toctree::',
+         '   :maxdepth: 1',
+         '']
+        + [f'   recipe_{module}.rst' for module in modules]
+    )
+    rst = '\n'.join(rst)
+    Path('docs/src/generated/recipes.rst').write_text(rst)
 
 
 def generate_stub_pages():
     """Generate module stub pages."""
-    for package in ['asr',
-                    'asr/setup',
-                    'asr/database',
-                    'asr/core',
-                    'asr/test']:
-        paths = get_modules_from_path(package)
-        modules = get_names_from_paths(paths)
-        for module in modules:
-            rst = make_recipe_documentation(module)
-            rst = '\n'.join(rst)
-            Path(f'docs/src/generated/recipe_{module}.rst').write_text(rst)
+    modules = get_recipe_modules()
+    for module in modules:
+        rst = make_recipe_documentation(module)
+        rst = '\n'.join(rst)
+        Path(f'docs/src/generated/recipe_{module}.rst').write_text(rst)
 
 
 def empty_generated_files():
@@ -140,4 +208,5 @@ def empty_generated_files():
 if __name__ == '__main__':
     empty_generated_files()
     generate_api_summary()
+    generate_recipe_summary()
     generate_stub_pages()

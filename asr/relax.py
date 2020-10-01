@@ -304,7 +304,7 @@ def main(atoms: Atoms,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
          fmax: float = 0.01,
-         enforce_symmetry: bool = True):
+         enforce_symmetry: bool = True) -> Result:
     """Relax atomic positions and unit cell.
 
     By default, this recipe takes the atomic structure in

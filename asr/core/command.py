@@ -434,6 +434,9 @@ def command(*args, **kwargs):
         def wrapper():
             return ASRCommand(func, *args, **kwargs)
 
+        wrapper._is_recipe = True
+        wrapper._asr_args = args
+        wrapper._asr_kwargs = kwargs
         return wrapper
     return decorator
 

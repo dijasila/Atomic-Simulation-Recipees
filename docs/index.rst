@@ -8,10 +8,11 @@
    :hidden:
 
    src/install
+   src/generated/recipes
    src/tutorials/tutorials
    src/howtoguides/howtoguides
    src/explanations/explanations
-   src/api
+   src/generated/api
    src/developing
 
 

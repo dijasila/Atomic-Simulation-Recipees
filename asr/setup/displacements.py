@@ -1,9 +1,4 @@
-"""Module for generating atomic structures with displaced atoms.
-
-The main recipe of this module is :func:`asr.setup.displacements.main`
-
-.. autofunction:: asr.setup.displacements.main
-"""
+"""Module for generating atomic structures with displaced atoms."""
 
 from pathlib import Path
 from asr.core import command, option
