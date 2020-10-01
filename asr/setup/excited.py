@@ -6,6 +6,9 @@ from ase.io import Trajectory
 from asr.core import write_json, command, option
 
 
+# TODO:
+# - add functionality for the smart excitation setup
+# - add data to save in the results file
 @command('asr.setup.excited')
 @option('--n', help='State from which an electron will be removed. 1'
         ' corresponds to the highest occupied state, 2 corresponds to the'
