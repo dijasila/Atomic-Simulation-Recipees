@@ -12,143 +12,167 @@ API reference
 Property recipes
 ----------------
 
-.. toctree::
+.. autosummary::
+   :toctree: generated
 
-    generated/asr.asr
-    generated/asr.bader
-    generated/asr.bandstructure
-    generated/asr.berry
-    generated/asr.borncharges
-    generated/asr.bse
-    generated/asr.chc
-    generated/asr.convex_hull
-    generated/asr.defectformation
-    generated/asr.deformationpotentials
-    generated/asr.dimensionality
-    generated/asr.dos
-    generated/asr.emasses
-    generated/asr.exchange
-    generated/asr.fere
-    generated/asr.fermisurface
-    generated/asr.formalpolarization
-    generated/asr.gs
-    generated/asr.gw
-    generated/asr.hse
-    generated/asr.infraredpolarizability
-    generated/asr.magnetic_anisotropy
-    generated/asr.magstate
-    generated/asr.pdos
-    generated/asr.phonons
-    generated/asr.phonopy
-    generated/asr.piezoelectrictensor
-    generated/asr.plasmafrequency
-    generated/asr.polarizability
-    generated/asr.projected_bandstructure
-    generated/asr.push
-    generated/asr.raman
-    generated/asr.relax
-    generated/asr.setinfo
-    generated/asr.stiffness
-    generated/asr.structureinfo
-    generated/asr.workflow
+    asr.asr
+    asr.bader
+    asr.bandstructure
+    asr.berry
+    asr.borncharges
+    asr.bse
+    asr.chc
+    asr.convex_hull
+    asr.defectformation
+    asr.deformationpotentials
+    asr.dimensionality
+    asr.dos
+    asr.emasses
+    asr.exchange
+    asr.fere
+    asr.fermisurface
+    asr.formalpolarization
+    asr.gs
+    asr.gw
+    asr.hse
+    asr.infraredpolarizability
+    asr.magnetic_anisotropy
+    asr.magstate
+    asr.pdos
+    asr.phonons
+    asr.phonopy
+    asr.piezoelectrictensor
+    asr.plasmafrequency
+    asr.polarizability
+    asr.projected_bandstructure
+    asr.push
+    asr.raman
+    asr.relax
+    asr.setinfo
+    asr.stiffness
+    asr.structureinfo
+    asr.workflow
 
 .. _api setup recipes:
 
 Setup recipes
 -------------
 
-.. toctree::
+.. autosummary::
+   :toctree: generated
 
-    generated/asr.setup.decorate
-    generated/asr.setup.defects
-    generated/asr.setup.displacements
-    generated/asr.setup.magnetize
-    generated/asr.setup.materials
-    generated/asr.setup.params
-    generated/asr.setup.scanparams
-    generated/asr.setup.strains
-    generated/asr.setup.symmetrize
+    asr.setup.decorate
+    asr.setup.defects
+    asr.setup.displacements
+    asr.setup.magnetize
+    asr.setup.materials
+    asr.setup.params
+    asr.setup.scanparams
+    asr.setup.strains
+    asr.setup.symmetrize
 
 .. _api database:
 
 Database sub-package
 --------------------
 
-.. toctree::
+.. autosummary::
+   :toctree: generated
 
-    generated/asr.database.app
-    generated/asr.database.browser
-    generated/asr.database.check
-    generated/asr.database.clonetree
-    generated/asr.database.duplicates
-    generated/asr.database.fromtree
-    generated/asr.database.key_descriptions
-    generated/asr.database.material_fingerprint
-    generated/asr.database.merge
-    generated/asr.database.rmsd
-    generated/asr.database.totree
+    asr.database.app
+    asr.database.browser
+    asr.database.check
+    asr.database.clonetree
+    asr.database.duplicates
+    asr.database.fromtree
+    asr.database.key_descriptions
+    asr.database.material_fingerprint
+    asr.database.merge
+    asr.database.rmsd
+    asr.database.totree
 
 .. _api core:
 
 Core sub-package
 ----------------
 
-.. toctree::
+.. autosummary::
+   :toctree: generated
 
-    generated/asr.core.cli
-    generated/asr.core.command
-    generated/asr.core.material
-    generated/asr.core.results
-    generated/asr.core.types
-    generated/asr.core.utils
+    asr.core.cli
+    asr.core.command
+    asr.core.material
+    asr.core.results
+    asr.core.types
+    asr.core.utils
 
 .. _api test:
 
 Test sub-package
 ----------------
 
-.. toctree::
+.. autosummary::
+   :toctree: generated
 
-    generated/asr.test.conftest
-    generated/asr.test.fixtures
-    generated/asr.test.materials
-    generated/asr.test.test_bandstructure
-    generated/asr.test.test_berry
-    generated/asr.test.test_borncharges
-    generated/asr.test.test_bse
-    generated/asr.test.test_cli
-    generated/asr.test.test_convex_hull
-    generated/asr.test.test_core
-    generated/asr.test.test_core_material
-    generated/asr.test.test_core_results
-    generated/asr.test.test_database_duplicates
-    generated/asr.test.test_database_fromtree
-    generated/asr.test.test_database_rmsd
-    generated/asr.test.test_database_totree
-    generated/asr.test.test_dimensionality
-    generated/asr.test.test_emasses
-    generated/asr.test.test_fixtures
-    generated/asr.test.test_formalpolarization
-    generated/asr.test.test_gs
-    generated/asr.test.test_gw
-    generated/asr.test.test_hse
-    generated/asr.test.test_pdos
-    generated/asr.test.test_phonons
-    generated/asr.test.test_phonopy
-    generated/asr.test.test_piezoelectrictensor
-    generated/asr.test.test_plasmafrequency
-    generated/asr.test.test_polarizability
-    generated/asr.test.test_projected_bandstructure
-    generated/asr.test.test_raman
-    generated/asr.test.test_recipes
-    generated/asr.test.test_relax
-    generated/asr.test.test_setinfo
-    generated/asr.test.test_setup_decorate
-    generated/asr.test.test_setup_displacements
-    generated/asr.test.test_setup_magnetize
-    generated/asr.test.test_setup_materials
-    generated/asr.test.test_setup_params
-    generated/asr.test.test_setup_scanparams
-    generated/asr.test.test_setup_strains
-    generated/asr.test.test_setup_symmetrize
-    generated/asr.test.test_stiffness
+    asr.test.acceptance.test_borncharges
+    asr.test.acceptance.test_piezoelectrictensor
+    asr.test.acceptance.test_relax
+    asr.test.conftest
+    asr.test.fixtures
+    asr.test.materials
+    asr.test.mocks.gpaw.berryphase
+    asr.test.mocks.gpaw.calculator
+    asr.test.mocks.gpaw.hybrids.eigenvalues
+    asr.test.mocks.gpaw.kpt_descriptor
+    asr.test.mocks.gpaw.mpi
+    asr.test.mocks.gpaw.occupations
+    asr.test.mocks.gpaw.response.bse
+    asr.test.mocks.gpaw.response.df
+    asr.test.mocks.gpaw.response.g0w0
+    asr.test.mocks.gpaw.spinorbit
+    asr.test.mocks.gpaw.symmetry
+    asr.test.mocks.gpaw.utilities.dos
+    asr.test.mocks.gpaw.utilities.ibz2bz
+    asr.test.mocks.gpaw.utilities.progressbar
+    asr.test.mocks.gpaw.xc.exx
+    asr.test.mocks.gpaw.xc.tools
+    asr.test.test_bandstructure
+    asr.test.test_berry
+    asr.test.test_borncharges
+    asr.test.test_bse
+    asr.test.test_cli
+    asr.test.test_convex_hull
+    asr.test.test_core
+    asr.test.test_core_material
+    asr.test.test_core_results
+    asr.test.test_database_duplicates
+    asr.test.test_database_fromtree
+    asr.test.test_database_rmsd
+    asr.test.test_database_totree
+    asr.test.test_dimensionality
+    asr.test.test_emasses
+    asr.test.test_fixtures
+    asr.test.test_formalpolarization
+    asr.test.test_gs
+    asr.test.test_gw
+    asr.test.test_hse
+    asr.test.test_pdos
+    asr.test.test_phonons
+    asr.test.test_phonopy
+    asr.test.test_piezoelectrictensor
+    asr.test.test_plasmafrequency
+    asr.test.test_polarizability
+    asr.test.test_projected_bandstructure
+    asr.test.test_raman
+    asr.test.test_recipes
+    asr.test.test_relax
+    asr.test.test_setinfo
+    asr.test.test_setup_decorate
+    asr.test.test_setup_displacements
+    asr.test.test_setup_magnetize
+    asr.test.test_setup_materials
+    asr.test.test_setup_params
+    asr.test.test_setup_scanparams
+    asr.test.test_setup_strains
+    asr.test.test_setup_symmetrize
+    asr.test.test_stiffness

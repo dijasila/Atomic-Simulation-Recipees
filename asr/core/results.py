@@ -244,6 +244,7 @@ class UnknownASRResultFormat(Exception):
 
 class MetaDataNotSetError(Exception):
     """Error raised when encountering unknown metadata key."""
+
     pass
 
 
@@ -294,7 +295,7 @@ class MetaData:
     >>> metadata.to_dict()
     {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
-    """
+    """ # noqa
 
     accepted_keys = {'asr_name',
                      'params',

@@ -2,6 +2,7 @@
 from . import (read_json, write_file, md5sum,
                file_barrier, clickify_docstring, ASRResult,
                get_recipe_from_name)
+import functools
 from ase.parallel import parprint
 import click
 import copy
@@ -9,7 +10,6 @@ import time
 from importlib import import_module
 from pathlib import Path
 import inspect
-from functools import update_wrapper
 
 
 def to_json(obj):
@@ -186,7 +186,7 @@ class ASRCommand:
         self.signature = sig
 
         # Setup the CLI
-        update_wrapper(self, self._main)
+        functools.update_wrapper(self, self._main)
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
@@ -427,12 +427,10 @@ def get_execution_info(package_dependencies):
     return versions
 
 
-from functools import wraps
-
 def command(*args, **kwargs):
 
     def decorator(func):
-        @wraps(func)
+        @functools.wraps(func)
         def wrapper():
             return ASRCommand(func, *args, **kwargs)
 
