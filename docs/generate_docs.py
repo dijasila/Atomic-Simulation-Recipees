@@ -35,6 +35,7 @@ def make_section(title, names, link):
              '-' * len(title),
              '',
              '.. autosummary::',
+             '   :template: autosummary/mytemplate.rst',
              '   :toctree: .',
              '']
             + [f'   {name}'
@@ -127,7 +128,8 @@ def make_recipe_documentation(module):
             ['',
              step_title,
              '^' * len(step_title),
-             f'   .. autofunction:: {module}.{step.__name__}']
+             f'   .. autofunction:: {module}.{step.__name__}',
+             '   :noindex:']
         )
 
         th = get_type_hints(step.__wrapped__)
@@ -137,6 +139,7 @@ def make_recipe_documentation(module):
             rst.extend([
                 '',
                 f'.. autoclass:: {returns.__module__}.{returns.__name__}',
+                '   :noindex:'
             ])
 
     return rst
