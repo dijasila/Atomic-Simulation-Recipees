@@ -9,6 +9,38 @@ The relax recipe has a couple of note-worthy features:
   - It tries to enforce symmetries
   - It continously checks after each step that no symmetries are broken,
     and raises an error if this happens.
+
+
+The recipe also supports relaxing structure with vdW forces using DFTD3.
+To install DFTD3 do
+
+.. code-block:: console
+
+   $ mkdir ~/DFTD3 && cd ~/DFTD3
+   $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+   $ tar -zxf dftd3.tgz
+   $ make
+   $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+   $ source ~/.bashrc
+
+Examples
+--------
+Relax without using DFTD3
+
+.. code-block:: console
+
+   $ ase build -x diamond Si unrelaxed.json
+   $ asr run "relax --nod3"
+
+Relax using the LDA exchange-correlation functional
+
+.. code-block:: console
+
+   $ ase build -x diamond Si unrelaxed.json
+   $ asr run "relax --calculator {'xc':'LDA',...}"
+
+
+
 """
 from typing import List
 from pathlib import Path
@@ -311,27 +343,6 @@ def main(atoms: Atoms,
     'unrelaxed.json' and relaxes the structure including the DFTD3 van
     der Waals correction. The relaxed structure is saved to
     `structure.json` which can be processed by other recipes.
-
-    To install DFTD3 do::
-
-      $ mkdir ~/DFTD3 && cd ~/DFTD3
-      $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
-      $ tar -zxf dftd3.tgz
-      $ make
-      $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
-      $ source ~/.bashrc
-
-    Examples
-    --------
-    Relax without using DFTD3::
-
-      $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --nod3"
-
-    Relax using the LDA exchange-correlation functional::
-
-      $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --calculator {'xc':'LDA',...}"
 
     """
     from ase.calculators.calculator import get_calculator_class

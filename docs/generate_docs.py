@@ -1,4 +1,6 @@
 """Autogenerate documentation for recipes and modules."""
+from typing import get_type_hints
+from asr.core import ASRResult
 from pathlib import Path
 import importlib
 import inspect
@@ -99,23 +101,43 @@ def make_recipe_documentation(module):
                    '.. code-block:: console',
                    '',
                    f'   $ asr run {stepnames[-1]}',
+                   '',
+                   'or as a python module',
+                   '',
+                   '.. code-block:: console',
+                   '',
+                   f'   $ python -m {stepnames[-1]}',
                    ''])
 
     rst.extend(summary)
 
     if mod.__doc__:
-        modrst = ['What does this recipe do?',
-                  '-------------------------']
+        modrst = ['Detailed description',
+                  '--------------------']
         modrst += mod.__doc__.splitlines()
         rst.extend(modrst)
 
-    for step, stepname in zip(steps, stepnames):
+    rst.extend(['',
+                'Steps',
+                '-----',
+                ''])
+    for istep, (step, stepname) in enumerate(zip(steps, stepnames)):
+        step_title = f'{stepname}'
         rst.extend(
             ['',
-             stepname,
-             '-' * len(stepname),
+             step_title,
+             '^' * len(step_title),
              f'   .. autofunction:: {module}.{step.__name__}']
         )
+
+        th = get_type_hints(step.__wrapped__)
+        returns = th.get('return', None)
+
+        if returns and returns is not ASRResult:
+            rst.extend([
+                '',
+                f'.. autoclass:: {returns.__module__}.{returns.__name__}',
+            ])
 
     return rst
 
