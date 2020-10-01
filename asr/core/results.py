@@ -5,8 +5,8 @@ The most important class in this module is
 generated with ASR.
 
 :py:class:`asr.core.results.ASRResult` has a bunch of associated
- encoders that implements different ways of representing results, and
- potentially also implements ways to decode results. These encoders are:
+encoders that implements different ways of representing results, and
+potentially also implements ways to decode results. These encoders are:
 
 - :py:class:`asr.core.results.DictEncoder`
 - :py:class:`asr.core.results.JSONEncoder`
@@ -417,7 +417,7 @@ class ASRResult(object):
     The result object provides the means of presenting the wrapped
     data in different formats as obtained from the ``get_formats``
     method. To implement a new webpanel, inherit from this class and
-    overwrite the ``get_formats`` method appropriately.
+    overwrite the ``formats`` dictionary appropriately.
 
     This object implements dict/namespace like default behaviour and
     contained data can be check with ``in`` (see "Examples" below).
@@ -439,7 +439,22 @@ class ASRResult(object):
     >>> other_result = ASRResult(a=1)
     >>> result == other_result
     True
-
+    >>> print(format(result, 'json'))
+    {
+     "data": {
+      "a": 1
+     },
+     "metadata": {
+      "resources": {
+       "time": "a good time."
+      }
+     },
+     "version": 0
+    }
+    >>> result.format_as('ase_webpanel', {}, {})
+    [{'title': 'Results', \
+'columns': [[{'type': 'table', 'header': ['key', 'value'], \
+'rows': [['a', 1]]}]], 'sort': 1}]
     Attributes
     ----------
     data
