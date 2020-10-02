@@ -5,29 +5,29 @@ import numpy as np
 
 
 @command("asr.config_diagram")
-@option('--state', help='Which configuration is displaced.', type=str)
+@option('--folder', help='Folder of the displaced geoemtry', type=str)
 @option('--npoints', help='How many displacement points.', type=int)
-def calculate(state: str = 'ground', npoints: int = 5):
-    """Calculate the energies of the displaced structures
-       along the one-dimensional mode"""
+def calculate(folder: str, npoints: int = 5):
+    """Interpolate the geometry of the structure in the current
+       folder with the displaced geometry in the 'folder' given 
+       as input of the recipe. 
+       The number of displacements between the two geoemtries 
+       is set with the 'npoints' input, and the energy, the 
+       modulus of the displacement and the overlap between the 
+       wavefunctions is saved."""
 
     from gpaw import restart
 
-    if state == 'ground':
-        atoms_1, calc_1 = restart('gs.gpw', txt=None)
-        atoms_2, calc_2 = restart('excited/gs.gpw', txt=None)
-
-    if state == 'excited':
-        atoms_1, calc_1 = restart('gs.gpw', txt=None)
-        atoms_2, calc_2 = restart('../gs.gpw', txt=None)
+    atoms, calc = restart('gs.gpw', txt=None)
+    atoms_Q, calc_Q = restart(folder + '/gs.gpw', txt=None)
 
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
-    m_a = atoms_1.get_masses()
-    pos_ai = atoms_1.positions.copy()
+    m_a = atoms.get_masses()
+    pos_ai = atoms.positions.copy()
 
-    delta_R = atoms_2.positions - atoms_1.positions
+    delta_R = atoms_Q.positions - atoms.positions
     delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
-    zpl = abs(atoms_1.get_potential_energy() - atoms_2.get_potential_energy())
+    zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
 
     Q_n = []
     energies_n = []
@@ -36,10 +36,10 @@ def calculate(state: str = 'ground', npoints: int = 5):
         Q2 = (((displ * delta_R)**2).sum(axis=-1) * m_a).sum()
         Q_n.append(sqrt(Q2) * np.sign(displ))
 
-        atoms_1.positions += displ * delta_R
-        atoms_1.set_calculator(calc_1)
+        atoms.positions += displ * delta_R
+        atoms.set_calculator(calc)
         # atoms_1.get_potential_energy()
-        atoms_1.positions = pos_ai
+        atoms.positions = pos_ai
 
         energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
