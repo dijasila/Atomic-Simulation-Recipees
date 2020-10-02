@@ -4,7 +4,7 @@ from asr.core import command, argument, ASRResult
 
 
 @command('asr.setup.params',
-         save_results_file=False)
+         save_results_file=True)
 @argument('params', nargs=-1, type=str,
           metavar='recipe:option arg recipe:option arg')
 def main(params: Union[str, None] = None) -> ASRResult:

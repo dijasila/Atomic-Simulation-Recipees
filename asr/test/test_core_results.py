@@ -46,8 +46,8 @@ def test_results_object(capsys):
     assert 'a' in results
     assert results.__doc__ == '\n'.join(['Generic results.',
                                          '',
-                                         'Data attributes',
-                                         '---------------',
+                                         'Attributes',
+                                         '----------',
                                          'a: <class \'int\'>',
                                          '    A description of "a".'])
 

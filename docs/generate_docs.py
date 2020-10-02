@@ -1,6 +1,6 @@
 """Autogenerate documentation for recipes and modules."""
 from typing import get_type_hints
-from asr.core import ASRResult
+from asr.core import ASRResult, ASRCommand
 from pathlib import Path
 import importlib
 import inspect
@@ -66,7 +66,7 @@ def make_recipe_documentation(module):
     mod = importlib.import_module(module)
     members = inspect.getmembers(mod)
     steps = [value for (name, value) in members
-             if hasattr(value, '_is_recipe')]
+             if isinstance(value, ASRCommand)]
 
     title = f'{module}'
     rst = [

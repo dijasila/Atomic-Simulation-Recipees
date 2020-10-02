@@ -430,21 +430,8 @@ def get_execution_info(package_dependencies):
 def command(*args, **kwargs):
 
     def decorator(func):
-        command = ASRCommand(func, *args, **kwargs)
-        return command
+        return ASRCommand(func, *args, **kwargs)
 
-        # @functools.wraps(func)
-        # def wrapper(*cargs, **ckwargs):
-        #     return command(*cargs, **ckwargs)
-
-        # wrapper.done = command.done
-        # wrapper.returns = command.returns
-        # wrapper.cli = command.cli
-        # wrapper._command = command
-        # wrapper._is_recipe = True
-        # wrapper._asr_command = command
-
-        # return wrapper
     return decorator
 
 
@@ -485,6 +472,6 @@ def get_recipes():
     for module in modules:
         for attr in module.__dict__:
             attr = getattr(module, attr)
-            if isinstance(attr, ASRCommand):
+            if isinstance(attr, ASRCommand) or hasattr(attr, 'is_recipe'):
                 functions.append(attr)
     return functions

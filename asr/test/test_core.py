@@ -30,7 +30,7 @@ def test_recipe_defaults(asr_tmpdir, recipe):
 def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
     """Test that defaults set in params.json are correctly applied."""
     from asr.core import write_json
-    params = {'test_recipe@test_recipe': {'ny': 5}}
+    params = {'test_recipe@tmp_recipe': {'ny': 5}}
     write_json('params.json', params)
     defaults = recipe.get_defaults()
     assert defaults == {'ny': 5}
