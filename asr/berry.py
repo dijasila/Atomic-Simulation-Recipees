@@ -10,7 +10,8 @@ from asr.core import command, option, read_json, ASRResult
 @option('--gs', help='Ground state', type=str)
 @option('--kpar', help='K-points along path', type=int)
 @option('--kperp', help='K-points orthogonal to path', type=int)
-def calculate(gs: str = 'gs.gpw', kpar: int = 120, kperp: int = 7):
+def calculate(gs: str = 'gs.gpw', kpar: int = 120,
+              kperp: int = 7) -> ASRResult:
     """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
@@ -189,7 +190,7 @@ class Result(ASRResult):
          requires=['results-asr.berry@calculate.json'],
          dependencies=['asr.berry@calculate'],
          returns=Result)
-def main():
+def main() -> Result:
     from pathlib import Path
     from ase.parallel import paropen
 

@@ -59,7 +59,7 @@ class Result(ASRResult):
                        'asr.database.material_fingerprint'],
          returns=Result)
 @argument('databases', nargs=-1, type=str)
-def main(databases: List[str]):
+def main(databases: List[str]) -> Result:
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the

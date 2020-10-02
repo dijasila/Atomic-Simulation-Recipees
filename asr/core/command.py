@@ -430,14 +430,21 @@ def get_execution_info(package_dependencies):
 def command(*args, **kwargs):
 
     def decorator(func):
-        @functools.wraps(func)
-        def wrapper():
-            return ASRCommand(func, *args, **kwargs)
+        command = ASRCommand(func, *args, **kwargs)
+        return command
 
-        wrapper._is_recipe = True
-        wrapper._asr_args = args
-        wrapper._asr_kwargs = kwargs
-        return wrapper
+        # @functools.wraps(func)
+        # def wrapper(*cargs, **ckwargs):
+        #     return command(*cargs, **ckwargs)
+
+        # wrapper.done = command.done
+        # wrapper.returns = command.returns
+        # wrapper.cli = command.cli
+        # wrapper._command = command
+        # wrapper._is_recipe = True
+        # wrapper._asr_command = command
+
+        # return wrapper
     return decorator
 
 

@@ -1,5 +1,5 @@
 """Fitted elemental reference energies."""
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 class MaterialNotFoundError(Exception):
@@ -259,7 +259,7 @@ def main(
     dbname: str = "db.db",
     reactionsname: str = "reactions.txt",
     referencesname: str = "references.txt",
-):
+) -> ASRResult:
     from ase.db import connect
     import os
     import numpy as np

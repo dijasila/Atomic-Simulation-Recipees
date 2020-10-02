@@ -9,7 +9,7 @@ from asr.core import command, option, read_json, ASRResult
          resources='24:10h')
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
-def calculate(kptdensity: float = 8.0, emptybands: int = 20):
+def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
     """Calculate HSE corrections."""
     import gpaw.mpi as mpi
 
@@ -282,7 +282,7 @@ class Result(ASRResult):
                    'results-asr.hse@calculate.json'],
          resources='1:10m',
          returns=Result)
-def main():
+def main() -> Result:
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW

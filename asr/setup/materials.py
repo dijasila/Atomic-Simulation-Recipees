@@ -1,12 +1,12 @@
 """Generate database with test systems."""
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 @command('asr.setup.materials',
          creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection: str = ''):
+def main(selection: str = '') -> ASRResult:
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and

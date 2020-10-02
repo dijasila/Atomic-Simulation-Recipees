@@ -11,7 +11,7 @@ from asr.core import command, option, ASRResult, singleprec_dict
 @option('--npoints', type=int)
 @option('--emptybands', type=int)
 def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
-              emptybands: int = 20):
+              emptybands: int = 20) -> ASRResult:
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -431,7 +431,7 @@ class Result(ASRResult):
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
                        'asr.structureinfo', 'asr.magnetic_anisotropy'],
          returns=Result)
-def main():
+def main() -> Result:
     from gpaw import GPAW
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath

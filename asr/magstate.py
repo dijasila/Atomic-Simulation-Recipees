@@ -38,7 +38,7 @@ class Result(ASRResult):
          requires=['gs.gpw'],
          returns=Result,
          dependencies=['asr.gs@calculate'])
-def main():
+def main() -> Result:
     """Determine magnetic state."""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)

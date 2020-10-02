@@ -32,7 +32,7 @@ def get_kpts_size(atoms, kptdensity):
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
               mode: str = 'BSE', bandfactor: int = 6,
-              nv_s: float = -2.3, nc_s: float = 2.3):
+              nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
@@ -283,7 +283,7 @@ class Result(ASRResult):
          requires=['bse_polx.csv', 'results-asr.gs.json'],
          dependencies=['asr.bse@calculate', 'asr.gs'],
          returns=Result)
-def main():
+def main() -> Result:
     import numpy as np
     from pathlib import Path
     from asr.core import read_json

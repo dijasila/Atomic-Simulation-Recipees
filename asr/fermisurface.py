@@ -119,7 +119,7 @@ class Result(ASRResult):
          returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
-def main():
+def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs

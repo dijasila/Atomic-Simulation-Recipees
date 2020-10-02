@@ -1,5 +1,5 @@
 """Convert database to folder tree."""
-from asr.core import command, argument, option
+from asr.core import command, argument, option, ASRResult
 from asr.utils import timed_print
 from pathlib import Path
 from datetime import datetime
@@ -183,7 +183,7 @@ def main(database: str, run: bool = False, selection: str = '',
          ),
          sort: str = None, atomsfile: str = None,
          chunks: int = 1, copy: bool = False,
-         patterns: str = '*', update_tree: bool = False):
+         patterns: str = '*', update_tree: bool = False) -> ASRResult:
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders

@@ -164,7 +164,7 @@ class Result(ASRResult):
 )
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
-def main(nfreq: int = 300, eta: float = 1e-2):
+def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     from ase.io import read
 
     # Get relevant atomic structure

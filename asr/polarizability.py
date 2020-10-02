@@ -57,7 +57,7 @@ class Result(ASRResult):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
-         xc: str = 'RPA', bandfactor: int = 5):
+         xc: str = 'RPA', bandfactor: int = 5) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW
@@ -155,9 +155,10 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
     finally:
         world.barrier()
         if world.rank == 0:
-            es_file = Path("es.gpw")
-            if es_file.is_file():
-                es_file.unlink()
+            for filename in ['es.gpw', 'chi+0+0+0.pckl']:
+                es_file = Path(filename)
+                if es_file.is_file():
+                    es_file.unlink()
 
     return data
 

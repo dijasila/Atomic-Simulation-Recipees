@@ -1,7 +1,7 @@
 """Module for generating atomic structures with displaced atoms."""
 
 from pathlib import Path
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def get_displacement_folder(atomic_index,
@@ -41,7 +41,7 @@ def displace_atom(atoms, ia, iv, sign, delta):
 @option('--displacement', help='How much to displace atoms.', type=float)
 @option('--copy-params', help='Copy params.json to displacement folders.',
         type=bool)
-def main(displacement: float = 0.01, copy_params: bool = True):
+def main(displacement: float = 0.01, copy_params: bool = True) -> ASRResult:
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms. The generated

@@ -55,7 +55,7 @@ class Result(ASRResult):
          requires=['gs.gpw'],
          returns=Result)
 @option('--displacement', help='Atomic displacement (Å)', type=float)
-def main(displacement: float = 0.01):
+def main(displacement: float = 0.01) -> Result:
     """Calculate Born charges."""
     import numpy as np
     from gpaw import GPAW

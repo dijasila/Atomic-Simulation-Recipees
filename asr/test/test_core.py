@@ -1,22 +1,22 @@
 import pytest
 from pytest import approx
-from asr.core import command, argument, option, read_json
+from asr.core import command, argument, option, read_json, ASRResult
 from time import sleep
+
+
+@command("test_recipe")
+@argument("nx")
+@option("--ny", help="Optional number of y's")
+def tmp_recipe(nx, ny=4) -> ASRResult:
+    x = [3] * nx
+    y = [4] * ny
+    return {'x': x, 'y': y}
 
 
 @pytest.fixture
 def recipe():
     """Return a simple recipe."""
-
-    @command("test_recipe")
-    @argument("nx")
-    @option("--ny", help="Optional number of y's")
-    def test_recipe(nx, ny=4):
-        x = [3] * nx
-        y = [4] * ny
-        return {'x': x, 'y': y}
-
-    return test_recipe
+    return tmp_recipe
 
 
 @pytest.mark.ci
@@ -48,7 +48,7 @@ def test_recipe_setting_overriding_defaults(asr_tmpdir, recipe):
 @command("asr.test.test_core")
 @argument("nx")
 @option("--ny", help="Optional number of y's")
-def a_recipe(nx, ny=4):
+def a_recipe(nx, ny=4) -> ASRResult:
     x = [3] * nx
     y = [4] * ny
     sleep(0.1)

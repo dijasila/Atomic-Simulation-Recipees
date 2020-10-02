@@ -10,7 +10,7 @@ The central recipe of this module is :func:`asr.formalpolarization.main`.
 
 """
 import numpy as np
-from asr.core import command, option, DictStr
+from asr.core import command, option, DictStr, ASRResult
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -101,7 +101,7 @@ def main(gpwname: str = 'formalpol.gpw',
                              'density': 1e-7},
              'txt': 'formalpol.txt',
              'charge': 0
-         }):
+         }) -> ASRResult:
     """Calculate the formal polarization phase.
 
     Calculate the formal polarization geometric phase necesarry for in

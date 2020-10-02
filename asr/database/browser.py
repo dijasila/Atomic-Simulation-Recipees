@@ -1,4 +1,4 @@
-from asr.core import command, option, dct_to_result
+from asr.core import command, option, dct_to_result, ASRResult
 import copy
 import sys
 import re
@@ -268,7 +268,8 @@ def layout(row: AtomsRow,
 @option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database: str = 'database.db', only_figures: bool = False):
+def main(database: str = 'database.db',
+         only_figures: bool = False) -> ASRResult:
     """Open results in web browser."""
     import subprocess
     from pathlib import Path

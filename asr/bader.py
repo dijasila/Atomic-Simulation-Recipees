@@ -1,10 +1,10 @@
 """Bader charges analysis."""
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 @command('asr.bader',
          dependencies=['asr.structureinfo', 'asr.gs'])
-def main():
+def main() -> ASRResult:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable

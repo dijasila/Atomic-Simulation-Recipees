@@ -60,7 +60,7 @@ class Result(ASRResult):
          tests=tests,
          returns=Result,
          dependencies=['asr.gs@calculate', 'asr.magstate'])
-def main():
+def main() -> Result:
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation

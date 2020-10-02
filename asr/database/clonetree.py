@@ -1,5 +1,5 @@
 """Clone folder tree."""
-from asr.core import command, option, argument
+from asr.core import command, option, argument, ASRResult
 
 
 @command('asr.database.clonetree')
@@ -16,7 +16,7 @@ from asr.core import command, option, argument
 def main(source: str, destination: str, patterns: str,
          copy: bool = False, map_files: str = None, dont_contain: str = None,
          must_contain: str = None, dry_run: bool = False,
-         glob_pattern: str = '**/'):
+         glob_pattern: str = '**/') -> ASRResult:
     """Tool for copying or symlinking a tree of files."""
     import fnmatch
     from pathlib import Path

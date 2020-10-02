@@ -46,7 +46,7 @@ class Result(ASRResult):
 
 
 @command('asr.raman', returns=Result)
-def main():
+def main() -> Result:
     raise NotImplementedError
 
 

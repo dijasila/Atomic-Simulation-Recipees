@@ -1,5 +1,5 @@
 """Generate folder with different parameters."""
-from asr.core import command, argument, option
+from asr.core import command, argument, option, ASRResult
 
 
 @command('asr.setup.scanparams')
@@ -9,7 +9,7 @@ from asr.core import command, argument, option
 @option('--symlink/--no-symlink',
         help='Make symbolic link to everything '
         'in this folder (except params.json)', is_flag=True)
-def main(scanparams: str, symlink: bool = True):
+def main(scanparams: str, symlink: bool = True) -> ASRResult:
     """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax

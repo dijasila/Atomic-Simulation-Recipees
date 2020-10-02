@@ -240,7 +240,7 @@ def webpanel(result, row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity: float = 20.0, emptybands: int = 20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -260,7 +260,7 @@ class Result(ASRResult):
          tests=tests,
          dependencies=['asr.gs', 'asr.pdos@calculate'],
          returns=Result)
-def main():
+def main() -> Result:
     from gpaw import GPAW
     from asr.core import singleprec_dict
     from ase.parallel import parprint

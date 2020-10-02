@@ -382,7 +382,7 @@ def main(folders: Union[str, None] = None,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
-         njobs: int = 1):
+         njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
     from asr.database.key_descriptions import main as set_key_descriptions

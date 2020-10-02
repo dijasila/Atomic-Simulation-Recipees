@@ -97,7 +97,7 @@ def get_kpts_size(atoms, kptdensity):
          creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
-def gs(kptdensity: float = 5.0, ecut: float = 200.0):
+def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
@@ -149,7 +149,7 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0):
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
-def gw(ecut: float = 200.0, mode: str = 'G0W0'):
+def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
@@ -257,7 +257,7 @@ class Result(ASRResult):
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
          returns=Result)
-def main():
+def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils import fermi_level

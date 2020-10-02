@@ -35,7 +35,7 @@ class MyResult(ASRResult):
 
 @command('test_core_results',
          returns=MyResult)
-def recipe():
+def recipe() -> MyResult:
     return MyResult(a=2)
 
 

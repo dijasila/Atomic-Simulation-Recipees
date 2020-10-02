@@ -553,7 +553,7 @@ class Result(ASRResult):
         help='Reactant to add to convex hull')
 def main(dbs: List[str],
          atoms: Atoms,
-         reactant: str = 'O'):
+         reactant: str = 'O') -> Result:
     # Do type hints
     if len(dbs) == 0:
         raise ValueError('Must supply at least one database')

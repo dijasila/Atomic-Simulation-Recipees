@@ -33,7 +33,7 @@ class Result(ASRResult):
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gs', 'asr.bandstructure'],
          returns=Result)
-def main():
+def main() -> Result:
     from gpaw import GPAW
 
     # Get bandstructure calculation

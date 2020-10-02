@@ -30,7 +30,7 @@ class Result(ASRResult):
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',
         type=float)
-def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1):
+def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit

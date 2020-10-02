@@ -99,7 +99,7 @@ class Result(ASRResult):
 @command(module='asr.stiffness',
          returns=Result)
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
-def main(strain_percent: float = 1.0):
+def main(strain_percent: float = 1.0) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as setupstrains
     from asr.setup.strains import get_relevant_strains, get_strained_folder_name

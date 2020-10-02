@@ -1,6 +1,6 @@
 """Database web application."""
 from typing import List
-from asr.core import command, option, argument
+from asr.core import command, option, argument, ASRResult
 
 import tempfile
 from pathlib import Path
@@ -164,7 +164,8 @@ def initialize_project(database):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases: List[str], host: str = "0.0.0.0", test: bool = False):
+def main(databases: List[str], host: str = "0.0.0.0",
+         test: bool = False) -> ASRResult:
     for database in databases:
         initialize_project(database)
 

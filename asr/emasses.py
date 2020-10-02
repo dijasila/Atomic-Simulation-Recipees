@@ -37,7 +37,7 @@ def refine(gpwfilename: str = 'gs.gpw',
                'erange1': 250e-3,
                'nkpts1': 19,
                'erange2': 1e-3,
-               'nkpts2': 9}):
+               'nkpts2': 9}) -> ASRResult:
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -670,7 +670,7 @@ class Result(ASRResult):
          returns=Result)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename: str = 'gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw') -> Result:
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis

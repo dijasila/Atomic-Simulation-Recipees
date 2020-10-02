@@ -86,7 +86,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
                                   'convergence': {'forces': 1.0e-4},
                                   'symmetry': {'point_group': False},
                                   'txt': 'phonons.txt',
-                                  'charge': 0}):
+                                  'charge': 0}) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
@@ -226,7 +226,7 @@ class Result(ASRResult):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc: float = None):
+def main(rc: float = None) -> Result:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv

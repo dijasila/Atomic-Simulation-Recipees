@@ -1,5 +1,5 @@
 """Unique hash of atomic structure."""
-from asr.core import command
+from asr.core import command, ASRResult
 
 
 def todict(atoms):
@@ -46,7 +46,7 @@ def get_uid_of_atoms(atoms, hash):
 
 
 @command(module='asr.database.material_fingerprint')
-def main():
+def main() -> ASRResult:
     from ase.io import read
     atoms = read('structure.json')
     hash = get_hash_of_atoms(atoms)

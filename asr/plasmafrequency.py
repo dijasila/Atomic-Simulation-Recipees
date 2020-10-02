@@ -19,7 +19,7 @@ def get_kpts_size(atoms, density):
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'])
 @option('--kptdensity', help='k-point density', type=float)
-def calculate(kptdensity: float = 20):
+def calculate(kptdensity: float = 20) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
     from gpaw import GPAW
     from ase.parallel import world
@@ -65,7 +65,7 @@ class Result(ASRResult):
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
-def main(tetra: bool = True):
+def main(tetra: bool = True) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
     from ase.io import read

@@ -1,5 +1,5 @@
 """Generate strained atomic structures."""
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def get_relevant_strains(pbc):
@@ -91,7 +91,7 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
         help='Copy params.json from current folder into strained folders',
         is_flag=True)
 def clamped(strain_percent: float = 1, kptdensity: float = 6.0,
-            copyparams: bool = True):
+            copyparams: bool = True) -> ASRResult:
     results = setup_strains(strain_percent=strain_percent, kptdensity=kptdensity,
                             copyparams=copyparams, clamp_atoms=True)
     return results
@@ -105,7 +105,7 @@ def clamped(strain_percent: float = 1, kptdensity: float = 6.0,
         help='Copy params.json from current folder into strained folders',
         is_flag=True)
 def main(strain_percent: float = 1, kptdensity: float = 6.0,
-         copyparams: bool = True):
+         copyparams: bool = True) -> ASRResult:
     results = setup_strains(strain_percent=strain_percent, kptdensity=kptdensity,
                             copyparams=copyparams, clamp_atoms=False)
     return results

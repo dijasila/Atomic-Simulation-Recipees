@@ -98,7 +98,7 @@ class Result(ASRResult):
          tests=tests,
          requires=['structure.json'],
          returns=Result)
-def main():
+def main() -> Result:
     """Get structural information of atomic structure.
 
     This recipe produces information such as the space group and magnetic

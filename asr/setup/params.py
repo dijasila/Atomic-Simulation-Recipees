@@ -1,13 +1,13 @@
 """Generate parameter file 'params.json'."""
 from typing import Union
-from asr.core import command, argument
+from asr.core import command, argument, ASRResult
 
 
 @command('asr.setup.params',
          save_results_file=False)
 @argument('params', nargs=-1, type=str,
           metavar='recipe:option arg recipe:option arg')
-def main(params: Union[str, None] = None):
+def main(params: Union[str, None] = None) -> ASRResult:
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default

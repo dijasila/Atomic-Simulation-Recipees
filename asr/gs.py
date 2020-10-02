@@ -18,7 +18,7 @@ def calculate(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0'},
         'nbands': '200%',
         'txt': 'gs.txt',
-        'charge': 0}):
+        'charge': 0}) -> ASRResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -141,7 +141,7 @@ class Result(ASRResult):
          dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
                        'asr.structureinfo'],
          returns=Result)
-def main():
+def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     import numpy as np
     from ase.io import read

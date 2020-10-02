@@ -71,7 +71,7 @@ def main(strain_percent: float = 1,
              'symmetry': 'off',
              'txt': 'formalpol.txt',
              'charge': 0
-         }):
+         }) -> Result:
     """Calculate piezoelectric tensor.
 
     This recipe calculates the clamped and full piezoelectric

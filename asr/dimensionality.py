@@ -1,4 +1,4 @@
-from asr.core import command, option, AtomsFile
+from asr.core import command, option, AtomsFile, ASRResult
 from pathlib import Path
 from ase import Atoms
 from ase.db.row import AtomsRow
@@ -45,7 +45,7 @@ def plot_dimensionality_histogram(row: AtomsRow, path: Path) -> None:
 
 @command('asr.dimensionality')
 @option('--atoms', type=AtomsFile(), default='structure.json')
-def main(atoms: Atoms):
+def main(atoms: Atoms) -> ASRResult:
     """Make cluster and dimensionality analysis of the input structure.
 
     Analyzes the primary dimensionality of the input structure and analyze
