@@ -113,9 +113,11 @@ def main():
 
     # Calculate the dos at the Fermi energy
     parprint('\nComputing dos at Ef', flush=True)
-    results['dos_at_ef_nosoc'] = dos1.dos_at([dos1.fermi_level])[0]
+    results['dos_at_ef_nosoc'] = dos1.dos([dos1.fermi_level],
+                                          width=0.0).get_weights()[0]
     parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
-    results['dos_at_ef_soc'] = dos2.dos_at([dos2.fermi_level])[0]
+    results['dos_at_ef_soc'] = dos2.dos([dos2.fermi_level],
+                                        width=0.0).get_weights()[0]
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
@@ -189,7 +191,6 @@ def calculate_pdos(dos, calc):
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = np.linspace(e1 - 3, e2 + 3, 500)
-    dos.energies = e_e
 
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
     # that is if there are multiple atoms in the unit cell of the same chemical
@@ -210,7 +211,7 @@ def calculate_pdos(dos, calc):
     for _, (spin, a, l) in pb.enumerate(sal_i):
         symbol = chem_symbols[a]
 
-        p = dos.pdos(a, 'spdfg'.index(l), None, spin, 0.0).get_weights()
+        p = dos.pdos(e_e, a, 'spdfg'.index(l), None, spin, 0.0).get_weights()
 
         # Store in dictionary
         key = ','.join([str(spin), str(symbol), str(l)])

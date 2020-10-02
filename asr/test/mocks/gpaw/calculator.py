@@ -419,9 +419,9 @@ class DOSCalculator:
     def __init__(self, fermi_level):
         self.fermi_level = fermi_level
 
-    def dos_at(self, energies):
-        return np.ones_like(energies)
+    def dos(self, energies, spin, width):
+        return self.pdos(energies, 0, 0, 0, spin, width)
 
-    def pdos(self, a, l, m, spin, width):
+    def pdos(self, energies, a, l, m, spin, width):
         from ase.spectrum.dosdata import GridDOSData
-        return GridDOSData(self.energies, np.ones_like(self.energies))
+        return GridDOSData(energies, np.ones_like(energies))

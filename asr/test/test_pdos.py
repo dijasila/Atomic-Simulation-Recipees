@@ -82,21 +82,24 @@ def test_pdos_full(asr_tmpdir_w_params):
     dct = {'theta': theta, 'phi': phi}
     write_json('results-asr.magnetic_anisotropy.json', dct)
 
+    def dosef(dos, spin=None):
+        return dos.dos([0.0], spin, 0.0).get_weights()[0]
+
     # Calculate the dos at ef for each spin channel
     # spin-0
     dos1 = calc1.dos()
-    dosef10 = dos1.dos_at([0.0])[0] / 2
+    dosef10 = dosef(dos1) / 2
     # spin-polarized
     from gpaw.dos import DOSCalculator
-    dos2 = DOSCalculator.from_calculator(calc2, emin=0.0, emax=0.0, npoints=1)
-    dosef20 = dos2.dos(spin=0, width=0.0).get_weights()[0]
-    dosef21 = dos2.dos(spin=1, width=0.0).get_weights()[0]
+    dos2 = DOSCalculator.from_calculator(calc2)
+    dosef20 = dosef(dos2, spin=0)
+    dosef21 = dosef(dos2, spin=1)
 
     # Calculate the dos at ef with soc using asr
     # spin-0
-    dosef_soc1 = calc1.dos(soc=True).dos_at([0.0])[0]
+    dosef_soc1 = dosef(calc1.dos(soc=True))
     # spin-polarized
-    dosef_soc2 = calc2.dos(soc=True).dos_at([0.0])[0]
+    dosef_soc2 = dosef(calc2.dos(soc=True))
 
     # Part 3: test output values
 
