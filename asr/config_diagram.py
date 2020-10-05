@@ -5,13 +5,13 @@ import numpy as np
 
 
 @command("asr.config_diagram")
-@option('--folder', help='Folder of the displaced geoemtry', type=str)
+@option('--folder', help='Folder of the displaced geometry', type=str)
 @option('--npoints', help='How many displacement points.', type=int)
 def calculate(folder: str, npoints: int = 5):
     """Interpolate the geometry of the structure in the current
        folder with the displaced geometry in the 'folder' given 
        as input of the recipe. 
-       The number of displacements between the two geoemtries 
+       The number of displacements between the two geometries 
        is set with the 'npoints' input, and the energy, the 
        modulus of the displacement and the overlap between the 
        wavefunctions is saved."""
@@ -20,6 +20,7 @@ def calculate(folder: str, npoints: int = 5):
 
     atoms, calc = restart('gs.gpw', txt=None)
     atoms_Q, calc_Q = restart(folder + '/gs.gpw', txt=None)
+    calc.set(txt = 'cc-diagram.txt')
 
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
     m_a = atoms.get_masses()
@@ -27,21 +28,26 @@ def calculate(folder: str, npoints: int = 5):
 
     delta_R = atoms_Q.positions - atoms.positions
     delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
+    # check if there is difference in the two geometries
+    assert delta_Q >= 0.01, 'No displacement between the two geometries!' 
+
+    # calculate zero-phonon line
     zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
 
     Q_n = []
     energies_n = []
 
+
     for displ in displ_n:
         Q2 = (((displ * delta_R)**2).sum(axis=-1) * m_a).sum()
         Q_n.append(sqrt(Q2) * np.sign(displ))
-
         atoms.positions += displ * delta_R
-        atoms.set_calculator(calc)
-        # atoms_1.get_potential_energy()
+        energy = atoms.get_potential_energy()
+        print(displ, energy)
+
         atoms.positions = pos_ai
 
-        energy = 0.06155**2 / 2 * 15.4669**2 * Q2
+        #energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
 
     results = {'delta_Q': delta_Q,
@@ -65,15 +71,19 @@ def webpanel(row, key_descriptions):
 
 
 @command("asr.config_diagram",
-         webpanel=webpanel,
-         dependencies=["asr.config_diagram@calculate"])
-def main():
+         webpanel=webpanel)#,
+         #dependencies=["asr.config_diagram@calculate"])
+@option('--folder1', help='Folder of the first parabola', type=str)
+@option('--folder2', help='Folder of the first parabola', type=str)
+def main(folder1: str = '.', folder2: str = 'excited'):
     """Estrapolate the frequencies of the ground and
        excited one-dimensional mode and their relative
        Huang-Rhys factors"""
 
-    data_g = read_json('results-asr.config_diagram@calculate.json')
-    data_e = read_json('excited/results-asr.config_diagram@calculate.json')
+    result_file = 'results-asr.config_diagram@calculate.json' 
+
+    data_g = read_json(folder1 + '/' + result_file)
+    data_e = read_json(folder2 + '/' + result_file)
     delta_Q = data_g['delta_Q']
     energies_gn = data_g['energies_n']
     energies_en = data_e['energies_n']
@@ -90,7 +100,6 @@ def main():
     # Quadratic fit of the parabola
     zg = np.polyfit(Q_n, energies_gn, 2)
     ze = np.polyfit(Q_n, energies_en, 2)
-
     # Conversion factor
     s = np.sqrt(units._e * units._amu) * 1e-10 / units._hbar
 
