@@ -76,7 +76,7 @@ def get_parameters(gs, exchange, txt=False,
                    dis_cut=0.2, line=False, a0=None):
     """Extract Heisenberg parameters."""
     from gpaw import GPAW
-    from gpaw.spinorbit import get_anisotropy
+    from gpaw.spinorbit import soc_eigenstates
     from ase.dft.bandgap import bandgap
 
     calc_gs_2mag = GPAW(gs)
@@ -114,18 +114,18 @@ def get_parameters(gs, exchange, txt=False,
     gap_fm, p1, p2 = bandgap(calc_fm, output=None)
     gap_afm, p1, p2 = bandgap(calc_afm, output=None)
 
-    E_fm_x = get_anisotropy(calc_fm, theta=np.pi / 2, phi=0,
-                            nbands=nbands) / 2
-    E_fm_y = get_anisotropy(calc_fm, theta=np.pi / 2, phi=np.pi / 2,
-                            nbands=nbands) / 2
-    E_fm_z = get_anisotropy(calc_fm, theta=0, phi=0,
-                            nbands=nbands) / 2
-    E_afm_x = get_anisotropy(calc_afm, theta=np.pi / 2, phi=0,
-                             nbands=nbands) / 2
-    E_afm_y = get_anisotropy(calc_afm, theta=np.pi / 2, phi=np.pi / 2,
-                             nbands=nbands) / 2
-    E_afm_z = get_anisotropy(calc_afm, theta=0, phi=0,
-                             nbands=nbands) / 2
+    E_fm_x, E_fm_y, E_fm_z = (
+        soc_eigenstates(calc_fm,
+                        theta=theta, phi=phi,
+                        nbands=nbands).calculate_band_energy() / 2
+        for theta, phi in [(90, 0), (90, 90), (0, 0)])
+
+    E_afm_x, E_afm_y, E_afm_z = (
+        soc_eigenstates(calc_afm,
+                        theta=theta, phi=phi,
+                        nbands=nbands).calculate_band_energy() / 2
+        for theta, phi in [(90, 0), (90, 90), (0, 0)])
+
     E_fm_x = (E_fm_x + E_fm_y) / 2
     E_afm_x = (E_afm_x + E_afm_y) / 2
 

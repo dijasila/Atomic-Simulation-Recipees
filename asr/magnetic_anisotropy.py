@@ -67,7 +67,8 @@ def main():
     """
     import numpy as np
     from asr.core import read_json
-    from gpaw.spinorbit import get_anisotropy
+    from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
     magstateresults = read_json('results-asr.magstate.json')
@@ -100,14 +101,15 @@ def main():
     width = 0.001
     nbands = None
     calc = GPAW('gs.gpw')
-    E_x = get_anisotropy(calc, theta=np.pi / 2, nbands=nbands,
-                         width=width)
-    E_z = get_anisotropy(calc, theta=0.0, nbands=nbands, width=width)
-    E_y = get_anisotropy(calc, theta=np.pi / 2, phi=np.pi / 2,
-                         nbands=nbands, width=width)
+    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
+    Ex, Ey, Ez = (soc_eigenstates(calc,
+                                  theta=theta, phi=phi,
+                                  nbands=nbands,
+                                  occcalc=occcalc).calculate_band_energy()
+                  for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
-    dE_zx = E_z - E_x
-    dE_zy = E_z - E_y
+    dE_zx = Ez - Ex
+    dE_zy = Ez - Ey
 
     DE = max(dE_zx, dE_zy)
     theta = 0
@@ -122,9 +124,9 @@ def main():
     results.update({'spin_axis': axis,
                     'theta': theta,
                     'phi': phi,
-                    'E_x': E_x * 1e3,
-                    'E_y': E_y * 1e3,
-                    'E_z': E_z * 1e3,
+                    'E_x': Ex * 1e3,
+                    'E_y': Ey * 1e3,
+                    'E_z': Ez * 1e3,
                     'dE_zx': dE_zx * 1e3,
                     'dE_zy': dE_zy * 1e3})
     return results
