@@ -8,7 +8,8 @@ def soc_eigenstates(
         scale=1.0,
         theta=0.0,
         phi=0.0,
-        eigenvalues=None):
+        eigenvalues=None,
+        occcalc=None):
 
     nk = len(calc.get_ibz_k_points())
     nspins = 2
@@ -46,6 +47,5 @@ class SOC:
     def spin_projections(self):
         return self.s_kmv
 
-
-def get_anisotropy(*args, **kwargs):
-    return 0.0
+    def calculate_band_energy(self):
+        return 0.0
