@@ -5,6 +5,7 @@ def calc2eigs(calc, soc=True,
               theta=0, phi=0, symmetry_tolerance=1e-7,
               width=None):
     from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
     from ase.parallel import broadcast
     import numpy as np
     from .symmetry import restrict_spin_projection_2d
@@ -18,11 +19,13 @@ def calc2eigs(calc, soc=True,
     dct = {'eps_nosoc_skn': eps_nosoc_skn,
            'efermi_nosoc': efermi_nosoc}
     if soc:
+        occcalc = create_occ_calc({'width': 0.0})
         soc = soc_eigenstates(calc,
                               n1=bands[0],
                               n2=bands[-1] + 1,
                               theta=theta,
-                              phi=phi)
+                              phi=phi,
+                              occcalc=occcalc)
         eps_km = soc.eigenvalues()
         s_kvm = soc.spin_projections().transpose((0, 2, 1))
         efermi = soc.fermi_level

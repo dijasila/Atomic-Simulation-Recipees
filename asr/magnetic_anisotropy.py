@@ -98,8 +98,8 @@ def main():
         results['spin_axis'] = 'z'
         return results
 
-    width = 0.001
     calc = GPAW('gs.gpw')
+    width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,
                                   theta=theta, phi=phi,
