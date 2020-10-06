@@ -113,11 +113,11 @@ def main():
 
     # Calculate the dos at the Fermi energy
     parprint('\nComputing dos at Ef', flush=True)
-    results['dos_at_ef_nosoc'] = dos1.dos([dos1.fermi_level],
-                                          width=0.0).get_weights()[0]
+    results['dos_at_ef_nosoc'] = dos1.raw_dos([dos1.fermi_level],
+                                              width=0.0)[0]
     parprint('\nComputing dos at Ef with spin-orbit coupling', flush=True)
-    results['dos_at_ef_soc'] = dos2.dos([dos2.fermi_level],
-                                        width=0.0).get_weights()[0]
+    results['dos_at_ef_soc'] = dos2.raw_dos([dos2.fermi_level],
+                                            width=0.0)[0]
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
