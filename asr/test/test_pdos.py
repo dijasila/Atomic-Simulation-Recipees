@@ -83,7 +83,7 @@ def test_pdos_full(asr_tmpdir_w_params):
     write_json('results-asr.magnetic_anisotropy.json', dct)
 
     def dosef(dos, spin=None):
-        return dos.dos([0.0], spin, 0.0).get_weights()[0]
+        return dos.raw_dos([0.0], spin, 0.0)[0]
 
     # Calculate the dos at ef for each spin channel
     # spin-0

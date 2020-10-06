@@ -211,7 +211,7 @@ def calculate_pdos(dos, calc):
     for _, (spin, a, l) in pb.enumerate(sal_i):
         symbol = chem_symbols[a]
 
-        p = dos.pdos(e_e, a, 'spdfg'.index(l), None, spin, 0.0).get_weights()
+        p = dos.raw_pdos(e_e, a, 'spdfg'.index(l), None, spin, 0.0)
 
         # Store in dictionary
         key = ','.join([str(spin), str(symbol), str(l)])
