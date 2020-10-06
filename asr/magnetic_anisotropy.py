@@ -99,12 +99,10 @@ def main():
         return results
 
     width = 0.001
-    nbands = None
     calc = GPAW('gs.gpw')
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,
                                   theta=theta, phi=phi,
-                                  nbands=nbands,
                                   occcalc=occcalc).calculate_band_energy()
                   for theta, phi in [(90, 0), (90, 90), (0, 0)])
 

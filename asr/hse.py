@@ -69,12 +69,13 @@ def hse(kptdensity, emptybands):
 
 
 def hse_spinorbit(dct, calc):
+    from math import pi
     from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     e_skn = dct.get('e_hse_skn')
     dct_soc = {}
-    theta, phi = get_spin_axis()
+    theta, phi = (angle * 180 / pi for angle in get_spin_axis())
 
     soc = soc_eigenstates(calc,
                           eigenvalues=e_skn,
@@ -115,7 +116,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 
     # add SOC from bs.gpw
     calc = GPAW('bs.gpw')
-    theta, phi = get_spin_axis()
+    theta, phi = (angle * 180 / np.pi for angle in get_spin_axis())
     soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)

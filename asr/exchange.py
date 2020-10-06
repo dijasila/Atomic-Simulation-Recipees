@@ -94,7 +94,6 @@ def get_parameters(gs, exchange, txt=False,
         calc_afm = calc_gs_2mag
         calc_fm = calc_exchange
 
-    nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
     if a0 is None:
         a0 = np.argmax(np.abs(calc_fm.get_magnetic_moments()))
@@ -116,14 +115,12 @@ def get_parameters(gs, exchange, txt=False,
 
     E_fm_x, E_fm_y, E_fm_z = (
         soc_eigenstates(calc_fm,
-                        theta=theta, phi=phi,
-                        nbands=nbands).calculate_band_energy() / 2
+                        theta=theta, phi=phi).calculate_band_energy() / 2
         for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
     E_afm_x, E_afm_y, E_afm_z = (
         soc_eigenstates(calc_afm,
-                        theta=theta, phi=phi,
-                        nbands=nbands).calculate_band_energy() / 2
+                        theta=theta, phi=phi).calculate_band_energy() / 2
         for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
     E_fm_x = (E_fm_x + E_fm_y) / 2

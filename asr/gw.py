@@ -305,7 +305,7 @@ def main():
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis
-    theta, phi = get_spin_axis()
+    theta, phi = (angle * 180 / np.pi for angle in get_spin_axis())
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)
