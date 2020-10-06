@@ -6,16 +6,16 @@ def get_magstate(calc):
     """Determine the magstate of calc."""
     magmoms = calc.get_property('magmoms', allow_calculation=False)
 
-    if magmoms is None or abs(magmoms).max() < 0.1:
+    maximum_mom = abs(magmoms).max()
+    if magmoms is None or maximum_mom < 0.1:
         return 'nm'
 
-    maxmom = magmoms.max()
-    minmom = magmoms.min()
-    if abs(magmoms).max() >= 0.1 and \
-       abs(maxmom - minmom) < abs(maxmom):
-        return 'fm'
+    magmom = calc.get_magnetic_moment()
 
-    return 'afm'
+    if abs(magmom) < 0.01 and maximum_mom > 0.1:
+        return 'afm'
+
+    return 'fm'
 
 
 def webpanel(row, key_descriptions):
