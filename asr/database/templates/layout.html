@@ -3,14 +3,17 @@
   <head>
     <meta name="viewport" content="width-device-width, initial-scale=1.0">
 
-{% include 'js.html' %}
-{% include 'style.html' %}
+{% include 'asr/database/templates/js.html' %}
+{% include 'asr/database/templates/style.html' %}
+<script>
+$(document).ready(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})
+</script>
 {% block head %}
 {% endblock %}
 
-{% set proj = md['title'] or 'Browse ASE Database' %}
-
-    <title>{% block title %}{% endblock %}</title>
+<title>{% block title %}{% endblock %}</title>
 
   </head>
 
@@ -24,15 +27,13 @@
               <li>
                 <a href="https://cmr.fysik.dtu.dk/">CMR</a>
               </li>
-              <li>
-                <a href="https://cmr.fysik.dtu.dk/{{ project }}/{{ project }}.html">
-                More information</a>
-              </li>
-{% if back %}
-              <li>
-                <a href="/{{ project }}/">Back to search page</a>
-              </li>
-{% endif %}
+	      <li>
+		<a href="https://cmr.fysik.dtu.dk/{{ p.name }}/{{ p.name }}.html">
+		  More information</a>
+	      </li>
+	      <li>
+		<a href="/{{ p.name }}/">Back to search page</a>
+	      </li>
             </ul>
           </div>
         </nav>

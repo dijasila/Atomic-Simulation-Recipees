@@ -75,10 +75,10 @@ def webpanel(row, key_descriptions):
     dynstab = row.dynamic_stability_stiffness
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
+
     row = ['Dynamical (stiffness)',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
-               low, high, dynstab.upper())]
+           {'value': dynstab.upper(),
+            'description': f"LOW: {low} \n HIGH: {high}"}]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
