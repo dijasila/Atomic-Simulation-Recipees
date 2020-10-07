@@ -229,6 +229,7 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
         default=0.3)
 def main(atoms: Atoms,
          rmsd_tol: float):
+    from gpaw import mpi
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
     import os
@@ -256,6 +257,9 @@ def main(atoms: Atoms,
             atoms.cell.scaled_positions(np.array([transl[0], transl[1], 0.0]))
         name = layername(atoms.get_chemical_formula(), 2, tform[0], t)
         names.append(name)
+
+        if mpi.world.rank != 0:
+            continue
 
         if not os.path.isdir(name):
             os.mkdir(name)
