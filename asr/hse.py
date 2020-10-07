@@ -75,7 +75,7 @@ def hse_spinorbit(dct, calc):
 
     e_skn = dct.get('e_hse_skn')
     dct_soc = {}
-    theta, phi = (angle * 180 / pi for angle in get_spin_axis())
+    theta, phi = get_spin_axis()
 
     soc = soc_eigenstates(calc,
                           eigenvalues=e_skn,
@@ -116,7 +116,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 
     # add SOC from bs.gpw
     calc = GPAW('bs.gpw')
-    theta, phi = (angle * 180 / np.pi for angle in get_spin_axis())
+    theta, phi = get_spin_axis()
     soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)

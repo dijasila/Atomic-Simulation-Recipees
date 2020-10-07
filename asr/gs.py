@@ -218,6 +218,7 @@ def main():
 def gaps(calc, soc=True):
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
+    from math import pi
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis
@@ -289,7 +290,7 @@ def get_gap_info(soc, direct, calc):
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
-                                kpts=calc.get_ibz_k_points(), output=None)
+                                output=None)
         if km1[0] is not None:
             e1 = e_km[km1]
             e2 = e_km[km2]

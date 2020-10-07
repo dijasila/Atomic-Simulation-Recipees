@@ -1,9 +1,10 @@
+from math import pi
 from asr.core import command, read_json
 
 
 def get_spin_axis():
     anis = read_json('results-asr.magnetic_anisotropy.json')
-    return anis['theta'], anis['phi']
+    return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
 def get_spin_index():
@@ -22,7 +23,7 @@ def spin_axis(theta, phi):
     import numpy as np
     if theta == 0:
         return 'z'
-    elif np.allclose(phi, np.pi / 2):
+    elif np.allclose(phi, 90):
         return 'y'
     else:
         return 'x'
@@ -113,15 +114,15 @@ def main():
     theta = 0
     phi = 0
     if DE > 0:
-        theta = np.pi / 2
+        theta = 90
         if dE_zy > dE_zx:
-            phi = np.pi / 2
+            phi = 90
 
     axis = spin_axis(theta, phi)
 
     results.update({'spin_axis': axis,
-                    'theta': theta,
-                    'phi': phi,
+                    'theta': theta / 180 * pi,
+                    'phi': phi / 180 * pi,
                     'E_x': Ex * 1e3,
                     'E_y': Ey * 1e3,
                     'E_z': Ez * 1e3,
