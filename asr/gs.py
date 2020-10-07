@@ -218,7 +218,6 @@ def main():
 def gaps(calc, soc=True):
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
-    from math import pi
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis

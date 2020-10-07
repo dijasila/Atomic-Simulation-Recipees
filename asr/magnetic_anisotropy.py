@@ -66,7 +66,6 @@ def main():
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    import numpy as np
     from asr.core import read_json
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc

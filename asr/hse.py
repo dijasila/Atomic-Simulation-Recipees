@@ -69,7 +69,6 @@ def hse(kptdensity, emptybands):
 
 
 def hse_spinorbit(dct, calc):
-    from math import pi
     from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
