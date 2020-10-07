@@ -53,7 +53,7 @@ def initial_displacement(atoms, distance):
 @option('--tol', help='Convergence threshold',
         type=float)
 @option('-d', '--distance', help='Initial Distance',
-        type=float, default=3)
+        type=float)
 @option('-v', '--vacuum', help='Extra vacuum',
         type=float)
 @option('--restart/--norestart', help='Delete memo and start relaxation from scratch',
