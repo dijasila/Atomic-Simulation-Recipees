@@ -225,10 +225,10 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
 @command(module='asr.stack_bilayer', requires=['structure.json'])
 @option('-a', '--atoms', help='Monolayer to be stacked',
         type=AtomsFile(), default='structure.json')
-@option('-t', '--rmsd-tol', help='Position comparison tolerance',
-        default=0.3)
+@option('-t', '--rmsd-tol', type=float, 
+        help='Position comparison tolerance')
 def main(atoms: Atoms,
-         rmsd_tol: float):
+         rmsd_tol: float = 0.3):
     from gpaw import mpi
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
