@@ -4,23 +4,50 @@ from math import sqrt
 import numpy as np
 
 
+def get_wfs_overlap(i, f, calc_0, calc_q):
+    """ Calculate the overlap between that the state i
+        and the state f of the displaced geometry"""
+
+    from gpaw.utilities.ps2ae import PS2AE
+    from ase.units import Bohr
+
+    wfs_0 = PS2AE(calc_0, h=0.05)
+    wfs_q = PS2AE(calc_q, h=0.05)
+
+    wf_0 = wfs_0.get_wave_function(i)
+    wf_q = wfs_q.get_wave_function(f)
+
+    overlap = wfs_q.gd.integrate(wf_0 * wf_q) * Bohr**3
+
+    ei = calc_q.get_eigenvalues(band=i, spin=0)
+    ej = calc_q.get_eigenvalues(band=j, spin=0)
+
+    eigenvalues = [ei, ej]
+
+    return overlap, eigenvalues
+
+
 @command("asr.config_diagram")
 @option('--folder', help='Folder of the displaced geometry', type=str)
 @option('--npoints', help='How many displacement points.', type=int)
-def calculate(folder: str, npoints: int = 5):
+@option('--wfs', nargs=2, type=int,
+        help='Calculate the overlap of wfs between states i and f')
+def calculate(folder: str, npoints: int = 5, overlap: List[int] = None]):
     """Interpolate the geometry of the structure in the current
-       folder with the displaced geometry in the 'folder' given 
-       as input of the recipe. 
-       The number of displacements between the two geometries 
-       is set with the 'npoints' input, and the energy, the 
-       modulus of the displacement and the overlap between the 
+       folder with the displaced geometry in the 'folder' given
+       as input of the recipe.
+       The number of displacements between the two geometries
+       is set with the 'npoints' input, and the energy, the
+       modulus of the displacement and the overlap between the
        wavefunctions is saved."""
 
-    from gpaw import restart
+    from gpaw import GPAW, restart
 
-    atoms, calc = restart('gs.gpw', txt=None)
+    atoms, calc_0 = restart('gs.gpw', txt=None)
     atoms_Q, calc_Q = restart(folder + '/gs.gpw', txt=None)
-    calc.set(txt = 'cc-diagram.txt')
+    params = calc.todict()
+    calc_q = GPAW(**params)
+    calc_q.set(txt='cc-diagram.txt')
 
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
     m_a = atoms.get_masses()
@@ -29,14 +56,16 @@ def calculate(folder: str, npoints: int = 5):
     delta_R = atoms_Q.positions - atoms.positions
     delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
     # check if there is difference in the two geometries
-    assert delta_Q >= 0.01, 'No displacement between the two geometries!' 
+    assert delta_Q >= 0.005, 'No displacement between the two geometries!' 
+    print('delta_Q', delta_Q)
 
     # calculate zero-phonon line
     zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
 
     Q_n = []
     energies_n = []
-
+    overlap_n = []
+    eigenvalues_n = []
 
     for displ in displ_n:
         Q2 = (((displ * delta_R)**2).sum(axis=-1) * m_a).sum()
@@ -46,14 +75,24 @@ def calculate(folder: str, npoints: int = 5):
         print(displ, energy)
 
         atoms.positions = pos_ai
-
         #energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
+
+        if wfs is not None:
+            i, f = wfs
+            overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
+            overlap_n.append(overlap)
+            eigenvalues_n.append(eigenvalues)
+            
 
     results = {'delta_Q': delta_Q,
                'Q_n': Q_n,
                'energies_n': energies_n,
                'ZPL': zpl}
+
+    if wfs is not None:
+        results['overlap'] = overlap_n
+        results['eigenvalues'] = eigenvalues_n
 
     return results
 
