@@ -51,11 +51,11 @@ def initial_displacement(atoms, distance):
 @option('-s', '--settings', help='Relaxation settings',
         type=DictStr())
 @option('--tol', help='Convergence threshold',
-        type=float, default=1e-2)
+        type=float)
 @option('-d', '--distance', help='Initial Distance',
         type=float, default=3)
 @option('-v', '--vacuum', help='Extra vacuum',
-        type=float, default=6)
+        type=float)
 @option('--restart/--norestart', help='Delete memo and start relaxation from scratch',
         is_flag=True)
 def main(atoms: Atoms,
