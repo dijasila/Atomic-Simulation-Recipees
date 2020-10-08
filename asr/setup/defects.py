@@ -268,7 +268,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         pristine = structure.repeat((N_x, N_y, N_z))
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     parameters = {}
-    string = 'defects.pristine_sc'
+    string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
     calculator_relax = {
         'name': 'gpaw',
         'mode': {
