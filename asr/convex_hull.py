@@ -16,13 +16,16 @@ known_methods = ['DFT', 'DFT+D3']
 def webpanel(row, key_descriptions):
     from asr.database.browser import fig, table
 
+    caption = """
+    The convex hull describes stability
+    with respect to other phases."""
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
     panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png')],
+             'columns': [[fig('convex-hull.png', caption=caption)],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}],

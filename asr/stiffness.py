@@ -78,7 +78,7 @@ def webpanel(row, key_descriptions):
 
     row = ['Dynamical (stiffness)',
            {'value': dynstab.upper(),
-            'description': f"LOW: {low} \n HIGH: {high}"}]
+            'description': f"LOW: {low}\nHIGH: {high}"}]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',

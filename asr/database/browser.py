@@ -45,10 +45,12 @@ def create_table(row,  # AtomsRow
                 value = '{:.{}f}'.format(value, digits)
             elif not isinstance(value, str):
                 value = str(value)
-            desc, unit = key_descriptions.get(key, ['', key, ''])[1:]
+            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
             if unit:
                 value += ' ' + unit
-            table.append((desc, value))
+            entry = {'value': value,
+                     'description': longdesc}
+            table.append((desc, entry))
     return {'type': 'table',
             'header': header,
             'rows': table}
@@ -77,11 +79,14 @@ def val2str(row, key: str, digits=2) -> str:
     return value
 
 
-def fig(filename: str, link: str = None) -> 'Dict[str, Any]':
+def fig(filename: str, link: str = None,
+        caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
     dct = {'type': 'figure', 'filename': filename}
     if link:
         dct['link'] = link
+    if caption:
+        dct['caption'] = caption
     return dct
 
 

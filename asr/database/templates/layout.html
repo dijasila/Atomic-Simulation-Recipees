@@ -7,8 +7,24 @@
 {% include 'asr/database/templates/style.html' %}
 <script>
 $(document).ready(function () {
-  $('[data-toggle="tooltip"]').tooltip()
-})
+
+    $(function () {
+        $('[data-toggle="popover"]').popover({
+            container: 'body'
+        });
+    });
+
+    $('.btn-block').on('click', function () {
+        let cls = $(this).attr('class');
+        let id = $(this).attr('id');
+        console.log(cls);
+        console.log(id);
+        $('.panel-collapse:visible [data-toggle="popover"]').tooltip({
+            container: 'body'
+        });
+    });
+});
+
 </script>
 {% block head %}
 {% endblock %}
