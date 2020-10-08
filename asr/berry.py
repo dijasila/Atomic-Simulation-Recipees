@@ -28,9 +28,9 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120, kperp: int = 7):
         dE_zy = a['dE_zy']
         dE_zx = a['dE_zx']
         if dE_zy > 0 or dE_zx > 0:
-            theta = np.pi / 2
+            theta = 90
             if dE_zy > dE_zx:
-                phi = np.pi / 2
+                phi = 90
 
     ND = np.sum(pbc)
 
