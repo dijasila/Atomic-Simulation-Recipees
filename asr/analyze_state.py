@@ -31,7 +31,6 @@ def main(state: int = 0,
     print('INFO: run fixdensity calculation')
     calc = GPAW('gs.gpw', txt='analyze_states.txt')
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
-    calc.get_potential_energy()
     if get_gapstates:
             print('INFO: evaluate gapstates ...')
             states = return_gapstates_fix(calc, spin=0)
