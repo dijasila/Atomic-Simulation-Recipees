@@ -1,3 +1,4 @@
+from typing import Union
 from asr.core import command, option, read_json
 import ase.units as units
 from math import sqrt
@@ -19,10 +20,10 @@ def get_wfs_overlap(i, f, calc_0, calc_q):
 
     overlap = wfs_q.gd.integrate(wf_0 * wf_q) * Bohr**3
 
-    ei = calc_q.get_eigenvalues(band=i, spin=0)
-    ej = calc_q.get_eigenvalues(band=j, spin=0)
+    ei = calc_q.get_eigenvalues(kpt=0, spin=0)[i]
+    ef = calc_q.get_eigenvalues(kpt=0, spin=0)[f]
 
-    eigenvalues = [ei, ej]
+    eigenvalues = [ei, ef]
 
     return overlap, eigenvalues
 
@@ -32,36 +33,45 @@ def get_wfs_overlap(i, f, calc_0, calc_q):
 @option('--npoints', help='How many displacement points.', type=int)
 @option('--wfs', nargs=2, type=int,
         help='Calculate the overlap of wfs between states i and f')
-def calculate(folder: str, npoints: int = 5, overlap: List[int] = None]):
-    """Interpolate the geometry of the structure in the current
-       folder with the displaced geometry in the 'folder' given
-       as input of the recipe.
-       The number of displacements between the two geometries
-       is set with the 'npoints' input, and the energy, the
-       modulus of the displacement and the overlap between the
-       wavefunctions is saved."""
+def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = None):
+    """Interpolate the geometry of the structure in the current folder with the 
+       displaced geometry in the 'folder' given as input of the recipe.
+       The number of displacements between the two geometries is set with the 
+       'npoints' input, and the energy, the modulus of the displacement and 
+       the overlap between the wavefunctions is saved (if wfs is set)."""
 
     from gpaw import GPAW, restart
 
     atoms, calc_0 = restart('gs.gpw', txt=None)
     atoms_Q, calc_Q = restart(folder + '/gs.gpw', txt=None)
-    params = calc.todict()
+
+    # if overlap is calculated do a fixed density calculation first
+    if wfs:
+        calc_0.fixed_density()
+
+    # set up calculator from the Q=0 geometry
+    params = calc_0.todict()
     calc_q = GPAW(**params)
     calc_q.set(txt='cc-diagram.txt')
+    calc_q.set(symmetry='off')
 
+    # percent of displacement from -100% to 100% with npoints
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
     m_a = atoms.get_masses()
     pos_ai = atoms.positions.copy()
 
+    # define the 1D coordinate
     delta_R = atoms_Q.positions - atoms.positions
     delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
+
     # check if there is difference in the two geometries
     assert delta_Q >= 0.005, 'No displacement between the two geometries!' 
     print('delta_Q', delta_Q)
 
-    # calculate zero-phonon line
+    # calculate the Zero Phonon Line
     zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
 
+    # quantities saved along the displacement
     Q_n = []
     energies_n = []
     overlap_n = []
@@ -71,6 +81,7 @@ def calculate(folder: str, npoints: int = 5, overlap: List[int] = None]):
         Q2 = (((displ * delta_R)**2).sum(axis=-1) * m_a).sum()
         Q_n.append(sqrt(Q2) * np.sign(displ))
         atoms.positions += displ * delta_R
+        atoms.set_calculator(calc_q)
         energy = atoms.get_potential_energy()
         print(displ, energy)
 
@@ -78,11 +89,13 @@ def calculate(folder: str, npoints: int = 5, overlap: List[int] = None]):
         #energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
 
+        # if the indices of the wfs are set the overlap is calculated
         if wfs is not None:
             i, f = wfs
             overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
             overlap_n.append(overlap)
             eigenvalues_n.append(eigenvalues)
+            print(overlap, eigenvalues)
             
 
     results = {'delta_Q': delta_Q,
@@ -110,8 +123,8 @@ def webpanel(row, key_descriptions):
 
 
 @command("asr.config_diagram",
-         webpanel=webpanel)#,
-         #dependencies=["asr.config_diagram@calculate"])
+         webpanel=webpanel,
+         dependencies=["asr.config_diagram@calculate"])
 @option('--folder1', help='Folder of the first parabola', type=str)
 @option('--folder2', help='Folder of the first parabola', type=str)
 def main(folder1: str = '.', folder2: str = 'excited'):
