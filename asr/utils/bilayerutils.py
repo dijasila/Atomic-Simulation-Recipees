@@ -17,6 +17,10 @@ def pretty_float(arr):
 
 
 def translation(x, y, z, rotated, base):
+    """Combine rotated with base by translation.
+
+    x, y, z are cartesian coordinates.
+    """
     stacked = base.copy()
     rotated = rotated.copy()
     rotated.translate([x, y, z])
@@ -24,6 +28,20 @@ def translation(x, y, z, rotated, base):
     stacked.wrap()
 
     return stacked
+
+
+def construct_bilayer(path, h=None):
+    from ase.io import read
+    from asr.core import read_json
+    
+    top_layer = read(f'{path}/toplayer.json')
+    base = read(f'{path}/../structure.json')
+
+    t = np.array(read_json(f'{path}/translation.json')['translation_vector']).astype(float)
+    if h is None:
+        h = read_json(f'{path}/results-asr.relax_bilayer.json')['optimal_height']
+
+    return translation(t[0], t[1], h, top_layer, base)
 
 
 def layername(formula, nlayers, U_cc, t_c):

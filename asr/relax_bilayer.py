@@ -23,6 +23,7 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
                              'width': 0.05},
                 poissonsolver={"dipolelayer": "xy"},
                 charge=0,
+                nbands="200%",
                 txt='relax_bilayer.txt')
     if settings['d3']:
         calc = DFTD3(dft=calc, cutoff=60)
