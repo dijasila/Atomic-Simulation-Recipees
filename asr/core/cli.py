@@ -188,7 +188,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     continue
                 elif update and not func.done:
                     continue
-                elif not Path(must_exist).exists():
+                elif must_exist and not Path(must_exist).exists():
                     continue
                 prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
                                job_num=job_num))
