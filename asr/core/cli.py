@@ -66,26 +66,12 @@ def cli():
 @click.option('--update', is_flag=True, default=False,
               help="Update existing results files. "
               "Only runs a recipe if it is already done.")
+@click.option('--must-exist', type=str,
+              help="Skip folder where this file doesn't exist.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
-        skip_if_done, dont_raise, update):
+        skip_if_done, dont_raise, update, must_exist):
     r"""Run recipe or python function in multiple folders.
-
-    Can run an ASR recipe or a python function. For example, the syntax
-    "asr run recipe" will run the relax recipe in the current folder.
-
-    Provide extra arguments to the recipe using 'asr run "recipe --arg1
-    --arg2"'.
-
-    XXX NO Run a recipe in parallel using 'asr run -p NCORES "recipe --arg1"'.
-
-    Run command in multiple folders using "asr run recipe folder1/ folder2/".
-    This is also compatible with input arguments to the current command
-    through 'asr run "recipe --arg1" folder1/ folder2/'.
-
-    If you dont actually wan't to run the command, i.e., if it is a
-    dangerous command, then use the "asr run --dry-run ..." syntax
-    where ... could be any of the above commands.
 
     Examples
     --------
@@ -122,7 +108,8 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
         'dont_raise': dont_raise,
         'dry_run': dry_run,
         'not_recipe': not_recipe,
-        'command': command
+        'command': command,
+        'must_exist': must_exist,
     }
     if njobs > 1:
         processes = []
@@ -154,7 +141,8 @@ def append_job(string: str, job_num: Union[int, None] = None):
 def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 skip_if_done: bool, dont_raise: bool,
                 job_num: Union[int, None] = None,
-                update: bool = False):
+                update: bool = False,
+                must_exist: Union[str, None] = None):
     """Run command in folders."""
     nfolders = len(folders)
     module, *args = command.split()
@@ -199,6 +187,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 if skip_if_done and func.done:
                     continue
                 elif update and not func.done:
+                    continue
+                elif not Path(must_exist).exists():
                     continue
                 prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
                                job_num=job_num))
