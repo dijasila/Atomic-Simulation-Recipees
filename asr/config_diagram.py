@@ -1,4 +1,5 @@
-from typing import Union
+from typing import Tuple
+from ase.parallel import parprint
 from asr.core import command, option, read_json
 import ase.units as units
 from math import sqrt
@@ -33,7 +34,7 @@ def get_wfs_overlap(i, f, calc_0, calc_q):
 @option('--npoints', help='How many displacement points.', type=int)
 @option('--wfs', nargs=2, type=int,
         help='Calculate the overlap of wfs between states i and f')
-def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = None):
+def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
     """Interpolate the geometry of the structure in the current folder with the 
        displaced geometry in the 'folder' given as input of the recipe.
        The number of displacements between the two geometries is set with the 
@@ -47,7 +48,7 @@ def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = N
 
     # if overlap is calculated do a fixed density calculation first
     if wfs:
-        calc_0.fixed_density()
+        calc_0 = calc_0.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
 
     # set up calculator from the Q=0 geometry
     params = calc_0.todict()
@@ -66,7 +67,7 @@ def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = N
 
     # check if there is difference in the two geometries
     assert delta_Q >= 0.005, 'No displacement between the two geometries!' 
-    print('delta_Q', delta_Q)
+    parprint('delta_Q', delta_Q)
 
     # calculate the Zero Phonon Line
     zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
@@ -83,7 +84,7 @@ def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = N
         atoms.positions += displ * delta_R
         atoms.set_calculator(calc_q)
         energy = atoms.get_potential_energy()
-        print(displ, energy)
+        parprint(displ, energy)
 
         atoms.positions = pos_ai
         #energy = 0.06155**2 / 2 * 15.4669**2 * Q2
@@ -95,7 +96,7 @@ def calculate(folder: str, npoints: int = 5, wfs: Union[Union[int,int],None] = N
             overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
             overlap_n.append(overlap)
             eigenvalues_n.append(eigenvalues)
-            print(overlap, eigenvalues)
+            parprint(overlap, eigenvalues)
             
 
     results = {'delta_Q': delta_Q,
