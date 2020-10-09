@@ -93,8 +93,6 @@ class Summary:
 
 
 def setup_app():
-    from ase.io.jsonio import MyEncoder
-    app.json_encoder = MyEncoder
 
     @app.route("/")
     def index():
@@ -113,6 +111,14 @@ def setup_app():
         assert project in projects
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
+
+    setup_data_endpoints()
+
+
+def setup_data_endpoints():
+    """Set endpoints for downloading data."""
+    from ase.io.jsonio import MyEncoder
+    app.json_encoder = MyEncoder
 
     @app.route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
@@ -135,8 +141,10 @@ def setup_app():
         uid_key = project['uid_key']
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
+        sorted_data = {key: value for key, value
+                       in sorted(row.data.items(), key=lambda x: x[0])}
         return render_template('asr/database/templates/data.html',
-                               data=row.data, uid=uid, project_name=project_name)
+                               data=sorted_data, uid=uid, project_name=project_name)
 
     @app.route('/<project_name>/row/<uid>/data/<filename>')
     def get_row_data_file(project_name: str, uid: str, filename: str):

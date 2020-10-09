@@ -44,11 +44,11 @@ $(document).ready(function () {
                 <a href="https://cmr.fysik.dtu.dk/">CMR</a>
               </li>
 	      <li>
-		<a href="https://cmr.fysik.dtu.dk/{{ p.name }}/{{ p.name }}.html">
+		<a href="https://cmr.fysik.dtu.dk/{{ project_name }}/{{ project_name }}.html">
 		  More information</a>
 	      </li>
 	      <li>
-		<a href="/{{ p.name }}/">Back to search page</a>
+		<a href="/{{ project_name }}/">Back to search page</a>
 	      </li>
             </ul>
           </div>
@@ -56,21 +56,9 @@ $(document).ready(function () {
       </div>
     </div> <!--end of container-->
 
-{% if project == 'c2db' %}
-C2DB-logo
-{% endif %}
-
 {% block content %}
 {% endblock %}
 
-<div class="text-center">
-This work is licensed under a
-<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">
-Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br/>
-<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">
-<img alt="Creative Commons License" style="border-width:0"
-src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>
-</div>
-
 </body>
 </html>
+1
