@@ -228,7 +228,10 @@ def gaps(calc, soc=True):
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis
 
-    ibzkpts = calc.get_ibz_k_points()
+    if soc:
+        ibzkpts = calc.get_bz_k_points()
+    else:
+        ibzkpts = calc.get_ibz_k_points()
 
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
@@ -249,7 +252,7 @@ def gaps(calc, soc=True):
 
     if soc:
         theta, phi = get_spin_axis()
-        _, efermi = calc2eigs(calc, ranks=[0], soc=True,
+        _, efermi = calc2eigs(calc, soc=True,
                               theta=theta, phi=phi)
     else:
         efermi = calc.get_fermi_level()
@@ -288,11 +291,11 @@ def get_gap_info(soc, direct, calc):
     # e1 is VBM, e2 is CBM
     if soc:
         theta, phi = get_spin_axis()
-        e_km, efermi = calc2eigs(calc, ranks=[0],
+        e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
         gap, km1, km2 = bandgap(eigenvalues=e_km, efermi=efermi, direct=direct,
-                                kpts=calc.get_ibz_k_points(), output=None)
+                                output=None)
         if km1[0] is not None:
             e1 = e_km[km1]
             e2 = e_km[km2]
