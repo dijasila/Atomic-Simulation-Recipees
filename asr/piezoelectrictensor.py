@@ -31,12 +31,12 @@ def webpanel(result, row, key_descriptions):
                    [0, 1, 2, 2, 2, 1]]
 
     etable = dict(
-        header=['Piezoelectric tensor', '', ''],
+        header=['Piezoelectric tensor (e/Å<sup>dim-1</sup>)', '', ''],
         type='table',
         rows=matrixtable(e_ij))
 
     e0table = dict(
-        header=['Clamped piezoelectric tensor', ''],
+        header=['Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)', ''],
         type='table',
         rows=matrixtable(e0_ij))
 

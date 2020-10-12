@@ -344,6 +344,7 @@ def plot_pdos(row, filename, soc=True,
         return
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
@@ -422,6 +423,7 @@ def plot_pdos(row, filename, soc=True,
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
     text = plt.text(x0, ef - row.get('evac', 0),
                     r'$E_\mathrm{F}$',
+                    fontsize=rcParams['font.size'] * 1.25,
                     ha='left',
                     va='bottom')
 

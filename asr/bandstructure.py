@@ -293,6 +293,7 @@ def bs_pbe(row,
            s=0.5):
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
@@ -371,6 +372,7 @@ def bs_pbe(row,
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef_soc - ref_soc),
+        fontsize=rcParams['font.size'] * 1.25,
         ha='left',
         va='bottom')
 

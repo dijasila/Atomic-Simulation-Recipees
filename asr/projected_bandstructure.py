@@ -305,6 +305,7 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     """
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
@@ -404,6 +405,20 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
                bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
                ncol=3, mode="expand", borderaxespad=0.)
+
+    xlim = ax.get_xlim()
+    x0 = xlim[1] * 0.01
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef - ref),
+        fontsize=mpl.rcParams['font.size'] * 1.25,
+        ha='left',
+        va='bottom')
+
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
 
     # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
