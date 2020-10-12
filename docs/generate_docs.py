@@ -132,7 +132,7 @@ def make_recipe_documentation(module):
              step_title,
              '^' * len(step_title),
              f'.. autofunction:: {module}.{step.__name__}',
-             '   :noindex:']
+             '   ']
         )
 
         th = get_type_hints(step.__wrapped__)
@@ -140,6 +140,8 @@ def make_recipe_documentation(module):
 
         if returns and returns is not ASRResult:
             rst.extend([
+                '',
+                '*Returns*',
                 '',
                 f'.. autoclass:: {returns.__module__}.{returns.__name__}',
                 '   :noindex:'
