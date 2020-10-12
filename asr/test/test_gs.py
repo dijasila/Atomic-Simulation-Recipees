@@ -15,7 +15,6 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     from ase.io import write
     from ase.parallel import world
     import gpaw
-    import gpaw.occupations
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")

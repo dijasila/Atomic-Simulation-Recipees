@@ -309,16 +309,14 @@ def main() -> Result:
         results.update(subresults)
 
     # Get the SO corrected GW QP energires
-    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis
-    bandrange = np.arange(lb, ub)
     theta, phi = get_spin_axis()
-    e_mk = get_soc_eigs(calc, gw_kn=eps_skn,
-                        bands=bandrange,
-                        return_spin=False,
-                        theta=theta, phi=phi)
+    soc = soc_eigenstates(calc, eigenvalues=eps_skn,
+                          n1=lb, n2=ub,
+                          theta=theta, phi=phi)
 
-    eps_skn = e_mk.transpose()[np.newaxis]  # e_skm, dummy spin index
+    eps_skn = soc.eigenvalues()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eigenvalues=eps_skn,
                              nelectrons=(calc.get_number_of_electrons()
                                          - 2 * lb),
@@ -328,8 +326,9 @@ def main() -> Result:
     gapd, p1d, p2d = bandgap(eigenvalues=eps_skn, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        kvbm = ibzkpts[p1[1]]
-        kcbm = ibzkpts[p2[1]]
+        bzkpts = calc.get_bz_k_points()
+        kvbm = bzkpts[p1[1]]
+        kcbm = bzkpts[p2[1]]
         vbm = eps_skn[p1]
         cbm = eps_skn[p2]
         subresults = {'vbm_gw': vbm,

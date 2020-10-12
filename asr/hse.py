@@ -11,12 +11,8 @@ from asr.core import command, option, read_json, ASRResult
 @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
     """Calculate HSE corrections."""
-    import gpaw.mpi as mpi
-
-    eigs = hse(kptdensity=kptdensity, emptybands=emptybands)
-    mpi.world.barrier()
-    eigs_soc = hse_spinorbit(eigs)
-    mpi.world.barrier()
+    eigs, calc = hse(kptdensity=kptdensity, emptybands=emptybands)
+    eigs_soc = hse_spinorbit(eigs, calc)
     results = {'hse_eigenvalues': eigs,
                'hse_eigenvalues_soc': eigs_soc}
     return results
@@ -24,7 +20,7 @@ def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
 
 # XXX move to utils? [also in asr.polarizability]
 def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
+    """Find reasonable monkhorst-pack size which hits high symmetry points."""
     from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
     size, offset = k2so(atoms=atoms, density=kptdensity)
     size[2] = 1
@@ -37,12 +33,11 @@ def get_kpts_size(atoms, kptdensity):
 
 def hse(kptdensity, emptybands):
     import numpy as np
-    import gpaw.mpi as mpi
     from gpaw import GPAW
     from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)
-    calc = GPAW('gs.gpw', txt=None, parallel={'band': 1, 'kpt': 1})
+    calc = GPAW('gs.gpw', parallel={'band': 1, 'kpt': 1})
     atoms = calc.get_atoms()
     pbc = atoms.pbc.tolist()
     ND = np.sum(pbc)
@@ -67,41 +62,27 @@ def hse(kptdensity, emptybands):
     e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
     e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
 
-    dct = {}
-    if mpi.world.rank == 0:
-        dct = dict(vxc_hse_skn=vxc_hse_skn,
-                   e_pbe_skn=e_pbe_skn,
-                   vxc_pbe_skn=vxc_pbe_skn,
-                   e_hse_skn=e_hse_skn)
-    return dct
+    dct = dict(vxc_hse_skn=vxc_hse_skn,
+               e_pbe_skn=e_pbe_skn,
+               vxc_pbe_skn=vxc_pbe_skn,
+               e_hse_skn=e_hse_skn)
+    return dct, calc
 
 
-def hse_spinorbit(dct):
-    import os
-    import numpy as np
-    import gpaw.mpi as mpi
-    from gpaw import GPAW
-    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+def hse_spinorbit(dct, calc):
+    from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
-    if not os.path.isfile('hse_nowfs.gpw'):
-        return
+    e_skn = dct.get('e_hse_skn')
+    dct_soc = {}
+    theta, phi = get_spin_axis()
 
-    ranks = [0]
-    comm = mpi.world.new_communicator(ranks)
-    if mpi.world.rank in ranks:
-        calc = GPAW('hse_nowfs.gpw', communicator=comm, txt=None)
-        e_skn = dct.get('e_hse_skn')
-        dct_soc = {}
-        theta, phi = get_spin_axis()
-
-        e_mk, s_kvm = get_soc_eigs(calc, gw_kn=e_skn, return_spin=True,
-                                   bands=np.arange(e_skn.shape[2]),
-                                   theta=theta, phi=phi)
-        dct_soc['e_hse_mk'] = e_mk
-        dct_soc['s_hse_mk'] = s_kvm[:, get_spin_index(), :].transpose()
-
-        return dct_soc
+    soc = soc_eigenstates(calc,
+                          eigenvalues=e_skn,
+                          theta=theta, phi=phi)
+    dct_soc['e_hse_mk'] = soc.eigenvalues().T
+    dct_soc['s_hse_mk'] = soc.spin_projections()[:, :, get_spin_index()].T
+    return dct_soc
 
 
 def MP_interpolate(calc, delta_skn, lb, ub):
@@ -111,9 +92,8 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     by interpolating a correction onto the PBE band structure.
     """
     import numpy as np
-    import gpaw.mpi as mpi
     from gpaw import GPAW
-    from gpaw.spinorbit import get_spinorbit_eigenvalues as get_soc_eigs
+    from gpaw.spinorbit import soc_eigenstates
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
     from asr.core import singleprec_dict
@@ -135,16 +115,12 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
-    ranks = [0]
-    comm = mpi.world.new_communicator(ranks)
-    if mpi.world.rank in ranks:
-        calc = GPAW('bs.gpw', communicator=comm, txt=None)
-        theta, phi = get_spin_axis()
-        e_int_mk, s_int_mk = get_soc_eigs(calc, gw_kn=e_int_skn,
-                                          return_spin=True,
-                                          bands=bandrange,
-                                          theta=theta, phi=phi)
-        dct.update(e_int_mk=e_int_mk, s_int_mk=s_int_mk)
+    calc = GPAW('bs.gpw')
+    theta, phi = get_spin_axis()
+    soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
+                          n1=lb, n2=ub,
+                          theta=theta, phi=phi)
+    dct.update(e_int_mk=soc.eigenvalues().T)
 
     results = {}
     results['bandstructure'] = singleprec_dict(dct)
@@ -290,7 +266,7 @@ def main() -> Result:
     from ase.dft.bandgap import bandgap
 
     # interpolate band structure
-    calc = GPAW('hse_nowfs.gpw', txt=None)
+    calc = GPAW('hse_nowfs.gpw')
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
@@ -301,7 +277,6 @@ def main() -> Result:
     results['__key_descriptions__'] = {}
     results_calc = read_json('results-asr.hse@calculate.json')
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
-    calc = GPAW('hse_nowfs.gpw', txt=None)
     ibzkpts = calc.get_ibz_k_points()
     efermi_nosoc = fermi_level(calc, eigenvalues=eps_skn,
                                nspins=eps_skn.shape[0])
@@ -332,13 +307,14 @@ def main() -> Result:
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
     efermi_soc = fermi_level(calc, eigenvalues=eps, nspins=2)
+    bzkpts = calc.get_bz_k_points()
     gap, p1, p2 = bandgap(eigenvalues=eps, efermi=efermi_soc,
                           output=None)
     gapd, p1d, p2d = bandgap(eigenvalues=eps, efermi=efermi_soc,
                              direct=True, output=None)
     if gap:
-        kvbm = ibzkpts[p1[1]]
-        kcbm = ibzkpts[p2[1]]
+        kvbm = bzkpts[p1[1]]
+        kcbm = bzkpts[p2[1]]
         vbm = eps[p1]
         cbm = eps[p2]
         subresults = {'vbm_hse': vbm,

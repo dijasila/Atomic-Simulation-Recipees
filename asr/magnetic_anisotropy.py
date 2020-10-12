@@ -1,10 +1,11 @@
 """Magnetic anisotropy."""
 from asr.core import command, read_json, ASRResult
+from math import pi
 
 
 def get_spin_axis():
     anis = read_json('results-asr.magnetic_anisotropy.json')
-    return anis['theta'], anis['phi']
+    return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
 def get_spin_index():
@@ -23,7 +24,7 @@ def spin_axis(theta, phi):
     import numpy as np
     if theta == 0:
         return 'z'
-    elif np.allclose(phi, np.pi / 2):
+    elif np.allclose(phi, 90):
         return 'y'
     else:
         return 'x'
@@ -71,13 +72,10 @@ def main() -> Result:
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    import numpy as np
-    from asr.core import file_barrier, read_json
-    from gpaw.mpi import world, serial_comm
-    from gpaw.spinorbit import get_anisotropy
+    from asr.core import read_json
+    from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
-    from gpaw.utilities.ibz2bz import ibz2bz
-    from pathlib import Path
 
     magstateresults = read_json('results-asr.magstate.json')
     magstate = magstateresults['magstate']
@@ -106,43 +104,35 @@ def main() -> Result:
         results['spin_axis'] = 'z'
         return results
 
-    with file_barrier(['gs_nosym.gpw']):
-        ibz2bz('gs.gpw', 'gs_nosym.gpw')
+    calc = GPAW('gs.gpw')
     width = 0.001
-    nbands = None
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
-    E_x = get_anisotropy(calc, theta=np.pi / 2, nbands=nbands,
-                         width=width)
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
-    E_z = get_anisotropy(calc, theta=0.0, nbands=nbands, width=width)
-    calc = GPAW('gs_nosym.gpw', communicator=serial_comm, txt=None)
-    E_y = get_anisotropy(calc, theta=np.pi / 2, phi=np.pi / 2,
-                         nbands=nbands, width=width)
+    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
+    Ex, Ey, Ez = (soc_eigenstates(calc,
+                                  theta=theta, phi=phi,
+                                  occcalc=occcalc).calculate_band_energy()
+                  for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
-    dE_zx = E_z - E_x
-    dE_zy = E_z - E_y
+    dE_zx = Ez - Ex
+    dE_zy = Ez - Ey
 
     DE = max(dE_zx, dE_zy)
     theta = 0
     phi = 0
     if DE > 0:
-        theta = np.pi / 2
+        theta = 90
         if dE_zy > dE_zx:
-            phi = np.pi / 2
+            phi = 90
 
     axis = spin_axis(theta, phi)
 
     results.update({'spin_axis': axis,
-                    'theta': theta,
-                    'phi': phi,
-                    'E_x': E_x * 1e3,
-                    'E_y': E_y * 1e3,
-                    'E_z': E_z * 1e3,
+                    'theta': theta / 180 * pi,
+                    'phi': phi / 180 * pi,
+                    'E_x': Ex * 1e3,
+                    'E_y': Ey * 1e3,
+                    'E_z': Ez * 1e3,
                     'dE_zx': dE_zx * 1e3,
                     'dE_zy': dE_zy * 1e3})
-    world.barrier()
-    if world.rank == 0:
-        Path('gs_nosym.gpw').unlink()
     return results
 
 

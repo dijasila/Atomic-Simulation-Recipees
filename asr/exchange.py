@@ -11,7 +11,7 @@ from asr.core import command, option, file_barrier, ASRResult
 def calculate(gs: str = 'gs.gpw') -> ASRResult:
     """Calculate two spin configurations."""
     from gpaw import GPAW
-    from asr.core import magnetic_atoms
+    from asr.utils import magnetic_atoms
 
     calc = GPAW(gs, fixdensity=False, txt=None)
     atoms = calc.atoms
@@ -76,18 +76,11 @@ def get_parameters(gs, exchange, txt=False,
                    dis_cut=0.2, line=False, a0=None):
     """Extract Heisenberg parameters."""
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
-    from gpaw.spinorbit import get_anisotropy
+    from gpaw.spinorbit import soc_eigenstates
     from ase.dft.bandgap import bandgap
-    from gpaw.utilities.ibz2bz import ibz2bz
 
-    with file_barrier(['gs_2mag_nosym.gpw']):
-        ibz2bz(gs, 'gs_2mag_nosym.gpw')
-    with file_barrier(['exchange_nosym.gpw']):
-        ibz2bz(exchange, 'exchange_nosym.gpw')
-
-    calc_gs_2mag = GPAW('gs_2mag_nosym.gpw', communicator=serial_comm, txt=None)
-    calc_exchange = GPAW('exchange_nosym.gpw', communicator=serial_comm, txt=None)
+    calc_gs_2mag = GPAW(gs)
+    calc_exchange = GPAW(exchange)
     m_gs = calc_gs_2mag.get_magnetic_moment()
     m_ex = calc_exchange.get_magnetic_moment()
     if np.abs(m_gs) > np.abs(m_ex):
@@ -101,7 +94,6 @@ def get_parameters(gs, exchange, txt=False,
         calc_afm = calc_gs_2mag
         calc_fm = calc_exchange
 
-    nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
     if a0 is None:
         a0 = np.argmax(np.abs(calc_fm.get_magnetic_moments()))
@@ -120,23 +112,17 @@ def get_parameters(gs, exchange, txt=False,
 
     gap_fm, p1, p2 = bandgap(calc_fm, output=None)
     gap_afm, p1, p2 = bandgap(calc_afm, output=None)
-    if gap_fm > 0 and gap_afm > 0:
-        width = 0.001
-    else:
-        width = None
 
-    E_fm_x = get_anisotropy(calc_fm, theta=np.pi / 2, phi=0,
-                            width=width, nbands=nbands) / 2
-    E_fm_y = get_anisotropy(calc_fm, theta=np.pi / 2, phi=np.pi / 2,
-                            width=width, nbands=nbands) / 2
-    E_fm_z = get_anisotropy(calc_fm, theta=0, phi=0,
-                            width=width, nbands=nbands) / 2
-    E_afm_x = get_anisotropy(calc_afm, theta=np.pi / 2, phi=0,
-                             width=width, nbands=nbands) / 2
-    E_afm_y = get_anisotropy(calc_afm, theta=np.pi / 2, phi=np.pi / 2,
-                             width=width, nbands=nbands) / 2
-    E_afm_z = get_anisotropy(calc_afm, theta=0, phi=0,
-                             width=width, nbands=nbands) / 2
+    E_fm_x, E_fm_y, E_fm_z = (
+        soc_eigenstates(calc_fm,
+                        theta=theta, phi=phi).calculate_band_energy() / 2
+        for theta, phi in [(90, 0), (90, 90), (0, 0)])
+
+    E_afm_x, E_afm_y, E_afm_z = (
+        soc_eigenstates(calc_afm,
+                        theta=theta, phi=phi).calculate_band_energy() / 2
+        for theta, phi in [(90, 0), (90, 90), (0, 0)])
+
     E_fm_x = (E_fm_x + E_fm_y) / 2
     E_afm_x = (E_afm_x + E_afm_y) / 2
 
