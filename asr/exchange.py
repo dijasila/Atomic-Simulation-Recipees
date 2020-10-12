@@ -1,5 +1,5 @@
 import numpy as np
-from asr.core import command, option, file_barrier, ASRResult
+from asr.core import command, option, ASRResult
 
 
 @command(module='asr.exchange',
