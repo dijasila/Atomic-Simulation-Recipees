@@ -17,9 +17,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('..'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- General configuration ------------------------------------------------
@@ -33,7 +33,9 @@
 # ones.
 from pathlib import Path
 import shutil
+from docs import generate_docs
 
+generate_docs.generate_docs()
 
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
@@ -42,16 +44,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.doctest',
               'sphinxcontrib.programoutput',
-              # 'autoapi.extension',
               ]
-# autoapi_type = 'python'
-# autoapi_dirs = ['../asr']
-# autoapi_root = 'src/autoapi'
-# autoapi_keep_files = True
-# autoapi_add_toctree_entry = False
-
-# Hack for autosummary which doesn't update generated docs for some
-# reason
 
 napoleon_numpy_docstring = True
 autosummary_generate = True

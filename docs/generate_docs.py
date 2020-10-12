@@ -6,6 +6,9 @@ import importlib
 import inspect
 import os
 
+DOCSDIR = Path('.')
+ROOTDIR = DOCSDIR / '..'
+
 
 def get_modules_from_path(path: str, recursive=False):
     """Get modules from path."""
@@ -23,7 +26,7 @@ def get_modules_from_path(path: str, recursive=False):
 
 def get_names_from_paths(paths):
     """Get module names from path."""
-    return [str(path.with_suffix('')).replace('/', '.')
+    return [str(path.relative_to(ROOTDIR).with_suffix('')).replace('/', '.')
             for path in paths]
 
 
@@ -146,7 +149,7 @@ def make_recipe_documentation(module):
 
 
 def generate_api_summary():
-    """Generate docs/src/generated/api.rst."""
+    """Generate src/generated/api.rst."""
     rst = ['.. _API reference:',
            '',
            '=============',
@@ -158,11 +161,13 @@ def generate_api_summary():
            '']
 
     for package, title, link, recursive in [
-            ('asr', 'Property recipes', 'api recipes', False),
-            ('asr/setup', 'Setup recipes', 'api setup recipes', False),
-            ('asr/database', 'Database sub-package', 'api database', False),
-            ('asr/core', 'Core sub-package', 'api core', True),
-            ('asr/test', 'Test sub-package', 'api test', True)]:
+            (ROOTDIR / 'asr', 'Property recipes', 'api recipes', False),
+            (ROOTDIR / 'asr/setup', 'Setup recipes',
+             'api setup recipes', False),
+            (ROOTDIR / 'asr/database', 'Database sub-package',
+             'api database', False),
+            (ROOTDIR / 'asr/core', 'Core sub-package', 'api core', True),
+            (ROOTDIR / 'asr/test', 'Test sub-package', 'api test', True)]:
         paths = get_modules_from_path(package, recursive=recursive)
         names = get_names_from_paths(paths)
         if paths:
@@ -170,12 +175,12 @@ def generate_api_summary():
             rst.extend(section)
 
     rst = '\n'.join(rst)
-    Path('docs/src/generated/api.rst').write_text(rst)
+    write_file('api.rst', rst)
 
 
 def get_recipe_modules():
     paths = []
-    for package in ['asr', 'asr/setup']:
+    for package in ['../asr', '../asr/setup']:
         paths.extend(get_modules_from_path(package))
 
     names = get_names_from_paths(paths)
@@ -205,21 +210,29 @@ def generate_recipe_summary():
         + [f'   recipe_{module}.rst' for module in modules]
     )
     rst = '\n'.join(rst)
-    Path('docs/src/generated/recipes.rst').write_text(rst)
+    write_file('recipes.rst', rst)
+
+
+def write_file(filename, rst):
+    """Write generated rst file."""
+    filepath = DOCSDIR / Path(f'src/generated/{filename}')
+    print(f'Writing: {filepath}')
+    filepath.write_text(rst)
 
 
 def generate_stub_pages():
     """Generate module stub pages."""
     modules = get_recipe_modules()
+    print(f'Found asr modules: {modules}')
     for module in modules:
         rst = make_recipe_documentation(module)
         rst = '\n'.join(rst)
-        Path(f'docs/src/generated/recipe_{module}.rst').write_text(rst)
+        write_file(f'recipe_{module}.rst', rst)
 
 
 def empty_generated_files():
     """Clear previously generated files."""
-    directory = Path('docs/src/generated')
+    directory = DOCSDIR / Path('src/generated')
     if not directory.is_dir():
         directory.mkdir()
         return
@@ -230,7 +243,9 @@ def empty_generated_files():
         directory.mkdir()
 
 
-if __name__ == '__main__':
+def generate_docs():
+    """Generate documentation."""
+    print('Generating ASR documentation.')
     empty_generated_files()
     generate_api_summary()
     generate_recipe_summary()
