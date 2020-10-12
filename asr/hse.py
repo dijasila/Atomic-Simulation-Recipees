@@ -234,11 +234,11 @@ def webpanel(result, row, key_descriptions):
              'sort': 15}
 
     if row.get('gap_hse'):
-        rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+        hse_table = table(row, 'Electronic properties', ['gap_hse'],
+                          key_descriptions)
+        # rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
+                   'columns': [[hse_table]],
                    'sort': 11}
         return [panel, summary]
 

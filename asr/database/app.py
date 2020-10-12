@@ -7,7 +7,8 @@ from pathlib import Path
 
 from ase.db import connect
 from ase.db.app import app, projects
-from flask import render_template, send_file
+from flask import render_template, send_file, Response, jsonify
+import flask.json
 import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
@@ -93,6 +94,7 @@ class Summary:
 
 
 def setup_app():
+
     @app.route("/")
     def index():
         return render_template(
@@ -110,6 +112,58 @@ def setup_app():
         assert project in projects
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
+
+    setup_data_endpoints()
+
+
+def setup_data_endpoints():
+    """Set endpoints for downloading data."""
+    from ase.io.jsonio import MyEncoder
+    app.json_encoder = MyEncoder
+
+    @app.route('/<project_name>/row/<uid>/all_data')
+    def get_all_data(project_name: str, uid: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        content = flask.json.dumps(row.data)
+        return Response(
+            content,
+            mimetype='application/json',
+            headers={'Content-Disposition':
+                     f'attachment;filename={uid}_data.json'})
+
+    @app.route('/<project_name>/row/<uid>/data')
+    def show_row_data(project_name: str, uid: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        sorted_data = {key: value for key, value
+                       in sorted(row.data.items(), key=lambda x: x[0])}
+        return render_template('asr/database/templates/data.html',
+                               data=sorted_data, uid=uid, project_name=project_name)
+
+    @app.route('/<project_name>/row/<uid>/data/<filename>')
+    def get_row_data_file(project_name: str, uid: str, filename: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        return jsonify(row.data.get(filename))
+
+
+@app.template_filter()
+def asr_sort_key_descriptions(value):
+    """Sort column drop down menu."""
+    def sort_func(item):
+        return item[1][1]
+
+    return sorted(value.items(), key=sort_func)
 
 
 def handle_query(args):
@@ -149,6 +203,11 @@ def initialize_project(database):
             row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+        "table_template": str(
+            metadata.get(
+                "table_template", f"asr/database/templates/table.html",
+            )
+        ),
         "search_template": str(
             metadata.get(
                 "search_template", "asr/database/templates/search.html"
