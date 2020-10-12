@@ -1,6 +1,7 @@
 from ase.io import read, write
 from asr.core import command, option
 from gpaw import GPAW, restart
+from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
 
 
 @command(module='asr.analyze_state',
@@ -47,11 +48,17 @@ def main(state: int = 0,
             fname = 'wf.{0}_{1}.cube'.format(band, 1)
             write(fname, atoms, data=wf)
 
+    print('INFO: Calculating dipole matrix elements among gap states.')
+    d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1]+1)
+
     if analyze:
         # To be implemented
         print('INFO: analyze chosen states.')
 
-    return None
+    results = {'states': states,
+               'dipole': d_svnm}
+
+    return results
 
 
 def return_gapstates(calc_def, spin=0):
