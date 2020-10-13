@@ -1,5 +1,6 @@
 """Electronic ground state properties."""
-from asr.core import command, option, DictStr, ASRResult
+from asr.core import command, option, DictStr, ASRResult, set_docstring
+import numpy as np
 
 
 @command(module='asr.gs',
@@ -26,7 +27,6 @@ def calculate(calculator: dict = {
     for storing any derived quantities. See asr.gs@postprocessing for more
     information.
     """
-    import numpy as np
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
     from asr.relax import set_initial_magnetic_moments
@@ -130,7 +130,44 @@ def bz_with_band_extremums(row, fname):
     plt.savefig(fname)
 
 
+@set_docstring
 class Result(ASRResult):
+
+    forces: np.ndarray
+    stresses: np.ndarray
+    etot: float
+    evac: float
+    evacdiff: float
+    dipz: float
+    efermi: float
+    gap: float
+    vbm: float
+    cbm: float
+    gap_dir: float
+    vbm_dir: float
+    cbm_dir: float
+    gap_dir_nosoc: float
+    gap_nosoc: float
+    gaps_nosoc: dir
+
+    key_descriptions = dict(
+        forces='Forces on atoms [eV/Angstrom].',
+        stresses='Stress on unit cell [eV/Angstrom^dim].',
+        etot='Total energy [eV].',
+        evac='Vacuum level [eV].',
+        evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
+        dipz='Out-of-plane dipole [e * Ang].',
+        efermi='Fermi level [eV].',
+        gap='Band gap [eV].',
+        vbm='Valence band maximum [eV].',
+        cbm='Conduction band minimum [eV].',
+        gap_dir='Direct band gap [eV].',
+        vbm_dir='Direct valence band maximum [eV].',
+        cbm_dir='Direct conduction band minimum [eV].',
+        gap_dir_nosoc='Direct gap without SOC [eV].',
+        gap_nosoc='Gap without SOC [eV].',
+        gaps_nosoc='Container for results without SOC.'
+    )
 
     formats = {"ase_webpanel": webpanel}
 
@@ -143,7 +180,6 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    import numpy as np
     from ase.io import read
     from asr.calculators import get_calculator
     from gpaw.mpi import serial_comm
@@ -197,26 +233,6 @@ def main() -> Result:
     for setup in calc.setups:
         fingerprint[setup.symbol] = setup.fingerprint
     results['__setup_fingerprints__'] = fingerprint
-    results['__key_descriptions__'] = {
-        # Saved arrays
-        'forces': 'Forces on atoms [eV/Angstrom]',
-        'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-        # Key value pairs
-        'etot': 'KVP: Total energy (Tot. En.) [eV]',
-        'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-        'evacdiff': 'KVP: Vacuum level shift (Vacuum level shift) [eV]',
-        'dipz': 'KVP: Out-of-plane dipole [e * Ang]',
-        'efermi': 'KVP: Fermi level (Fermi level) [eV]',
-        'gap': 'KVP: Band gap (Band gap) [eV]',
-        'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
-        'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
-        'gap_dir': 'KVP: Direct band gap (Dir. band gap) [eV]',
-        'vbm_dir': ('KVP: Direct valence band maximum '
-                    '(Dir. val. band max.) [eV]'),
-        'cbm_dir': ('KVP: Direct conduction band minimum '
-                    '(Dir. cond. band max.) [eV]'),
-        'gap_dir_nosoc': ('KVP: Direct gap without SOC '
-                          '(Dir. gap wo. soc.) [eV]')}
 
     return results
 

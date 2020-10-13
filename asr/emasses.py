@@ -980,6 +980,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             k-points in cartesian coordinates (in units of 1 / Bohr)
         eps_k: (nk,)-shape ndarray
             eigenvalues (in units of Hartree)
+
     Returns
     -------
         out: dct

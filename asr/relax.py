@@ -42,7 +42,7 @@ Relax using the LDA exchange-correlation functional
 
 
 """
-from typing import List
+import typing
 from pathlib import Path
 import numpy as np
 from ase.io import write, Trajectory
@@ -271,11 +271,11 @@ class Result(ASRResult):
     version: int = 0
 
     atoms: Atoms
-    images: List[Atoms]
+    images: typing.List[Atoms]
     etot: float
     edft: float
     spos: np.ndarray
-    symbols: List[str]
+    symbols: typing.List[str]
     a: float
     b: float
     c: float
@@ -330,7 +330,7 @@ def main(atoms: Atoms,
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
                              'charge': 0},
-         tmp_atoms: Atoms = None,
+         tmp_atoms: typing.Optional[Atoms] = None,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
@@ -339,10 +339,30 @@ def main(atoms: Atoms,
          enforce_symmetry: bool = True) -> Result:
     """Relax atomic positions and unit cell.
 
-    By default, this recipe takes the atomic structure in
-    'unrelaxed.json' and relaxes the structure including the DFTD3 van
-    der Waals correction. The relaxed structure is saved to
-    `structure.json` which can be processed by other recipes.
+    The relaxed structure is saved to `structure.json` which can be processed
+    by other recipes.
+
+    Parameters
+    ----------
+    atoms
+        Atomic structure to relax.
+    calculator
+        Calculator dictionary description.
+    tmp_atoms
+        Atoms from a restarted calculation.
+    tmp_atoms_file
+        Filename to save relaxed trajectory in.
+    d3
+        Relax using DFTD3.
+    fixcell
+        Fix cell when relaxing, thus only relaxing atomic positions.
+    allow_symmetry_breaking
+        Allow structure to break symmetry.
+    fmax
+        Maximum force tolerance.
+    enforce_symmetry
+        Enforce symmetries. When enabled, the atomic structure, forces and
+        stresses will be symmetrized at each step of the relaxation.
 
     """
     from ase.calculators.calculator import get_calculator_class

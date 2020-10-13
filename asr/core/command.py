@@ -183,7 +183,7 @@ class ASRCommand:
 
         import inspect
         sig = inspect.signature(self._main)
-        self.signature = sig
+        self.__signature__ = sig
 
         # Setup the CLI
         functools.update_wrapper(self, self._main)
@@ -191,14 +191,14 @@ class ASRCommand:
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
         myparams = []
-        for key, value in self.signature.parameters.items():
+        for key, value in self.__signature__.parameters.items():
             assert key in self.myparams, \
                 f'Missing description for param={key}.'
             myparams.append(key)
 
         # Check that all annotated parameters can be found in the
         # actual function signature.
-        myparams = [k for k, v in self.signature.parameters.items()]
+        myparams = [k for k, v in self.__signature__.parameters.items()]
         for key in self.myparams:
             assert key in myparams, f'param={key} is unknown.'
 
@@ -206,7 +206,7 @@ class ASRCommand:
             # Read defaults from params.json.
             paramsettings = read_json('params.json').get(self.name, {})
             if paramsettings:
-                signature_parameters = dict(self.signature.parameters)
+                signature_parameters = dict(self.__signature__.parameters)
                 for key, new_default in paramsettings.items():
                     assert key in signature_parameters, \
                         f'Unknown param in params.json: param={key}.'
@@ -214,11 +214,11 @@ class ASRCommand:
                     signature_parameters[key] = parameter.replace(
                         default=new_default)
 
-                new_signature = self.signature.replace(
+                new_signature = self.__signature__.replace(
                     parameters=[val for val in signature_parameters.values()])
                 return new_signature
 
-        return self.signature
+        return self.__signature__
 
     def get_defaults(self):
         """Get default parameters based on signature and params.json."""

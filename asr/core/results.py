@@ -209,8 +209,22 @@ def get_object_types(obj):
 
 
 def format_key_description_pair(key: str, attr_type: type, description: str):
-    """Format a key-type-description for a docstring."""
-    return (f'{key}: {attr_type}\n'
+    """Format a key-type-description for a docstring.
+
+    Parameters
+    ----------
+    key
+        Key name.
+    attr_type
+        Key type.
+    description
+        Documentation of key.
+    """
+    if attr_type.__module__ == 'builtins':
+        type_desc = attr_type.__name__
+    else:
+        type_desc = f'{attr_type.__module__}.{attr_type.__name__}'
+    return (f'{key}: {type_desc}\n'
             f'    {description}')
 
 

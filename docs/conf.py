@@ -38,12 +38,13 @@ from docs import generate_docs
 generate_docs.generate_docs()
 
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.napoleon',
               'sphinx.ext.autosummary',
               'sphinx.ext.viewcode',
               'sphinx.ext.intersphinx',
-              'sphinx.ext.napoleon',
               'sphinx.ext.doctest',
               'sphinxcontrib.programoutput',
+              'sphinx_autodoc_typehints',
               ]
 
 napoleon_numpy_docstring = True
@@ -191,3 +192,9 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
+
+# Configure extensions
+autodoc_typehints = 'description'
+
+typehints_fully_qualified = True
+always_document_param_types = True
