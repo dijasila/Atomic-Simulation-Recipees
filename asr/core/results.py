@@ -72,7 +72,7 @@ def find_class_matching_version(returns, version):
     Walks through the class hierarchy defined by returns.prev_version and
     searches for class fulfilling returns.version == version.
 
-    Raises :py:exception:`UnknownASRResultFormat` if no matching result is
+    Raises :py:exc:`UnknownASRResultFormat` if no matching result is
     found.
 
     """
