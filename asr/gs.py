@@ -1,6 +1,7 @@
 """Electronic ground state properties."""
 from asr.core import command, option, DictStr, ASRResult, set_docstring
 import numpy as np
+import typing
 
 
 @command(module='asr.gs',
@@ -131,32 +132,25 @@ def bz_with_band_extremums(row, fname):
 
 
 @set_docstring
-class Result(ASRResult):
+class GapsResult(ASRResult):
 
-    forces: np.ndarray
-    stresses: np.ndarray
-    etot: float
-    evac: float
-    evacdiff: float
-    dipz: float
-    efermi: float
     gap: float
     vbm: float
     cbm: float
     gap_dir: float
     vbm_dir: float
     cbm_dir: float
-    gap_dir_nosoc: float
-    gap_nosoc: float
-    gaps_nosoc: dir
+    k_vbm_c: typing.Tuple[float, float, float]
+    k_cbm_c: typing.Tuple[float, float, float]
+    k_vbm_dir_c: typing.Tuple[float, float, float]
+    k_cbm_dir_c: typing.Tuple[float, float, float]
+    skn1: typing.Tuple[int, int, int]
+    skn2: typing.Tuple[int, int, int]
+    skn1_dir: typing.Tuple[int, int, int]
+    skn2_dir: typing.Tuple[int, int, int]
+    efermi: float
 
-    key_descriptions = dict(
-        forces='Forces on atoms [eV/Angstrom].',
-        stresses='Stress on unit cell [eV/Angstrom^dim].',
-        etot='Total energy [eV].',
-        evac='Vacuum level [eV].',
-        evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
-        dipz='Out-of-plane dipole [e * Ang].',
+    key_descriptions: typing.Dict[str, str] = dict(
         efermi='Fermi level [eV].',
         gap='Band gap [eV].',
         vbm='Valence band maximum [eV].',
@@ -164,80 +158,18 @@ class Result(ASRResult):
         gap_dir='Direct band gap [eV].',
         vbm_dir='Direct valence band maximum [eV].',
         cbm_dir='Direct conduction band minimum [eV].',
-        gap_dir_nosoc='Direct gap without SOC [eV].',
-        gap_nosoc='Gap without SOC [eV].',
-        gaps_nosoc='Container for results without SOC.'
+        k_vbm_c='Scaled k-point coordinates of valence band maximum (VBM).',
+        k_cbm_c='Scaled k-point coordinates of conduction band minimum (CBM).',
+        k_vbm_dir_c='Scaled k-point coordinates of direct valence band maximum (VBM).',
+        k_cbm_dir_c='Scaled k-point coordinates of direct calence band minimum (CBM).',
+        skn1="(spin,k-index,band-index)-tuple for valence band maximum.",
+        skn2="(spin,k-index,band-index)-tuple for conduction band minimum.",
+        skn1_dir="(spin,k-index,band-index)-tuple for direct valence band maximum.",
+        skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
     )
 
-    formats = {"ase_webpanel": webpanel}
 
-
-@command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
-         returns=Result)
-def main() -> Result:
-    """Extract derived quantities from groundstate in gs.gpw."""
-    from ase.io import read
-    from asr.calculators import get_calculator
-    from gpaw.mpi import serial_comm
-
-    # Just some quality control before we start
-    atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
-                            communicator=serial_comm)
-    pbc = atoms.pbc
-    ndim = np.sum(pbc)
-
-    if ndim == 2:
-        assert not pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        # For 2D materials we check that the calculater used a dipole
-        # correction if the material has an out-of-plane dipole
-
-        # Small hack
-        atoms = calc.atoms
-        atoms.calc = calc
-        evacdiffmin = 10e-3
-        if evacdiff(calc.atoms) > evacdiffmin:
-            assert calc.todict().get('poissonsolver', {}) == \
-                {'dipolelayer': 'xy'}, \
-                ('The ground state has a finite dipole moment along aperiodic '
-                 'axis but calculation was without dipole correction.')
-
-    # Now that some checks are done, we can extract information
-    forces = calc.get_property('forces', allow_calculation=False)
-    stresses = calc.get_property('stress', allow_calculation=False)
-    etot = calc.get_potential_energy()
-
-    results = {'forces': forces,
-               'stresses': stresses,
-               'etot': etot}
-
-    results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
-    results['gap_nosoc'] = results['gaps_nosoc']['gap']
-    results.update(gaps(calc, soc=True))
-    # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2:
-        vac = vacuumlevels(atoms, calc)
-        results['vacuumlevels'] = vac
-        results['dipz'] = vac['dipz']
-        results['evac'] = vac['evacmean']
-        results['evacdiff'] = vac['evacdiff']
-        results['workfunction'] = results['evac'] - results['efermi']
-
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-    results['__setup_fingerprints__'] = fingerprint
-
-    return results
-
-
-def gaps(calc, soc=True):
+def gaps(calc, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -273,23 +205,21 @@ def gaps(calc, soc=True):
     else:
         efermi = calc.get_fermi_level()
 
-    subresults = {'gap': evbm_ecbm_gap[2],
-                  'vbm': evbm_ecbm_gap[0],
-                  'cbm': evbm_ecbm_gap[1],
-                  'gap_dir': evbm_ecbm_direct_gap[2],
-                  'vbm_dir': evbm_ecbm_direct_gap[0],
-                  'cbm_dir': evbm_ecbm_direct_gap[1],
-                  'k_vbm_c': k_vbm_c,
-                  'k_cbm_c': k_cbm_c,
-                  'k_vbm_dir_c': direct_k_vbm_c,
-                  'k_cbm_dir_c': direct_k_cbm_c,
-                  'skn1': skn_vbm,
-                  'skn2': skn_cbm,
-                  'skn1_dir': direct_skn_vbm,
-                  'skn2_dir': direct_skn_cbm,
-                  'efermi': efermi}
-
-    return subresults
+    return GapsResult(gap=evbm_ecbm_gap[2],
+                      vbm=evbm_ecbm_gap[0],
+                      cbm=evbm_ecbm_gap[1],
+                      gap_dir=evbm_ecbm_direct_gap[2],
+                      vbm_dir=evbm_ecbm_direct_gap[0],
+                      cbm_dir=evbm_ecbm_direct_gap[1],
+                      k_vbm_c=k_vbm_c,
+                      k_cbm_c=k_cbm_c,
+                      k_vbm_dir_c=direct_k_vbm_c,
+                      k_cbm_dir_c=direct_k_cbm_c,
+                      skn1=skn_vbm,
+                      skn2=skn_cbm,
+                      skn1_dir=direct_skn_vbm,
+                      skn2_dir=direct_skn_cbm,
+                      efermi=efermi)
 
 
 def get_1bz_k(ibzkpts, calc, k_index):
@@ -390,6 +320,113 @@ def evacdiff(atoms):
     evacsplit = 4 * np.pi * dipz / A * Hartree
 
     return evacsplit
+
+
+@set_docstring
+class Result(ASRResult):
+
+    forces: np.ndarray
+    stresses: np.ndarray
+    etot: float
+    evac: float
+    evacdiff: float
+    dipz: float
+    efermi: float
+    gap: float
+    vbm: float
+    cbm: float
+    gap_dir: float
+    vbm_dir: float
+    cbm_dir: float
+    gap_dir_nosoc: float
+    gap_nosoc: float
+    gaps_nosoc: GapsResult
+
+    key_descriptions = dict(
+        forces='Forces on atoms [eV/Angstrom].',
+        stresses='Stress on unit cell [eV/Angstrom^dim].',
+        etot='Total energy [eV].',
+        evac='Vacuum level [eV].',
+        evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
+        dipz='Out-of-plane dipole [e * Ang].',
+        efermi='Fermi level [eV].',
+        gap='Band gap [eV].',
+        vbm='Valence band maximum [eV].',
+        cbm='Conduction band minimum [eV].',
+        gap_dir='Direct band gap [eV].',
+        vbm_dir='Direct valence band maximum [eV].',
+        cbm_dir='Direct conduction band minimum [eV].',
+        gap_dir_nosoc='Direct gap without SOC [eV].',
+        gap_nosoc='Gap without SOC [eV].',
+        gaps_nosoc='Container for results without SOC.'
+    )
+
+    formats = {"ase_webpanel": webpanel}
+
+
+@command(module='asr.gs',
+         requires=['gs.gpw', 'structure.json',
+                   'results-asr.magnetic_anisotropy.json'],
+         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
+                       'asr.structureinfo'],
+         returns=Result)
+def main() -> Result:
+    """Extract derived quantities from groundstate in gs.gpw."""
+    from ase.io import read
+    from asr.calculators import get_calculator
+    from gpaw.mpi import serial_comm
+
+    # Just some quality control before we start
+    atoms = read('structure.json')
+    calc = get_calculator()('gs.gpw', txt=None,
+                            communicator=serial_comm)
+    pbc = atoms.pbc
+    ndim = np.sum(pbc)
+
+    if ndim == 2:
+        assert not pbc[2], \
+            'The third unit cell axis should be aperiodic for a 2D material!'
+        # For 2D materials we check that the calculater used a dipole
+        # correction if the material has an out-of-plane dipole
+
+        # Small hack
+        atoms = calc.atoms
+        atoms.calc = calc
+        evacdiffmin = 10e-3
+        if evacdiff(calc.atoms) > evacdiffmin:
+            assert calc.todict().get('poissonsolver', {}) == \
+                {'dipolelayer': 'xy'}, \
+                ('The ground state has a finite dipole moment along aperiodic '
+                 'axis but calculation was without dipole correction.')
+
+    # Now that some checks are done, we can extract information
+    forces = calc.get_property('forces', allow_calculation=False)
+    stresses = calc.get_property('stress', allow_calculation=False)
+    etot = calc.get_potential_energy()
+
+    results = {'forces': forces,
+               'stresses': stresses,
+               'etot': etot}
+
+    results['gaps_nosoc'] = gaps(calc, soc=False)
+    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
+    results['gap_nosoc'] = results['gaps_nosoc']['gap']
+    results.update(gaps(calc, soc=True))
+    # Vacuum level is calculated for c2db backwards compability
+    if int(np.sum(atoms.get_pbc())) == 2:
+        vac = vacuumlevels(atoms, calc)
+        results['vacuumlevels'] = vac
+        results['dipz'] = vac['dipz']
+        results['evac'] = vac['evacmean']
+        results['evacdiff'] = vac['evacdiff']
+        results['workfunction'] = results['evac'] - results['efermi']
+
+    fingerprint = {}
+    for setup in calc.setups:
+        fingerprint[setup.symbol] = setup.fingerprint
+    results['__setup_fingerprints__'] = fingerprint
+
+    return results
 
 
 if __name__ == '__main__':

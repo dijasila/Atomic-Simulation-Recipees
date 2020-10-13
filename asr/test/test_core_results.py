@@ -1,5 +1,6 @@
 from typing import Dict
-from asr.core import ASRResult, set_docstring, WebPanelEncoder, command
+from asr.core import (ASRResult, set_docstring, WebPanelEncoder, command, dct_to_object)
+import pytest
 
 
 class MyWebPanel(WebPanelEncoder):
@@ -39,6 +40,7 @@ def recipe() -> MyResult:
     return MyResult(a=2)
 
 
+@pytest.mark.ci
 def test_results_object(capsys):
     results = MyResult(a=1)
     results.metadata = {'resources': {'time': 'right now'}}
@@ -48,13 +50,12 @@ def test_results_object(capsys):
                                          '',
                                          'Attributes',
                                          '----------',
-                                         'a: <class \'int\'>',
+                                         'a: int',
                                          '    A description of "a".'])
 
     formats = results.get_formats()
     assert formats['ase_webpanel'] == webpanel
-    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel',
-                                'datacontainer'])
+    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel'])
     print(results)
     captured = capsys.readouterr()
     assert captured.out == 'a=1\n'
@@ -74,6 +75,7 @@ def test_results_object(capsys):
     assert not otherresults == results
 
 
+@pytest.mark.ci
 def test_reading_result():
     result = recipe()
     jsonresult = result.format_as('json')
@@ -82,7 +84,8 @@ def test_reading_result():
     assert result == new_result
 
 
-def test_reading_old_result():
+@pytest.mark.ci
+def test_reading_older_version():
     result_0 = MyResultVer0(a=1, b=2)
     jsonresult = result_0.format_as('json')
 
@@ -91,3 +94,16 @@ def test_reading_old_result():
 
     assert result_0 == result_1
     assert result_1 == result_2
+
+
+@pytest.mark.ci
+def test_read_old_format():
+    from asr.gs import webpanel, Result
+    dct = {'etot': 1.01,
+           '__asr_name__': 'asr.gs'}
+
+    result = dct_to_object(dct)
+    assert result.formats['ase_webpanel'] == webpanel
+    assert isinstance(result, Result)
+    assert result.etot == 1.01
+    assert result.metadata.asr_name == 'asr.gs'

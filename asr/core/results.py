@@ -16,19 +16,15 @@ potentially also implements ways to decode results. These encoders are:
 A dictionary representation of a result-object can be converted to a
 result object through :py:func:`asr.core.results.dct_to_result`.
 
-To support reading of different historical ASR dataformats we use an
-intermediate :py:class:`DataContainer` before constructing the final
-result-object.
-
 """
 from ase.io import jsonio
 import copy
-from typing import get_type_hints, List, Any, Dict
+import typing
 from abc import ABC, abstractmethod
 from . import get_recipe_from_name
 
 
-def read_old_data(dct) -> 'DataContainer':
+def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
     """Parse an old style result dictionary."""
     metadata = {}
     data = {}
@@ -37,15 +33,15 @@ def read_old_data(dct) -> 'DataContainer':
             metadata[key[2:-2]] = value
         else:
             data[key] = value
-    return DataContainer(data=data, metadata=metadata, version=0)
+    return data, metadata, 0
 
 
-def read_new_data(dct) -> 'DataContainer':
+def read_new_data(dct) -> typing.Tuple[dict, dict, dict]:
     """Parse a new style result dictionary."""
     metadata = dct['metadata']
     data = dct['data']
     version = dct['version']
-    return DataContainer(data=data, metadata=metadata, version=version)
+    return data, metadata, version
 
 
 class UnknownDataFormat(Exception):
@@ -54,44 +50,53 @@ class UnknownDataFormat(Exception):
     pass
 
 
-def dct_to_result(dct):
-    """Parse dict and return result object."""
-    if 'metadata' in dct:
+known_object_types = {'Result'}
+
+
+def get_reader_function(dct):
+    """Determine dataformat of dct and return approriate reader."""
+    if '__asr_objtype__' in dct and dct['__asr_objtype__'] in known_object_types:
         # Then this is a new-style data-format
-        datacontainer = read_new_data(dct)
+        reader_function = read_new_data
     elif '__asr_name__' in dct:
         # Then this is a old-style data-format
-        datacontainer = read_old_data(dct)
+        reader_function = read_old_data
     else:
         raise UnknownDataFormat
-    metadata = datacontainer.get_metadata()
+    return reader_function
+
+
+def find_class_matching_version(returns, version):
+    """Find result class that matches version.
+
+    Walks through the class hierarchy defined by returns.prev_version and
+    searches for class fulfilling returns.version == version.
+
+    Raises :py:exception:`UnknownASRResultFormat` if no matching result is
+    found.
+
+    """
+    # Walk through all previous implementations.
+    while version != returns.version and returns.prev_version is not None:
+        returns = returns.prev_version
+
+    if not version == returns.version:
+        raise UnknownASRResultFormat(
+            'Unknown version number: version={version}')
+
+    return returns
+
+
+def dct_to_result(dct):
+    """Convert dict representing an ASR result to corresponding result object."""
+    reader_function = get_reader_function(dct)
+    data, metadata, version = reader_function(dct)
     asr_name = metadata['asr_name']
     recipe = get_recipe_from_name(asr_name)
-    result = recipe.returns.from_format(datacontainer,
-                                        format='datacontainer')
+    returns = find_class_matching_version(recipe.returns, version)
+    result = returns.fromdict(
+        dict(data=data, metadata=metadata, version=version))
     return result
-
-
-class DataContainer:
-    """Abstract data format."""
-
-    def __init__(self, data, metadata, version):
-        dct = {'data': data,
-               'metadata': metadata,
-               'version': version}
-        self._dct = dct
-
-    def get_data(self):
-        return self._dct['data']
-
-    def get_version(self):
-        return self._dct['version']
-
-    def get_metadata(self):
-        return self._dct['metadata']
-
-    def set_metadata(self, metadata):
-        self._dct['metadata'] = metadata
 
 
 class ResultEncoder(ABC):
@@ -116,40 +121,19 @@ class ResultEncoder(ABC):
         return NotImplemented
 
 
-class DataContainerEncoder(ResultEncoder):
-    """DataContainer ASRResult encoder."""
-
-    def encode(self, result: 'ASRResult'):
-        """Encode a ASRResult object as a DataContainer."""
-        dct = result.format_as('dict')
-        return DataContainer(data=dct['data'],
-                             metadata=dct['metadata'],
-                             version=dct['version'])
-
-    def decode(self, datacontainer: DataContainer):
-        """Decode datacontainer."""
-        metadata = datacontainer.get_metadata()
-        data = datacontainer.get_data()
-        version = datacontainer.get_version()
-        return data, metadata, version
-
-
 class JSONEncoder(ResultEncoder):
     """JSON ASRResult encoder."""
 
-    def encode(self, result: 'ASRResult'):
+    def encode(self, result: 'ASRResult', indent=1):
         """Encode a ASRResult object as json."""
         from ase.io.jsonio import MyEncoder
         data = result.format_as('dict')
-        return MyEncoder(indent=1).encode(data)
+        return MyEncoder(indent=indent).encode(data)
 
-    def decode(self, json_string: str):
+    def decode(self, cls, json_string: str):
         """Decode json string."""
-        tmp = jsonio.decode(json_string)
-        metadata = tmp['metadata']
-        data = tmp['data']
-        version = tmp['version']
-        return data, metadata, version
+        dct = jsonio.decode(json_string)
+        return dct_to_result(dct)
 
 
 class HTMLEncoder(ResultEncoder):
@@ -186,16 +170,11 @@ class DictEncoder(ResultEncoder):
 
     def encode(self, result: 'ASRResult'):
         """Encode ASRResult object as dict."""
-        return {'data': result.data,
-                'metadata': result.metadata.to_dict(),
-                'version': result.version}
+        return result.todict()
 
-    def decode(self, dct: dict):
-        """Decode decode dict to data, metadata, version."""
-        metadata = dct['metadata']
-        version = dct['version']
-        data = dct['data']
-        return data, metadata, version
+    def decode(self, cls, dct: dict):
+        """Decode dict."""
+        return dct_to_result(dct)
 
 
 def get_object_descriptions(obj):
@@ -205,7 +184,7 @@ def get_object_descriptions(obj):
 
 def get_object_types(obj):
     """Get type hints of object."""
-    return get_type_hints(obj)
+    return typing.get_type_hints(obj)
 
 
 def format_key_description_pair(key: str, attr_type: type, description: str):
@@ -222,6 +201,8 @@ def format_key_description_pair(key: str, attr_type: type, description: str):
     """
     if attr_type.__module__ == 'builtins':
         type_desc = attr_type.__name__
+    elif attr_type.__module__ == 'typing':
+        type_desc = str(attr_type)
     else:
         type_desc = f'{attr_type.__module__}.{attr_type.__name__}'
     return (f'{key}: {type_desc}\n'
@@ -235,10 +216,10 @@ def set_docstring(obj) -> str:
     type_keys = set(types)
     description_keys = set(descriptions)
     assert set(descriptions).issubset(set(types)), description_keys - type_keys
-    docstring_parts: List[str] = [obj.__doc__ or '',
-                                  '',
-                                  'Attributes',
-                                  '----------']
+    docstring_parts: typing.List[str] = [obj.__doc__ or '',
+                                         '',
+                                         'Attributes',
+                                         '----------']
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
@@ -288,7 +269,7 @@ class MetaData:
         Set metadata attributes.
     set
         Set multiple metadata attributes.
-    to_dict
+    todict
         Represent metadata as dictionary.
 
     Examples
@@ -306,7 +287,7 @@ class MetaData:
     code_versions={'asr': '0.1.2'}
     resources={'time': 10}
     params={'a': 1}
-    >>> metadata.to_dict()
+    >>> metadata.todict()
     {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
     """ # noqa
@@ -401,13 +382,13 @@ class MetaData:
             raise MetaDataNotSetError(f'Metadata key={key} has not been set!')
         return self._dct[key]
 
-    def to_dict(self):
+    def todict(self):
         """Format metadata as dict."""
         return copy.deepcopy(self._dct)
 
     def __str__(self):
         """Represent as string."""
-        dct = self.to_dict()
+        dct = self.todict()
         lst = []
         for key, value in dct.items():
             lst.append(f'{key}={value}')
@@ -495,13 +476,12 @@ class ASRResult(object):
     """ # noqa
 
     version: int = 0
-    prev_version: Any = None
-    key_descriptions: Dict[str, str]
+    prev_version: typing.Any = None
+    key_descriptions: typing.Dict[str, str]
     formats = {'json': JSONEncoder(),
                'html': HTMLEncoder(),
                'dict': DictEncoder(),
-               'ase_webpanel': WebPanelEncoder(),
-               'datacontainer': DataContainerEncoder()}
+               'ase_webpanel': WebPanelEncoder()}
 
     def __init__(self, metadata={}, **data):
         """Initialize result from dict.
@@ -538,16 +518,7 @@ class ASRResult(object):
     def from_format(cls, input_data, format='json'):
         """Instantiate result from format."""
         formats = cls.get_formats()
-        data, metadata, version = formats[format].decode(input_data)
-        # Walk through all previous implementations.
-        while version != cls.version and cls.prev_version is not None:
-            cls = cls.prev_version
-
-        if not version == cls.version:
-            raise UnknownASRResultFormat(
-                'Unknown version number: version={version}')
-        result = cls(**data)
-        result.metadata = metadata
+        result = formats[format].decode(cls, input_data)
         return result
 
     @classmethod
@@ -561,10 +532,35 @@ class ASRResult(object):
         my_formats.update(cls.formats)
         return my_formats
 
-    def format_as(self, format: str = '', *args, **kwargs) -> Any:
+    def format_as(self, format: str = '', *args, **kwargs) -> typing.Any:
         """Format result in specific format."""
         formats = self.get_formats()
         return formats[format](self, *args, **kwargs)
+
+    # To and from dict
+    def todict(self):
+        tmpdata = {}
+
+        for key, value in self.data.items():
+            if isinstance(value, ASRResult):
+                value = value.todict()
+            tmpdata[key] = value
+
+        return {'__asr_objtype__': 'Result',
+                'data': tmpdata,
+                'metadata': self.metadata.todict(),
+                'version': self.version}
+
+    @classmethod
+    def fromdict(cls, dct):
+        metadata = dct['metadata']
+        version = dct['version']
+        assert version == cls.version, \
+            f'Inconsistent versions. data_version={version}, self.version={cls.version}'
+        data = dct['data']
+        result = cls(**data)
+        result.metadata = metadata
+        return result
 
     # ---- Magic methods ----
 
@@ -584,6 +580,7 @@ class ASRResult(object):
         """Get attribute."""
         if key in self.keys():
             return self.data[key]
+        raise AttributeError
 
     def get(self, key, *args):
         """Wrap self.data.get."""

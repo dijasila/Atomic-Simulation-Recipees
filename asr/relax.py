@@ -283,7 +283,7 @@ class Result(ASRResult):
     beta: float
     gamma: float
     key_descriptions = \
-        {'atoms': 'Relaxed atomic structure',
+        {'atoms': 'Relaxed atomic structure.',
          'images': 'Path taken when relaxing structure.',
          'etot': 'Total energy [eV]',
          'edft': 'DFT total energy [eV]',
