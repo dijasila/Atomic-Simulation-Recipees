@@ -116,10 +116,13 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Configuration coordinate diagram',
-             'columns': [[fig('cc_diagram.png'), fig('luminescence.png')]],
-             'plot_descriptions': [{'function': [plot_cc_diagram, plot_luminescence],
-                                    'filenames': ['cc_diagram.png', 'luminescence.png']}],
-             'sort': 20}
+             'columns': [[fig('cc_diagram.png')],
+                         [fig('luminescence.png')]],
+             'plot_descriptions': [{'function': plot_cc_diagram,
+                                    'filenames': ['cc_diagram.png']},
+                                   {'function': plot_luminescence,
+                                    'filenames': ['luminescence.png']}],
+             'sort': 12}
 
     return [panel]
 
