@@ -55,7 +55,7 @@ known_object_types = {'Result'}
 
 def get_reader_function(dct):
     """Determine dataformat of dct and return approriate reader."""
-    if '__asr_objtype__' in dct and dct['__asr_objtype__'] in known_object_types:
+    if '__asr_obj_id__' in dct:
         # Then this is a new-style data-format
         reader_function = read_new_data
     elif '__asr_name__' in dct:
@@ -133,7 +133,7 @@ class JSONEncoder(ResultEncoder):
     def decode(self, cls, json_string: str):
         """Decode json string."""
         dct = jsonio.decode(json_string)
-        return dct_to_result(dct)
+        return cls.fromdict(dct)
 
 
 class HTMLEncoder(ResultEncoder):
@@ -174,7 +174,7 @@ class DictEncoder(ResultEncoder):
 
     def decode(self, cls, dct: dict):
         """Decode dict."""
-        return dct_to_result(dct)
+        return cls.fromdict(dct)
 
 
 def get_object_descriptions(obj):
@@ -498,6 +498,11 @@ class ASRResult(object):
         self.metadata.set(**metadata)
 
     @property
+    def obj_id(self) -> str:
+        cls = self.__class__
+        return f'{cls.__module__}.{cls.__name__}'
+
+    @property
     def data(self) -> dict:
         """Get result data."""
         return self._data
@@ -546,15 +551,16 @@ class ASRResult(object):
                 value = value.todict()
             tmpdata[key] = value
 
-        return {'__asr_objtype__': 'Result',
+        return {'__asr_obj_id__': self.obj_id,
                 'data': tmpdata,
                 'metadata': self.metadata.todict(),
                 'version': self.version}
 
     @classmethod
-    def fromdict(cls, dct):
+    def fromdict(cls, dct: dict):
         metadata = dct['metadata']
         version = dct['version']
+        cls = find_class_matching_version(cls, version)
         assert version == cls.version, \
             f'Inconsistent versions. data_version={version}, self.version={cls.version}'
         data = dct['data']
