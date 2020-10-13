@@ -2,7 +2,7 @@ from typing import Tuple
 from ase.parallel import parprint
 from asr.core import command, option, read_json
 import ase.units as units
-from math import sqrt
+from math import sqrt, pi, factorial
 import numpy as np
 
 
@@ -46,15 +46,8 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
     atoms, calc_0 = restart('gs.gpw', txt=None)
     atoms_Q, calc_Q = restart(folder + '/gs.gpw', txt=None)
 
-    # if overlap is calculated do a fixed density calculation first
-    if wfs:
-        calc_0 = calc_0.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
-
-    # set up calculator from the Q=0 geometry
-    params = calc_0.todict()
-    calc_q = GPAW(**params)
-    calc_q.set(txt='cc-diagram.txt')
-    calc_q.set(symmetry='off')
+    # calculate the Zero Phonon Line
+    zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
 
     # percent of displacement from -100% to 100% with npoints
     displ_n = np.linspace(-1.0, 1.0, npoints, endpoint=True)
@@ -67,10 +60,18 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
 
     # check if there is difference in the two geometries
     assert delta_Q >= 0.005, 'No displacement between the two geometries!' 
-    parprint('delta_Q', delta_Q)
+    parprint('delta_Q', delta_Q, zpl)
 
-    # calculate the Zero Phonon Line
-    zpl = abs(atoms.get_potential_energy() - atoms_Q.get_potential_energy())
+    # if overlap is calculated do a fixed density calculation first
+    if wfs:
+        calc_0 = calc_0.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
+
+    # set up calculator from the Q=0 geometry
+    params = calc_0.todict()
+    calc_q = GPAW(**params)
+    calc_q.set(txt='cc-diagram.txt')
+    calc_q.set(symmetry='off')
+
 
     # quantities saved along the displacement
     Q_n = []
@@ -83,15 +84,15 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
         Q_n.append(sqrt(Q2) * np.sign(displ))
         atoms.positions += displ * delta_R
         atoms.set_calculator(calc_q)
-        energy = atoms.get_potential_energy()
-        parprint(displ, energy)
+        #energy = atoms.get_potential_energy()
+        #parprint(displ, energy)
 
         atoms.positions = pos_ai
-        #energy = 0.06155**2 / 2 * 15.4669**2 * Q2
+        energy = 0.06155**2 / 2 * 15.4669**2 * Q2
         energies_n.append(energy)
 
         # if the indices of the wfs are set the overlap is calculated
-        if wfs is not None:
+        if wfs:
             i, f = wfs
             overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
             overlap_n.append(overlap)
@@ -115,10 +116,10 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Configuration coordinate diagram',
-             'columns': [[fig('cc_diagram.png')]],
-             'plot_descriptions': [{'function': plot_cc_diagram,
-                                    'filenames': ['cc_diagram.png']}],
-             'sort': 13}
+             'columns': [[fig('cc_diagram.png'), fig('luminescence.png')]],
+             'plot_descriptions': [{'function': [plot_cc_diagram, plot_luminescence],
+                                    'filenames': ['cc_diagram.png', 'luminescence.png']}],
+             'sort': 20}
 
     return [panel]
 
@@ -204,9 +205,6 @@ def plot_cc_diagram(row, fname):
     fig = plt.figure(figsize=(7, 6))
     ax = fig.gca()
 
-    # Helping lines
-    ax.plot(q, 1 / 2 * omega_g**2 * s**2 * q**2, '-C0')
-    ax.plot(Q_n, ene_g, 'wo', ms=7, markeredgecolor='C0', markeredgewidth=0.9)
     # Ground state parabola
     ax.plot(q, 1 / 2 * omega_g**2 * s**2 * q**2, '-C0')
     ax.plot(Q_n, ene_g, 'wo', ms=7, markeredgecolor='C0', markeredgewidth=0.9)
@@ -219,6 +217,48 @@ def plot_cc_diagram(row, fname):
     ax.set_ylabel('Energy (eV)', size=14)
     ax.set_xlim(-1.3 * delta_Q, 2 * delta_Q * 1.15)
     ax.set_ylim(-1 / 5 * ZPL, 1.1 * max(ene_e) + 6 / 5 * ZPL)
+
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
+
+
+def plot_luminescence(row, fname):
+    from matplotlib import pyplot as plt
+
+    def gauss_delta(x, sigma):
+        return 1 / (sigma * sqrt(2 * pi)) * np.exp(-x**2 / (2 * sigma**2))
+
+    def overlap(n, S): 
+        return np.exp(-S) * S**n / factorial(n)
+
+    data = row.data.get('results-asr.config_diagram.json')
+
+    omega_g = data['ground']['omega']
+    omega_e = data['excited']['omega']
+    ZPL = data['ZPL']
+    S_g = data['ground']['S']
+
+    w_i = np.linspace(0, ZPL*1.3, 1000)
+
+    nmax = 20
+    sigma = 0.02
+    L_i = 0 
+
+    for n in range(1,nmax):
+        arg_delta = ZPL + omega_e - n * omega_g - w_i 
+        L_i += overlap(n, S_g) * gauss_delta(arg_delta, sigma)
+
+    fig = plt.figure(figsize=(7, 6)) 
+    ax = fig.gca()
+
+    ax.plot(w_i, L_i)
+    #ax.plot([ZPL]*2,[0,max(L_i)],'--k')
+
+    ax.set_xlim(ZPL/2, ZPL*1.2)
+    ax.set_ylim(0, max(L_i)*1.1)
+    ax.set_xlabel(r'Energy (eV)', size=16)
+    ax.set_ylabel('PL (a.u.)', size=18)
 
     plt.tight_layout()
     plt.savefig(fname)
