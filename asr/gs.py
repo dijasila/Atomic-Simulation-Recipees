@@ -263,6 +263,7 @@ def get_gap_info(soc, direct, calc):
     return x
 
 
+@prepare_result
 class VacuumLevelResults(ASRResult):
     z_z: np.ndarray
     v_z: np.ndarray
