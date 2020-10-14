@@ -70,22 +70,26 @@ def get_transition_level(transition, correct_relax):
     # extrac HOMO or LUMO
     # HOMO
     if transition[0] > transition[1]:
-        calc = restart('sj_-0.5/gs.gpw', txt=None)
+        _, calc = restart('sj_-0.5/gs.gpw', txt=None)
         e_ref = calc.get_electrostatic_potential()[0,0,0]
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
         [occ.append(v) for v in ev if v < e_fermi]
         e_trans = max(occ)
+        print('INFO: calculate transition level for {} -> {} transition.'.format(
+            transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
-        calc = restart('sj_+0.5/gs.gpw', txt=None)
+        _, calc = restart('sj_+0.5/gs.gpw', txt=None)
         e_ref = calc.get_electrostatic_potential()[0,0,0]
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
         [unocc.append(v) for v in ev if v > e_fermi]
         e_trans = min(unocc)
+        print('INFO: calculate transition level for {} -> {} transition.'.format(
+            transition[0], transition[1]))
 
     return e_trans, e_cor, e_ref
 
