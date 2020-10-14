@@ -3,7 +3,8 @@ from pathlib import Path
 
 
 @command(module='asr.sj_analyze',
-         requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw'],
+         requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
+                   'results-asr.setup.defects.json'],
          resources='24:2h')
 def main():
     """Calculate charge transition levels for defect systems.
