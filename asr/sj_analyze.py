@@ -77,7 +77,7 @@ def get_transition_level(transition, correct_relax):
         occ = []
         [occ.append(v) for v in ev if v < e_fermi]
         e_trans = max(occ)
-        print('INFO: calculate transition level for {} -> {} transition.'.format(
+        print('INFO: calculate transition level for q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
@@ -88,7 +88,7 @@ def get_transition_level(transition, correct_relax):
         unocc = []
         [unocc.append(v) for v in ev if v > e_fermi]
         e_trans = min(unocc)
-        print('INFO: calculate transition level for {} -> {} transition.'.format(
+        print('INFO: calculate transition level for q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
     return e_trans, e_cor, e_ref
