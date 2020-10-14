@@ -141,8 +141,9 @@ def make_recipe_documentation(module):
         if returns and returns is not ASRResult:
             rst.extend([
                 '',
-                f'.. autoclass:: {returns.__module__}.{returns.__name__}',
-                '   :noindex:'
+                f'.. autoclass:: {returns.__module__}::{returns.__name__}',
+                '   :members:',
+                '   :noindex:',
             ])
 
     return rst

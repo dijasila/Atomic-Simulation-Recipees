@@ -209,26 +209,35 @@ def format_key_description_pair(key: str, attr_type: type, description: str):
             f'    {description}')
 
 
-def set_docstring(obj) -> str:
-    """Parse key descriptions on object and make pretty docstring."""
-    descriptions = get_object_descriptions(obj)
-    types = get_object_types(obj)
+def make_property(key, doc, return_type):
+
+    def getter(self) -> return_type:
+        self._data[key]
+
+    getter.__annotations__ = {'return': return_type}
+
+    def setter(self, value) -> None:
+        if key in self._data:
+            raise AttributeError(f'{key} was already set. You cannot overwrite data.')
+        self._data[key] = value
+
+    return property(fget=getter, fset=setter, doc=doc)
+
+
+def prepare_result(cls: object) -> str:
+    """Prepare result class."""
+    descriptions = get_object_descriptions(cls)
+    types = get_object_types(cls)
     type_keys = set(types)
     description_keys = set(descriptions)
     assert set(descriptions).issubset(set(types)), description_keys - type_keys
-    docstring_parts: typing.List[str] = [obj.__doc__ or '',
-                                         '',
-                                         'Attributes',
-                                         '----------']
+
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
-        string = format_key_description_pair(key, attr_type, description)
-        docstring_parts.append(string)
-    docstring = "\n".join(docstring_parts)
+        setattr(cls, key, make_property(key, description, return_type=attr_type))
 
-    obj.__doc__ = docstring
-    return obj
+    return cls
 
 
 class UnknownASRResultFormat(Exception):
@@ -245,32 +254,6 @@ class MetaDataNotSetError(Exception):
 
 class MetaData:
     """Metadata object.
-
-    Attributes
-    ----------
-    asr_name: str
-        The name of the corresponding recipe.
-    params: Dict[str, Any]
-        The parameters associated with the results.
-    resources: Dict[str, Union[str, float, int]]
-        The resources used when computing result.
-    code_versions: Dict[str, str]
-        The code versions and possibly git hashes of associated code.
-    requires: Dict[str, str]
-        The required files and their MD5 hashes.
-    creates: Dict[str, str]
-        The created files nad their MD5 hashes.
-
-    Methods
-    -------
-    __init__
-        Construct MetaData object.
-    __setattr__
-        Set metadata attributes.
-    set
-        Set multiple metadata attributes.
-    todict
-        Represent metadata as dictionary.
 
     Examples
     --------
@@ -450,28 +433,6 @@ class ASRResult(object):
     [{'title': 'Results', \
 'columns': [[{'type': 'table', 'header': ['key', 'value'], \
 'rows': [['a', 1]]}]], 'sort': 1}]
-    Attributes
-    ----------
-    data
-        Associated result data.
-    metadata
-        Associated result metadata.
-    version : int
-        The version number.
-    prev_version : ASRResult or None
-        Pointer to a previous result format. If none, this is the
-        final version.
-    key_descriptions: Dict[str, str]
-        Description of data attributes
-
-    Methods
-    -------
-    get_formats
-        Return implemented formats.
-    from_format
-        Decode and instantiate result object from format.
-    format_as
-        Encode result in a specific format.
 
     """ # noqa
 

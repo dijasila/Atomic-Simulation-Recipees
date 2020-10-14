@@ -1,5 +1,5 @@
 """Electronic ground state properties."""
-from asr.core import command, option, DictStr, ASRResult, set_docstring
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 import numpy as np
 import typing
 
@@ -131,7 +131,7 @@ def bz_with_band_extremums(row, fname):
     plt.savefig(fname)
 
 
-@set_docstring
+@prepare_result
 class GapsResult(ASRResult):
 
     gap: float
@@ -259,6 +259,27 @@ def get_gap_info(soc, direct, calc):
     return x
 
 
+class VacuumLevelResults(ASRResult):
+    z_z: np.ndarray
+    v_z: np.ndarray
+    evacdiff: float
+    dipz: float
+    evac1: float
+    evac2: float
+    evacmean: float
+    efermi_nosoc: float
+
+    key_descriptions = {
+        'z_z': 'Grid points for potential [Å].',
+        'v_z': 'Electrostatic potential [eV].',
+        'evacdiff': 'Difference of vacuum levels on both sides of slab [eV].',
+        'dipz': 'Out-of-plane dipole [e * Ang].',
+        'evac1': 'Top side vacuum level [eV].',
+        'evac2': 'Bottom side vacuum level [eV]',
+        'evacmean': 'Average vacuum level [eV].',
+        'efermi_nosoc': 'Fermi level without SOC [eV].'}
+
+
 def vacuumlevels(atoms, calc, n=8):
     """Get the vacuumlevels on both sides of a 2D material.
 
@@ -288,7 +309,8 @@ def vacuumlevels(atoms, calc, n=8):
     z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
 
     # Store data
-    subresults = {'z_z': z_z, 'v_z': v_z,
+    subresults = {'z_z': z_z,
+                  'v_z': v_z,
                   'evacdiff': evacdiff(atoms),
                   'dipz': atoms.get_dipole_moment()[2],
                   # Extract vaccuum energy on both sides of the slab
@@ -322,7 +344,7 @@ def evacdiff(atoms):
     return evacsplit
 
 
-@set_docstring
+@prepare_result
 class Result(ASRResult):
 
     forces: np.ndarray

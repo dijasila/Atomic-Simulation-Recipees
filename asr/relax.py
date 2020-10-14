@@ -50,7 +50,7 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
-from asr.core import command, option, AtomsFile, DictStr, set_docstring, ASRResult
+from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
 from math import sqrt
 import time
 
@@ -264,7 +264,7 @@ def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
-@set_docstring
+@prepare_result
 class Result(ASRResult):
     """Result class for :py:func:`asr.relax.main`."""
 

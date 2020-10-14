@@ -282,10 +282,10 @@ class ASRCalculator(Calculator):
         Constructs all eigenvalues for the test calculator. The
         valence bands will have a negative curvature and the number of
         valence bands are determined by
-        :py:method:`ASRCalculator.get_number_of_valence_electrons`. Conduction
+        :py:meth:`ASRCalculator.get_number_of_valence_electrons`. Conduction
         bands have positive curvature and are separated from the
         valence bands by a bandgap. The band gap is obtained from
-        :py:method:`ASRCalculator._get_band_gap`.
+        :py:meth:`ASRCalculator._get_band_gap`.
 
         """
         icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr

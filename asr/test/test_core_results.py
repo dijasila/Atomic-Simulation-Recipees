@@ -1,5 +1,6 @@
 from typing import Dict
-from asr.core import (ASRResult, set_docstring, WebPanelEncoder, command, dct_to_object)
+from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
+                      dct_to_object)
 import pytest
 
 
@@ -12,7 +13,7 @@ class MyWebPanel(WebPanelEncoder):
 webpanel = WebPanelEncoder()
 
 
-@set_docstring
+@prepare_result
 class MyResultVer0(ASRResult):
     """Generic results."""
 
@@ -23,7 +24,7 @@ class MyResultVer0(ASRResult):
                                         'b': 'A description of "b".'}
 
 
-@set_docstring
+@prepare_result
 class MyResult(ASRResult):
     """Generic results."""
 
