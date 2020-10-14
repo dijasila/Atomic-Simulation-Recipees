@@ -47,6 +47,7 @@ def test_berry_nontrivial(asr_tmpdir_w_params, topology, get_webcontent):
 
     from asr.core import write_json
     dct = {'data': {}, 'metadata': {'asr_name': 'asr.berry@calculate'},
+           '__asr_obj_id__': 'asr.core.results::ASRResult',
            'version': 0}
     write_json('results-asr.berry@calculate.json', dct)
 

@@ -22,6 +22,7 @@ import copy
 import typing
 from abc import ABC, abstractmethod
 from . import get_recipe_from_name
+import importlib
 
 
 def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
@@ -30,10 +31,15 @@ def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
     data = {}
     for key, value in dct.items():
         if key.startswith('__') and key.endswith('__'):
-            metadata[key[2:-2]] = value
+            key_name = key[2:-2]
+            if key_name in MetaData.accepted_keys:
+                metadata[key_name] = value
         else:
             data[key] = value
-    return data, metadata, 0
+    asr_name = metadata['asr_name']
+    recipe = get_recipe_from_name(asr_name)
+    asr_obj_id = recipe.returns.get_obj_id()
+    return data, metadata, 0, asr_obj_id
 
 
 def read_new_data(dct) -> typing.Tuple[dict, dict, dict]:
@@ -41,7 +47,8 @@ def read_new_data(dct) -> typing.Tuple[dict, dict, dict]:
     metadata = dct['metadata']
     data = dct['data']
     version = dct['version']
-    return data, metadata, version
+    asr_obj_id = dct['__asr_obj_id__']
+    return data, metadata, version, asr_obj_id
 
 
 class UnknownDataFormat(Exception):
@@ -87,14 +94,32 @@ def find_class_matching_version(returns, version):
     return returns
 
 
+def get_class_matching_obj_id(asr_obj_id):
+    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
+
+    module, name = asr_obj_id.split('::')
+    mod = importlib.import_module(module)
+    cls = getattr(mod, name)
+
+    return cls
+
+
 def dct_to_result(dct):
     """Convert dict representing an ASR result to corresponding result object."""
     reader_function = get_reader_function(dct)
-    data, metadata, version = reader_function(dct)
-    asr_name = metadata['asr_name']
-    recipe = get_recipe_from_name(asr_name)
-    returns = find_class_matching_version(recipe.returns, version)
-    result = returns.fromdict(
+    data, metadata, version, asr_obj_id = reader_function(dct)
+
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            continue
+        try:
+            data[key] = dct_to_result(value)
+        except UnknownDataFormat:
+            pass
+
+    cls = get_class_matching_obj_id(asr_obj_id)
+    cls = find_class_matching_version(cls, version)
+    result = cls.fromdict(
         dict(data=data, metadata=metadata, version=version))
     return result
 
@@ -212,14 +237,16 @@ def format_key_description_pair(key: str, attr_type: type, description: str):
 def make_property(key, doc, return_type):
 
     def getter(self) -> return_type:
-        self._data[key]
+        return self.data[key]
 
     getter.__annotations__ = {'return': return_type}
 
     def setter(self, value) -> None:
-        if key in self._data:
-            raise AttributeError(f'{key} was already set. You cannot overwrite data.')
-        self._data[key] = value
+        if self.data:
+            raise AttributeError(
+                f'Data was already set. You cannot overwrite/set data.'
+            )
+        self.data[key] = value
 
     return property(fget=getter, fset=setter, doc=doc)
 
@@ -230,13 +257,17 @@ def prepare_result(cls: object) -> str:
     types = get_object_types(cls)
     type_keys = set(types)
     description_keys = set(descriptions)
-    assert set(descriptions).issubset(set(types)), description_keys - type_keys
+    missing_types = description_keys - type_keys
+    assert not missing_types, f'{cls.get_obj_id()}: Missing types for={missing_types}.'
 
+    data_keys = description_keys
     for key in descriptions:
         description = descriptions[key]
         attr_type = types[key]
         setattr(cls, key, make_property(key, description, return_type=attr_type))
 
+    cls._strict = True
+    cls._known_data_keys = data_keys
     return cls
 
 
@@ -290,7 +321,7 @@ class MetaData:
     def set(self, **kwargs):
         """Set metadata values."""
         for key, value in kwargs.items():
-            assert key in self.accepted_keys, 'Unknown MetaData key={key}.'
+            assert key in self.accepted_keys, f'Unknown MetaData key={key}.'
             setattr(self, key, value)
 
     def validate(self):
@@ -442,9 +473,12 @@ class ASRResult(object):
     formats = {'json': JSONEncoder(),
                'html': HTMLEncoder(),
                'dict': DictEncoder(),
-               'ase_webpanel': WebPanelEncoder()}
+               'ase_webpanel': WebPanelEncoder(),
+               'str': str}
 
-    def __init__(self, metadata={}, **data):
+    _strict = False
+
+    def __init__(self, metadata={}, _strict=None, **data):
         """Initialize result from dict.
 
         Parameters
@@ -454,14 +488,21 @@ class ASRResult(object):
         metadata : dict
             Dictionary containing metadata.
         """
+        if (_strict is None and self._strict) or _strict:
+            data_keys = set(data)
+            unknown_keys = data_keys - self._known_data_keys
+            assert not unknown_keys, \
+                f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
+            missing_keys = self._known_data_keys - data_keys
+            assert not missing_keys, \
+                f'{self.get_obj_id()}: Missing data keys={missing_keys}'
         self._data = data
         self._metadata = MetaData()
         self.metadata.set(**metadata)
 
-    @property
-    def obj_id(self) -> str:
-        cls = self.__class__
-        return f'{cls.__module__}.{cls.__name__}'
+    @classmethod
+    def get_obj_id(cls) -> str:
+        return f'{cls.__module__}::{cls.__name__}'
 
     @property
     def data(self) -> dict:
@@ -512,7 +553,7 @@ class ASRResult(object):
                 value = value.todict()
             tmpdata[key] = value
 
-        return {'__asr_obj_id__': self.obj_id,
+        return {'__asr_obj_id__': self.get_obj_id(),
                 'data': tmpdata,
                 'metadata': self.metadata.todict(),
                 'version': self.version}
@@ -521,7 +562,6 @@ class ASRResult(object):
     def fromdict(cls, dct: dict):
         metadata = dct['metadata']
         version = dct['version']
-        cls = find_class_matching_version(cls, version)
         assert version == cls.version, \
             f'Inconsistent versions. data_version={version}, self.version={cls.version}'
         data = dct['data']
@@ -567,6 +607,7 @@ class ASRResult(object):
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
+        print(self.get_obj_id(), repr(fmt))
         formats = self.get_formats()
         return formats[fmt](self)
 
@@ -574,7 +615,7 @@ class ASRResult(object):
         """Convert data to string."""
         string_parts = []
         for key, value in self.items():
-            string_parts.append(f'{key}={value}')
+            string_parts.append(f'{key}=' + str(value))
         return "\n".join(string_parts)
 
     def __eq__(self, other):

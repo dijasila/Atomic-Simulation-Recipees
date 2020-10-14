@@ -272,6 +272,7 @@ def results(name, show):
     from asr.database.app import create_key_descriptions
     kd = create_key_descriptions()
     panels = result.format_as('ase_webpanel', material, kd)
+    print('panels', panels)
     make_panel_figures(material, panels)
     if show:
         plt.show()

@@ -78,19 +78,17 @@ def test_asr_results_help():
 
 
 @pytest.mark.ci
-def test_asr_results_bandstructure(asr_tmpdir):
-    from asr.core import write_file, ASRResult
+def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
+    from asr.gs import main as calculate_gs
     from .materials import BN
-    import numpy as np
-    gsresult = ASRResult(etot=0.01, gap=0, k_vbm_c=None, k_cbm_c=None,
-                         metadata=dict(asr_name='asr.gs'))
-    structresult = ASRResult(spglib_dataset={'rotations': [np.eye(3)]},
-                             metadata=dict(asr_name='asr.structureinfo'))
+    import gpaw
+    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
+    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
+    gpaw.GPAW._get_fermi_level.return_value = 0.5
+    gpaw.GPAW._get_band_gap.return_value = 1
 
-    write_file('results-asr.gs.json', gsresult.format_as('json'))
-    write_file('results-asr.structureinfo.json',
-               structresult.format_as('json'))
     BN.write('structure.json')
+    calculate_gs()
     runner = CliRunner()
     result = runner.invoke(cli, ['results', 'asr.gs'])
     assert result.exit_code == 0, result
