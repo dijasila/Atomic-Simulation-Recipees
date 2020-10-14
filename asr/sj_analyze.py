@@ -49,8 +49,30 @@ def main():
             results['{}/{}'.format(transition[0], transition[1])] = [
                     e_trans, e_cor, e_ref]
 
+    vbm, cbm, evac = get_pristine_band_edges()
+    results['pristine'] = {'vbm': vbm, 'cbm': cbm, 'evac': evac}
+
 
     return results
+
+
+def get_pristine_band_edges():
+    """
+    Returns band edges and vaccum level for the host system.
+    """
+    from asr.core import read_json
+
+    if Path('./../../defects.pristine_sc/results-asr.gs.json').is_file():
+        results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+        vbm = results_pris['vbm']
+        cbm = results_pris['cbm']
+        evac = results_pris['evac']
+    else:
+        vbm = None
+        cbm = None
+        evac = None
+
+    return vbm, cbm, evac
 
 
 def get_transition_level(transition, correct_relax):
