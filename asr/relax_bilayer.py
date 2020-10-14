@@ -8,6 +8,7 @@ from asr.utils.bilayerutils import translation
 def get_energy(base, top, h, t_c, settings, callback, memo):
     from ase.calculators.dftd3 import DFTD3
     from gpaw import GPAW, PW
+    from gpaw import MixerDif
 
     try:
         h0, e0 = next(t for t in memo if np.allclose(t[0], h))
@@ -15,16 +16,36 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
     except StopIteration:
         pass
 
-    calc = GPAW(mode=PW(settings['PWE']),
-                xc=settings['xc'],
-                kpts=settings['kpts'],
-                symmetry={'symmorphic': False},
-                occupations={'name': 'fermi-dirac',
-                             'width': 0.05},
-                poissonsolver={"dipolelayer": "xy"},
-                charge=0,
-                nbands="200%",
-                txt='relax_bilayer.txt')
+    mixersettings = settings.get('mixer', None)
+    if type(mixersettings) != dict:
+        mixersettings = {'type': 'default',
+                         'beta': None, 'nold': None,
+                         'weight': None}
+    mixertype = mixersettings.pop('type', 'default')
+    if mixertype.lower() == 'default':
+        calc = GPAW(mode=PW(settings['PWE']),
+                    xc=settings['xc'],
+                    kpts=settings['kpts'],
+                    symmetry={'symmorphic': False},
+                    occupations={'name': 'fermi-dirac',
+                                 'width': 0.05},
+                    poissonsolver={"dipolelayer": "xy"},
+                    charge=0,
+                    nbands="200%",
+                    txt='relax_bilayer.txt')
+    else:
+        calc = GPAW(mode=PW(settings['PWE']),
+                    xc=settings['xc'],
+                    kpts=settings['kpts'],
+                    symmetry={'symmorphic': False},
+                    occupations={'name': 'fermi-dirac',
+                                 'width': 0.05},
+                    poissonsolver={"dipolelayer": "xy"},
+                    charge=0,
+                    nbands="200%",
+                    mixer=MixerDif(**mixersettings),
+                    txt='relax_bilayer.txt')
+
     if settings['d3']:
         calc = DFTD3(dft=calc, cutoff=60)
 
@@ -64,7 +85,11 @@ def main(atoms: Atoms,
                            'xc': 'PBE',
                            'mode': 'interlayer',
                            'PWE': 800,
-                           'kpts': {'density': 6.0, 'gamma': True}},
+                           'kpts': {'density': 6.0, 'gamma': True},
+                           'mixer': {'type': 'default',
+                                     'beta': None,
+                                     'nold': None,
+                                     'weight': None}},
          tol: float = 1e-2,
          distance: float = 5,
          vacuum: float = 6,
