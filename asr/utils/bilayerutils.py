@@ -33,11 +33,12 @@ def translation(x, y, z, rotated, base):
 def construct_bilayer(path, h=None):
     from ase.io import read
     from asr.core import read_json
-    
+
     top_layer = read(f'{path}/toplayer.json')
     base = read(f'{path}/../structure.json')
 
-    t = np.array(read_json(f'{path}/translation.json')['translation_vector']).astype(float)
+    t = np.array(read_json(f'{path}/translation.json')
+                 ['translation_vector']).astype(float)
     if h is None:
         h = read_json(f'{path}/results-asr.relax_bilayer.json')['optimal_height']
 
