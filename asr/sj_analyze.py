@@ -1,6 +1,7 @@
 from asr.core import command, option
 from pathlib import Path
 from ase.io import Trajectory
+from gpaw import restart
 
 
 @command(module='asr.sj_analyze',
