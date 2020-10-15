@@ -1,7 +1,19 @@
-from asr.core import command, option
+from asr.core import command  # , option
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
+
+
+def webpanel(row, key_descriptions):
+    from asr.database.browser import fig
+
+    panel = {'title': 'Charge transition levels and pristine band edges',
+             'columns': [fig('sj_transitions.png')],
+             'plot_descriptions': [{'function': plot_charge_transitions,
+                                    'filenames': ['sj_transitions.png']}],
+             'sort': 12}
+
+    return [panel]
 
 
 @command(module='asr.sj_analyze',
@@ -62,11 +74,14 @@ def get_pristine_band_edges():
     """
     from asr.core import read_json
 
+    print('INFO: extract pristine band edges.')
     if Path('./../../defects.pristine_sc/results-asr.gs.json').is_file():
         results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+        _, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        evac = results_pris['evac']
+        evac = calc.get_electrostatic_potential()[0, 0, 0]
+        # evac = results_pris['evac']
     else:
         vbm = None
         cbm = None
@@ -154,18 +169,6 @@ def plot_charge_transitions(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
-
-def webpanel(row, key_descriptions):
-    from asr.database.browser import fig
-
-    panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [fig('sj_transitions.png')],
-             'plot_descriptions': [{'function': plot_charge_transitions,
-                                    'filenames': ['sj_transitions.png']}],
-             'sort': 12}
-
-    return [panel]
 
 
 if __name__ == '__main__':
