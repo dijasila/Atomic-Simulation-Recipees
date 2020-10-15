@@ -23,6 +23,7 @@ import typing
 from abc import ABC, abstractmethod
 from . import get_recipe_from_name
 import importlib
+import inspect
 
 
 def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
@@ -252,7 +253,14 @@ def make_property(key, doc, return_type):
 
 
 def prepare_result(cls: object) -> str:
-    """Prepare result class."""
+    """Prepare result class.
+
+    This function read key descriptions and types defined in a Result class and
+    assigns properties to all keys. It also sets _strict=True used by the
+    result object to ensure all data is present. It also changes the signature
+    of the class to something more helpful than *args, **kwargs.
+
+    """
     descriptions = get_object_descriptions(cls)
     types = get_object_types(cls)
     type_keys = set(types)
@@ -266,6 +274,18 @@ def prepare_result(cls: object) -> str:
         attr_type = types[key]
         setattr(cls, key, make_property(key, description, return_type=attr_type))
 
+    sig = inspect.signature(cls.__init__)
+    parameters = [list(sig.parameters.values())[0]] + [
+        inspect.Parameter(key, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        for key in data_keys
+    ]
+    sig = sig.replace(parameters=parameters)
+
+    def __init__(self, *args, **kwargs):
+        return super(type(self), self).__init__(*args, **kwargs)
+
+    cls.__init__ = __init__
+    cls.__init__.__signature__ = sig
     cls._strict = True
     cls._known_data_keys = data_keys
     return cls

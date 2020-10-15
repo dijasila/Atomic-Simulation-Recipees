@@ -357,6 +357,14 @@ def evacdiff(atoms):
 
 @prepare_result
 class Result(ASRResult):
+    """Container for ground state results.
+
+    Examples
+    --------
+    >>> res = Result(etot=0, _strict=False)
+    >>> res.etot
+    0
+    """
 
     forces: np.ndarray
     stresses: np.ndarray

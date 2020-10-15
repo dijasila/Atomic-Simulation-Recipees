@@ -145,17 +145,6 @@ def make_recipe_documentation(module):
              '   ']
         )
 
-        th = get_type_hints(step.__wrapped__)
-        returns = th.get('return', None)
-
-        if returns and returns is not ASRResult:
-            rst.extend([
-                '',
-                f'.. autoclass:: {returns.__module__}::{returns.__name__}',
-                '   :members:',
-                '   :noindex:',
-            ])
-
     return rst
 
 
