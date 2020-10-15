@@ -258,7 +258,7 @@ def prepare_result(cls: object) -> str:
     This function read key descriptions and types defined in a Result class and
     assigns properties to all keys. It also sets _strict=True used by the
     result object to ensure all data is present. It also changes the signature
-    of the class to something more helpful than *args, **kwargs.
+    of the class to something more helpful than args, kwargs.
 
     """
     descriptions = get_object_descriptions(cls)
