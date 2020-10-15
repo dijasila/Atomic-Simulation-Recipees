@@ -5,6 +5,7 @@ from gpaw import restart
 
 
 @command(module='asr.sj_analyze',
+         webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    'results-asr.setup.defects.json'],
          resources='24:2h')
@@ -120,6 +121,51 @@ def plot_charge_transitions(row, fname):
     Plot the calculated charge transition levels along with the pristine bandgap.
     """
     import matplotlib.pyplot as plt
+
+    data = row.data.get('results-asr.sj_analyze.json')
+
+    vbm = data['pristine']['vbm'] - data['pristine']['evac']
+    cbm = data['pristine']['cbm'] - data['pristine']['evac']
+
+    transitions = data['transitions']
+
+    plt.plot([-2, 2], [vbm, vbm])
+    plt.plot([-2, 2], [cbm, cbm])
+
+    plt.xlim(-1, 1)
+    plt.ylim(vbm - 1, cbm + 1)
+    plt.xticks([], [])
+
+    plt.fill_between([-2, 2], [vbm, vbm], [vbm - 2, vbm - 2], color='C0')
+    plt.fill_between([-2, 2], [cbm, cbm], [0, 0], color='C1')
+
+    i = 1
+    for t in transitions:
+        y = transitions[t][0] - transitions[t][2]
+        plt.plot([-0.5, 0.5], [y, y], color='black')
+        if i % 2 == 0:
+            plt.text(0.6, y, t, fontsize=14)
+        else:
+            plt.text(-0.7, y, t, fontsize=14)
+        i += 1
+
+    plt.ylabel('$E - E_{vac}$ in eV', fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
+
+
+def webpanel(row, key_descriptions):
+    from asr.database.browser import fig
+
+    panel = {'title': 'Charge transition levels and pristine band edges',
+             'columns': [fig('sj_transitions.png')],
+             'plot_descriptions': [{'function': plot_charge_transitions,
+                                    'filenames': ['sj_transitions.png']}],
+             'sort': 12}
+
+    return [panel]
 
 
 if __name__ == '__main__':
