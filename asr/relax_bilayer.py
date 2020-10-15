@@ -17,10 +17,15 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
         pass
 
     mixersettings = settings.get('mixer', None)
+    if mixersettings == 'mixerdif':
+        mixersettings = {'beta': 0.015, 'nold': 5,
+                         'weight': 75}
+
     if type(mixersettings) != dict:
         mixersettings = {'type': 'default',
                          'beta': None, 'nold': None,
                          'weight': None}
+
     mixertype = mixersettings.pop('type', 'default')
     if mixertype.lower() == 'default':
         calc = GPAW(mode=PW(settings['PWE']),
