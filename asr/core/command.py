@@ -1,6 +1,8 @@
-"""Module implementing the ASRCommand class and related decorators."""
-from . import (read_json, write_json, md5sum,
-               file_barrier, unlink, clickify_docstring)
+"""Implement ASRCommand class and related decorators."""
+from . import (read_json, write_file, md5sum,
+               file_barrier, clickify_docstring, ASRResult,
+               get_recipe_from_name)
+import functools
 from ase.parallel import parprint
 import click
 import copy
@@ -8,7 +10,12 @@ import time
 from importlib import import_module
 from pathlib import Path
 import inspect
-from functools import update_wrapper
+
+
+def to_json(obj):
+    """Write an object to a json file."""
+    json_string = obj.format_as('json')
+    return json_string
 
 
 def _paramerrormsg(func, msg):
@@ -108,6 +115,7 @@ class ASRCommand:
                  requires=None,
                  dependencies=None,
                  creates=None,
+                 returns=None,
                  log=None,
                  webpanel=None,
                  save_results_file=True,
@@ -140,6 +148,12 @@ class ASRCommand:
         self._main = main
         self.name = name
 
+        # Return type
+        if returns is None:
+            returns = ASRResult
+        # assert returns is not None, 'Please specify a return type!'
+        self.returns = returns
+
         # Does the wrapped function want to save results files?
         self.save_results_file = save_results_file
 
@@ -169,22 +183,22 @@ class ASRCommand:
 
         import inspect
         sig = inspect.signature(self._main)
-        self.signature = sig
+        self.__signature__ = sig
 
         # Setup the CLI
-        update_wrapper(self, self._main)
+        functools.update_wrapper(self, self._main)
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
         myparams = []
-        for key, value in self.signature.parameters.items():
+        for key, value in self.__signature__.parameters.items():
             assert key in self.myparams, \
                 f'Missing description for param={key}.'
             myparams.append(key)
 
         # Check that all annotated parameters can be found in the
         # actual function signature.
-        myparams = [k for k, v in self.signature.parameters.items()]
+        myparams = [k for k, v in self.__signature__.parameters.items()]
         for key in self.myparams:
             assert key in myparams, f'param={key} is unknown.'
 
@@ -192,7 +206,7 @@ class ASRCommand:
             # Read defaults from params.json.
             paramsettings = read_json('params.json').get(self.name, {})
             if paramsettings:
-                signature_parameters = dict(self.signature.parameters)
+                signature_parameters = dict(self.__signature__.parameters)
                 for key, new_default in paramsettings.items():
                     assert key in signature_parameters, \
                         f'Unknown param in params.json: param={key}.'
@@ -200,11 +214,11 @@ class ASRCommand:
                     signature_parameters[key] = parameter.replace(
                         default=new_default)
 
-                new_signature = self.signature.replace(
+                new_signature = self.__signature__.replace(
                     parameters=[val for val in signature_parameters.values()])
                 return new_signature
 
-        return self.signature
+        return self.__signature__
 
     def get_defaults(self):
         """Get default parameters based on signature and params.json."""
@@ -352,75 +366,65 @@ class ASRCommand:
                                  params.items()])
         parprint(f'Running {self.name}({paramstring})')
 
-        tstart = time.time()
         # Execute the wrapped function
         with file_barrier(self.created_files, delete=False):
-            results = self._main(**copy.deepcopy(params)) or {}
-        results['__asr_name__'] = self.name
-        tend = time.time()
+            tstart = time.time()
+            result = self._main(**copy.deepcopy(params)) or {}
+            tend = time.time()
+
+        if not isinstance(result, self.returns):
+            result = self.returns(**result)
 
         from ase.parallel import world
-        results['__resources__'] = {'time': tend - tstart,
-                                    'ncores': world.size}
-
-        if self.log:
-            log = results.get('__log__', {})
-            log.update(self.log(**copy.deepcopy(params)))
-
+        metadata = dict(asr_name=self.name,
+                        resources=dict(time=tend - tstart,
+                                       ncores=world.size,
+                                       tstart=tstart,
+                                       tend=tend),
+                        params=params,
+                        code_versions=get_execution_info(
+                            self.package_dependencies))
         # Do we have to store some digests of previous calculations?
         if self.creates:
-            results['__creates__'] = {}
+            metadata['creates'] = {}
             for filename in self.creates:
                 if filename.startswith('results-'):
                     # Don't log own results file
                     continue
                 hexdigest = md5sum(filename)
-                results['__creates__'][filename] = hexdigest
+                metadata['creates'][filename] = hexdigest
 
-        # Also make hexdigests of results-files for dependencies
         if self.requires:
-            results['__requires__'] = {}
+            metadata['requires'] = {}
             for filename in self.requires:
                 hexdigest = md5sum(filename)
-                results['__requires__'][filename] = hexdigest
+                metadata['requires'][filename] = hexdigest
 
-        # Save parameters
-        results.update({'__params__': params})
-
-        # Update with hashes for packages dependencies
-        results.update(self.get_execution_info())
-
+        result.metadata = metadata
         if self.save_results_file:
             name = self.name
-            write_json(f'results-{name}.json', results)
+            json_string = to_json(result)
+            write_file(f'results-{name}.json', json_string)
 
-            # Clean up possible tmpresults files
-            tmppath = Path(f'tmpresults-{name}.json')
-            if tmppath.exists():
-                unlink(tmppath)
+        return result
 
-        return results
 
-    def get_execution_info(self):
-        """Get parameter and software version information as a dictionary."""
-        from ase.utils import search_current_git_hash
-        exeinfo = {}
-        modnames = self.package_dependencies
-        versions = {}
-        for modname in modnames:
-            try:
-                mod = import_module(modname)
-            except ModuleNotFoundError:
-                continue
-            githash = search_current_git_hash(mod)
-            version = mod.__version__
-            if githash:
-                versions[f'{modname}'] = f'{version}-{githash}'
-            else:
-                versions[f'{modname}'] = f'{version}'
-        exeinfo['__versions__'] = versions
-
-        return exeinfo
+def get_execution_info(package_dependencies):
+    """Get parameter and software version information as a dictionary."""
+    from ase.utils import search_current_git_hash
+    versions = {}
+    for modname in package_dependencies:
+        try:
+            mod = import_module(modname)
+        except ModuleNotFoundError:
+            continue
+        githash = search_current_git_hash(mod)
+        version = mod.__version__
+        if githash:
+            versions[f'{modname}'] = f'{version}-{githash}'
+        else:
+            versions[f'{modname}'] = f'{version}'
+    return versions
 
 
 def command(*args, **kwargs):
@@ -448,53 +452,6 @@ def get_recipe_module_names():
     return modulenames
 
 
-def parse_mod_func(name):
-    # Split a module function reference like
-    # asr.relax@main into asr.relax and main.
-    mod, *func = name.split('@')
-    if not func:
-        func = ['main']
-
-    assert len(func) == 1, \
-        'You cannot have multiple : in your function description'
-
-    return mod, func[0]
-
-
-def get_dep_tree(name, reload=True):
-    # Get the tree of dependencies from recipe of "name"
-    # by following dependencies of dependencies
-    import importlib
-
-    tmpdeplist = [name]
-
-    for i in range(1000):
-        if i == len(tmpdeplist):
-            break
-        dep = tmpdeplist[i]
-        mod, func = parse_mod_func(dep)
-        module = importlib.import_module(mod)
-
-        assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
-        function = getattr(module, func)
-        dependencies = function.dependencies
-        # if not dependencies and hasattr(module, 'dependencies'):
-        #     dependencies = module.dependencies
-
-        for dependency in dependencies:
-            tmpdeplist.append(dependency)
-    else:
-        raise AssertionError('Unreasonably many dependencies')
-
-    tmpdeplist.reverse()
-    deplist = []
-    for dep in tmpdeplist:
-        if dep not in deplist:
-            deplist.append(dep)
-
-    return deplist
-
-
 def get_recipe_modules():
     # Get recipe modules
     import importlib
@@ -515,14 +472,6 @@ def get_recipes():
     for module in modules:
         for attr in module.__dict__:
             attr = getattr(module, attr)
-            if isinstance(attr, ASRCommand):
+            if isinstance(attr, ASRCommand) or hasattr(attr, 'is_recipe'):
                 functions.append(attr)
     return functions
-
-
-def get_recipe_from_name(name):
-    # Get a recipe from a name like asr.gs@postprocessing
-    import importlib
-    mod, func = parse_mod_func(name)
-    module = importlib.import_module(mod)
-    return getattr(module, func)

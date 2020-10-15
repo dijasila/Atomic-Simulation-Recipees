@@ -1,7 +1,8 @@
-from asr.core import command, option
+"""Stiffness tensor."""
+from asr.core import command, option, ASRResult
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     import numpy as np
 
     def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
@@ -75,10 +76,10 @@ def webpanel(row, key_descriptions):
     dynstab = row.dynamic_stability_stiffness
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
+
     row = ['Dynamical (stiffness)',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
-               low, high, dynstab.upper())]
+           {'value': dynstab.upper(),
+            'description': f"LOW: {low}\nHIGH: {high}"}]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -90,10 +91,15 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.stiffness',
-         webpanel=webpanel)
+         returns=Result)
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
-def main(strain_percent: float = 1.0):
+def main(strain_percent: float = 1.0) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as setupstrains
     from asr.setup.strains import get_relevant_strains, get_strained_folder_name

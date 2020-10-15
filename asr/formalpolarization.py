@@ -1,4 +1,4 @@
-"""Module for calculating formal polarization phase for a structure.
+"""Formal polarization phase.
 
 Module for calculating formal polarization phase as defined in the
 Modern Theory of Polarization. To learn more see more about this
@@ -8,11 +8,9 @@ phase.
 
 The central recipe of this module is :func:`asr.formalpolarization.main`.
 
-.. autofunction:: asr.formalpolarization.main
-
 """
 import numpy as np
-from asr.core import command, option, DictStr
+from asr.core import command, option, DictStr, ASRResult
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -103,7 +101,7 @@ def main(gpwname: str = 'formalpol.gpw',
                              'density': 1e-7},
              'txt': 'formalpol.txt',
              'charge': 0
-         }):
+         }) -> ASRResult:
     """Calculate the formal polarization phase.
 
     Calculate the formal polarization geometric phase necesarry for in

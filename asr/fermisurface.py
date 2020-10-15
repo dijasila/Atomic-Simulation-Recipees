@@ -1,4 +1,5 @@
-from asr.core import command
+"""Fermi surfaces."""
+from asr.core import command, ASRResult
 
 
 def bz_vertices(cell):
@@ -56,7 +57,7 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
     return contours
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Fermi surface',
@@ -109,11 +110,16 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     return cbaxes
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.fermisurface',
-         webpanel=webpanel,
+         returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
-def main():
+def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs

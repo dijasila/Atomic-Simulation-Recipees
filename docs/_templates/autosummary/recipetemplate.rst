@@ -1,5 +1,8 @@
 {{ fullname | escape | underline}}
 
+Documentation
+-------------
+
 .. automodule:: {{ fullname }}
 
    {% block functions %}
@@ -18,7 +21,6 @@
 
    {% for item in classes %}
    .. autoclass:: {{ item }}
-      :members:
    {%- endfor %}
    {% endif %}
    {% endblock %}

@@ -17,9 +17,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('..'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- General configuration ------------------------------------------------
@@ -33,28 +33,19 @@
 # ones.
 from pathlib import Path
 import shutil
+from docs import generate_docs
 
+generate_docs.generate_docs()
 
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.napoleon',
               'sphinx.ext.autosummary',
               'sphinx.ext.viewcode',
               'sphinx.ext.intersphinx',
-              'sphinx.ext.napoleon',
               'sphinx.ext.doctest',
               'sphinxcontrib.programoutput',
-              # 'autoapi.extension',
+              'sphinx_autodoc_typehints',
               ]
-# autoapi_type = 'python'
-# autoapi_dirs = ['../asr']
-# autoapi_root = 'src/autoapi'
-# autoapi_keep_files = True
-# autoapi_add_toctree_entry = False
-
-# Hack for autosummary which doesn't update generated docs for some
-# reason
-gendocs = Path('src/generated')
-if gendocs.is_dir():
-    shutil.rmtree(gendocs)
 
 napoleon_numpy_docstring = True
 autosummary_generate = True
@@ -201,3 +192,9 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
+
+# Configure extensions
+autodoc_typehints = 'description'
+
+typehints_fully_qualified = True
+always_document_param_types = True

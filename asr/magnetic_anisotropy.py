@@ -1,5 +1,6 @@
+"""Magnetic anisotropy."""
+from asr.core import command, read_json, ASRResult
 from math import pi
-from asr.core import command, read_json
 
 
 def get_spin_axis():
@@ -29,7 +30,7 @@ def spin_axis(theta, phi):
         return 'x'
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
     if row.get('magstate', 'NM') == 'NM':
         return []
@@ -51,11 +52,16 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "database.browser --only-figures"']}]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.magnetic_anisotropy',
          tests=tests,
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.gs@calculate', 'asr.magstate'])
-def main():
+def main() -> Result:
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation

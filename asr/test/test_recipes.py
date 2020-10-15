@@ -8,6 +8,7 @@ import click
 all_recipes = get_recipes()
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize("recipe", all_recipes)
 def test_recipe_cli_help_calls(asr_tmpdir, capsys, recipe):
     """Test that all help calls actually works."""
@@ -46,6 +47,7 @@ def test_recipe_cli_types(asr_tmpdir, capsys, recipe):
     assert not notypes
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
     """Test that all parameters have been given types."""
@@ -59,4 +61,17 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
 
     func = recipe.get_wrapped_function()
     type_hints = typing.get_type_hints(func)
-    assert set(type_hints) == set(params), f'Missing type hints: {recipe.name}'
+
+    type_hints_that_should_exist = set(params)
+    type_hints_that_should_exist.add('return')
+
+    assert set(type_hints) == type_hints_that_should_exist, \
+        f'Missing type hints: {recipe.name}'
+
+    assert type_hints['return'] == recipe.returns
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
+def test_recipe_use_new_webpanel_implementation(recipe):
+    assert recipe.webpanel is None

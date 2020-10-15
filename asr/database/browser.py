@@ -1,5 +1,7 @@
-from asr.core import command, option
+from asr.core import command, option, dct_to_result, ASRResult
+import copy
 import sys
+import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
@@ -45,10 +47,12 @@ def create_table(row,  # AtomsRow
                 value = '{:.{}f}'.format(value, digits)
             elif not isinstance(value, str):
                 value = str(value)
-            desc, unit = key_descriptions.get(key, ['', key, ''])[1:]
+            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
             if unit:
                 value += ' ' + unit
-            table.append((desc, value))
+            entry = {'value': value,
+                     'description': longdesc}
+            table.append((desc, entry))
     return {'type': 'table',
             'header': header,
             'rows': table}
@@ -77,11 +81,14 @@ def val2str(row, key: str, digits=2) -> str:
     return value
 
 
-def fig(filename: str, link: str = None) -> 'Dict[str, Any]':
+def fig(filename: str, link: str = None,
+        caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
     dct = {'type': 'figure', 'filename': filename}
     if link:
         dct['link'] = link
+    if caption:
+        dct['caption'] = caption
     return dct
 
 
@@ -130,29 +137,61 @@ def merge_panels(page):
         page[title] = panel
 
 
+def extract_recipe_from_filename(filename: str):
+    """Parse filename and return recipe name."""
+    pattern = re.compile('results-(.*)\.json')  # noqa
+    m = pattern.match(filename)
+    return m.group(1)
+
+
+def is_results_file(filename):
+    return filename.startswith('results-') and filename.endswith('.json')
+
+
+class RowWrapper:
+
+    def __init__(self, row):
+        self._row = row
+        self._data = copy.deepcopy(row.data)
+
+    def __getattr__(self, key):
+        """Wrap attribute lookup of AtomsRow."""
+        if key == 'data':
+            return self._data
+        return getattr(self._row, key)
+
+    def __contains__(self, key):
+        """Wrap contains of atomsrow."""
+        return self._row.__contains__(key)
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
-    from asr.core import get_recipes
     page = {}
     exclude = set()
 
+    row = RowWrapper(row)
+    for key, value in row.data.items():
+        if is_results_file(key):
+            obj = dct_to_result(value)
+        else:
+            obj = key
+        row.data[key] = obj
+        assert row.data[key] == obj
+
     # Locate all webpanels
-    recipes = get_recipes()
-    for recipe in recipes:
-        if not recipe.webpanel:
+    for filename in row.data:
+        if not is_results_file(filename):
             continue
-        # We assume that there should be a results file in
-        if f'results-{recipe.name}.json' not in row.data:
+        result = row.data[filename]
+        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        if not panels:
             continue
-        try:
-            panels = recipe.webpanel(row, key_descriptions)
-        except Exception:
-            traceback.print_exc()
-            panels = []
+
         for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
+            assert 'title' in thispanel, f'No title in {filename} webpanel'
             panel = {'columns': [[], []],
                      'plot_descriptions': [],
                      'sort': 99}
@@ -234,7 +273,8 @@ def layout(row: AtomsRow,
 @option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database: str = 'database.db', only_figures: bool = False):
+def main(database: str = 'database.db',
+         only_figures: bool = False) -> ASRResult:
     """Open results in web browser."""
     import subprocess
     from pathlib import Path

@@ -1,5 +1,7 @@
+"""Push along phonon modes."""
+# TODO: Should be moved to setup recipes.
 from typing import List
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 @command('asr.push',
@@ -10,7 +12,7 @@ from asr.core import command, option
 @option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
 def main(momentum: List[float] = [0, 0, 0], mode: int = 0,
-         amplitude: float = 0.1):
+         amplitude: float = 0.1) -> ASRResult:
     """Push structure along some phonon mode and relax structure."""
     from asr.phonons import analyse
     import numpy as np

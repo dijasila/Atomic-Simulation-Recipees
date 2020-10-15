@@ -1,8 +1,9 @@
+"""Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
 
-from asr.core import command, argument
+from asr.core import command, argument, ASRResult
 
 from ase.db import connect
 from ase.io import read
@@ -12,16 +13,19 @@ from ase.db.row import AtomsRow
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
+    caption = """
+    The convex hull describes stability
+    with respect to other phases."""
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
     panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png')],
+             'columns': [[fig('convex-hull.png', caption=caption)],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}],
@@ -46,14 +50,19 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.convex_hull',
          requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
-         webpanel=webpanel)
+         returns=Result)
 @argument('databases', nargs=-1, type=str)
-def main(databases: List[str]):
+def main(databases: List[str]) -> Result:
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -115,7 +124,7 @@ def main(databases: List[str]):
         if Path(filename).is_file():
             results = read_json(filename)
             energy = results.get('etot')
-            usingd3 = results.get('__params__', {}).get('d3', False)
+            usingd3 = results.metadata.params.get('d3', False)
             break
 
     if usingd3:
@@ -328,7 +337,7 @@ def plot(row, fname):
         cfrac = count.get(C, 0) / sum(count.values())
 
         ax.plot([bfrac + cfrac / 2],
-                [cfrac],
+                [cfrac * 3**0.5 / 2],
                 'o', color='C1', label='This material')
         plt.legend(loc='upper left')
         plt.axis('off')

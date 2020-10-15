@@ -1,4 +1,5 @@
-from asr.core import command, option
+"""Generate symmetrized atomic structure."""
+from asr.core import command, option, ASRResult
 
 
 def symmetrize_atoms(atoms, tolerance=None,
@@ -82,7 +83,8 @@ def symmetrize_atoms(atoms, tolerance=None,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float,
         help='Tolerance one angles when evaluating symmetries')
-def main(tolerance: float = 1e-3, angle_tolerance: float = 0.1):
+def main(tolerance: float = 1e-3,
+         angle_tolerance: float = 0.1) -> ASRResult:
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell
@@ -99,8 +101,8 @@ def main(tolerance: float = 1e-3, angle_tolerance: float = 0.1):
     Examples
     --------
     Symmetrize an atomic structure using the default tolerances
-    >>> ase build -x diamond C original.json
-    >>> asr run setup.symmetrize
+    $ ase build -x diamond C original.json
+    $ asr run setup.symmetrize
 
     """
     import numpy as np

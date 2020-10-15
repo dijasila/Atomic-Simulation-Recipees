@@ -1,7 +1,8 @@
-from asr.core import command, option
+"""Effective Born charges."""
+from asr.core import command, option, ASRResult
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     import numpy as np
 
     def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
@@ -44,12 +45,17 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.borncharges',
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'],
-         webpanel=webpanel)
+         returns=Result)
 @option('--displacement', help='Atomic displacement (Å)', type=float)
-def main(displacement: float = 0.01):
+def main(displacement: float = 0.01) -> Result:
     """Calculate Born charges."""
     import numpy as np
     from gpaw import GPAW

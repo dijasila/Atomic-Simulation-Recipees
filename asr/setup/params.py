@@ -1,24 +1,13 @@
+"""Generate parameter file 'params.json'."""
 from typing import Union
-from asr.core import command, argument
-
-
-tests = [
-    {'cli': ['asr run setup.params']},
-    {'cli': ['asr run "setup.params asr.relax:ecut 300"'],
-     'results': [{'file': 'params.json',
-                  'asr.relax:ecut': (250, 0.1)}], 'fails': True},
-    {'cli': ['asr run "setup.params :ecut 300"'], 'fails': True},
-    {'cli': ['asr run "setup.params asr.relax: 300"'], 'fails': True},
-    {'cli': ['asr run "setup.params asr.relax:ecut asr.gs:ecut 300"'],
-     'fails': True},
-]
+from asr.core import command, argument, ASRResult
 
 
 @command('asr.setup.params',
-         tests=tests)
+         save_results_file=True)
 @argument('params', nargs=-1, type=str,
           metavar='recipe:option arg recipe:option arg')
-def main(params: Union[str, None] = None):
+def main(params: Union[str, None] = None) -> ASRResult:
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default

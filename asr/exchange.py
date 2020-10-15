@@ -1,5 +1,5 @@
 import numpy as np
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 @command(module='asr.exchange',
@@ -8,7 +8,7 @@ from asr.core import command, option
          resources='40:10h')
 @option('--gs', help='Ground state on which exchange calculation is based',
         type=str)
-def calculate(gs: str = 'gs.gpw'):
+def calculate(gs: str = 'gs.gpw') -> ASRResult:
     """Calculate two spin configurations."""
     from gpaw import GPAW
     from asr.utils import magnetic_atoms
@@ -175,7 +175,7 @@ def get_parameters(gs, exchange, txt=False,
 @command(module='asr.exchange',
          requires=['gs_2mag.gpw', 'exchange.gpw'],
          dependencies=['asr.exchange@calculate', 'asr.gs'])
-def main():
+def main() -> ASRResult:
     """Collect data."""
     from ase.io import read
     N_gs = len(read('gs.gpw'))

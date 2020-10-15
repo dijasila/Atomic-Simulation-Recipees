@@ -1,4 +1,5 @@
-from asr.core import command, option
+"""Plasma frequency."""
+from asr.core import command, option, ASRResult
 
 
 def get_kpts_size(atoms, density):
@@ -18,7 +19,7 @@ def get_kpts_size(atoms, density):
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'])
 @option('--kptdensity', help='k-point density', type=float)
-def calculate(kptdensity: float = 20):
+def calculate(kptdensity: float = 20) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
     from gpaw import GPAW
     from ase.parallel import world
@@ -40,7 +41,7 @@ def calculate(kptdensity: float = 20):
         world.barrier()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     if row.get('gap', 1) > 0.01:
@@ -54,12 +55,17 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.plasmafrequency',
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
-def main(tetra: bool = True):
+def main(tetra: bool = True) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
     from ase.io import read

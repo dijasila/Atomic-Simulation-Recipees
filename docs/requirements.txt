@@ -1,4 +1,5 @@
 git+https://gitlab.com/ase/ase.git
 sphinxcontrib-programoutput==0.14
+sphinx-autodoc-typehints
 sphinx
 pytest

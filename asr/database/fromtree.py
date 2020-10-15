@@ -1,9 +1,9 @@
-"""Functionality for converting a folder tree to an ASE database."""
+"""Convert a folder tree to an ASE database."""
 
 from typing import Union, List
 from ase import Atoms
 from ase.io import read
-from asr.core import command, option, argument, chdir, read_json
+from asr.core import command, option, argument, chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
@@ -139,7 +139,12 @@ def collect_file(filename: Path):
     from asr.core import read_json
     data = {}
     results = read_json(filename)
-    data[str(filename)] = results
+    if isinstance(results, ASRResult):
+        dct = results.format_as('dict')
+    else:
+        dct = results
+
+    data[str(filename)] = dct
 
     # Find and try to collect related files for this resultsfile
     files = results.get('__files__', {})
@@ -162,6 +167,7 @@ def collect_file(filename: Path):
             dct = read_json(extrafile)
         else:
             dct = {'pointer': str(file.absolute())}
+
         data[extrafile] = dct
 
     kvp = get_key_value_pairs(results)
@@ -361,7 +367,7 @@ def collect_folders(folders: List[str],
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
-@command('asr.database.fromtree')
+@command('asr.database.fromtree', save_results_file=False)
 @argument('folders', nargs=-1, type=str)
 @option('-r', '--recursive', is_flag=True,
         help='Recurse and collect subdirectories.')
@@ -376,7 +382,7 @@ def main(folders: Union[str, None] = None,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
-         njobs: int = 1):
+         njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from ase.db import connect
     from asr.database.key_descriptions import main as set_key_descriptions

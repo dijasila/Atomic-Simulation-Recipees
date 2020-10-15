@@ -1,4 +1,5 @@
-from asr.core import command, option, read_json
+"""HSE band structure."""
+from asr.core import command, option, read_json, ASRResult
 
 
 @command(module='asr.hse',
@@ -8,7 +9,7 @@ from asr.core import command, option, read_json
          resources='24:10h')
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
-def calculate(kptdensity: float = 8.0, emptybands: int = 20):
+def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
     """Calculate HSE corrections."""
     eigs, calc = hse(kptdensity=kptdensity, emptybands=emptybands)
     eigs_soc = hse_spinorbit(eigs, calc)
@@ -200,7 +201,7 @@ def bs_hse(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     if row.get('gap_hse', 0) > 0.0:
@@ -233,15 +234,20 @@ def webpanel(row, key_descriptions):
              'sort': 15}
 
     if row.get('gap_hse'):
-        rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+        hse_table = table(row, 'Electronic properties', ['gap_hse'],
+                          key_descriptions)
+        # rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
+                   'columns': [[hse_table]],
                    'sort': 11}
         return [panel, summary]
 
     return [panel]
+
+
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.hse',
@@ -251,8 +257,8 @@ def webpanel(row, key_descriptions):
                    'results-asr.bandstructure.json',
                    'results-asr.hse@calculate.json'],
          resources='1:10m',
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from gpaw import GPAW

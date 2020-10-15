@@ -1,4 +1,5 @@
-from asr.core import command
+"""Structural information."""
+from asr.core import command, ASRResult
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -42,7 +43,7 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
@@ -88,11 +89,16 @@ tests = [{'description': 'Test SI.',
                   'asr run "database.browser --only-figures"']}]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.structureinfo',
          tests=tests,
          requires=['structure.json'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     """Get structural information of atomic structure.
 
     This recipe produces information such as the space group and magnetic

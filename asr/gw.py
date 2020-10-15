@@ -1,4 +1,5 @@
-from asr.core import command, option, read_json
+"""DFT GW."""
+from asr.core import command, option, read_json, ASRResult
 from click import Choice
 
 
@@ -96,7 +97,7 @@ def get_kpts_size(atoms, kptdensity):
          creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
-def gs(kptdensity: float = 5.0, ecut: float = 200.0):
+def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
@@ -148,7 +149,7 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0):
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
-def gw(ecut: float = 200.0, mode: str = 'G0W0'):
+def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
@@ -207,7 +208,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0'):
     return results
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     prop = table(row, 'Property', [
@@ -247,11 +248,16 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils import fermi_level

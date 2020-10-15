@@ -1,4 +1,5 @@
-from asr.core import command, option, DictStr
+"""Effective masses."""
+from asr.core import command, option, DictStr, ASRResult
 
 
 class NoGapError(Exception):
@@ -36,7 +37,7 @@ def refine(gpwfilename: str = 'gs.gpw',
                'erange1': 250e-3,
                'nkpts1': 19,
                'erange2': 1e-3,
-               'nkpts2': 9}):
+               'nkpts2': 9}) -> ASRResult:
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -545,7 +546,7 @@ def custom_table(values_dict, title):
     return table
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     columns, fnames = create_columns_fnames(row)
 
     electron_dict, hole_dict = get_emass_dict_from_row(row)
@@ -651,6 +652,11 @@ def check_soc(spin_band_dict):
     return True
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.emasses',
          requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
@@ -661,10 +667,10 @@ def check_soc(spin_band_dict):
                        'asr.gs',
                        'asr.structureinfo',
                        'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
+         returns=Result)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename: str = 'gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw') -> Result:
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -974,6 +980,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             k-points in cartesian coordinates (in units of 1 / Bohr)
         eps_k: (nk,)-shape ndarray
             eigenvalues (in units of Hartree)
+
     Returns
     -------
         out: dct

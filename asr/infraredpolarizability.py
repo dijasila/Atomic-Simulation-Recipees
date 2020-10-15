@@ -1,9 +1,10 @@
-from asr.core import command, option, read_json
+"""Infrared polarizability."""
+from asr.core import command, option, read_json, ASRResult
 
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(
@@ -145,6 +146,11 @@ def create_plot(row, *fnames):
         plt.savefig(fnames[2])
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(
     "asr.infraredpolarizability",
     dependencies=["asr.phonons", "asr.borncharges", "asr.polarizability"],
@@ -154,11 +160,11 @@ def create_plot(row, *fnames):
         "results-asr.borncharges.json",
         "results-asr.polarizability.json",
     ],
-    webpanel=webpanel,
+    returns=Result,
 )
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
-def main(nfreq: int = 300, eta: float = 1e-2):
+def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     from ase.io import read
 
     # Get relevant atomic structure

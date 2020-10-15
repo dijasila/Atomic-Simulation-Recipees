@@ -1,9 +1,10 @@
+"""Projected density of states."""
+from asr.core import command, option, read_json, ASRResult
 from collections import defaultdict
 
 import numpy as np
 from ase import Atoms
 
-from asr.core import command, option, read_json
 from asr.utils import magnetic_atoms
 
 
@@ -55,7 +56,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 # ---------- Webpanel ---------- #
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     # PDOS without spin-orbit coupling
     panel = {'title': 'Projected band structure and DOS (PBE)',
@@ -81,7 +82,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity: float = 20.0, emptybands: int = 20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -91,12 +92,17 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20):
 # ----- Fast steps ----- #
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.pdos',
          requires=['results-asr.gs.json', 'pdos.gpw'],
          tests=tests,
          dependencies=['asr.gs', 'asr.pdos@calculate'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from gpaw import GPAW
     from asr.core import singleprec_dict
     from ase.parallel import parprint
@@ -338,6 +344,7 @@ def plot_pdos(row, filename, soc=True,
         return
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
@@ -416,6 +423,7 @@ def plot_pdos(row, filename, soc=True,
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
     text = plt.text(x0, ef - row.get('evac', 0),
                     r'$E_\mathrm{F}$',
+                    fontsize=rcParams['font.size'] * 1.25,
                     ha='left',
                     va='bottom')
 
