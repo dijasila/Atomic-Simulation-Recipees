@@ -6,8 +6,18 @@ import importlib
 import inspect
 import os
 
-DOCSDIR = Path('.')
-ROOTDIR = DOCSDIR / '..'
+CWD = Path('.').absolute()
+
+# pytest-doctest and sphinx-build need different folder setups here.
+if CWD.name == 'docs':
+    DOCSDIR = CWD
+    ROOTDIR = (DOCSDIR / '..').absolute()
+elif CWD.name == 'asr':
+    DOCSDIR = CWD / 'docs'
+    ROOTDIR = CWD
+else:
+    raise AssertionError(f'Bad CWD={CWD} for documentation generation. '
+                         'Only asr/ or asr/docs is allowed.')
 
 
 def get_modules_from_path(path: str, recursive=False):
@@ -26,7 +36,7 @@ def get_modules_from_path(path: str, recursive=False):
 
 def get_names_from_paths(paths):
     """Get module names from path."""
-    return [str(path.relative_to(ROOTDIR).with_suffix('')).replace('/', '.')
+    return [str(path.absolute().relative_to(ROOTDIR).with_suffix('')).replace('/', '.')
             for path in paths]
 
 
@@ -181,7 +191,7 @@ def generate_api_summary():
 
 def get_recipe_modules():
     paths = []
-    for package in ['../asr', '../asr/setup']:
+    for package in [ROOTDIR / 'asr', ROOTDIR / 'asr/setup']:
         paths.extend(get_modules_from_path(package))
 
     names = get_names_from_paths(paths)

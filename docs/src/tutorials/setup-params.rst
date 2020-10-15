@@ -105,7 +105,7 @@ specified simultaneously by using
 
 .. code-block:: console
 
-   $ asr run "setup.params asr.gs@calculate:calculator asr.relax:d3 True asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
+   $ asr run "setup.params asr.relax:d3 True asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
 
 
 In this way all default parameters exposed through the CLI of a recipe

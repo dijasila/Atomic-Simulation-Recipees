@@ -450,6 +450,7 @@ class ASRResult(object):
     True
     >>> print(format(result, 'json'))
     {
+     "__asr_obj_id__": "asr.core.results::ASRResult",
      "data": {
       "a": 1
      },
@@ -607,7 +608,6 @@ class ASRResult(object):
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
-        print(self.get_obj_id(), repr(fmt))
         formats = self.get_formats()
         return formats[fmt](self)
 
