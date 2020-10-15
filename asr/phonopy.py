@@ -170,6 +170,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         drift_force = forces.sum(axis=0)
         for force in forces:
             force -= drift_force / forces.shape[0]
+        set_of_forces.append(forces)
         write_json(filename, {"force": forces})
 
     phonon.produce_force_constants(
