@@ -115,5 +115,12 @@ def get_transition_level(transition, correct_relax):
     return e_trans, e_cor, e_ref
 
 
+def plot_charge_transitions(row, fname):
+    """
+    Plot the calculated charge transition levels along with the pristine bandgap.
+    """
+    import matplotlib.pyplot as plt
+
+
 if __name__ == '__main__':
     main.cli()
