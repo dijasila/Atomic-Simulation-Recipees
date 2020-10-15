@@ -31,27 +31,26 @@ def main():
         transition = [0, +1]
         e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
         results['{}/{}'.format(transition[0], transition[1])] = [
-                e_trans, e_cor, e_ref]
+            e_trans, e_cor, e_ref]
         transition = [0, -1]
         e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
         results['{}/{}'.format(transition[1], transition[0])] = [
-                e_trans, e_cor, e_ref]
+            e_trans, e_cor, e_ref]
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
             e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
             results['{}/{}'.format(transition[0], transition[1])] = [
-                    e_trans, e_cor, e_ref]
+                e_trans, e_cor, e_ref]
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
             e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
             results['{}/{}'.format(transition[0], transition[1])] = [
-                    e_trans, e_cor, e_ref]
+                e_trans, e_cor, e_ref]
 
     vbm, cbm, evac = get_pristine_band_edges()
     results['pristine'] = {'vbm': vbm, 'cbm': cbm, 'evac': evac}
-
 
     return results
 
@@ -93,24 +92,24 @@ def get_transition_level(transition, correct_relax):
     # HOMO
     if transition[0] > transition[1]:
         _, calc = restart('sj_-0.5/gs.gpw', txt=None)
-        e_ref = calc.get_electrostatic_potential()[0,0,0]
+        e_ref = calc.get_electrostatic_potential()[0, 0, 0]
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
         [occ.append(v) for v in ev if v < e_fermi]
         e_trans = max(occ)
-        print('INFO: calculate transition level for q = {} -> q = {} transition.'.format(
+        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
         _, calc = restart('sj_+0.5/gs.gpw', txt=None)
-        e_ref = calc.get_electrostatic_potential()[0,0,0]
+        e_ref = calc.get_electrostatic_potential()[0, 0, 0]
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
         [unocc.append(v) for v in ev if v > e_fermi]
         e_trans = min(unocc)
-        print('INFO: calculate transition level for q = {} -> q = {} transition.'.format(
+        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
     return e_trans, e_cor, e_ref
