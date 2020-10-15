@@ -44,7 +44,7 @@ def inflate_vacuum(atoms, height, nlayers):
 @command('asr.stack_multilayer')
 @option('-a', '--atoms', help='Base layer',
         type=AtomsFile(), default='../structure.json')
-@option('-h', '--height', help='Interlayer stacking height',
+@option('-l', '--height', help='Interlayer stacking height',
         type=float, default=None)
 @option('-n', '--nlayers', help='Number of layers',
         type=int, default=2)
