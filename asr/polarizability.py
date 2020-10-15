@@ -152,6 +152,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             es_file = Path("es.gpw")
             if es_file.is_file():
                 es_file.unlink()
+            chi_file = Path("chi+0+0+0.pckl")
+            if chi_file.is_file():
+                chi_file.unlink()
 
     return data
 
