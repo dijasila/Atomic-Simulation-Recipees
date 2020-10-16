@@ -93,17 +93,6 @@ def get_transition_level(transition):
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
-    # if possible, calculate correction due to relaxation in the charge state
-    if Path('../charge_{}/results-asr.relax.json'.format(
-            int(transition[1]))).is_file():
-        print('INFO: calculate relaxation contribution to transition level.')
-        traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
-        e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
-    else:
-        print('INFO: no relaxation for the charged state present. Do not calculate '
-              'relaxation contribution to transition level.')
-        e_cor = 0
-
     # extrac HOMO or LUMO
     # HOMO
     if transition[0] > transition[1]:
@@ -127,6 +116,17 @@ def get_transition_level(transition):
         e_trans = min(unocc)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
+
+    # if possible, calculate correction due to relaxation in the charge state
+    if Path('../charge_{}/results-asr.relax.json'.format(
+            int(transition[1]))).is_file():
+        print('INFO: calculate relaxation contribution to transition level.')
+        traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
+        e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
+    else:
+        print('INFO: no relaxation for the charged state present. Do not calculate '
+              'relaxation contribution to transition level.')
+        e_cor = 0
 
     return e_trans, e_cor, e_ref
 
