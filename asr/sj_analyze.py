@@ -36,29 +36,26 @@ def main():
     # Initialize results dictionary
     results = {'transitions': {}, 'pristine': {}}
 
-    # TEMPORARY PART!!!
-    correct_relax = False
-
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
         transition = [0, +1]
-        e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
+        e_trans, e_cor, e_ref = get_transition_level(transition)
         results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
             e_trans, e_cor, e_ref]
         transition = [0, -1]
-        e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
+        e_trans, e_cor, e_ref = get_transition_level(transition)
         results['transitions']['{}/{}'.format(transition[1], transition[0])] = [
             e_trans, e_cor, e_ref]
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
+            e_trans, e_cor, e_ref = get_transition_level(transition)
             results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
                 e_trans, e_cor, e_ref]
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
+            e_trans, e_cor, e_ref = get_transition_level(transition)
             results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
                 e_trans, e_cor, e_ref]
 
@@ -81,7 +78,6 @@ def get_pristine_band_edges():
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
         evac = calc.get_electrostatic_potential()[0, 0, 0]
-        # evac = results_pris['evac']
     else:
         vbm = None
         cbm = None
@@ -90,7 +86,7 @@ def get_pristine_band_edges():
     return vbm, cbm, evac
 
 
-def get_transition_level(transition, correct_relax):
+def get_transition_level(transition):
     """
     Calculates the charge transition level for a given charge transition.
 
@@ -98,10 +94,14 @@ def get_transition_level(transition, correct_relax):
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
     # if possible, calculate correction due to relaxation in the charge state
-    if correct_relax:
+    if Path('../charge_{}/results-asr.relax.json'.format(
+            int(transition[1]))).is_file():
+        print('INFO: calculate relaxation contribution to transition level.')
         traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
         e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
     else:
+        print('INFO: no relaxation for the charged state present. Do not calculate '
+              'relaxation contribution to transition level.')
         e_cor = 0
 
     # extrac HOMO or LUMO
