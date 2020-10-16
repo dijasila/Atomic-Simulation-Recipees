@@ -1,7 +1,7 @@
 import os
 import pathlib
 import click
-from asr.core import read_json
+from asr.core import read_json, ASRResult
 
 
 def is_results_file(path: pathlib.Path):
@@ -16,13 +16,14 @@ def find_bad_results_files(fixup=False):
     for root, dirs, files in os.walk("."):
         for name in files:
             path = pathlib.Path(root) / name
+            abspath = path.absolute()
+            print(abspath, flush=True)
             if is_results_file(path):
                 content = read_json(path)
-                assert isinstance(content, dict), f'Not a dict={content}'
+                assert isinstance(content, (dict, ASRResult)), (type(content), content)
                 if '__asr_name__' not in content:
-                    abspath = path.absolute()
                     badresultfiles.append(abspath)
-                    print(abspath)
+                    print('IS BAD', flush=True)
 
 
 if __name__ == '__main__':
