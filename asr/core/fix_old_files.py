@@ -20,10 +20,9 @@ def find_bad_results_files():
                 content = read_json(path)
                 assert isinstance(content, dict), f'Not a dict={content}'
                 if '__asr_name__' not in content:
-                    badresultfiles.append(path)
-
-    for path in badresultfiles:
-        print(path.absolute())
+                    abspath = path.absolute()
+                    badresultfiles.append(abspath)
+                    print(abspath)
 
 
 if __name__ == '__main__':
