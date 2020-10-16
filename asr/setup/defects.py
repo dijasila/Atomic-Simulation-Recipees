@@ -561,25 +561,27 @@ def setup_halfinteger():
 
     charge = int(str(Path('.').absolute()).split('/')[-1].split('_')[-1])
 
-    ####################################################################################
     folderpath = Path('.')
     foldername = str(folderpath)
-    params = read_json('params.json')
     print('INFO: set up half integer folders and parameter sets for '
           'a subsequent Slater-Janach calculation')
     if charge <= 0:
         print('INFO: charge = {} -> set up negative half integer folder.'.format(
             charge))
         Path('sj_-0.5').mkdir()
+        params = read_json('params.json')
         params_m05 = params.copy()
         params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
         params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
         write_json('sj_-0.5/params.json', params_m05)
         print('INFO: changed parameters m: {}'.format(params_m05))
+        shutil.copyfile(foldername + '/structure.json',
+                        foldername + '/sj_-0.5/structure.json')
     if charge >= 0:
         print('INFO: charge = {} -> set up positive half integer folder.'.format(
             charge))
         Path('sj_+0.5').mkdir()
+        params = read_json('params.json')
         params_p05 = params.copy()
         charge = params.get('asr.gs@calculate').get('calculator').get('charge')
         print('INFO: initial charge {}'.format(charge))
@@ -587,33 +589,8 @@ def setup_halfinteger():
         params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
         write_json('sj_+0.5/params.json', params_p05)
         print('INFO: changed parameters p: {}'.format(params_p05))
-    ####################################################################################
-
-    # Path('sj_-0.5').mkdir()
-    # Path('sj_+0.5').mkdir()
-    # folderpath = Path('.')
-    # foldername = str(folderpath)
-
-    # print('INFO: set up half integer folders and parameter sets for '
-    #       'a subsequent Slater-Janach calculation')
-    # params = read_json('params.json')
-    # params_p05 = params.copy()
-    # charge = params.get('asr.gs@calculate').get('calculator').get('charge')
-    # print('INFO: initial charge {}'.format(charge))
-    # params_p05['asr.gs@calculate']['calculator']['charge'] = charge + 0.5
-    # params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
-    # write_json('sj_+0.5/params.json', params_p05)
-    # print('INFO: changed parameters p: {}'.format(params_p05))
-    # params_m05 = params.copy()
-    # params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
-    # params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
-    # write_json('sj_-0.5/params.json', params_m05)
-    # print('INFO: changed parameters m: {}'.format(params_m05))
-
-    # shutil.copyfile(foldername + '/structure.json',
-    #                 foldername + '/sj_-0.5/structure.json')
-    # shutil.copyfile(foldername + '/structure.json',
-    #                 foldername + '/sj_+0.5/structure.json')
+        shutil.copyfile(foldername + '/structure.json',
+                        foldername + '/sj_+0.5/structure.json')
 
     return None
 
