@@ -10,8 +10,8 @@ def is_results_file(path: pathlib.Path):
 
 
 @click.command()
-@click.option('--fixup', help='Fix bad files.')
-def find_bad_results_files():
+@click.option('--fixup', is_flag=True, help='Fix bad files.')
+def find_bad_results_files(fixup=False):
     badresultfiles = []
     for root, dirs, files in os.walk("."):
         for name in files:
