@@ -94,9 +94,9 @@ def plot_gapstates(row, fname):
                 # add arrow if occupied
                 if ene <= ef:
                     lev.add_occupation(length=gap/10)
-             if ene >= ecbm:
+            if ene >= ecbm:
                 break
-             eneold = ene
+            eneold = ene
 
     # plotting
     ax.plot([0,1],[ef]*2, '--k')
@@ -130,9 +130,9 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
     ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
 
 class Level:
-    "Class to draw a single defect state level in the gap, with an
+    """Class to draw a single defect state level in the gap, with an
      arrow if occupied. The direction of the arrow depends on the
-     spin channel"
+     spin channel"""
 
     def __init__(self, energy, size=0.05, ax=None):
         self.size = size

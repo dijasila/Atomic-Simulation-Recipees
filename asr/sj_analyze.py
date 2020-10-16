@@ -43,23 +43,23 @@ def main():
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
         transition = [0, +1]
         e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
-        results['{}/{}'.format(transition[0], transition[1])] = [
+        results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
             e_trans, e_cor, e_ref]
         transition = [0, -1]
         e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
-        results['{}/{}'.format(transition[1], transition[0])] = [
+        results['transitions']['{}/{}'.format(transition[1], transition[0])] = [
             e_trans, e_cor, e_ref]
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
             e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
-            results['{}/{}'.format(transition[0], transition[1])] = [
+            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
                 e_trans, e_cor, e_ref]
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
             e_trans, e_cor, e_ref = get_transition_level(transition, correct_relax)
-            results['{}/{}'.format(transition[0], transition[1])] = [
+            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
                 e_trans, e_cor, e_ref]
 
     vbm, cbm, evac = get_pristine_band_edges()
