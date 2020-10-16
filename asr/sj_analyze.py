@@ -34,7 +34,7 @@ def main():
         defectsystem))
 
     # Initialize results dictionary
-    results = {}
+    results = {'transitions': {}, 'pristine': {}}
 
     # TEMPORARY PART!!!
     correct_relax = False
