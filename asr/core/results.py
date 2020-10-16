@@ -633,7 +633,7 @@ class ASRResult(object):
 
         """
         if (hasattr(self, '_known_data_keys')
-           and (strict is None and self.strict) or strict):
+           and ((strict is None and self.strict) or strict)):
             data_keys = set(data)
             unknown_keys = data_keys - self._known_data_keys
             assert not unknown_keys, \
