@@ -209,21 +209,23 @@ def gaps(calc, soc=True) -> GapsResult:
     else:
         efermi = calc.get_fermi_level()
 
-    return GapsResult(gap=evbm_ecbm_gap[2],
-                      vbm=evbm_ecbm_gap[0],
-                      cbm=evbm_ecbm_gap[1],
-                      gap_dir=evbm_ecbm_direct_gap[2],
-                      vbm_dir=evbm_ecbm_direct_gap[0],
-                      cbm_dir=evbm_ecbm_direct_gap[1],
-                      k_vbm_c=k_vbm_c,
-                      k_cbm_c=k_cbm_c,
-                      k_vbm_dir_c=direct_k_vbm_c,
-                      k_cbm_dir_c=direct_k_cbm_c,
-                      skn1=skn_vbm,
-                      skn2=skn_cbm,
-                      skn1_dir=direct_skn_vbm,
-                      skn2_dir=direct_skn_cbm,
-                      efermi=efermi)
+    return GapsResult.fromdata(
+        gap=evbm_ecbm_gap[2],
+        vbm=evbm_ecbm_gap[0],
+        cbm=evbm_ecbm_gap[1],
+        gap_dir=evbm_ecbm_direct_gap[2],
+        vbm_dir=evbm_ecbm_direct_gap[0],
+        cbm_dir=evbm_ecbm_direct_gap[1],
+        k_vbm_c=k_vbm_c,
+        k_cbm_c=k_cbm_c,
+        k_vbm_dir_c=direct_k_vbm_c,
+        k_cbm_dir_c=direct_k_cbm_c,
+        skn1=skn_vbm,
+        skn2=skn_cbm,
+        skn1_dir=direct_skn_vbm,
+        skn2_dir=direct_skn_cbm,
+        efermi=efermi
+    )
 
 
 def get_1bz_k(ibzkpts, calc, k_index):
@@ -310,28 +312,30 @@ def vacuumlevels(atoms, calc, n=8):
     import numpy as np
 
     if not np.sum(atoms.get_pbc()) == 2:
-        return VacuumLevelResults(z_z=None,
-                                  v_z=None,
-                                  evacdiff=None,
-                                  dipz=None,
-                                  evac1=None,
-                                  evac2=None,
-                                  evacmean=None,
-                                  efermi_nosoc=None)
+        return VacuumLevelResults.fromdata(
+            z_z=None,
+            v_z=None,
+            evacdiff=None,
+            dipz=None,
+            evac1=None,
+            evac2=None,
+            evacmean=None,
+            efermi_nosoc=None)
 
     # Record electrostatic potential as a function of z
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
     z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
 
     # Store data
-    return VacuumLevelResults(z_z=z_z,
-                              v_z=v_z,
-                              dipz=atoms.get_dipole_moment()[2],
-                              evacdiff=evacdiff(atoms),
-                              evac1=v_z[n],
-                              evac2=v_z[-n],
-                              evacmean=(v_z[n] + v_z[-n]) / 2,
-                              efermi_nosoc=calc.get_fermi_level())
+    return VacuumLevelResults.fromdata(
+        z_z=z_z,
+        v_z=v_z,
+        dipz=atoms.get_dipole_moment()[2],
+        evacdiff=evacdiff(atoms),
+        evac1=v_z[n],
+        evac2=v_z[-n],
+        evacmean=(v_z[n] + v_z[-n]) / 2,
+        efermi_nosoc=calc.get_fermi_level())
 
 
 def evacdiff(atoms):
@@ -469,32 +473,33 @@ def main() -> Result:
     gaps_soc = gaps(calc, soc=True)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
-    return Result(forces=forces,
-                  stresses=stresses,
-                  etot=etot,
-                  gaps_nosoc=gaps_nosoc,
-                  gap_dir_nosoc=gaps_nosoc.gap_dir,
-                  gap_nosoc=gaps_nosoc.gap,
-                  gap=gaps_soc.gap,
-                  vbm=gaps_soc.vbm,
-                  cbm=gaps_soc.cbm,
-                  gap_dir=gaps_soc.gap_dir,
-                  vbm_dir=gaps_soc.vbm_dir,
-                  cbm_dir=gaps_soc.cbm_dir,
-                  k_vbm_c=gaps_soc.k_vbm_c,
-                  k_cbm_c=gaps_soc.k_cbm_c,
-                  k_vbm_dir_c=gaps_soc.k_vbm_dir_c,
-                  k_cbm_dir_c=gaps_soc.k_cbm_dir_c,
-                  skn1=gaps_soc.skn1,
-                  skn2=gaps_soc.skn2,
-                  skn1_dir=gaps_soc.skn1_dir,
-                  skn2_dir=gaps_soc.skn2_dir,
-                  efermi=gaps_soc.efermi,
-                  vacuumlevels=vac,
-                  dipz=vac.dipz,
-                  evac=vac.evacmean,
-                  evacdiff=vac.evacdiff,
-                  workfunction=workfunction)
+    return Result.fromdata(
+        forces=forces,
+        stresses=stresses,
+        etot=etot,
+        gaps_nosoc=gaps_nosoc,
+        gap_dir_nosoc=gaps_nosoc.gap_dir,
+        gap_nosoc=gaps_nosoc.gap,
+        gap=gaps_soc.gap,
+        vbm=gaps_soc.vbm,
+        cbm=gaps_soc.cbm,
+        gap_dir=gaps_soc.gap_dir,
+        vbm_dir=gaps_soc.vbm_dir,
+        cbm_dir=gaps_soc.cbm_dir,
+        k_vbm_c=gaps_soc.k_vbm_c,
+        k_cbm_c=gaps_soc.k_cbm_c,
+        k_vbm_dir_c=gaps_soc.k_vbm_dir_c,
+        k_cbm_dir_c=gaps_soc.k_cbm_dir_c,
+        skn1=gaps_soc.skn1,
+        skn2=gaps_soc.skn2,
+        skn1_dir=gaps_soc.skn1_dir,
+        skn2_dir=gaps_soc.skn2_dir,
+        efermi=gaps_soc.efermi,
+        vacuumlevels=vac,
+        dipz=vac.dipz,
+        evac=vac.evacmean,
+        evacdiff=vac.evacdiff,
+        workfunction=workfunction)
 
 
 if __name__ == '__main__':

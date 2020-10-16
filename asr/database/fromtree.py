@@ -3,6 +3,7 @@
 from typing import Union, List
 from ase import Atoms
 from ase.io import read
+from ase.db import connect
 from asr.core import command, option, argument, chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
@@ -322,13 +323,14 @@ def _collect_folders(folders: List[str],
                      dbname: str = None,
                      jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
-    from ase.db import connect
     nfolders = len(folders)
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(folders):
-            print(f'Subprocess #{jobid} Collecting folder {folder} '
-                  f'({ifol + 1}/{nfolders})',
-                  flush=True)
+            string = f'Collecting folder {folder} ({ifol + 1}/{nfolders})'
+            if jobid is not None:
+                print(f'Subprocess #{jobid} {string}', flush=True)
+            else:
+                print(string)
 
             atoms, key_value_pairs, data = collect_folder(
                 Path(folder),
@@ -367,55 +369,8 @@ def collect_folders(folders: List[str],
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
-@command('asr.database.fromtree', save_results_file=False)
-@argument('folders', nargs=-1, type=str)
-@option('-r', '--recursive', is_flag=True,
-        help='Recurse and collect subdirectories.')
-@option('--children-patterns', type=str)
-@option('--patterns', help='Only select files matching pattern.', type=str)
-@option('--dbname', help='Database name.', type=str)
-@option('--njobs', type=int,
-        help='Delegate collection of database to NJOBS subprocesses. '
-        'Can significantly speed up database collection.')
-def main(folders: Union[str, None] = None,
-         recursive: bool = False,
-         children_patterns: str = '*',
-         patterns: str = 'info.json,params.json,results-asr.*.json',
-         dbname: str = 'database.db',
-         njobs: int = 1) -> ASRResult:
-    """Collect ASR data from folder tree into an ASE database."""
-    from ase.db import connect
-    from asr.database.key_descriptions import main as set_key_descriptions
-
-    def item_show_func(item):
-        return str(item)
-
-    atomsname = 'structure.json'
-    if not folders:
-        folders = ['.']
-    else:
-        tmpfolders = []
-        for folder in folders:
-            tmpfolders.extend(glob.glob(folder))
-        folders = tmpfolders
-
-    if recursive:
-        print('Recursing through folder tree...')
-        newfolders = []
-        for folder in folders:
-            newfolders += recurse_through_folders(folder, atomsname)
-        folders = newfolders
-        print('Done.')
-
-    folders.sort()
-    patterns = patterns.split(',')
-    children_patterns = children_patterns.split(',')
-
-    # We use absolute path because of chdir in collect_folder()!
-    dbpath = Path(dbname).absolute()
-    name = dbpath.name
-
-    # Delegate collection of database to subprocesses to reduce I/O time.
+def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
+                      patterns, children_patterns, dbname):
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
@@ -461,6 +416,66 @@ def main(folders: Union[str, None] = None,
 
     for name in Path().glob(f'{dbname}.*.db'):
         name.unlink()
+
+
+@command('asr.database.fromtree', save_results_file=False)
+@argument('folders', nargs=-1, type=str)
+@option('-r', '--recursive', is_flag=True,
+        help='Recurse and collect subdirectories.')
+@option('--children-patterns', type=str)
+@option('--patterns', help='Only select files matching pattern.', type=str)
+@option('--dbname', help='Database name.', type=str)
+@option('--njobs', type=int,
+        help='Delegate collection of database to NJOBS subprocesses. '
+        'Can significantly speed up database collection.')
+def main(folders: Union[str, None] = None,
+         recursive: bool = False,
+         children_patterns: str = '*',
+         patterns: str = 'info.json,params.json,results-asr.*.json',
+         dbname: str = 'database.db',
+         njobs: int = 1) -> ASRResult:
+    """Collect ASR data from folder tree into an ASE database."""
+    from asr.database.key_descriptions import main as set_key_descriptions
+
+    def item_show_func(item):
+        return str(item)
+
+    atomsname = 'structure.json'
+    if not folders:
+        folders = ['.']
+    else:
+        tmpfolders = []
+        for folder in folders:
+            tmpfolders.extend(glob.glob(folder))
+        folders = tmpfolders
+
+    if recursive:
+        print('Recursing through folder tree...')
+        newfolders = []
+        for folder in folders:
+            newfolders += recurse_through_folders(folder, atomsname)
+        folders = newfolders
+        print('Done.')
+
+    folders.sort()
+    patterns = patterns.split(',')
+    children_patterns = children_patterns.split(',')
+
+    # We use absolute path because of chdir in collect_folder()!
+    dbpath = Path(dbname).absolute()
+    name = dbpath.name
+
+    # Delegate collection of database to subprocesses to reduce I/O time.
+    if njobs > 1:
+        delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
+                          patterns, children_patterns, dbname)
+    else:
+        _collect_folders(folders,
+                         jobid=None,
+                         dbname=dbname,
+                         atomsname=atomsname,
+                         patterns=patterns,
+                         children_patterns=children_patterns)
 
     set_key_descriptions(dbname)
     results = check_database(dbname)

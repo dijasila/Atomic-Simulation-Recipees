@@ -499,8 +499,10 @@ def main() -> Result:
 
     bsresults['sz_mk'] = sz_mk
 
-    return Result(bs_soc=singleprec_dict(bsresults),
-                  bs_nosoc=singleprec_dict(results['bs_nosoc']))
+    return Result.fromdata(
+        bs_soc=singleprec_dict(bsresults),
+        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+    )
 
 
 if __name__ == '__main__':

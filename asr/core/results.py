@@ -26,7 +26,31 @@ import importlib
 import inspect
 
 
-def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
+def read_hacked_data(dct,):
+    """Fix hacked results files to contain necessary metadata."""
+    data = {}
+    metadata = {}
+    for key, value in dct.items():
+        if key.startswith('__') and key.endswith('__'):
+            key_name = key[2:-2]
+            if key_name in MetaData.accepted_keys:
+                metadata[key_name] = value
+        else:
+            data[key] = value
+    name = metadata['name']
+    recipe = get_recipe_from_name(name)
+    object_id = obj_to_id(recipe.returns)
+    obj_desc = ObjectDescription(
+        object_id=object_id,
+        args=(),
+        kwargs={'data': data,
+                'metadata': metadata,
+                'strict': False},
+    )
+    return obj_desc
+
+
+def read_old_data(dct) -> 'ObjectDescription':
     """Parse an old style result dictionary."""
     metadata = {}
     data = {}
@@ -39,17 +63,22 @@ def read_old_data(dct) -> typing.Tuple[dict, dict, dict]:
             data[key] = value
     asr_name = metadata['asr_name']
     recipe = get_recipe_from_name(asr_name)
-    asr_obj_id = recipe.returns.get_obj_id()
-    return data, metadata, 0, asr_obj_id
+    object_description = ObjectDescription(
+        object_id=obj_to_id(recipe.returns),
+        args=(),
+        kwargs=dict(
+            data=data,
+            metadata=metadata,
+            strict=True
+        ),
+    )
+    return object_description
 
 
-def read_new_data(dct) -> typing.Tuple[dict, dict, dict]:
+def read_new_data(dct) -> 'ObjectDescription':
     """Parse a new style result dictionary."""
-    metadata = dct['metadata']
-    data = dct['data']
-    version = dct['version']
-    asr_obj_id = dct['__asr_obj_id__']
-    return data, metadata, version, asr_obj_id
+    object_description = ObjectDescription.fromdict(dct)
+    return object_description
 
 
 class UnknownDataFormat(Exception):
@@ -63,14 +92,14 @@ known_object_types = {'Result'}
 
 def get_reader_function(dct):
     """Determine dataformat of dct and return approriate reader."""
-    if '__asr_obj_id__' in dct:
+    if 'object_id' in dct:
         # Then this is a new-style data-format
         reader_function = read_new_data
     elif '__asr_name__' in dct:
         # Then this is a old-style data-format
         reader_function = read_old_data
     else:
-        raise UnknownDataFormat
+        raise UnknownDataFormat(f'Bad data={dct}')
     return reader_function
 
 
@@ -95,7 +124,7 @@ def find_class_matching_version(returns, version):
     return returns
 
 
-def get_class_matching_obj_id(asr_obj_id):
+def get_object_matching_obj_id(asr_obj_id):
     assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
 
     module, name = asr_obj_id.split('::')
@@ -105,24 +134,24 @@ def get_class_matching_obj_id(asr_obj_id):
     return cls
 
 
-def dct_to_result(dct):
-    """Convert dict representing an ASR result to corresponding result object."""
-    reader_function = get_reader_function(dct)
-    data, metadata, version, asr_obj_id = reader_function(dct)
+def object_description_to_object(object_description: 'ObjectDescription'):
+    """Instantiate object description."""
+    return object_description.instantiate()
 
-    for key, value in data.items():
+
+def dct_to_result(dct) -> object:
+    """Convert dict representing an ASR result to corresponding result object."""
+    for key, value in dct.items():
         if not isinstance(value, dict):
             continue
         try:
-            data[key] = dct_to_result(value)
+            dct[key] = dct_to_result(value)
         except UnknownDataFormat:
             pass
-
-    cls = get_class_matching_obj_id(asr_obj_id)
-    cls = find_class_matching_version(cls, version)
-    result = cls.fromdict(
-        dict(data=data, metadata=metadata, version=version))
-    return result
+    reader_function = get_reader_function(dct)
+    object_description = reader_function(dct)
+    obj = object_description_to_object(object_description)
+    return obj
 
 
 class ResultEncoder(ABC):
@@ -433,6 +462,88 @@ class MetaData:
         return str(self)
 
 
+def obj_to_id(cls):
+    """Get a string representation of path to object.
+
+    Ie. if obj is the ASRResult class living in the module, asr.core.results,
+    the correspinding string would be 'asr.core.results::ASRResult'.
+
+    """
+    return f'{cls.__module__}::{cls.__name__}'
+
+
+class ObjectDescription:
+    """Result object descriptor."""
+
+    def __init__(self, object_id: str, args: tuple, kwargs: dict,
+                 constructor: typing.Optional[str] = None):
+        """Initialize instance.
+
+        Parameters
+        ----------
+        object_id: str
+            ID of object, eg. 'asr.core.results::ASRResult' as
+            produced by :py:func:`obj_to_id`.
+        args
+            Arguments for object construction.
+        kwargs
+            Keyword arguments for object construction.
+        constructor: str or None
+            ID of constructor object, ie. callable that can be used to
+            instantiate object. If unset use constructor=object_id.
+        """
+        self._data = {
+            'object_id': copy.copy(object_id),
+            'constructor': (copy.copy(constructor) if constructor
+                            else copy.copy(object_id)),
+            'args': copy.deepcopy(args),
+            'kwargs': copy.deepcopy(kwargs),
+        }
+
+    @property
+    def object_id(self):
+        """Get object id."""
+        return self._data['object_id']
+
+    @property
+    def constructor(self):
+        """Get object id."""
+        return self._data['constructor']
+
+    @property
+    def args(self):
+        """Get extra arguments supplied to constructor."""
+        return self._data['args']
+
+    @property
+    def kwargs(self):
+        """Get extra arguments supplied to constructor."""
+        return self._data['kwargs']
+
+    def todict(self):
+        """Convert object description to dictionary."""
+        return copy.deepcopy(self._data)
+
+    @classmethod
+    def fromdict(cls, dct):
+        """Instantiate ObjectDescription from dict."""
+        return cls(**dct)
+
+    def instantiate(self):
+        """Instantiate object."""
+        cls = get_object_matching_obj_id(self.constructor)
+        return cls(*self.args, **self.kwargs)
+
+
+def data_to_dict(dct):
+    """Recursively .todict all result instances."""
+    for key, value in dct.items():
+        if isinstance(value, ASRResult):
+            dct[key] = value.todict()
+            data_to_dict(dct[key])
+    return dct
+
+
 class ASRResult(object):
     """Base class for describing results generated with recipes.
 
@@ -453,7 +564,7 @@ class ASRResult(object):
 
     Examples
     --------
-    >>> result = ASRResult(a=1)
+    >>> result = ASRResult.fromdata(a=1)
     >>> result.metadata = {'resources': {'time': 'a good time.'}}
     >>> result.a
     1
@@ -465,21 +576,25 @@ class ASRResult(object):
     'a=1'
     >>> 'a' in result
     True
-    >>> other_result = ASRResult(a=1)
+    >>> other_result = ASRResult.fromdata(a=1)
     >>> result == other_result
     True
     >>> print(format(result, 'json'))
     {
-     "__asr_obj_id__": "asr.core.results::ASRResult",
-     "data": {
-      "a": 1
-     },
-     "metadata": {
-      "resources": {
-       "time": "a good time."
-      }
-     },
-     "version": 0
+     "object_id": "asr.core.results::ASRResult",
+     "constructor": "asr.core.results::ASRResult",
+     "args": [],
+     "kwargs": {
+      "data": {
+       "a": 1
+      },
+      "metadata": {
+       "resources": {
+        "time": "a good time."
+       }
+      },
+      "strict": false
+     }
     }
     >>> result.format_as('ase_webpanel', {}, {})
     [{'title': 'Results', \
@@ -497,19 +612,25 @@ class ASRResult(object):
                'ase_webpanel': WebPanelEncoder(),
                'str': str}
 
-    _strict = False
+    strict = False
 
-    def __init__(self, metadata={}, _strict=None, **data):
-        """Initialize result from dict.
+    def __init__(self,
+                 data: typing.Dict[str, typing.Any] = {},
+                 metadata: typing.Dict[str, typing.Any] = {},
+                 strict: typing.Optional[bool] = None):
+        """Instantiate result.
 
         Parameters
         ----------
-        **data : key-value-pairs
+        data: Dict[str, Any]
             Input data to be wrapped.
-        metadata : dict
+        metadata: dict
             Dictionary containing metadata.
+        strict: bool or None
+            Strictly enforce data entries in data.
+
         """
-        if (_strict is None and self._strict) or _strict:
+        if (strict is None and self.strict) or strict:
             data_keys = set(data)
             unknown_keys = data_keys - self._known_data_keys
             assert not unknown_keys, \
@@ -522,8 +643,12 @@ class ASRResult(object):
         self.metadata.set(**metadata)
 
     @classmethod
+    def fromdata(cls, **data):
+        return cls(data=data)
+
+    @classmethod
     def get_obj_id(cls) -> str:
-        return f'{cls.__module__}::{cls.__name__}'
+        return obj_to_id(cls)
 
     @property
     def data(self) -> dict:
@@ -565,30 +690,29 @@ class ASRResult(object):
         formats = self.get_formats()
         return formats[format](self, *args, **kwargs)
 
+    def get_object_desc(self) -> ObjectDescription:
+        """Make ObjectDescription of this instance."""
+        return ObjectDescription(
+            object_id=obj_to_id(type(self)),
+            # constructor='asr.core::result_factory',
+            args=(),
+            kwargs={
+                'data': data_to_dict(copy.deepcopy(self.data)),
+                'metadata': self.metadata.todict(),
+                'strict': self.strict,
+                # 'version': self.version,
+            },
+        )
+
     # To and from dict
     def todict(self):
-        tmpdata = {}
-
-        for key, value in self.data.items():
-            if isinstance(value, ASRResult):
-                value = value.todict()
-            tmpdata[key] = value
-
-        return {'__asr_obj_id__': self.get_obj_id(),
-                'data': tmpdata,
-                'metadata': self.metadata.todict(),
-                'version': self.version}
+        object_description = self.get_object_desc()
+        return object_description.todict()
 
     @classmethod
     def fromdict(cls, dct: dict):
-        metadata = dct['metadata']
-        version = dct['version']
-        assert version == cls.version, \
-            f'Inconsistent versions. data_version={version}, self.version={cls.version}'
-        data = dct['data']
-        result = cls(**data)
-        result.metadata = metadata
-        return result
+        obj_desc = ObjectDescription.fromdict(dct)
+        return obj_desc.instantiate()
 
     # ---- Magic methods ----
 
@@ -603,12 +727,6 @@ class ASRResult(object):
     def __iter__(self):
         """Iterate over keys."""
         return self.data.__iter__()
-
-    def __getattr__(self, key):
-        """Get attribute."""
-        if key in self.keys():
-            return self.data[key]
-        raise AttributeError
 
     def get(self, key, *args):
         """Wrap self.data.get."""
