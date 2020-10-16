@@ -317,7 +317,7 @@ def prepare_result(cls: object) -> str:
 
     cls.__init__ = __init__
     cls.__init__.__signature__ = sig
-    cls._strict = True
+    cls.strict = True
     cls._known_data_keys = data_keys
     return cls
 

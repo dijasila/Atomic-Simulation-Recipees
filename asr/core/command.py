@@ -373,6 +373,7 @@ class ASRCommand:
             tend = time.time()
 
         if not isinstance(result, self.returns):
+            assert isinstance(result, dict)
             result = self.returns(data=result)
 
         from ase.parallel import world
