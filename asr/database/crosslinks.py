@@ -20,7 +20,7 @@ def main(databases: Union[str, None] = None):
                 id = j
                 # dblist[0].update(j, ...)
                 name = dblist[0].metadata['internal_links']['link_name']
-                print(name)
+                print(eval(f"f'{name}'"))
 
 
     return None
