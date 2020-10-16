@@ -1,5 +1,5 @@
 """Projected density of states."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
 from collections import defaultdict
 
 import numpy as np
@@ -92,6 +92,7 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
 # ----- Fast steps ----- #
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

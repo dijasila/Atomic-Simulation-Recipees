@@ -1,5 +1,5 @@
 """Plasma frequency."""
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
 
 
 def get_kpts_size(atoms, density):
@@ -55,6 +55,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

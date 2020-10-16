@@ -1,5 +1,5 @@
 """HSE band structure."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 
 @command(module='asr.hse',
@@ -245,6 +245,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

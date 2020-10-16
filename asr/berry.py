@@ -1,6 +1,6 @@
 """Topological analysis of electronic structure."""
 import numpy as np
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 
 @command(module='asr.berry',
@@ -181,6 +181,7 @@ def webpanel(result, row, key_descriptions):
     return [summary, basicelec]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

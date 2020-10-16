@@ -7,7 +7,8 @@ import numpy as np
 from ase.parallel import world
 from ase.io import read
 
-from asr.core import command, option, DictStr, ASRResult, read_json, write_json
+from asr.core import (command, option, DictStr, ASRResult,
+                      read_json, write_json, prepare_result)
 
 
 def lattice_vectors(N_c):
@@ -214,6 +215,7 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

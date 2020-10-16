@@ -3,7 +3,7 @@ from collections import Counter
 from typing import List, Dict, Any
 from pathlib import Path
 
-from asr.core import command, argument, ASRResult
+from asr.core import command, argument, ASRResult, prepare_result
 
 from ase.db import connect
 from ase.io import read
@@ -50,6 +50,7 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

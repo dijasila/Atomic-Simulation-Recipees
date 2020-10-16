@@ -1,5 +1,5 @@
 """Bethe Salpeter absorption spectrum."""
-from asr.core import command, option, file_barrier, ASRResult
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
 
 
@@ -274,6 +274,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

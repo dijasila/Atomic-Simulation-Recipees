@@ -232,9 +232,11 @@ class DictEncoder(ResultEncoder):
         return cls.fromdict(dct)
 
 
-def get_object_descriptions(obj):
+def get_key_descriptions(obj):
     """Get key descriptions of object."""
-    return obj.key_descriptions
+    if hasattr(obj, 'key_descriptions'):
+        return obj.key_descriptions
+    return {}
 
 
 def get_object_types(obj):
@@ -290,7 +292,7 @@ def prepare_result(cls: object) -> str:
     of the class to something more helpful than args, kwargs.
 
     """
-    descriptions = get_object_descriptions(cls)
+    descriptions = get_key_descriptions(cls)
     types = get_object_types(cls)
     type_keys = set(types)
     description_keys = set(descriptions)

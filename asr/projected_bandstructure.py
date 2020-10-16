@@ -1,7 +1,7 @@
 """Orbital projected band structure."""
 import numpy as np
 
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
 
 
 # ---------- Webpanel ---------- #
@@ -20,6 +20,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {'ase_webpanel': webpanel}

@@ -1,5 +1,5 @@
 """Infrared polarizability."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 import numpy as np
 
@@ -146,6 +146,7 @@ def create_plot(row, *fnames):
         plt.savefig(fnames[2])
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

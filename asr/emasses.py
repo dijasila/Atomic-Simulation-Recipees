@@ -1,5 +1,5 @@
 """Effective masses."""
-from asr.core import command, option, DictStr, ASRResult
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
 class NoGapError(Exception):
@@ -652,6 +652,7 @@ def check_soc(spin_band_dict):
     return True
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

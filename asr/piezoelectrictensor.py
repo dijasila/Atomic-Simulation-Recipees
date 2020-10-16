@@ -6,7 +6,7 @@ tensor. The central recipe of this module is
 
 """
 
-from asr.core import command, option, DictStr, ASRResult
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
 def webpanel(result, row, key_descriptions):
@@ -48,6 +48,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

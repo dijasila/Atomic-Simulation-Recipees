@@ -1,4 +1,4 @@
-from asr.core import command, option, argument, AtomsFile, ASRResult
+from asr.core import command, option, argument, AtomsFile, ASRResult, prepare_result
 import numpy as np
 from typing import List
 from ase import Atoms
@@ -537,6 +537,7 @@ def chcut_plot(row, *args):
     plt.savefig('./convexhullcut.png', bbox_inches='tight')
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {'ase_webpanel': webpanel}

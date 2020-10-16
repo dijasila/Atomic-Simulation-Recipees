@@ -7,7 +7,7 @@ from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
 
 
 def creates():
@@ -141,6 +141,7 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

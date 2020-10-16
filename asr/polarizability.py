@@ -1,5 +1,5 @@
 """Optical polarizability."""
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
 from click import Choice
 
 
@@ -37,6 +37,7 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

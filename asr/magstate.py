@@ -1,5 +1,5 @@
 """Module for determining magnetic state."""
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
 
 
 def get_magstate(calc):
@@ -32,6 +32,7 @@ def webpanel(result, row, key_descriptions):
     return [summary]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

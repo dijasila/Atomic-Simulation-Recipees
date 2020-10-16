@@ -1,5 +1,5 @@
 """Magnetic anisotropy."""
-from asr.core import command, read_json, ASRResult
+from asr.core import command, read_json, ASRResult, prepare_result
 from math import pi
 
 
@@ -52,6 +52,7 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "database.browser --only-figures"']}]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}

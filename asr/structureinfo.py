@@ -1,5 +1,5 @@
 """Structural information."""
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -89,6 +89,7 @@ tests = [{'description': 'Test SI.',
                   'asr run "database.browser --only-figures"']}]
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
