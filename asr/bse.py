@@ -1,6 +1,7 @@
 """Bethe Salpeter absorption spectrum."""
 from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
+import typing
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -277,6 +278,16 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    E_B: float
+    bse_alphax_w: typing.List[float]
+    bse_alphay_w: typing.List[float]
+    bse_alphaz_w: typing.List[float]
+
+    key_descriptions = {"E_B": "Exciton binding energy from BSE [eV].",
+                        'bse_alphax_w': 'BSE polarizability x-direction.',
+                        'bse_alphay_w': 'BSE polarizability y-direction.',
+                        'bse_alphaz_w': 'BSE polarizability z-direction.'}
+
     formats = {"ase_webpanel": webpanel}
 
 
@@ -312,8 +323,6 @@ def main() -> Result:
             E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
-        data['__key_descriptions__'] = \
-            {'E_B': 'KVP: BSE binding energy (Exc. bind. energy) [eV]'}
 
     return data
 

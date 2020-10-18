@@ -1,5 +1,6 @@
 """Module for determining magnetic state."""
 from asr.core import command, ASRResult, prepare_result
+import typing
 
 
 def get_magstate(calc):
@@ -35,6 +36,17 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    magstate: str
+    is_magnetic: bool
+    magmoms: typing.List[float]
+    magmom: float
+    nspins: int
+
+    key_descriptions = {'magstate': 'Magnetic state.',
+                        'is_magnetic': 'Is the material magnetic?',
+                        'magmoms': 'Atomic magnetic moments.',
+                        'magmom': 'Total magnetic moment.',
+                        'nspins': 'Number of spins in system.'}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -56,7 +68,7 @@ def main() -> Result:
                'magmom': magmom,
                'nspins': nspins}
 
-    return results
+    return Result(data=results)
 
 
 if __name__ == '__main__':

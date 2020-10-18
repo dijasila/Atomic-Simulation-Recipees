@@ -1,5 +1,6 @@
 """Structural information."""
 from asr.core import command, ASRResult, prepare_result
+import typing
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -92,6 +93,28 @@ tests = [{'description': 'Test SI.',
 @prepare_result
 class Result(ASRResult):
 
+    cell_area: typing.Optional[float]
+    has_inversion_symmetry: bool
+    stoichiometry: str
+    spacegroup: str
+    spgnum: int
+    pointgroup: str
+    crystal_prototype: str
+    spglib_dataset: dict
+    formula: str
+
+    key_descriptions = {
+        "cell_area": "Area of unit-cell [`Ang^2`]",
+        "has_inversion_symmetry": "Material has inversion symmetry",
+        "stoichiometry": "Stoichiometry",
+        "spacegroup": "Space group",
+        "spgnum": "Space group number",
+        "pointgroup": "Point group",
+        "crystal_prototype": "Crystal prototype",
+        "spglib_dataset": "SPGLib symmetry dataset.",
+        "formula": "Chemical formula."
+    }
+
     formats = {"ase_webpanel": webpanel}
 
 
@@ -144,19 +167,10 @@ def main() -> Result:
 
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
+    else:
+        info['cell_area'] = None
 
-    info['__key_descriptions__'] = {
-        'magstate': 'KVP: Magnetic state',
-        'is_magnetic': 'KVP: Material is magnetic (Magnetic)',
-        'cell_area': 'KVP: Area of unit-cell [Ang^2]',
-        'has_invsymm': 'KVP: Inversion symmetry',
-        'stoichiometry': 'KVP: Stoichiometry',
-        'spacegroup': 'KVP: Space group',
-        'spgnum': 'KVP: Space group number',
-        'pointgroup': 'KVP: Point group',
-        'crystal_prototype': 'KVP: Crystal prototype'}
-
-    return info
+    return Result(data=info)
 
 
 if __name__ == '__main__':

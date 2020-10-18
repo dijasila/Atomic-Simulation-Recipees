@@ -184,6 +184,9 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    Topology: str
+
+    key_descriptions = {'Topology': 'Band topology.'}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -201,8 +204,6 @@ def main() -> Result:
         top = f.readline()
         f.close()
         data['Topology'] = top
-        data['__key_descriptions__'] = \
-            {'Topology': 'KVP: Band topology (Topology)'}
     else:
         f = paropen('topology.dat', 'w')
         print('Not checked!', file=f)

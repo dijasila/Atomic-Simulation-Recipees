@@ -1,5 +1,7 @@
 """Effective Born charges."""
 from asr.core import command, option, ASRResult, prepare_result
+import numpy as np
+import typing
 
 
 def webpanel(result, row, key_descriptions):
@@ -48,6 +50,12 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    Z_avv: np.ndarray
+    sym_a: typing.List[str]
+
+    key_descriptions = {'Z_avv': 'Array of borncharges.',
+                        'sym_a': 'Chemical symbols.'}
+
     formats = {"ase_webpanel": webpanel}
 
 
@@ -58,7 +66,6 @@ class Result(ASRResult):
 @option('--displacement', help='Atomic displacement (Å)', type=float)
 def main(displacement: float = 0.01) -> Result:
     """Calculate Born charges."""
-    import numpy as np
     from gpaw import GPAW
 
     from ase.units import Bohr

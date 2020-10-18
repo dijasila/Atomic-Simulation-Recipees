@@ -1,11 +1,13 @@
 """Phonon band structure and dynamical stability."""
 from pathlib import Path
+import typing
 
 import numpy as np
 
 from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
+from ase.dft.kpoints import BandPath
 
 from asr.core import command, option, ASRResult, prepare_result
 
@@ -144,6 +146,23 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    minhessianeig: float
+    dynamic_stability_phonons: str
+    q_qc: typing.List[typing.Tuple[float, float, float]]
+    omega_kl: typing.List[typing.List[float]]
+    path: BandPath
+    modes_kl: typing.List[typing.List[float]]
+    interp_freqs_kl: typing.List[typing.List[float]]
+
+    key_descriptions = {
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
+        "q_qc": "List of momenta consistent with supercell.",
+        "omega_kl": "Phonon frequencies.",
+        "modes_kl": "Phonon modes.",
+        "interp_freqs_kl": "Interpolated phonon frequencies.",
+        "path": "Interpolated phonon bandstructure path.",
+    }
     formats = {"ase_webpanel": webpanel}
 
 

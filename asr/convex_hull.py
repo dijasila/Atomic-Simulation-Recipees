@@ -1,6 +1,6 @@
 """Convex hull stability analysis."""
 from collections import Counter
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 from asr.core import command, argument, ASRResult, prepare_result
@@ -50,8 +50,36 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+# class Reference(TypedDict):
+#     """Container for information on a reference."""
+
+#     hform: float
+#     formula: str
+#     uid: str
+#     natoms: int
+#     name: str
+#     label: str
+#     link: str
+
+
 @prepare_result
 class Result(ASRResult):
+
+    ehull: float
+    hform: float
+    references: List[dict]
+    thermodynamic_stability_level: str
+    coefs: Optional[List[float]]
+    indices:  Optional[List[int]]
+    key_descriptions = {
+        "ehull": "Energy above convex hull [eV/atom].",
+        "hform": "Heat of formation [eV/atom].",
+        "thermodynamic_stability_level": "Thermodynamic stability level.",
+        "references": "List of relevant references.",
+        "indices":
+        "Indices of references that this structure will decompose into.",
+        "coefs": "Fraction of decomposing references (see indices doc).",
+        }
 
     formats = {"ase_webpanel": webpanel}
 
@@ -197,6 +225,8 @@ def main(databases: List[str]) -> Result:
 
     if len(count) == 1:
         ehull = hform
+        results['indices'] = None
+        results['coefs'] = None
     else:
         pd = PhaseDiagram(pdrefs, verbose=False)
         e0, indices, coefs = pd.decompose(formula)
@@ -205,10 +235,6 @@ def main(databases: List[str]) -> Result:
         results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-    results['__key_descriptions__'] = {
-        'hform': 'KVP: Heat of formation [eV/atom]',
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
-        'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
         thermodynamic_stability = 1
@@ -220,7 +246,7 @@ def main(databases: List[str]) -> Result:
         thermodynamic_stability = 3
 
     results['thermodynamic_stability_level'] = thermodynamic_stability
-    return results
+    return Result(data=results)
 
 
 def get_reference_energies(atoms, references, energy_key='energy'):
