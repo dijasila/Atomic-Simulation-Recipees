@@ -6,6 +6,7 @@ tensor. The central recipe of this module is
 
 """
 
+import typing
 from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
@@ -51,6 +52,11 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    eps_vvv: typing.List[typing.List[typing.List[float]]]
+    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
+                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
     formats = {"ase_webpanel": webpanel}
 
 

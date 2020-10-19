@@ -1,5 +1,6 @@
 """Plasma frequency."""
 from asr.core import command, option, ASRResult, prepare_result
+import typing
 
 
 def get_kpts_size(atoms, density):
@@ -58,6 +59,17 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    plasmafreq_vv: typing.List[typing.List[float]]
+    plasmafrequency_x: float
+    plasmafrequency_y: float
+
+    key_descriptions = {
+        "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
+        "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
+        "[`eV/Ang^0.5`]",
+        "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
+        "[`eV/Ang^0.5`]",
+    }
     formats = {"ase_webpanel": webpanel}
 
 
@@ -104,9 +116,7 @@ def main(tetra: bool = True) -> Result:
             es_file = Path("es_plasma.gpw")
             es_file.unlink()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
-    data = {'plasmafreq_vv': plasmafreq_vv,
-            '__key_descriptions__': {'plasmafreq_vv':
-                                     'Plasma frequency tensor [Hartree]'}}
+    data = {'plasmafreq_vv': plasmafreq_vv}
 
     if nd == 2:
         wp2_v = np.linalg.eigvalsh(plasmafreq_vv[:2, :2])
@@ -114,11 +124,6 @@ def main(tetra: bool = True) -> Result:
         plasmafreq_v = (np.sqrt(wp2_v * L / 2) * Hartree * Bohr**0.5)
         data['plasmafrequency_x'] = plasmafreq_v[0].real
         data['plasmafrequency_y'] = plasmafreq_v[1].real
-
-        data['__key_descriptions__']['plasmafrequency_x'] = \
-            'KVP: 2D plasma frequency, x-direction [eV/Ang^0.5]'
-        data['__key_descriptions__']['plasmafrequency_y'] = \
-            'KVP: 2D plasma frequency, y-direction [eV/Ang^0.5]'
 
     return data
 

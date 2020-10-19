@@ -1,4 +1,5 @@
-from asr.core import command, option, dct_to_result, ASRResult, UnknownDataFormat
+from asr.core import (command, option, dct_to_result,
+                      ASRResult, UnknownDataFormat, get_recipe_from_name)
 import copy
 import sys
 import re
@@ -67,6 +68,56 @@ def miscellaneous_section(row, key_descriptions, exclude):
                 | set(row.key_value_pairs)) - set(exclude)
     misc = create_table(row, ['Items', ''], sorted(misckeys), key_descriptions)
     return ('Miscellaneous', [[misc]])
+
+
+def describe_entries(rows, description):
+
+    for ir, row in enumerate(rows):
+        for ic, value in enumerate(row):
+            if isinstance(value, dict):
+                desc = value['description']
+                description = '\n'.join([desc, description])
+                value = value['value']
+            value = dict(value=value, description=description)
+            rows[ir][ic] = value
+    return rows
+
+
+def dict_to_list(dct, indent=0, char=' '):
+    lst = []
+    for key, value in dct.items():
+        if isinstance(value, dict):
+            lst2 = dict_to_list(value,
+                                indent=indent + 2,
+                                char=char)
+            lst.extend([indent * char + f'<b>{key}</b>='] + lst2)
+        else:
+            lst.append(indent * char + f'<b>{key}</b>={value}')
+    return lst
+
+
+def add_parameter_description(data, name, rows):
+    result = data[f'results-{name}.json']
+    if 'params' in result.metadata:
+        description = str(result.metadata.params)
+    else:
+        recipe = get_recipe_from_name(name)
+        defaults = recipe.get_defaults()
+        lst = dict_to_list(defaults)
+
+        lst[0] = '<pre><code>' + lst[0]
+        lst[-1] = lst[-1] + '</code></pre>'
+        stringdefaults = '\n'.join(lst)
+        description = (
+            '<h3>Calculation parameters</h3>\n'
+            'No parameters can be found, meaning that'
+            'the recipe was probably run with the '
+            'default parameter set below\n'
+            '<h4>Default parameters</h4>'
+            + stringdefaults
+        )
+
+    return describe_entries(rows, description)
 
 
 def val2str(row, key: str, digits=2) -> str:
@@ -186,10 +237,7 @@ def layout(row: AtomsRow,
         assert row.data[key] == obj
 
     # Locate all webpanels
-    for filename in row.data:
-        if not is_results_file(filename):
-            continue
-        result = row.data[filename]
+    for result in filter(lambda x: isinstance(x, ASRResult), row.data.values()):
         if 'ase_webpanel' not in result.get_formats():
             continue
         panels = result.format_as('ase_webpanel', row, key_descriptions)
@@ -197,7 +245,7 @@ def layout(row: AtomsRow,
             continue
 
         for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {filename} webpanel'
+            assert 'title' in thispanel, f'No title in {result} webpanel'
             panel = {'columns': [[], []],
                      'plot_descriptions': [],
                      'sort': 99}

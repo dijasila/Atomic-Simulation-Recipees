@@ -1,11 +1,12 @@
 """Phonopy phonon band structure."""
-from typing import List
+import typing
 from pathlib import Path
 
 import numpy as np
 
 from ase.parallel import world
 from ase.io import read
+from ase.dft.kpoints import BandPath
 
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json, prepare_result)
@@ -76,7 +77,7 @@ def distance_to_sc(nd, atoms, dist_max):
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: List[int] = [0, 0, 0], dist_max: float = 7.0,
+              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
@@ -217,6 +218,27 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
+    omega_kl: typing.List[typing.List[float]]
+    minhessianeig: float
+    eigs_kl: typing.List[typing.List[complex]]
+    q_qc: typing.List[typing.Tuple[float, float, float]]
+    phi_anv: typing.List[typing.List[typing.List[float]]]
+    u_klav: typing.List[typing.List[float]]
+    irr: typing.List[str]
+    path: BandPath
+    dynamic_stability_level: int
+
+    key_descriptions = {
+        "omega_kl": "Phonon frequencies.",
+        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "eigs_kl": "Dynamical matrix eigenvalues.",
+        "q_qc": "List of momenta consistent with supercell.",
+        "phi_anv": "Force constants.",
+        "u_klav": "Phonon modes.",
+        "irr": "Phonon irreducible representations.",
+        "path": "Phonon bandstructure path.",
+        "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
+    }
 
     formats = {"ase_webpanel": webpanel}
 

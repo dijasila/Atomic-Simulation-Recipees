@@ -59,7 +59,7 @@ def calculate(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+    from asr.database.browser import table, fig, add_parameter_description
 
     t = table(row, 'Property',
               ['gap', 'gap_dir',
@@ -85,17 +85,18 @@ def webpanel(result, row, key_descriptions):
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    row = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
+    datarow = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
-                             'rows': [row]}]],
+                             'rows': add_parameter_description(
+                                 row.data,
+                                 'asr.gs@calculate',
+                                 [datarow])}]],
                'plot_descriptions': [{'function': bz_with_band_extremums,
                                       'filenames': ['bz-with-gaps.png']}],
                'sort': 10}
 
-    print('panel', panel)
-    print('summary', summary)
     return [panel, summary]
 
 

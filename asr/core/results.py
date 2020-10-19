@@ -463,6 +463,10 @@ class MetaData:
         """Represent object."""
         return str(self)
 
+    def __contains__(self, key):
+        """Is metadata key set."""
+        return key in self._dct
+
 
 def obj_to_id(cls):
     """Get a string representation of path to object.
@@ -642,8 +646,10 @@ class ASRResult(object):
                 assert not missing_keys, msg_miss
                 assert not unknown_keys, msg_ukwn
             else:
-                warnings.warn(msg_ukwn)
-                warnings.warn(msg_miss)
+                if unknown_keys:
+                    warnings.warn(msg_ukwn)
+                if missing_keys:
+                    warnings.warn(msg_miss)
         self.strict = strict
         self._data = data
         self._metadata = MetaData()
