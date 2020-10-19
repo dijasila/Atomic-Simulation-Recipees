@@ -1,4 +1,4 @@
-from asr.core import command, option, dct_to_result, ASRResult
+from asr.core import command, option, dct_to_result, ASRResult, UnknownDataFormat
 import copy
 import sys
 import re
@@ -175,9 +175,13 @@ def layout(row: AtomsRow,
     row = RowWrapper(row)
     for key, value in row.data.items():
         if is_results_file(key):
-            obj = dct_to_result(value)
+            try:
+                obj = dct_to_result(value)
+            except UnknownDataFormat:
+                value['__asr_hacked__'] = True
+                obj = dct_to_result(value)
         else:
-            obj = key
+            obj = value
         row.data[key] = obj
         assert row.data[key] == obj
 
@@ -186,6 +190,8 @@ def layout(row: AtomsRow,
         if not is_results_file(filename):
             continue
         result = row.data[filename]
+        if 'ase_webpanel' not in result.get_formats():
+            continue
         panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue

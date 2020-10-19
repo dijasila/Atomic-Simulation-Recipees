@@ -70,7 +70,7 @@ class Result(ASRResult):
     references: List[dict]
     thermodynamic_stability_level: str
     coefs: Optional[List[float]]
-    indices:  Optional[List[int]]
+    indices: Optional[List[int]]
     key_descriptions = {
         "ehull": "Energy above convex hull [eV/atom].",
         "hform": "Heat of formation [eV/atom].",
@@ -79,7 +79,7 @@ class Result(ASRResult):
         "indices":
         "Indices of references that this structure will decompose into.",
         "coefs": "Fraction of decomposing references (see indices doc).",
-        }
+    }
 
     formats = {"ase_webpanel": webpanel}
 

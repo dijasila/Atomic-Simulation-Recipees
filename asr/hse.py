@@ -281,7 +281,7 @@ class Result(ASRResult):
         "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
         "efermi_hse_soc": "Fermi level (HSE) [eV]",
         "bandstructure": "HSE bandstructure."
-        }
+    }
     formats = {"ase_webpanel": webpanel}
 
 

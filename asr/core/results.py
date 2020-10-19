@@ -24,9 +24,10 @@ from abc import ABC, abstractmethod
 from . import get_recipe_from_name
 import importlib
 import inspect
+import warnings
 
 
-def read_hacked_data(dct,):
+def read_hacked_data(dct) -> 'ObjectDescription':
     """Fix hacked results files to contain necessary metadata."""
     data = {}
     metadata = {}
@@ -37,11 +38,8 @@ def read_hacked_data(dct,):
                 metadata[key_name] = value
         else:
             data[key] = value
-    name = metadata['name']
-    recipe = get_recipe_from_name(name)
-    object_id = obj_to_id(recipe.returns)
     obj_desc = ObjectDescription(
-        object_id=object_id,
+        object_id='asr.core.results::HackedASRResult',
         args=(),
         kwargs={'data': data,
                 'metadata': metadata,
@@ -69,7 +67,7 @@ def read_old_data(dct) -> 'ObjectDescription':
         kwargs=dict(
             data=data,
             metadata=metadata,
-            strict=True
+            strict=False
         ),
     )
     return object_description
@@ -98,6 +96,8 @@ def get_reader_function(dct):
     elif '__asr_name__' in dct:
         # Then this is a old-style data-format
         reader_function = read_old_data
+    elif '__asr_hacked__':
+        reader_function = read_hacked_data
     else:
         raise UnknownDataFormat(f'Bad data={dct}')
     return reader_function
@@ -139,7 +139,7 @@ def object_description_to_object(object_description: 'ObjectDescription'):
     return object_description.instantiate()
 
 
-def dct_to_result(dct) -> object:
+def dct_to_result(dct: dict) -> object:
     """Convert dict representing an ASR result to corresponding result object."""
     for key, value in dct.items():
         if not isinstance(value, dict):
@@ -287,7 +287,7 @@ def prepare_result(cls: object) -> str:
     """Prepare result class.
 
     This function read key descriptions and types defined in a Result class and
-    assigns properties to all keys. It also sets _strict=True used by the
+    assigns properties to all keys. It also sets strict=True used by the
     result object to ensure all data is present. It also changes the signature
     of the class to something more helpful than args, kwargs.
 
@@ -611,7 +611,6 @@ class ASRResult(object):
     formats = {'json': JSONEncoder(),
                'html': HTMLEncoder(),
                'dict': DictEncoder(),
-               'ase_webpanel': WebPanelEncoder(),
                'str': str}
 
     strict = False
@@ -632,15 +631,20 @@ class ASRResult(object):
             Strictly enforce data entries in data.
 
         """
-        if (hasattr(self, '_known_data_keys')
-           and ((strict is None and self.strict) or strict)):
+        strict = ((strict is None and self.strict) or strict)
+        if (hasattr(self, '_known_data_keys')):
             data_keys = set(data)
             unknown_keys = data_keys - self._known_data_keys
-            assert not unknown_keys, \
-                f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
+            msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
             missing_keys = self._known_data_keys - data_keys
-            assert not missing_keys, \
-                f'{self.get_obj_id()}: Missing data keys={missing_keys}'
+            msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
+            if strict:
+                assert not missing_keys, msg_miss
+                assert not unknown_keys, msg_ukwn
+            else:
+                warnings.warn(msg_ukwn)
+                warnings.warn(msg_miss)
+        self.strict = strict
         self._data = data
         self._metadata = MetaData()
         self.metadata.set(**metadata)
@@ -764,3 +768,7 @@ class ASRResult(object):
         if not isinstance(other, type(self)):
             return False
         return self.data == other.data
+
+
+class HackedASRResult(ASRResult):
+    pass
