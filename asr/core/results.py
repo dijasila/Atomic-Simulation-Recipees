@@ -96,7 +96,7 @@ def get_reader_function(dct):
     elif '__asr_name__' in dct:
         # Then this is a old-style data-format
         reader_function = read_old_data
-    elif '__asr_hacked__':
+    elif '__asr_hacked__' in dct:
         reader_function = read_hacked_data
     else:
         raise UnknownDataFormat(f'Bad data={dct}')
