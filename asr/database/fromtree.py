@@ -165,7 +165,11 @@ def collect_file(filename: Path):
             continue
 
         if file.suffix == '.json':
-            dct = read_json(extrafile)
+            extra = read_json(extrafile)
+            if isinstance(extra, ASRResult):
+                dct = extra.format_as('dict')
+            else:
+                dct = extra
         else:
             dct = {'pointer': str(file.absolute())}
 
@@ -343,7 +347,14 @@ def _collect_folders(folders: List[str],
 
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
-            db.write(atoms, data=data, **key_value_pairs)
+            try:
+                db.write(atoms, data=data, **key_value_pairs)
+            except Exception:
+                print(f'folder={folder}')
+                print(f'atoms={atoms}')
+                print(f'data={data}')
+                print(f'kvp={key_value_pairs}')
+                raise
 
 
 def collect_folders(folders: List[str],
