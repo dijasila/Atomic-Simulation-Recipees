@@ -51,9 +51,7 @@ def create_table(row,  # AtomsRow
             longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
             if unit:
                 value += ' ' + unit
-            entry = {'value': value,
-                     'description': longdesc}
-            table.append((desc, entry))
+            table.append((desc, value))
     return {'type': 'table',
             'header': header,
             'rows': table}
@@ -70,15 +68,21 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
-def describe_entries(rows, description):
+def describe_entry(value, description):
+    if isinstance(value, dict) \
+       and 'value' in value \
+       and 'description' in value:
+        return dict(value=value['value'],
+                    description=value['description'] + description)
+    return dict(value=value, description=description)
 
+
+def describe_entries(rows, description):
     for ir, row in enumerate(rows):
         for ic, value in enumerate(row):
             if isinstance(value, dict):
-                desc = value['description']
-                description = '\n'.join([desc, description])
-                value = value['value']
-            value = dict(value=value, description=description)
+                raise ValueError(f'Incompatible value={value}')
+            value = describe_entry(value, description)
             rows[ir][ic] = value
     return rows
 
@@ -86,6 +90,8 @@ def describe_entries(rows, description):
 def dict_to_list(dct, indent=0, char=' '):
     lst = []
     for key, value in dct.items():
+        if value is None:
+            continue
         if isinstance(value, dict):
             lst2 = dict_to_list(value,
                                 indent=indent + 2,
@@ -96,28 +102,32 @@ def dict_to_list(dct, indent=0, char=' '):
     return lst
 
 
-def add_parameter_description(data, name, rows):
+def entry_parameter_description(data, name, entry):
     result = data[f'results-{name}.json']
     if 'params' in result.metadata:
+        params = result.metadata.params
         description = str(result.metadata.params)
+        header = ''
     else:
         recipe = get_recipe_from_name(name)
-        defaults = recipe.get_defaults()
-        lst = dict_to_list(defaults)
+        params = recipe.get_defaults()
+        header = ('No parameters can be found, meaning that'
+                  'the recipe was probably run with the '
+                  'default parameter set below\n'
+                  '<b>Default parameters</b>')
 
-        lst[0] = '<pre><code>' + lst[0]
-        lst[-1] = lst[-1] + '</code></pre>'
-        stringdefaults = '\n'.join(lst)
-        description = (
-            '<h3>Calculation parameters</h3>\n'
-            'No parameters can be found, meaning that'
-            'the recipe was probably run with the '
-            'default parameter set below\n'
-            '<h4>Default parameters</h4>'
-            + stringdefaults
-        )
+    lst = dict_to_list(params)
 
-    return describe_entries(rows, description)
+    lst[0] = '<pre><code>' + lst[0]
+    lst[-1] = lst[-1] + '</code></pre>'
+    string = '\n'.join(lst)
+    description = (
+        '<b>Calculation parameters</b>\n'
+        + header
+        + string
+    )
+
+    return describe_entry(entry, description)
 
 
 def val2str(row, key: str, digits=2) -> str:
