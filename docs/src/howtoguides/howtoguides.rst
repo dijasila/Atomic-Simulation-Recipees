@@ -165,3 +165,21 @@ converting it back to a result object
    >>> result = Result.fromdata(eps_vvv=np.ones((3, 3, 3), float), eps_clamped_vvv=np.ones((3, 3, 3), float))
    >>> dct = result.format_as('dict')
    >>> result = dct_to_result(dct)
+
+
+How-to: Select rows in database that has certain property calculated
+--------------------------------------------------------------------
+
+When a database has been collected with ``asr.database.fromtree`` it
+automatically saves a special key-value-pair named as
+``has_asr_recipename``. Concretely if ``asr.gs@calculate`` is
+calculated for the specific row then it will have the
+``has_asr_gs_calculate`` key-value-pair defined. To select all rows
+where ``asr.gs@calculate`` is done then simply do
+
+.. code-block:: console
+
+   $ ase db database.db has_asr_gs_calculate
+
+
+to select those rows.
