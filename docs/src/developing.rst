@@ -26,17 +26,25 @@ Preferably make a new branch
 
    $ git checkout -b release-DATE
 
-Make a minor release
+Make a new version:
+
+  Make a minor release
+
+  .. code-block:: console
+
+     $ bumpversion minor
+
+  Make a major release
+
+  .. code-block:: console
+
+     $ bumpversion major
+
+Upload to PyPI
 
 .. code-block:: console
 
-   $ bumpversion minor
-
-Make a major release
-
-.. code-block:: console
-
-   $ bumpversion major
+   $ tox -e release
 
 
 Implementing new recipes
