@@ -224,7 +224,7 @@ class Result(ASRResult):
     q_qc: typing.List[typing.Tuple[float, float, float]]
     phi_anv: typing.List[typing.List[typing.List[float]]]
     u_klav: typing.List[typing.List[float]]
-    irr: typing.List[str]
+    irr_l: typing.List[str]
     path: BandPath
     dynamic_stability_level: int
 
@@ -235,7 +235,7 @@ class Result(ASRResult):
         "q_qc": "List of momenta consistent with supercell.",
         "phi_anv": "Force constants.",
         "u_klav": "Phonon modes.",
-        "irr": "Phonon irreducible representations.",
+        "irr_l": "Phonon irreducible representations.",
         "path": "Phonon bandstructure path.",
         "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
     }
@@ -372,10 +372,6 @@ def main(rc: float = None) -> Result:
                'u_klav': u_klav,
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
-
-    results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
-         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 
