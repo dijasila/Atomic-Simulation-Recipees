@@ -371,7 +371,7 @@ class Result(ASRResult):
 
     Examples
     --------
-    >>> res = Result(etot=0, _strict=False)
+    >>> res = Result(data=dict(etot=0), strict=False)
     >>> res.etot
     0
     """

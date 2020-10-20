@@ -69,7 +69,7 @@ check the parameters of `asr.relax` you can do the following.::
 
   $ mkdir convergence-test && cd convergence-test
   $ asr run setup.materials
-  $ asr run "setup.unpackdatabase materials.json --tree-structure materials/{formula:metal} --run"
+  $ asr run "database.totree materials.json --tree-structure materials/{formula:metal} --run"
   $ cd materials/
   $ asr run "setup.scanparams asr.relax:ecut 600 700 800 asr.relax:kptdensity 4 5 6" */
   $ mq submit asr.relax@24:10h */*/
@@ -79,7 +79,7 @@ When the calculations are done you can collect all results into a database and
 inspect them::
 
   $ cd convergence-test
-  $ asr run "database.collect */*/"
+  $ asr run "database.fromtree */*/"
   $ asr run "database.app database.db"
 
 
@@ -149,3 +149,19 @@ calculations are done package them and merge the databases::
 
 The databases have now been merged into a new database called
 `merged.db`.
+
+
+How-to: Save and instantiate result objects
+-------------------------------------------
+
+Here we are creating results object, converting it to a ``dict`` and
+converting it back to a result object
+
+.. code-block::
+
+   >>> import numpy as np
+   >>> from asr.core import dct_to_result
+   >>> from asr.piezoelectrictensor import Result
+   >>> result = Result.fromdata(eps_vvv=np.ones((3, 3, 3), float), eps_clamped_vvv=np.ones((3, 3, 3), float))
+   >>> dct = result.format_as('dict')
+   >>> result = dct_to_result(dct)

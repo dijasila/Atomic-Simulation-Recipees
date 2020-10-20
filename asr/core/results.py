@@ -570,7 +570,11 @@ class ASRResult(object):
 
     Examples
     --------
-    >>> result = ASRResult.fromdata(a=1)
+    >>> @prepare_result
+    ... class Result(ASRResult):
+    ...     a: int
+    ...     key_descriptions = {'a': 'Some key description.'}
+    >>> result = Result.fromdata(a=1)
     >>> result.metadata = {'resources': {'time': 'a good time.'}}
     >>> result.a
     1
@@ -582,13 +586,13 @@ class ASRResult(object):
     'a=1'
     >>> 'a' in result
     True
-    >>> other_result = ASRResult.fromdata(a=1)
+    >>> other_result = Result.fromdata(a=1)
     >>> result == other_result
     True
     >>> print(format(result, 'json'))
     {
-     "object_id": "asr.core.results::ASRResult",
-     "constructor": "asr.core.results::ASRResult",
+     "object_id": "asr.core.results::Result",
+     "constructor": "asr.core.results::Result",
      "args": [],
      "kwargs": {
       "data": {
@@ -599,14 +603,9 @@ class ASRResult(object):
         "time": "a good time."
        }
       },
-      "strict": false
+      "strict": true
      }
     }
-    >>> result.format_as('ase_webpanel', {}, {})
-    [{'title': 'Results', \
-'columns': [[{'type': 'table', 'header': ['key', 'value'], \
-'rows': [['a', 1]]}]], 'sort': 1}]
-
     """ # noqa
 
     version: int = 0

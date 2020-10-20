@@ -95,13 +95,6 @@ def main(strain_percent: float = 1,
     calculator : dict
         Calculator parameters.
 
-    Returns
-    -------
-    dict
-        Keys:
-            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
-            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
-
     """
     import numpy as np
     from ase.calculators.calculator import kptdensity2monkhorstpack
