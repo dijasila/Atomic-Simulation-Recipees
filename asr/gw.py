@@ -1,6 +1,8 @@
 """DFT GW."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
+from ase.spectrum.band_structure import BandStructure
 from click import Choice
+import typing
 
 
 # This function is basically doing the exact same as HSE and could
@@ -248,8 +250,41 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
+    vbm_gw_nosoc: float
+    cbm_gw_nosoc: float
+    gap_dir_gw_nosoc: float
+    gap_gw_nosoc: float
+    kvbm_nosoc: typing.List[float]
+    kcbm_nosoc: typing.List[float]
+    vbm_gw: float
+    cbm_gw: float
+    gap_dir_gw: float
+    gap_gw: float
+    kvbm: typing.List[float]
+    kcbm: typing.List[float]
+    efermi_gw_nosoc: float
+    efermi_gw_soc: float
+    bandstructure: BandStructure
+    key_descriptions = {
+        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G0W0) [eV]",
+        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G0W0) [eV]",
+        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G0W0) [eV]",
+        "gap_gw_nosoc": "Gap w/o soc. (G0W0) [eV]",
+        "kvbm_nosoc": "k-point of G0W0 valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of G0W0 conduction band minimum w/o soc",
+        "vbm_gw": "Valence band maximum (G0W0) [eV]",
+        "cbm_gw": "Conduction band minimum (G0W0) [eV]",
+        "gap_dir_gw": "Direct band gap (G0W0) [eV]",
+        "gap_gw": "Band gap (G0W0) [eV]",
+        "kvbm": "k-point of G0W0 valence band maximum",
+        "kcbm": "k-point of G0W0 conduction band minimum",
+        "efermi_gw_nosoc": "Fermi level w/o soc. (G0W0) [eV]",
+        "efermi_gw_soc": "Fermi level (G0W0) [eV]",
+        "bandstructure": "GW bandstructure."
+    }
     formats = {"ase_webpanel": webpanel}
 
 
@@ -275,7 +310,6 @@ def main() -> Result:
 
     # Interpolate band structure
     results = MP_interpolate(calc, delta_skn, lb, ub)
-    kd = {}
 
     # First get stuff without SOC
     eps_skn = gwresults.qp
@@ -300,12 +334,6 @@ def main() -> Result:
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
 
-        kd.update({'vbm_gw_nosoc': 'GW valence band max. w/o soc [eV]',
-                   'cbm_gw_nosoc': 'GW condution band min. w/o soc [eV]',
-                   'gap_dir_gw_nosoc': 'GW direct gap w/o soc [eV]',
-                   'gap_gw_nosoc': 'GW gap w/o soc [eV]',
-                   'kvbm_nosoc': 'k-point of GW valence band max. w/o soc',
-                   'kcbm_nosoc': 'k-point of GW conduction band min. w/o soc'})
         results.update(subresults)
 
     # Get the SO corrected GW QP energires
@@ -337,21 +365,12 @@ def main() -> Result:
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        kd.update({'vbm_gw': 'KVP: GW valence band max. [eV]',
-                   'cbm_gw': 'KVP: GW conduction band min. [eV]',
-                   'gap_dir_gw': 'KVP: GW direct gap [eV]',
-                   'gap_gw': 'KVP: GW gap [eV]',
-                   'kvbm': 'k-point of GW valence band max.',
-                   'kcbm': 'k-point of GW conduction band min.'})
         results.update(subresults)
 
     results.update({'efermi_gw_nosoc': efermi_nosoc,
                     'efermi_gw_soc': efermi_soc})
-    kd.update({'efermi_gw_nosoc': 'GW Fermi energy w/o soc [eV]',
-               'efermi_gw_soc': 'GW Fermi energy [eV]'})
-    results['__key_descriptions__'] = kd
 
-    return results
+    return Result(data=results)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,7 @@
 """HSE band structure."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
+import typing
+from ase.spectrum.band_structure import BandStructure
 
 
 @command(module='asr.hse',
@@ -245,8 +247,41 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
+    vbm_hse_nosoc: float
+    cbm_hse_nosoc: float
+    gap_dir_hse_nosoc: float
+    gap_hse_nosoc: float
+    kvbm_nosoc: typing.List[float]
+    kcbm_nosoc: typing.List[float]
+    vbm_hse: float
+    cbm_hse: float
+    gap_dir_hse: float
+    gap_hse: float
+    kvbm: typing.List[float]
+    kcbm: typing.List[float]
+    efermi_hse_nosoc: float
+    efermi_hse_soc: float
+    bandstructure: BandStructure
 
+    key_descriptions = {
+        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE) [eV]",
+        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE) [eV]",
+        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE) [eV]",
+        "gap_hse_nosoc": "Band gap w/o soc. (HSE) [eV]",
+        "kvbm_nosoc": "k-point of HSE valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of HSE conduction band minimum w/o soc",
+        "vbm_hse": "KVP: Valence band maximum (HSE) [eV]",
+        "cbm_hse": "KVP: Conduction band minimum (HSE) [eV]",
+        "gap_dir_hse": "KVP: Direct band gap (HSE) [eV]",
+        "gap_hse": "KVP: Band gap (HSE) [eV]",
+        "kvbm": "k-point of HSE valence band maximum",
+        "kcbm": "k-point of HSE conduction band minimum",
+        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
+        "efermi_hse_soc": "Fermi level (HSE) [eV]",
+        "bandstructure": "HSE bandstructure."
+    }
     formats = {"ase_webpanel": webpanel}
 
 
@@ -274,7 +309,6 @@ def main() -> Result:
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...
-    results['__key_descriptions__'] = {}
     results_calc = read_json('results-asr.hse@calculate.json')
     eps_skn = results_calc['hse_eigenvalues']['e_hse_skn']
     ibzkpts = calc.get_ibz_k_points()
@@ -295,14 +329,7 @@ def main() -> Result:
                       'gap_hse_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-        kd = {'vbm_hse_nosoc': 'HSE valence band max. w/o soc [eV]',
-              'cbm_hse_nosoc': 'HSE condution band min. w/o soc [eV]',
-              'gap_dir_hse_nosoc': 'HSE direct gap w/o soc [eV]',
-              'gap_hse_nosoc': 'HSE gap w/o soc [eV]',
-              'kvbm_nosoc': 'k-point of HSE valence band max. w/o soc',
-              'kcbm_nosoc': 'k-point of HSE conduction band min. w/o soc'}
         results.update(subresults)
-        results['__key_descriptions__'].update(kd)
 
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
@@ -323,21 +350,11 @@ def main() -> Result:
                       'gap_hse': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        kd = {'vbm_hse': 'KVP: HSE valence band max. [eV]',
-              'cbm_hse': 'KVP: HSE conduction band min. [eV]',
-              'gap_dir_hse': 'KVP: HSE direct gap [eV]',
-              'gap_hse': 'KVP: HSE gap [eV]',
-              'kvbm': 'k-point of HSE valence band max.',
-              'kcbm': 'k-point of HSE conduction band min.'}
         results.update(subresults)
-        results['__key_descriptions__'].update(kd)
 
     subresults = {'efermi_hse_nosoc': efermi_nosoc,
                   'efermi_hse_soc': efermi_soc}
-    kd = {'efermi_hse_nosoc': 'HSE Fermi energy w/o soc [eV]',
-          'efermi_hse_soc': 'HSE Fermi energy [eV]'}
     results.update(subresults)
-    results['__key_descriptions__'].update(kd)
 
     return results
 

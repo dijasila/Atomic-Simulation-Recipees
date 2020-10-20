@@ -431,18 +431,20 @@ def main(atoms: Atoms,
     images = []
     for image in trajectory:
         images.append(image)
-    return Result(atoms=atoms,
-                  etot=etot,
-                  edft=edft,
-                  a=cellpar[0],
-                  b=cellpar[1],
-                  c=cellpar[2],
-                  alpha=cellpar[3],
-                  beta=cellpar[4],
-                  gamma=cellpar[5],
-                  spos=atoms.get_scaled_positions(),
-                  symbols=atoms.get_chemical_symbols(),
-                  images=images)
+    return Result.fromdata(
+        atoms=atoms.copy(),
+        etot=etot,
+        edft=edft,
+        a=cellpar[0],
+        b=cellpar[1],
+        c=cellpar[2],
+        alpha=cellpar[3],
+        beta=cellpar[4],
+        gamma=cellpar[5],
+        spos=atoms.get_scaled_positions(),
+        symbols=atoms.get_chemical_symbols(),
+        images=images
+    )
 
 
 if __name__ == '__main__':

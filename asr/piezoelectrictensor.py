@@ -6,7 +6,8 @@ tensor. The central recipe of this module is
 
 """
 
-from asr.core import command, option, DictStr, ASRResult
+import typing
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
 def webpanel(result, row, key_descriptions):
@@ -48,8 +49,14 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
+    eps_vvv: typing.List[typing.List[typing.List[float]]]
+    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
+                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -87,13 +94,6 @@ def main(strain_percent: float = 1,
         Amount of strain applied to the material.
     calculator : dict
         Calculator parameters.
-
-    Returns
-    -------
-    dict
-        Keys:
-            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
-            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
 
     """
     import numpy as np

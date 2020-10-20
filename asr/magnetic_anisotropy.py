@@ -1,5 +1,5 @@
 """Magnetic anisotropy."""
-from asr.core import command, read_json, ASRResult
+from asr.core import command, read_json, ASRResult, prepare_result
 from math import pi
 
 
@@ -52,7 +52,30 @@ tests = [{'cli': ['ase build -x hcp Co structure.json',
                   'asr run "database.browser --only-figures"']}]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    spin_axis: str
+    E_x: float
+    E_y: float
+    E_z: float
+    theta: float
+    phi: float
+    dE_zx: float
+    dE_zy: float
+
+    key_descriptions = {
+        "spin_axis": "Magnetic easy axis",
+        "E_x": "Soc. total energy, x-direction [eV/unit cell]",
+        "E_y": "Soc. total energy, y-direction [eV/unit cell]",
+        "E_z": "Soc. total energy, z-direction [eV/unit cell]",
+        "theta": "Easy axis, polar coordinates, theta [radians]",
+        "phi": "Easy axis, polar coordinates, phi [radians]",
+        "dE_zx":
+        "Magnetic anisotropy energy between x and z axis [meV/unit cell]",
+        "dE_zy":
+        "Magnetic anisotropy energy between y and z axis [meV/unit cell]"
+    }
 
     formats = {"ase_webpanel": webpanel}
 
@@ -81,17 +104,7 @@ def main() -> Result:
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
-    results = {'__key_descriptions__':
-               {'spin_axis': 'KVP: Suggested spin direction for SOC',
-                'E_x': 'KVP: SOC total energy difference in x-direction',
-                'E_y': 'KVP: SOC total energy difference in y-direction',
-                'E_z': 'KVP: SOC total energy difference in z-direction',
-                'theta': 'Spin direction, theta, polar coordinates [radians]',
-                'phi': 'Spin direction, phi, polar coordinates [radians]',
-                'dE_zx': ('KVP: Magnetic anisotropy energy '
-                          '(zx-component) [meV/formula unit]'),
-                'dE_zy': ('KVP: Magnetic anisotropy energy '
-                          '(zy-component) [meV/formula unit]')}}
+    results = {}
 
     if magstate == 'NM':
         results['E_x'] = 0
@@ -102,7 +115,7 @@ def main() -> Result:
         results['theta'] = 0
         results['phi'] = 0
         results['spin_axis'] = 'z'
-        return results
+        return Result(data=results)
 
     calc = GPAW('gs.gpw')
     width = 0.001
@@ -133,7 +146,7 @@ def main() -> Result:
                     'E_z': Ez * 1e3,
                     'dE_zx': dE_zx * 1e3,
                     'dE_zy': dE_zy * 1e3})
-    return results
+    return Result(data=results)
 
 
 if __name__ == '__main__':

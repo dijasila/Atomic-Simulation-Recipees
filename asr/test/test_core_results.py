@@ -38,12 +38,12 @@ class MyResult(ASRResult):
 @command('test_core_results',
          returns=MyResult)
 def recipe() -> MyResult:
-    return MyResult(a=2)
+    return MyResult.fromdata(a=2)
 
 
 @pytest.mark.ci
 def test_results_object(capsys):
-    results = MyResult(a=1)
+    results = MyResult.fromdata(a=1)
     results.metadata = {'resources': {'time': 'right now'}}
     assert results.a == 1
     assert 'a' in results
@@ -67,7 +67,7 @@ def test_results_object(capsys):
     newresults = MyResult.from_format(json, format='json')
     assert newresults == results
 
-    otherresults = MyResult(a=2)
+    otherresults = MyResult.fromdata(a=2)
     assert not otherresults == results
 
 
@@ -82,7 +82,7 @@ def test_reading_result():
 
 @pytest.mark.ci
 def test_reading_older_version():
-    result_0 = MyResultVer0(a=1, b=2)
+    result_0 = MyResultVer0.fromdata(a=1, b=2)
     jsonresult = result_0.format_as('json')
     result_1 = MyResultVer0.from_format(jsonresult, 'json')
 

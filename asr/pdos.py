@@ -1,6 +1,7 @@
 """Projected density of states."""
-from asr.core import command, option, read_json, ASRResult
+from asr.core import command, option, read_json, ASRResult, prepare_result
 from collections import defaultdict
+import typing
 
 import numpy as np
 from ase import Atoms
@@ -92,8 +93,23 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
 # ----- Fast steps ----- #
 
 
+@prepare_result
 class Result(ASRResult):
 
+    pdos_nosoc: typing.List[float]
+    pdos_soc: typing.List[float]
+    dos_at_ef_nosoc: float
+    dos_at_ef_soc: float
+
+    key_descriptions = {
+        "pdos_nosoc": "Projected density of states w/o soc.",
+        "pdos_soc": "Projected density of states",
+        "dos_at_ef_nosoc":
+        "Density of states at the Fermi "
+        "level w/o soc [states/(eV * unit cell)]",
+        "dos_at_ef_soc":
+        "Density of states at the Fermi level [states/(eV * unit cell)]",
+    }
     formats = {"ase_webpanel": webpanel}
 
 
@@ -130,22 +146,6 @@ def main() -> Result:
     results['pdos_nosoc'] = singleprec_dict(pdos(dos1, calc))
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
     results['pdos_soc'] = singleprec_dict(pdos(dos2, calc))
-
-    # Log key descriptions
-    kd = {}
-    kd['pdos_nosoc'] = ('Projected density of states '
-                        'without spin-orbit coupling '
-                        '(PDOS no soc)')
-    kd['pdos_soc'] = ('Projected density of states '
-                      'with spin-orbit coupling '
-                      '(PDOS w. soc)')
-    kd['dos_at_ef_nosoc'] = ('KVP: Density of states at the Fermi energy '
-                             'without spin-orbit coupling '
-                             '(DOS at ef no soc) [states/eV]')
-    kd['dos_at_ef_soc'] = ('KVP: Density of states at the Fermi energy '
-                           'with spin-orbit coupling '
-                           '(DOS at ef w. soc) [states/eV]')
-    results.update({'__key_descriptions__': kd})
 
     return results
 

@@ -1,7 +1,8 @@
 """Orbital projected band structure."""
 import numpy as np
 
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
+import typing
 
 
 # ---------- Webpanel ---------- #
@@ -20,7 +21,18 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    weight_skni: typing.List[typing.List[typing.List[float]]]
+    yl_i: typing.List[typing.Tuple[str, str]]
+    symbols: typing.List[str]
+
+    key_descriptions = {
+        "weight_skni": "Weight of each projector (indexed by (s, k, n)) on orbitals i.",
+        "yl_i": "Symbol and orbital angular momentum string ('y,l') of each orbital i.",
+        "symbols": "Chemical symbols.",
+    }
 
     formats = {'ase_webpanel': webpanel}
 

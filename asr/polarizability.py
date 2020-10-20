@@ -1,5 +1,6 @@
 """Optical polarizability."""
-from asr.core import command, option, ASRResult
+import typing
+from asr.core import command, option, ASRResult, prepare_result
 from click import Choice
 
 
@@ -37,7 +38,33 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+@prepare_result
 class Result(ASRResult):
+    alphax_el: typing.List[complex]
+    alphay_el: typing.List[complex]
+    alphaz_el: typing.List[complex]
+    alphax_w: typing.List[complex]
+    alphay_w: typing.List[complex]
+    alphaz_w: typing.List[complex]
+    alpha0x_w: typing.List[complex]
+    alpha0y_w: typing.List[complex]
+    alpha0z_w: typing.List[complex]
+    plasmafreq_vv: typing.List[typing.List[float]]
+    frequencies: typing.List[float]
+
+    key_descriptions = {
+        "alphax_el": "Static interband polarizability (x) [Ang]",
+        "alphay_el": "Static interband polarizability (y) [Ang]",
+        "alphaz_el": "Static interband polarizability (z) [Ang]",
+        "alphax_w": "Interband polarizability (x) [Ang]",
+        "alphay_w": "Interband polarizability (y) [Ang]",
+        "alphaz_w": "Interband polarizability (z) [Ang]",
+        "alpha0x_w": "Interband polarizability without local field effects (x) [Ang]",
+        "alpha0y_w": "Interband polarizability without local field effects (y) [Ang]",
+        "alpha0z_w": "Interband polarizability without local field effects (z) [Ang]",
+        "plasmafreq_vv": "Plasmafrequency tensor.",
+        "frequencies": "Frequency grid [eV]."
+    }
 
     formats = {"ase_webpanel": webpanel}
 
@@ -143,14 +170,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         data['alphax_el'] = data['alphax_w'][0].real
         data['alphay_el'] = data['alphay_w'][0].real
         data['alphaz_el'] = data['alphaz_w'][0].real
-
-        data['__key_descriptions__'] = {
-            'alphax_el': 'KVP: Static electronic polarizability,'
-            ' x-direction [Ang]',
-            'alphay_el': 'KVP: Static electronic polarizability,'
-            ' y-direction [Ang]',
-            'alphaz_el': 'KVP: Static electronic polarizability,'
-            ' z-direction [Ang]'}
 
     finally:
         world.barrier()

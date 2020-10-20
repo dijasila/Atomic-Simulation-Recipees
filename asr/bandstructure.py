@@ -1,6 +1,6 @@
 """Electronic band structures."""
 from typing import Union
-from asr.core import command, option, ASRResult, singleprec_dict
+from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 
 
 @command('asr.bandstructure',
@@ -410,6 +410,7 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     version: int = 0
@@ -499,8 +500,10 @@ def main() -> Result:
 
     bsresults['sz_mk'] = sz_mk
 
-    return Result(bs_soc=singleprec_dict(bsresults),
-                  bs_nosoc=singleprec_dict(results['bs_nosoc']))
+    return Result.fromdata(
+        bs_soc=singleprec_dict(bsresults),
+        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+    )
 
 
 if __name__ == '__main__':

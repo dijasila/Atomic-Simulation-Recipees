@@ -1,5 +1,5 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
 
 
 def bz_vertices(cell):
@@ -110,6 +110,7 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     return cbaxes
 
 
+@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
