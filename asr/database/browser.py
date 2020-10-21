@@ -87,9 +87,11 @@ def describe_entries(rows, description):
     return rows
 
 
-def dict_to_list(dct, indent=0, char=' '):
+def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     lst = []
     for key, value in dct.items():
+        if key in exclude_keys:
+            continue
         if value is None:
             continue
         if isinstance(value, dict):
@@ -102,7 +104,7 @@ def dict_to_list(dct, indent=0, char=' '):
     return lst
 
 
-def entry_parameter_description(data, name, entry):
+def entry_parameter_description(data, name, entry, exclude_keys: set = set()):
     result = data[f'results-{name}.json']
     if 'params' in result.metadata:
         params = result.metadata.params
@@ -116,7 +118,7 @@ def entry_parameter_description(data, name, entry):
                   'default parameter set below\n'
                   '<b>Default parameters</b>')
 
-    lst = dict_to_list(params)
+    lst = dict_to_list(params, exclude_keys=exclude_keys)
 
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'

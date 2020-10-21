@@ -93,7 +93,10 @@ def webpanel(result, row, key_descriptions):
                    row.data,
                    'asr.gs@calculate',
                    describe_entry(f'{row.gap:0.2f} eV',
-                                  description))]
+                                  description),
+                   exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                                     'idiotproof', 'maxiter', 'hund', 'random',
+                                     'experimental', 'basis', 'setups']))]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
