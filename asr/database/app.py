@@ -1,11 +1,14 @@
-from asr.core import command, option, argument
+"""Database web application."""
+from typing import List
+from asr.core import command, option, argument, ASRResult
 
 import tempfile
 from pathlib import Path
 
 from ase.db import connect
 from ase.db.app import app, projects
-from flask import render_template, send_file
+from flask import render_template, send_file, Response, jsonify
+import flask.json
 import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
@@ -21,7 +24,7 @@ app.jinja_loader.searchpath.append(str(path))
 
 def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_kd
+    from asr.database.fromtree import parse_key_descriptions
     from ase.db.web import create_key_descriptions
 
     flatten = {key: value
@@ -47,7 +50,7 @@ def create_key_descriptions(db=None):
         kd[key] = description
 
     kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
-          key, desc in parse_kd(kd).items()}
+          key, desc in parse_key_descriptions(kd).items()}
 
     return create_key_descriptions(kd)
 
@@ -91,6 +94,7 @@ class Summary:
 
 
 def setup_app():
+
     @app.route("/")
     def index():
         return render_template(
@@ -109,17 +113,68 @@ def setup_app():
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
+    setup_data_endpoints()
+
+
+def setup_data_endpoints():
+    """Set endpoints for downloading data."""
+    from ase.io.jsonio import MyEncoder
+    app.json_encoder = MyEncoder
+
+    @app.route('/<project_name>/row/<uid>/all_data')
+    def get_all_data(project_name: str, uid: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        content = flask.json.dumps(row.data)
+        return Response(
+            content,
+            mimetype='application/json',
+            headers={'Content-Disposition':
+                     f'attachment;filename={uid}_data.json'})
+
+    @app.route('/<project_name>/row/<uid>/data')
+    def show_row_data(project_name: str, uid: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        sorted_data = {key: value for key, value
+                       in sorted(row.data.items(), key=lambda x: x[0])}
+        return render_template('asr/database/templates/data.html',
+                               data=sorted_data, uid=uid, project_name=project_name)
+
+    @app.route('/<project_name>/row/<uid>/data/<filename>')
+    def get_row_data_file(project_name: str, uid: str, filename: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        return jsonify(row.data.get(filename))
+
+
+@app.template_filter()
+def asr_sort_key_descriptions(value):
+    """Sort column drop down menu."""
+    def sort_func(item):
+        return item[1][1]
+
+    return sorted(value.items(), key=sort_func)
+
 
 def handle_query(args):
     return args["query"]
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
-    from asr.database.browser import layout
     project_name = project['name']
     uid = row.get(project['uid_key'])
     s = Summary(row,
-                create_layout=layout,
+                create_layout=layout_function,
                 key_descriptions=project['key_descriptions'],
                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
@@ -131,7 +186,7 @@ def initialize_project(database):
 
     db = connect(database, serial=True)
     metadata = db.metadata
-    name = metadata.get("name", database)
+    name = metadata.get("name", Path(database).name)
 
     # Make temporary directory
     (tmpdir / name).mkdir()
@@ -148,6 +203,11 @@ def initialize_project(database):
             row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+        "table_template": str(
+            metadata.get(
+                "table_template", f"asr/database/templates/table.html",
+            )
+        ),
         "search_template": str(
             metadata.get(
                 "search_template", "asr/database/templates/search.html"
@@ -160,10 +220,11 @@ def initialize_project(database):
 
 
 @command()
-@argument("databases", nargs=-1)
-@option("--host", help="Host address.")
+@argument("databases", nargs=-1, type=str)
+@option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-def main(databases, host="0.0.0.0", test=False):
+def main(databases: List[str], host: str = "0.0.0.0",
+         test: bool = False) -> ASRResult:
     for database in databases:
         initialize_project(database)
 
@@ -207,7 +268,7 @@ def main(databases, host="0.0.0.0", test=False):
                             fid.write(exc)
                             print(exc)
     else:
-        app.run(host="0.0.0.0", debug=True)
+        app.run(host=host, debug=True)
 
 
 if __name__ == "__main__":

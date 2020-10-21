@@ -1,9 +1,11 @@
-from asr.core import command, option, read_json
+"""Infrared polarizability."""
+import typing
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(
@@ -71,7 +73,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsx_w.real, label='real')
         ax = plt.gca()
         ax.set_title("x-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -83,7 +85,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsy_w.real, label='real')
         ax = plt.gca()
         ax.set_title("y-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -95,7 +97,7 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, epsz_w.real, label='real')
         ax = plt.gca()
         ax.set_title("z-polarization")
-        ax.set_xlabel("energy [meV]")
+        ax.set_xlabel("Energy [meV]")
         ax.set_ylabel(r"Dielectric function")
         ax.set_xlim(0, maxomega)
         ax.legend()
@@ -113,8 +115,8 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ax_w.real, label='real')
         ax = plt.gca()
         ax.set_title("x-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
@@ -125,8 +127,8 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, ay_w.real, label='real')
         ax = plt.gca()
         ax.set_title("y-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
@@ -137,12 +139,38 @@ def create_plot(row, *fnames):
         plt.plot(omega_w, az_w.real, label='real')
         ax = plt.gca()
         ax.set_title("z-polarization")
-        ax.set_xlabel("energy [meV]")
-        ax.set_ylabel(rf"polarizability [{unit}]")
+        ax.set_xlabel("Energy [meV]")
+        ax.set_ylabel(rf"Polarizability [{unit}]")
         ax.set_xlim(0, maxomega)
         ax.legend()
         plt.tight_layout()
         plt.savefig(fnames[2])
+
+
+@prepare_result
+class Result(ASRResult):
+
+    alpha_wvv: typing.List[typing.List[typing.List[complex]]]
+    omega_w: typing.List[float]
+    alphax_lat: complex
+    alphay_lat: complex
+    alphaz_lat: complex
+    alphax: complex
+    alphay: complex
+    alphaz: complex
+
+    key_descriptions = {
+        "alpha_wvv": "Lattice polarizability.",
+        "omega_w": "Frequency grid [eV].",
+        "alphax_lat": "Lattice polarizability at omega=0 (x-direction).",
+        "alphay_lat": "Lattice polarizability at omega=0 (y-direction).",
+        "alphaz_lat": "Lattice polarizability at omega=0 (z-direction).",
+        "alphax": "Lattice+electronic polarizability at omega=0 (x-direction).",
+        "alphay": "Lattice+electronic polarizability at omega=0 (y-direction).",
+        "alphaz": "Lattice+electronic polarizability at omega=0 (z-direction).",
+    }
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(
@@ -154,11 +182,11 @@ def create_plot(row, *fnames):
         "results-asr.borncharges.json",
         "results-asr.polarizability.json",
     ],
-    webpanel=webpanel,
+    returns=Result,
 )
-@option("--nfreq", help="Number of frequency points")
-@option("--eta", help="Relaxation rate")
-def main(nfreq=300, eta=1e-2):
+@option("--nfreq", help="Number of frequency points", type=int)
+@option("--eta", help="Relaxation rate", type=float)
+def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     from ase.io import read
 
     # Get relevant atomic structure
@@ -224,15 +252,6 @@ def main(nfreq=300, eta=1e-2):
         "alphax": alphax_lat + alphax_el,
         "alphay": alphay_lat + alphay_el,
         "alphaz": alphaz_lat + alphaz_el,
-    }
-
-    results["__key_descriptions__"] = {
-        "alphax_lat": "KVP: Static ionic polarizability, x-direction [Ang]",
-        "alphay_lat": "KVP: Static ionic polarizability, y-direction [Ang]",
-        "alphaz_lat": "KVP: Static ionic polarizability, z-direction [Ang]",
-        "alphax": "KVP: Static total polarizability, x-direction [Ang]",
-        "alphay": "KVP: Static total polarizability, y-direction [Ang]",
-        "alphaz": "KVP: Static total polarizability, z-direction [Ang]",
     }
 
     return results

@@ -1,12 +1,15 @@
+"""Phonon band structure and dynamical stability."""
 from pathlib import Path
+import typing
 
 import numpy as np
 
 from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
+from ase.dft.kpoints import BandPath
 
-from asr.core import command, option
+from asr.core import command, option, ASRResult, prepare_result
 
 
 def creates():
@@ -23,7 +26,9 @@ def creates():
 
 def todict(filename):
     from ase.utils import pickleload
-    return {'content': pickleload(open(filename, 'rb'))}
+    with open(filename, 'rb') as fd:
+        content = pickleload(fd)
+    return {'content': content}
 
 
 def topckl(filename, dct):
@@ -42,11 +47,12 @@ def topckl(filename, dct):
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs@calculate'],
          creates=creates)
-@option('-n', help='Supercell size')
-@option('--ecut', help='Energy cutoff')
-@option('--kptdensity', help='Kpoint density')
-@option('--fconverge', help='Force convergence criterium')
-def calculate(n=2, ecut=800, kptdensity=6.0, fconverge=1e-4):
+@option('-n', help='Supercell size', type=int)
+@option('--ecut', help='Energy cutoff', type=float)
+@option('--kptdensity', help='Kpoint density', type=float)
+@option('--fconverge', help='Force convergence criterium', type=float)
+def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
+              fconverge: float = 1e-4) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
     # Remove empty files:
@@ -111,7 +117,7 @@ def requires():
     return creates() + ['results-asr.phonons@calculate.json']
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
@@ -121,15 +127,13 @@ def webpanel(row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
+    dynstab = row.get('dynamic_stability_phonons')
     high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
-    medium = 'Min. Hessian eig. > -2 eV/Ang^2'
-    low = 'Min. Hessian eig.  < -2 eV/Ang^2'
+    low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
     row = ['Dynamical (phonons)',
            '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[dynstab].upper())]
+           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
+               low, high, dynstab.upper())]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -139,17 +143,40 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    minhessianeig: float
+    dynamic_stability_phonons: str
+    q_qc: typing.List[typing.Tuple[float, float, float]]
+    omega_kl: typing.List[typing.List[float]]
+    path: BandPath
+    modes_kl: typing.List[typing.List[float]]
+    interp_freqs_kl: typing.List[typing.List[float]]
+
+    key_descriptions = {
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
+        "q_qc": "List of momenta consistent with supercell.",
+        "omega_kl": "Phonon frequencies.",
+        "modes_kl": "Phonon modes.",
+        "interp_freqs_kl": "Interpolated phonon frequencies.",
+        "path": "Interpolated phonon bandstructure path.",
+    }
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.phonons',
          requires=requires,
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.phonons@calculate'])
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
-def main(mingo=True):
+def main(mingo: bool = True) -> Result:
     from asr.core import read_json
-    dct = read_json('results-asr.phonons@calculate.json')
+    calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
-    n = dct['__params__']['n']
+    n = calculateresult.metadata.params['n']
     nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
@@ -190,18 +217,16 @@ def main(mingo=True):
     eigs = np.array(eigs)
     mineig = np.min(eigs)
 
-    if mineig < -2:
-        dynamic_stability = 1
-    elif mineig < -1e-5:
-        dynamic_stability = 2
+    if mineig < -0.01:
+        dynamic_stability = 'low'
     else:
-        dynamic_stability = 3
+        dynamic_stability = 'high'
 
     results = {'omega_kl': omega_kl,
                'q_qc': q_qc,
                'modes_kl': u_kl,
                'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
+               'dynamic_stability_phonons': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
@@ -209,9 +234,6 @@ def main(mingo=True):
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl
     results['path'] = path
-    results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
-         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 
@@ -245,7 +267,7 @@ def plot_phonons(row, fname):
 
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
     data = row.data.get('results-asr.phonons.json')
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
@@ -261,11 +283,10 @@ def plot_bandstructure(row, fname):
         en_exact[ind] = energies[ind]
 
     bs = BandStructure(path=path, energies=en_exact[None])
-    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C0'],
-            emin=np.min(energies * 1.1), emax=np.max(energies * 1.15),
+    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
+            emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15),
+                                                      0.0001]),
             ylabel='Phonon frequencies [meV]')
-    plt.plot([], [], label='Calculated', color='C0', marker='o', ls='')
-    plt.legend(ncol=1, loc='upper center')
     plt.tight_layout()
     plt.savefig(fname)
 

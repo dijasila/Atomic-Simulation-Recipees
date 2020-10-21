@@ -1,5 +1,7 @@
-from asr.core import command, option, file_barrier
+"""Bethe Salpeter absorption spectrum."""
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
+import typing
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -20,17 +22,18 @@ def get_kpts_size(atoms, kptdensity):
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='480:20h')
-@option('--gs', help='Ground state on which BSE is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
-@option('--nv_s', help='Valence bands included')
-@option('--nc_s', help='Conduction bands included')
+@option('--gs', help='Ground state on which BSE is based', type=str)
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--nv_s', help='Valence bands included', type=float)
+@option('--nc_s', help='Conduction bands included', type=float)
 @option('--mode', help='Irreducible response',
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs='gs.gpw', kptdensity=6.0, ecut=50.0, mode='BSE', bandfactor=6,
-              nv_s=-2.3, nc_s=2.3):
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+              mode: str = 'BSE', bandfactor: int = 6,
+              nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
     """Calculate BSE polarizability."""
     import os
     from ase.io import read
@@ -221,7 +224,7 @@ def absorption(row, filename, direction='x'):
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
     ax.set_title(f'{direction}-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
     else:
@@ -233,7 +236,7 @@ def absorption(row, filename, direction='x'):
     return ax
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
     from asr.database.browser import fig, table
@@ -272,11 +275,27 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    E_B: float
+    bse_alphax_w: typing.List[float]
+    bse_alphay_w: typing.List[float]
+    bse_alphaz_w: typing.List[float]
+
+    key_descriptions = {"E_B": "Exciton binding energy from BSE [eV].",
+                        'bse_alphax_w': 'BSE polarizability x-direction.',
+                        'bse_alphay_w': 'BSE polarizability y-direction.',
+                        'bse_alphaz_w': 'BSE polarizability z-direction.'}
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.bse',
          requires=['bse_polx.csv', 'results-asr.gs.json'],
          dependencies=['asr.bse@calculate', 'asr.gs'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     import numpy as np
     from pathlib import Path
     from asr.core import read_json
@@ -304,8 +323,6 @@ def main():
             E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
-        data['__key_descriptions__'] = \
-            {'E_B': 'KVP: BSE binding energy (Exc. bind. energy) [eV]'}
 
     return data
 

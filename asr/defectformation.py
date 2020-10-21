@@ -1,4 +1,6 @@
-from asr.core import command, option
+"""Defect formation energies."""
+from typing import Union
+from asr.core import command, option, ASRResult
 
 
 group = 'property'
@@ -20,11 +22,12 @@ creates = []  # what files are created
              'always have to be within a folder for the specific defect with '
              'a subfolder calles "charge_q" for the respective chargestate q '
              'in order to work correctly.')
-@option('--defect_name',
+@option('--defect_name', type=str,
         help='Runs recipe for all defect folder within your directory when '
              'set to None. Set this option to the name of a desired defect '
              'folder in order for it to run only for this particular defect.')
-def main(pristine='gs.gpw', defect='gs.gpw', defect_name=None):
+def main(pristine: str = 'gs.gpw', defect: str = 'gs.gpw',
+         defect_name: Union[str, None] = None) -> ASRResult:
     """
     Calculate formation energy of defects.
 
@@ -406,7 +409,7 @@ def plot_formation_and_transitions(defect_dict, defectname, gap):
     return trans_array
 
 
-# def webpanel(row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
 #    from asr.database.browser import fig, table
 #
 #    if 'something' not in row.data:

@@ -8,8 +8,9 @@ metal_alloys = ['Ag', 'Au', 'Ag,Au', 'Ag,Au,Al']
 
 @pytest.mark.ci
 @pytest.mark.parametrize('metals', metal_alloys)
+@pytest.mark.parametrize('energy_key', [None, 'etot'])
 def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
-                     metals):
+                     metals, energy_key):
     from ase.calculators.emt import EMT
     from asr.convex_hull import main
     elemental_metals = ['Al', 'Cu', 'Ag', 'Au', 'Ni',
@@ -19,17 +20,20 @@ def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
     with connect('references.db') as db:
         for uid, element in enumerate(elemental_metals):
             atoms = bulk(element)
-            atoms.set_calculator(EMT())
+            atoms.calc = EMT()
             en = atoms.get_potential_energy()
             energies[element] = en
-            db.write(atoms, uid=uid)
+            db.write(atoms, uid=uid, etot=en)
 
-    db.metadata = {'title': 'Metal references',
-                   'legend': 'Metals',
-                   'name': '{row.formula}',
-                   'link': 'NOLINK',
-                   'label': '{row.formula}',
-                   'method': 'DFT'}
+    metadata = {'title': 'Metal references',
+                'legend': 'Metals',
+                'name': '{row.formula}',
+                'link': 'NOLINK',
+                'label': '{row.formula}',
+                'method': 'DFT'}
+    if energy_key is not None:
+        metadata['energy_key'] = energy_key
+    db.metadata = metadata
 
     metal_atoms = metals.split(',')
     nmetalatoms = len(metal_atoms)

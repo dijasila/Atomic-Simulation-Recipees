@@ -69,15 +69,20 @@ def get_material_from_folder(folder='.'):
         Output material instance
 
     """
-    from asr.database.fromtree import collect
+    from asr.core import dct_to_object
+    from asr.database.fromtree import collect_file
     from ase.io import read
     kvp = {}
     data = {}
     for filename in Path(folder).glob('results-*.json'):
-        tmpkvp, tmpkd, tmpdata, tmplinks = collect(str(filename))
-        if tmpkvp or tmpkd or tmpdata or tmplinks:
+        tmpkvp, tmpdata = collect_file(filename)
+        if tmpkvp or tmpdata:
             kvp.update(tmpkvp)
             data.update(tmpdata)
+
+    for key, value in data.items():
+        obj = dct_to_object(value)
+        data[key] = obj
 
     atoms = read('structure.json', parallel=False)
     material = Material(atoms, kvp, data)
@@ -102,7 +107,7 @@ def get_webpanels_from_material(material, recipe):
     """
     from asr.database.app import create_key_descriptions
     kd = create_key_descriptions()
-    return recipe.webpanel(material, kd)
+    return recipe.format_as('ase_webpanel', material, kd)
 
 
 def make_panel_figures(material, panels):

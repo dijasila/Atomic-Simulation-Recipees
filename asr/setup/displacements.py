@@ -1,12 +1,7 @@
-"""Module for generating atomic structures with displaced atoms.
-
-The main recipe of this module is :func:`asr.setup.displacements.main`
-
-.. autofunction:: asr.setup.displacements.main
-"""
+"""Module for generating atomic structures with displaced atoms."""
 
 from pathlib import Path
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 def get_displacement_folder(atomic_index,
@@ -43,9 +38,10 @@ def displace_atom(atoms, ia, iv, sign, delta):
 
 
 @command('asr.setup.displacements')
-@option('--displacement', help='How much to displace atoms.')
-@option('--copy-params', help='Copy params.json to displacement folders.')
-def main(displacement=0.01, copy_params=True):
+@option('--displacement', help='How much to displace atoms.', type=float)
+@option('--copy-params', help='Copy params.json to displacement folders.',
+        type=bool)
+def main(displacement: float = 0.01, copy_params: bool = True) -> ASRResult:
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms. The generated

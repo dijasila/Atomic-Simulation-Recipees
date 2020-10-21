@@ -1,8 +1,10 @@
-from asr.core import command, option
+"""Optical polarizability."""
+import typing
+from asr.core import command, option, ASRResult, prepare_result
 from click import Choice
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(row, 'Property', [
@@ -36,18 +38,53 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+@prepare_result
+class Result(ASRResult):
+    alphax_el: typing.List[complex]
+    alphay_el: typing.List[complex]
+    alphaz_el: typing.List[complex]
+    alphax_w: typing.List[complex]
+    alphay_w: typing.List[complex]
+    alphaz_w: typing.List[complex]
+    alpha0x_w: typing.List[complex]
+    alpha0y_w: typing.List[complex]
+    alpha0z_w: typing.List[complex]
+    plasmafreq_vv: typing.List[typing.List[float]]
+    frequencies: typing.List[float]
+
+    key_descriptions = {
+        "alphax_el": "Static interband polarizability (x) [Ang]",
+        "alphay_el": "Static interband polarizability (y) [Ang]",
+        "alphaz_el": "Static interband polarizability (z) [Ang]",
+        "alphax_w": "Interband polarizability (x) [Ang]",
+        "alphay_w": "Interband polarizability (y) [Ang]",
+        "alphaz_w": "Interband polarizability (z) [Ang]",
+        "alpha0x_w": "Interband polarizability without local field effects (x) [Ang]",
+        "alpha0y_w": "Interband polarizability without local field effects (y) [Ang]",
+        "alpha0z_w": "Interband polarizability without local field effects (z) [Ang]",
+        "plasmafreq_vv": "Plasmafrequency tensor.",
+        "frequencies": "Frequency grid [eV]."
+    }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.polarizability',
          dependencies=['asr.structureinfo', 'asr.gs@calculate'],
          requires=['gs.gpw'],
-         webpanel=webpanel)
+         returns=Result)
 @option(
-    '--gs', help='Ground state on which response is based')
-@option('--kptdensity', help='K-point density')
-@option('--ecut', help='Plane wave cutoff')
+    '--gs', help='Ground state on which response is based',
+    type=str)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
+def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
+         xc: str = 'RPA', bandfactor: int = 5) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW
@@ -134,20 +171,13 @@ def main(gs='gs.gpw', kptdensity=20.0, ecut=50.0, xc='RPA', bandfactor=5):
         data['alphay_el'] = data['alphay_w'][0].real
         data['alphaz_el'] = data['alphaz_w'][0].real
 
-        data['__key_descriptions__'] = {
-            'alphax_el': 'KVP: Static electronic polarizability,'
-            ' x-direction [Ang]',
-            'alphay_el': 'KVP: Static electronic polarizability,'
-            ' y-direction [Ang]',
-            'alphaz_el': 'KVP: Static electronic polarizability,'
-            ' z-direction [Ang]'}
-
     finally:
         world.barrier()
         if world.rank == 0:
-            es_file = Path("es.gpw")
-            if es_file.is_file():
-                es_file.unlink()
+            for filename in ['es.gpw', 'chi+0+0+0.pckl']:
+                es_file = Path(filename)
+                if es_file.is_file():
+                    es_file.unlink()
 
     return data
 
@@ -210,14 +240,14 @@ def polarizability(row, fx, fy, fz):
                 np.real(alphax_w),
                 '--',
                 c='C1',
-                label='real interband')
+                label='real (interband)')
         else:
             ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
     ax.set_title('x-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
@@ -242,14 +272,14 @@ def polarizability(row, fx, fy, fz):
                 np.real(alphay_w),
                 '--',
                 c='C1',
-                label='real interband')
+                label='real (interband)')
         else:
             ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
     ax.set_title('y-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
     ax.legend()
@@ -262,7 +292,7 @@ def polarizability(row, fx, fy, fz):
     ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
     ax.set_title('z-polarization')
-    ax.set_xlabel('energy [eV]')
+    ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
     ax.legend()

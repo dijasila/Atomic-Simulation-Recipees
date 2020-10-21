@@ -1,4 +1,5 @@
-from asr.core import command
+"""Fermi surfaces."""
+from asr.core import command, ASRResult, prepare_result
 
 
 def bz_vertices(cell):
@@ -56,7 +57,7 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
     return contours
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Fermi surface',
@@ -77,7 +78,7 @@ def plot_fermi(row, fname,
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 3))
-    ax = lat.plot_bz(vectors=False)
+    ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
     plt.savefig(fname, dpi=dpi)
     plt.close()
@@ -105,17 +106,21 @@ def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
     cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
     cbar.set_label('$\\langle S_z \\rangle$')
-    # ax.annotate('Fermi surface', xy=(0.5, 1), ha='center',
-    #             va='top', xycoords='axes fraction')
 
     return cbaxes
 
 
+@prepare_result
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.fermisurface',
-         webpanel=webpanel,
+         returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs@calculate', 'asr.structureinfo'])
-def main():
+def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs

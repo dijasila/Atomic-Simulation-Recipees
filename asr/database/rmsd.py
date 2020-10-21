@@ -1,6 +1,8 @@
-from asr.core import command, argument, option
+from typing import Union
+from asr.core import command, argument, option, ASRResult
 import numpy as np
 from datetime import datetime
+from asr.utils import timed_print
 
 
 def normalize_nonpbc_atoms(atoms1, atoms2):
@@ -31,11 +33,11 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         adaptor = AseAtomsAdaptor()
 
     if matcher is None:
-        matcher = StructureMatcher(primitive_cell=False, attempt_supercell=True)
+        matcher = StructureMatcher(primitive_cell=False,
+                                   attempt_supercell=True)
 
     atoms1, atoms2 = normalize_nonpbc_atoms(atoms1, atoms2)
 
-    pbc_c = atoms1.get_pbc()
     atoms1 = atoms1.copy()
     atoms2 = atoms2.copy()
     atoms1.set_pbc(True)
@@ -52,7 +54,7 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
 
     struct1, struct2, fu, s1_supercell = matcher._preprocess(struct1, struct2)
     match = matcher._match(struct1, struct2, fu, s1_supercell,
-                           break_on_match=False)
+                           break_on_match=False, use_rms=False)
     if match is None:
         return None
     else:
@@ -62,9 +64,6 @@ def get_rmsd(atoms1, atoms2, adaptor=None, matcher=None):
         natoms = len(atoms1)
         old_norm = (natoms / vol)**(1 / 3)
         rmsd /= old_norm  # Undo
-        lenareavol = np.linalg.det(atoms1.get_cell()[pbc_c][:, pbc_c])
-        new_norm = (natoms / lenareavol)**(1 / sum(pbc_c))
-        rmsd *= new_norm  # Apply our own norm
         return rmsd
 
 
@@ -77,12 +76,19 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
 
 @command(module='asr.database.rmsd',
          resources='1:20m')
-@argument('databaseout', required=False)
-@argument('database')
+@argument('databaseout', required=False, type=str)
+@argument('database', type=str)
 @option('-c', '--comparison-keys',
-        help='Keys that have to be identical for RMSD to be calculated.')
-@option('-r', '--max-rmsd', help='Maximum allowed RMSD.')
-def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
+        help='Keys that have to be identical for RMSD to be calculated.',
+        type=str)
+@option('-r', '--max-rmsd', help='Maximum allowed RMSD.',
+        type=float)
+@option('--skip-distance-calc', default=False, is_flag=True,
+        help="Skip distance calculation. Only match structures "
+        "based on their reduced formula and comparison_keys.")
+def main(database: str, databaseout: Union[str, None] = None,
+         comparison_keys: str = '', max_rmsd: float = 1.0,
+         skip_distance_calc: bool = False) -> ASRResult:
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If
@@ -118,6 +124,10 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
         rows to be compared. Eg. 'magstate,natoms'. Default is ''.
     max_rmsd : float
         Maximum rmsd allowed for RMSD to be calculated.
+    skip_distance_calc : bool
+        If true, only use reduced formula and comparison_keys to match
+        structures. Skip calculating distances between structures. The
+        output rmsd's will be 0 for matching structures.
 
     Returns
     -------
@@ -145,21 +155,22 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
 
     rows = {}
     for row in db.select(include_data=False):
-        rows[row.get(uid_key)] = (row.toatoms(), row)
+        rows[row.get(uid_key)] = (row.toatoms(),
+                                  row,
+                                  Formula(row.formula).reduce()[0])
 
     print('Calculating RMSDs for all materials...')
     nmat = len(rows)
     rmsd_by_id = {}
-    for rowid, (atoms, row) in rows.items():
+    for rowid, (atoms, row, reduced_formula) in rows.items():
         now = datetime.now()
-        _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-        formula = Formula(row.formula).reduce()[0]
-        for otherrowid, (otheratoms, otherrow) in rows.items():
+        timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
+        for otherrowid, (otheratoms, otherrow,
+                         other_reduced_formula) in rows.items():
             if rowid == otherrowid:
                 continue
 
-            otherformula = Formula(otherrow.formula).reduce()[0]
-            if not formula == otherformula:
+            if not reduced_formula == other_reduced_formula:
                 continue
 
             # Skip calculation if it has been performed already
@@ -170,9 +181,13 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
                not all(row.get(key) == otherrow.get(key)
                        for key in comparison_keys):
                 continue
-            rmsd = get_rmsd(atoms, otheratoms,
-                            adaptor=adaptor,
-                            matcher=matcher)
+
+            if not skip_distance_calc:
+                rmsd = get_rmsd(atoms, otheratoms,
+                                adaptor=adaptor,
+                                matcher=matcher)
+            else:
+                rmsd = 0
             update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd)
             update_rmsd(rmsd_by_id, otherrowid, rowid, rmsd)
 
@@ -181,7 +196,7 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
         with connect(databaseout) as dbwithrmsd:
             for row in db.select():
                 now = datetime.now()
-                _timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
+                timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
                 data = row.data
                 key_value_pairs = row.key_value_pairs
                 uid = row.get(uid_key)
@@ -202,17 +217,6 @@ def main(database, databaseout=None, comparison_keys='', max_rmsd=1.0):
     results = {'rmsd_by_id': rmsd_by_id,
                'uid_key': uid_key}
     return results
-
-
-_LATEST_PRINT = None
-
-
-def _timed_print(*args, wait=20):
-    global _LATEST_PRINT
-    now = datetime.now()
-    if _LATEST_PRINT is None or (now - _LATEST_PRINT).seconds > wait:
-        print(*args)
-        _LATEST_PRINT = now
 
 
 if __name__ == '__main__':

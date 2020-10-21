@@ -2,12 +2,10 @@ import pytest
 
 
 @pytest.mark.ci
-def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
+def test_pdos(asr_tmpdir_w_params, mockgpaw,
               test_material, get_webcontent):
     from asr.pdos import main
 
-    mocker.patch("gpaw.utilities.dos.raw_orbital_LDOS", create=True)
-    mocker.patch("gpaw.utilities.progressbar.ProgressBar", create=True)
     test_material.write('structure.json')
     main()
     get_webcontent()
@@ -17,14 +15,10 @@ def test_pdos(asr_tmpdir_w_params, mockgpaw, mocker,
 def test_pdos_full(asr_tmpdir_w_params):
     from pathlib import Path
     import numpy as np
-
     from ase.build import bulk
     from ase.dft.kpoints import monkhorst_pack
-    from ase.dft.dos import DOS
-
-    from asr.pdos import dos_at_ef
-    from asr.core import write_json
     from gpaw import GPAW, PW
+    from asr.core import write_json
     # ------------------- Inputs ------------------- #
 
     # Part 1: ground state calculation
@@ -42,7 +36,6 @@ def test_pdos_full(asr_tmpdir_w_params):
     # Part 3: test output values
     dos0 = 0.274
     dos0tol = 0.01
-    dos_eqtol = 0.01
     dos_socnosoc_eqtol = 0.1
 
     # ------------------- Script ------------------- #
@@ -60,7 +53,7 @@ def test_pdos_full(asr_tmpdir_w_params):
                      nbands=nb,
                      idiotproof=False)
 
-        Li1.set_calculator(calc1)
+        Li1.calc = calc1
         Li1.get_potential_energy()
 
         calc1.write('Li1.gpw')
@@ -78,7 +71,7 @@ def test_pdos_full(asr_tmpdir_w_params):
                      nbands=nb,
                      idiotproof=False)
 
-        Li2.set_calculator(calc2)
+        Li2.calc = calc2
         Li2.get_potential_energy()
 
         calc2.write('Li2.gpw')
@@ -89,44 +82,38 @@ def test_pdos_full(asr_tmpdir_w_params):
     dct = {'theta': theta, 'phi': phi}
     write_json('results-asr.magnetic_anisotropy.json', dct)
 
+    def dosef(dos, spin=None):
+        return dos.raw_dos([0.0], spin, 0.0)[0]
+
     # Calculate the dos at ef for each spin channel
     # spin-0
-    dos1 = DOS(calc1, width=0., window=(-0.1, 0.1), npts=3)
-    dosef10 = dos1.get_dos(spin=0)[1]
-    dosef11 = dos1.get_dos(spin=1)[1]
+    dos1 = calc1.dos()
+    dosef10 = dosef(dos1) / 2
     # spin-polarized
-    dos2 = DOS(calc2, width=0., window=(-0.1, 0.1), npts=3)
-    dosef20 = dos2.get_dos(spin=0)[1]
-    dosef21 = dos2.get_dos(spin=1)[1]
+    from gpaw.dos import DOSCalculator
+    dos2 = DOSCalculator.from_calculator(calc2)
+    dosef20 = dosef(dos2, spin=0)
+    dosef21 = dosef(dos2, spin=1)
 
-    # Calculate the dos at ef w/wo soc using asr
+    # Calculate the dos at ef with soc using asr
     # spin-0
-    dosef_nosoc1 = dos_at_ef(calc1, 'Li1.gpw', soc=False)
-    dosef_soc1 = dos_at_ef(calc1, 'Li1.gpw', soc=True)
+    dosef_soc1 = dosef(calc1.dos(soc=True))
     # spin-polarized
-    dosef_nosoc2 = dos_at_ef(calc2, 'Li2.gpw', soc=False)
-    dosef_soc2 = dos_at_ef(calc2, 'Li2.gpw', soc=True)
+    dosef_soc2 = dosef(calc2.dos(soc=True))
 
     # Part 3: test output values
 
     # Test ase
-    dosef_d = np.array([dosef10, dosef11, dosef20, dosef21])
+    dosef_d = np.array([dosef10, dosef20, dosef21])
     assert np.all(np.abs(dosef_d - dos0) < dos0tol),\
         ("ASE doesn't reproduce single spin dosef: "
          f"{dosef_d}, {dos0}")
 
-    # Test asr
-    assert abs(dosef10 + dosef11 - dosef_nosoc1) < dos_eqtol,\
-        ("ASR doesn't reproduce ASE's dosef_nosoc in the spin-0 case: "
-         f"{dosef10}, {dosef11}, {dosef_nosoc1}")
-    assert abs(dosef20 + dosef21 - dosef_nosoc2) < dos_eqtol,\
-        ("ASR doesn't reproduce ASE's dosef_nosoc in the spin-polarized case: "
-         f"{dosef20}, {dosef21}, {dosef_nosoc2}")
-    assert abs(dosef_nosoc1 - dosef_soc1) < dos_socnosoc_eqtol,\
+    assert abs(dosef10 * 2 - dosef_soc1) < dos_socnosoc_eqtol,\
         ("ASR's nosoc/soc methodology disagrees in the spin-0 case: "
-         f"{dosef_nosoc1}, {dosef_soc1}")
-    assert abs(dosef_nosoc2 - dosef_soc2) < dos_socnosoc_eqtol,\
+         f"{dosef10}, {dosef_soc1}")
+    assert abs(dosef_soc1 - dosef_soc2) < dos0tol,\
         ("ASR's nosoc/soc methodology disagrees in the spin-polarized case: "
-         f"{dosef_nosoc2}, {dosef_soc2}")
+         f"{dosef_soc1}, {dosef_soc2}")
 
     print('All good')

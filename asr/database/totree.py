@@ -1,22 +1,28 @@
-from asr.core import command, argument, option
+"""Convert database to folder tree."""
+from asr.core import command, argument, option, ASRResult
+from asr.utils import timed_print
+from pathlib import Path
+from datetime import datetime
 
 
 def make_folder_tree(*, folders, chunks,
-                     write_atoms_file,
                      copy,
                      patterns,
-                     atomsname,
-                     dont_create_folders):
+                     atomsfile,
+                     update_tree):
     """Write folder tree to disk."""
-    from pathlib import Path
     from os import makedirs, link
     from ase.io import write
     from asr.core import write_json
     import importlib
     from fnmatch import fnmatch
 
-    cwd = Path('.').absolute()
+    nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
+        now = datetime.now()
+        percentage_completed = (i + 1) / nfolders * 100
+        timed_print(f'{now:%H:%M:%S} {i + 1}/{nfolders} '
+                    f'{percentage_completed:.1f}%', wait=30)
         if chunks > 1:
             chunkno = i % chunks
             parts = list(Path(folder).parts)
@@ -24,13 +30,11 @@ def make_folder_tree(*, folders, chunks,
             folder = str(Path().joinpath(*parts))
 
         folder = Path(folder)
-        folder_has_been_created = False
 
-        if write_atoms_file:
-            if not folder_has_been_created:
+        if not update_tree and atomsfile:
+            if not folder.is_dir():
                 makedirs(folder)
-                folder_has_been_created = True
-            write(folder / atomsname, row.toatoms())
+            write(folder / atomsfile, row.toatoms())
 
         for filename, results in row.data.items():
             for pattern in patterns:
@@ -39,11 +43,13 @@ def make_folder_tree(*, folders, chunks,
             else:
                 continue
 
-            if not folder_has_been_created and not dont_create_folders:
-                makedirs(folder)
-                folder_has_been_created = True
+            if not folder.is_dir():
+                if not update_tree:
+                    makedirs(folder)
+                else:
+                    continue
 
-            if (folder / filename).is_file():
+            if (folder / filename).is_file() and not update_tree:
                 continue
 
             # We treat json differently
@@ -55,21 +61,14 @@ def make_folder_tree(*, folders, chunks,
                 for extrafile, content in files.items():
 
                     if '__tofile__' in content:
+                        # TODO: This should _really_ be handled differently.
                         tofile = content.pop('__tofile__')
                         mod, func = tofile.split('@')
                         write_func = getattr(importlib.import_module(mod),
                                              func)
                         write_func(folder / extrafile, content)
-            elif filename == '__links__':
-                for destdir, identifier in results.items():
-                    if identifier not in folders:
-                        print(f'{folder}: Unknown unique identifier '
-                              f'{identifier}! Cannot link to'
-                              f' {destdir}.')
-                    else:
-                        srcdir = cwd / folders[identifier][0]
-                        (folder / destdir).symlink_to(srcdir,
-                                                      target_is_directory=True)
+            elif filename in {'__links__', '__children__'}:
+                pass
             else:
                 path = results.get('pointer')
                 srcfile = Path(path).resolve()
@@ -95,7 +94,25 @@ def make_folder_dict(rows, tree_structure):
     folderlist = []
     err = []
     nc = 0
+    child_uids = {}
     for row in rows:
+        identifier = row.get('uid', row.id)
+        children = row.data.get('__children__')
+        if children:
+            for path, child_uid in children.items():
+                if child_uid in child_uids:
+                    existing_path = child_uids[child_uid]['path']
+                    assert (existing_path.startswith(path)
+                            or path.startswith(existing_path))
+                    if path.startswith(existing_path):
+                        continue
+                child_uids[child_uid] = {'path': path, 'parentuid': identifier}
+
+    for row in rows:
+        identifier = row.get('uid', row.id)
+        if identifier in child_uids:
+            folders[identifier] = (None, row)
+            continue
         atoms = row.toatoms()
         formula = atoms.symbols.formula
         st = atoms.symbols.formula.stoichiometry()[0]
@@ -104,6 +121,7 @@ def make_folder_dict(rows, tree_structure):
                 atoms.numbers)
         stoi = atoms.symbols.formula.stoichiometry()
         st = stoi[0]
+        reduced_formula = stoi[1]
         dataset = spglib.get_symmetry_dataset(cell, symprec=1e-3,
                                               angle_tolerance=0.1)
         sg = dataset['number']
@@ -114,33 +132,24 @@ def make_folder_dict(rows, tree_structure):
             magstate = None
 
         # Add a unique identifier
-        if 'uid' in tree_structure:
-            for uid in range(0, 10):
-                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
-                                               formula=formula,
-                                               mag=magstate,
-                                               uid=uid, row=row)
-                if folder not in folderlist:
-                    break
-            else:
-                msg = ('Too many collisions (>10):\n' + '\n'.join(err[-9:]))
-                raise RuntimeError(msg)
-
-            if uid > 0:
-                nc += 1
-                err += [f'Collision: {folder}']
-        else:
-            try:
-                folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
-                                               formula=formula,
-                                               mag=magstate,
-                                               row=row)
-            except AttributeError:
-                continue
+        folder = tree_structure.format(stoi=st, spg=sg, wyck=w,
+                                       reduced_formula=reduced_formula,
+                                       formula=formula,
+                                       mag=magstate,
+                                       row=row)
         assert folder not in folderlist, f'Collision in folder: {folder}!'
         folderlist.append(folder)
-        identifier = row.get('uid', row.id)
         folders[identifier] = (folder, row)
+
+    for child_uid, links in child_uids.items():
+        parent_uid = links['parentuid']
+        if child_uid not in folders:
+            print(f'Parent (uid={parent_uid}) has unknown child '
+                  f'(uid={child_uid}).')
+            continue
+        parentfolder = folders[parent_uid][0]
+        childfolder = str(Path().joinpath(parentfolder, links['path']))
+        folders[child_uid] = (childfolder, folders[child_uid][1])
 
     print(f'Number of collisions: {nc}')
     for er in err:
@@ -148,30 +157,33 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
-@command('asr.database.totree')
-@argument('database', nargs=1)
-@option('--run/--dry-run')
-@option('-s', '--selection', help='ASE-DB selection')
-@option('-t', '--tree-structure')
+@command('asr.database.totree',
+         save_results_file=False)
+@argument('database', nargs=1, type=str)
+@option('--run/--dry-run', is_flag=True)
+@option('-s', '--selection', help='ASE-DB selection', type=str)
+@option('-t', '--tree-structure', type=str)
 @option('--sort', help='Sort the generated materials '
-        '(only useful when dividing chunking tree)')
-@option('--copy', is_flag=True, help='Copy pointer tagged files')
-@option('--atomsname', help='Filename to unpack atomic structure to')
-@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks')
+        '(only useful when dividing chunking tree)', type=str)
+@option('--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
+@option('--atomsfile',
+        help="Filename to unpack atomic structure to. "
+        "By default, don't write atoms file.",
+        type=str)
+@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
+        type=int)
 @option('--patterns',
-        help="Comma separated patterns. Only unpack files matching patterns")
-@option('--dont-create-folders', is_flag=True,
-        help='Dont make new folders. Useful when writing to an existing tree.')
-@option('--write_atoms_file', is_flag=True,
-        help='Write atoms object to file with name given '
-        'by the --atomsname option')
-def main(database, run=False, selection='',
-         tree_structure=('tree/{stoi}/{spg}/{formula:metal}-{stoi}-'
-                         '{spg}-{wyck}-{uid}'),
-         sort=None, atomsname='structure.json',
-         chunks=1, copy=False,
-         patterns='*', dont_create_folders=False,
-         write_atoms_file=True):
+        help="Comma separated patterns. Only unpack files matching patterns",
+        type=str)
+@option('--update-tree', is_flag=True,
+        help='Update results files in existing folder tree.')
+def main(database: str, run: bool = False, selection: str = '',
+         tree_structure: str = (
+             'tree/{stoi}/{reduced_formula:abc}/{row.uid}'
+         ),
+         sort: str = None, atomsfile: str = None,
+         chunks: int = 1, copy: bool = False,
+         patterns: str = '*', update_tree: bool = False) -> ASRResult:
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -186,35 +198,30 @@ def main(database, run=False, selection='',
     * {spg}: Material spacegroup number
     * {formula}: Chemical formula. A possible variant is {formula:metal}
       in which case the formula will be sorted by metal atoms
+    * {reduced_formula}: Reduced chemical formula. Like {formula}
+      except the formula has been reduced, i.e., Mo2S4 -> MoS2.
     * {wyck}: Unique wyckoff positions. The unique alphabetically
       sorted Wyckoff positions.
-    * {uid}: This is a unique identifier which starts at 0 and adds 1 if
-      collisions (cases where two materials would go to the same folder)
-      occur. In practice, if two materials would be unpacked in A-0/
-      they would now be unpacked in A-0/ and A-1/.
-
-    By default, the atomic structures will be saved into an unrelaxed.json
-    file which is be ready to be relaxed. This filename can be changed with
-    the --atomsname switch.
 
     Examples
     --------
     For all these examples, suppose you have a database named "database.db".
 
     Unpack database using default parameters:
-    >>> asr run "database.totree database.db --run"
+    $ asr run "database.totree database.db --run"
     Don't actually unpack the database but do a dry-run:
-    >>> asr run "database.totree database.db"
+    $ asr run "database.totree database.db"
     Only select a part of the database to unpack:
-    >>> asr run "database.totree database.db --selection natoms<3 --run"
+    $ asr run "database.totree database.db --selection natoms<3 --run"
     Set custom folder tree-structure:
-    >>> asr run "database.totree database.db
-    >>> ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
+    $ asr run "database.totree database.db
+    ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
 
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-    >>> asr run "database.totree database.db --sort natoms --chunks 2 --run"
+    $ asr run "database.totree database.db --sort natoms --chunks 2 --run"
+
     """
     from pathlib import Path
     from ase.db import connect
@@ -246,9 +253,9 @@ def main(database, run=False, selection='',
         return
 
     make_folder_tree(folders=folders, chunks=chunks,
-                     write_atoms_file=write_atoms_file, copy=copy,
-                     patterns=patterns, atomsname=atomsname,
-                     dont_create_folders=dont_create_folders)
+                     atomsfile=atomsfile, copy=copy,
+                     patterns=patterns,
+                     update_tree=update_tree)
 
 
 if __name__ == '__main__':

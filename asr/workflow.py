@@ -1,10 +1,14 @@
-from asr.core import command, option
+"""Run workflow module.."""
+from typing import Union
+from asr.core import command, option, ASRResult
 
 
-@command('asr.workflow')
-@option("--include", help="Comma separated list of includes.")
-@option("--exclude", help="Comma separated list of exludes.")
-def main(include=None, exclude=None):
+@command('asr.workflow',
+         save_results_file=False)
+@option("--include", help="Comma separated list of includes.", type=str)
+@option("--exclude", help="Comma separated list of exludes.", type=str)
+def main(include: Union[str, None] = None,
+         exclude: Union[str, None] = None) -> ASRResult:
     """Run a full material property workflow."""
     import urllib.request
     from asr.core import get_recipes

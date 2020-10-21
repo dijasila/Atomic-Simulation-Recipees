@@ -1,13 +1,15 @@
-from asr.core import command, argument, option
+"""Generate folder with different parameters."""
+from asr.core import command, argument, option, ASRResult
 
 
 @command('asr.setup.scanparams')
 @argument('scanparams', nargs=-1,
-          metavar='recipe:option arg arg arg recipe:option arg arg arg')
+          metavar='recipe:option arg arg arg recipe:option arg arg arg',
+          type=str)
 @option('--symlink/--no-symlink',
         help='Make symbolic link to everything '
-        'in this folder (except params.json)')
-def main(scanparams, symlink=True):
+        'in this folder (except params.json)', is_flag=True)
+def main(scanparams: str, symlink: bool = True) -> ASRResult:
     """Make folders with different sets of parameters.
 
     This function will take a number of arguments in the syntax
@@ -25,9 +27,9 @@ def main(scanparams, symlink=True):
     Examples
     --------
     Test different kpoint density in the relax recipe
-    >>> asr run "setup.scanparams asr.relax:kptdensity 3 4 5"
+    $ asr run "setup.scanparams asr.relax:kptdensity 3 4 5"
     Test combination of kpoint densities and planewave cutoff in relax:
-    >>> asr run "setup.scanparams asr.relax:kptdensity 3 4 5 asr.relax:ecut 300 400 500"
+    $ asr run "setup.scanparams asr.relax:kptdensity 3 4 5 asr.relax:ecut 300 400 500"
 
     """
     from pathlib import Path

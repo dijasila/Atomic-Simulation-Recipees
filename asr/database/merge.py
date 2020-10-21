@@ -1,11 +1,15 @@
-from asr.core import command, argument, option
+"""Merge ASE databases."""
+from asr.core import command, argument, option, ASRResult
 
 
-@command('asr.database.merge')
-@argument('databaseout', nargs=1)
-@argument('databases', nargs=-1)
-@option('--identifier', help='Identifier for matching database entries.')
-def main(databases, databaseout, identifier='uid'):
+@command('asr.database.merge',
+         save_results_file=False)
+@argument('databaseout', nargs=1, type=str)
+@argument('databases', nargs=-1, type=str)
+@option('--identifier', help='Identifier for matching database entries.',
+        type=str)
+def main(databases: str, databaseout: str,
+         identifier: str = 'uid') -> ASRResult:
     """Merge two ASE databases."""
     from ase.db import connect
     from pathlib import Path

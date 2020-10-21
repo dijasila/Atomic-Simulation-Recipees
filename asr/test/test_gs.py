@@ -13,8 +13,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     from asr.core import read_json
     from asr.gs import calculate, main
     from ase.io import write
+    from ase.parallel import world
     import gpaw
-    import gpaw.occupations
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
@@ -44,12 +44,13 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         assert results.get("gap") == approx(0)
 
-    content = get_webcontent()
-    resultgap = results.get("gap")
-    assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV</td>" in content, content
-    assert "<td>Fermilevel</td>" in content, content
-    assert "<td>Magneticstate</td><td>NM</td>" in \
-        content, content
+    if world.size == 1:
+        content = get_webcontent()
+        resultgap = results.get("gap")
+        assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV" in content, content
+        assert "<td>Fermilevel</td>" in content, content
+        assert "<td>Magneticstate</td><td>NM</td>" in \
+            content, content
 
 
 @pytest.mark.ci
@@ -58,14 +59,14 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from pathlib import Path
     from asr.gs import main
     from asr.core.material import (get_material_from_folder,
-                                   get_webpanels_from_material,
                                    make_panel_figures)
     atoms = std_test_materials[0]
     atoms.write('structure.json')
 
     main()
     material = get_material_from_folder()
-    panel = get_webpanels_from_material(material, main)
+    result = material.data['results-asr.gs.json']
+    panel = result.format_as('ase_webpanel', material, {})
     make_panel_figures(material, panel)
     assert Path('bz-with-gaps.png').is_file()
 

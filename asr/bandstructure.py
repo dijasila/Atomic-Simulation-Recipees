@@ -1,42 +1,17 @@
-from asr.core import command, option
-
-tests = []
-params1 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-params2 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-tests.append({'description': 'Test band structure of Si.',
-              'name': 'asr.bandstructure_Si',
-              'tags': ['gitlab-ci'],
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params1} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-tests.append({'description': 'Test band structure of 2D-BN.',
-              'name': 'asr.bandstructure_2DBN',
-              'cli': ['asr run "setup.materials -s BN,natoms=2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params2} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
+"""Electronic band structures."""
+from typing import Union
+from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 
 
 @command('asr.bandstructure',
          requires=['gs.gpw'],
          creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         tests=tests)
+         dependencies=['asr.gs@calculate'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints')
-@option('--emptybands')
-def calculate(kptpath=None, npoints=400, emptybands=20):
+@option('--npoints', type=int)
+@option('--emptybands', type=int)
+def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
+              emptybands: int = 20) -> ASRResult:
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -318,9 +293,10 @@ def bs_pbe(row,
            s=0.5):
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     import numpy as np
-    from ase.dft.band_structure import BandStructure, BandStructurePlot
+    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
 
     path = d['bs_nosoc']['path']
@@ -396,6 +372,7 @@ def bs_pbe(row,
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef_soc - ref_soc),
+        fontsize=rcParams['font.size'] * 1.25,
         ha='left',
         va='bottom')
 
@@ -408,8 +385,8 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(row, key_descriptions):
-    from asr.database.browser import fig, table
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import fig
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -421,70 +398,33 @@ def webpanel(row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcs = ['PBE', 'GLLBSC', 'HSE', 'GW']
-    key_descriptions_noxc = {
-        k: rmxclabel(d, xcs)
-        for k, d in key_descriptions.items()
-    }
-
-    if row.get('gap', 0) > 0.0:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-    else:
-        if row.get('evacdiff', 0) > 0.02:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                    'dipz', 'evacdiff'
-                ],
-                kd=key_descriptions_noxc)
-        else:
-            pbe = table(
-                row,
-                'Property', [
-                    'workfunction', 'dos_at_ef_soc', 'gap', 'gap_dir',
-                ],
-                kd=key_descriptions_noxc)
-
-    gap = row.get('gap')
-    if gap > 0:
-        if row.get('evac'):
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
-        else:
-            pbe['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-
-    panel = {'title': 'Electronic band structure and projected DOS (PBE)',
+    panel = {'title': 'Electronic band structure (PBE)',
              'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         [fig('bz-with-gaps.png'), pbe]],
+                         [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
                                     'filenames': ['pbe-bs.html']}],
-             'sort': 14.5}
+             'sort': 12}
 
     return [panel]
+
+
+@prepare_result
+class Result(ASRResult):
+
+    version: int = 0
+
+    bs_soc: dict
+    bs_nosoc: dict
+
+    key_descriptions = \
+        {
+            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+        }
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command('asr.bandstructure',
@@ -493,10 +433,10 @@ def webpanel(row, key_descriptions):
                    'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
                        'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from gpaw import GPAW
-    from ase.dft.band_structure import get_band_structure
+    from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     from asr.core import read_json
     import copy
@@ -560,11 +500,10 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
 
-    from asr.core import singleprec_dict
-    results['bs_soc'] = singleprec_dict(bsresults)
-    results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
-
-    return results
+    return Result.fromdata(
+        bs_soc=singleprec_dict(bsresults),
+        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+    )
 
 
 if __name__ == '__main__':

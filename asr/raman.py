@@ -1,8 +1,9 @@
-from asr.core import command
+"""Raman spectrum."""
+from asr.core import command, ASRResult, prepare_result
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     # Make a table from the phonon modes
@@ -39,8 +40,14 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command('asr.raman', webpanel=webpanel)
-def main():
+@prepare_result
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
+@command('asr.raman', returns=Result)
+def main() -> Result:
     raise NotImplementedError
 
 
