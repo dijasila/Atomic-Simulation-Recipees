@@ -2,7 +2,6 @@
 import numpy as np
 from asr.core import command, option, read_json, ASRResult, prepare_result
 
-
 @command(module='asr.berry',
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'],
@@ -118,12 +117,12 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
         return
 
 
-def plot_phases(name='0', fname='berry', show=False):
+def plot_phases(row, fname): # name='0', fname='berry', show=False):
     import pylab as plt
 
-    results = read_json('results-asr.berry@calculate.json')
-    phit_km = results['phi%s_km' % name]
-    St_km = results['s%s_km' % name]
+    results = row.data['results-asr.berry@calculate.json']
+    phit_km = results['phi0_km']
+    St_km = results['s0_km']
     Nk = len(St_km)
 
     phi_km = np.zeros((len(phit_km) + 1, len(phit_km[0])), float)
@@ -156,10 +155,7 @@ def plot_phases(name='0', fname='berry', show=False):
     plt.yticks([0, np.pi, 2 * np.pi], [r'$0$', r'$\pi$', r'$2\pi$'], size=20)
     plt.axis([0, Nk, 0, 2 * np.pi])
     plt.tight_layout()
-    figname = f'{fname}-phi{name}.png'
-    plt.savefig(figname)
-    if show:
-        plt.show()
+    plt.savefig(fname)
 
 
 def webpanel(result, row, key_descriptions):
@@ -178,7 +174,12 @@ def webpanel(result, row, key_descriptions):
                                'rows': [row]}]],
                  'sort': 15}
 
-    return [summary, basicelec]
+    berry_phases = {'title': 'Berry phase',
+                    'columns': [[]],
+                    'plot_descriptions': [{'function': plot_phases,
+                                           'filenames': ['berry-phases.png']}]}
+
+    return [summary, basicelec, berry_phases]
 
 
 @prepare_result
