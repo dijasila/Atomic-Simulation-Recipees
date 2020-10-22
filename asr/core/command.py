@@ -3,19 +3,45 @@ from . import (read_json, write_file, md5sum,
                file_barrier, clickify_docstring, ASRResult,
                get_recipe_from_name)
 import functools
+from .temporary_directory import temporary_directory
+from .dependencies import dependency_stack
+from .cache import ASRCache
+from typing import List, Dict
 from ase.parallel import parprint
+import atexit
 import click
 import copy
 import time
 from importlib import import_module
 from pathlib import Path
 import inspect
+from functools import update_wrapper
 
 
 def to_json(obj):
     """Write an object to a json file."""
     json_string = obj.format_as('json')
     return json_string
+
+
+def get_md5_checksums(filenames: List[str]) -> Dict[str, str]:
+    """Get md5 checksums of a list of files."""
+    checksums = {}
+    for filename in filenames:
+        hexdigest = md5sum(filename)
+        checksums[filename] = hexdigest
+    return checksums
+
+
+def does_files_exist(filenames: List[str]) -> List[bool]:
+    """Check whether files exist."""
+    return [Path(filename).is_file() for filename in filenames]
+
+
+def format_param_string(params: dict):
+    """Represent params as comma separated string."""
+    return ', '.join([f'{key}={repr(value)}' for key, value in
+                      params.items()])
 
 
 def _paramerrormsg(func, msg):
@@ -113,6 +139,7 @@ class ASRCommand:
     def __init__(self, main,
                  module=None,
                  requires=None,
+                 namespace=None,
                  dependencies=None,
                  creates=None,
                  returns=None,
@@ -120,7 +147,9 @@ class ASRCommand:
                  webpanel=None,
                  save_results_file=True,
                  tests=None,
-                 resources=None):
+                 resources=None,
+                 version=None,
+                 package_dependencies=None):
         """Construct an instance of an ASRCommand.
 
         Parameters
@@ -139,6 +168,7 @@ class ASRCommand:
                 module = str(mod).split('\'')[1]
 
         name = f'{module}@{main.__name__}'
+        name = f'{namespace}@{main.__name__}'
 
         # By default we omit @main if function is called main
         if name.endswith('@main'):
@@ -172,6 +202,7 @@ class ASRCommand:
         # Commands can have dependencies. This is just a list of
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
+        self.cache = ASRCache('results-{name}.json')
         self.dependencies = dependencies or []
 
         # Figure out the parameters for this function
@@ -230,48 +261,10 @@ class ASRCommand:
         return defparams
 
     @property
-    def requires(self):
-        if self._requires:
-            if callable(self._requires):
-                return self._requires()
-            else:
-                return self._requires
-        return []
-
-    def is_requirements_met(self):
-        for filename in self.requires:
-            if not Path(filename).is_file():
-                return False
-        return True
-
-    @property
     def diskspace(self):
         if callable(self._diskspace):
             return self._diskspace()
         return self._diskspace
-
-    @property
-    def created_files(self):
-        creates = []
-        if self._creates:
-            if callable(self._creates):
-                creates += self._creates()
-            else:
-                creates += self._creates
-        return creates
-
-    @property
-    def creates(self):
-        creates = self.created_files
-        if self.save_results_file:
-            creates += [f'results-{self.name}.json']
-        return creates
-
-    @property
-    def done(self):
-        if Path(f'results-{self.name}.json').exists():
-            return True
-        return False
 
     def get_parameters(self):
         """Get the parameters of this function."""
@@ -333,48 +326,136 @@ class ASRCommand:
         """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
-    def main(self, *args, **kwargs):
-        """Return results from wrapped function.
+    def apply_defaults(self, *args, **kwargs):
+        """Apply defaults to args and kwargs.
 
-        This is the main function of an ASRCommand. It takes care of reading
-        parameters, creating metadata, checksums etc. If you want to
-        understand what happens when you execute an ASRCommand this is a good
-        place to start.
+        Reads the signature of the wrapped function and applies the
+        defaults where relevant.
+
         """
-        # Run this recipes dependencies but only if it actually creates
-        # a file that is in __requires__
-        for dep in self.dependencies:
-            recipe = get_recipe_from_name(dep)
-            if recipe.done:
-                continue
-
-            recipe()
-
-        assert self.is_requirements_met(), \
-            (f'{self.name}: Some required files are missing: {self.requires}. '
-             'This could be caused by incorrect dependencies.')
-
-        # Use the wrapped functions signature to create dictionary of
-        # parameters
         signature = self.get_signature()
         bound_arguments = signature.bind(*args, **kwargs)
         bound_arguments.apply_defaults()
+        params = copy.deepcopy(dict(bound_arguments.arguments))
+        return params
+
+    def main(self, *args, **kwargs):
+        """Return results from wrapped function.
+
+        This is the main function of an ASRCommand. It takes care of
+        reading parameters, creating metadata, checksums etc. If you
+        want to understand what happens when you execute an ASRCommand
+        this is a good place to start.
+
+        Implementation goes as follows::
+
+            1. Parse input parameters
+            2. Check if a cached result already exists
+               and return that if it does.
+            --- Otherwise
+            3. Run all dependencies.
+            4. Get execution metadata, ie., code_versions, created files and
+               required files.
+
+        """
+        # Inspired by: lab-notebook, provenance, invoke, fabric, joblib
+        # TODO: Tag results with random run #ID.
+        # TODO: Converting old result files to new format.
+        # TODO: Save date and time.
+        # TODO: We should call external files side effects.
+        # TODO: When to register current run as a dependency.
+        # TODO: Locking reading of results file.
+        # TODO: Use time stamp for hashing files as well.
+        # TODO: Easy to design a system for pure functions,
+        # but we need side effects as well.
+        # TODO: Should we have an ignore keyword?
+        # TODO: Some parameters need to know about others in order
+        # to properly initialize, eg., in GPAW the poisson solver need
+        # to know about the dimensionality to set dipole layer and also to
+        # get the setup fingerprints, also 1D materials need higher
+        # kpoint density.
+        # TODO: SHA256 vs MD5 speeeeeeed?
+        # TODO: All arguments requires a JSON serialization method.
+        # TODO: How do Django make data migrations?
+        # TODO: Require completely flat ASRResults data structure?
+        # TODO: Should we have a way to Signal ASR (think click.Context)?
+        # TODO: The caching database could be of a non-relational format (would be similar to current format).
+        # TODO: Should Result objects have some sort of verification mechanism? Like checking acoustic sum rules?
+        # TODO: Make clean run environment class?
+        # TODO: Make an old type results object.
+
+        # REQ: Recipe must be able to run multiple times and cache their results (think LRU-cache).
+        # REQ: Must be possible to change implementation of recipe
+        #      without invalidating previous results
+        # REQ: Must support side-effects such as files written to disk.
+        # REQ: Must store information about code versions
+        # REQ: Must be able to read defaults from configuration file on
+        #      a per-folder basis.
+        # REQ: Must support chaining of recipes (dependencies).
+        # REQ: Caching database should be simple and decentralized (think sqlite).
+        # REQ: Caching database should be plain text.
+        # REQ: Returned object should be self-contained (think ase BandStructure object).
+        # REQ: Returned objects must be able to present themselves as figures and HTML.
+        # REQ: Must be delocalized from ASR (ie. must be able to have a seperate set of recipes locally, non-related to asr).
+        # REQ: Must also have a packaging mechanism for entire projects (ie. ASE databases).
+        # REQ: Must be possible to call as a simple python function thus circumventing CLI.
+        # REQ: Must be able to call without scripting, eg. through a CLI.
+        # REQ: Must support all ASE calculators.
+
+        parameters = Parameters(self.apply_defaults_to_parameters(*args, **kwargs))
+
+        cached_result_info = self.cache.get_cached_result_info(
+            parameters=parameters
+        )
+
+        if cached_result_info.is_execution_completed():
+            result = cached_result_info.get_result()
+            result.verify_side_effects()
+            dependency_stack.register_result_id(result.id)
+            parprint('Returning cached result for '
+                     f'{self.name}({parameters})')
+            return result
+
+        code_versions = self.get_code_versions(parameters=parameters)
+        temporary_files = self.get_temporary_files(parameters=parameters)
+
+        if cached_result_info.is_initiated():
+            result.validate(code_versions=code_versions,
+                            version=self.version)
+        else:
+            assert not any(does_files_exist(temporary_files)), \
+                ('Some temporary files already exist '
+                 f'(temporary_files={temporary_files})')
 
         params = dict(bound_arguments.arguments)
+        execution_directory = get_temporary_directory_name(result.id)
+        self.cache.initiate(
+            parameters,
+            versions=code_versions,
+            version=self.version,
+            execution_directory=execution_directory,
+        )
 
-        paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
-                                 params.items()])
-        parprint(f'Running {self.name}({paramstring})')
+        parprint(f'Running {self.name}({parameter_string})')
 
-        # Execute the wrapped function
-        with file_barrier(self.created_files, delete=False):
-            tstart = time.time()
-            result = self._main(**copy.deepcopy(params)) or {}
-            tend = time.time()
+        # We register an exit handler to handle unexpected exits.
+        atexit.register(clean_files, files=temporary_files)
 
         if not isinstance(result, self.returns):
             assert isinstance(result, dict)
             result = self.returns(data=result)
+        # Execute the wrapped function
+        # Register dependencies implement stack like data structure.
+        with dependency_stack as my_dependencies:
+            for dependency in self.dependencies:
+                dependency()
+
+            with CleanEnvironment(temporary_directory) as env, \
+                 clean_files(temporary_files), \
+                 file_barrier(created_files, delete=False):
+                tstart = time.time()
+                results = self._main(**parameters)
+                tend = time.time()
 
         from ase.parallel import world
         metadata = dict(asr_name=self.name,
@@ -408,6 +489,22 @@ class ASRCommand:
             write_file(f'results-{name}.json', json_string)
 
         return result
+
+        metadata = {
+            'asr_name': self.name,
+            'resources': {'time': tend - tstart,
+                          'ncores': world.size},
+        }
+        created_md5_checksums = get_md5_checksums(created_files)
+        results.update(results=results,
+                       checksums=created_md5_checksums,
+                       metadata=metadata)
+        if self.save_cache:
+            self.cache.add(cached_result)
+
+        return cached_result
+
+
 
 
 def get_execution_info(package_dependencies):
