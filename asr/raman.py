@@ -35,7 +35,7 @@ def webpanel(result, row, key_descriptions):
              'plot_descriptions':
                  [{'function': raman,
                    'filenames': ['Raman.png']}],
-             'sort': 20}
+             'sort': 22}
 
     return [panel]
 
