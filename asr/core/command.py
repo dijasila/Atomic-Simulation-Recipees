@@ -1,7 +1,6 @@
 """Implement ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
-               file_barrier, clickify_docstring, ASRResult,
-               get_recipe_from_name)
+               file_barrier, clickify_docstring, ASRResult)
 import functools
 from .temporary_directory import temporary_directory
 from .dependencies import dependency_stack
@@ -15,7 +14,95 @@ import time
 from importlib import import_module
 from pathlib import Path
 import inspect
-from functools import update_wrapper
+
+
+class Cache():
+
+    def __init__(self):
+        pass
+
+    def add(self, result):
+        pass
+
+    def has(self, result):
+        pass
+
+    def get(self, result):
+        pass
+
+
+class Parameters:
+
+    pass
+
+
+class SimpleRunner():
+
+    def __init__(self):
+        pass
+
+    def __call__(self, func, parameters):
+        return self.run(func, parameters)
+
+    def run(self, func, parameters):
+        return func(**parameters)
+
+
+class RunInfo:
+
+    def __init__(self):
+        pass
+
+    def cache_entry_id(self):
+        pass
+
+
+def construct_run_info() -> RunInfo:
+    pass
+
+
+class ComplexRunner(SimpleRunner):
+
+    def run(self, func, parameters):
+        if run_info is None:
+            parprint(f'Running {self.name}({parameters})')
+            run_info = self.runner(
+                self.get_wrapped_function(),
+                parameters,
+            )
+            cache.add(run_info)
+        else:
+            parprint('Returning cached result for '
+                     f'{self.name}({parameters})')
+
+        code_versions = self.get_code_versions(parameters=parameters)
+        # Execute the wrapped function
+        # Register dependencies implement stack like data structure.
+        # We register an exit handler to handle unexpected exits.
+        atexit.register(clean_files, files=temporary_files)
+        with dependency_stack as my_dependencies:
+            with CleanEnvironment(temporary_directory) as env, \
+                 clean_files(temporary_files), \
+                 file_barrier(created_files, delete=False):
+                tstart = time.time()
+                result = self._main(**parameters)
+                tend = time.time()
+
+
+        from ase.parallel import world
+        metadata = dict(asr_name=self.name,
+                        resources=dict(time=tend - tstart,
+                                       ncores=world.size),
+                        params=parameters,
+                        code_versions=get_execution_info(
+                            self.package_dependencies))
+
+        # This is a hack and should be removed in the future
+        # when all recipe results have been typed.
+        if not isinstance(result, self.returns):
+            assert isinstance(result, dict)
+            result = self.returns(data=result)
+
 
 
 def to_json(obj):
@@ -168,7 +255,6 @@ class ASRCommand:
                 module = str(mod).split('\'')[1]
 
         name = f'{module}@{main.__name__}'
-        name = f'{namespace}@{main.__name__}'
 
         # By default we omit @main if function is called main
         if name.endswith('@main'):
@@ -184,26 +270,11 @@ class ASRCommand:
         # assert returns is not None, 'Please specify a return type!'
         self.returns = returns
 
-        # Does the wrapped function want to save results files?
-        self.save_results_file = save_results_file
-
-        # What files are created?
-        self._creates = creates
-
-        # Is there additional information to log about the current execution
-        self.log = log
-
-        # Properties of this function
-        self._requires = requires
-
-        # Tell ASR how to present the data in a webpanel
-        self.webpanel = webpanel
-
         # Commands can have dependencies. This is just a list of
         # pack.module.module@function that points to other functions
         # dot name like "recipe.name".
-        self.cache = ASRCache('results-{name}.json')
-        self.dependencies = dependencies or []
+        self.cache = cache
+        self.runner = runner
 
         # Figure out the parameters for this function
         if not hasattr(self._main, '__asr_params__'):
@@ -260,50 +331,9 @@ class ASRCommand:
                 defparams[key] = value.default
         return defparams
 
-    @property
-    def diskspace(self):
-        if callable(self._diskspace):
-            return self._diskspace()
-        return self._diskspace
-
     def get_parameters(self):
         """Get the parameters of this function."""
         return self.myparams
-
-    def setup_cli(self):
-        # Click CLI Interface
-        CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-        cc = click.command
-        co = click.option
-
-        help = clickify_docstring(self._main.__doc__) or ''
-
-        command = cc(context_settings=CONTEXT_SETTINGS,
-                     help=help)(self.main)
-
-        # Convert parameters into CLI Parameters!
-        defparams = self.get_defaults()
-        for name, param in self.get_parameters().items():
-            param = param.copy()
-            alias = param.pop('alias')
-            argtype = param.pop('argtype')
-            name2 = param.pop('name')
-            assert name == name2
-            assert name in self.myparams
-            if 'default' in param:
-                default = param.pop('default')
-            else:
-                default = defparams.get(name, None)
-
-            if argtype == 'option':
-                command = co(show_default=True, default=default,
-                             *alias, **param)(command)
-            else:
-                assert argtype == 'argument'
-                command = click.argument(*alias, **param)(command)
-
-        return command
 
     def cli(self, args=None):
         """Parse parameters from command line and call wrapped function.
@@ -314,7 +344,12 @@ class ASRCommand:
             List of command line arguments. If None: Read arguments from
             sys.argv.
         """
-        command = self.setup_cli()
+        command = setup_cli(
+            self.get_wrapped_function(),
+            self.main,
+            self.get_defaults(),
+            self.get_parameters()
+        )
         return command(standalone_mode=False,
                        prog_name=f'asr run {self.name}', args=args)
 
@@ -325,19 +360,6 @@ class ASRCommand:
     def __call__(self, *args, **kwargs):
         """Delegate to self.main."""
         return self.main(*args, **kwargs)
-
-    def apply_defaults(self, *args, **kwargs):
-        """Apply defaults to args and kwargs.
-
-        Reads the signature of the wrapped function and applies the
-        defaults where relevant.
-
-        """
-        signature = self.get_signature()
-        bound_arguments = signature.bind(*args, **kwargs)
-        bound_arguments.apply_defaults()
-        params = copy.deepcopy(dict(bound_arguments.arguments))
-        return params
 
     def main(self, *args, **kwargs):
         """Return results from wrapped function.
@@ -402,110 +424,20 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        parameters = Parameters(self.apply_defaults_to_parameters(*args, **kwargs))
-        cache = self.get_cache()
-        cached_result_info = self.cache.get_cached_result_info(
+        # Default Algorithm: construct_run_info | cache.get | runner | cache.add
+        
+        parameters = Parameters(*args, **kwargs)
+        parameters = parameters.apply_defaults(self.get_signature())
+
+        run_info = construct_run_info(
+            name=self.name,
+            function=self.get_wrapped_function(),
             parameters=parameters
         )
-
-        if cache.has(name=self.name, parameters=parameters):
-            result = cached_result_info.get_result()
-            result.verify_side_effects()
-            dependency_stack.register_result_id(result.id)
-            parprint('Returning cached result for '
-                     f'{self.name}({parameters})')
-            return result
-
-        runner = Runner(name=self.name, paramaters=parameters)
-        code_versions = self.get_code_versions(parameters=parameters)
-        temporary_files = self.get_temporary_files(parameters=parameters)
-
-        if cached_result_info.is_initiated():
-            result.validate(code_versions=code_versions,
-                            version=self.version)
-        else:
-            assert not any(does_files_exist(temporary_files)), \
-                ('Some temporary files already exist '
-                 f'(temporary_files={temporary_files})')
-
-        params = dict(bound_arguments.arguments)
-        execution_directory = get_temporary_directory_name(result.id)
-        self.cache.initiate(
-            parameters,
-            versions=code_versions,
-            version=self.version,
-            execution_directory=execution_directory,
-        )
-
-        parprint(f'Running {self.name}({parameter_string})')
-
-        # We register an exit handler to handle unexpected exits.
-        atexit.register(clean_files, files=temporary_files)
-
-        if not isinstance(result, self.returns):
-            assert isinstance(result, dict)
-            result = self.returns(data=result)
-        # Execute the wrapped function
-        # Register dependencies implement stack like data structure.
-        with dependency_stack as my_dependencies:
-            for dependency in self.dependencies:
-                dependency()
-
-            with CleanEnvironment(temporary_directory) as env, \
-                 clean_files(temporary_files), \
-                 file_barrier(created_files, delete=False):
-                tstart = time.time()
-                results = self._main(**parameters)
-                tend = time.time()
-
-        from ase.parallel import world
-        metadata = dict(asr_name=self.name,
-                        resources=dict(time=tend - tstart,
-                                       ncores=world.size,
-                                       tstart=tstart,
-                                       tend=tend),
-                        params=params,
-                        code_versions=get_execution_info(
-                            self.package_dependencies))
-        # Do we have to store some digests of previous calculations?
-        if self.creates:
-            metadata['creates'] = {}
-            for filename in self.creates:
-                if filename.startswith('results-'):
-                    # Don't log own results file
-                    continue
-                hexdigest = md5sum(filename)
-                metadata['creates'][filename] = hexdigest
-
-        if self.requires:
-            metadata['requires'] = {}
-            for filename in self.requires:
-                hexdigest = md5sum(filename)
-                metadata['requires'][filename] = hexdigest
-
-        result.metadata = metadata
-        if self.save_results_file:
-            name = self.name
-            json_string = to_json(result)
-            write_file(f'results-{name}.json', json_string)
-
-        return result
-
-        metadata = {
-            'asr_name': self.name,
-            'resources': {'time': tend - tstart,
-                          'ncores': world.size},
-        }
-        created_md5_checksums = get_md5_checksums(created_files)
-        results.update(results=results,
-                       checksums=created_md5_checksums,
-                       metadata=metadata)
-        if self.save_cache:
-            self.cache.add(cached_result)
-
-        return cached_result
-
-
+        run_info = self.cache.get(run_info)
+        run_info = self.runner(run_info)
+        run_info = self.cache.add(run_info)
+        return run_info.get_result()
 
 
 def get_execution_info(package_dependencies):
@@ -574,3 +506,51 @@ def get_recipes():
             if isinstance(attr, ASRCommand) or hasattr(attr, 'is_recipe'):
                 functions.append(attr)
     return functions
+
+
+def setup_cli(wrapped, wrapper, defparams, parameters):
+    # Click CLI Interface
+    CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+    cc = click.command
+    co = click.option
+
+    help = clickify_docstring(wrapped.__doc__) or ''
+
+    command = cc(context_settings=CONTEXT_SETTINGS,
+                 help=help)(wrapper)
+
+    # Convert parameters into CLI Parameters!
+    for name, param in parameters.items():
+        param = param.copy()
+        alias = param.pop('alias')
+        argtype = param.pop('argtype')
+        name2 = param.pop('name')
+        assert name == name2
+        assert name in parameters
+        if 'default' in param:
+            default = param.pop('default')
+        else:
+            default = defparams.get(name, None)
+
+        if argtype == 'option':
+            command = co(show_default=True, default=default,
+                         *alias, **param)(command)
+        else:
+            assert argtype == 'argument'
+            command = click.argument(*alias, **param)(command)
+
+    return command
+
+
+def apply_defaults(signature, *args, **kwargs):
+    """Apply defaults to args and kwargs.
+
+    Reads the signature of the wrapped function and applies the
+    defaults where relevant.
+
+    """
+    bound_arguments = signature.bind(*args, **kwargs)
+    bound_arguments.apply_defaults()
+    params = copy.deepcopy(dict(bound_arguments.arguments))
+    return params
