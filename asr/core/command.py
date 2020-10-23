@@ -403,12 +403,12 @@ class ASRCommand:
         # REQ: Must support all ASE calculators.
 
         parameters = Parameters(self.apply_defaults_to_parameters(*args, **kwargs))
-
+        cache = self.get_cache()
         cached_result_info = self.cache.get_cached_result_info(
             parameters=parameters
         )
 
-        if cached_result_info.is_execution_completed():
+        if cache.has(name=self.name, parameters=parameters):
             result = cached_result_info.get_result()
             result.verify_side_effects()
             dependency_stack.register_result_id(result.id)
@@ -416,6 +416,7 @@ class ASRCommand:
                      f'{self.name}({parameters})')
             return result
 
+        runner = Runner(name=self.name, paramaters=parameters)
         code_versions = self.get_code_versions(parameters=parameters)
         temporary_files = self.get_temporary_files(parameters=parameters)
 
