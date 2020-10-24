@@ -63,7 +63,17 @@ def construct_run_info() -> RunInfo:
 
 class ComplexRunner(SimpleRunner):
 
-    def run(self, func, parameters):
+    def __init__(self, cache=None):
+
+        self.cache = cache
+
+    def run(self, run_info: RunInfo):
+
+        cached_run_info = self.cache.get(run_info)
+
+        if cached_run_info is not None:
+            return cached_run_info
+
         if run_info is None:
             parprint(f'Running {self.name}({parameters})')
             run_info = self.runner(
@@ -85,7 +95,7 @@ class ComplexRunner(SimpleRunner):
                  clean_files(temporary_files), \
                  file_barrier(created_files, delete=False):
                 tstart = time.time()
-                result = self._main(**parameters)
+                result = self._wrapped_function(**parameters)
                 tend = time.time()
 
 
@@ -208,7 +218,7 @@ def argument(name, **kwargs):
     return decorator
 
 
-class ASRCommand:
+class Runner:
     """Wrapper class for constructing recipes.
 
     This class implements the behaviour of an ASR recipe.
@@ -223,20 +233,10 @@ class ASRCommand:
 
     package_dependencies = ('asr', 'ase', 'gpaw')
 
-    def __init__(self, main,
-                 module=None,
-                 requires=None,
-                 namespace=None,
-                 dependencies=None,
-                 creates=None,
+    def __init__(self, wrapped_function,
                  returns=None,
-                 log=None,
-                 webpanel=None,
-                 save_results_file=True,
-                 tests=None,
-                 resources=None,
                  version=None,
-                 package_dependencies=None):
+                 cache=None):
         """Construct an instance of an ASRCommand.
 
         Parameters
@@ -245,50 +245,38 @@ class ASRCommand:
             Wrapped function that
 
         """
-        assert callable(main), 'The wrapped object should be callable'
+        assert callable(wrapped_function), \
+            'The wrapped object should be callable'
 
-        if module is None:
-            module = main.__module__
-            if module == '__main__':
-                import inspect
-                mod = inspect.getmodule(main)
-                module = str(mod).split('\'')[1]
+        self.cache = cache
 
-        name = f'{module}@{main.__name__}'
-
-        # By default we omit @main if function is called main
-        if name.endswith('@main'):
-            name = name.replace('@main', '')
+        import inspect
+        mod = inspect.getmodule(wrapped_function)
+        module = mod.__name__
 
         # Function to be executed
-        self._main = main
-        self.name = name
+        self._wrapped_function = wrapped_function
+        self.name = f'{module}@{wrapped_function.__name__}'
 
         # Return type
         if returns is None:
             returns = ASRResult
-        # assert returns is not None, 'Please specify a return type!'
         self.returns = returns
-
-        # Commands can have dependencies. This is just a list of
-        # pack.module.module@function that points to other functions
-        # dot name like "recipe.name".
         self.cache = cache
-        self.runner = runner
 
         # Figure out the parameters for this function
-        if not hasattr(self._main, '__asr_params__'):
-            self._main.__asr_params__ = {}
+        if not hasattr(self._wrapped_function, '__asr_params__'):
+            self._wrapped_function.__asr_params__ = {}
 
         import copy
-        self.myparams = copy.deepcopy(self._main.__asr_params__)
+        self.myparams = copy.deepcopy(self._wrapped_function.__asr_params__)
 
         import inspect
-        sig = inspect.signature(self._main)
+        sig = inspect.signature(self._wrapped_function)
         self.__signature__ = sig
 
         # Setup the CLI
-        functools.update_wrapper(self, self._main)
+        functools.update_wrapper(self, self._wrapped_function)
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
@@ -355,7 +343,7 @@ class ASRCommand:
 
     def get_wrapped_function(self):
         """Return wrapped function."""
-        return self._main
+        return self._wrapped_function
 
     def __call__(self, *args, **kwargs):
         """Delegate to self.main."""
@@ -425,18 +413,19 @@ class ASRCommand:
         # REQ: Must support all ASE calculators.
 
         # Default Algorithm: construct_run_info | cache.get | runner | cache.add
-        
+
         parameters = Parameters(*args, **kwargs)
         parameters = parameters.apply_defaults(self.get_signature())
 
         run_info = construct_run_info(
             name=self.name,
             function=self.get_wrapped_function(),
-            parameters=parameters
+            parameters=parameters,
         )
         run_info = self.cache.get(run_info)
         run_info = self.runner(run_info)
-        run_info = self.cache.add(run_info)
+        if not run_info.is_cached():
+            run_info = self.cache.add(run_info)
         return run_info.get_result()
 
 
