@@ -39,7 +39,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: List[int] = [0, 0, 0],
          maxsize: float = 8, intrinsic: bool = True,
          vacancies: bool = True, uniform_vacuum: bool = False, nopbc: bool = True,
-         halfinteger: bool = False, general_algorithm: None) -> ASRResult:
+         halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as well as the
