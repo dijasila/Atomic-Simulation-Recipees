@@ -124,10 +124,23 @@ def find_class_matching_version(returns, version):
     return returns
 
 
-def get_object_matching_obj_id(asr_obj_id):
-    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
+class ModuleNameIsMain(Exception):
 
+    pass
+
+
+def get_object_matching_obj_id(asr_obj_id):
     module, name = asr_obj_id.split('::')
+    if module == '__main__':
+        raise ModuleNameIsMain('There is a problem with your result objectid. '
+                               'This is a known bug. To fix the faulty result '
+                               'files please run something like: '
+                               '"python -m asr.utils.fix_object_ids folder1/ '
+                               'folder2/ ..." '
+                               'where folder1 and folder2 are folders containing '
+                               'problematic result files.')
+
+    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
     cls = getattr(mod, name)
 
@@ -475,7 +488,17 @@ def obj_to_id(cls):
     the correspinding string would be 'asr.core.results::ASRResult'.
 
     """
-    return f'{cls.__module__}::{cls.__name__}'
+    module = inspect.getmodule(cls)
+    path = module.__file__
+    package = module.__package__
+    modulename = inspect.getmodulename(path)
+    objname = cls.__name__
+
+    assert modulename != '__main__', \
+        ('Something went wrong in module name identification. '
+         'Please contact developer.')
+
+    return f'{package}.{modulename}::{objname}'
 
 
 class ObjectDescription:
