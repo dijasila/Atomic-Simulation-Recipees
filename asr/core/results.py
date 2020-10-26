@@ -491,6 +491,9 @@ def obj_to_id(cls):
     module = inspect.getmodule(cls)
     path = module.__file__
     package = module.__package__
+    assert package is not None, \
+        ('Something went wrong in package identification.'
+         'Please contact developer.')
     modulename = inspect.getmodulename(path)
     objname = cls.__name__
 
