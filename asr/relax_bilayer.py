@@ -5,18 +5,15 @@ import os
 from asr.utils.bilayerutils import translation
 
 
-def get_energy(base, top, h, t_c, settings, callback, memo):
+def calc_setup(settings):
+    from gpaw import MixerDif, PW, GPAW
     from ase.calculators.dftd3 import DFTD3
-    from gpaw import GPAW, PW
-    from gpaw import MixerDif
 
-    try:
-        h0, e0 = next(t for t in memo if np.allclose(t[0], h))
-        return e0
-    except StopIteration:
-        pass
+    calcsettings = {}
+    d3 = settings.pop('d3', True)
+    _ = settings.pop('mode', None)  # Mode not currently used. Here for back-comp
 
-    mixersettings = settings.get('mixer', None)
+    mixersettings = settings.pop('mixer', None)
     if mixersettings == 'mixerdif':
         mixersettings = {'beta': 0.015, 'nold': 5,
                          'weight': 75}
@@ -27,32 +24,32 @@ def get_energy(base, top, h, t_c, settings, callback, memo):
                          'weight': None}
 
     mixertype = mixersettings.pop('type', 'default')
-    if mixertype.lower() == 'default':
-        calc = GPAW(mode=PW(settings['PWE']),
-                    xc=settings['xc'],
-                    kpts=settings['kpts'],
-                    symmetry={'symmorphic': False},
-                    occupations={'name': 'fermi-dirac',
-                                 'width': 0.05},
-                    poissonsolver={"dipolelayer": "xy"},
-                    charge=0,
-                    nbands="200%",
-                    txt='relax_bilayer.txt')
-    else:
-        calc = GPAW(mode=PW(settings['PWE']),
-                    xc=settings['xc'],
-                    kpts=settings['kpts'],
-                    symmetry={'symmorphic': False},
-                    occupations={'name': 'fermi-dirac',
-                                 'width': 0.05},
-                    poissonsolver={"dipolelayer": "xy"},
-                    charge=0,
-                    nbands="200%",
-                    mixer=MixerDif(**mixersettings),
-                    txt='relax_bilayer.txt')
+    if mixertype != 'default':
+        calcsettings['mixer'] = MixerDif(**mixersettings)
 
-    if settings['d3']:
+    calcsettings['mode'] = PW(settings.pop('PWE'))
+    calcsettings['symmetry'] = {'symmorphic': False}
+    calcsettings['occupations'] = {'name': 'fermi-dirac',
+                                   'width': 0.05}
+    calcsettings['poissonsolver'] = {'dipolelayer': 'xy'}
+    calcsettings['nbands'] = '200%'
+    calcsettings['txt'] = 'relax_bilayer.txt'
+
+    calcsettings.update(settings)
+
+    calc = GPAW(**calcsettings)
+    if d3:
         calc = DFTD3(dft=calc, cutoff=60)
+
+    return calc
+
+def get_energy(base, top, h, t_c, calc, callback, memo):
+
+    try:
+        h0, e0 = next(t for t in memo if np.allclose(t[0], h))
+        return e0
+    except StopIteration:
+        pass
 
     tx, ty = t_c[0], t_c[1]
     atoms = translation(tx, ty, h[0], top, base)
@@ -88,7 +85,6 @@ def initial_displacement(atoms, distance):
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
-                           'mode': 'interlayer',
                            'PWE': 800,
                            'kpts': {'density': 6.0, 'gamma': True},
                            'mixer': {'type': 'default',
@@ -142,9 +138,11 @@ def main(atoms: Atoms,
         if mpi.rank == 0:
             np.save('energy_curve.npy', np.array(energy_curve))
 
+
+    calc = calc_setup(settings)
     def energy_fn(h):
         return get_energy(atoms, top_layer,
-                          h, t_c, settings,
+                          h, t_c, calc,
                           callback_fn, energy_curve)
 
     opt_result = sciop.minimize(energy_fn, x0=d0, method="Nelder-Mead",
