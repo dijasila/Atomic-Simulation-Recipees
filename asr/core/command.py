@@ -417,13 +417,17 @@ class Runner:
         parameters = Parameters(*args, **kwargs)
         parameters = parameters.apply_defaults(self.get_signature())
 
-        run_info = construct_run_info(
+        run_description = construct_run_info(
             name=self.name,
             function=self.get_wrapped_function(),
             parameters=parameters,
         )
-        run_info = self.cache.get(run_info)
-        run_info = self.runner(run_info)
+        run_description = self.cache.get(run_description)
+        if run_description is not None:
+            run_description
+        run_description = self.run(run_description)
+        run_description = set_package_versions(run_description)
+        run_description = set_metadata(run_description)
         if not run_info.is_cached():
             run_info = self.cache.add(run_info)
         return run_info.get_result()
