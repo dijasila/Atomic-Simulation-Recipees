@@ -1,19 +1,16 @@
-"""Piezoelectric tensor module.
+"""Piezoelectric tensor.
 
 Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is
 :func:`asr.piezoelectrictensor.main`.
 
-Recipes
--------
-.. autofunction:: asr.piezoelectrictensor.main
-
 """
 
-from asr.core import command, option, DictStr
+import typing
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     def matrixtable(M, digits=2):
         table = M.tolist()
         shape = M.shape
@@ -35,12 +32,12 @@ def webpanel(row, key_descriptions):
                    [0, 1, 2, 2, 2, 1]]
 
     etable = dict(
-        header=['Piezoelectric tensor', '', ''],
+        header=['Piezoelectric tensor (e/Å<sup>dim-1</sup>)', '', ''],
         type='table',
         rows=matrixtable(e_ij))
 
     e0table = dict(
-        header=['Clamped piezoelectric tensor', ''],
+        header=['Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)', ''],
         type='table',
         rows=matrixtable(e0_ij))
 
@@ -52,8 +49,19 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    eps_vvv: typing.List[typing.List[typing.List[float]]]
+    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
+                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module="asr.piezoelectrictensor",
-         webpanel=webpanel)
+         returns=Result)
 @option('--strain-percent', help='Strain fraction.', type=float)
 @option('--calculator', help='Calculator parameters.', type=DictStr())
 def main(strain_percent: float = 1,
@@ -70,7 +78,7 @@ def main(strain_percent: float = 1,
              'symmetry': 'off',
              'txt': 'formalpol.txt',
              'charge': 0
-         }):
+         }) -> Result:
     """Calculate piezoelectric tensor.
 
     This recipe calculates the clamped and full piezoelectric
@@ -86,13 +94,6 @@ def main(strain_percent: float = 1,
         Amount of strain applied to the material.
     calculator : dict
         Calculator parameters.
-
-    Returns
-    -------
-    dict
-        Keys:
-            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
-            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
 
     """
     import numpy as np

@@ -1,4 +1,4 @@
-from asr.core import command, option, argument, AtomsFile
+from asr.core import command, option, argument, AtomsFile, ASRResult, prepare_result
 import numpy as np
 from typing import List
 from ase import Atoms
@@ -451,7 +451,7 @@ class ConvexHullReference(Reference):
         return msg
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig as asrfig
 
     fname = './convexhullcut.png'
@@ -537,10 +537,16 @@ def chcut_plot(row, *args):
     plt.savefig('./convexhullcut.png', bbox_inches='tight')
 
 
+@prepare_result
+class Result(ASRResult):
+
+    formats = {'ase_webpanel': webpanel}
+
+
 @command('asr.chc',
          requires=['structure.json',
                    'results-asr.convex_hull.json'],
-         webpanel=webpanel)
+         returns=Result)
 @argument('dbs', nargs=-1, type=str)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='structure.json')
@@ -548,7 +554,7 @@ def chcut_plot(row, *args):
         help='Reactant to add to convex hull')
 def main(dbs: List[str],
          atoms: Atoms,
-         reactant: str = 'O'):
+         reactant: str = 'O') -> Result:
     # Do type hints
     if len(dbs) == 0:
         raise ValueError('Must supply at least one database')
