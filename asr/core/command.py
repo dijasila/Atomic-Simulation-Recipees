@@ -48,16 +48,23 @@ class SimpleRunner():
         return func(**parameters)
 
 
-class RunInfo:
+class RunDescriptor:
 
-    def __init__(self):
-        pass
+    def __init__(self, function, parameters, name):
+        self.run_id = run_id
+        self.parameters = Parameters
+        self.name = name
+        self.function = function
+        self.result = None
 
     def cache_entry_id(self):
         pass
 
 
-def construct_run_info() -> RunInfo:
+def construct_run_info(name,
+                       parameters: Parameters,
+                       function: callable) -> RunDescriptor:
+    
     pass
 
 
@@ -412,25 +419,32 @@ class Runner:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        # Default Algorithm: construct_run_info | cache.get | runner | cache.add
+        # Default Algorithm: construct_run_info | cache.get | dependencies.push | run | dependencies.pop | set_metadata | cache.add
 
         parameters = Parameters(*args, **kwargs)
         parameters = parameters.apply_defaults(self.get_signature())
 
-        run_description = construct_run_info(
+        # The run description is the basic object that we transform in the various stages of the pipeline
+        run_description = construct_run_description(
             name=self.name,
             function=self.get_wrapped_function(),
             parameters=parameters,
         )
-        run_description = self.cache.get(run_description)
-        if run_description is not None:
-            run_description
-        run_description = self.run(run_description)
-        run_description = set_package_versions(run_description)
-        run_description = set_metadata(run_description)
-        if not run_info.is_cached():
-            run_info = self.cache.add(run_info)
-        return run_info.get_result()
+
+        if self.cache.has(run_description):
+            run_description = self.cache.get(run_description)
+        else:
+            with (dependency_stack(run_description) as dependencies,
+                  MetaData as metadata):
+                result = run_description()
+            code_versions = CodeVersions.from_run_description(run_description)
+            run_description = set_metadata(run_description)
+            run_description = self.cache.add(run_info)
+
+        construct_run_info(name=self.name,
+                           function=)
+        register_dep(run_description)
+        return run_description.get_result()
 
 
 def get_execution_info(package_dependencies):

@@ -30,3 +30,6 @@ class DependencyStack:
 
 
 dependency_stack = DependencyStack()
+
+def register_dep(run_description):
+    dependency_stack.register(run_description.name)
