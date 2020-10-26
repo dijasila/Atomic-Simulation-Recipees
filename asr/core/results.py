@@ -133,8 +133,12 @@ def get_object_matching_obj_id(asr_obj_id):
     module, name = asr_obj_id.split('::')
     if module == '__main__':
         raise ModuleNameIsMain('There is a problem with your result objectid. '
-                               'To fix the fault result files please run: '
-                               'python -m asr.utils.fix_object_ids folder1/ folder2/')
+                               'This is a known bug. To fix the faulty result '
+                               'files please run something like: '
+                               '"python -m asr.utils.fix_object_ids folder1/ '
+                               'folder2/ ..." '
+                               'where folder1 and folder2 are folders containing '
+                               'problematic result files.')
 
     assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
