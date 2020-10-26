@@ -3,6 +3,7 @@ from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
                       dct_to_object, obj_to_id, write_json, read_file, decode_json)
 from asr.utils.fix_object_ids import fix_object_id, _fix_folders
 import pytest
+from asr.gs import Result as GSResult
 
 
 class MyWebPanel(WebPanelEncoder):
@@ -845,14 +846,35 @@ def test_bad_object_ids(filename, dct, result_object_id):
 
 
 @pytest.mark.ci
+@pytest.mark.parametrize(
+    'obj,result',
+    [
+        (GSResult, 'asr.gs::Result'),
+        (MyResult, 'asr.test.test_core_results::MyResult')
+    ]
+)
+def test_obj_to_id(obj, result):
+    assert obj_to_id(obj) == result
+
+
+@pytest.mark.ci
 def test_fix_folders(asr_tmpdir):
     folders = ['.']
     write_json('results-asr.gs@calculate.json',
                {'object_id': '__main__::Result',
                 'args': [],
-                'kwargs': dict(strict=False)})
+                'kwargs': dict(
+                    data=dict(
+                        gaps_nosoc=dict(object_id='__main__::GapsResult',
+                                        args=[],
+                                        kwargs=dict(strict=False))),
+                    strict=False)})
     _fix_folders(folders)
     text = read_file('results-asr.gs@calculate.json')
     dct = decode_json(text)
     assert (dct['object_id'] == 'asr.gs::Result'
             and dct['constructor'] == 'asr.gs::Result')
+
+    assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
+            and dct['kwargs']['data']['gaps_nosoc']['constructor']
+            == 'asr.gs::GapsResult')
