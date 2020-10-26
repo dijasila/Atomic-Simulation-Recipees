@@ -15,10 +15,17 @@ def extract_recipe_from_filename(filename: str):
 
 
 def fix_object_id(filename: str, dct: dict):
-    print(f'Fixing bad file: {filename}')
 
     assert filename.startswith('results-asr.')
     assert filename.endswith('.json')
+    for key, value in dct.items():
+        if isinstance(value, dict):
+            value = fix_object_id(filename, value)
+            dct[key] = value
+
+    if 'object_id' not in dct:
+        return dct
+
     recipename = extract_recipe_from_filename(filename)
     if '@' in recipename:
         recipemodule = recipename.split('@')[0]
@@ -43,7 +50,9 @@ def _fix_folders(folders):
             try:
                 dct_to_object(dct)
             except ModuleNameIsMain:
-                dct = fix_object_id(path.name, dct)
+                filename = path.name
+                print(f'Fixing bad file: {filename}')
+                dct = fix_object_id(filename, dct)
                 result = dct_to_object(dct)
                 json_string = result.format_as('json')
                 write_file(path, json_string)
