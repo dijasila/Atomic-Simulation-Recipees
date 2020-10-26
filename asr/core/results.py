@@ -134,7 +134,7 @@ def get_object_matching_obj_id(asr_obj_id):
     if module == '__main__':
         raise ModuleNameIsMain('There is a problem with your result objectid. '
                                'This is a known bug. To fix the faulty result '
-                               'files please run something like: '
+                               'files please run: '
                                '"python -m asr.utils.fix_object_ids folder1/ '
                                'folder2/ ..." '
                                'where folder1 and folder2 are folders containing '
