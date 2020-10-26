@@ -48,24 +48,54 @@ class SimpleRunner():
         return func(**parameters)
 
 
-class RunDescriptor:
+class RunSpecification:
 
-    def __init__(self, function, parameters, name):
-        self.run_id = run_id
-        self.parameters = Parameters
+    def __init__(self, function: callable,
+                 parameters: Parameters,
+                 name: str,
+                 codes: CodeDescriptor):
+        self.parameters = parameters
         self.name = name
         self.function = function
-        self.result = None
+        self.codes = codes
 
-    def cache_entry_id(self):
+
+class RunRecord:
+
+    def __init__(self):
         pass
 
-
-def construct_run_info(name,
-                       parameters: Parameters,
-                       function: callable) -> RunDescriptor:
-    
+def construct_workdir(run_specification: RunSpecification):
     pass
+
+
+def register_dependencies(run_specification: RunSpecification):
+    pass
+
+
+def register_metadata(run_specification: RunSpecification):
+    pass
+
+
+def register_sideffects(run_specification: RunSpecification):
+    pass
+
+
+def construct_run_spec(
+        name: str,
+        parameters: dict,
+        function: callable,
+        codes: List[str]) -> RunDescriptor:
+    """Construct a run specification."""
+
+    parameters = Parameters.from_dict(**parameters)
+    codes = CodeVersions(codes)
+    return RunSpecification(
+        name=name,
+        parameters=parameters,
+        function=function,
+        codes=codes,
+    )
 
 
 class ComplexRunner(SimpleRunner):
@@ -424,27 +454,33 @@ class Runner:
         parameters = Parameters(*args, **kwargs)
         parameters = parameters.apply_defaults(self.get_signature())
 
-        # The run description is the basic object that we transform in the various stages of the pipeline
-        run_description = construct_run_description(
-            name=self.name,
+        run_specification = construct_run_spec(
             function=self.get_wrapped_function(),
             parameters=parameters,
+            name=self.name,
+            version=self.version,
+            codes=self.package_dependencies,
         )
 
-        if self.cache.has(run_description):
-            run_description = self.cache.get(run_description)
+        if self.cache.has(run_specification):
+            run_record = self.cache.get(run_specification)
         else:
-            with (dependency_stack(run_description) as dependencies,
-                  MetaData as metadata):
-                result = run_description()
-            code_versions = CodeVersions.from_run_description(run_description)
-            run_description = set_metadata(run_description)
-            run_description = self.cache.add(run_info)
+            with register_sideffects(run_specification) as side_effects, \
+                 register_dependencies(run_specification) as dependencies, \
+                 register_metadata(run_specification) as metadata:
+                result = run_specification()
 
-        construct_run_info(name=self.name,
-                           function=)
-        register_dep(run_description)
-        return run_description.get_result()
+            run_record = construct_run_record(
+                run_specification=run_specification,
+                result=result,
+                metadata=metadata,
+                dependencies=dependencies,
+                side_effects=side_effects,
+            )
+            self.cache.add(run_record)
+
+        register_dependencies.register_dep(run_record)
+        return run_record
 
 
 def get_execution_info(package_dependencies):
