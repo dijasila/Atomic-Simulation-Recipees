@@ -81,6 +81,10 @@ def register_sideffects(run_specification: RunSpecification):
     pass
 
 
+def construct_run_record():
+    pass
+
+
 def construct_run_spec(
         name: str,
         parameters: dict,
