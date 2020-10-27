@@ -1,5 +1,8 @@
-from asr.core import command, option
+from asr.core import (command, option, dct_to_result,
+                      ASRResult, UnknownDataFormat, get_recipe_from_name)
+import copy
 import sys
+import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
@@ -45,7 +48,7 @@ def create_table(row,  # AtomsRow
                 value = '{:.{}f}'.format(value, digits)
             elif not isinstance(value, str):
                 value = str(value)
-            desc, unit = key_descriptions.get(key, ['', key, ''])[1:]
+            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
             if unit:
                 value += ' ' + unit
             table.append((desc, value))
@@ -65,6 +68,68 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+def describe_entry(value, description):
+    if isinstance(value, dict) \
+       and 'value' in value \
+       and 'description' in value:
+        return dict(value=value['value'],
+                    description=value['description'] + description)
+    return dict(value=value, description=description)
+
+
+def describe_entries(rows, description):
+    for ir, row in enumerate(rows):
+        for ic, value in enumerate(row):
+            if isinstance(value, dict):
+                raise ValueError(f'Incompatible value={value}')
+            value = describe_entry(value, description)
+            rows[ir][ic] = value
+    return rows
+
+
+def dict_to_list(dct, indent=0, char=' '):
+    lst = []
+    for key, value in dct.items():
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            lst2 = dict_to_list(value,
+                                indent=indent + 2,
+                                char=char)
+            lst.extend([indent * char + f'<b>{key}</b>='] + lst2)
+        else:
+            lst.append(indent * char + f'<b>{key}</b>={value}')
+    return lst
+
+
+def entry_parameter_description(data, name, entry):
+    result = data[f'results-{name}.json']
+    if 'params' in result.metadata:
+        params = result.metadata.params
+        description = str(result.metadata.params)
+        header = ''
+    else:
+        recipe = get_recipe_from_name(name)
+        params = recipe.get_defaults()
+        header = ('No parameters can be found, meaning that'
+                  'the recipe was probably run with the '
+                  'default parameter set below\n'
+                  '<b>Default parameters</b>')
+
+    lst = dict_to_list(params)
+
+    lst[0] = '<pre><code>' + lst[0]
+    lst[-1] = lst[-1] + '</code></pre>'
+    string = '\n'.join(lst)
+    description = (
+        '<b>Calculation parameters</b>\n'
+        + header
+        + string
+    )
+
+    return describe_entry(entry, description)
+
+
 def val2str(row, key: str, digits=2) -> str:
     value = row.get(key)
     if value is not None:
@@ -77,11 +142,14 @@ def val2str(row, key: str, digits=2) -> str:
     return value
 
 
-def fig(filename: str, link: str = None) -> 'Dict[str, Any]':
+def fig(filename: str, link: str = None,
+        caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
     dct = {'type': 'figure', 'filename': filename}
     if link:
         dct['link'] = link
+    if caption:
+        dct['caption'] = caption
     return dct
 
 
@@ -130,29 +198,64 @@ def merge_panels(page):
         page[title] = panel
 
 
+def extract_recipe_from_filename(filename: str):
+    """Parse filename and return recipe name."""
+    pattern = re.compile('results-(.*)\.json')  # noqa
+    m = pattern.match(filename)
+    return m.group(1)
+
+
+def is_results_file(filename):
+    return filename.startswith('results-') and filename.endswith('.json')
+
+
+class RowWrapper:
+
+    def __init__(self, row):
+        self._row = row
+        self._data = copy.deepcopy(row.data)
+
+    def __getattr__(self, key):
+        """Wrap attribute lookup of AtomsRow."""
+        if key == 'data':
+            return self._data
+        return getattr(self._row, key)
+
+    def __contains__(self, key):
+        """Wrap contains of atomsrow."""
+        return self._row.__contains__(key)
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
-    from asr.core import get_recipes
     page = {}
     exclude = set()
 
+    row = RowWrapper(row)
+    for key, value in row.data.items():
+        if is_results_file(key):
+            try:
+                obj = dct_to_result(value)
+            except UnknownDataFormat:
+                value['__asr_hacked__'] = True
+                obj = dct_to_result(value)
+        else:
+            obj = value
+        row.data[key] = obj
+        assert row.data[key] == obj
+
     # Locate all webpanels
-    recipes = get_recipes()
-    for recipe in recipes:
-        if not recipe.webpanel:
+    for result in filter(lambda x: isinstance(x, ASRResult), row.data.values()):
+        if 'ase_webpanel' not in result.get_formats():
             continue
-        # We assume that there should be a results file in
-        if f'results-{recipe.name}.json' not in row.data:
+        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        if not panels:
             continue
-        try:
-            panels = recipe.webpanel(row, key_descriptions)
-        except Exception:
-            traceback.print_exc()
-            panels = []
+
         for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
+            assert 'title' in thispanel, f'No title in {result} webpanel'
             panel = {'columns': [[], []],
                      'plot_descriptions': [],
                      'sort': 99}
@@ -234,7 +337,8 @@ def layout(row: AtomsRow,
 @option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database: str = 'database.db', only_figures: bool = False):
+def main(database: str = 'database.db',
+         only_figures: bool = False) -> ASRResult:
     """Open results in web browser."""
     import subprocess
     from pathlib import Path

@@ -1,13 +1,15 @@
-from typing import List
+"""Phonopy phonon band structure."""
+import typing
 from pathlib import Path
 
 import numpy as np
 
 from ase.parallel import world
 from ase.io import read
+from ase.dft.kpoints import BandPath
 
-from asr.core import command, option, DictStr
-from asr.core import read_json, write_json
+from asr.core import (command, option, DictStr, ASRResult,
+                      read_json, write_json, prepare_result)
 
 
 def lattice_vectors(N_c):
@@ -75,7 +77,7 @@ def distance_to_sc(nd, atoms, dist_max):
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: List[int] = [0, 0, 0], dist_max: float = 7.0,
+              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
@@ -86,7 +88,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
                                   'convergence': {'forces': 1.0e-4},
                                   'symmetry': {'point_group': False},
                                   'txt': 'phonons.txt',
-                                  'charge': 0}):
+                                  'charge': 0}) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
 
@@ -172,7 +174,7 @@ def requires():
     return ["results-asr.phonopy@calculate.json"]
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
 
     phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
@@ -214,24 +216,52 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
+class Result(ASRResult):
+    omega_kl: typing.List[typing.List[float]]
+    minhessianeig: float
+    eigs_kl: typing.List[typing.List[complex]]
+    q_qc: typing.List[typing.Tuple[float, float, float]]
+    phi_anv: typing.List[typing.List[typing.List[float]]]
+    u_klav: typing.List[typing.List[float]]
+    irr_l: typing.List[str]
+    path: BandPath
+    dynamic_stability_level: int
+
+    key_descriptions = {
+        "omega_kl": "Phonon frequencies.",
+        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "eigs_kl": "Dynamical matrix eigenvalues.",
+        "q_qc": "List of momenta consistent with supercell.",
+        "phi_anv": "Force constants.",
+        "u_klav": "Phonon modes.",
+        "irr_l": "Phonon irreducible representations.",
+        "path": "Phonon bandstructure path.",
+        "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
+    }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(
     "asr.phonopy",
     requires=requires,
-    webpanel=webpanel,
+    returns=Result,
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc: float = None):
+def main(rc: float = None) -> Result:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    dct = read_json("results-asr.phonopy@calculate.json")
+    calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
-    sc = dct["__params__"]["sc"]
-    d = dct["__params__"]["d"]
-    dist_max = dct["__params__"]["dist_max"]
-    fsname = dct["__params__"]["fsname"]
+    params = calculateresult.metadata.params
+    sc = params["sc"]
+    d = params["d"]
+    dist_max = params["dist_max"]
+    fsname = params["fsname"]
 
     nd = sum(atoms.get_pbc())
 
@@ -342,10 +372,6 @@ def main(rc: float = None):
                'u_klav': u_klav,
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
-
-    results['__key_descriptions__'] = \
-        {'minhessianeig': 'KVP: Minimum eigenvalue of Hessian [eV/Ang^2]',
-         'dynamic_stability_level': 'KVP: Dynamic stability level'}
 
     return results
 

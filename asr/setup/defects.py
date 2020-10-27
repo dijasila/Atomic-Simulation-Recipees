@@ -1,6 +1,7 @@
+"""Generate defective atomic structures."""
 from typing import List
 from pathlib import Path
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 import click
 
 
@@ -20,7 +21,8 @@ import click
         help='Specify whether you want to incorporate vacancies.')
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: List[int] = [0, 0, 0],
-         maxsize: float = 8, intrinsic: bool = True, vacancies: bool = True):
+         maxsize: float = 8, intrinsic: bool = True,
+         vacancies: bool = True) -> ASRResult:
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
@@ -360,7 +362,7 @@ def collect_data():
     return None
 
 
-# def webpanel(row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
 #    from asr.browser import fig, table
 #
 #    if 'something' not in row.data:

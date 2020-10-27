@@ -1,4 +1,5 @@
-from asr.core import command, argument, option
+"""Generate chemically similar atomic structures."""
+from asr.core import command, argument, option, ASRResult
 import numpy as np
 from pathlib import Path
 
@@ -80,7 +81,8 @@ def get_p_ab():
         help='Threshold of likelyhood of two atomic species to subsititute',
         type=float)
 @option('--database', type=str)
-def main(atoms: str, threshold: float = 0.08, database: str = 'decorated.db'):
+def main(atoms: str, threshold: float = 0.08,
+         database: str = 'decorated.db') -> ASRResult:
     """Create similar atomic structures.
 
     This recipe can substitute atoms in an atomic structure with other similar

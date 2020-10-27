@@ -1,8 +1,9 @@
+"""Convex hull stability analysis."""
 from collections import Counter
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-from asr.core import command, argument
+from asr.core import command, argument, ASRResult, prepare_result
 
 from ase.db import connect
 from ase.io import read
@@ -12,16 +13,19 @@ from ase.db.row import AtomsRow
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
+    caption = """
+    The convex hull describes stability
+    with respect to other phases."""
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
     panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png')],
+             'columns': [[fig('convex-hull.png', caption=caption)],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['convex-hull.png']}],
@@ -46,14 +50,48 @@ def webpanel(row, key_descriptions):
     return [panel, summary]
 
 
+# class Reference(TypedDict):
+#     """Container for information on a reference."""
+
+#     hform: float
+#     formula: str
+#     uid: str
+#     natoms: int
+#     name: str
+#     label: str
+#     link: str
+
+
+@prepare_result
+class Result(ASRResult):
+
+    ehull: float
+    hform: float
+    references: List[dict]
+    thermodynamic_stability_level: str
+    coefs: Optional[List[float]]
+    indices: Optional[List[int]]
+    key_descriptions = {
+        "ehull": "Energy above convex hull [eV/atom].",
+        "hform": "Heat of formation [eV/atom].",
+        "thermodynamic_stability_level": "Thermodynamic stability level.",
+        "references": "List of relevant references.",
+        "indices":
+        "Indices of references that this structure will decompose into.",
+        "coefs": "Fraction of decomposing references (see indices doc).",
+    }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.convex_hull',
          requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
-         webpanel=webpanel)
+         returns=Result)
 @argument('databases', nargs=-1, type=str)
-def main(databases: List[str]):
+def main(databases: List[str]) -> Result:
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -115,7 +153,7 @@ def main(databases: List[str]):
         if Path(filename).is_file():
             results = read_json(filename)
             energy = results.get('etot')
-            usingd3 = results.get('__params__', {}).get('d3', False)
+            usingd3 = results.metadata.params.get('d3', False)
             break
 
     if usingd3:
@@ -187,6 +225,8 @@ def main(databases: List[str]):
 
     if len(count) == 1:
         ehull = hform
+        results['indices'] = None
+        results['coefs'] = None
     else:
         pd = PhaseDiagram(pdrefs, verbose=False)
         e0, indices, coefs = pd.decompose(formula)
@@ -195,10 +235,6 @@ def main(databases: List[str]):
         results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-    results['__key_descriptions__'] = {
-        'hform': 'KVP: Heat of formation [eV/atom]',
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
-        'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
 
     if hform >= 0.2:
         thermodynamic_stability = 1
@@ -210,7 +246,7 @@ def main(databases: List[str]):
         thermodynamic_stability = 3
 
     results['thermodynamic_stability_level'] = thermodynamic_stability
-    return results
+    return Result(data=results)
 
 
 def get_reference_energies(atoms, references, energy_key='energy'):
@@ -328,7 +364,7 @@ def plot(row, fname):
         cfrac = count.get(C, 0) / sum(count.values())
 
         ax.plot([bfrac + cfrac / 2],
-                [cfrac],
+                [cfrac * 3**0.5 / 2],
                 'o', color='C1', label='This material')
         plt.legend(loc='upper left')
         plt.axis('off')

@@ -1,4 +1,4 @@
-from asr.core import command, argument, get_recipes
+from asr.core import command, argument, get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
@@ -222,7 +222,7 @@ key_descriptions['extra'] = extras
 
 @command()
 @argument('database', type=str)
-def main(database: str):
+def main(database: str) -> ASRResult:
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys

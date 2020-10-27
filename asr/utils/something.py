@@ -1,12 +1,12 @@
 """Template recipe."""
 import json
 from pathlib import Path
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 
 
 @command('asr.something')
 @option('--number', type=int)
-def main(number=5):
+def main(number=5) -> ASRResult:
     """Calculate something."""
     something = calculate_something(number)
     results = {'number': number,
@@ -34,7 +34,7 @@ def collect_data(atoms):
     return kvp, kd, data
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.browser import fig, table
 
     if 'something' not in row.data:

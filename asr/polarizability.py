@@ -1,8 +1,10 @@
-from asr.core import command, option
+"""Optical polarizability."""
+import typing
+from asr.core import command, option, ASRResult, prepare_result
 from click import Choice
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(row, 'Property', [
@@ -36,10 +38,41 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+@prepare_result
+class Result(ASRResult):
+    alphax_el: typing.List[complex]
+    alphay_el: typing.List[complex]
+    alphaz_el: typing.List[complex]
+    alphax_w: typing.List[complex]
+    alphay_w: typing.List[complex]
+    alphaz_w: typing.List[complex]
+    alpha0x_w: typing.List[complex]
+    alpha0y_w: typing.List[complex]
+    alpha0z_w: typing.List[complex]
+    plasmafreq_vv: typing.List[typing.List[float]]
+    frequencies: typing.List[float]
+
+    key_descriptions = {
+        "alphax_el": "Static interband polarizability (x) [Ang]",
+        "alphay_el": "Static interband polarizability (y) [Ang]",
+        "alphaz_el": "Static interband polarizability (z) [Ang]",
+        "alphax_w": "Interband polarizability (x) [Ang]",
+        "alphay_w": "Interband polarizability (y) [Ang]",
+        "alphaz_w": "Interband polarizability (z) [Ang]",
+        "alpha0x_w": "Interband polarizability without local field effects (x) [Ang]",
+        "alpha0y_w": "Interband polarizability without local field effects (y) [Ang]",
+        "alpha0z_w": "Interband polarizability without local field effects (z) [Ang]",
+        "plasmafreq_vv": "Plasmafrequency tensor.",
+        "frequencies": "Frequency grid [eV]."
+    }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.polarizability',
          dependencies=['asr.structureinfo', 'asr.gs@calculate'],
          requires=['gs.gpw'],
-         webpanel=webpanel)
+         returns=Result)
 @option(
     '--gs', help='Ground state on which response is based',
     type=str)
@@ -51,7 +84,7 @@ def get_kpts_size(atoms, density):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
-         xc: str = 'RPA', bandfactor: int = 5):
+         xc: str = 'RPA', bandfactor: int = 5) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
     from ase.io import read
     from gpaw import GPAW
@@ -138,20 +171,13 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         data['alphay_el'] = data['alphay_w'][0].real
         data['alphaz_el'] = data['alphaz_w'][0].real
 
-        data['__key_descriptions__'] = {
-            'alphax_el': 'KVP: Static electronic polarizability,'
-            ' x-direction [Ang]',
-            'alphay_el': 'KVP: Static electronic polarizability,'
-            ' y-direction [Ang]',
-            'alphaz_el': 'KVP: Static electronic polarizability,'
-            ' z-direction [Ang]'}
-
     finally:
         world.barrier()
         if world.rank == 0:
-            es_file = Path("es.gpw")
-            if es_file.is_file():
-                es_file.unlink()
+            for filename in ['es.gpw', 'chi+0+0+0.pckl']:
+                es_file = Path(filename)
+                if es_file.is_file():
+                    es_file.unlink()
 
     return data
 

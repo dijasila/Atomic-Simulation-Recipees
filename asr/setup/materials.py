@@ -1,11 +1,12 @@
-from asr.core import command, option
+"""Generate database with test systems."""
+from asr.core import command, option, ASRResult
 
 
 @command('asr.setup.materials',
          creates=['materials.json'])
 @option('-s', '--selection', type=str,
         help='ASE DB selection string')
-def main(selection: str = ''):
+def main(selection: str = '') -> ASRResult:
     """Create database with materials from the ASR materials database.
 
     The ASR materials database currently contains all elementary and
@@ -17,10 +18,10 @@ def main(selection: str = ''):
     Examples
     --------
     Get all materials from database
-    >>> asr run setup.materials
+    $ asr run setup.materials
     In folder: . (1/1)
     Running asr.setup.materials(selection='')
-    PWD /scratch/mogje/asr
+    ...
     Created materials.json database containing 136 materials
 
     """
