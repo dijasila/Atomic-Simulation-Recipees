@@ -215,9 +215,9 @@ def return_gapstates_fix(calc_def, spin=0):
     states_above = False
     states_below = False
     for state in states_def:
-        if state < cbm and state > ef_def:
+        if state < cbm and state > vbm and state > ef_def:
             states_above = True
-        elif state > vbm and state < ef_def:
+        elif state < cbm and state > vbm and state < ef_def:
             states_below = True
 
     statelist = []
