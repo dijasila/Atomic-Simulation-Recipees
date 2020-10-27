@@ -75,7 +75,8 @@ for key, value in UTM.items():
 def is_relax_done(atoms, fmax=0.01, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    s = atoms.get_stress() * smask
+    if smask.any():
+        s = atoms.get_stress() * smask
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
