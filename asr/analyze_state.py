@@ -34,9 +34,11 @@ def main(state: int = 0,
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     if get_gapstates:
             print('INFO: evaluate gapstates ...')
-            states = return_gapstates_fix(calc, spin=0)
+            states, states_above, states_below = return_gapstates_fix(calc, spin=0)
     elif not get_gapstates:
         states = [state]
+        states_above = False
+        states_below = False
 
     print('INFO: write wavefunctions of gapstates ...')
     for band in states:
@@ -56,7 +58,9 @@ def main(state: int = 0,
         print('INFO: analyze chosen states.')
 
     results = {'states': states,
-               'dipole': d_svnm}
+               'dipole': d_svnm,
+               'states_above': states_above,
+               'states_below': states_below}
 
     return results
 
@@ -196,20 +200,31 @@ def return_gapstates_fix(calc_def, spin=0):
     _, calc_pris = restart('../../defects.pristine_sc/gs.gpw', txt=None)
     evac_pris = calc_pris.get_electrostatic_potential()[0,0,0]
     evac_def = calc_def.get_electrostatic_potential()[0,0,0]
+    ef_def = calc_def.get_fermi_level()
 
     vbm, cbm = calc_pris.get_homo_lumo() - evac_pris
 
     es_def = calc_def.get_eigenvalues() - evac_def
+    ef_def = ef_def - evac_def
     es_pris = calc_pris.get_eigenvalues() - evac_pris
 
     diff = es_pris[0] - es_def[0]
     states_def = es_def + diff
+    ef_def = ef_def + diff
+
+    states_above = False
+    states_below = False
+    for state in states_def:
+        if state < cbm and state > ef_def:
+            states_above = True
+        elif state > vbm and state < ef_def:
+            states_below = True
 
     statelist = []
     [statelist.append(i) for i, state in enumerate(states_def) if (
         state < cbm and state > vbm)]
 
-    return statelist
+    return statelist, states_above, states_below
 
 
 if __name__ == '__main__':
