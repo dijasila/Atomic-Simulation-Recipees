@@ -15,7 +15,8 @@ def calc_setup(settings):
 
     mixersettings = settings.pop('mixer', None)
     if mixersettings == 'mixerdif':
-        mixersettings = {'beta': 0.015, 'nold': 5,
+        mixersettings = {'type': 'mixerdif',
+                         'beta': 0.015, 'nold': 5,
                          'weight': 75}
 
     if type(mixersettings) != dict:
@@ -82,6 +83,7 @@ def initial_displacement(atoms, distance):
         type=float)
 @option('--restart/--norestart', help='Delete memo and start relaxation from scratch',
         is_flag=True)
+@option('--outputname', help='Name of output file')
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
@@ -94,7 +96,8 @@ def main(atoms: Atoms,
          tol: float = 1e-2,
          distance: float = 5,
          vacuum: float = 6,
-         restart: bool = False):
+         restart: bool = False,
+         outputname: str = 'structure.json'):
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
@@ -113,7 +116,6 @@ def main(atoms: Atoms,
         top_layer.center()
         top_layer.write("corrected.json")
 
-    # assert(np.allclose(top_layer.cell, atoms.cell))
     t_c = np.array(read_json('translation.json')['translation_vector']).astype(float)
 
     d0 = initial_displacement(atoms, distance)
@@ -158,7 +160,7 @@ def main(atoms: Atoms,
     final_atoms = translation(t_c[0], t_c[1], hmin,
                               top_layer, atoms)
 
-    final_atoms.write("structure.json")
+    final_atoms.write(outputname)
 
     curve = np.array(energy_curve)
 
