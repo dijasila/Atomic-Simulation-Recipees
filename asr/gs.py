@@ -438,15 +438,18 @@ class Result(ASRResult):
 @command(module='asr.gs',
          requires=['gs.gpw', 'structure.json',
                    'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
          returns=Result)
 def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     from ase.io import read
     from asr.calculators import get_calculator
     from gpaw.mpi import serial_comm
-
+    from asr.magnetic_anisotropy import main as magnetic_anisotropy
+    calculate()
+    magnetic_anisotropy()
+    # calculaterecord = calculate()
+    # calculateresult = calculaterecord.result
+    # calculaterecord.parameters.
     # Just some quality control before we start
     atoms = read('structure.json')
     calc = get_calculator()('gs.gpw', txt=None,

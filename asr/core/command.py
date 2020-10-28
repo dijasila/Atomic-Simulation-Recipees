@@ -96,6 +96,10 @@ class RunRecord:
         self._run_specification = run_specification
         self._result = result
 
+    @property
+    def result(self):
+        return self._result
+
 
 def construct_workdir(run_specification: RunSpecification):
     pass

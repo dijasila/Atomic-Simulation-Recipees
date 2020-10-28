@@ -1,15 +1,15 @@
 """Magnetic anisotropy."""
-from asr.core import command, read_json, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result
 from math import pi
 
 
 def get_spin_axis():
-    anis = read_json('results-asr.magnetic_anisotropy.json')
+    anis = main().result
     return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
 def get_spin_index():
-    anis = read_json('results-asr.magnetic_anisotropy.json')
+    anis = main().result
     axis = anis['spin_axis']
     if axis == 'z':
         index = 2
@@ -95,12 +95,12 @@ def main() -> Result:
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    from asr.core import read_json
+    from asr.magstate import main as magstate
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
-    magstateresults = read_json('results-asr.magstate.json')
+    magstateresults = magstate().result
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
