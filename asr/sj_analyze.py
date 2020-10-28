@@ -77,7 +77,9 @@ def get_pristine_band_edges():
         _, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        evac = calc.get_electrostatic_potential()[0, 0, 0]
+        # evac = results_pris['evac']
+        evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        evac = (evac_z[0] + evac_z[-1])/2.
     else:
         vbm = None
         cbm = None
@@ -97,7 +99,8 @@ def get_transition_level(transition):
     # HOMO
     if transition[0] > transition[1]:
         _, calc = restart('sj_-0.5/gs.gpw', txt=None)
-        e_ref = calc.get_electrostatic_potential()[0, 0, 0]
+        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
@@ -108,7 +111,8 @@ def get_transition_level(transition):
     # LUMO
     elif transition[1] > transition[0]:
         _, calc = restart('sj_+0.5/gs.gpw', txt=None)
-        e_ref = calc.get_electrostatic_potential()[0, 0, 0]
+        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
