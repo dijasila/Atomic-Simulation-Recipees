@@ -1,18 +1,25 @@
 """Implement ASRCommand class and related decorators."""
-from . import (read_json, write_file, md5sum,
-               file_barrier, clickify_docstring, ASRResult, chdir)
-import os
+from . import (
+    read_json,
+    md5sum,
+    clickify_docstring,
+    ASRResult,
+    chdir,
+    # write_file,
+    # file_barrier,
+)
+# import os
 import contextlib
 import functools
-from .temporary_directory import temporary_directory
-from .dependencies import dependency_stack
-from .cache import ASRCache
+# from .temporary_directory import temporary_directory
+# from .dependencies import dependency_stack
+# from .cache import ASRCache
 import typing
-from ase.parallel import parprint
-import atexit
+# from ase.parallel import parprint
+# import atexit
 import click
 import copy
-import time
+# import time
 from importlib import import_module
 from pathlib import Path
 import inspect
@@ -29,12 +36,19 @@ class Parameter:
 
 class Parameters:
 
-    def __init__(self, parameters: typing.Tuple[Parameter]):
+    def __init__(self, parameters: typing.Dict[str, Parameter]):
         self._parameters = parameters
 
     def __hash__(self):
         """Make parameter hash."""
         return hash(self._parameters)
+
+    def keys(self):
+        return self._parameters.keys()
+
+    def __getitem__(self, key):
+        """Get parameter."""
+        return self._parameters[key]
 
 
 class RunSpecification:
@@ -54,6 +68,11 @@ class RunSpecification:
         self.function = function
         # self.codes = codes
         self.version = version
+
+    def __call__(
+            self,
+    ):
+        return self.function(**self.parameters)
 
     # def todict(self):
     #     return {
@@ -227,7 +246,7 @@ def to_json(obj):
     return json_string
 
 
-def get_md5_checksums(filenames: List[str]) -> Dict[str, str]:
+def get_md5_checksums(filenames: typing.List[str]) -> typing.Dict[str, str]:
     """Get md5 checksums of a list of files."""
     checksums = {}
     for filename in filenames:
@@ -236,7 +255,7 @@ def get_md5_checksums(filenames: List[str]) -> Dict[str, str]:
     return checksums
 
 
-def does_files_exist(filenames: List[str]) -> List[bool]:
+def does_files_exist(filenames: typing.List[str]) -> typing.List[bool]:
     """Check whether files exist."""
     return [Path(filename).is_file() for filename in filenames]
 
@@ -324,7 +343,7 @@ def argument(name, **kwargs):
     return decorator
 
 
-class Runner:
+class ASRCommand:
     """Wrapper class for constructing recipes.
 
     This class implements the behaviour of an ASR recipe.
@@ -339,10 +358,20 @@ class Runner:
 
     package_dependencies = ('asr', 'ase', 'gpaw')
 
-    def __init__(self, wrapped_function,
-                 returns=None,
-                 version=None,
-                 cache=None):
+    def __init__(
+            self,
+            wrapped_function,
+            module=None,
+            returns=None,
+            version=0,
+            cache=Cache(),
+            dependencies=None,
+            creates=None,
+            requires=None,
+            resources=None,
+            tests=None,
+            save_results_file=None,
+    ):
         """Construct an instance of an ASRCommand.
 
         Parameters
@@ -355,6 +384,7 @@ class Runner:
             'The wrapped object should be callable'
 
         self.cache = cache
+        self.version = version
 
         import inspect
         mod = inspect.getmodule(wrapped_function)
@@ -520,8 +550,8 @@ class Runner:
 
         # Default Algorithm: construct_run_info | cache.get | dependencies.push | run | dependencies.pop | set_metadata | cache.add
 
-        parameters = Parameters(*args, **kwargs)
-        parameters = parameters.apply_defaults(self.get_signature())
+        parameters = apply_defaults(self.get_signature(), *args, **kwargs)
+        parameters = Parameters(parameters=parameters)
 
         run_specification = construct_run_spec(
             name=self.name,
@@ -570,10 +600,12 @@ def get_execution_info(package_dependencies):
     return versions
 
 
-def command(*args, **kwargs):
+def command(*decoargs, **decokwargs):
+
+    print(decoargs, decokwargs)
 
     def decorator(func):
-        return ASRCommand(func, *args, **kwargs)
+        return ASRCommand(func, *decoargs, **decokwargs)
 
     return decorator
 
