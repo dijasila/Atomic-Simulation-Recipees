@@ -1,11 +1,13 @@
 """Implement ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
                file_barrier, clickify_docstring, ASRResult)
+import os
+import contextlib
 import functools
 from .temporary_directory import temporary_directory
 from .dependencies import dependency_stack
 from .cache import ASRCache
-from typing import List, Dict
+import typing
 from ase.parallel import parprint
 import atexit
 import click
@@ -16,54 +18,51 @@ from pathlib import Path
 import inspect
 
 
-class Cache():
-
-    def __init__(self):
-        pass
-
-    def add(self, result):
-        pass
-
-    def has(self, result):
-        pass
-
-    def get(self, result):
-        pass
-
-
 class Parameters:
 
     pass
 
 
-class SimpleRunner():
-
-    def __init__(self):
-        pass
-
-    def __call__(self, func, parameters):
-        return self.run(func, parameters)
-
-    def run(self, func, parameters):
-        return func(**parameters)
-
-
 class RunSpecification:
 
-    def __init__(self, function: callable,
-                 parameters: Parameters,
-                 name: str,
-                 codes: CodeDescriptor):
+    spec_version: int = 0
+
+    def __init__(
+            self,
+            function: callable,
+            parameters: Parameters,
+            name: str,
+            version: int,
+            # codes: CodeDescriptor,
+    ):
         self.parameters = parameters
         self.name = name
         self.function = function
-        self.codes = codes
+        # self.codes = codes
+        self.version = version
+
+    # def todict(self):
+    #     return {
+    #         'spec_version': self.spec_version,
+    #         **self.__dict__,
+    #     }
 
 
 class RunRecord:
 
-    def __init__(self):
-        pass
+    record_version: int = 0
+
+    def __init__(
+            self,
+            run_specification: RunSpecification,
+            result: typing.Any,
+            # metadata: MetaData,
+            # side_effects: SideEffects,
+            # dependencies: Dependencies,
+    ):
+        self._run_specification = run_specification
+        self._result = result
+
 
 def construct_workdir(run_specification: RunSpecification):
     pass
@@ -77,7 +76,13 @@ def register_metadata(run_specification: RunSpecification):
     pass
 
 
+@contextlib.contextmanager
 def register_sideffects(run_specification: RunSpecification):
+
+    run_number = 1
+    
+    workdir = f'.asr/workdir{run_number}'
+    
     pass
 
 
@@ -85,75 +90,108 @@ def construct_run_record():
     pass
 
 
+# class Code:
+#     pass
+
+
+# class Codes:
+
+#     def __init__(*codes: typing.List[Code]):
+#         pass
+
+
 def construct_run_spec(
         name: str,
-        parameters: dict,
+        parameters: typing.Union[dict, Parameters],
+        version: int,
         function: callable,
-        codes: List[str]) -> RunDescriptor:
+        # codes: typing.Union[typing.List[str], Codes],
+) -> RunSpecification:
     """Construct a run specification."""
+    if not isinstance(parameters, Parameters):
+        parameters = Parameters.from_dict(**parameters)
 
-    parameters = Parameters.from_dict(**parameters)
-    codes = CodeVersions(codes)
+    # if not isinstance(codes, Codes):
+    #     codes = Codes.from_list(codes)
+
     return RunSpecification(
         name=name,
         parameters=parameters,
         function=function,
-        codes=codes,
+        version=version,
+        # codes=codes,
     )
 
 
-class ComplexRunner(SimpleRunner):
+# class ComplexRunner(SimpleRunner):
 
-    def __init__(self, cache=None):
+#     def __init__(self, cache=None):
 
-        self.cache = cache
+#         self.cache = cache
 
-    def run(self, run_info: RunInfo):
+#     def run(self, run_info: RunInfo):
 
-        cached_run_info = self.cache.get(run_info)
+#         cached_run_info = self.cache.get(run_info)
 
-        if cached_run_info is not None:
-            return cached_run_info
+#         if cached_run_info is not None:
+#             return cached_run_info
 
-        if run_info is None:
-            parprint(f'Running {self.name}({parameters})')
-            run_info = self.runner(
-                self.get_wrapped_function(),
-                parameters,
-            )
-            cache.add(run_info)
-        else:
-            parprint('Returning cached result for '
-                     f'{self.name}({parameters})')
+#         if run_info is None:
+#             parprint(f'Running {self.name}({parameters})')
+#             run_info = self.runner(
+#                 self.get_wrapped_function(),
+#                 parameters,
+#             )
+#             cache.add(run_info)
+#         else:
+#             parprint('Returning cached result for '
+#                      f'{self.name}({parameters})')
 
-        code_versions = self.get_code_versions(parameters=parameters)
-        # Execute the wrapped function
-        # Register dependencies implement stack like data structure.
-        # We register an exit handler to handle unexpected exits.
-        atexit.register(clean_files, files=temporary_files)
-        with dependency_stack as my_dependencies:
-            with CleanEnvironment(temporary_directory) as env, \
-                 clean_files(temporary_files), \
-                 file_barrier(created_files, delete=False):
-                tstart = time.time()
-                result = self._wrapped_function(**parameters)
-                tend = time.time()
+#         code_versions = self.get_code_versions(parameters=parameters)
+#         # Execute the wrapped function
+#         # Register dependencies implement stack like data structure.
+#         # We register an exit handler to handle unexpected exits.
+#         atexit.register(clean_files, files=temporary_files)
+#         with dependency_stack as my_dependencies:
+#             with CleanEnvironment(temporary_directory) as env, \
+#                  clean_files(temporary_files), \
+#                  file_barrier(created_files, delete=False):
+#                 tstart = time.time()
+#                 result = self._wrapped_function(**parameters)
+#                 tend = time.time()
 
 
-        from ase.parallel import world
-        metadata = dict(asr_name=self.name,
-                        resources=dict(time=tend - tstart,
-                                       ncores=world.size),
-                        params=parameters,
-                        code_versions=get_execution_info(
-                            self.package_dependencies))
+#         from ase.parallel import world
+#         metadata = dict(asr_name=self.name,
+#                         resources=dict(time=tend - tstart,
+#                                        ncores=world.size),
+#                         params=parameters,
+#                         code_versions=get_execution_info(
+#                             self.package_dependencies))
 
-        # This is a hack and should be removed in the future
-        # when all recipe results have been typed.
-        if not isinstance(result, self.returns):
-            assert isinstance(result, dict)
-            result = self.returns(data=result)
+#         # This is a hack and should be removed in the future
+#         # when all recipe results have been typed.
+#         if not isinstance(result, self.returns):
+#             assert isinstance(result, dict)
+#             result = self.returns(data=result)
 
+
+class Cache():
+
+    def __init__(self):
+        pass
+
+    def add(self, run_record: RunRecord):
+        """Add record of run to cache."""
+        ...
+
+    def has(self, run_specification: RunSpecification):
+        """Has run record matching run specification."""
+        return False
+
+    def get(self, result):
+        """Get run record matching run specification."""
+        ...
 
 
 def to_json(obj):
@@ -459,31 +497,31 @@ class Runner:
         parameters = parameters.apply_defaults(self.get_signature())
 
         run_specification = construct_run_spec(
-            function=self.get_wrapped_function(),
-            parameters=parameters,
             name=self.name,
+            parameters=parameters,
             version=self.version,
-            codes=self.package_dependencies,
+            function=self.get_wrapped_function(),
+            # codes=self.package_dependencies,
         )
 
         if self.cache.has(run_specification):
             run_record = self.cache.get(run_specification)
         else:
-            with register_sideffects(run_specification) as side_effects, \
-                 register_dependencies(run_specification) as dependencies, \
-                 register_metadata(run_specification) as metadata:
-                result = run_specification()
+            # with register_sideffects(run_specification) as side_effects, \
+            #      register_dependencies(run_specification) as dependencies, \
+            #      register_metadata(run_specification) as metadata:
+            result = run_specification()
 
             run_record = construct_run_record(
                 run_specification=run_specification,
                 result=result,
-                metadata=metadata,
-                dependencies=dependencies,
-                side_effects=side_effects,
+                # metadata=metadata,
+                # dependencies=dependencies,
+                # side_effects=side_effects,
             )
             self.cache.add(run_record)
 
-        register_dependencies.register_dep(run_record)
+        # register_dependencies.register_dep(run_record)
         return run_record
 
 
