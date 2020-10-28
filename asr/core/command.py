@@ -50,6 +50,10 @@ class Parameters:
         """Get parameter."""
         return self._parameters[key]
 
+    def __getattr__(self, key):
+        """Get parameter."""
+        return self._parameters[key]
+
 
 class RunSpecification:
 
@@ -90,15 +94,24 @@ class RunRecord:
             run_specification: RunSpecification,
             result: typing.Any,
             # metadata: MetaData,
-            # side_effects: SideEffects,
+            side_effects: 'SideEffects',
             # dependencies: Dependencies,
     ):
         self._run_specification = run_specification
         self._result = result
+        self._side_effects = side_effects
 
     @property
     def result(self):
         return self._result
+
+    @property
+    def parameters(self):
+        return self._run_specification.parameters
+
+    @property
+    def side_effects(self):
+        return self._side_effects
 
 
 def construct_workdir(run_specification: RunSpecification):
@@ -125,19 +138,28 @@ class SideEffect:
 def register_sideffects(run_specification: RunSpecification):
 
     run_number = 1
-    workdir = f'.asr/workdir{run_number}'
-    side_effects = []
+    current_dir = Path().absolute()
+    workdir = Path(f'.asr/workdir{run_number}')
+    side_effects = {}
 
-    with chdir(workdir):
+    with chdir(workdir, create=True):
         yield side_effects
+        side_effects.update({
+            path.name: path.absolute().relative_to(current_dir)
+            for path in Path().glob('*')
+            }
+        )
+
 
 
 def construct_run_record(
         run_specification: RunSpecification,
         result: typing.Any,
+        side_effects: typing.Dict[str, str],
 ):
     return RunRecord(run_specification,
-                     result=result)
+                     result=result,
+                     side_effects=side_effects)
 
 
 # class Code:
@@ -571,14 +593,15 @@ class ASRCommand:
             # with register_sideffects(run_specification) as side_effects, \
             #      register_dependencies(run_specification) as dependencies, \
             #      register_metadata(run_specification) as metadata:
-            result = run_specification()
+            with register_sideffects(run_specification) as side_effects:
+                result = run_specification()
 
             run_record = construct_run_record(
                 run_specification=run_specification,
                 result=result,
                 # metadata=metadata,
                 # dependencies=dependencies,
-                # side_effects=side_effects,
+                side_effects=side_effects,
             )
             self.cache.add(run_record)
 

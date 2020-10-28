@@ -66,7 +66,7 @@ def chdir(folder, create=False, empty=False):
         import shutil
         shutil.rmtree(str(folder))
     if create and not folder.is_dir():
-        os.mkdir(folder)
+        os.makedirs(folder)
     os.chdir(str(folder))
     yield
     os.chdir(dir)

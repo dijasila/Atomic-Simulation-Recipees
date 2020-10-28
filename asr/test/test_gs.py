@@ -12,7 +12,6 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     import asr.relax
     from asr.core import read_json
     from asr.gs import calculate, main
-    from ase.io import write
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
@@ -20,16 +19,17 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
     gpaw.GPAW._get_band_gap.return_value = gap
 
-    write('structure.json', test_material)
     calculate(
+        atoms=test_material,
         calculator={
             "name": "gpaw",
             "kpts": {"density": 6, "gamma": True},
         },
     )
 
-    results = main().result
-    gs = read_json('gs.gpw')
+    record = main(atoms=test_material)
+    results = record.result
+    gs = read_json(record.side_effects['gs.gpw'])
     gs['atoms'].has('initial_magmoms')
     if test_material.has('initial_magmoms'):
         spy.assert_not_called()
@@ -103,9 +103,8 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from asr.core.material import (get_material_from_folder,
                                    make_panel_figures)
     atoms = std_test_materials[0]
-    atoms.write('structure.json')
 
-    main()
+    main(atoms=atoms)
     material = get_material_from_folder()
     result = material.data['results-asr.gs.json']
     panel = result.format_as('ase_webpanel', material, {})

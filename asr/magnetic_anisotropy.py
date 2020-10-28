@@ -1,15 +1,16 @@
 """Magnetic anisotropy."""
-from asr.core import command, ASRResult, prepare_result
+from ase import Atoms
+from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 from math import pi
 
 
-def get_spin_axis():
-    anis = main().result
+def get_spin_axis(atoms):
+    anis = main(atoms=atoms).result
     return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
-def get_spin_index():
-    anis = main().result
+def get_spin_index(atoms):
+    anis = main(atoms=atoms).result
     axis = anis['spin_axis']
     if axis == 'z':
         index = 2
@@ -84,7 +85,9 @@ class Result(ASRResult):
          tests=tests,
          returns=Result,
          dependencies=['asr.gs@calculate', 'asr.magstate'])
-def main() -> Result:
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+def main(atoms: Atoms) -> Result:
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation
@@ -100,7 +103,7 @@ def main() -> Result:
     from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
-    magstateresults = magstate().result
+    magstateresults = magstate(atoms=atoms).result
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic

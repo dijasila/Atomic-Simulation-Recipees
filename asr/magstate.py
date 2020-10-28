@@ -1,5 +1,6 @@
 """Module for determining magnetic state."""
-from asr.core import command, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, option, AtomsFile
+from ase import Atoms
 import typing
 
 
@@ -51,13 +52,16 @@ class Result(ASRResult):
 
 
 @command('asr.magstate',
-         requires=['gs.gpw'],
-         returns=Result,
-         dependencies=['asr.gs@calculate'])
-def main() -> Result:
+         returns=Result)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+def main(atoms: Atoms) -> Result:
     """Determine magnetic state."""
     from gpaw import GPAW
-    calc = GPAW('gs.gpw', txt=None)
+    from asr.gs import calculate as calculategs
+
+    calculaterecord = calculategs(atoms=atoms)
+    calc = GPAW(calculaterecord.side_effects['gs.gpw'], txt=None)
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)
