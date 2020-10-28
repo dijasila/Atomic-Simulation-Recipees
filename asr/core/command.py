@@ -18,9 +18,19 @@ from pathlib import Path
 import inspect
 
 
+class Parameter:
+
+    def __init__(self, name, value):
+
+        self.name = name
+        self.value = value
+
+
 class Parameters:
 
-    pass
+    def __init__(self, parameters):
+
+        self._parameters = parameters
 
 
 class RunSpecification:
