@@ -1,6 +1,6 @@
 """Implement ASRCommand class and related decorators."""
 from . import (read_json, write_file, md5sum,
-               file_barrier, clickify_docstring, ASRResult)
+               file_barrier, clickify_docstring, ASRResult, chdir)
 import os
 import contextlib
 import functools
@@ -20,17 +20,21 @@ import inspect
 
 class Parameter:
 
-    def __init__(self, name, value):
+    def __init__(self, name, value, hash_func):
 
         self.name = name
         self.value = value
+        self.hash_func = hash_func
 
 
 class Parameters:
 
-    def __init__(self, parameters):
-
+    def __init__(self, parameters: typing.Tuple[Parameter]):
         self._parameters = parameters
+
+    def __hash__(self):
+        """Make parameter hash."""
+        return hash(self._parameters)
 
 
 class RunSpecification:
@@ -86,18 +90,31 @@ def register_metadata(run_specification: RunSpecification):
     pass
 
 
+class SideEffect:
+
+    def __init__(self, filename):
+
+        self.filename
+        self.hash = None
+
+
 @contextlib.contextmanager
 def register_sideffects(run_specification: RunSpecification):
 
     run_number = 1
-    
     workdir = f'.asr/workdir{run_number}'
-    
-    pass
+    side_effects = []
+
+    with chdir(workdir):
+        yield side_effects
 
 
-def construct_run_record():
-    pass
+def construct_run_record(
+        run_specification: RunSpecification,
+        result: typing.Any,
+):
+    return RunRecord(run_specification,
+                     result=result)
 
 
 # class Code:
