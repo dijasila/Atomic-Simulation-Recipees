@@ -34,7 +34,7 @@ def main():
         defectsystem))
 
     # Initialize results dictionary
-    results = {'transitions': {}, 'pristine': {}}
+    results = {'transitions': {}, 'pristine': {}, 'eform': {}}
 
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
@@ -61,6 +61,10 @@ def main():
 
     vbm, cbm, evac = get_pristine_band_edges()
     results['pristine'] = {'vbm': vbm, 'cbm': cbm, 'evac': evac}
+
+    # get neutral formation energy without chemical potentials applied
+    eform = calculate_neutral_formation_energy()
+    results['eform'] = eform
 
     return results
 
@@ -108,9 +112,9 @@ def calculate_neutral_formation_energy():
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
 
-    e_form = results_def['etot'] - results_def['etot']
+    eform = results_def['etot'] - results_def['etot']
 
-    return e_form
+    return eform
 
 
 def get_transition_level(transition):
