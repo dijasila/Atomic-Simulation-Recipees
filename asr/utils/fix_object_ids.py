@@ -61,10 +61,15 @@ def _fix_folders(folders):
                 # since this is a _very_ old results file.
                 recipename = extract_recipe_from_filename(filename)
                 dct['__asr_name__'] = recipename
-                result = dct_to_result(dct)
-                print(f'Fixing missing __asr_name__ in file: {filename}')
-                json_string = result.format_as('json')
-                write_file(path, json_string)
+                try:
+                    result = dct_to_result(dct)
+                    print(f'Fixing missing __asr_name__ in file: {filename}')
+                    json_string = result.format_as('json')
+                    write_file(path, json_string)
+                except Exception:
+                    print(
+                        'Located problematic results file that '
+                        f'could not be fixed: {path}')
 
 
 @click.command()
