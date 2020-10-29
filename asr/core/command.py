@@ -5,12 +5,14 @@ from . import (
     clickify_docstring,
     ASRResult,
     chdir,
-    # write_file,
+    write_file,
+    read_file,
     # file_barrier,
 )
 # import os
 import contextlib
 import functools
+import abc
 # from .temporary_directory import temporary_directory
 # from .dependencies import dependency_stack
 # from .cache import ASRCache
@@ -113,6 +115,12 @@ class RunRecord:
     def side_effects(self):
         return self._side_effects
 
+    def todict(self):
+        return dict(
+            run_specification=self._run_specification.todict(),
+            result=self._result,
+            side_effects=self._side_effects.todict()
+            )
 
 def construct_workdir(run_specification: RunSpecification):
     pass
@@ -247,11 +255,22 @@ def construct_run_spec(
 #             assert isinstance(result, dict)
 #             result = self.returns(data=result)
 
+class AbstractCache(abc.ABC):
 
-class Cache():
-
-    def __init__(self):
+    @abc.abstractmethod
+    def add(self, run_record: RunRecord):
         pass
+
+    @abc.abstractmethod
+    def get(self, run_record: RunRecord):
+        pass
+
+    @abc.abstractmethod
+    def has(self, run_specification: RunSpecification):
+        pass
+
+
+class NoCache(AbstractCache):
 
     def add(self, run_record: RunRecord):
         """Add record of run to cache."""
@@ -261,9 +280,62 @@ class Cache():
         """Has run record matching run specification."""
         return False
 
-    def get(self, result):
+    def get(self, run_specification: RunSpecification):
         """Get run record matching run specification."""
         ...
+
+
+class RunSpecificationAlreadyExists(Exception):
+    pass
+
+
+class Serializer:
+
+    def serialize():
+        pass
+
+    def deserialize():
+        pass
+
+class SingleRunFileCache():
+
+    def __init__(self, serializer: Serializer):
+        self._serializer = serializer
+
+    def _name_to_results_filename(name: str, serializer: Serializer):
+        return f'results-{name}.json'
+
+    def add(self, run_record: RunRecord):
+        if self.has(run_record.run_specification):
+            raise RunSpecificationAlreadyExists(
+                'You are using the SingleRunFileCache which does not'
+                'support multiple runs of the same function. '
+                'Please specify another cache.'
+            )
+        name = run_record.run_specification.name
+        filename = self._name_to_results_filename(name)
+        serialized_object = self.serialize(run_record)
+        self._write_file(filename, serialized_object)
+
+    def has(self, run_specification: RunSpecification):
+        name = run_specification.name
+        filename = self._name_to_results_filename(name)
+        return Path(filename).is_file()
+
+    def get(self, run_specification: RunSpecification):
+        name = run_specification.name
+        filename = self._name_to_results_filename(name)
+        serialized_object = self._read(filename)
+        obj = self.deserialize(serialized_object)
+        return obj
+
+    def _write_file(self, filename: str, run_record: RunRecord):
+        write_file(filename, run_record.todict())
+
+    def _read_file(self, filename: str):
+        serialized_object = read_file(filename)
+        obj = self.serialize.deserialize(serialized_object)
+        return obj
 
 
 def to_json(obj):
@@ -390,7 +462,7 @@ class ASRCommand:
             module=None,
             returns=None,
             version=0,
-            cache=Cache(),
+            cache=NoCache(),
             dependencies=None,
             creates=None,
             requires=None,

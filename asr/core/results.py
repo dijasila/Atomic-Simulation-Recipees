@@ -73,6 +73,13 @@ def read_old_data(dct) -> 'ObjectDescription':
     return object_description
 
 
+def to_object_description(obj):
+    objid = obj_to_id(obj.__class__)
+
+    dct = {}
+    obj.__dict__
+
+
 def read_new_data(dct) -> 'ObjectDescription':
     """Parse a new style result dictionary."""
     object_description = ObjectDescription.fromdict(dct)
@@ -131,6 +138,7 @@ def get_object_matching_obj_id(asr_obj_id):
     mod = importlib.import_module(module)
     cls = getattr(mod, name)
 
+    assert cls
     return cls
 
 
