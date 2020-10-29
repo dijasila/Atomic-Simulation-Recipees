@@ -1,5 +1,5 @@
 from asr.core import (command, option, dct_to_result,
-                      ASRResult, UnknownDataFormat, get_recipe_from_name)
+                      ASRResult, get_recipe_from_name)
 import copy
 import sys
 import re
