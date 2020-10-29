@@ -99,7 +99,26 @@ def get_reader_function(dct):
     elif '__asr_hacked__' in dct:
         reader_function = read_hacked_data
     else:
-        raise UnknownDataFormat(f'Bad data={dct}')
+        raise UnknownDataFormat(f"""
+
+        Error when reading results file. The file contains the
+        following data keys
+
+            data_keys={dct.keys()}
+
+        from which the data format could not be deduced.  If you
+        suspect the reason is that the data is very old, it is
+        possible that this could be fixed by running:
+
+            $ python -m asr.utils.fix_object_ids folder1/ folder2/ ...
+
+        where folder1 and folder2 are folders containing 'problematic'
+        result files. If you have multiple folders that contains
+        problematic files you can similarly to something like:
+
+            $ python -m asr.utils.fix_object_ids */
+
+        """)
     return reader_function
 
 
