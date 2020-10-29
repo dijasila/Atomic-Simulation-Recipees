@@ -88,6 +88,31 @@ def get_pristine_band_edges():
     return vbm, cbm, evac
 
 
+def obtain_chemical_potential():
+    """
+    Function to evaluate the chemical potential limits for a given defect.
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TBD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    """
+    return None
+
+
+def calculate_neutral_formation_energy():
+    """
+    Function to calculate the neutral formation energy without chemical
+    potential shift applied. Only the neutral one is needed as for the higher
+    charge states we will use the sj transitions for the formation energy
+    plot.
+    """
+    from asr.core import read_json
+    results_def = read_json('./results-asr.gs.json')
+    results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+
+    e_form = results_def['etot'] - results_def['etot']
+
+    return e_form
+
+
 def get_transition_level(transition):
     """
     Calculates the charge transition level for a given charge transition.
