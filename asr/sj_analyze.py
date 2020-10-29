@@ -135,6 +135,16 @@ def get_transition_level(transition):
     return e_trans, e_cor, e_ref
 
 
+def plot_formation_energies(row, fname):
+    """
+    Using the calculated charge transition levels, plot the formation energy curve
+    for a given defect as a function of the fermi energy.
+    """
+    import matplotlib.pyplot as plt
+
+    data = row.data.get('results-asr.sj_analyze.json')
+
+
 def plot_charge_transitions(row, fname):
     """
     Plot the calculated charge transition levels along with the pristine bandgap.
