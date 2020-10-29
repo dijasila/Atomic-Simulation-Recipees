@@ -99,13 +99,16 @@ def get_reader_function(dct):
     elif '__asr_hacked__' in dct:
         reader_function = read_hacked_data
     else:
-        raise UnknownDataFormat("""
+        raise UnknownDataFormat(f"""
 
         Error when reading results file. The file contains the
-        following data keys={data.keys()} from which the data format
-        could not be deduced.  If you suspect the reason is that the
-        data is very old, it is possible that this could be fixed by
-        running:
+        following data keys
+
+            data_keys={dct.keys()}
+
+        from which the data format could not be deduced.  If you
+        suspect the reason is that the data is very old, it is
+        possible that this could be fixed by running:
 
             $ python -m asr.utils.fix_object_ids folder1/ folder2/ ...
 
