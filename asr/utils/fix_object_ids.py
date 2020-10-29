@@ -1,6 +1,6 @@
 from pathlib import Path
-from asr.core import read_file, decode_json, dct_to_object, write_file
-from asr.core.results import ModuleNameIsMain
+from asr.core import read_file, decode_json, dct_to_result, write_file
+from asr.core.results import ModuleNameIsMain, UnknownDataFormat
 import copy
 from typing import List
 import click
@@ -43,17 +43,26 @@ def fix_object_id(filename: str, dct: dict):
 def _fix_folders(folders):
     for folder in folders:
         folder = Path(folder).absolute()
-
+        print(f'Checking folder={folder}')
         for path in folder.glob('results-*.json'):
             text = read_file(path)
             dct = decode_json(text)
+            filename = path.name
             try:
-                dct_to_object(dct)
+                dct_to_result(dct)
             except ModuleNameIsMain:
-                filename = path.name
-                print(f'Fixing bad file: {filename}')
                 dct = fix_object_id(filename, dct)
-                result = dct_to_object(dct)
+                result = dct_to_result(dct)
+                print(f'Fixing bad file: {filename}')
+                json_string = result.format_as('json')
+                write_file(path, json_string)
+            except UnknownDataFormat:
+                # Assume that we have to insert __asr_name__
+                # since this is a _very_ old results file.
+                recipename = extract_recipe_from_filename(filename)
+                dct['__asr_name__'] = recipename
+                result = dct_to_result(dct)
+                print(f'Fixing missing __asr_name__ in file: {filename}')
                 json_string = result.format_as('json')
                 write_file(path, json_string)
 
