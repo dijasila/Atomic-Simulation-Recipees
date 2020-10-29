@@ -172,6 +172,18 @@ def plot_formation_energies(row, fname):
     import matplotlib.pyplot as plt
 
     data = row.data.get('results-asr.sj_analyze.json')
+    eform = data['eform']
+
+    vbm = data['pristine']['vbm'] - data['pristine']['evac']
+    cbm = data['pristine']['cbm'] - data['pristine']['evac']
+
+    transitions = data['transitions']
+
+    plt.fill_betweex([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
+    plt.fill_betweex([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+
+    plt.xlim(vbm - 1, cbm + 1)
+    plt.plot(eform, color='black')
 
 
 def plot_charge_transitions(row, fname):
