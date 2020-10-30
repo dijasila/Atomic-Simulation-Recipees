@@ -6,7 +6,6 @@ from . import (
     ASRResult,
     chdir,
     write_file,
-    read_file,
     # file_barrier,
 )
 # import os
@@ -25,6 +24,8 @@ import copy
 from importlib import import_module
 from pathlib import Path
 import inspect
+import json
+from asr.core.results import get_object_matching_obj_id
 
 
 class Parameter:
@@ -54,6 +55,8 @@ class Parameters:
 
     def __getattr__(self, key):
         """Get parameter."""
+        if key not in self._parameters:
+            raise AttributeError
         return self._parameters[key]
 
 
@@ -63,22 +66,21 @@ class RunSpecification:
 
     def __init__(
             self,
-            function: callable,
-            parameters: Parameters,
             name: str,
+            parameters: Parameters,
             version: int,
             # codes: CodeDescriptor,
     ):
         self.parameters = parameters
         self.name = name
-        self.function = function
         # self.codes = codes
         self.version = version
 
     def __call__(
             self,
     ):
-        return self.function(**self.parameters)
+        function = get_object_matching_obj_id(self.name)
+        return function(**self.parameters)
 
     # def todict(self):
     #     return {
@@ -115,12 +117,10 @@ class RunRecord:
     def side_effects(self):
         return self._side_effects
 
-    def todict(self):
-        return dict(
-            run_specification=self._run_specification.todict(),
-            result=self._result,
-            side_effects=self._side_effects.todict()
-            )
+    @property
+    def run_specification(self):
+        return self._run_specification
+
 
 def construct_workdir(run_specification: RunSpecification):
     pass
@@ -153,7 +153,7 @@ def register_sideffects(run_specification: RunSpecification):
     with chdir(workdir, create=True):
         yield side_effects
         side_effects.update({
-            path.name: path.absolute().relative_to(current_dir)
+            path.name: str(path.absolute().relative_to(current_dir))
             for path in Path().glob('*')
             }
         )
@@ -184,7 +184,6 @@ def construct_run_spec(
         name: str,
         parameters: typing.Union[dict, Parameters],
         version: int,
-        function: callable,
         # codes: typing.Union[typing.List[str], Codes],
 ) -> RunSpecification:
     """Construct a run specification."""
@@ -197,7 +196,6 @@ def construct_run_spec(
     return RunSpecification(
         name=name,
         parameters=parameters,
-        function=function,
         version=version,
         # codes=codes,
     )
@@ -276,7 +274,7 @@ class NoCache(AbstractCache):
         """Add record of run to cache."""
         ...
 
-    def has(self, run_specification: RunSpecification):
+    def has(self, run_specification: RunSpecification) -> bool:
         """Has run record matching run specification."""
         return False
 
@@ -289,18 +287,88 @@ class RunSpecificationAlreadyExists(Exception):
     pass
 
 
-class Serializer:
+class Serializer(abc.ABC):
 
-    def serialize():
+    @abc.abstractmethod
+    def serialize(obj: typing.Any) -> str:
         pass
 
-    def deserialize():
+    @abc.abstractmethod
+    def deserialize(serialized: str) -> typing.Any:
         pass
+
+
+from asr.core.results import obj_to_id
+from numpy import ndarray
+import ase.io.jsonio
+
+
+class ASRJSONEncoder(json.JSONEncoder):
+
+    def default(self, obj) -> dict:
+
+        try:
+            return ase.io.jsonio.MyEncoder.default(self, obj)
+        except TypeError:
+            pass
+        if hasattr(obj, '__dict__'):
+            cls_id = obj_to_id(obj.__class__)
+            # dct = {}
+            # for key, value in obj.__dict__.items():
+            #     dct[key] = self.default(value)
+            obj = {'cls_id': cls_id, '__dict__':
+                   copy.copy(obj.__dict__)}
+
+            return obj
+        return json.JSONEncoder.default(self, obj)
+        # obj_type = type(obj)
+
+        # if obj_type == dict:
+        #     for key, value in obj.items():
+        #         obj[key] = self.default(value)
+        #     return obj
+        # elif obj_type in [tuple, list]:
+        #     obj = list(obj)
+        #     for i, value in enumerate(obj):
+        #         obj[i] = self.default(value)
+        #     return obj
+        # elif obj_type in {str, int, float, bool, type(None)}:
+        #     return obj
+
+
+
+
+def json_hook(json_object: dict):
+    from asr.core.results import get_object_matching_obj_id
+
+    if 'cls_id' in json_object:
+        cls = get_object_matching_obj_id(json_object['cls_id'])
+        obj = cls.__new__(cls)
+        obj.__dict__.update(json_object['__dict__'])
+        return obj
+
+    return json_object
+
+
+class JSONSerializer(Serializer):
+
+    encoder = ASRJSONEncoder().encode
+    decoder = json.JSONDecoder(object_hook=json_hook).decode
+    accepted_types = {dict, list, str, int, float, bool, type(None)}
+
+    def serialize(self, obj) -> str:
+        """Serialize object to JSON."""
+        return self.encoder(obj)
+
+    def deserialize(self, serialized: str) -> typing.Any:
+        """Deserialize json object."""
+        return self.decoder(serialized)
+
 
 class SingleRunFileCache():
 
-    def __init__(self, serializer: Serializer):
-        self._serializer = serializer
+    def __init__(self, serializer: Serializer = JSONSerializer()):
+        self.serializer = serializer
 
     def _name_to_results_filename(name: str, serializer: Serializer):
         return f'results-{name}.json'
@@ -314,7 +382,7 @@ class SingleRunFileCache():
             )
         name = run_record.run_specification.name
         filename = self._name_to_results_filename(name)
-        serialized_object = self.serialize(run_record)
+        serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
 
     def has(self, run_specification: RunSpecification):
@@ -325,17 +393,16 @@ class SingleRunFileCache():
     def get(self, run_specification: RunSpecification):
         name = run_specification.name
         filename = self._name_to_results_filename(name)
-        serialized_object = self._read(filename)
-        obj = self.deserialize(serialized_object)
+        serialized_object = self._read_file(filename)
+        obj = self.serializer.deserialize(serialized_object)
         return obj
 
-    def _write_file(self, filename: str, run_record: RunRecord):
-        write_file(filename, run_record.todict())
+    def _write_file(self, filename: str, text: str):
+        write_file(filename, text)
 
-    def _read_file(self, filename: str):
-        serialized_object = read_file(filename)
-        obj = self.serialize.deserialize(serialized_object)
-        return obj
+    def _read_file(self, filename: str) -> str:
+        serialized_object = Path(filename).read_text()
+        return serialized_object
 
 
 def to_json(obj):
@@ -462,7 +529,7 @@ class ASRCommand:
             module=None,
             returns=None,
             version=0,
-            cache=NoCache(),
+            cache=SingleRunFileCache(),
             dependencies=None,
             creates=None,
             requires=None,
@@ -652,10 +719,9 @@ class ASRCommand:
         parameters = Parameters(parameters=parameters)
 
         run_specification = construct_run_spec(
-            name=self.name,
+            name=obj_to_id(self.get_wrapped_function()),
             parameters=parameters,
             version=self.version,
-            function=self.get_wrapped_function(),
             # codes=self.package_dependencies,
         )
 
