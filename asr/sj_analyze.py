@@ -214,21 +214,48 @@ def plot_formation_energies(row, fname):
     energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
     plt.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
 
-    for element in sorted(transitions):
-        print(element)
-
-    for element in transitions:
-        print(element)
-        name = element
+    translist_m = []
+    translist_p = []
+    for i, element in enumerate(sorted(transitions)):
         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
+        name = element
+        if name.split('/')[0].startswith('-'):
+            translist_m.append(energy)
+        else:
+            translist_p.append(energy)
+    translist_m.append(cbm)
+    translist_p.append(vbm)
+
+    i = 0
+    j = 0
+    for element in sorted(transitions):
+        print(element, transitions)
+        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
+        name = element
+        if name.split('/')[1].startswith('0') or name.split('/')[0].startswith('0'):
+            y_1 = eform
+            y_2 = eform
+        else:
+            y_1 = None
+
+        # else:
+        #     y1 = None
         if name.split('/')[0].startswith('-'):
             a = float(name.split('/')[0])
-            b = eform - a*energy
-            plt.plot([energy, cbm], [eform, a*cbm + b], color='black')
-        else:
-            a = float(name.split('/')[1])
-            b = eform - a*energy
-            plt.plot([vbm, energy], [a*vbm + b, eform], color='black')
+            b = y_2 - a * translist_m[i]
+            if y_1 is None:
+                y_1 = a * translist_m[i] + b
+            y_2 = a * translist_m[i + 1] + b
+            plt.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black')
+            i += 1
+        # else:
+        #     a = float(name.split('/')[1])
+        #     b = y_1 - a * energy
+        #     if y_2 is None:
+        #         y_1 = a * translist_p[j] + b
+        #         y_2 = a * translist_p[j + 1] + b
+        #     plt.plot([translist_p[j + 1], energy], [y_1, y_2], color='black')
+        #     j += 1
         plt.axvline(energy, color='grey', linestyle='-.')
 
     plt.ylabel('$E_{form}$ (eV)')
