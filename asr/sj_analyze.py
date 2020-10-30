@@ -8,9 +8,12 @@ def webpanel(row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [fig('sj_transitions.png')],
+             'columns': [[fig('sj_transitions.png')],
+                         [fig('formation.png')]]
              'plot_descriptions': [{'function': plot_charge_transitions,
-                                    'filenames': ['sj_transitions.png']}],
+                                    'filenames': ['sj_transitions.png']},
+                                   {'function': plot_formation_energies,
+                                    'filenames': ['formation.png']}],
              'sort': 12}
 
     return [panel]
@@ -184,6 +187,12 @@ def plot_formation_energies(row, fname):
 
     plt.xlim(vbm - 1, cbm + 1)
     plt.plot(eform, color='black')
+
+    plt.ylabel('$E_{form}$ (eV)')
+    plt.xlabel('$E_F$ (eV)')
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
 
 
 def plot_charge_transitions(row, fname):
