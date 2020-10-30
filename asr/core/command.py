@@ -79,7 +79,8 @@ class RunSpecification:
     def __call__(
             self,
     ):
-        function = get_object_matching_obj_id(self.name)
+        obj = get_object_matching_obj_id(self.name)
+        function = obj.get_wrapped_function()
         return function(**self.parameters)
 
     # def todict(self):
@@ -725,7 +726,7 @@ class ASRCommand:
             # codes=self.package_dependencies,
         )
 
-        if self.cache.has(run_specification):
+        if False:  # self.cache.has(run_specification):
             run_record = self.cache.get(run_specification)
         else:
             # with register_sideffects(run_specification) as side_effects, \
@@ -741,7 +742,7 @@ class ASRCommand:
                 # dependencies=dependencies,
                 side_effects=side_effects,
             )
-            self.cache.add(run_record)
+            # self.cache.add(run_record)
 
         # register_dependencies.register_dep(run_record)
         return run_record
