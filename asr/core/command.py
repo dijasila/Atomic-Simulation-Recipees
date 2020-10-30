@@ -163,16 +163,14 @@ class RunRecord:
 
 
 
-def construct_workdir(run_specification: RunSpecification):
-    pass
-
-
 def register_dependencies(run_specification: RunSpecification):
     pass
 
 
+@contextlib.contextmanager
 def register_metadata(run_specification: RunSpecification):
-    pass
+    metadata = {}
+    yield metadata
 
 
 class SideEffect:
@@ -183,39 +181,71 @@ class SideEffect:
         self.hash = None
 
 
+side_effects_stack = []
+
+
 class RegisterSideEffects():
 
-    def __init__(self):
-        self.depth = 0
+    def __init__(self, run_specification, side_effects_stack=side_effects_stack):
+        self.side_effects_stack = side_effects_stack
+        self.run_specification = run_specification
+        self.side_effects = {}
 
-    @contextlib.contextmanager
-    def register_sideffects(self, run_specification: RunSpecification):
+    def __enter__(self):
         current_dir = Path().absolute()
-        if self.depth == 0:
-            self.root_dir = current_dir
+        self.side_effects_stack.append(current_dir)
+        root_dir = self.side_effects_stack[0]
         run_number = 1
         workdirformat = '.asr/{run_specification.name}{}'
-        while (self.root_dir / workdirformat.format(
+        while (root_dir / workdirformat.format(
                 run_number,
-                run_specification=run_specification)).is_dir():
+                run_specification=self.run_specification)).is_dir():
             run_number += 1
 
-        workdir = self.root_dir / workdirformat.format(
+        workdir = root_dir / workdirformat.format(
             run_number,
-            run_specification=run_specification)
+            run_specification=self.run_specification)
         side_effects = {}
         with chdir(workdir, create=True):
-            self.depth += 1
-            yield side_effects
-            self.depth -= 1
-            side_effects.update({
+            self.side_effects_stack.append(side_effects)
+            return self.side_effects
+
+    def __exit__(self, type, value, traceback):
+        self.side_effects.update(
+            {
                 path.name: str(path.absolute())
                 for path in Path().glob('*')
             }
-            )
+        )
+        self.side_effects_stack.pop()
 
 
-register_sideffects = RegisterSideEffects().register_sideffects
+    # @contextlib.contextmanager
+    # def register_sideffects(self, run_specification: RunSpecification):
+    #     current_dir = Path().absolute()
+    #     if self.depth == 0:
+    #         self.root_dir = current_dir
+    #     run_number = 1
+    #     workdirformat = '.asr/{run_specification.name}{}'
+    #     while (self.root_dir / workdirformat.format(
+    #             run_number,
+    #             run_specification=run_specification)).is_dir():
+    #         run_number += 1
+
+    #     workdir = self.root_dir / workdirformat.format(
+    #         run_number,
+    #         run_specification=run_specification)
+    #     side_effects = {}
+    #     with chdir(workdir, create=True):
+    #         self.depth += 1
+    #         yield side_effects
+    #         self.depth -= 1
+    #         side_effects.update({
+    #             path.name: str(path.absolute())
+    #             for path in Path().glob('*')
+    #         }
+    #         )
+
 
 def construct_run_record(
         run_specification: RunSpecification,
@@ -813,7 +843,7 @@ class ASRCommand:
                 # with register_sideffects(run_specification) as side_effects, \
                 #      register_dependencies(run_specification) as dependencies, \
                 #      register_metadata(run_specification) as metadata:
-                with register_sideffects(run_specification) as side_effects:
+                with RegisterSideEffects(run_specification) as side_effects:
                     result = run_specification()
 
                 run_record = construct_run_record(
