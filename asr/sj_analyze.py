@@ -1,4 +1,4 @@
-from asr.core import command  # , option
+from asr.core import command, ASRResult, prepare_result  # , option
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
@@ -8,8 +8,7 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [[fig('sj_transitions.png')]
-                         [fig('formation.png')]],
+             'columns': [fig('sj_transitions.png'), fig('formation.png')],
              'plot_descriptions': [{'function': plot_charge_transitions,
                                     'filenames': ['sj_transitions.png']},
                                    {'function': plot_formation_energies,
@@ -19,12 +18,31 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+    """Container for Slater Janak results."""
+
+    transitions: dict
+    pristine: dict
+    eform: float
+
+    key_descriptions = dict(
+        transitions='Charge transition levels with [transition energy, relax correction, reference energy] eV',
+        pristine='Pristine band edges and vacuum level [eV]',
+        eform='Neutral formation energy without chemical potentials applied [eV]')
+
+    formats = {"ase_webpanel": webpanel}
+
+
+
+
 @command(module='asr.sj_analyze',
          webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    'results-asr.setup.defects.json'],
-         resources='24:2h')
-def main():
+         resources='24:2h',
+         returns=Result)
+def main() -> Result:
     """Calculate charge transition levels for defect systems.
 
     This recipe uses SJ theory to calculate charge transition levels for defect systems.
@@ -69,7 +87,12 @@ def main():
     eform = calculate_neutral_formation_energy()
     results['eform'] = eform
 
-    return results
+    return Result.fromdata(
+            transitions=results['transitions'],
+            pristine=results['pristine'],
+            eform=eform)
+
+    #return results
 
 
 def get_pristine_band_edges():
@@ -182,8 +205,8 @@ def plot_formation_energies(row, fname):
 
     transitions = data['transitions']
 
-    plt.fill_betweex([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-    plt.fill_betweex([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+    plt.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
+    plt.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
 
     plt.xlim(vbm - 1, cbm + 1)
     plt.plot(eform, color='black')
@@ -233,6 +256,8 @@ def plot_charge_transitions(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
+
+
 
 
 if __name__ == '__main__':
