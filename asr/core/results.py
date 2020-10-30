@@ -724,15 +724,15 @@ class ASRResult(object):
             },
         )
 
-    # To and from dict
-    def todict(self):
-        object_description = self.get_object_desc()
-        return object_description.todict()
+    # # To and from dict
+    # def todict(self):
+    #     object_description = self.get_object_desc()
+    #     return object_description.todict()
 
-    @classmethod
-    def fromdict(cls, dct: dict):
-        obj_desc = ObjectDescription.fromdict(dct)
-        return obj_desc.instantiate()
+    # @classmethod
+    # def fromdict(cls, dct: dict):
+    #     obj_desc = ObjectDescription.fromdict(dct)
+    #     return obj_desc.instantiate()
 
     # ---- Magic methods ----
 

@@ -1,6 +1,7 @@
 import pytest
 from pytest import approx
 from .materials import Si, Fe
+from pathlib import Path
 
 
 @pytest.mark.ci
@@ -36,6 +37,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         spy.assert_called()
 
+    assert Path('results-asr.magnetic_anisotropy@main.json').is_file()
+    assert Path('results-asr.gs@calculate.json').is_file()
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:

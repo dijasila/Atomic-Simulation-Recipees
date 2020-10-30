@@ -59,6 +59,12 @@ class Parameters:
             raise AttributeError
         return self._parameters[key]
 
+    def __str__(self):
+        return str(self._parameters)
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class RunSpecification:
 
@@ -83,11 +89,18 @@ class RunSpecification:
         function = obj.get_wrapped_function()
         return function(**self.parameters)
 
-    # def todict(self):
-    #     return {
-    #         'spec_version': self.spec_version,
-    #         **self.__dict__,
-    #     }
+    def __str__(self):
+        text = [
+            '',
+            'RunSpecification',
+            f'    name={self.name}',
+            f'    parameters={self.parameters}',
+            f'    version={self.version}',
+        ]
+        return '\n'.join(text)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class RunRecord:
@@ -121,6 +134,21 @@ class RunRecord:
     @property
     def run_specification(self):
         return self._run_specification
+
+    def __str__(self):
+        text = [
+            '',
+            'RunRecord',
+            f'    run_specification={self.run_specification}',
+            f'    parameters={self.parameters}',
+            f'    side_effects={self.side_effects}',
+            f'    result={self.result:str}',
+        ]
+        return '\n'.join(text)
+
+    def __repr__(self):
+        return self.__str__()
+
 
 
 def construct_workdir(run_specification: RunSpecification):
@@ -366,12 +394,24 @@ class JSONSerializer(Serializer):
         return self.decoder(serialized)
 
 
-class SingleRunFileCache():
+class SingleRunFileCache(AbstractCache):
 
     def __init__(self, serializer: Serializer = JSONSerializer()):
         self.serializer = serializer
+        self._cache_dir = None
+        self.depth = 0
 
-    def _name_to_results_filename(name: str, serializer: Serializer):
+    @property
+    def cache_dir(self) -> Path:
+        return self._cache_dir
+
+    @cache_dir.setter
+    def cache_dir(self, value):
+        self._cache_dir = value
+
+    @staticmethod
+    def _name_to_results_filename(name: str):
+        name = name.replace('::', '@')
         return f'results-{name}.json'
 
     def add(self, run_record: RunRecord):
@@ -399,11 +439,24 @@ class SingleRunFileCache():
         return obj
 
     def _write_file(self, filename: str, text: str):
-        write_file(filename, text)
+        write_file(self.cache_dir / filename, text)
 
     def _read_file(self, filename: str) -> str:
-        serialized_object = Path(filename).read_text()
+        serialized_object = Path(self.cache_dir / filename).read_text()
         return serialized_object
+
+    def __enter__(self):
+        """Enter context manager."""
+        if self.depth == 0:
+            self.cache_dir = Path('.').absolute()
+        self.depth += 1
+        return self
+
+    def __exit__(self, type, value, traceback):
+        """Exit context manager."""
+        self.depth -= 1
+        if self.depth == 0:
+            self.cache_dir = None
 
 
 def to_json(obj):
@@ -509,6 +562,8 @@ def argument(name, **kwargs):
     return decorator
 
 
+single_run_file_cache = SingleRunFileCache()
+
 class ASRCommand:
     """Wrapper class for constructing recipes.
 
@@ -530,7 +585,7 @@ class ASRCommand:
             module=None,
             returns=None,
             version=0,
-            cache=SingleRunFileCache(),
+            cache=single_run_file_cache,
             dependencies=None,
             creates=None,
             requires=None,
@@ -564,7 +619,6 @@ class ASRCommand:
         if returns is None:
             returns = ASRResult
         self.returns = returns
-        self.cache = cache
 
         # Figure out the parameters for this function
         if not hasattr(self._wrapped_function, '__asr_params__'):
@@ -714,8 +768,6 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        # Default Algorithm: construct_run_info | cache.get | dependencies.push | run | dependencies.pop | set_metadata | cache.add
-
         parameters = apply_defaults(self.get_signature(), *args, **kwargs)
         parameters = Parameters(parameters=parameters)
 
@@ -726,23 +778,26 @@ class ASRCommand:
             # codes=self.package_dependencies,
         )
 
-        if False:  # self.cache.has(run_specification):
-            run_record = self.cache.get(run_specification)
-        else:
-            # with register_sideffects(run_specification) as side_effects, \
-            #      register_dependencies(run_specification) as dependencies, \
-            #      register_metadata(run_specification) as metadata:
-            with register_sideffects(run_specification) as side_effects:
-                result = run_specification()
+        with self.cache as cache:
+            print('run_specification.name', run_specification.name)
+            print('    cache_dir', self.cache.cache_dir)
+            if cache.has(run_specification):
+                run_record = self.cache.get(run_specification)
+            else:
+                # with register_sideffects(run_specification) as side_effects, \
+                #      register_dependencies(run_specification) as dependencies, \
+                #      register_metadata(run_specification) as metadata:
+                with register_sideffects(run_specification) as side_effects:
+                    result = run_specification()
 
-            run_record = construct_run_record(
-                run_specification=run_specification,
-                result=result,
-                # metadata=metadata,
-                # dependencies=dependencies,
-                side_effects=side_effects,
-            )
-            # self.cache.add(run_record)
+                run_record = construct_run_record(
+                    run_specification=run_specification,
+                    result=result,
+                    # metadata=metadata,
+                    # dependencies=dependencies,
+                    side_effects=side_effects,
+                )
+                self.cache.add(run_record)
 
         # register_dependencies.register_dep(run_record)
         return run_record
