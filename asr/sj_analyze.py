@@ -208,8 +208,28 @@ def plot_formation_energies(row, fname):
     plt.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
     plt.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
 
-    plt.xlim(vbm - 1, cbm + 1)
-    plt.plot(eform, color='black')
+    plt.xlim(vbm - (0.1*(cbm - vbm)), cbm + (0.1*(cbm - vbm)))
+    plt.ylim(-1, eform + 0.1*eform)
+    energy_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
+    energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
+    plt.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
+
+    for element in sorted(transitions):
+        print(element)
+
+    for element in transitions:
+        print(element)
+        name = element
+        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
+        if name.split('/')[0].startswith('-'):
+            a = float(name.split('/')[0])
+            b = eform - a*energy
+            plt.plot([energy, cbm], [eform, a*cbm + b], color='black')
+        else:
+            a = float(name.split('/')[1])
+            b = eform - a*energy
+            plt.plot([vbm, energy], [a*vbm + b, eform], color='black')
+        plt.axvline(energy, color='grey', linestyle='-.')
 
     plt.ylabel('$E_{form}$ (eV)')
     plt.xlabel('$E_F$ (eV)')
