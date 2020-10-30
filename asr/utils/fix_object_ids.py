@@ -1,6 +1,6 @@
 from pathlib import Path
 from asr.core import read_file, decode_json, dct_to_result, write_file
-from asr.core.results import ModuleNameIsMain, UnknownDataFormat
+from asr.core.results import ModuleNameIsCorrupt, UnknownDataFormat
 import copy
 from typing import List
 import click
@@ -50,7 +50,7 @@ def _fix_folders(folders):
             filename = path.name
             try:
                 dct_to_result(dct)
-            except ModuleNameIsMain:
+            except ModuleNameIsCorrupt:
                 dct = fix_object_id(filename, dct)
                 result = dct_to_result(dct)
                 print(f'Fixing bad file: {filename}')
