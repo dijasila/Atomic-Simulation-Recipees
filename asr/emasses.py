@@ -1,5 +1,5 @@
 """Effective masses."""
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.core import command, option, DictStr, ASRResult
 
 
 class NoGapError(Exception):
@@ -652,7 +652,6 @@ def check_soc(spin_band_dict):
     return True
 
 
-@prepare_result
 class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
@@ -910,7 +909,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
         theta, phi = get_spin_axis()
-        e_km, _, s_kvm = calc2eigs(calc_serial, [0], soc=soc, return_spin=True,
+        e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]

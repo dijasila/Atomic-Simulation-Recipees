@@ -1,6 +1,6 @@
 from pathlib import Path
-from asr.core import read_file, decode_json, dct_to_object, write_file
-from asr.core.results import ModuleNameIsMain
+from asr.core import read_file, decode_json, dct_to_result, write_file
+from asr.core.results import ModuleNameIsCorrupt, UnknownDataFormat
 import copy
 from typing import List
 import click
@@ -15,10 +15,17 @@ def extract_recipe_from_filename(filename: str):
 
 
 def fix_object_id(filename: str, dct: dict):
-    print(f'Fixing bad file: {filename}')
 
     assert filename.startswith('results-asr.')
     assert filename.endswith('.json')
+    for key, value in dct.items():
+        if isinstance(value, dict):
+            value = fix_object_id(filename, value)
+            dct[key] = value
+
+    if 'object_id' not in dct:
+        return dct
+
     recipename = extract_recipe_from_filename(filename)
     if '@' in recipename:
         recipemodule = recipename.split('@')[0]
@@ -36,17 +43,33 @@ def fix_object_id(filename: str, dct: dict):
 def _fix_folders(folders):
     for folder in folders:
         folder = Path(folder).absolute()
-
+        print(f'Checking folder={folder}')
         for path in folder.glob('results-*.json'):
             text = read_file(path)
             dct = decode_json(text)
+            filename = path.name
             try:
-                dct_to_object(dct)
-            except ModuleNameIsMain:
-                dct = fix_object_id(path.name, dct)
-                result = dct_to_object(dct)
+                dct_to_result(dct)
+            except ModuleNameIsCorrupt:
+                dct = fix_object_id(filename, dct)
+                result = dct_to_result(dct)
+                print(f'Fixing bad file: {filename}')
                 json_string = result.format_as('json')
                 write_file(path, json_string)
+            except UnknownDataFormat:
+                # Assume that we have to insert __asr_name__
+                # since this is a _very_ old results file.
+                recipename = extract_recipe_from_filename(filename)
+                dct['__asr_name__'] = recipename
+                try:
+                    result = dct_to_result(dct)
+                    print(f'Fixing missing __asr_name__ in file: {filename}')
+                    json_string = result.format_as('json')
+                    write_file(path, json_string)
+                except Exception:
+                    print(
+                        'Located problematic results file that '
+                        f'could not be fixed: {path}')
 
 
 @click.command()
