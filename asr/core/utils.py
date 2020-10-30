@@ -102,10 +102,19 @@ def dct_to_object(dct):
         return dct
 
 
+def read_file(filename: str) -> str:
+    return Path(filename).read_text()
+
+
+def decode_json(text: str) -> dict:
+    dct = jsonio.decode(text)
+    return dct
+
+
 def read_json(filename):
     """Read json file."""
-    from pathlib import Path
-    dct = jsonio.decode(Path(filename).read_text())
+    text = read_file(filename)
+    dct = decode_json(text)
     obj = dct_to_object(dct)
     return obj
 

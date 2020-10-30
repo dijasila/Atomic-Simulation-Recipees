@@ -106,7 +106,26 @@ def get_reader_function(dct):
     elif '__asr_hacked__' in dct:
         reader_function = read_hacked_data
     else:
-        raise UnknownDataFormat(f'Bad data={dct}')
+        raise UnknownDataFormat(f"""
+
+        Error when reading results file. The file contains the
+        following data keys
+
+            data_keys={dct.keys()}
+
+        from which the data format could not be deduced.  If you
+        suspect the reason is that the data is very old, it is
+        possible that this could be fixed by running:
+
+            $ python -m asr.utils.fix_object_ids folder1/ folder2/ ...
+
+        where folder1 and folder2 are folders containing 'problematic'
+        result files. If you have multiple folders that contains
+        problematic files you can similarly to something like:
+
+            $ python -m asr.utils.fix_object_ids */
+
+        """)
     return reader_function
 
 
@@ -131,10 +150,26 @@ def find_class_matching_version(returns, version):
     return returns
 
 
-def get_object_matching_obj_id(asr_obj_id):
-    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
+class ModuleNameIsCorrupt(Exception):
 
+    pass
+
+
+def get_object_matching_obj_id(asr_obj_id):
     module, name = asr_obj_id.split('::')
+    if module in {'None.None', '__main__'}:
+        raise ModuleNameIsCorrupt(
+            """
+            There is a problem with your result objectid module name={module}. '
+            This is a known bug. To fix the faulty result '
+            files please run: '
+            "python -m asr.utils.fix_object_ids folder1/ '
+            folder2/ ..." '
+            where folder1 and folder2 are folders containing '
+            problematic result files.'"""
+        )
+
+    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
     cls = getattr(mod, name)
 
@@ -483,7 +518,20 @@ def obj_to_id(cls):
     the correspinding string would be 'asr.core.results::ASRResult'.
 
     """
-    return f'{cls.__module__}::{cls.__name__}'
+    module = inspect.getmodule(cls)
+    path = module.__file__
+    package = module.__package__
+    assert package is not None, \
+        ('Something went wrong in package identification.'
+         'Please contact developer.')
+    modulename = inspect.getmodulename(path)
+    objname = cls.__name__
+
+    assert modulename != '__main__', \
+        ('Something went wrong in module name identification. '
+         'Please contact developer.')
+
+    return f'{package}.{modulename}::{objname}'
 
 
 class ObjectDescription:
