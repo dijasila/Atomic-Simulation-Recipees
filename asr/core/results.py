@@ -143,21 +143,24 @@ def find_class_matching_version(returns, version):
     return returns
 
 
-class ModuleNameIsMain(Exception):
+class ModuleNameIsCorrupt(Exception):
 
     pass
 
 
 def get_object_matching_obj_id(asr_obj_id):
     module, name = asr_obj_id.split('::')
-    if module == '__main__':
-        raise ModuleNameIsMain('There is a problem with your result objectid. '
-                               'This is a known bug. To fix the faulty result '
-                               'files please run: '
-                               '"python -m asr.utils.fix_object_ids folder1/ '
-                               'folder2/ ..." '
-                               'where folder1 and folder2 are folders containing '
-                               'problematic result files.')
+    if module in {'None.None', '__main__'}:
+        raise ModuleNameIsCorrupt(
+            """
+            There is a problem with your result objectid module name={module}. '
+            This is a known bug. To fix the faulty result '
+            files please run: '
+            "python -m asr.utils.fix_object_ids folder1/ '
+            folder2/ ..." '
+            where folder1 and folder2 are folders containing '
+            problematic result files.'"""
+        )
 
     assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
