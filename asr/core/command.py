@@ -113,11 +113,13 @@ class RunRecord:
             result: typing.Any,
             # metadata: MetaData,
             side_effects: 'SideEffects',
+            record_id: typing.Optional[str] = None,
             # dependencies: Dependencies,
     ):
         self._run_specification = run_specification
         self._result = result
         self._side_effects = side_effects
+        self._record_id = record_id
 
     @property
     def result(self):
@@ -135,6 +137,15 @@ class RunRecord:
     def run_specification(self):
         return self._run_specification
 
+    @property
+    def record_id(self):
+        return self._record_id
+
+    @record_id.setter
+    def record_id(self, value):
+        assert self.record_id is None, 'Record id was already set.'
+        self._record_id = value
+
     def __str__(self):
         text = [
             '',
@@ -143,6 +154,7 @@ class RunRecord:
             f'    parameters={self.parameters}',
             f'    side_effects={self.side_effects}',
             f'    result={self.result:str}',
+            f'    record_id={self.record_id}',
         ]
         return '\n'.join(text)
 
@@ -171,23 +183,39 @@ class SideEffect:
         self.hash = None
 
 
-@contextlib.contextmanager
-def register_sideffects(run_specification: RunSpecification):
+class RegisterSideEffects():
 
-    run_number = 1
-    current_dir = Path().absolute()
-    workdir = Path(f'.asr/workdir{run_number}')
-    side_effects = {}
+    def __init__(self):
+        self.depth = 0
 
-    with chdir(workdir, create=True):
-        yield side_effects
-        side_effects.update({
-            path.name: str(path.absolute().relative_to(current_dir))
-            for path in Path().glob('*')
+    @contextlib.contextmanager
+    def register_sideffects(self, run_specification: RunSpecification):
+        current_dir = Path().absolute()
+        if self.depth == 0:
+            self.root_dir = current_dir
+        run_number = 1
+        workdirformat = '.asr/{run_specification.name}{}'
+        while (self.root_dir / workdirformat.format(
+                run_number,
+                run_specification=run_specification)).is_dir():
+            run_number += 1
+
+        workdir = self.root_dir / workdirformat.format(
+            run_number,
+            run_specification=run_specification)
+        side_effects = {}
+        with chdir(workdir, create=True):
+            self.depth += 1
+            yield side_effects
+            self.depth -= 1
+            side_effects.update({
+                path.name: str(path.absolute())
+                for path in Path().glob('*')
             }
-        )
+            )
 
 
+register_sideffects = RegisterSideEffects().register_sideffects
 
 def construct_run_record(
         run_specification: RunSpecification,
@@ -411,7 +439,7 @@ class SingleRunFileCache(AbstractCache):
 
     @staticmethod
     def _name_to_results_filename(name: str):
-        name = name.replace('::', '@')
+        name = name.replace('::', '@').replace('@main', '')
         return f'results-{name}.json'
 
     def add(self, run_record: RunRecord):
@@ -429,7 +457,7 @@ class SingleRunFileCache(AbstractCache):
     def has(self, run_specification: RunSpecification):
         name = run_specification.name
         filename = self._name_to_results_filename(name)
-        return Path(filename).is_file()
+        return (self.cache_dir / filename).is_file()
 
     def get(self, run_specification: RunSpecification):
         name = run_specification.name
@@ -779,8 +807,6 @@ class ASRCommand:
         )
 
         with self.cache as cache:
-            print('run_specification.name', run_specification.name)
-            print('    cache_dir', self.cache.cache_dir)
             if cache.has(run_specification):
                 run_record = self.cache.get(run_specification)
             else:

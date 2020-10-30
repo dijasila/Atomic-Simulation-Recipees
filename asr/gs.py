@@ -454,7 +454,6 @@ def main(atoms: Atoms) -> Result:
     calculaterecord = calculate(atoms=atoms)
 
     # Just some quality control before we start
-    atoms = calculaterecord.parameters.atoms
     calc = get_calculator()(
         calculaterecord.side_effects['gs.gpw'],
         txt=None,

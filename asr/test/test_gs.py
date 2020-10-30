@@ -20,7 +20,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
     gpaw.GPAW._get_band_gap.return_value = gap
 
-    calculate(
+    calculaterecord = calculate(
         atoms=test_material,
         calculator={
             "name": "gpaw",
@@ -30,14 +30,17 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 
     record = main(atoms=test_material)
     results = record.result
-    gs = read_json(record.side_effects['gs.gpw'])
+    assert 'gs.gpw' in calculaterecord.side_effects
+    gsfile = calculaterecord.side_effects['gs.gpw']
+    assert Path(gsfile).is_file()
+    gs = read_json(gsfile)
     gs['atoms'].has('initial_magmoms')
     if test_material.has('initial_magmoms'):
         spy.assert_not_called()
     else:
         spy.assert_called()
 
-    assert Path('results-asr.magnetic_anisotropy@main.json').is_file()
+    assert Path('results-asr.magnetic_anisotropy.json').is_file()
     assert Path('results-asr.gs@calculate.json').is_file()
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
@@ -106,6 +109,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from asr.core.material import (get_material_from_folder,
                                    make_panel_figures)
     atoms = std_test_materials[0]
+    atoms.write('structure.json')
 
     main(atoms=atoms)
     material = get_material_from_folder()
