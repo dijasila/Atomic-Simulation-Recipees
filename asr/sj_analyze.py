@@ -4,12 +4,12 @@ from ase.io import Trajectory
 from gpaw import restart
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [[fig('sj_transitions.png')],
-                         [fig('formation.png')]]
+             'columns': [[fig('sj_transitions.png')]
+                         [fig('formation.png')]],
              'plot_descriptions': [{'function': plot_charge_transitions,
                                     'filenames': ['sj_transitions.png']},
                                    {'function': plot_formation_energies,
