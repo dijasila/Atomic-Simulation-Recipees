@@ -220,33 +220,6 @@ class RegisterSideEffects():
         self.side_effects_stack.pop()
 
 
-    # @contextlib.contextmanager
-    # def register_sideffects(self, run_specification: RunSpecification):
-    #     current_dir = Path().absolute()
-    #     if self.depth == 0:
-    #         self.root_dir = current_dir
-    #     run_number = 1
-    #     workdirformat = '.asr/{run_specification.name}{}'
-    #     while (self.root_dir / workdirformat.format(
-    #             run_number,
-    #             run_specification=run_specification)).is_dir():
-    #         run_number += 1
-
-    #     workdir = self.root_dir / workdirformat.format(
-    #         run_number,
-    #         run_specification=run_specification)
-    #     side_effects = {}
-    #     with chdir(workdir, create=True):
-    #         self.depth += 1
-    #         yield side_effects
-    #         self.depth -= 1
-    #         side_effects.update({
-    #             path.name: str(path.absolute())
-    #             for path in Path().glob('*')
-    #         }
-    #         )
-
-
 def construct_run_record(
         run_specification: RunSpecification,
         result: typing.Any,
