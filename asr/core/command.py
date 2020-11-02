@@ -181,38 +181,65 @@ side_effects_stack = []
 
 class RegisterSideEffects():
 
-    def __init__(self, run_specification, side_effects_stack=side_effects_stack):
+    def __init__(self, side_effects_stack=side_effects_stack):
         self.side_effects_stack = side_effects_stack
-        self.run_specification = run_specification
-        self.side_effects = {}
+        self._root_dir = None
 
-    def __enter__(self):
-        current_dir = Path().absolute()
-        self.side_effects_stack.append(current_dir)
-        root_dir = self.side_effects_stack[0]
+    def get_workdir_name(self, root_dir, run_specification: RunSpecification) -> Path:
         run_number = 1
         workdirformat = '.asr/{run_specification.name}{}'
         while (root_dir / workdirformat.format(
                 run_number,
-                run_specification=self.run_specification)).is_dir():
+                run_specification=run_specification)).is_dir():
             run_number += 1
 
         workdir = root_dir / workdirformat.format(
             run_number,
-            run_specification=self.run_specification)
+            run_specification=run_specification)
+
+        return workdir
+
+    def __enter__(self):
+        """Append empty side effect object to stack."""
         side_effects = {}
-        with chdir(workdir, create=True):
-            self.side_effects_stack.append(side_effects)
-            return self.side_effects
+        self.side_effects_stack.append(side_effects)
+        return side_effects
 
     def __exit__(self, type, value, traceback):
-        self.side_effects.update(
+        """Register side effects and pop side effects from stack."""
+        side_effects = self.side_effects_stack[-1]
+        side_effects.update(
             {
                 path.name: str(path.absolute())
                 for path in Path().glob('*')
             }
         )
         self.side_effects_stack.pop()
+
+    def make_decorator(self, run_specification):
+
+        def decorator(func):
+            def wrapped(*args, **kwargs):
+                current_dir = Path().absolute()
+                if self._root_dir is None:
+                    self._root_dir = current_dir
+
+                workdir = self.get_workdir_name(self._root_dir, run_specification)
+                side_effects = {}
+                with chdir(workdir, create=True):
+                    with self as side_effects:
+                        result = func(*args, **kwargs)
+                        result = {'side_effects': side_effects, **result}
+
+                if not self.side_effects_stack:
+                    self._root_dir = None
+                return result
+            return wrapped
+
+        return decorator
+
+    def __call__(self, run_specification):
+        return self.make_decorator(run_specification)
 
 
 def construct_run_record(
@@ -495,7 +522,7 @@ class SingleRunFileCache(AbstractCache):
                     else:
                         run_data = func(*args, **kwargs)
                         run_record = construct_run_record(**run_data)
-
+                        self.add(run_record)
                 return run_record
             return wrapped
         return wrapper
@@ -656,19 +683,21 @@ register_dependencies = RegisterDependencies()
 #     return wrapper
 
 
-def register_side_effects(run_specification: RunSpecification):
+register_side_effects = RegisterSideEffects()
 
-    def wrapper(func):
+# def register_side_effects(run_specification: RunSpecification):
 
-        def wrapped(*args, **kwargs):
-            with RegisterSideEffects(run_specification) as side_effects:
-                result = func(*args, **kwargs)
-            result = {'side_effects': side_effects, **result}
-            return result
+#     def wrapper(func):
 
-        return wrapped
+#         def wrapped(*args, **kwargs):
+#             with RegisterSideEffects(run_specification) as side_effects:
+#                 result = func(*args, **kwargs)
+#             result = {'side_effects': side_effects, **result}
+#             return result
 
-    return wrapper
+#         return wrapped
+
+#     return wrapper
 
 
 def register_run_spec(run_specification):
@@ -906,9 +935,10 @@ class ASRCommand:
         #         run_record = self.cache.get(run_specification)
         #     else:
         cache = self.cache
-        @emit_dependency(run_specification)
-        @check_cache(run_specification)
-        @register_dependencies(run_specification)
+
+        # @emit_dependency(run_specification)
+        @cache(run_specification)
+        # @register_dependencies(run_specification)
         @register_side_effects(run_specification)
         @register_run_spec(run_specification)
         # @register_metadata(run_specification)
@@ -916,11 +946,10 @@ class ASRCommand:
             result = run_specification()
             return {'result': result}
 
-        run_data = execute_run_spec()
-        run_record = construct_run_record(**run_data)
-        cache_id = self.cache.add(run_record)
-
-        register_dependencies.register_dep(run_record)
+        run_record = execute_run_spec()
+        # run_record = construct_run_record(**run_data)
+        # cache_id = self.cache.add(run_record)
+        # register_dependencies.register_dep(run_record)
         return run_record
 
 
