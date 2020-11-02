@@ -593,6 +593,35 @@ def argument(name, **kwargs):
     return decorator
 
 
+def register_side_effects(run_specification):
+
+    def wrapper(func):
+
+        def wrapped(*args, **kwargs):
+            with RegisterSideEffects(run_specification) as side_effects:
+                result = func(*args, **kwargs)
+            result = {'side_effects': side_effects, **result}
+            return result
+
+        return wrapped
+
+    return wrapper
+
+
+def register_run_spec(run_specification):
+
+    def wrapper(func):
+
+        def wrapped(*args, **kwargs):
+            result = func(*args, **kwargs)
+            result = {'run_specification': run_specification, **result}
+            return result
+
+        return wrapped
+
+    return wrapper
+
+
 single_run_file_cache = SingleRunFileCache()
 
 class ASRCommand:
@@ -813,19 +842,16 @@ class ASRCommand:
             if cache.has(run_specification):
                 run_record = self.cache.get(run_specification)
             else:
-                # with register_sideffects(run_specification) as side_effects, \
-                #      register_dependencies(run_specification) as dependencies, \
-                #      register_metadata(run_specification) as metadata:
-                with RegisterSideEffects(run_specification) as side_effects:
+                # @register_dependencies(run_specification)
+                @register_side_effects(run_specification)
+                @register_run_spec(run_specification)
+                # @register_metadata(run_specification)
+                def execute_run_spec():
                     result = run_specification()
+                    return {'result': result}
 
-                run_record = construct_run_record(
-                    run_specification=run_specification,
-                    result=result,
-                    # metadata=metadata,
-                    # dependencies=dependencies,
-                    side_effects=side_effects,
-                )
+                run_data = execute_run_spec()
+                run_record = construct_run_record(**run_data)
                 self.cache.add(run_record)
 
         # register_dependencies.register_dep(run_record)
