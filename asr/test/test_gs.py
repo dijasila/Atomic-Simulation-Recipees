@@ -31,6 +31,9 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     record = main(atoms=test_material)
     results = record.result
     assert 'gs.gpw' in calculaterecord.side_effects
+    dependencies = record.dependencies
+    assert (['results-asr.gs@calculate.json', 'results-asr.magnetic_anisotropy.json']
+            == dependencies)
     gsfile = calculaterecord.side_effects['gs.gpw']
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)

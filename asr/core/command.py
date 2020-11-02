@@ -113,13 +113,14 @@ class RunRecord:
             result: typing.Any,
             # metadata: MetaData,
             side_effects: 'SideEffects',
-            record_id: typing.Optional[str] = None,
-            # dependencies: Dependencies,
+            dependencies: 'Dependencies',
+            id: typing.Optional[typing.Union[str, int]] = None,
     ):
         self._run_specification = run_specification
         self._result = result
         self._side_effects = side_effects
-        self._record_id = record_id
+        self._dependencies = dependencies
+        self._record_id = id
 
     @property
     def result(self):
@@ -134,16 +135,20 @@ class RunRecord:
         return self._side_effects
 
     @property
+    def dependencies(self):
+        return self._dependencies
+
+    @property
     def run_specification(self):
         return self._run_specification
 
     @property
-    def record_id(self):
+    def id(self):
         return self._record_id
 
-    @record_id.setter
-    def record_id(self, value):
-        assert self.record_id is None, 'Record id was already set.'
+    @id.setter
+    def id(self, value):
+        assert self.id is None, 'Record id was already set.'
         self._record_id = value
 
     def __str__(self):
@@ -246,10 +251,12 @@ def construct_run_record(
         run_specification: RunSpecification,
         result: typing.Any,
         side_effects: typing.Dict[str, str],
+        dependencies: typing.List[typing.Union[str, int]],
 ):
     return RunRecord(run_specification,
                      result=result,
-                     side_effects=side_effects)
+                     side_effects=side_effects,
+                     dependencies=dependencies)
 
 
 # class Code:
@@ -476,8 +483,10 @@ class SingleRunFileCache(AbstractCache):
             )
         name = run_record.run_specification.name
         filename = self._name_to_results_filename(name)
+        run_record.id = filename
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
+        return run_record.id
 
     def has(self, run_specification: RunSpecification):
         name = run_specification.name
@@ -662,6 +671,18 @@ class RegisterDependencies:
                 return result
             return wrapped
         return wrapper
+
+    def register(self, func):
+        """Register dependency."""
+        def wrapped(*args, **kwargs):
+            run_record = func(*args, **kwargs)
+            if self.dependency_stack:
+                dependencies = self.dependency_stack[-1]
+                if run_record.id not in dependencies:
+                    dependencies.append(run_record.id)
+
+            return run_record
+        return wrapped
 
 
 register_dependencies = RegisterDependencies()
@@ -930,15 +951,11 @@ class ASRCommand:
             # codes=self.package_dependencies,
         )
 
-        # with self.cache as cache:
-        #     if cache.has(run_specification):
-        #         run_record = self.cache.get(run_specification)
-        #     else:
         cache = self.cache
 
-        # @emit_dependency(run_specification)
+        @register_dependencies.register
         @cache(run_specification)
-        # @register_dependencies(run_specification)
+        @register_dependencies(run_specification)
         @register_side_effects(run_specification)
         @register_run_spec(run_specification)
         # @register_metadata(run_specification)
@@ -947,9 +964,6 @@ class ASRCommand:
             return {'result': result}
 
         run_record = execute_run_spec()
-        # run_record = construct_run_record(**run_data)
-        # cache_id = self.cache.add(run_record)
-        # register_dependencies.register_dep(run_record)
         return run_record
 
 
