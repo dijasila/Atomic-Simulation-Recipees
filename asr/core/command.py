@@ -20,7 +20,7 @@ import typing
 # import atexit
 import click
 import copy
-# import time
+import time
 from importlib import import_module
 from pathlib import Path
 import inspect
@@ -123,7 +123,7 @@ class RunRecord:
             self,
             result: typing.Any,
             run_specification: RunSpecification = None,
-            # metadata: MetaData = None,
+            resources: 'Resources' = None,
             side_effects: 'SideEffects' = None,
             dependencies: 'Dependencies' = None,
             id: typing.Optional[typing.Union[str, int]] = None,
@@ -131,6 +131,7 @@ class RunRecord:
         self.data = dict(
             run_specification=run_specification,
             result=result,
+            resources=resources,
             side_effects=side_effects,
             dependencies=dependencies,
             id=id)
@@ -140,6 +141,7 @@ class RunRecord:
     dependencies = make_property('dependencies')
     id = make_property('id')
     run_specification = make_property('run_specification')
+    resources = make_property('resources')
 
     @property
     def parameters(self):
@@ -161,10 +163,52 @@ class RunRecord:
         return self.__str__()
 
 
+class Resources:
+
+    def __init__(
+            self,
+            execution_start: float = None,
+            execution_end: float = None,
+            execution_duration: float = None,
+            ncores: int = None
+    ):
+        self.data = dict(
+            execution_start=execution_start,
+            execution_end=execution_end,
+            execution_duration=execution_duration,
+            ncores=ncores)
+
+    execution_start = make_property('execution_start')
+    execution_end = make_property('execution_end')
+    execution_duration = make_property('execution_duration')
+    ncores = make_property('ncores')
+
+
 @contextlib.contextmanager
-def register_metadata(run_specification: RunSpecification):
-    metadata = {}
-    yield metadata
+def _register_resources(run_specification: RunSpecification):
+    from ase.parallel import world
+    execution_start = time.time()
+    resources = Resources()
+    yield resources
+    execution_end = time.time()
+    resources.execution_start = execution_start
+    resources.execution_end = execution_end
+    resources.execution_duration = execution_end - execution_start
+    resources.ncores = world.size
+
+
+def register_resources(run_specification: RunSpecification):
+
+    def wrapper(func):
+
+        def wrapped(*args, **kwargs):
+
+            with _register_resources(run_specification) as resources:
+                run_record = func(*args, **kwargs)
+            run_record.resources = resources
+            return run_record
+        return wrapped
+    return wrapper
 
 
 class SideEffect:
@@ -941,7 +985,7 @@ class ASRCommand:
         @register_dependencies(run_specification)
         @register_side_effects(run_specification)
         @register_run_spec(run_specification)
-        # @register_metadata(run_specification)
+        @register_resources(run_specification)
         def execute_run_spec():
             result = run_specification()
             run_record = RunRecord(result=result)
