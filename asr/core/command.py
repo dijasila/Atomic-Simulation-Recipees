@@ -162,11 +162,6 @@ class RunRecord:
         return self.__str__()
 
 
-
-def register_dependencies(run_specification: RunSpecification):
-    pass
-
-
 @contextlib.contextmanager
 def register_metadata(run_specification: RunSpecification):
     metadata = {}
@@ -489,6 +484,22 @@ class SingleRunFileCache(AbstractCache):
         if self.depth == 0:
             self.cache_dir = None
 
+    def __call__(self, run_specification: RunSpecification):
+
+        def wrapper(func):
+
+            def wrapped(*args, **kwargs):
+                with self:
+                    if self.has(run_specification):
+                        run_record = self.get(run_specification)
+                    else:
+                        run_data = func(*args, **kwargs)
+                        run_record = construct_run_record(**run_data)
+
+                return run_record
+            return wrapped
+        return wrapper
+
 
 def to_json(obj):
     """Write an object to a json file."""
@@ -593,7 +604,59 @@ def argument(name, **kwargs):
     return decorator
 
 
-def register_side_effects(run_specification):
+dependency_stack = []
+
+
+class RegisterDependencies:
+
+    def __init__(self, dependency_stack=dependency_stack):
+        self.dependency_stack = dependency_stack
+
+    def __enter__(self):
+        """Add frame to dependency stack."""
+        dependencies = []
+        self.dependency_stack.append(dependencies)
+        return dependencies
+
+    def __exit__(self, type, value, traceback):
+        """Pop frame of dependency stack."""
+        self.dependency_stack.pop()
+
+    def __call__(self, run_specification: RunSpecification):
+
+        def wrapper(func):
+
+            def wrapped(*args, **kwargs):
+
+                with self as dependencies:
+                    result = func(*args, **kwargs)
+                result = {'dependencies': dependencies, **result}
+
+                return result
+            return wrapped
+        return wrapper
+
+
+register_dependencies = RegisterDependencies()
+
+
+# def register_dependencies(run_specification: RunSpecification):
+#     """Register dependencies."""
+
+#     def wrapper(func):
+
+#         def wrapped(*args, **kwargs):
+
+#             with RegisterDependencies(run_specification) as dependencies:
+#                 result = func(*args, **kwargs)
+#             result = {'dependencies': dependencies, **result}
+
+#             return result
+#         return wrapped
+#     return wrapper
+
+
+def register_side_effects(run_specification: RunSpecification):
 
     def wrapper(func):
 
@@ -838,23 +901,26 @@ class ASRCommand:
             # codes=self.package_dependencies,
         )
 
-        with self.cache as cache:
-            if cache.has(run_specification):
-                run_record = self.cache.get(run_specification)
-            else:
-                # @register_dependencies(run_specification)
-                @register_side_effects(run_specification)
-                @register_run_spec(run_specification)
-                # @register_metadata(run_specification)
-                def execute_run_spec():
-                    result = run_specification()
-                    return {'result': result}
+        # with self.cache as cache:
+        #     if cache.has(run_specification):
+        #         run_record = self.cache.get(run_specification)
+        #     else:
+        cache = self.cache
+        @emit_dependency(run_specification)
+        @check_cache(run_specification)
+        @register_dependencies(run_specification)
+        @register_side_effects(run_specification)
+        @register_run_spec(run_specification)
+        # @register_metadata(run_specification)
+        def execute_run_spec():
+            result = run_specification()
+            return {'result': result}
 
-                run_data = execute_run_spec()
-                run_record = construct_run_record(**run_data)
-                self.cache.add(run_record)
+        run_data = execute_run_spec()
+        run_record = construct_run_record(**run_data)
+        cache_id = self.cache.add(run_record)
 
-        # register_dependencies.register_dep(run_record)
+        register_dependencies.register_dep(run_record)
         return run_record
 
 
