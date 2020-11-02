@@ -205,14 +205,17 @@ def plot_formation_energies(row, fname):
 
     transitions = data['transitions']
 
-    plt.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-    plt.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+    fig, ax1 = plt.subplots()
+
+    ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
+    ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+    ax1.axhline(0, color='black', linestyle='dotted')
 
     plt.xlim(vbm - (0.1*(cbm - vbm)), cbm + (0.1*(cbm - vbm)))
     plt.ylim(-1, eform + 0.1*eform)
     energy_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
     energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
-    plt.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
+    ax1.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
 
     translist_m = []
     translist_p = []
@@ -226,8 +229,12 @@ def plot_formation_energies(row, fname):
     translist_m.append(cbm)
     translist_p.append(vbm)
 
+    ax2 = ax1.twiny()
+
     i = 0
     j = 0
+    enlist = []
+    tickslist = []
     for element in sorted(transitions):
         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
         name = element
@@ -237,14 +244,16 @@ def plot_formation_energies(row, fname):
         else:
             y_1 = None
         if name.split('/')[0].startswith('-'):
+            enlist.append(energy)
+            tickslist.append(name)
             a = float(name.split('/')[0])
             b = y_2 - a * translist_m[i]
             if y_1 is None:
                 y_1 = a * translist_m[i] + b
             y_2 = a * translist_m[i + 1] + b
-            plt.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black')
+            ax1.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black')
             i += 1
-        plt.axvline(energy, color='grey', linestyle='-.')
+        ax1.axvline(energy, color='grey', linestyle='-.')
     for element in sorted(transitions):
         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
         name = element
@@ -254,6 +263,8 @@ def plot_formation_energies(row, fname):
         else:
             y_2 = None
         if not name.split('/')[0].startswith('-'):
+            enlist.append(energy)
+            tickslist.append(name)
             a = float(name.split('/')[1])
             print(a)
             b = y_1 - a * translist_p[j]
@@ -262,12 +273,15 @@ def plot_formation_energies(row, fname):
                 y_2 = a * translist_p[j] + b
             y_1 = a * (translist_p[j] - diff) + b
             print(y_1, y_2, translist_p[j], translist_p[j + 1])
-            plt.plot([translist_p[j + 1], energy], [y_1, y_2], color='black')
+            ax1.plot([translist_p[j + 1], energy], [y_1, y_2], color='black')
             j += 1
-        plt.axvline(energy, color='grey', linestyle='-.')
+        ax1.axvline(energy, color='grey', linestyle='-.')
 
-    plt.ylabel('$E_{form}$ (eV)')
-    plt.xlabel('$E_F$ (eV)')
+    ax1.set_ylabel('$E_{form}$ (eV)')
+    ax1.set_xlabel('$E_F$ (eV)')
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(enlist)
+    ax2.set_xticklabels(tickslist)
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
