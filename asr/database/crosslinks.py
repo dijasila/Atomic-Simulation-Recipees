@@ -27,7 +27,8 @@ def main(databaselink: str,
         for i, refrow in enumerate(link_db.select()):
             linklist = []
             urllist = []
-            data = {}
+            data = {'links': {}}
+            refid = refrow.id
             for j, row in enumerate(database.select()):
                 if row.link_uid == refrow.link_uid:
                     name = database.metadata['internal_links']['link_name']
@@ -36,9 +37,10 @@ def main(databaselink: str,
                     link_url = eval(f"f'{url}'")
                     linklist.append(link_name)
                     urllist.append(link_url)
-            data['links'] = {f"{database.metadata['title']}": {'link_names': linklist,
-                             'link_urls': urllist}}
-            print(data)
+            data['links'][f"{database.metadata['title']}"] = {'link_names': linklist,
+                             'link_urls': urllist}
+            print(data['links'])
+            link_db.update(refid, data={f"links.{database.metadata['title']}": data['links'][f"{database.metadata['title']}"]})
         print('INFO: DONE!')
 
 
