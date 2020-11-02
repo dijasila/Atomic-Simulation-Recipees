@@ -4,6 +4,11 @@ from ase.io import Trajectory
 from gpaw import restart
 
 
+# TODO: clean up
+# TODO: add chemical potential considerations
+# TODO: add second y-axis
+# TODO: implement reduced effective charge transition levels
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
