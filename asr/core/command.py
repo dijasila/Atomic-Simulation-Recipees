@@ -103,53 +103,47 @@ class RunSpecification:
         return self.__str__()
 
 
+def make_property(name):
+
+    def get_data(self):
+        return self.data[name]
+
+    def set_data(self, value):
+        assert self.data[name] is None, f'{name} was already set.'
+        self.data[name] = value
+
+    return property(get_data, set_data)
+
+
 class RunRecord:
 
     record_version: int = 0
 
     def __init__(
             self,
-            run_specification: RunSpecification,
             result: typing.Any,
-            # metadata: MetaData,
-            side_effects: 'SideEffects',
-            dependencies: 'Dependencies',
+            run_specification: RunSpecification = None,
+            # metadata: MetaData = None,
+            side_effects: 'SideEffects' = None,
+            dependencies: 'Dependencies' = None,
             id: typing.Optional[typing.Union[str, int]] = None,
     ):
-        self._run_specification = run_specification
-        self._result = result
-        self._side_effects = side_effects
-        self._dependencies = dependencies
-        self._record_id = id
+        self.data = dict(
+            run_specification=run_specification,
+            result=result,
+            side_effects=side_effects,
+            dependencies=dependencies,
+            id=id)
 
-    @property
-    def result(self):
-        return self._result
+    result = make_property('result')
+    side_effects = make_property('side_effects')
+    dependencies = make_property('dependencies')
+    id = make_property('id')
+    run_specification = make_property('run_specification')
 
     @property
     def parameters(self):
-        return self._run_specification.parameters
-
-    @property
-    def side_effects(self):
-        return self._side_effects
-
-    @property
-    def dependencies(self):
-        return self._dependencies
-
-    @property
-    def run_specification(self):
-        return self._run_specification
-
-    @property
-    def id(self):
-        return self._record_id
-
-    @id.setter
-    def id(self, value):
-        assert self.id is None, 'Record id was already set.'
-        self._record_id = value
+        return self.data['run_specification'].parameters
 
     def __str__(self):
         text = [
@@ -233,30 +227,18 @@ class RegisterSideEffects():
                 side_effects = {}
                 with chdir(workdir, create=True):
                     with self as side_effects:
-                        result = func(*args, **kwargs)
-                        result = {'side_effects': side_effects, **result}
+                        run_record = func(*args, **kwargs)
+                    run_record.side_effects = side_effects
 
                 if not self.side_effects_stack:
                     self._root_dir = None
-                return result
+                return run_record
             return wrapped
 
         return decorator
 
     def __call__(self, run_specification):
         return self.make_decorator(run_specification)
-
-
-def construct_run_record(
-        run_specification: RunSpecification,
-        result: typing.Any,
-        side_effects: typing.Dict[str, str],
-        dependencies: typing.List[typing.Union[str, int]],
-):
-    return RunRecord(run_specification,
-                     result=result,
-                     side_effects=side_effects,
-                     dependencies=dependencies)
 
 
 # class Code:
@@ -529,8 +511,8 @@ class SingleRunFileCache(AbstractCache):
                     if self.has(run_specification):
                         run_record = self.get(run_specification)
                     else:
-                        run_data = func(*args, **kwargs)
-                        run_record = construct_run_record(**run_data)
+                        run_record = func(*args, **kwargs)
+                        # run_record = construct_run_record(**run_data)
                         self.add(run_record)
                 return run_record
             return wrapped
@@ -665,10 +647,10 @@ class RegisterDependencies:
             def wrapped(*args, **kwargs):
 
                 with self as dependencies:
-                    result = func(*args, **kwargs)
-                result = {'dependencies': dependencies, **result}
+                    run_record = func(*args, **kwargs)
+                run_record.dependencies = dependencies
+                return run_record
 
-                return result
             return wrapped
         return wrapper
 
@@ -726,9 +708,9 @@ def register_run_spec(run_specification):
     def wrapper(func):
 
         def wrapped(*args, **kwargs):
-            result = func(*args, **kwargs)
-            result = {'run_specification': run_specification, **result}
-            return result
+            run_record = func(*args, **kwargs)
+            run_record.run_specification = run_specification
+            return run_record
 
         return wrapped
 
@@ -736,6 +718,7 @@ def register_run_spec(run_specification):
 
 
 single_run_file_cache = SingleRunFileCache()
+
 
 class ASRCommand:
     """Wrapper class for constructing recipes.
@@ -961,7 +944,8 @@ class ASRCommand:
         # @register_metadata(run_specification)
         def execute_run_spec():
             result = run_specification()
-            return {'result': result}
+            run_record = RunRecord(result=result)
+            return run_record
 
         run_record = execute_run_spec()
         return run_record
