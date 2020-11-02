@@ -285,88 +285,40 @@ class RegisterSideEffects():
         return self.make_decorator(run_specification)
 
 
-# class Code:
-#     pass
+class Code:
+
+    def __init__(name, version):
+        pass
+
+    def from_string():
 
 
-# class Codes:
+class Codes:
 
-#     def __init__(*codes: typing.List[Code]):
-#         pass
+    def __init__(*codes: typing.List[Code]):
+        pass
 
 
 def construct_run_spec(
         name: str,
         parameters: typing.Union[dict, Parameters],
         version: int,
-        # codes: typing.Union[typing.List[str], Codes],
+        codes: typing.Union[typing.List[str], Codes],
 ) -> RunSpecification:
     """Construct a run specification."""
     if not isinstance(parameters, Parameters):
         parameters = Parameters.from_dict(**parameters)
 
-    # if not isinstance(codes, Codes):
-    #     codes = Codes.from_list(codes)
+    if not isinstance(codes, Codes):
+        codes = Codes(*(Code.from_string(code) for code in codes))
 
     return RunSpecification(
         name=name,
         parameters=parameters,
         version=version,
-        # codes=codes,
+        codes=codes,
     )
 
-
-# class ComplexRunner(SimpleRunner):
-
-#     def __init__(self, cache=None):
-
-#         self.cache = cache
-
-#     def run(self, run_info: RunInfo):
-
-#         cached_run_info = self.cache.get(run_info)
-
-#         if cached_run_info is not None:
-#             return cached_run_info
-
-#         if run_info is None:
-#             parprint(f'Running {self.name}({parameters})')
-#             run_info = self.runner(
-#                 self.get_wrapped_function(),
-#                 parameters,
-#             )
-#             cache.add(run_info)
-#         else:
-#             parprint('Returning cached result for '
-#                      f'{self.name}({parameters})')
-
-#         code_versions = self.get_code_versions(parameters=parameters)
-#         # Execute the wrapped function
-#         # Register dependencies implement stack like data structure.
-#         # We register an exit handler to handle unexpected exits.
-#         atexit.register(clean_files, files=temporary_files)
-#         with dependency_stack as my_dependencies:
-#             with CleanEnvironment(temporary_directory) as env, \
-#                  clean_files(temporary_files), \
-#                  file_barrier(created_files, delete=False):
-#                 tstart = time.time()
-#                 result = self._wrapped_function(**parameters)
-#                 tend = time.time()
-
-
-#         from ase.parallel import world
-#         metadata = dict(asr_name=self.name,
-#                         resources=dict(time=tend - tstart,
-#                                        ncores=world.size),
-#                         params=parameters,
-#                         code_versions=get_execution_info(
-#                             self.package_dependencies))
-
-#         # This is a hack and should be removed in the future
-#         # when all recipe results have been typed.
-#         if not isinstance(result, self.returns):
-#             assert isinstance(result, dict)
-#             result = self.returns(data=result)
 
 class AbstractCache(abc.ABC):
 
@@ -449,8 +401,6 @@ class ASRJSONEncoder(json.JSONEncoder):
         #     return obj
         # elif obj_type in {str, int, float, bool, type(None)}:
         #     return obj
-
-
 
 
 def json_hook(json_object: dict):
@@ -975,7 +925,7 @@ class ASRCommand:
             name=obj_to_id(self.get_wrapped_function()),
             parameters=parameters,
             version=self.version,
-            # codes=self.package_dependencies,
+            codes=self.package_dependencies,
         )
 
         cache = self.cache
