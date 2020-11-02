@@ -260,7 +260,7 @@ def plot_formation_energies(row, fname):
             diff = abs(translist_p[j] - translist_p[j + 1])
             if y_2 is None:
                 y_2 = a * translist_p[j] + b
-            y_1 = (a * translist_p[j] - diff) + b
+            y_1 = a * (translist_p[j] - diff) + b
             print(y_1, y_2, translist_p[j], translist_p[j + 1])
             plt.plot([translist_p[j + 1], energy], [y_1, y_2], color='black')
             j += 1
