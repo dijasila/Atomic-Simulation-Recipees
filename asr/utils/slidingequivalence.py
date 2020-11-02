@@ -169,3 +169,42 @@ def slide_equivalent(slide_indices: List[int],
             return True
 
     return False
+
+
+def invert(atoms, N):
+    pos = atoms.positions
+
+    mean_z = np.mean(pos[:, 2])
+
+    relative_z = pos.copy()
+    relative_z[:, 2] = relative_z[:, 2] - mean_z
+
+    inverted_z = relative_z.copy()
+    inverted_z[:, 2] *= -1
+
+    inverted_z[:, 2] += mean_z
+    assert (inverted_z[:, 2] >= 0).all()
+
+    atoms2 = atoms.copy()
+    atoms2.set_positions(inverted_z)
+
+    dvec = atoms.positions[0] - atoms2.positions[N]
+    atoms2.positions[:] += dvec
+    atoms2.wrap()
+
+    return atoms2
+
+
+def test_slide_equiv():
+    from asr.utils.bilayerutils import construct_bilayer
+    from ase.io import read
+    bottom = read("../structure.json")
+    N_mono = len(bottom)
+
+    bilayer = construct_bilayer(".")
+    inverted_bilayer = invert(bilayer, N_mono)
+
+    bs = [i < N_mono for i in range(2 * N_mono)]
+    b = slide_equivalent(bs, inverted_bilayer, bilayer)
+
+    print(f"Sliding equivalent? {b}")
