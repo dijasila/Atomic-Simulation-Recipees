@@ -20,26 +20,24 @@ def main(databases: Union[str, None] = None):
     print(f"INFO: link to the following databases:")
     for i in range(1, len(dblist)):
         print(f"..... {dblist[i].metadata['title']}")
-    for i, refrow in enumerate(dblist[0].select()):
-        linklist = []
-        urllist = []
-        data = {}
-        for j, row in enumerate(dblist[1].select()):
-            if row.link_uid == refrow.link_uid:
-                id = row.id
-                name = dblist[1].metadata['internal_links']['link_name']
-                url = dblist[1].metadata['internal_links']['link_url']
-                link_name = eval(f"f'{name}'")
-                link_url = eval(f"f'{url}'")
-                linklist.append(link_name)
-                urllist.append(link_url)
-        data['links'] = {f"{dblist[1].metadata['title']}": {'link_names': linklist,
-                         'link_urls': urllist}}
-        print(refrow.host, refrow.defect, data)
-        #print(row.host, row.defect, data)
-    links['link_db'][dblist[0].metadata['title']] = {'link_names': linklist,
-                                                     'link_urls': urllist}
-    print(links)
+    for database in dblist:
+        print(f"INFO: creating links to database {database.metadata['title']}")
+        for i, refrow in enumerate(dblist[0].select()):
+            linklist = []
+            urllist = []
+            data = {}
+            for j, row in enumerate(database.select()):
+                if row.link_uid == refrow.link_uid:
+                    name = database.metadata['internal_links']['link_name']
+                    url = database.metadata['internal_links']['link_url']
+                    link_name = eval(f"f'{name}'")
+                    link_url = eval(f"f'{url}'")
+                    linklist.append(link_name)
+                    urllist.append(link_url)
+            data['links'] = {f"{database.metadata['title']}": {'link_names': linklist,
+                             'link_urls': urllist}}
+            print(data)
+        print('INFO: DONE!')
 
 
     return None
