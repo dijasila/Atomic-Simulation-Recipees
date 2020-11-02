@@ -4,25 +4,27 @@ from ase.db import connect
 
 
 @command('asr.database.crosslinks')
+@option('--databaselink', type=str)
 @argument('databases', nargs=-1, type=str)
-def main(databases: Union[str, None] = None):
+def main(databaselink: str,
+         databases: Union[str, None] = None):
     """
     Create links between entries in given ASE databases.
     """
-    dblist = []
+    link_db = connect(databaselink)
+    dblist = [link_db]
     for element in databases:
         db = connect(element)
         dblist.append(db)
-        print(db.metadata)
 
     links = {'link_db': {}}
-    print(f"INFO: create links for webpanel of DB {dblist[0].metadata['title']}")
+    print(f"INFO: create links for webpanel of DB {link_db.metadata['title']}")
     print(f"INFO: link to the following databases:")
-    for i in range(1, len(dblist)):
+    for i in range(0, len(dblist)):
         print(f"..... {dblist[i].metadata['title']}")
     for database in dblist:
         print(f"INFO: creating links to database {database.metadata['title']}")
-        for i, refrow in enumerate(dblist[0].select()):
+        for i, refrow in enumerate(link_db.select()):
             linklist = []
             urllist = []
             data = {}
