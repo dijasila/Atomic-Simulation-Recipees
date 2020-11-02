@@ -1,8 +1,10 @@
 import pytest
-from asr.utils.slidingequivalence import mod, equiv_w_vector, equiv_vector, ElementSet, Material, slide_equivalent
+from asr.utils.slidingequivalence import mod, equiv_w_vector
+from asr.utils.slidingequivalence import equiv_vector, ElementSet
+from asr.utils.slidingequivalence import Material, slide_equivalent
 import numpy as np
 from ase import Atoms
-    
+
 
 @pytest.mark.ci
 def test_mod_function(asr_tmpdir):
@@ -21,30 +23,29 @@ def test_mod_function(asr_tmpdir):
         r2 = np.array([r[0] + L, r[1] + M, r[2] + N])
         assert np.allclose(mod(r - r2, 1.0), 0.0), f"r: {r}, r2: {r2}"
 
-
     r1 = np.array([1.26713637, 1.00347767, 0.0])
     r2 = np.array([32.26713637, 9.00347767, 0.0])
-    assert np.allclose(mod(r1-r2, 1.0), 0.0)
-
+    assert np.allclose(mod(r1 - r2, 1.0), 0.0)
 
 
 def genrandomset():
     n = np.random.randint(1, 10)
-    return ElementSet([True for _ in range(n)], [(np.random.rand(3) - 0.5) * 2 for _ in range(n)])
+    return ElementSet([True for _ in range(n)],
+                      [(np.random.rand(3) - 0.5) * 2 for _ in range(n)])
 
 
 @pytest.mark.ci
 def test_equiv_w_vector_special_cases(asr_tmpdir):
     special_cases = [(np.array([1.55503299, 1.67613917, 0.0]),
                       ElementSet([True, True],
-                                 [np.array([0,0, 0.0]), np.array([0.5, 0.0, 0.0])]),
+                                 [np.array([0, 0, 0.0]), np.array([0.5, 0.0, 0.0])]),
                       ElementSet([True, True],
-                                 [np.array([1.55503299, 0.67613917, 0.0]), np.array([1.05503299, 0.67613917, 0.0])]),
+                                 [np.array([1.55503299, 0.67613917, 0.0]),
+                                  np.array([1.05503299, 0.67613917, 0.0])]),
                       True)
-                 ]
+                     ]
     for v, s1, s2, expected in special_cases:
         assert equiv_w_vector(v, s1, s2) == expected
-
 
 
 @pytest.mark.ci
@@ -60,6 +61,7 @@ def test_equiv_w_vector_symmetry(asr_tmpdir):
         vinteger = np.array([1, 1, 1])
         assert equiv_w_vector(vinteger, s1, s2) == equiv_w_vector(vinteger, s2, s1)
 
+
 @pytest.mark.ci
 def test_equiv_w_vector_integer_translation(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
@@ -68,7 +70,8 @@ def test_equiv_w_vector_integer_translation(asr_tmpdir):
         I1 = np.random.randint(1, 100)
         I2 = np.random.randint(1, 100)
         I3 = np.random.randint(1, 100)
-        assert equiv_w_vector(np.array([I1, I2, I3]), s, s), f"I1: {I1}, I2: {I2}, s.pos: {s.positions}"
+        assert equiv_w_vector(np.array([I1, I2, I3]), s,
+                              s), f"I1: {I1}, I2: {I2}, s.pos: {s.positions}"
         assert equiv_w_vector(np.array([0, 0, 0]), s, s)
         r = np.random.rand(3) + 0.1
         assert not equiv_w_vector(r, s, s), f"r:{r}, s: {s.positions}"
@@ -77,7 +80,7 @@ def test_equiv_w_vector_integer_translation(asr_tmpdir):
 @pytest.mark.ci
 def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-    
+
     for i1, s1 in enumerate(ss):
         r = np.random.rand(3) + 0.1
         r2 = r + 1.0
@@ -93,10 +96,11 @@ def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
         assert equiv_w_vector(r, s1, ns)
         assert equiv_w_vector(r2, s1, ns)
 
+
 @pytest.mark.ci
 def test_not_equiv_if_not_movable(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-    
+
     for i1, s1 in enumerate(ss):
         r = np.random.rand(3) + 0.1
         r2 = r + 1.0
@@ -119,7 +123,6 @@ def test_not_equiv_if_not_movable(asr_tmpdir):
         assert not equiv_w_vector(r2, ns2, s1)
 
 
-
 @pytest.mark.ci
 def test_equiv_vector_diff_lengths(asr_tmpdir):
     set1 = ElementSet([True, True],
@@ -129,6 +132,7 @@ def test_equiv_vector_diff_lengths(asr_tmpdir):
 
     vector = equiv_vector(set1, set2)
     assert vector is None
+
 
 @pytest.mark.ci
 def test_equiv_vector_not_equiv(asr_tmpdir):
@@ -146,9 +150,11 @@ def test_equiv_vector_not_equiv(asr_tmpdir):
         else:
             assert actual is None
 
+
 @pytest.mark.ci
 def test_equiv_vector_given_vector(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
+
     def randompos():
         return np.array([(np.random.rand() - 0.5) * 4,
                          (np.random.rand() - 0.5) * 4,
@@ -161,15 +167,16 @@ def test_equiv_vector_given_vector(asr_tmpdir):
         actual = equiv_vector(s, s2)
         actual2 = equiv_vector(s2, s)
         assert actual is not None, f"{s.get_data()}\n{s2.get_data()}"
-        assert np.allclose(mod(actual + actual2, 1), 0.0), f"1: {actual}, 2: {actual2}, v:{v}, s: {s.positions}"
+        assert np.allclose(mod(actual + actual2, 1),
+                           0.0), f"1: {actual}, 2: {actual2}, v:{v}, s: {s.positions}"
         assert np.allclose(mod(actual - v, 1), 0.0)
 
 
 @pytest.mark.ci
 def test_material_setup(asr_tmpdir):
-    atoms = Atoms("H2", positions=[[0, 0, 0,], [0, 0, 1]])
+    atoms = Atoms("H2", positions=[[0, 0, 0, ], [0, 0, 1]])
     mat = Material([True, True], atoms)
-    
+
     keys = list(mat.sets.keys())
     assert len(keys) == 1
     assert "H" in keys
@@ -181,12 +188,11 @@ def test_material_setup(asr_tmpdir):
 
 @pytest.mark.ci
 def test_slide_equivalent_to_self(asr_tmpdir):
-    ats = Atoms("H2", positions=[[0, 0, 0,], [0, 0, 1]], cell=(5, 5, 5))
+    ats = Atoms("H2", positions=[[0, 0, 0, ], [0, 0, 1]], cell=(5, 5, 5))
     ats2 = ats.copy()
 
     assert ats == ats2
     assert slide_equivalent([False, True], ats, ats2)
-
 
 
 @pytest.mark.ci
@@ -196,7 +202,7 @@ def test_slide_top_H_remove_sets(asr_tmpdir):
 
     assert ats1 != ats2
     assert len(ats1) == len(ats2)
-    
+
     mat1 = Material([False, True], ats1)
     mat2 = Material([False for _ in range(len(ats2))],
                     ats2)
@@ -204,14 +210,13 @@ def test_slide_top_H_remove_sets(asr_tmpdir):
     assert len(mat1.sets.keys()) == 1
     assert len(mat2.sets.keys()) == 1
 
-
     set1 = mat1.sets["H"]
-    set2 = mat2.sets["H"]
-    
+
     s1 = set1.removeAt(0)
-    assert s1.get_data()[0][0] 
-    assert np.allclose(s1.get_data()[0][1], np.array([0, 0, 0.2])), f"actual: {s1.get_data()[0][1]}"
-    
+    assert s1.get_data()[0][0]
+    assert np.allclose(s1.get_data()[0][1], np.array(
+        [0, 0, 0.2])), f"actual: {s1.get_data()[0][1]}"
+
     s2 = set1.removeAt(1)
     assert not s2.get_data()[0][0]
     assert np.allclose(s2.get_data()[0][1], np.array([0, 0, 0]))
@@ -225,6 +230,7 @@ def test_slide_equiv_singleton_set(asr_tmpdir):
 
     vec = equiv_vector(set1, set2)
     assert np.allclose(vec, expected), vec
+
 
 @pytest.mark.ci
 def test_slide_equiv_double_set(asr_tmpdir):
@@ -247,7 +253,7 @@ def test_slide_top_H(asr_tmpdir):
     expected = np.array([x / cell, 0, 0])
     assert ats1 != ats2
     assert len(ats1) == len(ats2)
-    
+
     mat1 = Material([False, True], ats1)
     mat2 = Material([False for _ in range(len(ats2))],
                     ats2)
@@ -265,7 +271,6 @@ def test_slide_top_atoms(asr_tmpdir):
 
     assert ats != ats2
     assert len(ats) == len(ats2)
-    
 
     assert slide_equivalent([False, True], ats, ats2)
 
@@ -298,7 +303,6 @@ def test_mos2_slided(asr_tmpdir):
     assert slide_equivalent(indices, bilayer, slided_bilayer)
 
 
-
 def invert(atoms):
     pos = atoms.positions
 
@@ -310,7 +314,7 @@ def invert(atoms):
 
     inverted_z = relative_z.copy()
     inverted_z[:, 2] *= -1
-    
+
     inverted_z[:, 2] += mean_z
     assert (inverted_z[:, 2] >= 0).all()
 
@@ -323,11 +327,15 @@ def invert(atoms):
 
     return atoms2
 
+
 @pytest.mark.ci
 def test_hbn_inverted(asr_tmpdir):
     from ase.io import read
-    atoms = read("/home/niflheim/asbra/stacked/hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/structure.json")
+    prefix = "/home/niflheim/asbra/stacked/"
+    atoms = read(
+        f"{prefix}hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/structure.json")
 
     inverted_atoms = invert(atoms)
 
-    assert slide_equivalent([True, True, False, False], inverted_atoms, atoms), f"pos1:{atoms.positions}, pos2:{inverted_atoms.positions}"
+    assert slide_equivalent([True, True, False, False], inverted_atoms,
+                            atoms)

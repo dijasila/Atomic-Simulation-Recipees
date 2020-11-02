@@ -50,6 +50,7 @@ def calc_setup(settings):
 
     return calc
 
+
 def get_energy(base, top, h, t_c, calc, callback, memo):
 
     try:
@@ -146,8 +147,8 @@ def main(atoms: Atoms,
         if mpi.rank == 0:
             np.save('energy_curve.npy', np.array(energy_curve))
 
-
     calc = calc_setup(settings)
+
     def energy_fn(h):
         return get_energy(atoms, top_layer,
                           h, t_c, calc,

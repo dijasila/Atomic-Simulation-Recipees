@@ -1,11 +1,11 @@
-from dataclasses import dataclass, astuple
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 import numpy as np
 from ase import Atoms
 
+
 class ElementSet:
     # positions: List[Tuple[bool, np.array]]
-    
+
     def __init__(self, movable_indices, positions):
         assert type(positions) == np.array or type(positions) == list
         positions = np.array(positions, dtype=float)
@@ -13,7 +13,7 @@ class ElementSet:
         assert type(movable_indices) == list
         assert all(type(x) == bool for x in movable_indices)
         self._positions = list(zip(movable_indices, positions))
-    
+
     def add_vec(self, vector):
         res = []
         for b, p in self._positions:
@@ -32,13 +32,13 @@ class ElementSet:
         else:
             delta = v
         for t in value:
-            assert type(t) == np.array or type(t) == np.ndarray, f"type:{type(t)}, t:{t}"
-            
-        self._positions = [(b, t + v) for (b, _), t in zip(self._positions, value)]
+            assert type(t) == np.array or type(
+                t) == np.ndarray, f"type:{type(t)}, t:{t}"
+
+        self._positions = [(b, t + delta) for (b, _), t in zip(self._positions, value)]
 
     def get_data(self):
         return self._positions
-            
 
     def copy(self):
         inds = [b for b, p in self._positions]
@@ -68,6 +68,7 @@ class Material:
 
         self.sets = sets
 
+
 def mod(x, M):
     assert np.allclose(M, int(M))
     M = int(M)
@@ -79,14 +80,15 @@ def mod(x, M):
         if np.allclose(abs(v), M):
             res[i] = 0.0
     return res
-        
+
 
 def equiv_w_vector(v: np.array, set1: ElementSet, set2: ElementSet) -> bool:
     added = set1.add_vec(v)
     remaining = set2.get_positions()
     for x in added:
         try:
-            i = next(i for i, y in enumerate(remaining) if np.allclose(mod(x - y, 1), 0.0))
+            i = next(i for i, y in enumerate(remaining)
+                     if np.allclose(mod(x - y, 1), 0.0))
         except StopIteration:
             return False
         remaining.pop(i)
@@ -112,8 +114,8 @@ def equiv_vector(set1: ElementSet, set2: ElementSet) -> Tuple[float, float]:
     if len(set1.get_positions()) != len(set2.get_positions()):
         return None
 
-    #reference_pos = set2.get_data()[0][1]
-    ref_ind, reference_pos = next((i, p) for i, (b, p) in enumerate(set1.get_data()) if b)
+    ref_ind, reference_pos = next((i, p)
+                                  for i, (b, p) in enumerate(set1.get_data()) if b)
     if len(set1.get_positions()) == 1:
         deltavec = set2.get_data()[0][1] - reference_pos
         if np.allclose(deltavec[2], 0.0):
@@ -124,21 +126,21 @@ def equiv_vector(set1: ElementSet, set2: ElementSet) -> Tuple[float, float]:
     candidates = []
     for i2, (_, p2) in enumerate(set2.get_data()):
         v = mod(p2 - reference_pos, 1)
-        
+
         _s1 = set1.removeAt(ref_ind)
         _s2 = set2.removeAt(i2)
 
         b = equiv_w_vector(v, _s1, _s2)
         if b:
             candidates.append(v)
-    
+
     if len(candidates) > 0:
         candidates = [mod(c, 1) for c in candidates]
         index = np.argmin([np.linalg.norm(c) for c in candidates])
         if index > len(candidates) or index < 0:
             raise ValueError(f"{index}/{len(candidates)}")
         return candidates[index]
-    
+
     return None
 
 
@@ -147,7 +149,7 @@ def slide_equivalent(slide_indices: List[int],
     """Calculate if two bilayers structures are sliding equivalent.
 
     Sliding is defined as translation in the xy-plane.
-    
+
     Determine if we can go from mat2 to mat1 by sliding the atoms in mat1.
     """
     if ats1 == ats2:
