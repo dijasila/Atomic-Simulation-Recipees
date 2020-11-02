@@ -17,9 +17,9 @@ class Result(ASRResult):
 
 
 @command('asr.bader',
-         dependencies=['asr.structureinfo', 'asr.gs'])
+         dependencies=['asr.gs'])
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.025):
+def main(grid_spacing: float = 0.025) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -60,7 +60,7 @@ def main(grid_spacing: float = 0.025):
     charges = read_bader_charges('ACF.dat')
 
     # Subtract valence electrons:
-    for a, setup in enumerate(gs.wfs.setups):
+    for a, setup in enumerate(gs.setups):
         charges[a] -= setup.Nv
     assert abs(charges.sum()) < 0.01
 
