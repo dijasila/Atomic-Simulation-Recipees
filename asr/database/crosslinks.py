@@ -3,6 +3,11 @@ from asr.core import command, option, argument
 from ase.db import connect
 
 
+# TODO: make separate function for crosslinking only
+# TODO: add main function to create webpanel
+# TODO: clean up
+# TODO: find better solution for naming in row
+
 @command('asr.database.crosslinks')
 @option('--databaselink', type=str)
 @argument('databases', nargs=-1, type=str)
