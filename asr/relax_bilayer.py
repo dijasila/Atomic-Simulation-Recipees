@@ -6,7 +6,7 @@ from asr.utils.bilayerutils import translation
 
 
 def calc_setup(settings):
-    from gpaw import MixerDif, PW, GPAW
+    from gpaw import MixerDif, Mixer, PW, GPAW
     from ase.calculators.dftd3 import DFTD3
 
     calcsettings = {}
@@ -16,16 +16,22 @@ def calc_setup(settings):
     mixersettings = settings.pop('mixer', None)
     if mixersettings == 'mixerdif':
         mixersettings = {'type': 'mixerdif',
-                         'beta': 0.015, 'nold': 5,
+                         'beta': 0.015, 'nmaxold': 5,
                          'weight': 75}
 
     if type(mixersettings) != dict:
         mixersettings = {'type': 'default',
-                         'beta': None, 'nold': None,
+                         'beta': None, 'nmaxold': None,
                          'weight': None}
 
+    if "nold" in mixersettings:
+        val = mixersettings.pop("nold")
+        mixersettings["nmaxold"] = val
+
     mixertype = mixersettings.pop('type', 'default')
-    if mixertype != 'default':
+    if mixertype == 'mixer':
+        calcsettings['mixer'] = Mixer(**mixersettings)
+    elif mixertype != 'default':
         calcsettings['mixer'] = MixerDif(**mixersettings)
 
     calcsettings['mode'] = PW(settings.pop('PWE'))
