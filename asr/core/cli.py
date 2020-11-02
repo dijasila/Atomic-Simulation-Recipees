@@ -242,6 +242,22 @@ def asrlist(search):
     print(format(panel))
 
 
+@cli.group()
+def cache():
+    ...
+
+
+@cache.command()
+def ls():
+    from asr.core import single_run_file_cache
+
+    records = cache.get_all()
+
+    for record in records:
+        print(record)
+
+
+
 @cli.command()
 @click.argument('name')
 @click.option('--show/--dont-show', default=True, is_flag=True,
