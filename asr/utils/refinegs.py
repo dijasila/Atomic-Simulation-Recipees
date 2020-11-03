@@ -7,20 +7,13 @@ def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw."""
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
-    spinpol = calc.get_spin_polarized()
 
     kpts = get_kpts_size(atoms=calc.atoms, density=kptdensity)
     convbands = int(emptybands / 2)
-    calc.set(nbands=-emptybands,
-             txt=txt,
-             fixdensity=True,
-             kpts=kpts,
-             convergence={'bands': -convbands})
-
-    if spinpol:
-        calc.set(symmetry='off')  # due to soc
-
-    calc.get_potential_energy()
+    calc = calc.fixed_density(nbands=-emptybands,
+                              txt=txt,
+                              kpts=kpts,
+                              convergence={'bands': -convbands})
 
     return calc
 

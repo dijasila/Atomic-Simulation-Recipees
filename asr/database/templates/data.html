@@ -1,0 +1,12 @@
+{% extends 'asr/database/templates/layout.html' %}
+
+{% block content %}
+
+<div class="container">
+{% for key, value in data.items() %}
+
+<a href="/{{ project_name }}/row/{{ uid }}/data/{{ key }}">{{ key }}</a><br />
+
+{% endfor %}
+</div>
+{% endblock content %}

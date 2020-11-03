@@ -41,13 +41,15 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcont
 @pytest.mark.ci
 @pytest.mark.parametrize('topology', ['Z2=1,C_M=1'])
 def test_berry_nontrivial(asr_tmpdir_w_params, topology, get_webcontent):
+    from asr.core import ASRResult
     from ase.build.surface import graphene
     structure = graphene()
     structure.write('structure.json')
 
-    from asr.core import write_json
-    dct = {}
-    write_json('results-asr.berry@calculate.json', dct)
+    from asr.core import write_file
+    res = ASRResult()
+    res.metadata = {'asr_name': 'asr.berry@calculate'}
+    write_file('results-asr.berry@calculate.json', res.format_as('json'))
 
     # write topology.dat
     from ase.parallel import paropen

@@ -11,7 +11,8 @@
    src/tutorials/tutorials
    src/howtoguides/howtoguides
    src/explanations/explanations
-   src/api
+   src/generated/recipes
+   src/generated/api
    src/developing
 
 
@@ -19,10 +20,11 @@ Welcome to Atomic Simulation Recipes's documentation!
 =====================================================
 Recipes for Atomic Scale Materials Research.
 
-Collection of python recipes for tasks perfomed in atomic scale
-materials research. These tasks include relaxation of structures,
-calculating ground states, calculating band structures, calculating
-dielectric functions and so on.
+Welcome to ASR's documentation. The goal of ASR is to assist
+computational atomic scale materials research and accelerate
+productivity. ASR seeks to achieve this by implementing a
+*light-weight* Python framework of tools and :ref:`common tasks
+<recipes>` that can be tailored to users needs.
 
 First time here: :ref:`Getting started`
 

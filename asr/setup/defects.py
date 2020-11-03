@@ -1,5 +1,7 @@
+"""Generate defective atomic structures."""
+from typing import List
 from pathlib import Path
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 import click
 import os
 
@@ -33,11 +35,12 @@ import os
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
-def main(atomfile='unrelaxed.json', chargestates=3, supercell=[0, 0, 0],
-         maxsize=8, intrinsic=True, vacancies=True, uniform_vacuum=False, nopbc=True,
-         halfinteger=False, general_algorithm=None):
-    """
-    Set up defect structures for a given host and create folder structure.
+def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
+         supercell: List[int] = [0, 0, 0],
+         maxsize: float = 8, intrinsic: bool = True,
+         vacancies: bool = True, uniform_vacuum: bool = False, nopbc: bool = True,
+         halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
+    """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
@@ -666,10 +669,6 @@ def create_general_supercell(structure, size=12.5):
             finalstruc = structure
 
     return finalstruc
-
-
-def collect_data():
-    return None
 
 
 if __name__ == '__main__':
