@@ -241,7 +241,8 @@ def layout(row: AtomsRow,
             try:
                 obj = dct_to_result(value)
             except UnknownDataFormat:
-                value['__asr_hacked__'] = True
+                recipename = extract_recipe_from_filename(key)
+                value['__asr_hacked__'] = recipename
                 obj = dct_to_result(value)
         else:
             obj = value

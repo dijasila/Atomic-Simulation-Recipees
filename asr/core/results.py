@@ -38,8 +38,10 @@ def read_hacked_data(dct) -> 'ObjectDescription':
                 metadata[key_name] = value
         else:
             data[key] = value
+    recipe = get_recipe_from_name(dct['__asr_hacked__'])
+    object_id = obj_to_id(recipe.returns)
     obj_desc = ObjectDescription(
-        object_id='asr.core.results::HackedASRResult',
+        object_id=object_id,
         args=(),
         kwargs={'data': data,
                 'metadata': metadata,
