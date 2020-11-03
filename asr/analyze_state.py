@@ -40,11 +40,15 @@ def main(state: int = 0,
         states_above = False
         states_below = False
 
+    local_ratio_n = []
+    
     print('INFO: write wavefunctions of gapstates ...')
     for band in states:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
         fname = 'wf.{0}_{1}.cube'.format(band, 0)
         write(fname, atoms, data=wf)
+        local_ratio_n.append(get_localization_ratio(atoms, wf))
+
         if calc.get_number_of_spins() == 2:
             wf = calc.get_pseudo_wave_function(band=band, spin=1)
             fname = 'wf.{0}_{1}.cube'.format(band, 1)
@@ -53,16 +57,35 @@ def main(state: int = 0,
     print('INFO: Calculating dipole matrix elements among gap states.')
     d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1]+1)
 
+    print('INFO: Calculating IPR and Localization Ratio.')
+
+
     if analyze:
         # To be implemented
         print('INFO: analyze chosen states.')
 
     results = {'states': states,
                'dipole': d_svnm,
+               'localization': local_ratio_n,
                'states_above': states_above,
                'states_below': states_below}
 
     return results
+
+
+def get_localization_ratio(atoms, wf):
+    """Returns the localization ratio of the wavefunction,
+       defined as the volume of the cell divided the
+       integral of the fourth power of the wavefunction."""
+
+    grid_vectors = (atoms.cell.T / wf.shape).T
+    dv = abs(np.linalg.det(grid_vectors))
+    V = atoms.get_volume()
+
+    IPR = 1 / ((wf**4).sum() * dv)
+    local_ratio = V / IPR
+
+    return local_ratio
 
 
 def plot_gapstates(row, fname):
