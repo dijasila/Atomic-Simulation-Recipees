@@ -3,10 +3,9 @@ from asr.core import command, option, argument, ASRResult, prepare_result
 from ase.db import connect
 
 
-# TODO: make separate function for crosslinking only
 # TODO: add main function to create webpanel
 # TODO: clean up
-# TODO: find better solution for naming in row
+# TODO: exclude linking to itself
 
 @command('asr.database.crosslinks')
 @option('--databaselink', type=str)
@@ -26,13 +25,13 @@ def create(databaselink: str,
     print(f"INFO: link to the following databases:")
     for i in range(0, len(dblist)):
         print(f"..... {dblist[i].metadata['title']}")
-    for database in dblist:
-        print(f"INFO: creating links to database {database.metadata['title']}")
-        for i, refrow in enumerate(link_db.select()):
+
+    for i, refrow in enumerate(link_db.select()):
+        data = {'links': {}}
+        refid = refrow.id
+        for database in dblist:
             linklist = []
             urllist = []
-            data = {'links': {}}
-            refid = refrow.id
             for j, row in enumerate(database.select()):
                 if row.link_uid == refrow.link_uid:
                     name = database.metadata['internal_links']['link_name']
@@ -43,8 +42,7 @@ def create(databaselink: str,
                     urllist.append(link_url)
             data['links'][f"{database.metadata['title']}"] = {'link_names': linklist,
                                                               'link_urls': urllist}
-            link_db.update(refid, data={f"links.{database.metadata['title']}":
-                                        data['links'][f"{database.metadata['title']}"]})
+        link_db.update(refid, data={"links": data['links']})
 
 
 @prepare_result
