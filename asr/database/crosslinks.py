@@ -63,6 +63,15 @@ class Result(ASRResult):
 def main(database: str) -> Result:
     """Use created crosslink names and urls from asr.database.crosslinks@create
     and write HTML code for representation on webpage."""
+    db = connect(database)
+    for row in db.select():
+        for element in row.data['links']:
+            names = row.data['links'][element]['link_names']
+            urls = row.data['links'][element]['link_urls']
+            types = element
+            print(names, urls, types)
+            # for link in row.data['links'][element]:
+            #     print(row.data['links'][element][link])
 
     return Result.fromdata(linked_database=database)
 
@@ -71,6 +80,15 @@ def webpanel(result, row, key_descriptions):
     """Creates a webpanel containing all of the links that got created with
     asr.database.crosslinks@create."""
     from asr.database.browser import fig, table
+
+    for element in row.data['links']:
+        print(element)
+        for link in element:
+            print(link)
+
+
+    panel = {'title': 'Crosslinks',
+             'columns': [linktable]}
 
 
 if __name__ == '__main__':
