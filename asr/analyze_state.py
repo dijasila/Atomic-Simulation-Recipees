@@ -57,9 +57,6 @@ def main(state: int = 0,
     print('INFO: Calculating dipole matrix elements among gap states.')
     d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1]+1)
 
-    print('INFO: Calculating IPR and Localization Ratio.')
-
-
     if analyze:
         # To be implemented
         print('INFO: analyze chosen states.')
