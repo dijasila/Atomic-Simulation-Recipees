@@ -1,5 +1,5 @@
 from asr.core import (command, option, dct_to_result,
-                      ASRResult, get_recipe_from_name)
+                      ASRResult, get_recipe_from_name, UnknownDataFormat)
 import copy
 import sys
 import re
@@ -238,7 +238,11 @@ def layout(row: AtomsRow,
     row = RowWrapper(row)
     for key, value in row.data.items():
         if is_results_file(key):
-            obj = dct_to_result(value)
+            try:
+                obj = dct_to_result(value)
+            except UnknownDataFormat:
+                value['__asr_hacked__'] = True
+                obj = dct_to_result(value)
         else:
             obj = value
         row.data[key] = obj
