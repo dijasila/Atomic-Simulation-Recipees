@@ -59,7 +59,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.database.crosslinks',
-         dependencies='asr.databasse.crosslinks@create')
+         dependencies=['asr.database.crosslinks@create'],
+         returns=Result)
 @argument('database', nargs=1, type=str)
 def main(database: str) -> Result:
     """Use created crosslink names and urls from asr.database.crosslinks@create
