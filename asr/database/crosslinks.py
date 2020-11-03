@@ -1,5 +1,5 @@
 from typing import Union
-from asr.core import command, option, argument, ASRResult, prepare_result
+from asr.core import command, option, argument, ASRResult, prepare_result, write_json
 from ase.db import connect
 
 
@@ -65,6 +65,12 @@ def main(database: str) -> Result:
     and write HTML code for representation on webpage."""
 
     return Result.fromdata(linked_database=database)
+
+
+def webpanel(result, row, key_descriptions):
+    """Creates a webpanel containing all of the links that got created with
+    asr.database.crosslinks@create."""
+    from asr.database.browser import fig, table
 
 
 if __name__ == '__main__':
