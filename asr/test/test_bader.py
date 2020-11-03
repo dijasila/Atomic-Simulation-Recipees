@@ -6,7 +6,7 @@ from .materials import Si
 
 
 @pytest.mark.ci
-def test_bader(mockgpaw, asrt_tmpdir, monkeypatch):
+def test_bader(mockgpaw, asr_tmpdir, monkeypatch):
     monkeypatch.setattr(subprocess, 'run',
                         lambda args, stdout=None, stderr=None: None)
     Si.write('structure.json')
