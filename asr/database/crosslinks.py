@@ -1,6 +1,7 @@
-from typing import Union
+from typing import Union, List, Dict, Any
 from asr.core import command, option, argument, ASRResult, prepare_result, write_json
 from ase.db import connect
+from ase.db.row import AtomsRow
 
 
 # TODO: add main function to create webpanel
@@ -65,13 +66,7 @@ def main(database: str) -> Result:
     and write HTML code for representation on webpage."""
     db = connect(database)
     for row in db.select():
-        for element in row.data['links']:
-            names = row.data['links'][element]['link_names']
-            urls = row.data['links'][element]['link_urls']
-            types = element
-            print(names, urls, types)
-            # for link in row.data['links'][element]:
-            #     print(row.data['links'][element][link])
+        link_tables(row)
 
     return Result.fromdata(linked_database=database)
 
@@ -79,16 +74,16 @@ def main(database: str) -> Result:
 def webpanel(result, row, key_descriptions):
     """Creates a webpanel containing all of the links that got created with
     asr.database.crosslinks@create."""
-    from asr.database.browser import fig, table
-
-    for element in row.data['links']:
-        print(element)
-        for link in element:
-            print(link)
+    return None
 
 
-    panel = {'title': 'Crosslinks',
-             'columns': [linktable]}
+def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
+    data = row.data['links']
+    for element in data:
+        names = row.data['links'][element]['link_names']
+        urls = row.data['links'][element]['link_urls']
+        types = element
+        print(names, urls, types)
 
 
 if __name__ == '__main__':
