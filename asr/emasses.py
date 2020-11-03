@@ -1352,12 +1352,34 @@ def evalmae(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
 
     return mae
 
+def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
+    from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha, Bohr
+    import numpy as np
+
+    erange = erange / Ha
+
+    k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+    e_k = e_k.copy() / Ha
+
+    if bt == 'vb':
+        k_inds = np.where(np.abs(e_k - np.max(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+    else:
+        k_inds = np.where(np.abs(e_k - np.min(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+
+    emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+    mare = np.mean(np.abs((emodel_k - e_k[k_inds]) / emodel_k)) * 100
+
+    return mare
+
 
 @command(module='asr.emasses',
          requires=['results-asr.emasses.json'],
          dependencies=['asr.emasses'])
 def validate():
-    """Calculate MAE of fits over 25 meV.
+    """Calculate MARE of fits over 25 meV.
 
     Perform a calculation for each to validate it
     over an energy range of 25 meV.
@@ -1376,14 +1398,18 @@ def validate():
         fitinfo = data['fitcoeff']
         bt = data['info'].split('_')[0]
         maes = []
+        mares = []
         for cutdata in data['bzcuts']:
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
             mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             maes.append(mae)
+            mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
+            mares.append(mare)
 
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
 
     return myresults
 
