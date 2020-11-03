@@ -43,29 +43,29 @@ def create(databaselink: str,
                     urllist.append(link_url)
             data['links'][f"{database.metadata['title']}"] = {'link_names': linklist,
                                                               'link_urls': urllist}
-            print(data['links'])
             link_db.update(refid, data={f"links.{database.metadata['title']}":
                                         data['links'][f"{database.metadata['title']}"]})
-        print('INFO: DONE!')
 
 
-# @prepare_result
-# class Result(ASRResult):
-#     """Container for database crosslinks results."""
-#     linked_databse: str
-# 
-#     key_descriptions = dict(
-#         linked_database='Database that crosslinks got created for.')
-# 
-# 
-# @command(module='asr.database.crosslinks',
-#          dependencies='asr.databasse.crosslinks@create')
-# @argument('database', nargs=1, type=str)
-# def main(database: str) -> Result:
-#     """Use created crosslink names and urls from asr.database.crosslinks@create
-#     and write HTML code for representation on webpage."""
-# 
-#     return Result.fromdata(linked_database=database)
+@prepare_result
+class Result(ASRResult):
+    """Container for database crosslinks results."""
+    linked_database: str
+
+    key_descriptions = dict(
+        linked_database='Database that crosslinks got created for.')
+
+    # formats = {"ase_webpanel": webpanel}
+
+
+@command(module='asr.database.crosslinks',
+         dependencies='asr.databasse.crosslinks@create')
+@argument('database', nargs=1, type=str)
+def main(database: str) -> Result:
+    """Use created crosslink names and urls from asr.database.crosslinks@create
+    and write HTML code for representation on webpage."""
+
+    return Result.fromdata(linked_database=database)
 
 
 if __name__ == '__main__':
