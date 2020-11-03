@@ -17,9 +17,10 @@ class Result(ASRResult):
 
 
 @command('asr.bader',
-         dependencies=['asr.gs'])
+         dependencies=['asr.gs'],
+         returns=Result)
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.025) -> ASRResult:
+def main(grid_spacing: float = 0.025) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -66,7 +67,8 @@ def main(grid_spacing: float = 0.025) -> ASRResult:
 
     sym_a = gs.atoms.get_chemical_symbols()
 
-    return {'bader_charges': charges, 'sym_a': sym_a}
+    return Result(data=dict(bader_charges=charges,
+                            sym_a=sym_a))
 
 
 if __name__ == '__main__':
