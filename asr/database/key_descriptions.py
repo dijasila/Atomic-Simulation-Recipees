@@ -84,9 +84,9 @@ key_descriptions = {
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
-        "KVP: Magnetic anisotropy energy between x and z axis [meV/unit cell]",
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
         "dE_zy":
-        "KVP: Magnetic anisotropy energy between y and z axis [meV/unit cell]",
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
     },
     "pdos": {
         "pdos_nosoc":

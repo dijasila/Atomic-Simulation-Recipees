@@ -138,7 +138,7 @@ def bz_with_band_extremums(row, fname):
         ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
-        plt.legend(loc='upper center', ncol=3)
+        plt.legend(loc='upper center', ncol=3, prop={'size': 10})
 
     plt.tight_layout()
     plt.savefig(fname)
