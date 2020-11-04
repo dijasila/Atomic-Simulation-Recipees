@@ -9,6 +9,33 @@ from ase.db.row import AtomsRow
 # TODO: clean up
 # TODO: exclude linking to itself
 
+
+def webpanel(result, row, key_descriptions):
+    """Creates a webpanel containing all of the links that got created with
+    asr.database.crosslinks@create."""
+    from asr.database.browser import table
+
+    table_array = link_tables(row)
+    print(table_array)
+
+    caption = ""
+    link_table = table(row,
+                       '',
+                       ['link', 'linktype'],
+                       key_descriptions)
+    panel = {'title': 'Internal and external crosslinks',
+             'columns': [table_array],
+             'sort': 1}
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': [''],
+                             'rows': [row],
+                             'columnwidth': 3}]],
+               'sort': 1}
+
+    return [panel, summary]
+
+
 @command('asr.database.crosslinks')
 @option('--databaselink', type=str)
 @argument('databases', nargs=-1, type=str)
@@ -58,10 +85,12 @@ class Result(ASRResult):
         links='Dictionary of linked structures in other databases with'
               'names, urls and type.')
 
-    # formats = {"ase_webpanel": webpanel}
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.database.crosslinks',
+         requires=['asr.database.material_fingerprint',
+                   'asr.database.crosslinks@create'],
          dependencies=['asr.database.material_fingerprint',
                        'asr.database.crosslinks@create'],
          returns=Result)
@@ -71,36 +100,33 @@ def main(database: str) -> Result:
     and write HTML code for representation on webpage."""
     # First, get uid of structure in current directory to compare to respective
     # uid in the database
-    results_fingerprint = read_json('results-asr.material_fingerprint.json')
+    results_fingerprint = read_json('results-asr.database.material_fingerprint.json')
     structure_uid = results_fingerprint['uid']
+    print(structure_uid)
 
     # Second, connect to the crosslinked database and obtain the names, urls,
     # and types
     db = connect(database)
-    for row in db.select(uid=structure_uid):
-        links = row.data['links']
+    for row in db.select():
+        if row.uid == structure_uid:
+            links = row.data['links']
 
     return Result.fromdata(linked_database=database,
                            links=links)
 
 
-def webpanel(result, row, key_descriptions):
-    """Creates a webpanel containing all of the links that got created with
-    asr.database.crosslinks@create."""
-    return None
-
-
 def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
     import numpy as np
 
-    data = row.data['links']
+    data = row.data.get('results-asr.database.crosslinks.json')
+    links = data['links']
     names = []
     urls = []
     types = []
-    for element in data:
-        for j in range(len(row.data['links'][element]['link_names'])):
-            names.append(row.data['links'][element]['link_names'][j])
-            urls.append(row.data['links'][element]['link_urls'][j])
+    for element in links:
+        for j in range(len(links[element]['link_names'])):
+            names.append(links[element]['link_names'][j])
+            urls.append(links[element]['link_urls'][j])
             types.append(element)
 
     table_array = np.array([names, urls, types])
