@@ -1,5 +1,6 @@
 from typing import Union, List, Dict, Any
-from asr.core import command, option, argument, ASRResult, prepare_result, write_json
+from asr.core import (command, option, argument, ASRResult, prepare_result,
+                      read_json)
 from ase.db import connect
 from ase.db.row import AtomsRow
 
