@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple, Any
 import traceback
 import os
 
+import numpy as np
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
@@ -157,6 +158,40 @@ def fig(filename: str, link: str = None,
 
 def table(row, title, keys, kd={}, digits=2):
     return create_table(row, [title, 'Value'], keys, kd, digits)
+
+
+def make_bold(text: str) -> str:
+    return f'<b>{text}</b>'
+
+
+def matrixtable(M, digits=2, unit='',
+                rowlabels=None, columnlabels=None, title=None):
+    shape = np.shape(M)
+
+    rows = []
+    for i in range(0, shape[0]):
+        rows.append([])
+        for j in range(0, shape[1]):
+            rows[i].append("")
+
+    for column_index in range(shape[1]):
+        if column_index == 0 and title is not None:
+            rows[0][0] = make_bold(title)
+        elif column_index > 0 and columnlabels is not None:
+            rows[0][column_index] = make_bold(columnlabels[column_index - 1])
+
+    for row_index in range(shape[0]):
+        if row_index > 0:
+            rows[row_index][0] = make_bold(rowlabels[row_index - 1])
+
+    for i in range(1, shape[0]):
+        for j in range(1, shape[1]):
+            value = M[i][j]
+            rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
+
+    table = dict(type='table',
+                 rows=rows)
+    return table
 
 
 def merge_panels(page):
