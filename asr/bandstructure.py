@@ -365,7 +365,6 @@ def bs_pbe(row,
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
-    ax.set_xlabel('$k$-points')
     plt.legend(loc='upper right')
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
