@@ -821,13 +821,6 @@ def test_read_old_format():
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize('cls,result',
-                         [(MyResult, 'asr.test.test_core_results::MyResult')])
-def test_object_to_id(cls, result):
-    assert obj_to_id(cls) == result
-
-
-@pytest.mark.ci
 @pytest.mark.parametrize(
     "filename,dct,result_object_id",
     [
