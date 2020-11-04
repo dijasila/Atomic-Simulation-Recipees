@@ -262,7 +262,7 @@ def main(databases: List[str], host: str = "0.0.0.0",
                         exc = traceback.format_exc()
                         exc += (f'Problem with {uid}: '
                                 f'Formula={row.formula} '
-                                f'Prototype={row.crystal_prototype}\n'
+                                f'Crystal type={row.crystal_type}\n'
                                 + '-' * 20 + '\n')
                         with Path('errors.txt').open(mode='a') as fid:
                             fid.write(exc)

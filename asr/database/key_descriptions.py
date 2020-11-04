@@ -141,7 +141,7 @@ key_descriptions = {
         "spacegroup": "KVP: Space group",
         "spgnum": "KVP: Space group number",
         "pointgroup": "KVP: Point group",
-        "crystal_prototype": "KVP: Crystal prototype",
+        "crystal_type": "KVP: Crystal type",
     },
     "database.material_fingerprint": {
         'asr_id': 'KVP: Material unique ID',
