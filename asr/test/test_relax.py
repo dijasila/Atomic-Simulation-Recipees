@@ -1,6 +1,7 @@
 from asr.relax import BrokenSymmetryError
 import pytest
 import numpy as np
+import runpy
 
 
 @pytest.mark.ci
@@ -64,6 +65,20 @@ def test_relax_emt(asr_tmpdir_w_params, name):
 
     unrelaxed = bulk(name)
     relax(unrelaxed, calculator={'name': 'emt'})
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('name', ['Al'])
+def test_relax_called_with_run_py(asr_tmpdir_w_params, name, monkeypatch):
+    from ase.build import bulk
+    from asr.setup.params import main as setupparams
+    import sys
+
+    unrelaxed = bulk(name)
+    unrelaxed.write('unrelaxed.json')
+    setupparams(['asr.relax:calculator', '{"name":"emt"}'])
+    monkeypatch.setattr(sys, 'argv', ["asr.relax"])
+    runpy.run_module('asr.relax', run_name='__main__', alter_sys=False)
 
 
 @pytest.mark.ci
