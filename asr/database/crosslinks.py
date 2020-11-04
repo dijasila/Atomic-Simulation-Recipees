@@ -66,7 +66,7 @@ def main(database: str) -> Result:
     and write HTML code for representation on webpage."""
     db = connect(database)
     for row in db.select():
-        link_tables(row)
+        rows = link_tables(row)
 
     return Result.fromdata(linked_database=database)
 
@@ -78,12 +78,21 @@ def webpanel(result, row, key_descriptions):
 
 
 def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
+    import numpy as np
+
     data = row.data['links']
+    names = []
+    urls = []
+    types = []
     for element in data:
-        names = row.data['links'][element]['link_names']
-        urls = row.data['links'][element]['link_urls']
-        types = element
-        print(names, urls, types)
+        for j in range(len(row.data['links'][element]['link_names'])):
+            names.append(row.data['links'][element]['link_names'][j])
+            urls.append(row.data['links'][element]['link_urls'][j])
+            types.append(element)
+
+    table_array = np.array([names, urls, types])
+
+    return table_array
 
 
 if __name__ == '__main__':
