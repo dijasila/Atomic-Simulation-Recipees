@@ -58,11 +58,11 @@ def main(grid_spacing: float = 0.025) -> Result:
     out.close()
     err.close()
 
-    charges = read_bader_charges('ACF.dat')
+    charges = -read_bader_charges('ACF.dat')
 
     # Subtract valence electrons:
     for a, setup in enumerate(gs.setups):
-        charges[a] -= setup.Nv
+        charges[a] += setup.Nv
     assert abs(charges.sum()) < 0.01
 
     sym_a = gs.atoms.get_chemical_symbols()
