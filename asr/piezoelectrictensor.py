@@ -62,7 +62,7 @@ def webpanel(result, row, key_descriptions):
                           rowlabels=['x', 'y', 'z'],
                           title='Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)')
 
-    columns = [[etable, e0table], []]
+    columns = [[etable], [e0table]]
 
     panel = {'title': 'Piezoelectric tensor',
              'columns': columns}
