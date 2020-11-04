@@ -166,7 +166,8 @@ def make_bold(text: str) -> str:
 
 def matrixtable(M, digits=2, unit='',
                 rowlabels=None, columnlabels=None, title=None):
-    shape = np.shape(M)
+    shape_of_M = np.shape(M)
+    shape = (shape_of_M[0] + 1, shape_of_M[1] + 1)
 
     rows = []
     for i in range(0, shape[0]):
@@ -186,7 +187,7 @@ def matrixtable(M, digits=2, unit='',
 
     for i in range(1, shape[0]):
         for j in range(1, shape[1]):
-            value = M[i][j]
+            value = M[i - 1][j - 1]
             rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
 
     table = dict(type='table',
