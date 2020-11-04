@@ -50,25 +50,37 @@ def create(databaselink: str,
 class Result(ASRResult):
     """Container for database crosslinks results."""
     linked_database: str
+    links: dict
 
     key_descriptions = dict(
-        linked_database='Database that crosslinks got created for.')
+        linked_database='Database that crosslinks got created for.',
+        links='Dictionary of linked structures in other databases with'
+              'names, urls and type.')
 
     # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.database.crosslinks',
-         dependencies=['asr.database.crosslinks@create'],
+         dependencies=['asr.database.material_fingerprint',
+                       'asr.database.crosslinks@create'],
          returns=Result)
 @argument('database', nargs=1, type=str)
 def main(database: str) -> Result:
     """Use created crosslink names and urls from asr.database.crosslinks@create
     and write HTML code for representation on webpage."""
-    db = connect(database)
-    for row in db.select():
-        rows = link_tables(row)
+    # First, get uid of structure in current directory to compare to respective
+    # uid in the database
+    results_fingerprint = read_json('results-asr.material_fingerprint.json')
+    structure_uid = results_fingerprint['uid']
 
-    return Result.fromdata(linked_database=database)
+    # Second, connect to the crosslinked database and obtain the names, urls,
+    # and types
+    db = connect(database)
+    for row in db.select(uid=structure_uid):
+        links = row.data['links']
+
+    return Result.fromdata(linked_database=database,
+                           links=links)
 
 
 def webpanel(result, row, key_descriptions):
