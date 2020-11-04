@@ -15,7 +15,7 @@ known_methods = ['DFT', 'DFT+D3']
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig, table, describe_entry
 
     caption = """
     The convex hull describes stability
@@ -39,9 +39,10 @@ def webpanel(result, row, key_descriptions):
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
     row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[thermostab].upper())]
+           describe_entry(stabilities[thermostab].upper(),
+                          '\n'.join([f'LOW: {low}',
+                                     f'MEDIUM: {medium}',
+                                     f'HIGH: {high}']))]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',

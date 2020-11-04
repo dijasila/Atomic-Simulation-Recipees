@@ -87,16 +87,16 @@ def webpanel(result, row, key_descriptions):
              'columns': [[t], [fig('bz-with-gaps.png')]],
              'sort': 10}
 
-    description = 'The electronic band gap including spin-orbit effects\n\n'
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.gs@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    description = ('The electronic band gap including spin-orbit effects\n\n'
+                   + parameter_description)
     datarow = ['Band gap (PBE)',
-               entry_parameter_description(
-                   row.data,
-                   'asr.gs@calculate',
-                   describe_entry(f'{row.gap:0.2f} eV',
-                                  description),
-                   exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                                     'idiotproof', 'maxiter', 'hund', 'random',
-                                     'experimental', 'basis', 'setups']))]
+               describe_entry(value=f'{row.gap:0.2f} eV', description=description)]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],

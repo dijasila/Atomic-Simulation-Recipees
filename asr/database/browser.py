@@ -105,7 +105,7 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     return lst
 
 
-def entry_parameter_description(data, name, entry, exclude_keys: set = set()):
+def entry_parameter_description(data, name, exclude_keys: set = set()):
     result = data[f'results-{name}.json']
     if 'params' in result.metadata:
         params = result.metadata.params
@@ -130,7 +130,7 @@ def entry_parameter_description(data, name, entry, exclude_keys: set = set()):
         + string
     )
 
-    return describe_entry(entry, description)
+    return description
 
 
 def val2str(row, key: str, digits=2) -> str:

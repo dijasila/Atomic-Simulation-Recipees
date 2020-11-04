@@ -5,7 +5,7 @@ import typing
 
 def webpanel(result, row, key_descriptions):
     import numpy as np
-    from asr.database.browser import matrixtable
+    from asr.database.browser import matrixtable, describe_entry
 
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
@@ -57,8 +57,7 @@ def webpanel(result, row, key_descriptions):
     low = 'Min. Stiffness eig. < 0'
 
     row = ['Dynamical (stiffness)',
-           {'value': dynstab.upper(),
-            'description': f"LOW: {low}\nHIGH: {high}"}]
+           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
