@@ -120,15 +120,15 @@ def main(atoms: Atoms, cellsize: int=8, rattle: float=0.03, dim_phonopy: int=5, 
 
    #global variables
   
-   global   n_structures
-   global  cell_size
-   global  rattle_std
-   global  minimum_distance 
-   global mesh
-   global dim
-   global t1
-   global t2
-   global tstep
+   #global   n_structures
+   #global  cell_size
+   #global  rattle_std
+   #global  minimum_distance 
+   #global mesh
+   #global dim
+   #global t1
+   #global t2
+   #global tstep
 
    n_structures = number_structures
    cell_size = cellsize
