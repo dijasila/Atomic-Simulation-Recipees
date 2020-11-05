@@ -63,8 +63,18 @@ def webpanel(result, row, key_descriptions):
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
 
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.gs@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    explanation = ('The electronic band gap including spin-orbit effects\n\n'
+                   + parameter_description)
+
+    gap = describe_entry('gap', description=explanation)
     t = table(result, 'Property',
-              ['gap', 'gap_dir',
+              [gap, 'gap_dir',
                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
@@ -99,7 +109,10 @@ def webpanel(result, row, key_descriptions):
     datarow = ['Band gap (PBE)',
                describe_entry(value=f'{result.gap:0.2f} eV', description=description)]
     summary = WebPanel(
-        title='Summary',
+        title=describe_entry(
+            'Summary',
+            description='This panel contains a summary of the most '
+            'important properties of this material.'),
         columns=[[{'type': 'table',
                    'header': ['Electronic properties', ''],
                    'rows': [datarow]}]],

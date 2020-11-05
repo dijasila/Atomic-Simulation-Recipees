@@ -47,10 +47,16 @@ def create_table(row,  # AtomsRow
         value = row.get(key)
         if value is not None:
             if isinstance(value, float):
+                old_value = value
                 value = '{:.{}f}'.format(value, digits)
+                if hasattr(old_value, '__explanation__'):
+                    value = describe_entry(value, old_value.__explanation__)
             elif not isinstance(value, str):
                 value = str(value)
+
             longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
+            if hasattr(key, '__explanation__'):
+                desc = describe_entry(desc, key.__explanation__)
             if unit:
                 value += ' ' + unit
             table.append((desc, value))
@@ -70,13 +76,37 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+class ExplainedStr(str):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+class ExplainedFloat(float):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+value_type_to_explained_type = {}
+
+
 def describe_entry(value, description):
-    if isinstance(value, dict) \
-       and 'value' in value \
-       and 'description' in value:
-        return dict(value=value['value'],
-                    description=value['description'] + description)
-    return dict(value=value, description=description)
+    if hasattr(value, '__explanation__'):
+        value.__explanation__ += description
+
+    value_type = type(value)
+    if value_type in value_type_to_explained_type:
+        value = value_type_to_explained_type[value_type](value)
+        value.__explanation__ = description
+        return value
+
+    class ExplainedType(value_type):
+
+        __explanation__: str
+
+    value_type_to_explained_type[value_type] = ExplainedType
+    return describe_entry(value, description)
 
 
 def describe_entries(rows, description):
