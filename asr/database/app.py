@@ -1,13 +1,14 @@
 """Database web application."""
 from typing import List
-from asr.core import command, option, argument, ASRResult
+from asr.core import (command, option, argument, ASRResult,
+                      dct_to_result, UnknownDataFormat)
 
 import tempfile
 from pathlib import Path
 
 from ase.db import connect
 from ase.db.app import app, projects
-from flask import render_template, send_file, Response, jsonify
+from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
 import asr
 from ase import Atoms
@@ -15,6 +16,7 @@ from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 import warnings
+from jinja2 import UndefinedError
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
@@ -149,6 +151,25 @@ def setup_data_endpoints():
 
     @app.route('/<project_name>/row/<uid>/data/<filename>')
     def get_row_data_file(project_name: str, uid: str, filename: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
+        try:
+            result = dct_to_result(row.data[filename])
+            return render_template(
+                'asr/database/templates/result_object.html',
+                result=result,
+                filename=filename,
+                project_name=project_name,
+                uid=uid,
+            )
+        except (UnknownDataFormat, UndefinedError):
+            return redirect(f'{filename}/json')
+
+    @app.route('/<project_name>/row/<uid>/data/<filename>/json')
+    def get_row_data_file_json(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
         uid_key = project['uid_key']

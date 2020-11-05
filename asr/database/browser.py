@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
 import os
+from .webpanel import WebPanel
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,10 +47,16 @@ def create_table(row,  # AtomsRow
         value = row.get(key)
         if value is not None:
             if isinstance(value, float):
+                old_value = value
                 value = '{:.{}f}'.format(value, digits)
+                if hasattr(old_value, '__explanation__'):
+                    value = describe_entry(value, old_value.__explanation__)
             elif not isinstance(value, str):
                 value = str(value)
+
             longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
+            if hasattr(key, '__explanation__'):
+                desc = describe_entry(desc, key.__explanation__)
             if unit:
                 value += ' ' + unit
             table.append((desc, value))
@@ -69,13 +76,38 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+class ExplainedStr(str):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+class ExplainedFloat(float):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+value_type_to_explained_type = {}
+
+
 def describe_entry(value, description):
-    if isinstance(value, dict) \
-       and 'value' in value \
-       and 'description' in value:
-        return dict(value=value['value'],
-                    description=value['description'] + description)
-    return dict(value=value, description=description)
+    if hasattr(value, '__explanation__'):
+        value.__explanation__ += '\n' + description
+        return value
+
+    value_type = type(value)
+    if value_type in value_type_to_explained_type:
+        value = value_type_to_explained_type[value_type](value)
+        value.__explanation__ = description
+        return value
+
+    class ExplainedType(value_type):
+
+        __explanation__: str
+
+    value_type_to_explained_type[value_type] = ExplainedType
+    return describe_entry(value, description)
 
 
 def describe_entries(rows, description):
@@ -105,22 +137,27 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     return lst
 
 
-def entry_parameter_description(data, name, entry, exclude_keys: set = set()):
+def entry_parameter_description(data, name, exclude_keys: set = set()):
     result = data[f'results-{name}.json']
+    recipe = get_recipe_from_name(name)
     if 'params' in result.metadata:
         params = result.metadata.params
         description = str(result.metadata.params)
         header = ''
     else:
-        recipe = get_recipe_from_name(name)
         params = recipe.get_defaults()
         header = ('No parameters can be found, meaning that'
                   'the recipe was probably run with the '
                   'default parameter set below\n'
                   '<b>Default parameters</b>')
 
-    lst = dict_to_list(params, exclude_keys=exclude_keys)
-
+    recipe_parameters = recipe.get_parameters()
+    described_params = {}
+    for key, value in params.items():
+        if key in recipe_parameters:
+            key = describe_entry(key, recipe_parameters[key]['help'])
+        described_params[key] = value
+    lst = dict_to_list(described_params, exclude_keys=exclude_keys)
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'
     string = '\n'.join(lst)
@@ -130,7 +167,7 @@ def entry_parameter_description(data, name, entry, exclude_keys: set = set()):
         + string
     )
 
-    return describe_entry(entry, description)
+    return description
 
 
 def val2str(row, key: str, digits=2) -> str:
@@ -233,6 +270,7 @@ def merge_panels(page):
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+        panel = WebPanel(**panel)
         page[title] = panel
 
 
@@ -272,6 +310,8 @@ def layout(row: AtomsRow,
     exclude = set()
 
     row = RowWrapper(row)
+
+    result_objects = []
     for key, value in row.data.items():
         if is_results_file(key):
             try:
@@ -280,30 +320,49 @@ def layout(row: AtomsRow,
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
                 obj = dct_to_result(value)
+            result_objects.append(obj)
         else:
             obj = value
         row.data[key] = obj
         assert row.data[key] == obj
 
+    panel_data_sources = {}
     # Locate all webpanels
-    for result in filter(lambda x: isinstance(x, ASRResult), row.data.values()):
+    for result in result_objects:
         if 'ase_webpanel' not in result.get_formats():
             continue
         panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
 
-        for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {result} webpanel'
-            panel = {'columns': [[], []],
-                     'plot_descriptions': [],
-                     'sort': 99}
-            panel.update(thispanel)
-            paneltitle = panel['title']
+        for panel in panels:
+            assert 'title' in panel, f'No title in {result} webpanel'
+            if not isinstance(panel, WebPanel):
+                panel = WebPanel(**panel)
+            paneltitle = describe_entry(panel['title'], description='')
+
             if paneltitle in page:
+                panel_data_sources[paneltitle].append(result)
                 page[paneltitle].append(panel)
             else:
+                panel_data_sources[paneltitle] = [result]
                 page[paneltitle] = [panel]
+
+    for paneltitle, data_sources in panel_data_sources.items():
+        description = [
+            '<b>General Panel Information</b>',
+            'This panel contains information calculated with '
+            'the following ASR Recipes:',
+        ]
+        for result in data_sources:
+            asr_name = (result.metadata.asr_name
+                        if 'asr_name' in result.metadata else '(Unknown data source)')
+            link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
+                         f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+            description.append(link_name)
+
+        description = '\n'.join(description)
+        describe_entry(paneltitle, description=description)
 
     merge_panels(page)
     page = [panel for _, panel in page.items()]

@@ -61,49 +61,64 @@ def calculate(calculator: dict = {
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (table, fig,
                                       entry_parameter_description,
-                                      describe_entry)
+                                      describe_entry, WebPanel)
 
-    t = table(row, 'Property',
-              ['gap', 'gap_dir',
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.gs@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    explanation = ('The electronic band gap including spin-orbit effects\n\n'
+                   + parameter_description)
+
+    gap = describe_entry('gap', description=explanation)
+    t = table(result, 'Property',
+              [gap, 'gap_dir',
                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
-    gap = row.get('gap')
+    gap = result.gap
 
     if gap > 0:
-        if row.get('evac'):
+        if result.get('evac'):
             t['rows'].extend(
                 [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
+                  f'{result.vbm - result.evac:.2f} eV'],
                  ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
+                  f'{result.cbm - result.evac:.2f} eV']])
         else:
             t['rows'].extend(
                 [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
+                  f'{result.vbm - result.efermi:.2f} eV'],
                  ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-    panel = {'title': 'Basic electronic properties (PBE)',
-             'columns': [[t], [fig('bz-with-gaps.png')]],
-             'sort': 10}
+                  f'{result.cbm - result.efermi:.2f} eV']])
 
-    description = 'The electronic band gap including spin-orbit effects\n\n'
+    panel = WebPanel(title='Basic electronic properties (PBE)',
+                     columns=[[t], [fig('bz-with-gaps.png')]],
+                     sort=10)
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.gs@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    description = ('The electronic band gap including spin-orbit effects\n\n'
+                   + parameter_description)
     datarow = ['Band gap (PBE)',
-               entry_parameter_description(
-                   row.data,
-                   'asr.gs@calculate',
-                   describe_entry(f'{row.gap:0.2f} eV',
-                                  description),
-                   exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                                     'idiotproof', 'maxiter', 'hund', 'random',
-                                     'experimental', 'basis', 'setups']))]
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
-                             'rows': [datarow]}]],
-               'plot_descriptions': [{'function': bz_with_band_extremums,
-                                      'filenames': ['bz-with-gaps.png']}],
-               'sort': 10}
+               describe_entry(value=f'{result.gap:0.2f} eV', description=description)]
+    summary = WebPanel(
+        title=describe_entry(
+            'Summary',
+            description='This panel contains a summary of the most '
+            'important properties of this material.'),
+        columns=[[{'type': 'table',
+                   'header': ['Electronic properties', ''],
+                   'rows': [datarow]}]],
+        plot_descriptions=[{'function': bz_with_band_extremums,
+                            'filenames': ['bz-with-gaps.png']}],
+        sort=10)
 
     return [panel, summary]
 

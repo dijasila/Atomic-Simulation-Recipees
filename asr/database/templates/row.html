@@ -14,8 +14,8 @@
 {% macro entry(data) %}
 {# Associate help with data entry #}
 
-{% if data.description %}
-{{ data.value|safe }} {{ help(data.description|replace("\n","<br />")) }}
+{% if data.__explanation__ %}
+{{ data|safe }} {{ help(data.__explanation__|replace("\n","<br />")) }}
 {% else %}
 {{ data|safe }}
 {% endif %}
@@ -168,7 +168,7 @@ jmol_isReady = function(applet)
     <h4 class="panel-title">
       <a class="btn-block" data-toggle="collapse"
          href="#collapse{{ loop.index0 }}">
-        {{ title }}
+        {{ entry(title) }}
       </a>
     </h4>
   </div>

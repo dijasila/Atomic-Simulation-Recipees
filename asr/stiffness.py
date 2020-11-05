@@ -5,7 +5,8 @@ import typing
 
 def webpanel(result, row, key_descriptions):
     import numpy as np
-    from asr.database.browser import matrixtable
+    from asr.database.browser import (matrixtable, describe_entry,
+                                      entry_parameter_description)
 
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
@@ -48,7 +49,20 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    panel = {'title': 'Stiffness tensor',
+    title_description = """
+The stiffness tensor is defined as the derivative of the stress with respect to
+strain. The stiffness tensor is calculated using a finite difference procedure
+with the parameters listed below.
+
+"""
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.stiffness'
+    )
+    title_description += parameter_description
+
+    panel = {'title': describe_entry('Stiffness tensor', description=title_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
@@ -57,8 +71,7 @@ def webpanel(result, row, key_descriptions):
     low = 'Min. Stiffness eig. < 0'
 
     row = ['Dynamical (stiffness)',
-           {'value': dynstab.upper(),
-            'description': f"LOW: {low}\nHIGH: {high}"}]
+           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',

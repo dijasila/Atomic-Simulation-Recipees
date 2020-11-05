@@ -30,7 +30,7 @@ def webpanel(result, row, key_descriptions):
     else:
         opt = None
     # Make the panel
-    panel = {'title': 'Raman spectrum (RPA)',
+    panel = {'title': 'Raman spectrum',
              'columns': [[fig('Raman.png')], [opt]],
              'plot_descriptions':
                  [{'function': raman,
