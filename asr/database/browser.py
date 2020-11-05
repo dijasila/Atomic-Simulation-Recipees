@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
 import os
+from .webpanel import WebPanel
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -233,6 +234,7 @@ def merge_panels(page):
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+        panel = WebPanel(**panel)
         page[title] = panel
 
 
@@ -272,6 +274,8 @@ def layout(row: AtomsRow,
     exclude = set()
 
     row = RowWrapper(row)
+
+    result_objects = []
     for key, value in row.data.items():
         if is_results_file(key):
             try:
@@ -280,25 +284,24 @@ def layout(row: AtomsRow,
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
                 obj = dct_to_result(value)
+            result_objects.append(obj)
         else:
             obj = value
         row.data[key] = obj
         assert row.data[key] == obj
 
     # Locate all webpanels
-    for result in filter(lambda x: isinstance(x, ASRResult), row.data.values()):
+    for result in result_objects:
         if 'ase_webpanel' not in result.get_formats():
             continue
         panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
 
-        for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {result} webpanel'
-            panel = {'columns': [[], []],
-                     'plot_descriptions': [],
-                     'sort': 99}
-            panel.update(thispanel)
+        for panel in panels:
+            assert 'title' in panel, f'No title in {result} webpanel'
+            if not isinstance(panel, WebPanel):
+                panel = WebPanel(**panel)
             paneltitle = panel['title']
             if paneltitle in page:
                 page[paneltitle].append(panel)

@@ -61,31 +61,32 @@ def calculate(calculator: dict = {
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (table, fig,
                                       entry_parameter_description,
-                                      describe_entry)
+                                      describe_entry, WebPanel)
 
-    t = table(row, 'Property',
+    t = table(result, 'Property',
               ['gap', 'gap_dir',
                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
               key_descriptions)
 
-    gap = row.get('gap')
+    gap = result.gap
 
     if gap > 0:
-        if row.get('evac'):
+        if result.get('evac'):
             t['rows'].extend(
                 [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
+                  f'{result.vbm - result.evac:.2f} eV'],
                  ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
+                  f'{result.cbm - result.evac:.2f} eV']])
         else:
             t['rows'].extend(
                 [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
+                  f'{result.vbm - result.efermi:.2f} eV'],
                  ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-    panel = {'title': 'Basic electronic properties (PBE)',
-             'columns': [[t], [fig('bz-with-gaps.png')]],
-             'sort': 10}
+                  f'{result.cbm - result.efermi:.2f} eV']])
+
+    panel = WebPanel(title='Basic electronic properties (PBE)',
+                     columns=[[t], [fig('bz-with-gaps.png')]],
+                     sort=10)
 
     parameter_description = entry_parameter_description(
         row.data,
@@ -96,14 +97,15 @@ def webpanel(result, row, key_descriptions):
     description = ('The electronic band gap including spin-orbit effects\n\n'
                    + parameter_description)
     datarow = ['Band gap (PBE)',
-               describe_entry(value=f'{row.gap:0.2f} eV', description=description)]
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
-                             'rows': [datarow]}]],
-               'plot_descriptions': [{'function': bz_with_band_extremums,
-                                      'filenames': ['bz-with-gaps.png']}],
-               'sort': 10}
+               describe_entry(value=f'{result.gap:0.2f} eV', description=description)]
+    summary = WebPanel(
+        title='Summary',
+        columns=[[{'type': 'table',
+                   'header': ['Electronic properties', ''],
+                   'rows': [datarow]}]],
+        plot_descriptions=[{'function': bz_with_band_extremums,
+                            'filenames': ['bz-with-gaps.png']}],
+        sort=10)
 
     return [panel, summary]
 
