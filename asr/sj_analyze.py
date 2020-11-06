@@ -128,14 +128,10 @@ def main() -> Result:
 
     # get neutral formation energy without chemical potentials applied
     eform = calculate_neutral_formation_energy()
-    results['eform'] = eform
 
-    return Result.fromdata(
-            transitions=results['transitions'],
-            pristine=results['pristine'],
-            eform=eform)
-
-    #return results
+    return Result.fromdata(transitions=trans,
+                           pristine=pris,
+                           eform=eform)
 
 
 def get_pristine_band_edges():
