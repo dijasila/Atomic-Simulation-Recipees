@@ -45,7 +45,7 @@ class DisplacementResults(ASRResult):
         energies_n='Energies along displaced coordinates [eV].',
         ZPL='Zero phonon line energy [eV].',
         overlap='Overlap between state i and state f of the displaced geometry.',
-        eigenvalues='Eigenvalues for state i and state f of the displaced geometry [eV].')
+        eigenvalues='Eigenvalues for state i and f of the displaced geometry [eV].')
 
 
 @command("asr.config_diagram",
@@ -104,8 +104,8 @@ def calculate(folder: str, npoints: int = 5,
         Q_n.append(sqrt(Q2) * np.sign(displ))
         atoms.positions += displ * delta_R
         atoms.set_calculator(calc_q)
-        #energy = atoms.get_potential_energy()
-        #parprint(displ, energy)
+        # energy = atoms.get_potential_energy()
+        # parprint(displ, energy)
 
         atoms.positions = pos_ai
         energy = 0.06155**2 / 2 * 15.4669**2 * Q2
@@ -114,7 +114,7 @@ def calculate(folder: str, npoints: int = 5,
         # if the indices of the wfs are set the overlap is calculated
         if wfs:
             i, f = wfs
-            overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
+            overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q)
             parprint(overlap, eigenvalues)
         else:
             overlap = None
@@ -194,7 +194,7 @@ def main(folder1: str = '.', folder2: str = 'excited'):
        excited one-dimensional mode and their relative
        Huang-Rhys factors"""
 
-    result_file = 'results-asr.config_diagram@calculate.json' 
+    result_file = 'results-asr.config_diagram@calculate.json'
 
     data_g = read_json(folder1 + '/' + result_file)
     data_e = read_json(folder2 + '/' + result_file)
@@ -284,7 +284,7 @@ def plot_luminescence(row, fname):
     def gauss_delta(x, sigma):
         return 1 / (sigma * sqrt(2 * pi)) * np.exp(-x**2 / (2 * sigma**2))
 
-    def overlap(n, S): 
+    def overlap(n, S):
         return np.exp(-S) * S**n / factorial(n)
 
     data = row.data.get('results-asr.config_diagram.json')
@@ -294,24 +294,24 @@ def plot_luminescence(row, fname):
     ZPL = data['ZPL']
     S_g = data['ground']['S']
 
-    w_i = np.linspace(0, ZPL*1.3, 1000)
+    w_i = np.linspace(0, ZPL * 1.3, 1000)
 
     nmax = 20
     sigma = 0.02
-    L_i = 0 
+    L_i = 0
 
-    for n in range(1,nmax):
-        arg_delta = ZPL + omega_e - n * omega_g - w_i 
+    for n in range(1, nmax):
+        arg_delta = ZPL + omega_e - n * omega_g - w_i
         L_i += overlap(n, S_g) * gauss_delta(arg_delta, sigma)
 
-    fig = plt.figure(figsize=(7, 6)) 
+    fig = plt.figure(figsize=(7, 6))
     ax = fig.gca()
 
     ax.plot(w_i, L_i)
-    #ax.plot([ZPL]*2,[0,max(L_i)],'--k')
+    # ax.plot([ZPL]*2,[0,max(L_i)],'--k')
 
-    ax.set_xlim(ZPL/2, ZPL*1.2)
-    ax.set_ylim(0, max(L_i)*1.1)
+    ax.set_xlim(ZPL / 2, ZPL * 1.2)
+    ax.set_ylim(0, max(L_i) * 1.1)
     ax.set_xlabel(r'Energy (eV)', size=16)
     ax.set_ylabel('PL (a.u.)', size=18)
 
