@@ -57,7 +57,7 @@ class WebPanel:
         return (f'WebPanel(title="{self.title}",'
                 f'columns={self.columns},sort={self.sort},...)')
 
-    def __repr__(self):
+    def __repr__(self):  # noqa
         return str(self)
 
     def render(self) -> str:
