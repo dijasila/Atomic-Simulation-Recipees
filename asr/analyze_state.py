@@ -166,17 +166,19 @@ def get_band_edge():
     ecbm = calc.get_eigenvalues(spin=p2[0], kpt=p2[1])[p2[2]]
     return evbm, ecbm, gap
 
+
 def draw_band_edge(energy, edge, color, offset=2, ax=None):
     if edge == 'vbm':
         eoffset = energy - offset
-        elabel = energy - offset/2
+        elabel = energy - offset / 2
     elif edge == 'cbm':
         eoffset = energy + offset
-        elabel = energy + offset/2
+        elabel = energy + offset / 2
 
-    ax.plot([0,1],[energy]*2, color=color, lw=2,zorder=1)
-    ax.fill_between([0,1],[energy]*2,[eoffset]*2, color=color, alpha=0.7)
+    ax.plot([0, 1], [energy] * 2, color=color, lw=2, zorder=1)
+    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.7)
     ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
+
 
 class Level:
     """Class to draw a single defect state level in the gap, with an
@@ -189,10 +191,10 @@ class Level:
         self.ax = ax
 
     def draw(self, spin, deg):
-        """Draw the defect state according to its 
+        """Draw the defect state according to its
            spin  and degeneracy"""
 
-        relpos = [[1/4,1/8],[3/4,5/8]][spin][deg-1]
+        relpos = [[1 / 4,1 / 8],[3 / 4,5 / 8]][spin][deg - 1]
         pos = [relpos - self.size, relpos + self.size]
         self.relpos = relpos
         self.spin = spin
@@ -202,17 +204,18 @@ class Level:
             self.ax.plot(pos, [self.energy] * 2, '-k')
 
         if deg == 2:
-            newpos = [p + 1/4 for p in pos]
+            newpos = [p + 1 / 4 for p in pos]
             self.ax.plot(pos, [self.energy] * 2, '-k')
             self.ax.plot(newpos, [self.energy] * 2, '-k')
 
     def add_occupation(self, length):
         "Draw an arrow if the defect state is occupied"
 
-        updown = [1,-1][self.spin]
+        updown = [1, -1][self.spin]
         self.ax.arrow(self.relpos, self.energy - updown*length/2, 0, updown*length, head_width=0.01, head_length=length/5, fc='k', ec='k')
         if self.deg == 2:
             self.ax.arrow(self.relpos + 1/4, self.energy - updown*length/2, 0, updown*length, head_width=0.01, head_length=length/5, fc='k', ec='k')
+
 
 def return_gapstates(calc_def, spin=0):
     """Evaluates which states are inside the gap and returns the band indices
@@ -243,8 +246,8 @@ def return_gapstates_fix(calc_def, spin=0):
     """HOTFIX until spin-orbit works with ASR!"""
 
     _, calc_pris = restart('../../defects.pristine_sc/gs.gpw', txt=None)
-    evac_pris = calc_pris.get_electrostatic_potential()[0,0,0]
-    evac_def = calc_def.get_electrostatic_potential()[0,0,0]
+    evac_pris = calc_pris.get_electrostatic_potential()[0, 0, 0]
+    evac_def = calc_def.get_electrostatic_potential()[0, 0, 0]
     ef_def = calc_def.get_fermi_level()
 
     vbm, cbm = calc_pris.get_homo_lumo() - evac_pris
