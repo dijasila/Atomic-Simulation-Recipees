@@ -1,5 +1,5 @@
 from typing import Union
-from asr.core import command, argument, option
+from asr.core import command, argument, option, ASRResult
 import numpy as np
 from datetime import datetime
 from asr.utils import timed_print
@@ -88,7 +88,7 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
         "based on their reduced formula and comparison_keys.")
 def main(database: str, databaseout: Union[str, None] = None,
          comparison_keys: str = '', max_rmsd: float = 1.0,
-         skip_distance_calc: bool = False):
+         skip_distance_calc: bool = False) -> ASRResult:
     """Calculate RMSD between materials of a database.
 
     Uses pymatgens StructureMatcher to calculate rmsd. If

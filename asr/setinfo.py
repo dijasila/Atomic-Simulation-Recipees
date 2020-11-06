@@ -1,6 +1,6 @@
 """Manually set key-value-pairs for material."""
 
-from asr.core import command, argument, read_json, write_json
+from asr.core import command, argument, read_json, write_json, ASRResult
 from ast import literal_eval
 import click
 from pathlib import Path
@@ -36,7 +36,7 @@ def check_key_value(key, value):
 @command('asr.setinfo')
 @argument('key_value_pairs', metavar='key:value', nargs=-1,
           type=KeyValuePair())
-def main(key_value_pairs: List[Tuple[str, str]]):
+def main(key_value_pairs: List[Tuple[str, str]]) -> ASRResult:
     """Set additional key value pairs.
 
     These extra key value pairs are stored in info.json.  To set a key

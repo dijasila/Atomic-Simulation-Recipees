@@ -20,7 +20,7 @@ build:
   script: tox -e build
   artifacts:
     paths:
-    - dist/
+      - dist/
     expire_in: 1 week
 
 # -------------- Style tests --------------
@@ -52,6 +52,7 @@ python36:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 python37:
   image: python:3.7
@@ -60,6 +61,7 @@ python37:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 python38:
   image: python:3.8
@@ -68,6 +70,7 @@ python38:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 # -------------- Parallel tests --------------
 
@@ -91,6 +94,7 @@ python36-gpaw:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 python37-gpaw:
   image: python:3.7
@@ -102,6 +106,7 @@ python37-gpaw:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 python38-gpaw:
   image: python:3.8
@@ -113,6 +118,7 @@ python38-gpaw:
   artifacts:
     paths:
       - .tox/.coverage*
+    expire_in: 3 weeks
 
 
 # -------------- Coverage --------------
@@ -124,6 +130,7 @@ coverage:
   artifacts:
     paths:
       - .tox/htmlcov/
+    expire_in: 3 weeks
 
 # -------------- Deploy coverage report --------------
 pages:
@@ -147,6 +154,7 @@ release:
   script: tox -e release
   artifacts:
     paths:
-    - dist
+      - dist
+    expire_in: 3 weeks
   only:
     - tags

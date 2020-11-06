@@ -24,6 +24,7 @@ def resultstest(results, vbmass, cbmass):
                     assert results[k][k2] == approx(0)
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize('gap', [2])
 @pytest.mark.parametrize('fermi_level', [0.1])
 @pytest.mark.parametrize('vbmass', vbmasses)
@@ -38,8 +39,10 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
 
     def get_all_eigs(self):
         res_kn = unpatched(self)
-        res_kn[:, :self.get_number_of_electrons()] *= 1 / vbmass
-        res_kn[:, self.get_number_of_electrons():] *= 1 / cbmass
+        nvalencebands = self.get_number_of_valence_electrons() // 2
+        res_kn[:, :nvalencebands] *= 1 / vbmass
+        res_kn[:, nvalencebands:] *= 1 / cbmass
+        print('res_kn[0]', res_kn[0])
         return res_kn
 
     mocker.patch.object(gpaw.GPAW, '_get_band_gap')
@@ -54,6 +57,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
     resultstest(results, vbmass, cbmass)
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize('gap', [2])
 @pytest.mark.parametrize('fermi_level', [0.1])
 @pytest.mark.parametrize('vbmass', vbmasses)
@@ -66,7 +70,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
 
     def get_all_eigs(self):
         res_kn = _get_all_eigenvalues(self)
-        n = self.get_number_of_electrons()
+        n = self.get_number_of_valence_electrons() // 2
         res_kn[:, :n] *= 1 / vbmass
         res_kn[:, n:] *= 1 / cbmass
         return res_kn
@@ -104,9 +108,9 @@ def _get_all_eigenvalues(self):
     veps_kn = 0.5 * (np.dot(self.kpts + offsets, icell) ** 2).sum(2).T
     veps_kn.sort()
 
-    nelectrons = self.get_number_of_electrons()
+    nvalencebands = self.get_number_of_valence_electrons() // 2
     gap = self._get_band_gap()
-    eps_kn = np.concatenate((-veps_kn[:, ::-1][:, -nelectrons:],
+    eps_kn = np.concatenate((-veps_kn[:, ::-1][:, -nvalencebands:],
                             ceps_kn + gap / Ha), axis=-1)
 
     nbands = self.get_number_of_bands()

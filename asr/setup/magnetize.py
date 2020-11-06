@@ -1,4 +1,5 @@
-from asr.core import command, option
+"""Generate magnetic atomic structures."""
+from asr.core import command, option, ASRResult
 
 
 @command('asr.setup.magnetize')
@@ -8,7 +9,7 @@ from asr.core import command, option
 @option('--copy-params', is_flag=True,
         help='Also copy params.json from this dir (if exists).', type=bool)
 def main(state: str = 'all', name: str = 'unrelaxed.json',
-         copy_params: bool = False):
+         copy_params: bool = False) -> ASRResult:
     """Set up folders with magnetic moments.
 
     This recipe can be used to test different magnetic configurations

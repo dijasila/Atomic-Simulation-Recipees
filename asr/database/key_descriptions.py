@@ -1,4 +1,4 @@
-from asr.core import command, argument, get_recipes
+from asr.core import command, argument, get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
@@ -84,9 +84,9 @@ key_descriptions = {
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
-        "KVP: Magnetic anisotropy energy between x and z axis [meV/unit cell]",
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
         "dE_zy":
-        "KVP: Magnetic anisotropy energy between y and z axis [meV/unit cell]",
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
     },
     "pdos": {
         "pdos_nosoc":
@@ -141,7 +141,7 @@ key_descriptions = {
         "spacegroup": "KVP: Space group",
         "spgnum": "KVP: Space group number",
         "pointgroup": "KVP: Point group",
-        "crystal_prototype": "KVP: Crystal prototype",
+        "crystal_type": "KVP: Crystal type",
     },
     "database.material_fingerprint": {
         'asr_id': 'KVP: Material unique ID',
@@ -222,7 +222,7 @@ key_descriptions['extra'] = extras
 
 @command()
 @argument('database', type=str)
-def main(database: str):
+def main(database: str) -> ASRResult:
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys

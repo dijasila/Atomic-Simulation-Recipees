@@ -1,44 +1,17 @@
+"""Electronic band structures."""
 from typing import Union
-from asr.core import command, option
-
-tests = []
-params1 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-params2 = "{'mode':'lcao','kpts':{'density':2,...},...}"
-tests.append({'description': 'Test band structure of Si.',
-              'name': 'asr.bandstructure_Si',
-              'tags': ['gitlab-ci'],
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params1} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-tests.append({'description': 'Test band structure of 2D-BN.',
-              'name': 'asr.bandstructure_2DBN',
-              'cli': ['asr run "setup.materials -s BN,natoms=2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params2} '
-                      'asr.bandstructure@calculate:npoints 50 '
-                      'asr.bandstructure@calculate:emptybands 5"',
-                      'asr run bandstructure',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
+from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 
 
 @command('asr.bandstructure',
          requires=['gs.gpw'],
          creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         tests=tests)
+         dependencies=['asr.gs@calculate'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
 @option('--emptybands', type=int)
 def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
-              emptybands: int = 20):
+              emptybands: int = 20) -> ASRResult:
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
@@ -320,6 +293,7 @@ def bs_pbe(row,
            s=0.5):
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
@@ -391,13 +365,13 @@ def bs_pbe(row,
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
-    ax.set_xlabel('$k$-points')
     plt.legend(loc='upper right')
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
     text = ax.annotate(
         r'$E_\mathrm{F}$',
         xy=(x0, ef_soc - ref_soc),
+        fontsize=rcParams['font.size'] * 1.25,
         ha='left',
         va='bottom')
 
@@ -410,7 +384,7 @@ def bs_pbe(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     from typing import Tuple, List
 
@@ -435,14 +409,31 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    version: int = 0
+
+    bs_soc: dict
+    bs_nosoc: dict
+
+    key_descriptions = \
+        {
+            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+        }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.bandstructure',
          requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
                    'results-asr.structureinfo.json',
                    'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.bandstructure@calculate', 'asr.gs',
                        'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from gpaw import GPAW
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
@@ -508,11 +499,10 @@ def main():
 
     bsresults['sz_mk'] = sz_mk
 
-    from asr.core import singleprec_dict
-    results['bs_soc'] = singleprec_dict(bsresults)
-    results['bs_nosoc'] = singleprec_dict(results['bs_nosoc'])
-
-    return results
+    return Result.fromdata(
+        bs_soc=singleprec_dict(bsresults),
+        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+    )
 
 
 if __name__ == '__main__':
