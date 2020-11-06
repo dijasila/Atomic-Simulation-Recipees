@@ -19,7 +19,6 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     table_array = link_tables(row)
-    print(table_array)
 
     caption = ""
     link_table = table(row,
