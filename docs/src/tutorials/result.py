@@ -37,7 +37,7 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-# Call like this
-myresult = Result.fromdata(energy=1.0, forces=[[1.0, 1.0, 1.0]])
-webpanels = myresult.format_as('ase_webpanel', row=..., key_descriptions=...)
-webpanel = webpanels[0]
+# # Call like this
+# myresult = Result.fromdata(energy=1.0, forces=[[1.0, 1.0, 1.0]])
+# webpanels = myresult.format_as('ase_webpanel', row=..., key_descriptions=...)
+# webpanel = webpanels[0]
