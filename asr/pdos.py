@@ -420,11 +420,11 @@ def plot_pdos(row, filename, soc=True,
 
     # Annotate E_F
     xlim = ax.get_xlim()
-    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
+    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
     text = plt.text(x0, ef - row.get('evac', 0),
                     r'$E_\mathrm{F}$',
                     fontsize=rcParams['font.size'] * 1.25,
-                    ha='left',
+                    ha='right',
                     va='bottom')
 
     text.set_path_effects([

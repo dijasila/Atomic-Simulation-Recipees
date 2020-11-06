@@ -47,7 +47,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     if world.size == 1:
         content = get_webcontent()
         resultgap = results.get("gap")
-        assert f"<td>Bandgap</td><td>{resultgap:0.2f}eV" in content, content
+
+        assert f"{resultgap:0.2f}eV" in content, content
         assert "<td>Fermilevel</td>" in content, content
         assert "<td>Magneticstate</td><td>NM</td>" in \
             content, content

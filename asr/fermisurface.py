@@ -69,45 +69,32 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
-def plot_fermi(row, fname,
-               annotate=True, fontsize=10, svbm=100, scbm=40, lwvbm=2.5,
-               sfs=1, dpi=200, scale=None, scalecb=None,
-               bbox_to_anchor=None, angle=0):
+def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
+    plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
+    add_fermi(row, ax=ax, s=sfs)
+    plt.tight_layout()
     plt.savefig(fname, dpi=dpi)
-    plt.close()
 
 
-def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
+def add_fermi(row, ax, s=0.25):
     from matplotlib import pyplot as plt
     import matplotlib.colors as colors
     import numpy as np
     verts = row.data['results-asr.fermisurface.json']['contours'].copy()
     normalize = colors.Normalize(vmin=-1, vmax=1)
-    rotate = np.array([[np.cos(angle), -np.sin(angle), 0],
-                       [np.sin(angle), np.cos(angle), 0],
-                       [0, 0, 1]])
     verts[:, :2] /= (2 * np.pi)
-    verts[:, :2] = np.dot(rotate[:2, :2], verts[:, :2].T).T
     im = ax.scatter(verts[:, 0], verts[:, 1], c=verts[:, -1],
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
-    rect = np.array([0.85, 0.2, 0.025, 0.6])
-    if scale is not None:
-        center = np.array([0, 0.5, 0, 0])
-        rect = (rect - center) * scale + center
-    cbaxes = plt.gcf().add_axes(rect)
-    cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
+
+    cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
     cbar.set_label('$\\langle S_z \\rangle$')
-
-    return cbaxes
 
 
 @prepare_result
