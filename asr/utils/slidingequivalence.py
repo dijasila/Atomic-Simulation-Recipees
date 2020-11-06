@@ -3,6 +3,9 @@ import numpy as np
 from ase import Atoms
 
 
+class AnyVector:
+    pass
+
 class ElementSet:
     # positions: List[Tuple[bool, np.array]]
 
@@ -114,6 +117,12 @@ def equiv_vector(set1: ElementSet, set2: ElementSet) -> Tuple[float, float]:
     if len(set1.get_positions()) != len(set2.get_positions()):
         return None
 
+    if not any(b for (b, p) in set1.get_data()):
+        if any(b for (b, p) in set2.get_data()):
+            return np.array([0, 0, 0])
+        else:
+            return AnyVector
+
     ref_ind, reference_pos = next((i, p)
                                   for i, (b, p) in enumerate(set1.get_data()) if b)
     if len(set1.get_positions()) == 1:
@@ -153,22 +162,34 @@ def slide_equivalent(slide_indices: List[int],
     Determine if we can go from mat2 to mat1 by sliding the atoms in mat1.
     """
     if ats1 == ats2:
-        return True
+        return np.array([0, 0, 0])
     if len(ats1) != len(ats2):
-        return False
+        return None
 
     mat1 = Material(slide_indices, ats1)
     mat2 = Material([False for _ in range(len(ats2))],
                     ats2)
 
+    def mapply(i, v, set1, set2):
+        if i == 0:
+            v = equiv_vector(set1, set2)
+        elif v is AnyVector:
+            v = equiv_vector(set1, set2)
+        elif v is not None:
+            b = equiv_w_vector(v, set1, set2)
+            if not b:
+                v = None
+
+        return i + 1, v
+            
+
+    vec = None
+    i = 0
     for k, set1 in mat1.sets.items():
         set2 = mat2.sets[k]
-        vec = equiv_vector(set1, set2)
+        i, vec = mapply(i, vec, set1, set2)
 
-        if vec is not None:
-            return True
-
-    return False
+    return vec
 
 
 def invert(atoms, N):
@@ -195,16 +216,82 @@ def invert(atoms, N):
     return atoms2
 
 
-def test_slide_equiv():
+def test_slide_equiv(folder):
+    """Analyse bilayer located in folder.
+
+    Test whether the bilayer is equivalent to its z-inverted
+    version through sliding.
+    """
     from asr.utils.bilayerutils import construct_bilayer
     from ase.io import read
-    bottom = read("../structure.json")
+    bottom = read(f"{folder}/../structure.json")
     N_mono = len(bottom)
 
-    bilayer = construct_bilayer(".")
+    bilayer = construct_bilayer(folder)
     inverted_bilayer = invert(bilayer, N_mono)
 
     bs = [i < N_mono for i in range(2 * N_mono)]
     b = slide_equivalent(bs, inverted_bilayer, bilayer)
 
-    print(f"Sliding equivalent? {b}")
+    return b
+
+
+def align_vector(bottom1, bottom2):
+    from itertools import product
+    deltavec = None
+    for atom1, atom2 in product(bottom1, bottom2):
+        if atom1.symbol == atom2.symbol:
+            _b1 = bottom1.copy()
+            _b2 = bottom2.copy()
+            dvec = atom2.position - atom1.position
+            if (_b1.translate(dvec)) == _b2:
+                deltavec = dvec
+                break
+    return deltavec
+
+def distance(a1, a2):
+    from asr.database.rmsd import get_rmsd
+    _v = get_rmsd(a1, a2)
+    if _v is None:
+        return 1000
+    else:
+        return _v
+
+def get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c):
+    from itertools import product
+    from asr.stack_bilayer import atomseq
+    tolerance = 0.001
+    
+    # if distance(bottom1, bottom2) > tolerance:
+    #     return None
+    if not atomseq(bottom1, bottom2):
+        return None
+    
+    for atom1, atom2 in product(top1, top2):
+        if atom1.symbol != atom2.symbol:
+            continue
+        dvec = atom2.position - atom1.position
+        _top1 = top1.copy()
+        _top1.translate(dvec)
+        # if distance(_top1, top2) < tolerance:
+        #     return dvec
+        if atomseq(_top1, top2):
+            return (bottom1.cell.scaled_positions(dvec)
+                    + bottom2.cell.scaled_positions(np.array([t2_c[0], t2_c[1], 0]))
+                    - bottom1.cell.scaled_positions(np.array([t1_c[0], t1_c[1], 0])))
+
+    return None
+
+
+def slide_vector_for_bilayers(folder1, folder2):
+    from ase.io import read
+    from asr.core import read_json
+
+    bottom1 = read(f"{folder1}/../structure.json")
+    top1 = read(f"{folder1}/toplayer.json")
+    bottom2 = read(f"{folder2}/../structure.json")
+    top2 = read(f"{folder2}/toplayer.json")
+    t1_c = np.array(read_json(f"{folder1}/translation.json")['translation_vector']).astype(float)
+    t2_c = np.array(read_json(f"{folder2}/translation.json")['translation_vector']).astype(float)
+
+    return get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c)

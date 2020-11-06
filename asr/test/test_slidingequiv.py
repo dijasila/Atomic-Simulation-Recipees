@@ -2,6 +2,7 @@ import pytest
 from asr.utils.slidingequivalence import mod, equiv_w_vector
 from asr.utils.slidingequivalence import equiv_vector, ElementSet
 from asr.utils.slidingequivalence import Material, slide_equivalent
+from asr.utils.slidingequivalence import align_vector, get_slide_vector
 import numpy as np
 from ase import Atoms
 
@@ -192,7 +193,7 @@ def test_slide_equivalent_to_self(asr_tmpdir):
     ats2 = ats.copy()
 
     assert ats == ats2
-    assert slide_equivalent([False, True], ats, ats2)
+    assert slide_equivalent([False, True], ats, ats2) is not None
 
 
 @pytest.mark.ci
@@ -272,7 +273,7 @@ def test_slide_top_atoms(asr_tmpdir):
     assert ats != ats2
     assert len(ats) == len(ats2)
 
-    assert slide_equivalent([False, True], ats, ats2)
+    assert slide_equivalent([False, True], ats, ats2) is not None
 
 
 @pytest.mark.ci
@@ -299,8 +300,8 @@ def test_mos2_slided(asr_tmpdir):
 
     indices = [False, False, False, True, True, True]
 
-    assert slide_equivalent(indices, slided_bilayer, bilayer)
-    assert slide_equivalent(indices, bilayer, slided_bilayer)
+    assert slide_equivalent(indices, slided_bilayer, bilayer) is not None
+    assert slide_equivalent(indices, bilayer, slided_bilayer) is not None
 
 
 def invert(atoms):
@@ -338,4 +339,139 @@ def test_hbn_inverted(asr_tmpdir):
     inverted_atoms = invert(atoms)
 
     assert slide_equivalent([True, True, False, False], inverted_atoms,
-                            atoms)
+                            atoms) is not None
+@pytest.mark.ci
+def test_mos2_not_slide_equiv(asr_tmpdir):
+    bottom_pos = np.array([[0, 0, 9.06],
+                           [1.59, 0.92, 10.63],
+                           [1.59, 0.92, 7.5]])
+    cell = np.array([[3.18, 0.0, 0.0],
+                     [-1.59, 2.76, 0.],
+                     [0, 0., 18.13]])
+    cell[2, 2] *= 2
+    top_pos = bottom_pos.copy()
+    top_pos[:, 2] += 7.5
+    bottom = Atoms("MoS2", positions=bottom_pos, cell=cell)
+    top = Atoms("MoS2", positions=top_pos, cell=cell)
+    bilayer = bottom + top
+
+    not_top_pos = np.array([[0, 0, 9.06],
+                            [0.59, 0.92, 10.63],
+                            [1.59, 2.92, 7.5]])
+    not_top_pos[:, 2] += 7.5
+    bottom = Atoms("MoS2", positions=bottom_pos, cell=cell)
+    not_slided_top = Atoms("MoS2", positions=not_top_pos, cell=cell)
+    not_slided_bilayer = bottom + not_slided_top
+
+    indices = [False, False, False, True, True, True]
+
+    assert not_slided_bilayer != bilayer
+    assert len(not_slided_bilayer) == len(bilayer)
+
+    mat1 = Material(indices, not_slided_bilayer)
+    
+    assert slide_equivalent(indices, not_slided_bilayer, bilayer) is None
+    assert slide_equivalent(indices, bilayer, not_slided_bilayer) is None
+
+
+@pytest.mark.ci
+def test_one_immovable_set(asr_tmpdir):
+    ats1 = Atoms("CH", positions=[[0, 0, 0],
+                                  [0, 0, 1]], cell=(5, 5, 5))
+    ats2 = Atoms("CH", positions=[[0, 0, 0],
+                                  [0, 1, 1]], cell=(5, 5, 5))
+
+    v = slide_equivalent([False, True], ats1, ats2)
+
+    assert v is not None
+    assert np.allclose(np.array([0, 1 / 5, 0]), v)
+
+@pytest.mark.ci
+def test_same_atoms(asr_tmpdir):
+    bottom1 = Atoms("H2O", positions=[[0, 0, 0],
+                                      [0, 0, 1],
+                                      [0, 1, 0]], cell=(5, 5, 5))
+    top1 = bottom1.copy()
+    bottom2 = bottom1.copy()
+    top2 = bottom1.copy()
+
+    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    assert v is not None
+    assert np.allclose(v, np.array([0, 0, 0])), v
+
+
+@pytest.mark.ci
+def test_same_misaligned(asr_tmpdir):
+    bottom1 = Atoms("H2O", positions=[[0, 0, 0],
+                                      [0, 0, 1],
+                                      [0, 1, 0]], cell=(5, 5, 5))
+    top1 = bottom1.copy()
+    bottom2 = bottom1.copy()
+
+    top2 = Atoms("H2O", positions=[[0, 1, 0],
+                                   [0, 1, 1],
+                                   [0, 2, 0]], cell=(5, 5, 5))
+
+
+    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    assert v is not None
+    assert np.allclose(v, np.array([0, 1, 0])), v
+
+
+@pytest.mark.ci
+def test_not_same_bottom_atoms(asr_tmpdir):
+    bottom1 = Atoms("H2O", positions=[[0, 0, 0],
+                                      [0, 0, 1],
+                                      [0, 1, 0]], cell=(5, 5, 5))
+    top1 = bottom1.copy()
+    bottom2 = Atoms("HCO", positions=[[0, 0, 0],
+                                      [0, 0, 1],
+                                      [0, 1, 0]], cell=(5, 5, 5))
+
+    top2 = bottom1.copy()
+
+    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    assert v is None, v
+
+
+@pytest.mark.ci
+def test_not_same_top_atoms(asr_tmpdir):
+    bottom1 = Atoms("H2O", positions=[[0, 0, 0],
+                                      [0, 0, 1],
+                                      [0, 1, 0]], cell=(5, 5, 5))
+    top1 = bottom1.copy()
+    bottom2 = bottom1.copy()
+    top2 = Atoms("HCO", positions=[[0, 0, 0],
+                                   [0, 0, 1],
+                                   [0, 1, 0]], cell=(5, 5, 5))
+
+    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    assert v is None, v
+
+
+@pytest.mark.ci
+def test_hbn(asr_tmpdir):
+    from ase.io import read
+    prefix = "/home/niflheim/asbra/stacked/"
+    bottom1 = read(
+        f"{prefix}hbnstackings/BN-4a5edc763604/structure.json")
+    top1 = read(
+        f"{prefix}hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/toplayer.json")
+    
+    bottom2 = bottom1.copy()
+    top2 = top1.copy()
+    dvec = (bottom1.cell[0] + bottom1.cell[1]) / 2
+    top2.translate(dvec)
+    
+    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    assert v is not None
+    assert np.allclose(v, dvec)
+
+
+
+
+def _test_wte2_with_inversion_center(asr_tmpdir):
+    pass
+
+def _test_wte2_w_o_inversion_center(asr_tmpdir):
+    pass
