@@ -47,7 +47,6 @@ def bs_gw(row,
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
     ax.set_ylabel(label)
-    ax.set_xlabel('$k$-points')
     ax.set_xticks(X)
     ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
 

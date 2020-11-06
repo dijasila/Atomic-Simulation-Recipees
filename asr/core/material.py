@@ -131,7 +131,7 @@ def make_panel_figures(material, panels):
         pd = panel.get('plot_descriptions', [])
         if pd:
             pds.extend(pd)
-            panel.pop('plot_descriptions')
+            # panel.pop('plot_descriptions')
 
     for pd in pds:
         pd['function'](material, *pd['filenames'])

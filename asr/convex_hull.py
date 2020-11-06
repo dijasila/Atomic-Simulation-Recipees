@@ -2,6 +2,7 @@
 from collections import Counter
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+import functools
 
 from asr.core import command, argument, ASRResult, prepare_result
 
@@ -14,7 +15,7 @@ known_methods = ['DFT', 'DFT+D3']
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig, table, describe_entry
 
     caption = """
     The convex hull describes stability
@@ -27,7 +28,8 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': 'Thermodynamic stability',
              'columns': [[fig('convex-hull.png', caption=caption)],
                          [hulltable1] + hulltables],
-             'plot_descriptions': [{'function': plot,
+             'plot_descriptions': [{'function':
+                                    functools.partial(plot, thisrow=row),
                                     'filenames': ['convex-hull.png']}],
              'sort': 1}
 
@@ -37,9 +39,10 @@ def webpanel(result, row, key_descriptions):
     medium = 'Heat of formation < 0.2 eV/atom'
     low = 'Heat of formation > 0.2 eV/atom'
     row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[thermostab].upper())]
+           describe_entry(stabilities[thermostab].upper(),
+                          '\n'.join([f'LOW: {low}',
+                                     f'MEDIUM: {medium}',
+                                     f'HIGH: {high}']))]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -286,7 +289,7 @@ def select_references(db, symbols):
     return list(refs.values())
 
 
-def plot(row, fname):
+def plot(row, fname, thisrow):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
 
@@ -344,7 +347,7 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
+        ax.plot([xt], [row.hform], 'o', color='C1', label=f'{thisrow.formula}')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
@@ -365,7 +368,7 @@ def plot(row, fname):
 
         ax.plot([bfrac + cfrac / 2],
                 [cfrac * 3**0.5 / 2],
-                'o', color='C1', label='This material')
+                'o', color='C1', label=f'{thisrow.formula}')
         plt.legend(loc='upper left')
         plt.axis('off')
 
