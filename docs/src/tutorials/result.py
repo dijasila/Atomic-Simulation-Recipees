@@ -4,14 +4,19 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    parameter_description = entry_parameter_description(row.data, 'asr.gs@calculate')
+    parameter_description = entry_parameter_description(
+        row.data, 'asr.gs@calculate'
+    )
 
     energy = describe_entry(result.energy, parameter_description)
     prop_table = {'type': 'table',
                   'header': ['Property', 'value'],
                   'rows': [['energy', energy]]}
 
-    return [WebPanel(title='Title of my webpanel', columns=[[prop_table], []])]
+    return [
+        WebPanel(title='Title of my webpanel',
+                 columns=[[prop_table], []])
+    ]
 
 
 @prepare_result
