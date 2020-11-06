@@ -10,6 +10,7 @@ import typing
 # TODO: clean up
 # TODO: exclude linking to itself
 # TODO: test new results implementation
+# TODO: webpanel not changed to working one yet!
 
 
 def webpanel(result, row, key_descriptions):
@@ -110,8 +111,6 @@ def return_link_results(linklist, urllist, db_name) -> LinkResults:
 
 
 @command(module='asr.database.crosslinks',
-         requires=['asr.database.material_fingerprint',
-                   'asr.database.crosslinks@create'],
          dependencies=['asr.database.material_fingerprint',
                        'asr.database.crosslinks@create'],
          returns=Result)
