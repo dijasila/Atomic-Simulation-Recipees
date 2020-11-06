@@ -1,4 +1,5 @@
 """Raman spectrum."""
+import typing
 from asr.core import command, ASRResult, prepare_result
 import numpy as np
 
@@ -43,6 +44,15 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
+    freqs_l: typing.List[float]
+    wavelength_w: typing.List[float]
+    amplitudes_vvwl: typing.List[typing.List[typing.List[typing.List[complex]]]]
+
+    key_descriptions = {
+        "freqs_l": "Phonon frequencies (the Gamma point) [1/cm]",
+        "wavelength_w": "Laser excitation wavelength [nm]",
+        "amplitudes_vvwl": "Raman tensor [a.u.]",
+    }
     formats = {"ase_webpanel": webpanel}
 
 
