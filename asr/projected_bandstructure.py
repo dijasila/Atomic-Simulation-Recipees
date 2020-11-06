@@ -24,15 +24,15 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
-    weight_skni: typing.List[typing.List[typing.List[float]]]
-    yl_i: typing.List[typing.Tuple[str, str]]
     symbols: typing.List[str]
+    yl_i: typing.List[typing.Tuple[str, str]]
+    weight_skni: typing.List[typing.List[typing.List[float]]]
 
-    key_descriptions = {
-        "weight_skni": "Weight of each projector (indexed by (s, k, n)) on orbitals i.",
-        "yl_i": "Symbol and orbital angular momentum string ('y,l') of each orbital i.",
-        "symbols": "Chemical symbols.",
-    }
+    key_descriptions: typing.Dict[str, str] = dict(
+        symbols="Chemical symbols.",
+        yl_i="Symbol and orbital angular momentum string ('y,l') of each orbital i.",
+        weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
+    )
 
     formats = {'ase_webpanel': webpanel}
 
