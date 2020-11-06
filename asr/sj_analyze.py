@@ -24,9 +24,8 @@ def webpanel(result, row, key_descriptions):
 
 
 @prepare_result
-class PristineResult(ASRResult):
+class PristineResults(ASRResult):
     """Container for pristine band gap results."""
-
     vbm: float
     cbm: float
     evac: float
@@ -38,14 +37,9 @@ class PristineResult(ASRResult):
     )
 
 
-
-
-state_descriptor = typing.Str
-state_values = typing.Tuple[float, float, float]
-
 @prepare_result
-class TransitionValues:
-
+class TransitionValues(ASRResult):
+    """Container for values of a specific charge transition level."""
     transition: float
     erelax: float
     evac: float
@@ -54,20 +48,32 @@ class TransitionValues:
         transition='Charge transition level [eV]',
         erelax='Reorganization contribution  to the transition level [eV]',
         evac='Vacuum level for halfinteger calculation [eV]'
-        )
+    )
+
+
+@prepare_result
+class TransitionResults(ASRResult):
+    """Container for charge transition level results."""
+    transition_name: str
+    transition_values: TransitionValues
+
+    key_descriptions = dict(
+        transition_name='Name of the charge transition (Initial State/Final State)',
+        transition_values='Container for values of a specific charge transition level.'
+    )
 
 
 @prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
-
-    transitions: typing.Dict[state_descriptor, state_values]
-    pristine: PristineResult
+    transitions: TransitionResults
+    pristine: PristineResults
     eform: float
 
     key_descriptions = dict(
-        transitions='Charge transition levels with [transition energy, relax correction, reference energy] eV',
-        pristine='Pristine band edges and vacuum level [eV]',
+        transitions='Charge transition levels with [transition energy, '
+                    'relax correction, reference energy] eV',
+        pristine='Container for pristine band gap results.',
         eform='Neutral formation energy without chemical potentials applied [eV]')
 
     formats = {"ase_webpanel": webpanel}
