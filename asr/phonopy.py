@@ -188,8 +188,22 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
+    from asr.database.browser import (table, fig,
+                                      entry_parameter_description,
+                                      describe_entry, WebPanel)
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.phonopy@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    explanation = ('The minimum of the hessian matrix.\n\n'
+                   + parameter_description)
+
+    minhessianeig = describe_entry('minhessianeig', description=explanation)
+
+    phonontable = table(row, 'Property', [minhessianeig], key_descriptions)
 
     panel = {'title': 'Phonons',
              'columns': [[fig('phonon_bs.png')], [phonontable]],
@@ -225,19 +239,28 @@ class Result(ASRResult):
     path: BandPath
     dynamic_stability_phonons: int
 
-    key_descriptions = {
-        "omega_kl": "Phonon frequencies.",
-        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
-        "eigs_kl": "Dynamical matrix eigenvalues.",
-        "q_qc": "List of momenta consistent with supercell.",
-        "phi_anv": "Force constants.",
-        "u_klav": "Phonon modes.",
-        "irr_l": "Phonon irreducible representations.",
-        "path": "Phonon bandstructure path.",
-        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
-    }
+    key_descriptions = dict(
+        omega_kl= "Phonon frequencies.",
+        minhessianeig= "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        eigs_kl= "Dynamical matrix eigenvalues.",
+        q_qc= "List of momenta consistent with supercell.",
+        phi_anv= "Force constants.",
+        u_klav= "Phonon modes.",
+        irr_l= "Phonon irreducible representations.",
+        path= "Phonon bandstructure path.",
+        dynamic_stability_phonons= "Phonon dynamic stability (low/high)",
+    )
 
     formats = {"ase_webpanel": webpanel}
+
+
+@prepare_result
+class HessResult(ASRResult):
+    minhessianeig: float 
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        minhessianeig= "Minimum eigenvalue of Hessian [`eV/Ang^2`]"
+    )
 
 
 @command(
