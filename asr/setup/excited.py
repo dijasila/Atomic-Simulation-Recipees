@@ -3,7 +3,7 @@ import numpy as np
 import os
 from gpaw import restart
 from ase.io import Trajectory
-from asr.core import write_json, command, option
+from asr.core import write_json, command, option, ASRResult
 
 
 # TODO:
@@ -23,7 +23,7 @@ from asr.core import write_json, command, option
         is_flag=True)
 def main(n: int = 1,
          m: int = 1,
-         setup_smart: bool = True):
+         setup_smart: bool = True) -> ASRResult:
     """Set up folder structure and parameters for excited state calculations.
 
     This recipe creates two folders for calculations of excited states. Run
@@ -128,7 +128,7 @@ def main(n: int = 1,
         print("WARNING: chosen excitation is below the physically reasonable threshold. "
               "Don't create the excitation! If wanted, try setting up another excitation.")
 
-    return None
+    return ASRResult()
 
 
 def create_excited_folders(channel):
