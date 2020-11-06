@@ -1,13 +1,39 @@
 from ase.io import read, write
-from asr.core import command, option
+from asr.core import command, option, ASRResult, prepare_result
 from gpaw import GPAW, restart
 from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
+import typing
+import numpy as np
+
+
+# TODO: implement webpanel
+
+
+@prepare_result
+class Result(ASRResult):
+    """Container for analyze_state results."""
+    states: typing.Tuple[int]
+    dipole: typing.Tuple[float, float, float]
+    localization: typing.Tuple[float]
+    states_above: bool
+    states_below: bool
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        states='List of indices of defect states.',
+        dipole='Dipole matrix-elements [Å]',
+        localization='Localization ratio of the wavefunction.',
+        states_above='States above the Fermi level present.',
+        states_below='States below the Fermi level present.'
+    )
+
+    # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.analyze_state',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
-         resources='24:2h')
+         resources='24:2h',
+         returns=Result)
 @option('--state', help='Specify the specific state (band number) that you '
         'want to consider. Note, that this argument is not used when the '
         'gap state flag is active.', type=int)
@@ -18,7 +44,7 @@ from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
         'specific states, but also analyze them.', is_flag=True)
 def main(state: int = 0,
          get_gapstates: bool = False,
-         analyze: bool = False):
+         analyze: bool = False) -> Result:
     """Write out wavefunction and analyze it.
 
     This recipe reads in an existing gs.gpw file and writes out wavefunctions
@@ -33,15 +59,15 @@ def main(state: int = 0,
     calc = GPAW('gs.gpw', txt='analyze_states.txt')
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     if get_gapstates:
-            print('INFO: evaluate gapstates ...')
-            states, states_above, states_below = return_gapstates_fix(calc, spin=0)
+        print('INFO: evaluate gapstates ...')
+        states, states_above, states_below = return_gapstates_fix(calc, spin=0)
     elif not get_gapstates:
         states = [state]
         states_above = False
         states_below = False
 
     local_ratio_n = []
-    
+
     print('INFO: write wavefunctions of gapstates ...')
     for band in states:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
@@ -55,19 +81,18 @@ def main(state: int = 0,
             write(fname, atoms, data=wf)
 
     print('INFO: Calculating dipole matrix elements among gap states.')
-    d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1]+1)
+    d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1] + 1)
 
     if analyze:
         # To be implemented
         print('INFO: analyze chosen states.')
 
-    results = {'states': states,
-               'dipole': d_svnm,
-               'localization': local_ratio_n,
-               'states_above': states_above,
-               'states_below': states_below}
-
-    return results
+    return Result.fromdata(
+        states=states,
+        dipole=d_svnm,
+        localization=local_ratio_n,
+        states_above=states_above,
+        states_below=states_below)
 
 
 def get_localization_ratio(atoms, wf):
@@ -93,8 +118,8 @@ def plot_gapstates(row, fname):
     evbm, ecbm, gap = get_band_edge()
 
     # Draw bands edge
-    draw_band_edge(evbm, 'vbm', 'C0', offset=gap/5, ax=ax)
-    draw_band_edge(ecbm, 'cbm', 'C1', offset=gap/5, ax=ax)
+    draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
+    draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
     # Loop over eigenvalues to draw the level
     calc = GPAW('gs.gpw')
     nband = calc.get_number_of_bands()
@@ -104,7 +129,7 @@ def plot_gapstates(row, fname):
         for n in range(nband):
             ene = calc.get_eigenvalues(spin=s, kpt=0)[n]
             occ = calc.get_occupation_numbers(spin=s, kpt=0)[n]
-            enenew = calc.get_eigenvalues(spin=s, kpt=0)[n+1]
+            enenew = calc.get_eigenvalues(spin=s, kpt=0)[n + 1]
             print(n, ene, occ)
             lev = Level(ene, ax=ax)
             if (ene >= evbm + 0.05 and ene <= ecbm - 0.05):
@@ -117,15 +142,15 @@ def plot_gapstates(row, fname):
                     lev.draw(spin=s, deg=1)
                 # add arrow if occupied
                 if ene <= ef:
-                    lev.add_occupation(length=gap/10)
+                    lev.add_occupation(length=gap / 10)
             if ene >= ecbm:
                 break
             eneold = ene
 
     # plotting
-    ax.plot([0,1],[ef]*2, '--k')
-    ax.set_xlim(0,1)
-    ax.set_ylim(evbm-gap/5,ecbm+gap/5)
+    ax.plot([0, 1], [ef] * 2, '--k')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
     ax.set_xticks([])
     ax.set_ylabel('Energy (eV)', size=15)
 
