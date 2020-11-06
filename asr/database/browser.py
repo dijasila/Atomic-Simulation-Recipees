@@ -92,6 +92,11 @@ value_type_to_explained_type = {}
 
 
 def describe_entry(value, description):
+    """Describe website entry.
+
+    This function sets an __explanation__ attribute on the given object
+    which is used by the web application to generate additional explanations.
+    """
     if hasattr(value, '__explanation__'):
         value.__explanation__ += '\n' + description
         return value
@@ -138,6 +143,18 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
 
 
 def entry_parameter_description(data, name, exclude_keys: set = set()):
+    """Make a parameter description.
+
+    Parameters
+    ----------
+    data: dict
+        Data object containing result objects (typically row.data).
+    name: str
+        Name of recipe from which to extract parameters, e.g. "asr.gs@calculate".
+    exclude_keys: set
+        Set of keys to exclude from parameter description.
+
+    """
     result = data[f'results-{name}.json']
     recipe = get_recipe_from_name(name)
     if 'params' in result.metadata:
