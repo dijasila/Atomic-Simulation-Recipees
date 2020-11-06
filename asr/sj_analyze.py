@@ -24,6 +24,21 @@ def webpanel(result, row, key_descriptions):
 
 
 @prepare_result
+class PristineResult(ASRResult):
+    """Container for pristine band gap results."""
+
+    vbm: float
+    cbm: float
+    evac: float
+
+    key_descriptions = dict(
+        vbm='Pristine valence band maximum [eV].',
+        cbm='Pristien conduction band minimum [eV]',
+        evac='Pristine vacuum level [eV]'
+    )
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
 
@@ -37,8 +52,6 @@ class Result(ASRResult):
         eform='Neutral formation energy without chemical potentials applied [eV]')
 
     formats = {"ase_webpanel": webpanel}
-
-
 
 
 @command(module='asr.sj_analyze',
