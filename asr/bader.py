@@ -6,6 +6,31 @@ from typing import List
 from asr.core import command, option, ASRResult, prepare_result
 
 
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (describe_entry,
+                                      entry_parameter_description)
+
+    rows = [[str(a), symbol, f'{charge:.3f}']
+            for a, (symbol, charge)
+            in enumerate(zip(result.sym_a, result.bader_charges))]
+    table = {'type': 'table',
+             'header': ['atom index', 'symbol', 'charge'],
+             'rows': rows}
+    title_description = 'Bader charge analysis.'
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.bader')
+
+    title_description += parameter_description
+
+    panel = {'title': describe_entry('Bader charges',
+                                     description=title_description),
+             'columns': [[table]]}
+
+    return [panel]
+
+
 @prepare_result
 class Result(ASRResult):
 
@@ -14,6 +39,8 @@ class Result(ASRResult):
 
     key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
                         'sym_a': 'Chemical symbols.'}
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command('asr.bader',
