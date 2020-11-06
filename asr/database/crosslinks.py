@@ -9,6 +9,7 @@ import typing
 # TODO: add main function to create webpanel
 # TODO: clean up
 # TODO: exclude linking to itself
+# TODO: test new results implementation
 
 
 def webpanel(result, row, key_descriptions):
@@ -101,6 +102,13 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def return_link_results(linklist, urllist, db_name) -> LinkResults:
+    return LinkResults.fromdata(
+        name=db_name,
+        link_names=linklist,
+        link_urls=urllist)
+
+
 @command(module='asr.database.crosslinks',
          requires=['asr.database.material_fingerprint',
                    'asr.database.crosslinks@create'],
@@ -115,7 +123,6 @@ def main(database: str) -> Result:
     # uid in the database
     results_fingerprint = read_json('results-asr.database.material_fingerprint.json')
     structure_uid = results_fingerprint['uid']
-    print(structure_uid)
 
     # Second, connect to the crosslinked database and obtain the names, urls,
     # and types
@@ -124,8 +131,15 @@ def main(database: str) -> Result:
         if row.uid == structure_uid:
             links = row.data['links']
 
+    link_results_list = []
+    for element in links:
+        link_results = return_link_results(links[element]['link_names'],
+                                           links[element]['link_urls'],
+                                           element)
+        link_results_list.append(link_results)
+
     return Result.fromdata(linked_database=database,
-                           links=links)
+                           links=link_results_list)
 
 
 def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
