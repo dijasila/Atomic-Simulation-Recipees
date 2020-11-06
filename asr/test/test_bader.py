@@ -11,5 +11,5 @@ def test_bader(mockgpaw, asr_tmpdir, monkeypatch):
                         lambda args, stdout=None, stderr=None: None)
     Si.write('structure.json')
     result = main(0.05)
-    assert (result.bader_charges == [0.5, -0.5]).all()
+    assert (result.bader_charges == [-0.5, 0.5]).all()
     assert result.sym_a == ['Si', 'Si']
