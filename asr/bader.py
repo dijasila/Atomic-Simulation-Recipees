@@ -12,7 +12,7 @@ class Result(ASRResult):
     bader_charges: np.ndarray
     sym_a: List[str]
 
-    key_descriptions = {'bader_charges': 'Array of charges [|e|].',
+    key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
                         'sym_a': 'Chemical symbols.'}
 
 
