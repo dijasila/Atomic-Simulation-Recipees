@@ -58,14 +58,21 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
-    # PDOS without spin-orbit coupling
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[],
-                         [fig('pbe-pdos_nosoc.png', link='empty')]],
-             'plot_descriptions': [{'function': plot_pdos_nosoc,
-                                    'filenames': ['pbe-pdos_nosoc.png']}],
-             'sort': 13}
+    from asr.database.browser import (fig,
+                                      describe_entry, WebPanel)
+    # Projected band structure and DOS panel
+    description = ('Orbital projected band structure '
+                   'and projected density of states, '
+                   'both without spin-orbit coupling')
+    panel = WebPanel(
+        title=describe_entry(
+            'Projected band structure and DOS (PBE)',
+            description=description),
+        columns=[[],
+                 [fig('pbe-pdos_nosoc.png', link='empty')]],
+        plot_descriptions=[{'function': plot_pdos_nosoc,
+                            'filenames': ['pbe-pdos_nosoc.png']}],
+        sort=13)
 
     return [panel]
 
