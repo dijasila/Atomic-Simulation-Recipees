@@ -2,7 +2,6 @@ import typing
 from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 
-
 def find_zero_element(atoms, sym_th=1e-4):
 
     from ase.spacegroup import get_spacegroup
