@@ -116,7 +116,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
                                 intrinsic=intrinsic, vacancies=vacancies,
                                 sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
-    return None
+    return ASRResult()
 
 
 def setup_supercell(structure, max_lattice, is_2D):
