@@ -12,9 +12,9 @@ import numpy as np
 @prepare_result
 class Result(ASRResult):
     """Container for analyze_state results."""
-    states: typing.Tuple[int]
-    dipole: typing.Tuple[float, float, float]
-    localization: typing.Tuple[float]
+    states: np.ndarray
+    dipole: numpy.ndarray
+    localization: np.ndarray
     states_above: bool
     states_below: bool
 
