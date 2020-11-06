@@ -2,6 +2,7 @@ from asr.core import command, ASRResult, prepare_result  # , option
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
+import typing
 
 
 # TODO: clean up
@@ -33,8 +34,7 @@ class PristineResults(ASRResult):
     key_descriptions = dict(
         vbm='Pristine valence band maximum [eV].',
         cbm='Pristien conduction band minimum [eV]',
-        evac='Pristine vacuum level [eV]'
-    )
+        evac='Pristine vacuum level [eV]')
 
 
 @prepare_result
@@ -47,8 +47,7 @@ class TransitionValues(ASRResult):
     key_descriptions = dict(
         transition='Charge transition level [eV]',
         erelax='Reorganization contribution  to the transition level [eV]',
-        evac='Vacuum level for halfinteger calculation [eV]'
-    )
+        evac='Vacuum level for halfinteger calculation [eV]')
 
 
 @prepare_result
@@ -59,14 +58,22 @@ class TransitionResults(ASRResult):
 
     key_descriptions = dict(
         transition_name='Name of the charge transition (Initial State/Final State)',
-        transition_values='Container for values of a specific charge transition level.'
-    )
+        transition_values='Container for values of a specific charge transition level.')
+
+
+@prepare_result
+class TransitionListResults(ASRResult):
+    """Container for all charge transition level results."""
+    transition_list: typing.List[TransitionResults]
+
+    key_descriptions = dict(
+        transition_list='List of TransitionResults objects.')
 
 
 @prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
-    transitions: TransitionResults
+    transition_list: TransitionListResults
     pristine: PristineResults
     eform: float
 
@@ -98,40 +105,47 @@ def main() -> Result:
         defectsystem))
 
     # Initialize results dictionary
-    results = {'transitions': {}, 'pristine': {}, 'eform': {}}
 
-    # First, get IP and EA (charge transition levels for the neutral defect
-    if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
-        transition = [0, +1]
-        e_trans, e_cor, e_ref = get_transition_level(transition)
-        results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-            e_trans, e_cor, e_ref]
-        transition = [0, -1]
-        e_trans, e_cor, e_ref = get_transition_level(transition)
-        results['transitions']['{}/{}'.format(transition[1], transition[0])] = [
-            e_trans, e_cor, e_ref]
+    # Obtain a list of all transitions with the respective ASRResults object
+    transition_list = calculate_transitions()
 
-    for q in [-3, -2, -1, 1, 2, 3]:
-        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
-            transition = [q, q + 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition)
-            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-                e_trans, e_cor, e_ref]
-        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
-            transition = [q, q - 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition)
-            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-                e_trans, e_cor, e_ref]
-
-    vbm, cbm, evac = get_pristine_band_edges()
-    results['pristine'] = {'vbm': vbm, 'cbm': cbm, 'evac': evac}
+    # get pristine band edges for correct referencing and plotting
+    pris = get_pristine_band_edges()
 
     # get neutral formation energy without chemical potentials applied
     eform = calculate_neutral_formation_energy()
 
-    return Result.fromdata(transitions=trans,
+    return Result.fromdata(transitions=transition_list,
                            pristine=pris,
                            eform=eform)
+
+
+def calculate_transitions() -> TransitionListResults:
+    """Calculate all of the present transitions and return an
+    ASRResults object (TransitionResults)."""
+
+    transition_list = []
+    # First, get IP and EA (charge transition levels for the neutral defect
+    if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
+        transition = [0, +1]
+        transition_results = get_transition_level(transition)
+        transition_list.append(transition_results)
+        transition = [0, -1]
+        transition_results = get_transition_level(transition)
+        transition_list.append(transition_results)
+
+    for q in [-3, -2, -1, 1, 2, 3]:
+        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q + 1]
+            transition_results = get_transition_level(transition)
+            transition_list.append(transition_results)
+        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q - 1]
+            transition_results = get_transition_level(transition)
+            transition_list.append(transition_results)
+
+    return TransitionListResults.fromdata(
+        transition_list=transition_list)
 
 
 def get_pristine_band_edges():
@@ -148,13 +162,16 @@ def get_pristine_band_edges():
         cbm = results_pris['cbm']
         # evac = results_pris['evac']
         evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        evac = (evac_z[0] + evac_z[-1])/2.
+        evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
         vbm = None
         cbm = None
         evac = None
 
-    return vbm, cbm, evac
+    return PristineResults.fromdata(
+        vbm=vbm,
+        cbm=cbm,
+        evac=evac)
 
 
 def obtain_chemical_potential():
@@ -177,12 +194,12 @@ def calculate_neutral_formation_energy():
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
 
-    eform = results_def['etot'] - results_def['etot']
+    eform = results_def['etot'] - results_pris['etot']
 
     return eform
 
 
-def get_transition_level(transition):
+def get_transition_level(transition) -> TransitionResults:
     """
     Calculates the charge transition level for a given charge transition.
 
@@ -194,7 +211,7 @@ def get_transition_level(transition):
     if transition[0] > transition[1]:
         _, calc = restart('sj_-0.5/gs.gpw', txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
+        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
@@ -206,7 +223,7 @@ def get_transition_level(transition):
     elif transition[1] > transition[0]:
         _, calc = restart('sj_+0.5/gs.gpw', txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
+        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
@@ -226,7 +243,20 @@ def get_transition_level(transition):
               'relaxation contribution to transition level.')
         e_cor = 0
 
-    return e_trans, e_cor, e_ref
+    transition_name = f'{transition[0]}/{transition[1]}'
+
+    transition_values = return_transition_values(e_trans, e_cor, e_ref)
+
+    return TransitionResults.fromdata(
+        transition_name=transition_name,
+        transition_values=transition_values)
+
+
+def return_transition_values(e_trans, e_cor, e_ref) -> TransitionValues:
+    return TransitionValues.fromdata(
+        transition=e_trans,
+        erelax=e_cor,
+        evac=e_ref)
 
 
 def plot_formation_energies(row, fname):
@@ -250,8 +280,8 @@ def plot_formation_energies(row, fname):
     ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
     ax1.axhline(0, color='black', linestyle='dotted')
 
-    plt.xlim(vbm - (0.1*(cbm - vbm)), cbm + (0.1*(cbm - vbm)))
-    plt.ylim(-1, eform + 0.1*eform)
+    plt.xlim(vbm - (0.1 * (cbm - vbm)), cbm + (0.1 * (cbm - vbm)))
+    plt.ylim(-1, eform + 0.1 * eform)
     energy_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
     energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
     ax1.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
@@ -364,8 +394,6 @@ def plot_charge_transitions(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
-
 
 
 if __name__ == '__main__':
