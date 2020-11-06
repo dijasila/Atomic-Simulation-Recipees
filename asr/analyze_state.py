@@ -13,7 +13,7 @@ import numpy as np
 class Result(ASRResult):
     """Container for analyze_state results."""
     states: np.ndarray
-    dipole: numpy.ndarray
+    dipole: np.ndarray
     localization: np.ndarray
     states_above: bool
     states_below: bool
@@ -88,7 +88,7 @@ def main(state: int = 0,
         print('INFO: analyze chosen states.')
 
     return Result.fromdata(
-        states=states,
+        states=np.array(states),
         dipole=d_svnm,
         localization=local_ratio_n,
         states_above=states_above,
