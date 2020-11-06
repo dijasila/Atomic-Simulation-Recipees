@@ -434,9 +434,10 @@ class Result(ASRResult):
     vacuumlevels: VacuumLevelResults
 
     key_descriptions = dict(
+        etot='Total energy [eV].',
+        workfunction="Workfunction [eV]",
         forces='Forces on atoms [eV/Angstrom].',
         stresses='Stress on unit cell [eV/Angstrom^dim].',
-        etot='Total energy [eV].',
         evac='Vacuum level [eV].',
         evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
         dipz='Out-of-plane dipole [e * Ang].',
@@ -459,7 +460,6 @@ class Result(ASRResult):
         skn2="(spin,k-index,band-index)-tuple for conduction band minimum.",
         skn1_dir="(spin,k-index,band-index)-tuple for direct valence band maximum.",
         skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
-        workfunction="Workfunction [eV]",
     )
 
     formats = {"ase_webpanel": webpanel}

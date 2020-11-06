@@ -168,13 +168,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
                   'default parameter set below\n'
                   '<b>Default parameters</b>')
 
-    recipe_parameters = recipe.get_parameters()
-    described_params = {}
-    for key, value in params.items():
-        if key in recipe_parameters:
-            key = describe_entry(key, recipe_parameters[key]['help'])
-        described_params[key] = value
-    lst = dict_to_list(described_params, exclude_keys=exclude_keys)
+    lst = dict_to_list(params, exclude_keys=exclude_keys)
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'
     string = '\n'.join(lst)
