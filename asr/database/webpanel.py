@@ -54,7 +54,11 @@ class WebPanel:
         return key in self.data
 
     def __str__(self):  # noqa
-        return f'WebPanel(title="{self.title}",columns={self.columns},...)'
+        return (f'WebPanel(title="{self.title}",'
+                f'columns={self.columns},sort={self.sort},...)')
+
+    def __repr__(self):  # noqa
+        return str(self)
 
     def render(self) -> str:
         from jinja2 import Template
