@@ -38,12 +38,31 @@ class PristineResult(ASRResult):
     )
 
 
+
+
+state_descriptor = typing.Str
+state_values = typing.Tuple[float, float, float]
+
+@prepare_result
+class TransitionValues:
+
+    transition: float
+    erelax: float
+    evac: float
+
+    key_descriptions = dict(
+        transition='Charge transition level [eV]',
+        erelax='Reorganization contribution  to the transition level [eV]',
+        evac='Vacuum level for halfinteger calculation [eV]'
+        )
+
+
 @prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
 
-    transitions: dict
-    pristine: dict
+    transitions: typing.Dict[state_descriptor, state_values]
+    pristine: PristineResult
     eform: float
 
     key_descriptions = dict(
