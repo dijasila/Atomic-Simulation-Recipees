@@ -148,7 +148,7 @@ def calculate_transitions() -> TransitionListResults:
         transition_list=transition_list)
 
 
-def get_pristine_band_edges():
+def get_pristine_band_edges() -> PristineResults:
     """
     Returns band edges and vaccum level for the host system.
     """
