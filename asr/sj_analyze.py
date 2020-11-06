@@ -9,6 +9,7 @@ import typing
 # TODO: add second y-axis
 # TODO: implement reduced effective charge transition levels
 # TODO: make webpanel compatible with new ASRResults object
+# TODO: check whether new ASRResult object is correctly implemented
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
