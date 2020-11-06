@@ -69,13 +69,24 @@ def webpanel(result, row, key_descriptions):
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
-    explanation = ('The electronic band gap including spin-orbit effects\n\n'
-                   + parameter_description)
+
+    explained_keys = []
+    for key in ['gap', 'gap_dir',
+                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
+        if key in result.key_descriptions:
+            key_description = result.key_descriptions[key]
+            explanation = (f'{key_description} '
+                           '(Including spin-orbit effects).\n\n'
+                           + parameter_description)
+            explained_key = describe_entry(key, description=explanation)
+        else:
+            explained_key = key
+        explained_keys.append(explained_key)
 
     gap = describe_entry('gap', description=explanation)
+    gap = describe_entry('gap', description=explanation)
     t = table(result, 'Property',
-              [gap, 'gap_dir',
-               'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
+              explained_keys,
               key_descriptions)
 
     gap = result.gap
@@ -107,7 +118,8 @@ def webpanel(result, row, key_descriptions):
     description = ('The electronic band gap including spin-orbit effects\n\n'
                    + parameter_description)
     datarow = ['Band gap (PBE)',
-               describe_entry(value=f'{result.gap:0.2f} eV', description=description)]
+               describe_entry(value=f'{result.gap:0.2f} eV',
+                              description=description)]
     summary = WebPanel(
         title=describe_entry(
             'Summary',
