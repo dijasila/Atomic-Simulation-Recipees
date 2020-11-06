@@ -3,6 +3,7 @@ from asr.core import (command, option, argument, ASRResult, prepare_result,
                       read_json)
 from ase.db import connect
 from ase.db.row import AtomsRow
+import typing
 
 
 # TODO: add main function to create webpanel
@@ -75,15 +76,27 @@ def create(databaselink: str,
 
 
 @prepare_result
+class LinkResults(ASRResult):
+    """Container for links to a specific Database."""
+    name: str
+    link_names: typing.List[str]
+    link_urls: typing.List[str]
+
+    key_descriptions = dict(
+        name='Name of the DB that that the initial DB is linked to.',
+        link_names='List of names of the links to that specific DB.',
+        link_urls='List of urls of the links to that specific DB.')
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for database crosslinks results."""
     linked_database: str
-    links: dict
+    links: typing.List[LinkResults]
 
     key_descriptions = dict(
         linked_database='Database that crosslinks got created for.',
-        links='Dictionary of linked structures in other databases with'
-              'names, urls and type.')
+        links='List of LinkResults containers.')
 
     formats = {"ase_webpanel": webpanel}
 

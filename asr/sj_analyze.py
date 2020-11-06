@@ -5,10 +5,10 @@ from gpaw import restart
 import typing
 
 
-# TODO: clean up
 # TODO: add chemical potential considerations
 # TODO: add second y-axis
 # TODO: implement reduced effective charge transition levels
+# TODO: make webpanel compatible with new ASRResults object
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
