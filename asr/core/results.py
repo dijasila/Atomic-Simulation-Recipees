@@ -500,7 +500,7 @@ class MetaData:
         lst = []
         for key, value in dct.items():
             lst.append(f'{key}={value}')
-        return '\n'.join(lst)
+        return 'Metadata(' + ','.join(lst) + ')'
 
     def __repr__(self):
         """Represent object."""
@@ -822,7 +822,7 @@ class ASRResult(object):
         string_parts = []
         for key, value in self.items():
             string_parts.append(f'{key}=' + str(value))
-        return "\n".join(string_parts)
+        return 'Result(' + ",".join(string_parts) + ')'
 
     def __eq__(self, other):
         """Compare two result objects."""

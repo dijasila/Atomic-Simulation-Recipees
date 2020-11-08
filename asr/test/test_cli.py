@@ -151,3 +151,13 @@ def test_asr_find_no_versions(asr_tmpdir_w_params):
 
     assert result.exit_code == 0
     assert result.output == ''
+
+@pytest.mark.ci
+def test_asr_cache_ls(asr_tmpdir_w_params):
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['cache', 'ls'])
+
+    assert result.exit_code == 0
+    assert result.output == ''

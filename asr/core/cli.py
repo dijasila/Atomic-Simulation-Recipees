@@ -244,14 +244,16 @@ def asrlist(search):
 
 @cli.group()
 def cache():
+    """Inspect results."""
     ...
 
 
 @cache.command()
 def ls():
-    from asr.core import single_run_file_cache
+    from asr.core.command import single_run_file_cache
 
-    records = cache.select()
+    single_run_file_cache.cache_dir = Path('.')
+    records = single_run_file_cache.select()
 
     for record in records:
         print(record)

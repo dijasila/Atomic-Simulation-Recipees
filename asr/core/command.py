@@ -12,6 +12,7 @@ from . import (
 import contextlib
 import functools
 import abc
+import os
 # from .temporary_directory import temporary_directory
 # from .dependencies import dependency_stack
 # from .cache import ASRCache
@@ -60,6 +61,9 @@ class Parameters:
             raise AttributeError
         return self._parameters[key]
 
+    def items(self):
+        return self._parameters.items()
+
     def __str__(self):
         return str(self._parameters)
 
@@ -92,14 +96,12 @@ class RunSpecification:
 
     def __str__(self):
         text = [
-            '',
-            'RunSpecification',
-            f'    name={self.name}',
-            f'    parameters={self.parameters}',
-            f'    version={self.version}',
-            f'    codes={self.codes}',
-        ]
-        return '\n'.join(text)
+            'RunSpecification('
+            f'name={self.name}',
+            f'parameters={self.parameters}',
+            f'version={self.version}',
+            f'codes={self.codes})']
+        return ','.join(text)
 
     def __repr__(self):
         return self.__str__()
@@ -151,15 +153,14 @@ class RunRecord:
 
     def __str__(self):
         text = [
-            '',
-            'RunRecord',
-            f'    run_specification={self.run_specification}',
-            f'    parameters={self.parameters}',
-            f'    side_effects={self.side_effects}',
-            f'    result={self.result:str}',
-            f'    record_id={self.record_id}',
+            'RunRecord('
+            f'run_specification={self.run_specification}',
+            f'parameters={self.parameters}',
+            f'side_effects={self.side_effects}',
+            f'result={self.result:str}',
+            f'id={self.id})',
         ]
-        return '\n'.join(text)
+        return ','.join(text)
 
     def __repr__(self):
         return self.__str__()
@@ -238,21 +239,32 @@ class RegisterSideEffects():
                 run_specification=run_specification)).is_dir():
             run_number += 1
 
-        workdir = root_dir / workdirformat.format(
-            run_number,
-            run_specification=run_specification)
+        workdir = (
+            root_dir / workdirformat.format(
+                run_number,
+                run_specification=run_specification)).absolute()
 
         return workdir
+
+    def chdir_to_root_dir(self):
+        if self._root_dir:
+            os.chdir(self._root_dir)
+
+    def restore_to_previous_workdir(self):
+        if self.side_effects_stack:
+            os.chdir(self.side_effects_stack[-1][0])
 
     def __enter__(self):
         """Append empty side effect object to stack."""
         side_effects = {}
-        self.side_effects_stack.append(side_effects)
+        current_work_dir = os.getcwd()
+
+        self.side_effects_stack.append([current_work_dir, side_effects])
         return side_effects
 
     def __exit__(self, type, value, traceback):
         """Register side effects and pop side effects from stack."""
-        side_effects = self.side_effects_stack[-1]
+        current_work_dir, side_effects = self.side_effects_stack[-1]
         side_effects.update(
             {
                 path.name: str(path.absolute())
@@ -483,6 +495,14 @@ class SingleRunFileCache(AbstractCache):
         serialized_object = self._read_file(filename)
         obj = self.serializer.deserialize(serialized_object)
         return obj
+
+    def select(self):
+        pattern = self._name_to_results_filename('*')
+        paths = list(Path(self.cache_dir).glob(pattern))
+        serialized_objects = [self._read_file(path) for path in paths]
+        deserialized_objects = [self.serializer.deserialize(ser_obj)
+                                for ser_obj in serialized_objects]
+        return deserialized_objects
 
     def _write_file(self, filename: str, text: str):
         write_file(self.cache_dir / filename, text)
@@ -926,6 +946,8 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
+        register_side_effects.chdir_to_root_dir()
+
         parameters = apply_defaults(self.get_signature(), *args, **kwargs)
         parameters = Parameters(parameters=parameters)
 
@@ -945,11 +967,17 @@ class ASRCommand:
         @register_run_spec(run_specification)
         @register_resources(run_specification)
         def execute_run_spec():
+            name = run_specification.name
+            parameters = run_specification.parameters
+            paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
+                                     parameters.items()])
+            print(f'Running {name}({paramstring})')
             result = run_specification()
             run_record = RunRecord(result=result)
             return run_record
 
         run_record = execute_run_spec()
+        register_side_effects.restore_to_previous_workdir()
         return run_record
 
 
@@ -963,7 +991,6 @@ def get_package_version_and_hash(package: str):
 
 def command(*decoargs, **decokwargs):
 
-    print(decoargs, decokwargs)
 
     def decorator(func):
         return ASRCommand(func, *decoargs, **decokwargs)
