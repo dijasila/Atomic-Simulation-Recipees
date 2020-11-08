@@ -154,13 +154,13 @@ class RunRecord:
     def __str__(self):
         text = [
             'RunRecord('
+            f'id={self.id}',
             f'run_specification={self.run_specification}',
-            f'parameters={self.parameters}',
             f'side_effects={self.side_effects}',
             f'result={self.result:str}',
-            f'id={self.id})',
+            f'dependencies={self.dependencies})'
         ]
-        return ','.join(text)
+        return ', '.join(text)
 
     def __repr__(self):
         return self.__str__()

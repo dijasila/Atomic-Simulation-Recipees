@@ -258,6 +258,30 @@ def ls():
     for record in records:
         print(record)
 
+@cache.command()
+def graph():
+    from asr.core.command import single_run_file_cache
+
+    single_run_file_cache.cache_dir = Path('.')
+    records = single_run_file_cache.select()
+
+    graph = {}
+
+    for record in records:
+        graph[record.id] = set(record.dependencies)
+
+    count_edges_to_node = {}
+    for node, edges in graph.items():
+        for edge in edges:
+            count = count_edges_to_node.get(edge, 0) + 1
+            count_edges_to_node[edge] = count
+
+    sorted_nodes = list(sorted(
+            list(graph),
+            key=lambda node: count_edges_to_node.get(node, 0)))
+
+    for node in sorted_nodes:
+        print(node, '->', graph[node])
 
 
 @cli.command()
