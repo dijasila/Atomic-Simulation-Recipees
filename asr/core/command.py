@@ -26,6 +26,7 @@ from pathlib import Path
 import inspect
 import json
 from asr.core.results import get_object_matching_obj_id
+from ase.utils import search_current_git_hash
 
 
 class Parameter:
@@ -75,11 +76,11 @@ class RunSpecification:
             name: str,
             parameters: Parameters,
             version: int,
-            # codes: CodeDescriptor,
+            codes: 'Codes',
     ):
         self.parameters = parameters
         self.name = name
-        # self.codes = codes
+        self.codes = codes
         self.version = version
 
     def __call__(
@@ -96,6 +97,7 @@ class RunSpecification:
             f'    name={self.name}',
             f'    parameters={self.parameters}',
             f'    version={self.version}',
+            f'    codes={self.codes}',
         ]
         return '\n'.join(text)
 
@@ -287,16 +289,22 @@ class RegisterSideEffects():
 
 class Code:
 
-    def __init__(name, version):
-        pass
+    def __init__(self, package, version, git_hash=None):
+        self.package = package
+        self.version = version
+        self.git_hash = git_hash
 
-    def from_string():
+    @classmethod
+    def from_string(cls, package: str):
+        version, git_hash = get_package_version_and_hash(package)
+
+        return cls(package, version, git_hash)
 
 
 class Codes:
 
-    def __init__(*codes: typing.List[Code]):
-        pass
+    def __init__(self, codes: typing.List[Code]):
+        self.codes = codes
 
 
 def construct_run_spec(
@@ -310,7 +318,7 @@ def construct_run_spec(
         parameters = Parameters.from_dict(**parameters)
 
     if not isinstance(codes, Codes):
-        codes = Codes(*(Code.from_string(code) for code in codes))
+        codes = Codes([Code.from_string(code) for code in codes])
 
     return RunSpecification(
         name=name,
@@ -945,22 +953,12 @@ class ASRCommand:
         return run_record
 
 
-def get_execution_info(package_dependencies):
+def get_package_version_and_hash(package: str):
     """Get parameter and software version information as a dictionary."""
-    from ase.utils import search_current_git_hash
-    versions = {}
-    for modname in package_dependencies:
-        try:
-            mod = import_module(modname)
-        except ModuleNotFoundError:
-            continue
-        githash = search_current_git_hash(mod)
-        version = mod.__version__
-        if githash:
-            versions[f'{modname}'] = f'{version}-{githash}'
-        else:
-            versions[f'{modname}'] = f'{version}'
-    return versions
+    mod = import_module(package)
+    githash = search_current_git_hash(mod)
+    version = mod.__version__
+    return version, githash
 
 
 def command(*decoargs, **decokwargs):

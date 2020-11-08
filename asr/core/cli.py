@@ -251,7 +251,7 @@ def cache():
 def ls():
     from asr.core import single_run_file_cache
 
-    records = cache.get_all()
+    records = cache.select()
 
     for record in records:
         print(record)
