@@ -425,6 +425,7 @@ class ASRJSONEncoder(json.JSONEncoder):
 
 def json_hook(json_object: dict):
     from asr.core.results import get_object_matching_obj_id
+    from ase.io.jsonio import object_hook
 
     if 'cls_id' in json_object:
         cls = get_object_matching_obj_id(json_object['cls_id'])
@@ -432,7 +433,7 @@ def json_hook(json_object: dict):
         obj.__dict__.update(json_object['__dict__'])
         return obj
 
-    return json_object
+    return object_hook(json_object)
 
 
 class JSONSerializer(Serializer):
