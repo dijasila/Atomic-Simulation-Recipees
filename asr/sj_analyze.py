@@ -158,7 +158,9 @@ def get_transition_level(transition):
     # extrac HOMO or LUMO
     # HOMO
     if transition[0] > transition[1]:
-        _, calc = restart('sj_-0.5/gs.gpw', txt=None)
+        chargename = f'charge_{transition[0]}'
+        print(f'INFO: go into charge folder ./../{chargename}/sj_-0.5/gs.gpw')
+        _, calc = restart(f'./../{chargename}/sj_-0.5/gs.gpw', txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
         e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
         ev = calc.get_eigenvalues()
@@ -170,7 +172,9 @@ def get_transition_level(transition):
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
-        _, calc = restart('sj_+0.5/gs.gpw', txt=None)
+        chargename = f'charge_{transition[0]}'
+        print(f'INFO: go into charge folder ./../{chargename}/sj_+0.5/gs.gpw')
+        _, calc = restart(f'./../{chargename}/sj_+0.5/gs.gpw', txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
         e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
         ev = calc.get_eigenvalues()
