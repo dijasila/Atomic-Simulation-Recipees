@@ -20,7 +20,7 @@ class Result(ASRResult):
          dependencies=['asr.gs'],
          returns=Result)
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.025) -> Result:
+def main(grid_spacing: float = 0.05) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
