@@ -1,4 +1,4 @@
-from asr.core import command, argument, option
+from asr.core import command, argument, option, ASRResult
 from datetime import datetime
 
 
@@ -23,7 +23,7 @@ def main(database: str,
          filterstring: str = '<=natoms,<energy',
          comparison_keys: str = '',
          rmsd_tol: float = 0.3,
-         skip_distance_calc: bool = False):
+         skip_distance_calc: bool = False) -> ASRResult:
     """Filter out duplicates of a database.
 
     Parameters

@@ -1,50 +1,68 @@
-"""Piezoelectric tensor module.
+"""Piezoelectric tensor.
 
 Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is
 :func:`asr.piezoelectrictensor.main`.
 
-Recipes
--------
-.. autofunction:: asr.piezoelectrictensor.main
-
 """
 
-from asr.core import command, option, DictStr
+import itertools
+import typing
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
-def webpanel(row, key_descriptions):
-    def matrixtable(M, digits=2):
-        table = M.tolist()
-        shape = M.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                value = table[i][j]
-                table[i][j] = '{:.{}f}'.format(value, digits)
-        return table
+all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+all_voigt_indices = [[0, 1, 2, 1, 0, 0],
+                     [0, 1, 2, 2, 2, 1]]
 
+
+def get_voigt_mask(pbc_c: typing.List[bool]):
+    non_pbc_axes = set(char for char, pbc in zip('xyz', pbc_c) if not pbc)
+
+    mask = [False
+            if set(voigt_label).intersection(non_pbc_axes)
+            else True
+            for voigt_label in all_voigt_labels]
+    return mask
+
+
+def get_voigt_indices(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return [list(itertools.compress(indices, mask)) for indices in all_voigt_indices]
+
+
+def get_voigt_labels(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return list(itertools.compress(all_voigt_labels, mask))
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import matrixtable
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
 
+    voigt_indices = get_voigt_indices(row.pbc)
+    voigt_labels = get_voigt_labels(row.pbc)
+
     e_ij = e_vvv[:,
-                 [0, 1, 2, 1, 0, 0],
-                 [0, 1, 2, 2, 2, 1]]
+                 voigt_indices[0],
+                 voigt_indices[1]]
     e0_ij = e0_vvv[:,
-                   [0, 1, 2, 1, 0, 0],
-                   [0, 1, 2, 2, 2, 1]]
+                   voigt_indices[0],
+                   voigt_indices[1]]
 
-    etable = dict(
-        header=['Piezoelectric tensor', '', ''],
-        type='table',
-        rows=matrixtable(e_ij))
+    etable = matrixtable(e_ij,
+                         columnlabels=voigt_labels,
+                         rowlabels=['x', 'y', 'z'],
+                         title='Piezoelectric tensor (e/Å<sup>dim-1</sup>)')
 
-    e0table = dict(
-        header=['Clamped piezoelectric tensor', ''],
-        type='table',
-        rows=matrixtable(e0_ij))
+    e0table = matrixtable(e0_ij,
+                          columnlabels=voigt_labels,
+                          rowlabels=['x', 'y', 'z'],
+                          title='Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)')
 
-    columns = [[etable, e0table], []]
+    columns = [[etable], [e0table]]
 
     panel = {'title': 'Piezoelectric tensor',
              'columns': columns}
@@ -52,8 +70,19 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    eps_vvv: typing.List[typing.List[typing.List[float]]]
+    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
+                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module="asr.piezoelectrictensor",
-         webpanel=webpanel)
+         returns=Result)
 @option('--strain-percent', help='Strain fraction.', type=float)
 @option('--calculator', help='Calculator parameters.', type=DictStr())
 def main(strain_percent: float = 1,
@@ -70,7 +99,7 @@ def main(strain_percent: float = 1,
              'symmetry': 'off',
              'txt': 'formalpol.txt',
              'charge': 0
-         }):
+         }) -> Result:
     """Calculate piezoelectric tensor.
 
     This recipe calculates the clamped and full piezoelectric
@@ -86,13 +115,6 @@ def main(strain_percent: float = 1,
         Amount of strain applied to the material.
     calculator : dict
         Calculator parameters.
-
-    Returns
-    -------
-    dict
-        Keys:
-            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
-            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
 
     """
     import numpy as np

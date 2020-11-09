@@ -9,11 +9,12 @@ def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
     from asr.relax import main as relax
     from ase.io import read
 
-    relax(test_material,
-          calculator={
-              "name": "gpaw",
-              "kpts": {"density": 2, "gamma": True},
-          })
+    results = relax(test_material,
+                    calculator={
+                        "name": "gpaw",
+                        "kpts": {"density": 2, "gamma": True},
+                    })
+    print(results)
     read('structure.json')
 
 
