@@ -215,8 +215,8 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
-def empZGW(correctgw: bool = True,
-           empz: float = 0.75):
+def empirical_mean_z(correctgw: bool = True,
+                     empz: float = 0.75):
     """Apply the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.
@@ -229,6 +229,7 @@ def empZGW(correctgw: bool = True,
     Z0 = 0.75.
 
     Pseudocode:
+
     For all states:
         if Z not in [0.5, 1.0]:
             set GW energy = E_KS + Z0 * (Sigma_GW - vxc + exx)
@@ -339,7 +340,8 @@ class Result(ASRResult):
 
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
+         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure',
+                       'asr.gw@empirical_mean_z'],
          returns=Result)
 def main() -> Result:
     import numpy as np
@@ -350,7 +352,7 @@ def main() -> Result:
     from types import SimpleNamespace
 
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
-    gwresults = SimpleNamespace(**read_json('results-asr.gw@empZGW.json'))
+    gwresults = SimpleNamespace(**read_json('results-asr.gw@empirical_mean_z.json'))
 
     lb = gwresults.minband
     ub = gwresults.maxband
