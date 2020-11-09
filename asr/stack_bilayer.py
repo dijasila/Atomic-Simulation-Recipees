@@ -258,10 +258,7 @@ def main(atoms: Atoms,
         name = layername(atoms.get_chemical_formula(), 2, tform[0], t)
         names.append(name)
 
-        if mpi.world.rank != 0:
-            continue
-
-        if not os.path.isdir(name):
+        if not os.path.isdir(name) and mpi.world.rank == 0:
             os.mkdir(name)
 
         mat.cell[2, 2] /= 2
