@@ -13,11 +13,7 @@ import contextlib
 import functools
 import abc
 import os
-# from .temporary_directory import temporary_directory
-# from .dependencies import dependency_stack
-# from .cache import ASRCache
 import typing
-# from ase.parallel import parprint
 # import atexit
 import click
 import copy
