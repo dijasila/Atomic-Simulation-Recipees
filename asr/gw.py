@@ -216,7 +216,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
 def empirical_mean_z(correctgw: bool = True,
-                     empz: float = 0.75):
+                     empz: float = 0.75) -> ASRResult:
     """Apply the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.
