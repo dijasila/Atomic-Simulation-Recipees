@@ -6,42 +6,63 @@ tensor. The central recipe of this module is
 
 """
 
+import itertools
 import typing
 from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
-def webpanel(result, row, key_descriptions):
-    def matrixtable(M, digits=2):
-        table = M.tolist()
-        shape = M.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                value = table[i][j]
-                table[i][j] = '{:.{}f}'.format(value, digits)
-        return table
+all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+all_voigt_indices = [[0, 1, 2, 1, 0, 0],
+                     [0, 1, 2, 2, 2, 1]]
 
+
+def get_voigt_mask(pbc_c: typing.List[bool]):
+    non_pbc_axes = set(char for char, pbc in zip('xyz', pbc_c) if not pbc)
+
+    mask = [False
+            if set(voigt_label).intersection(non_pbc_axes)
+            else True
+            for voigt_label in all_voigt_labels]
+    return mask
+
+
+def get_voigt_indices(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return [list(itertools.compress(indices, mask)) for indices in all_voigt_indices]
+
+
+def get_voigt_labels(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return list(itertools.compress(all_voigt_labels, mask))
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import matrixtable
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
 
+    voigt_indices = get_voigt_indices(row.pbc)
+    voigt_labels = get_voigt_labels(row.pbc)
+
     e_ij = e_vvv[:,
-                 [0, 1, 2, 1, 0, 0],
-                 [0, 1, 2, 2, 2, 1]]
+                 voigt_indices[0],
+                 voigt_indices[1]]
     e0_ij = e0_vvv[:,
-                   [0, 1, 2, 1, 0, 0],
-                   [0, 1, 2, 2, 2, 1]]
+                   voigt_indices[0],
+                   voigt_indices[1]]
 
-    etable = dict(
-        header=['Piezoelectric tensor (e/Å<sup>dim-1</sup>)', '', ''],
-        type='table',
-        rows=matrixtable(e_ij))
+    etable = matrixtable(e_ij,
+                         columnlabels=voigt_labels,
+                         rowlabels=['x', 'y', 'z'],
+                         title='Piezoelectric tensor (e/Å<sup>dim-1</sup>)')
 
-    e0table = dict(
-        header=['Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)', ''],
-        type='table',
-        rows=matrixtable(e0_ij))
+    e0table = matrixtable(e0_ij,
+                          columnlabels=voigt_labels,
+                          rowlabels=['x', 'y', 'z'],
+                          title='Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)')
 
-    columns = [[etable, e0table], []]
+    columns = [[etable], [e0table]]
 
     panel = {'title': 'Piezoelectric tensor',
              'columns': columns}

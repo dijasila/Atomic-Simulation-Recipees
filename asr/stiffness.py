@@ -5,16 +5,9 @@ import typing
 
 def webpanel(result, row, key_descriptions):
     import numpy as np
+    from asr.database.browser import (matrixtable, describe_entry,
+                                      entry_parameter_description)
 
-    def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
-        table = M.tolist()
-        shape = M.shape
-
-        for i in range(skiprow, shape[0]):
-            for j in range(skipcolumn, shape[1]):
-                value = table[i][j]
-                table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
-        return table
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
     eigs = stiffnessdata['eigenvalues']
@@ -23,54 +16,53 @@ def webpanel(result, row, key_descriptions):
     if nd == 2:
         c_ij = np.zeros((4, 4))
         c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-        rows = matrixtable(c_ij, unit='',
-                           skiprow=1,
-                           skipcolumn=1)
-        rows[0] = ['C<sub>ij</sub> (N/m)', 'xx', 'yy', 'xy']
-        rows[1][0] = 'xx'
-        rows[2][0] = 'yy'
-        rows[3][0] = 'xy'
+        ctable = matrixtable(
+            stiffnessdata['stiffness_tensor'],
+            title='C<sub>ij</sub> (N/m)',
+            columnlabels=['xx', 'yy', 'xy'],
+            rowlabels=['xx', 'yy', 'xy'])
+
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
                    + [[f'Eigenvalue {ie}', f'{eig.real:.2f} N/m']
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     elif nd == 3:
-        c_ij = np.zeros((7, 7))
-        c_ij[1:, 1:] = stiffnessdata['stiffness_tensor']
-        rows = matrixtable(c_ij, unit='',
-                           skiprow=1,
-                           skipcolumn=1)
-        rows[0] = ['C<sub>ij</sub> (10^9 N/m^2)', 'xx', 'yy', 'zz', 'yz', 'xz', 'xy']
-        rows[1][0] = 'xx'
-        rows[2][0] = 'yy'
-        rows[3][0] = 'zz'
-        rows[4][0] = 'yz'
-        rows[5][0] = 'xz'
-        rows[6][0] = 'xy'
+        ctable = matrixtable(
+            stiffnessdata['stiffness_tensor'],
+            title='C<sub>ij</sub> (10^9 N/m^2)',
+            columnlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'],
+            rowlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'])
+
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
                    + [[f'Eigenvalue {ie}', f'{eig.real:.2f} * 10^9 N/m^2']
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     else:
-        rows = []
+        ctable = dict(
+            type='table',
+            rows=[])
         eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
                    + [[f'Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
-
-    for ir, tmprow in enumerate(rows):
-        for ic, item in enumerate(tmprow):
-            if ir == 0 or ic == 0:
-                rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
-
-    ctable = dict(
-        type='table',
-        rows=rows)
 
     eigtable = dict(
         type='table',
         rows=eigrows)
 
-    panel = {'title': 'Stiffness tensor',
+    title_description = """
+The stiffness tensor is defined as the derivative of the stress with respect to
+strain. The stiffness tensor is calculated using a finite difference procedure
+with the parameters listed below.
+
+"""
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.stiffness'
+    )
+    title_description += parameter_description
+
+    panel = {'title': describe_entry('Stiffness tensor', description=title_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
@@ -79,8 +71,7 @@ def webpanel(result, row, key_descriptions):
     low = 'Min. Stiffness eig. < 0'
 
     row = ['Dynamical (stiffness)',
-           {'value': dynstab.upper(),
-            'description': f"LOW: {low}\nHIGH: {high}"}]
+           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',

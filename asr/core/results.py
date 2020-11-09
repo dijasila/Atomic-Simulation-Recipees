@@ -38,8 +38,10 @@ def read_hacked_data(dct) -> 'ObjectDescription':
                 metadata[key_name] = value
         else:
             data[key] = value
+    recipe = get_recipe_from_name(dct['__asr_hacked__'])
+    object_id = obj_to_id(recipe.returns)
     obj_desc = ObjectDescription(
-        object_id='asr.core.results::HackedASRResult',
+        object_id=object_id,
         args=(),
         kwargs={'data': data,
                 'metadata': metadata,
@@ -99,7 +101,26 @@ def get_reader_function(dct):
     elif '__asr_hacked__' in dct:
         reader_function = read_hacked_data
     else:
-        raise UnknownDataFormat(f'Bad data={dct}')
+        raise UnknownDataFormat(f"""
+
+        Error when reading results file. The file contains the
+        following data keys
+
+            data_keys={dct.keys()}
+
+        from which the data format could not be deduced.  If you
+        suspect the reason is that the data is very old, it is
+        possible that this could be fixed by running:
+
+            $ python -m asr.utils.fix_object_ids folder1/ folder2/ ...
+
+        where folder1 and folder2 are folders containing 'problematic'
+        result files. If you have multiple folders that contains
+        problematic files you can similarly to something like:
+
+            $ python -m asr.utils.fix_object_ids */
+
+        """)
     return reader_function
 
 
@@ -124,21 +145,24 @@ def find_class_matching_version(returns, version):
     return returns
 
 
-class ModuleNameIsMain(Exception):
+class ModuleNameIsCorrupt(Exception):
 
     pass
 
 
 def get_object_matching_obj_id(asr_obj_id):
     module, name = asr_obj_id.split('::')
-    if module == '__main__':
-        raise ModuleNameIsMain('There is a problem with your result objectid. '
-                               'This is a known bug. To fix the faulty result '
-                               'files please run: '
-                               '"python -m asr.utils.fix_object_ids folder1/ '
-                               'folder2/ ..." '
-                               'where folder1 and folder2 are folders containing '
-                               'problematic result files.')
+    if module in {'None.None', '__main__'}:
+        raise ModuleNameIsCorrupt(
+            """
+            There is a problem with your result objectid module name={module}. '
+            This is a known bug. To fix the faulty result '
+            files please run: '
+            "python -m asr.utils.fix_object_ids folder1/ '
+            folder2/ ..." '
+            where folder1 and folder2 are folders containing '
+            problematic result files.'"""
+        )
 
     assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)

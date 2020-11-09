@@ -118,7 +118,7 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+    from asr.database.browser import table, fig, describe_entry
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
     panel = {'title': 'Phonons',
@@ -128,12 +128,12 @@ def webpanel(result, row, key_descriptions):
              'sort': 3}
 
     dynstab = row.get('dynamic_stability_phonons')
-    high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
+
+    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup'
+    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+
     row = ['Dynamical (phonons)',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
-               low, high, dynstab.upper())]
+           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
