@@ -9,14 +9,15 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import fig, WebPanel
 
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[fig('pbe-projected-bs.png', link='empty')],
-                         [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': projected_bs_pbe,
-                                    'filenames': ['pbe-projected-bs.png']}],
-             'sort': 13.5}
+    panel = WebPanel(
+        title='Projected band structure and DOS (PBE)',
+        columns=[[fig('pbe-projected-bs.png', link='empty')],
+                 [fig('bz-with-gaps.png')]],
+        plot_descriptions=[{'function': projected_bs_pbe,
+                            'filenames': ['pbe-projected-bs.png']}],
+        sort=13.5)
 
     return [panel]
 
