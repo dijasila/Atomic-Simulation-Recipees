@@ -262,8 +262,6 @@ def get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c):
     from asr.stack_bilayer import atomseq
     tolerance = 0.001
     
-    # if distance(bottom1, bottom2) > tolerance:
-    #     return None
     if not atomseq(bottom1, bottom2):
         return None
     
@@ -273,8 +271,6 @@ def get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c):
         dvec = atom2.position - atom1.position
         _top1 = top1.copy()
         _top1.translate(dvec)
-        # if distance(_top1, top2) < tolerance:
-        #     return dvec
         if atomseq(_top1, top2):
             return (bottom1.cell.scaled_positions(dvec)
                     + bottom2.cell.scaled_positions(np.array([t2_c[0], t2_c[1], 0]))
