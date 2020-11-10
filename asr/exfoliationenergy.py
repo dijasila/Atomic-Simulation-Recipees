@@ -9,11 +9,11 @@ class ExfoliationResults:
                  bilayer_names):
         self.exfoliationenergy = exf_energy
         self.most_stable_bilayer = most_stable_bilayer
-        self.n_bilayers = len(bilayer_names)
+        self.number_of_bilayers = len(bilayer_names)
         self.bilayer_names = bilayer_names
 
     def to_dict(self):
-        attrs = [x for x in dir(self) if "__" not in x]
+        attrs = [x for x in dir(self) if "__" not in x and not callable(getattr(self, x))]
         return {x: getattr(self, x)
                 for x in attrs}
 
@@ -63,7 +63,7 @@ def main(atoms: Atoms):
     and uses these to estimate the exfoliation energy.
     """
     p = Path('.')
-    bilayers_energies = get_bilayer_energies(p)
+    bilayers_energies = get_bilayers_energies(p)
 
     if len(bilayers_energies) == 0:
         return ExfoliationResults.default().to_dict()
@@ -71,6 +71,8 @@ def main(atoms: Atoms):
     ml_e = monolayer_energy(atoms)
     vdw_e = vdw_energy(atoms)
 
-    exf_energy, most_stable, bilayer_names = calculate_exfoliation(ml_e, vwd_e, bilayers_energies)
+    exf_energy, most_stable, bilayer_names = calculate_exfoliation(ml_e, vdw_e, bilayers_energies)
 
-    return ExfoliationResults(exf_energy, most_stable, bilayer_names).to_dict()
+    results = ExfoliationResults(exf_energy, most_stable, bilayer_names).to_dict()
+    print(results)
+    return results
