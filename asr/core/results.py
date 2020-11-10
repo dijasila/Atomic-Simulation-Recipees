@@ -778,6 +778,9 @@ class ASRResult(object):
 
     # ---- Magic methods ----
 
+    def copy(self):
+        return self.data.copy()
+
     def __getitem__(self, item):
         """Get item from self.data."""
         return self.data[item]
