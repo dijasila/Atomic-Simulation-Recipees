@@ -4,15 +4,6 @@ import numpy as np
 
 
 def get_chi_symmtery(atoms, sym_th=1e-3):
-    """
-    Find the symmetry of the chi^2 for atoms abject
-
-    Input
-        atoms:      An atom object
-        sym_th:     Symmetry threshold
-    Output
-        sym_chi     A dictionary with independent tensor element
-    """
 
     # Get the symmetry of the structure and operations
     import spglib
