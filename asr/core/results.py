@@ -705,7 +705,7 @@ class ASRResult(object):
                     warnings.warn(msg_miss)
 
     def _check_has_known_data_keys(self):
-        assert hasattr(self._known_data_keys), (
+        assert hasattr(self, '_known_data_keys'), (
             "No known data keys. Did you call @prepare_result on your "
             "result class definition?"
         )
