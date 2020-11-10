@@ -47,7 +47,8 @@ def get_chi_symmtery(atoms, sym_th=1e-3):
             nz_pols.append(pol)
             sym_chi[pol] = pol
             for indc in ind_list[ii + 1:]:
-                v1c, v2c, v3c = int(indc / 9), int((indc % 9) / 3), (indc % 9) % 3
+                v1c, v2c = int(indc / 9), int((indc % 9) / 3)
+                v3c = (indc % 9) % 3
                 polc = 'xyz'[v1c] + 'xyz'[v2c] + 'xyz'[v3c]
                 if np.isclose(sym_chi_vvv[v1, v2, v3],
                               sym_chi_vvv[v1c, v2c, v3c]):
@@ -109,14 +110,12 @@ def webpanel(result, row, key_descriptions):
     # Make the figure list
     npan = len(sym_chi)
     files = ['shg{}.png'.format(ii + 1) for ii in range(npan)]
+    cols = [[fig(f'shg{2 * ii + 1}.png'),
+             fig(f'shg{2 * ii + 2}.png')] for ii in range(int(npan / 2))]
     if npan % 2 == 0:
-        cols = [[fig('shg{}.png'.format(2 * ii + 1)),
-                 fig('shg{}.png'.format(2 * ii + 2))] for ii in range(int(npan / 2))]
         cols.append([opt, None])
     else:
-        cols = [[fig('shg{}.png'.format(2 * ii + 1)),
-                 fig('shg{}.png'.format(2 * ii + 2))] for ii in range(int(npan / 2))]
-        cols.append([fig('shg{}.png'.format(npan)), opt])
+        cols.append([fig(f'shg{npan}.png'), opt])
     # Transpose the list
     cols = np.array(cols).T.tolist()
 
@@ -346,7 +345,7 @@ def plot_shg(row, *filename):
     chipol = calc_polarized_shg(
         sym_chi, chi,
         wind=[wind], theta=0, phi=0,
-        pte=np.sin(psi), ptm=np.cos(psi), E0=[1.0], outname=None, outbasis='pol')
+        pte=np.sin(psi), ptm=np.cos(psi), outname=None, outbasis='pol')
     ax = plt.subplot(111, projection='polar')
     ax.plot(psi, np.abs(chipol[0]) * 1e18, 'C0', lw=1.0)
     ax.plot(psi, np.abs(chipol[1]) * 1e18, 'C1', lw=1.0)
@@ -358,13 +357,14 @@ def plot_shg(row, *filename):
         ax.plot(0, 0, 'o', color='b', markersize=5)
     ax.set_rlim(0, 1.2 * rmax)
     ax.set_rgrids([rmax], fmt=r'%4.2g')
-    ax.set_thetagrids([0, 45, 90, 135, 180, 225, 270, 315], labels=[
-                      r'  $\theta=0$', '45', '90', '135', '180', '225', '270', '315'])
+    labs = [r'  $\theta=0$', '45', '90', '135', '180', '225', '270', '315']
+    ax.set_thetagrids([0, 45, 90, 135, 180, 225, 270, 315], labels=labs)
 
     # Put a legend below current axis
     ax.legend([r'Parallel: |$\chi^{(2)}_{\theta \theta \theta}$|',
                r'Perpendicular: |$\chi^{(2)}_{(\theta+90)\theta \theta}$|'],
-              loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, ncol=2)
+              loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              fancybox=True, ncol=2)
 
     # Remove the extra space and save the figure
     plt.tight_layout()
