@@ -704,20 +704,12 @@ class ASRResult(object):
             if missing_keys:
                 warnings.warn(msg_miss)
 
-    def _check_has_known_data_keys(self):
-        assert hasattr(self, '_known_data_keys'), (
-            "No known data keys. Did you call @prepare_result on your "
-            "result class definition?"
-        )
-
     def get_missing_keys(self):
-        self._check_has_known_data_keys()
         data_keys = set(self.data)
         missing_keys = self._known_data_keys - data_keys
         return missing_keys
 
     def get_unknown_keys(self):
-        self._check_has_known_data_keys()
         data_keys = set(self.data)
         unknown_keys = data_keys - self._known_data_keys
         return unknown_keys
