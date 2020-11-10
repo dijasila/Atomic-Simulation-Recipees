@@ -181,11 +181,15 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.get_cell())
+    sym_chi = get_chi_symmtery(atoms)
+    # If the structure has inversion symmetry do nothing
+    if len(sym_chi) == 1:
+        print('The structure has inversion symmetry!')
+        return
 
     # SHG parameters
     eta = 0.05  # Broadening in eV
     w_ls = np.linspace(0, 10, 500)  # in eV
-
     try:
         # fnames = ['es.gpw', 'mml.npz']
         fnames = []
@@ -211,7 +215,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
 
         # Do the calculation
-        sym_chi = get_chi_symmtery(atoms)
         chi_dict = {}
         for pol in sorted(sym_chi.keys()):
             if pol == 'zero':
@@ -236,11 +239,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
 
         # Make the output data
         results = {'chi': chi_dict,
-                   'symm': sym_chi,
-                   'freqs': w_ls,
-                   'par': {'eta': eta, 'gauge': gauge,
-                           'nbands': f'{(bandfactor + 1)*100}%',
-                           'kpts': {'density': kptdensity, 'gamma': True}, }}
+                    'symm': sym_chi,
+                    'freqs': w_ls,
+                    'par': {'eta': eta, 'gauge': gauge,
+                            'nbands': f'{(bandfactor + 1)*100}%',
+                            'kpts': {'density': kptdensity, 'gamma': True}, }}
 
     finally:
         world.barrier()
@@ -275,6 +278,8 @@ def plot_shg(row, *filename):
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
+    if len(sym_chi) != 1: 
+        return
     chi = data['chi']
     w_l = data['freqs']
     fileind = 0
@@ -367,6 +372,9 @@ def plot_shg(row, *filename):
 
 def make_full_chi(sym_chi, chi_dict):
 
+    if len(sym_chi) == 1:
+        return 0
+        
     # Make the full chi from its symmetries
     for pol in sorted(sym_chi.keys()):
         if pol != 'zero':
