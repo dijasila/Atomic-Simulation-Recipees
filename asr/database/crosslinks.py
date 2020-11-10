@@ -20,27 +20,57 @@ def create(databaselink: str,
            databases: Union[str, None] = None):
     """Create links between entries in given ASE databases."""
     link_db = connect(databaselink)
-    dblist = [link_db]
-    for element in databases:
-        db = connect(element)
-        dblist.append(db)
+    db_connections = {}  # [link_db]
+    for dbfilenames in databases:
+        db = connect(dbfilenames)
+        db_connections[dbfilenames] = db
+
+    uids_for_each_db = {}
+    for dbfilename, dbconnection in db_connections.items():
+        uids_to_row = {}
+        for row in dbconnection.select(include_data=False):
+            uids_to_row[row.uid] = row
+
+        uids_for_each_db[dbfilename] = uids_to_row
 
     print(f"INFO: create links for webpanel of DB {link_db.metadata['title']}")
     print(f"INFO: link to the following databases:")
-    for i in range(0, len(dblist)):
-        print(f"..... {dblist[i].metadata['title']}")
+    for i in range(0, len(db_connections)):
+        print(f"..... {db_connections[i].metadata['title']}")
 
+    linkfilename = 'links.json'
     for i, refrow in enumerate(link_db.select()):
+        data = refrow.data
+        if linkfilename in data:
+            formatted_links = []
+            uids_to_link_to = refrow.data[linkfilename]
+            for uid in uids_to_link_to:
+                for dbfilename, uids_to_row in uids_for_each_db.items():
+                    metadata = db_connections[dbfilename].metadata
+                    row = uids_to_row.get(uid, None)
+                    if not row:
+                        continue
+                    title = metadata['title']
+                    link_name_pattern = metadata['link_name']
+                    link_url_pattern = metadata['link_url']
+                    if row:
+                        name = link_name_pattern.format(row=row, metadata=metadata)
+                        url = link_url_pattern.format(row=row, metadata=metadata)
+                        formatted_links.append((name, url, title))
+            if formatted_links:
+                data['links'] = formatted_links
+                link_db.update(refrow.id, data={"links": data['links']})
+
         data = {'links': {}}
         refid = refrow.id
-        for database in dblist:
+        for database in db_connections:
             linklist = []
             urllist = []
             for j, row in enumerate(database.select()):
                 if row.link_uid == refrow.link_uid:
                     name = database.metadata['internal_links']['link_name']
                     url = database.metadata['internal_links']['link_url']
-                    link_name = eval(f"f'{name}'")
+                    link_name = '{name}'.format(name=name)
                     link_url = eval(f"f'{url}'")
                     linklist.append(link_name)
                     urllist.append(link_url)
