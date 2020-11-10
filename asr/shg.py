@@ -140,9 +140,9 @@ def get_kpts(kptdensity, nd, cell):
 class Result(ASRResult):
 
     freqs: typing.List[float]
-    chi: typing.Dict
-    symm: typing.Dict
-    par: typing.Dict
+    chi: typing.Dict[str, typing.Any]
+    symm: typing.Dict[str, str]
+    par: typing.Dict[str, typing.Any]
 
     key_descriptions = {
         "freqs": "Pump photon energy [eV]",
@@ -157,17 +157,19 @@ class Result(ASRResult):
          dependencies=['asr.structureinfo', 'asr.gs@calculate'],
          requires=['gs.gpw'],
          returns=Result)
-@option(
-    '--gs', help='Ground state on which response is based',
-    type=str)
-@option('--kptdensity', help='K-point density',
-        type=float)
+@option('--gs', help='Ground state on which response is based',
+        type=str)
+@option('--kptdensity', help='K-point density', type=float)
 @option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
         type=str)
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+@option('--eta', help='Broadening [eV]', type=float)
+@option('--wmax', help='Max pump frequency [eV]', type=float)
+@option('--nw', help='Number of pump frequencies', type=int)
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
-         bandfactor: int = 4) -> Result:
+         bandfactor: int = 4, eta: float = 0.05,
+         wmax: float = 10.0, nw: int = 1000) -> Result:
 
     from ase.io import read
     from gpaw import GPAW
@@ -175,7 +177,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     from pathlib import Path
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shg import get_shg
-    from gpaw.nlopt.basic import is_file
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -185,15 +186,15 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     # If the structure has inversion symmetry do nothing
     if len(sym_chi) == 1:
         print('The structure has inversion symmetry!')
-        return
+        # Make the output data
+        results = {'chi': {}, 'symm': sym_chi, 'freqs': np.array([]), 'par': {}}
+        return results
 
-    # SHG parameters
-    eta = 0.05  # Broadening in eV
-    w_ls = np.linspace(0, 10, 500)  # in eV
+    w_ls = np.linspace(0, wmax, nw)
     try:
         # fnames = ['es.gpw', 'mml.npz']
         fnames = []
-        if is_file('es.gpw'):
+        if not Path('es.gpw').is_file():
             calc_old = GPAW(gs, txt=None)
             nval = calc_old.wfs.nvalence
 
@@ -211,7 +212,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
 
         # Calculate momentum matrix:
         mml_name = 'mml.npz'
-        if is_file(mml_name):
+        if not Path(mml_name).is_file():
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
 
         # Do the calculation
@@ -221,7 +222,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
                 continue
             # Do the SHG calculation
             shg_name = 'shg_{}.npy'.format(pol)
-            if is_file(shg_name):
+            if not Path(shg_name).is_file():
                 shg = get_shg(
                     freqs=w_ls, eta=eta, pol=pol, gauge=gauge,
                     out_name=shg_name, mml_name=mml_name)
@@ -282,6 +283,8 @@ def plot_shg(row, *filename):
     if len(sym_chi) != 1:
         return
     chi = data['chi']
+    if not chi:
+        return
     w_l = data['freqs']
     fileind = 0
     axes = []
