@@ -36,8 +36,7 @@ can run
 
    >>> from asr.setup.params import main
    >>> main(params=['asr.gs@calculate:calculator', "{'kpts':{...,'density':8.0},...}"])
-   Running...
-   ...{'calculator': {'kpts': {'density': 8.0, 'gamma': True},...
+   Running...asr.setup.params...'density':8.0...
 
 This generates a file `params.json` with the contents printed above.',
 i.e.,
@@ -106,7 +105,7 @@ specified simultaneously by using
 
 .. code-block:: console
 
-   $ asr run "setup.params asr.gs@calculate:calculator asr.relax:d3 True asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
+   $ asr run "setup.params asr.relax:d3 True asr.gs@calculate:calculator {'kpts':{...,'density':8.0},...}"
 
 
 In this way all default parameters exposed through the CLI of a recipe

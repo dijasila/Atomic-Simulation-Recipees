@@ -1,3 +1,4 @@
+"""ASR command line interface."""
 import sys
 from typing import Union
 import asr
@@ -255,19 +256,23 @@ def results(name, show):
     from matplotlib import pyplot as plt
     from asr.core import get_recipe_from_name
     from asr.core.material import (get_material_from_folder,
-                                   get_webpanels_from_material,
                                    make_panel_figures)
     recipe = get_recipe_from_name(name)
 
-    if recipe.webpanel is None:
-        print(f'{recipe.name} does not have any results to present!')
-        return
-
-    assert Path(f"results-{recipe.name}.json").is_file(), \
+    filename = f"results-{recipe.name}.json"
+    assert Path(filename).is_file(), \
         f'No results file for {recipe.name}, so I cannot show the results!'
 
     material = get_material_from_folder('.')
-    panels = get_webpanels_from_material(material, recipe)
+    result = material.data[filename]
+
+    if 'ase_webpanel' not in result.get_formats():
+        print(f'{recipe.name} does not have any results to present!')
+        return
+    from asr.database.app import create_key_descriptions
+    kd = create_key_descriptions()
+    panels = result.format_as('ase_webpanel', material, kd)
+    print('panels', panels)
     make_panel_figures(material, panels)
     if show:
         plt.show()

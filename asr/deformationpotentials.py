@@ -1,9 +1,10 @@
+"""Deformation potentials."""
 from typing import List
-from asr.core import command, option
+from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     data = row.data.get('results-asr.deformationpotentials.json')
 
     defpot = data['deformation_potentials']
@@ -19,12 +20,18 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
-@command(webpanel=webpanel)
+@prepare_result
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
+@command(returns=Result)
 @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',
         type=float)
-def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1):
+def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit

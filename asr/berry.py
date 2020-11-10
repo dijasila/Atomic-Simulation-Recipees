@@ -1,5 +1,6 @@
+"""Topological analysis of electronic structure."""
 import numpy as np
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 
 @command(module='asr.berry',
@@ -9,7 +10,8 @@ from asr.core import command, option, read_json
 @option('--gs', help='Ground state', type=str)
 @option('--kpar', help='K-points along path', type=int)
 @option('--kperp', help='K-points orthogonal to path', type=int)
-def calculate(gs: str = 'gs.gpw', kpar: int = 120, kperp: int = 7):
+def calculate(gs: str = 'gs.gpw', kpar: int = 120,
+              kperp: int = 7) -> ASRResult:
     """Calculate ground state on specified k-point grid."""
     import os
     from ase.io import read
@@ -160,7 +162,7 @@ def plot_phases(name='0', fname='berry', show=False):
         plt.show()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     if row.Topology == 'Not checked':
         return []
 
@@ -179,11 +181,20 @@ def webpanel(row, key_descriptions):
     return [summary, basicelec]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    Topology: str
+
+    key_descriptions = {'Topology': 'Band topology.'}
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.berry',
          requires=['results-asr.berry@calculate.json'],
          dependencies=['asr.berry@calculate'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from pathlib import Path
     from ase.parallel import paropen
 
@@ -193,8 +204,6 @@ def main():
         top = f.readline()
         f.close()
         data['Topology'] = top
-        data['__key_descriptions__'] = \
-            {'Topology': 'KVP: Band topology (Topology)'}
     else:
         f = paropen('topology.dat', 'w')
         print('Not checked!', file=f)

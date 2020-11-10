@@ -1,22 +1,41 @@
+"""Orbital projected band structure."""
 import numpy as np
 
-from asr.core import command
+from asr.core import command, ASRResult, prepare_result
+import typing
 
 
 # ---------- Webpanel ---------- #
 
 
-def webpanel(row, key_descriptions):
-    from asr.database.browser import fig
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import fig, WebPanel
 
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[fig('pbe-projected-bs.png', link='empty')],
-                         [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': projected_bs_pbe,
-                                    'filenames': ['pbe-projected-bs.png']}],
-             'sort': 13.5}
+    panel = WebPanel(
+        title='Projected band structure and DOS (PBE)',
+        columns=[[fig('pbe-projected-bs.png', link='empty')],
+                 [fig('bz-with-gaps.png')]],
+        plot_descriptions=[{'function': projected_bs_pbe,
+                            'filenames': ['pbe-projected-bs.png']}],
+        sort=13.5)
 
     return [panel]
+
+
+@prepare_result
+class Result(ASRResult):
+
+    symbols: typing.List[str]
+    yl_i: typing.List[typing.Tuple[str, str]]
+    weight_skni: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        symbols="Chemical symbols.",
+        yl_i="Symbol and orbital angular momentum string ('y,l') of each orbital i.",
+        weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
+    )
+
+    formats = {'ase_webpanel': webpanel}
 
 
 # ---------- Main functionality ---------- #
@@ -26,8 +45,8 @@ def webpanel(row, key_descriptions):
          requires=['results-asr.gs.json', 'bs.gpw',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gs', 'asr.bandstructure'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from gpaw import GPAW
 
     # Get bandstructure calculation
@@ -299,6 +318,7 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     """
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import matplotlib.patheffects as path_effects
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
@@ -398,6 +418,20 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     plt.legend(legend_markers, [yl.replace(',', ' (') + ')' for yl in yl_i],
                bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
                ncol=3, mode="expand", borderaxespad=0.)
+
+    xlim = ax.get_xlim()
+    x0 = xlim[1] * 0.01
+    text = ax.annotate(
+        r'$E_\mathrm{F}$',
+        xy=(x0, ef - ref),
+        fontsize=mpl.rcParams['font.size'] * 1.25,
+        ha='left',
+        va='bottom')
+
+    text.set_path_effects([
+        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+        path_effects.Normal()
+    ])
 
     # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
