@@ -238,12 +238,13 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
                 chi_dict[pol] = shg[1] * cellsize[2] * 1e-10
 
         # Make the output data
-        results = {'chi': chi_dict,
-                    'symm': sym_chi,
-                    'freqs': w_ls,
-                    'par': {'eta': eta, 'gauge': gauge,
-                            'nbands': f'{(bandfactor + 1)*100}%',
-                            'kpts': {'density': kptdensity, 'gamma': True}, }}
+        results = {
+            'chi': chi_dict,
+            'symm': sym_chi,
+            'freqs': w_ls,
+            'par': {'eta': eta, 'gauge': gauge,
+                    'nbands': f'{(bandfactor + 1)*100}%',
+                    'kpts': {'density': kptdensity, 'gamma': True}, }}
 
     finally:
         world.barrier()
@@ -278,7 +279,7 @@ def plot_shg(row, *filename):
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
-    if len(sym_chi) != 1: 
+    if len(sym_chi) != 1:
         return
     chi = data['chi']
     w_l = data['freqs']
@@ -374,7 +375,7 @@ def make_full_chi(sym_chi, chi_dict):
 
     if len(sym_chi) == 1:
         return 0
-        
+
     # Make the full chi from its symmetries
     for pol in sorted(sym_chi.keys()):
         if pol != 'zero':
