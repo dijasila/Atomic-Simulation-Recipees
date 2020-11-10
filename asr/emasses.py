@@ -22,7 +22,7 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-@command('asr.emasses',
+@command(module='asr.emasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
          dependencies=['asr.structureinfo',
                        'asr.magnetic_anisotropy',
@@ -258,9 +258,13 @@ def convert_key_to_tuple(key):
     return tuple(ks)
 
 
-def get_emass_dict_from_row(row):
+def get_emass_dict_from_row(row, has_mae=False):
     import numpy as np
-    results = row.data.get('results-asr.emasses.json')
+    from asr.core import read_json
+    if has_mae:
+        results = read_json('results-asr.emasses@validate.json')
+    else:
+        results = row.data.get('results-asr.emasses.json')
 
     cb_indices = []
     vb_indices = []
@@ -295,20 +299,51 @@ def get_emass_dict_from_row(row):
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
             direction = 0
+            maekey = name.lower() + '_soc_wideareaMAE'
+            maes = data[maekey] if has_mae else None
+
             for k in data.keys():
                 if 'effmass' in k:
                     mass = data[k]
                     if mass is not None and not np.isnan(mass):
                         direction += 1
-                        mass_str = str(round(abs(mass) * 100) / 100)
-                        if offset_num == 0:
-                            my_dict[f'{name}, direction {direction}'] = \
-                                f'{mass_str} m<sub>e</sub>'
+                        expectedsign = 1 if name == "CB" else -1
+                        if abs(mass) > 3000 or np.sign(mass) != expectedsign:
+                            mass_str = "N/A"
                         else:
-                            my_dict['{} {} {}, direction {}'.format(
-                                name, offset_sym,
-                                offset_num, direction)] = \
-                                f'{mass_str} m<sub>e</sub>'
+                            mass_str = str(round(abs(mass) * 100)
+                                           / 100) + " m<sub>e</sub>"
+
+                        if has_mae:
+                            mae = maes[direction - 1]
+                            f10 = np.log(mae) / np.log(10)
+                            f10 = int(round(f10))
+                            mae = mae / 10**(f10)
+                            if mae < 1:
+                                f10 -= 1
+                                mae *= 10
+                            maestr = round(mae, 1)
+                            maestr = str(maestr) + f'e{f10}'
+
+                            if offset_num == 0:
+                                my_dict[f'{name}, direction {direction}'] = \
+                                    (f'{mass_str}', maestr)
+                            else:
+                                my_dict['{} {} {}, direction {}'.format(
+                                    name, offset_sym,
+                                    offset_num, direction)] = \
+                                    (f'{mass_str}', maestr)
+
+                        else:
+                            if offset_num == 0:
+                                my_dict[f'{name}, direction {direction}'] = \
+                                    f'{mass_str}'
+                            else:
+                                my_dict['{} {} {}, direction {}'.format(
+                                    name, offset_sym,
+                                    offset_num, direction)] = \
+                                    f'{mass_str}'
+
         return my_dict
 
     electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
@@ -534,25 +569,33 @@ def make_the_plots(row, *args):
     return
 
 
-def custom_table(values_dict, title):
-    table = {'type': 'table',
-             'header': [title, 'Value']}
-
+def custom_table(values_dict, title, has_mae=False):
     rows = []
     for k in values_dict.keys():
-        rows.append((k, values_dict[k]))
+        if has_mae:
+            rows.append((k, values_dict[k][0], values_dict[k][1]))
+        else:
+            rows.append((k, values_dict[k]))
+
+    if has_mae:
+        table = {'type': 'table',
+                 'header': [title, 'Value', 'MAE (25 meV)']}
+    else:
+        table = {'type': 'table',
+                 'header': [title, 'Value']}
 
     table['rows'] = rows
     return table
 
 
 def webpanel(result, row, key_descriptions):
+    has_mae = 'results-asr.emasses@validate.json' in row.data
     columns, fnames = create_columns_fnames(row)
 
-    electron_dict, hole_dict = get_emass_dict_from_row(row)
+    electron_dict, hole_dict = get_emass_dict_from_row(row, has_mae)
 
-    electron_table = custom_table(electron_dict, 'Electron effective mass')
-    hole_table = custom_table(hole_dict, 'Hole effective mass')
+    electron_table = custom_table(electron_dict, 'Electron effective mass', has_mae)
+    hole_table = custom_table(hole_dict, 'Hole effective mass', has_mae)
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
@@ -823,41 +866,6 @@ def embands(gpw, soc, bandtype, delta=0.1):
     return masses
 
 
-def wideMAE(masses, bt, cell_cv, erange=1e-3):
-    from ase.dft.kpoints import kpoint_convert
-    from ase.units import Ha
-    import numpy as np
-
-    erange = erange / Ha
-
-    maes = []
-    for i, mass in enumerate(masses['mass_u']):
-        if mass is np.nan or np.isnan(mass) or mass is None:
-            continue
-
-        fit_data = masses['bs_along_emasses'][i]
-        c = masses['c']
-        k_kc = fit_data['kpts_kc']
-        k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
-        e_k = fit_data['e_k'] / Ha
-        assert bt == fit_data['bt']
-
-        if bt == "vb":
-            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
-            assert (np.abs(e_k[ks] - np.max(e_k)) < erange).all()
-            sk_kv = k_kv[ks]
-        else:
-            ks = np.where(np.abs(e_k - np.min(e_k)) < erange)
-            sk_kv = k_kv[ks]
-            assert (np.abs(e_k[ks] - np.min(e_k)) < erange).all()
-
-        emodel_k = evalmodel(sk_kv, c, thirdorder=True)
-        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha  # eV
-        maes.append(mae)
-
-    return maes
-
-
 def calculate_bs_along_emass_vecs(masses_dict, soc,
                                   bt, calc,
                                   spin, band,
@@ -972,7 +980,7 @@ def get_vb_cb_indices(e_skn, efermi, delta):
 
 
 def em(kpts_kv, eps_k, bandtype=None, ndim=3):
-    """TODO: Do me.
+    """Fit 2nd and 3rd order polynomial to eps_k.
 
     Parameters
     ----------
@@ -1271,5 +1279,119 @@ def evalmodel(kpts_kv, c_p, thirdorder=True):
     return np.dot(A_kp, c_p)
 
 
+def wideMAE(masses, bt, cell_cv, erange=1e-3):
+    from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha
+    import numpy as np
+
+    erange = erange / Ha
+
+    maes = []
+    for i, mass in enumerate(masses['mass_u']):
+        if mass is np.nan or np.isnan(mass) or mass is None:
+            continue
+
+        fit_data = masses['bs_along_emasses'][i]
+        c = masses['c']
+        k_kc = fit_data['kpts_kc']
+        k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+        e_k = fit_data['e_k'] / Ha
+        assert bt == fit_data['bt']
+
+        if bt == "vb":
+            ks = np.where(np.abs(e_k - np.max(e_k)) < erange)
+            assert (np.abs(e_k[ks] - np.max(e_k)) < erange).all()
+            sk_kv = k_kv[ks]
+        else:
+            ks = np.where(np.abs(e_k - np.min(e_k)) < erange)
+            sk_kv = k_kv[ks]
+            assert (np.abs(e_k[ks] - np.min(e_k)) < erange).all()
+
+        emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+        mae = np.mean(np.abs(emodel_k - e_k[ks])) * Ha  # eV
+        maes.append(mae)
+
+    return maes
+
+
+def parsekey(k):
+    if "(" not in k or ")" not in k:
+        return k, k
+    else:
+        return k, tuple(int(x) for x in k.replace("(", "").replace(")", "").split(", "))
+
+
+def iterateresults(results):
+    for bk, k in map(parsekey, results):
+        if type(k) != tuple:
+            continue
+        else:
+            key_prefix = next(x for x in results[bk].keys())
+            key_prefix = '_'.join(key_prefix.split('_')[:2])
+            newdct = {'info': key_prefix}
+            for key in results[bk].keys():
+                newkey = key.replace(key_prefix + '_', '')
+                newdct[newkey] = results[bk][key]
+            yield k, newdct
+
+
+def evalmae(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
+    from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha, Bohr
+    import numpy as np
+
+    erange = erange / Ha
+
+    k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+    e_k = e_k.copy() / Ha
+
+    if bt == 'vb':
+        k_inds = np.where(np.abs(e_k - np.max(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+    else:
+        k_inds = np.where(np.abs(e_k - np.min(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+
+    emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+    mae = np.mean(np.abs(emodel_k - e_k[k_inds])) * Ha
+
+    return mae
+
+
+@command(module='asr.emasses',
+         requires=['results-asr.emasses.json'],
+         dependencies=['asr.emasses'])
+def validate() -> ASRResult:
+    """Calculate MAE of fits over 25 meV.
+
+    Perform a calculation for each to validate it
+    over an energy range of 25 meV.
+
+    We evaluate the MAE only along the emass directions,
+    i.e. the directions shown in the plots on the website.
+    """
+    from asr.core import read_json
+    from ase.io import read
+    results = read_json('results-asr.emasses.json')
+    myresults = results.copy()
+    atoms = read('structure.json')
+
+    for (sindex, kindex), data in iterateresults(results):
+        # Get info on fit at this point in bandstructure
+        fitinfo = data['fitcoeff']
+        bt = data['info'].split('_')[0]
+        maes = []
+        for cutdata in data['bzcuts']:
+            k_kc = cutdata['kpts_kc']
+            e_k = cutdata['e_k']
+            mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
+            maes.append(mae)
+
+        prefix = data['info'] + '_'
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
+
+    return myresults
+
+
 if __name__ == '__main__':
-    main.cli()
+    validate.cli()
