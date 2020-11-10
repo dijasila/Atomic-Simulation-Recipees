@@ -7,7 +7,9 @@ def get_chi_symmtery(atoms, sym_th=1e-3):
 
     # Get the symmetry of the structure and operations
     import spglib
-    sg = spglib.get_symmetry(atoms, symprec=sym_th)
+    sg = spglib.get_symmetry((atoms.cell,
+                              atoms.get_scaled_positions(),
+                              atoms.get_atomic_numbers()), symprec=sym_th)
     op_scc = sg['rotations']
 
     # Make a random symmterized matrix
@@ -16,7 +18,7 @@ def get_chi_symmtery(atoms, sym_th=1e-3):
         chi_vvv[v1] = (chi_vvv[v1] + chi_vvv[v1].T) / 2.0
 
     # Introduce the symmetries to the matrix
-    cell_cv = atoms.get_cell()
+    cell_cv = atoms.cell
     op_svv = [np.linalg.inv(cell_cv).dot(op_cc.T).dot(cell_cv) for
               op_cc in op_scc]
     nop = len(op_svv)
@@ -181,8 +183,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
-    kpts = get_kpts(kptdensity, nd, atoms.get_cell())
+    kpts = get_kpts(kptdensity, nd, atoms.cell)
     sym_chi = get_chi_symmtery(atoms)
+    print(sym_chi)
     # If the structure has inversion symmetry do nothing
     if len(sym_chi) == 1:
         print('The structure has inversion symmetry!')
