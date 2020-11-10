@@ -212,23 +212,12 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
 def get_material_uid(atoms: Atoms):
     """Get UID of atoms."""
-    if not mf.done:
-        try:
-            mf()
-        except PermissionError:
-            pass
-    try:
+    if mf.done:
         return read_json(
             'results-asr.database.material_fingerprint.json')['uid']
-    except FileNotFoundError:
-        # FileNotFoundError happens some times on Gitlab CI
-        # and I have not been able to reproduce it on any of
-        # my own devices. The problem started when we started
-        # to use multiprocessing so I suspect that it is somehow
-        # related to that. Somehow, writing and IMMEDIATELY reading
-        # a file gives problems on gitlab CI.
-        hash = get_hash_of_atoms(atoms)
-        return get_uid_of_atoms(atoms, hash)
+
+    hash = get_hash_of_atoms(atoms)
+    return get_uid_of_atoms(atoms, hash)
 
 
 def collect_folder(folder: Path, atomsname: str, patterns: List[str],

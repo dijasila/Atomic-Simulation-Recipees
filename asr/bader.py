@@ -20,7 +20,7 @@ class Result(ASRResult):
          dependencies=['asr.gs'],
          returns=Result)
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.025) -> Result:
+def main(grid_spacing: float = 0.05) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -49,7 +49,7 @@ def main(grid_spacing: float = 0.025) -> Result:
     density = converter.get_pseudo_density()
     write('density.cube', gs.atoms, data=density * Bohr**3)
 
-    cmd = 'bader -p all_atom -p atom_index density.cube'
+    cmd = 'bader density.cube'
     out = Path('bader.out').open('w')
     err = Path('bader.err').open('w')
     subprocess.run(cmd.split(),
