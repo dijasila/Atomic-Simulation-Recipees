@@ -3,6 +3,7 @@
 A material object closely mimics the behaviour of an ase.db.atomsrow.
 """
 from pathlib import Path
+from ase.db.row import AtomsRow
 
 
 class Material:
@@ -22,40 +23,35 @@ class Material:
             Raw data associated with atomic structure-
 
         """
-        self.__dict__.update(kvp)
-        self.atoms = atoms
-        self.data = data
-        self.kvp = kvp
-        self.cell = atoms.get_cell()
-        self.pbc = atoms.get_pbc()
+        row = AtomsRow(atoms)
+        row.__dict__.update(kvp)
+        row._data = data
+        self.row = row
+        # self.atoms = atoms
+        # self.data = data
+        # self.kvp = kvp
+        # self.cell = atoms.get_cell()
+        # self.pbc = atoms.get_pbc()
+
+    def __getattr__(self, key):
+        """Wrap row get attribute."""
+        return getattr(self.row, key)
 
     def __contains__(self, key):
         """Is property in key-value-pairs."""
-        return key in self.kvp
+        return key in self.row
 
     def __iter__(self):
         """Iterate over material attributes."""
-        return (key for key in self.__dict__ if key[0] != '_')
+        return self.row.__iter__()
 
     def __getitem__(self, key):
         """Get material attribute."""
-        return getattr(self, key)
+        return self.row[key]
 
     def __setitem__(self, key, value):
         """Set material attribute."""
-        setattr(self, key, value)
-
-    def get(self, key, default=None):
-        return self.kvp.get(key, default)
-
-    def toatoms(self):
-        return self.atoms
-
-    def count_atoms(self):
-        count = {}
-        for symbol in self.atoms.symbols:
-            count[symbol] = count.get(symbol, 0) + 1
-        return count
+        self.row[key] = value
 
 
 def get_material_from_folder(folder='.'):
