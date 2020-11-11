@@ -81,7 +81,7 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
-    k_kc = calc.get_ibz_k_points()
+    k_kc = calc.get_bz_k_points()
     cell_cv = calc.atoms.get_cell()
 
     # Find energies and VBM/CBM
