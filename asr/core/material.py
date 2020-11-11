@@ -51,6 +51,12 @@ class Material:
     def toatoms(self):
         return self.atoms
 
+    def count_atoms(self):
+        count = {}
+        for symbol in self.atoms.symbols:
+            count[symbol] = count.get(symbol, 0) + 1
+        return count
+
 
 def get_material_from_folder(folder='.'):
     """Contruct a material from ASR structure folder.
