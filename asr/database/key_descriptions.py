@@ -88,6 +88,13 @@ key_descriptions = {
         "dE_zy":
         "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
     },
+    "exchange": {
+        "J": "KVP: Nearest neighbor exchange coupling [meV]",
+        "A": "KVP: Single-ion anisotropy (out-of-plane) [meV]",
+        "lam": "KVP: Anisotropic exchange (out-of-plane) [meV]",
+        "spin": "KVP: Maximum value of S_z at magnetic sites",
+        "N_nn": "KVP: Number of nearest neighbors",
+    },
     "pdos": {
         "pdos_nosoc":
         "Projected density of states w/o soc. !PDOS no soc!",

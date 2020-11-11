@@ -50,7 +50,7 @@ def check_if_supercell(spos_ac, Z_a):
 @command('asr.setup.reduce')
 @option('--initial', help='Initial atomic structure file')
 @option('--final', help='Final atomic structure file')
-def main(initial='start.json', final='unrelaxed.json'):
+def main(initial='original.json', final='unrelaxed.json'):
     """Reduce supercell and perform niggli reduction if possible"""
 
     from ase.io import read
