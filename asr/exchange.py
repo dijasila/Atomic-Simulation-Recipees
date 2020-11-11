@@ -247,7 +247,7 @@ class Result(ASRResult):
 def main() -> Result:
     """Extract Heisenberg parameters."""
     from ase.io import read
-    #N_gs = len(read('gs.gpw'))
+
     N_gs = len(read('structure.json'))
     N_exchange = len(read('gs_2mag.gpw'))
     if N_gs == N_exchange:

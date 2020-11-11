@@ -2,6 +2,7 @@
 import numpy as np
 from asr.core import command, option, read_json, ASRResult, prepare_result
 
+
 class CalculateResult(ASRResult):
 
     phi0_km: np.ndarray
@@ -156,7 +157,7 @@ def plot_phases(row, f0, f1, f2, fpi):
         S_km[1:] = St_km
         S_km[0] = St_km[-1]
         S_km /= 2
-        
+
         Nm = len(phi_km[0])
         phi_km = np.tile(phi_km, (1, 2))
         phi_km[:, Nm:] += 2 * np.pi
@@ -176,7 +177,7 @@ def plot_phases(row, f0, f1, f2, fpi):
                     c=S_km.T.reshape(-1),
                     s=5,
                     marker='o')
-        
+
         if os.path.isfile('results-asr.magnetic_anisotropy.json'):
             anis = read_json('results-asr.magnetic_anisotropy.json')
             dir = anis['spin_axis']
@@ -185,7 +186,7 @@ def plot_phases(row, f0, f1, f2, fpi):
 
         cbar = plt.colorbar()
         cbar.set_label(r'$\langle S_%s\rangle/\hbar$' % dir, size=16)
-        
+
         if f == f0:
             plt.title(r'$\tilde k_2=0$', size=22)
             plt.xlabel(r'$\tilde k_1$', size=20)
@@ -246,7 +247,7 @@ def webpanel(result, row, key_descriptions):
                                                       'berry-phases1.png',
                                                       'berry-phases2.png',
                                                       'berry-phases0_pi.png']}])
-    
+
     return [summary, basicelec, berry_phases]
 
 

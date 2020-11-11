@@ -1,12 +1,11 @@
 from asr.core import command, option
 import numpy as np
-from ase.build import cut
-from ase.build import niggli_reduce
+from ase.build import cut, niggli_reduce
+from ase.io import read
 
 
 def check_one_symmetry(spos_ac, ft_c, a_ij, tol=1.e-7):
-    """Checks whether atoms satisfy one given symmetry operation."""
-
+    """Check whether atoms satisfy one given symmetry operation."""
     a_a = np.zeros(len(spos_ac), int)
     for a_j in a_ij.values():
         spos_jc = spos_ac[a_j]
@@ -26,8 +25,7 @@ def check_one_symmetry(spos_ac, ft_c, a_ij, tol=1.e-7):
 
 
 def check_if_supercell(spos_ac, Z_a):
-    """Check if unit cell can be reduced"""
-
+    """Check if unit cell can be reduced."""
     a_ij = {}
     for a, Z in enumerate(Z_a):
         if Z in a_ij:
@@ -46,16 +44,12 @@ def check_if_supercell(spos_ac, Z_a):
         else:
             pass
 
-            
+
 @command('asr.setup.reduce')
 @option('--initial', help='Initial atomic structure file')
 @option('--final', help='Final atomic structure file')
 def main(initial='original.json', final='unrelaxed.json'):
-    """Reduce supercell and perform niggli reduction if possible"""
-
-    from ase.io import read
-    from ase.build import niggli_reduce
-
+    """Reduce supercell and perform niggli reduction if possible."""
     atoms = read(initial)
     Z_a = atoms.get_atomic_numbers()
     spos_ac = atoms.get_scaled_positions() % 1.0
