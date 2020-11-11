@@ -195,11 +195,11 @@ def webpanel(result, row, key_descriptions):
         row.data,
         'asr.exchange@calculate')
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
-                   + parameter_description)
+                     + parameter_description)
     explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'
-                   + parameter_description)
+                       + parameter_description)
     explanation_A = ('The single ion anisotropy\n\n'
-                   + parameter_description)
+                     + parameter_description)
     explanation_spin = ('The spin of magnetic atoms\n\n'
                         + parameter_description)
     explanation_N = ('The number of nearest neighbors\n\n'
@@ -260,8 +260,7 @@ def main() -> Result:
                'A': A * 1000,
                'lam': B * 1000,
                'spin': S,
-               'N_nn': N,
-    }
+               'N_nn': N}
 
     return Result(data=results)
 

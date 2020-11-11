@@ -251,11 +251,11 @@ def webpanel(result, row, key_descriptions):
                                       fig('berry_phases0_pi.png')],
                                      [fig('berry_phases1.png'),
                                       fig('berry_phases2.png')]],
-                    plot_descriptions=[{'function': plot_phases,
-                                        'filenames': ['berry-phases0.png',
-                                                      'berry-phases1.png',
-                                                      'berry-phases2.png',
-                                                      'berry-phases0_pi.png']}])
+                            plot_descriptions=[{'function': plot_phases,
+                                                'filenames': ['berry-phases0.png',
+                                                              'berry-phases1.png',
+                                                              'berry-phases2.png',
+                                                              'berry-phases0_pi.png']}])
 
     return [summary, basicelec, berry_phases]
 
