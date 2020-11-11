@@ -34,6 +34,7 @@ class Material:
         # self.pbc = atoms.get_pbc()
 
     def __getattr__(self, key):
+        """Wrap row get attribute."""
         return getattr(self.row, key)
 
     def __contains__(self, key):
@@ -51,7 +52,6 @@ class Material:
     def __setitem__(self, key, value):
         """Set material attribute."""
         self.row[key] = value
-
 
 
 def get_material_from_folder(folder='.'):

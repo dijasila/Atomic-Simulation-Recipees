@@ -15,6 +15,7 @@ def test_asr_cli_results_figures_gs():
     keys = [key for key in material]
     assert "gap" in keys
 
+
 @pytest.mark.ci
 def test_material_count_atoms_equals_len_atoms(test_material):
     kvp = {}
