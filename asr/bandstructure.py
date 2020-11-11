@@ -385,7 +385,7 @@ def bs_pbe(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import fig, describe_entry
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -398,7 +398,9 @@ def webpanel(result, row, key_descriptions):
         return tuple(rm(s) for s in d)
 
     panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
+             'columns': [[
+                 describe_entry(fig('pbe-bs.png',
+                                    link='pbe-bs.html'), 'jello')],
                          [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},

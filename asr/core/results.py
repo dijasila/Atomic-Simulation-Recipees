@@ -667,6 +667,7 @@ class ASRResult(object):
                'str': str}
 
     strict = False
+    _known_data_keys = set()
 
     def __init__(self,
                  data: typing.Dict[str, typing.Any] = {},
@@ -685,24 +686,33 @@ class ASRResult(object):
 
         """
         strict = ((strict is None and self.strict) or strict)
-        if (hasattr(self, '_known_data_keys')):
-            data_keys = set(data)
-            unknown_keys = data_keys - self._known_data_keys
-            msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
-            missing_keys = self._known_data_keys - data_keys
-            msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
-            if strict:
-                assert not missing_keys, msg_miss
-                assert not unknown_keys, msg_ukwn
-            else:
-                if unknown_keys:
-                    warnings.warn(msg_ukwn)
-                if missing_keys:
-                    warnings.warn(msg_miss)
         self.strict = strict
         self._data = data
         self._metadata = MetaData()
         self.metadata.set(**metadata)
+
+        missing_keys = self.get_missing_keys()
+        unknown_keys = self.get_unknown_keys()
+        msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
+        msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
+        if strict:
+            assert not missing_keys, msg_miss
+            assert not unknown_keys, msg_ukwn
+        else:
+            if unknown_keys:
+                warnings.warn(msg_ukwn)
+            if missing_keys:
+                warnings.warn(msg_miss)
+
+    def get_missing_keys(self):
+        data_keys = set(self.data)
+        missing_keys = self._known_data_keys - data_keys
+        return missing_keys
+
+    def get_unknown_keys(self):
+        data_keys = set(self.data)
+        unknown_keys = data_keys - self._known_data_keys
+        return unknown_keys
 
     @classmethod
     def fromdata(cls, **data):
@@ -777,6 +787,9 @@ class ASRResult(object):
         return obj_desc.instantiate()
 
     # ---- Magic methods ----
+
+    def copy(self):
+        return self.data.copy()
 
     def __getitem__(self, item):
         """Get item from self.data."""

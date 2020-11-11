@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def make_decorator(name):
+def make_property(name):
     def getter(self):
         return self.data[name]
 
@@ -32,11 +32,11 @@ class WebPanel:
             id=id,
         )
 
-    columns = make_decorator('columns')
-    title = make_decorator('title')
-    plot_descriptions = make_decorator('plot_descriptions')
-    sort = make_decorator('sort')
-    id = make_decorator('id')
+    columns = make_property('columns')
+    title = make_property('title')
+    plot_descriptions = make_property('plot_descriptions')
+    sort = make_property('sort')
+    id = make_property('id')
 
     def __getitem__(self, item):  # noqa
         return self.data[item]
