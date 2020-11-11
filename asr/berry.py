@@ -15,14 +15,22 @@ class CalculateResult(ASRResult):
     s0_pi_km: np.ndarray
 
     key_descriptions = {
-        'phi0_km': 'Berry phase spectrum at k_2=0, localized along the k_0 direction',
-        'phi1_km': 'Berry phase spectrum at k_0=0, localized along the k_1 direction',
-        'phi2_km': 'Berry phase spectrum at k_1=0, localized along the k_2 direction',
-        'phi0_pi_km': 'Berry phase spectrum at k_2=pi, localized along the k_0 direction',
-        's0_km': 'Expectation value of spin in the easy-axis direction for the Berry phases at k_2=0',
-        's1_km': 'Expectation value of spin in the easy-axis direction for the Berry phases at k_0=0',
-        's2_km': 'Expectation value of spin in the easy-axis direction for the Berry phases at k_1=0',
-        's0_pi_km': 'Expectation value of spin in the easy-axis direction for the Berry phases at k_2=pi',
+        'phi0_km': ('Berry phase spectrum at k_2=0, '
+                    'localized along the k_0 direction'),
+        'phi1_km': ('Berry phase spectrum at k_0=0, '
+                    'localized along the k_1 direction'),
+        'phi2_km': ('Berry phase spectrum at k_1=0, '
+                    'localized along the k_2 direction'),
+        'phi0_pi_km': ('Berry phase spectrum at k_2=pi, '
+                       'localized along the k_0 direction'),
+        's0_km': ('Expectation value of spin in the easy-axis direction '
+                  'for the Berry phases at k_2=0'),
+        's1_km': ('Expectation value of spin in the easy-axis direction '
+                  'for the Berry phases at k_0=0'),
+        's2_km': ('Expectation value of spin in the easy-axis direction '
+                  'for the Berry phases at k_1=0'),
+        's0_pi_km': ('Expectation value of spin in the easy-axis direction '
+                     'for the Berry phases at k_2=pi'),
     }
 
 
@@ -133,7 +141,8 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
         if world.rank == 0:
             os.system('rm gs_berry.gpw')
     else:
-        raise NotImplementedError('asr.berry@calculate is not implemented for <2D systems.')
+        raise NotImplementedError('asr.berry@calculate is not implemented '
+                                  'for <2D systems.')
 
     return CalculateResult(data=results)
 

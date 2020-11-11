@@ -119,7 +119,6 @@ def get_parameters(gs, exchange, txt=False,
     else:
         occcalc = None
 
-
     E0_fm = soc_eigenstates(calc_fm, scale=0.0, occcalc=occcalc, n2=nbands,
                             theta=0, phi=0).calculate_band_energy() / 2
 
@@ -191,7 +190,7 @@ def webpanel(result, row, key_descriptions):
                                       describe_entry, WebPanel)
     if row.get('magstate', 'NM') == 'NM':
         return []
-    
+
     parameter_description = entry_parameter_description(
         row.data,
         'asr.exchange@calculate')
