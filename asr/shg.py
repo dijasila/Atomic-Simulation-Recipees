@@ -2,9 +2,11 @@ import typing
 from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 
+
 class CentroSymmetric(Exception):
     """CentroSymmetric crystals have vanishing SHG response!"""
     pass
+
 
 def get_chi_symmtery(atoms, sym_th=1e-3):
 
@@ -212,12 +214,12 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
                 kpts=kpts)
             calc.get_potential_energy()
             calc.write('es.gpw', mode='all')
-        
+
         # Calculate momentum matrix:
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
-        
+
         # Do the calculation
         chi_dict = {}
         for pol in sorted(sym_chi.keys()):
@@ -240,7 +242,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
                 # Make it a surface chi instead of bulk chi
                 cellsize = atoms.cell.cellpar()
                 chi_dict[pol] = shg[1] * cellsize[2] * 1e-10
-            
+
         # Make the output data
         results = {
             'chi': chi_dict,
@@ -249,8 +251,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
             'par': {'eta': eta, 'gauge': gauge,
                     'nbands': f'{(bandfactor + 1)*100}%',
                     'kpts': {'density': kptdensity, 'gamma': True}, }}
-        
-        # print(results)
+
     finally:
         world.barrier()
         if world.rank == 0:
@@ -281,25 +282,25 @@ def plot_shg(row, *filename):
     for fname in filename:
         if (Path(fname).is_file()):
             os.remove(fname)
-    
+
     # Plot the data and add the axis labels
     sym_chi = data['symm']
     if len(sym_chi) == 1:
         raise CentroSymmetric
     chi = data['chi']
-    
+
     if not chi:
         return
     w_l = data['freqs']
     fileind = 0
     axes = []
-    
+
     for pol in sorted(chi.keys()):
         # Make the axis and add y=0 axis
         shg = chi[pol]
         ax = plt.figure().add_subplot(111)
         ax.axhline(y=0, color='k')
-        
+
         # Add the bandgap
         bg = gap
         if bg is not None:
@@ -338,7 +339,7 @@ def plot_shg(row, *filename):
         fileind += 1
         axes.append(ax)
         plt.close()
-    
+
     # Now make the polarization resolved plot
     psi = np.linspace(0, 2 * np.pi, 201)
     selw = 0
@@ -373,7 +374,7 @@ def plot_shg(row, *filename):
     plt.tight_layout()
     plt.savefig(filename[fileind])
     axes.append(ax)
-    
+
     return tuple(axes)
 
 
