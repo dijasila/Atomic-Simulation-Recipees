@@ -5,7 +5,7 @@ import numpy as np
 
 class CentroSymmetric(Exception):
     """CentroSymmetric crystals have vanishing SHG response!.
-    
+
     """
     pass
 
