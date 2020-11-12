@@ -16,10 +16,12 @@ class StatesResult(ASRResult):
     """Container for results of states for one spin channel."""
     states_channel: typing.List[int]
     energies_channel: typing.List[float]
+    channel: int
 
     key_descriptions: typing.Dict[str, str] = dict(
         states_channel='List of indices of defect states.',
-        energies_channel='List of energies corresponding to the list of states [eV].'
+        energies_channel='List of energies corresponding to the list of states [eV].',
+        channel='Spin channel (0 or 1).'
     )
 
 
@@ -80,17 +82,28 @@ def calculate(state: int = 0,
 
     local_ratio_n = []
 
+    energies_0 = []
+    energies_1 = []
     print('INFO: write wavefunctions of gapstates ...')
     for band in states:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
+        energy = calc.get_potential_energy()
+        energies_0.append(energy)
         fname = 'wf.{0}_{1}.cube'.format(band, 0)
         write(fname, atoms, data=wf)
         local_ratio_n.append(get_localization_ratio(atoms, wf))
-
         if calc.get_number_of_spins() == 2:
             wf = calc.get_pseudo_wave_function(band=band, spin=1)
+            energy = calc.get_potential_energy()
+            energies_1.append(energy)
             fname = 'wf.{0}_{1}.cube'.format(band, 1)
             write(fname, atoms, data=wf)
+
+    states_result_1 = return_states_result(states, energies_0, spin=0)
+    states_results = [states_result_1]
+    if calc.get_number_of_spins() == 2:
+        states_result_2 = return_states_result(states, energies_1, spin=1)
+        states_results.append(states_result_2)
 
     print('INFO: Calculating dipole matrix elements among gap states.')
     d_svnm = dipole_matrix_elements_from_calc(calc, n1=states[0], n2=states[-1] + 1)
@@ -99,12 +112,19 @@ def calculate(state: int = 0,
         # To be implemented
         print('INFO: analyze chosen states.')
 
-    return Result.fromdata(
-        states=np.array(states),
+    return CalculateResult.fromdata(
+        states=states_results,
         dipole=d_svnm,
         localization=local_ratio_n,
         states_above=states_above,
         states_below=states_below)
+
+
+def return_states_result(states, energies, spin) -> StatesResult:
+    return StatesResult.fromdata(
+        states_channel=states,
+        energies_channel=energies,
+        channel=spin)
 
 
 def get_supercell_shape(primitive, pristine):
