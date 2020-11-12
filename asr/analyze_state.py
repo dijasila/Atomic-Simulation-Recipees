@@ -438,6 +438,7 @@ def main(mapping: bool = False,
     labels_up = []
     labels_down = []
 
+    symmetry_results = []
     for wf_file in cubefiles:
         spin = str(wf_file)[str(wf_file).find('_') + 1]
         band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
@@ -455,6 +456,44 @@ def main(mapping: bool = False,
               ''.join(f'{x:8.3f}' for x in dct['characters'].values()) + '{:9.3}'.format(error))
 
         [labels_up, labels_down][0].append(best)
+
+        irrep_results = []
+        for element in dct['characters']:
+            irrep_result = return_irrep_result(element, dct['characters'][element])
+            irrep_results.append(irrep_result)
+
+        symmetry_result = return_symmetry_result(irrep_results,
+                                                 best,
+                                                 error,
+                                                 localization,
+                                                 band,
+                                                 spin)
+        symmetry_results.append(symmetry_result)
+
+    return Result.fromdata(
+        point_group=point_group,
+        defect_center=center,
+        symmetries=symmetry_results)
+
+
+def return_symmetry_result(irreps, best, error, loc_ratio,
+        state, spin) -> SymmetryResult:
+    """Returns SymmetryResult for a specific state."""
+    return SymmetryResult.fromdata(
+        irreps=irreps,
+        best=best,
+        error=error,
+        loc_ratio=loc_ratio,
+        state=state,
+        spin=spin)
+
+
+def return_irrep_result(sym_name, sym_score) -> IrrepResult:
+    """Returns IrrepResult object using a check_function dictionary of
+    SymmetryChecker class of GPAW."""
+    return IrrepResult.fromdata(
+        sym_name=sym_name,
+        sym_score=sym_score)
 
 
 def get_localization_ratio(atoms, wf):
