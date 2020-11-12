@@ -4,6 +4,8 @@ from gpaw import GPAW, restart
 from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
 import typing
 import numpy as np
+from pathlib import Path
+from ase import Atoms
 
 
 # TODO: implement webpanel
@@ -95,6 +97,218 @@ def calculate(state: int = 0,
         states_below=states_below)
 
 
+def get_supercell_shape(primitive, pristine):
+    """
+    Calculates which (NxNx1) supercell would be closest to the given supercell
+    created by the general algorithm with respect to number of atoms.
+
+    Returns: N
+    """
+    N = len(pristine) / len(primitive)
+    N = int(np.floor(np.sqrt(N)))
+    reconstruct = primitive.copy()
+    reconstruct = reconstruct.repeat((N, N, 1))
+    rcell = reconstruct.get_cell()
+    pcell = pristine.get_cell()
+    if rcell[1, 1] > pcell[1, 1]:
+        N -= 1
+    return N
+
+
+def get_defect_info(primitive, defectpath):
+    """Return defecttype, and kind."""
+    defecttype = str(defectpath.absolute()).split(
+        '/')[-2].split('_')[-2].split('.')[-1]
+    defectpos = str(defectpath.absolute()).split(
+        '/')[-2].split('_')[-1]
+
+    return defecttype, defectpos
+
+
+def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
+                              defectpath):
+    """Returns the coordinates of the present defect."""
+    deftype, defpos = get_defect_info(primitive, defectpath)
+    if not is_vacancy(defectpath):
+        for i in range(len(primitive)):
+            if not (primitive.get_chemical_symbols()[i] ==
+                    structure.get_chemical_symbols()[i]):
+                label = i
+                break
+            else:
+                label = 0
+    elif is_vacancy(defectpath):
+        for i in range(len(primitive)):
+            if not (primitive.get_chemical_symbols()[i] ==
+                    structure.get_chemical_symbols()[i]):
+                label = i
+                break
+            else:
+                label = 0
+
+    pos = pristine.get_positions()[label]
+
+    return pos
+
+
+def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
+                            translation):
+    """
+    Function that analyses supercell created by the general algorithm and
+    creates symmetric supercell with the atomic positions of the general
+    supercell.
+
+    Note: The atoms are not correctly mapped in yet, and also the number
+    of atoms is not correct here. It is done in the mapping functions.
+    """
+    reference = primitive.copy()
+    N = get_supercell_shape(primitive, pristine)
+    reference = reference.repeat((N, N, 1))
+    cell = reference.get_cell()
+    scell = structure.get_cell()
+    # pcell = primitive.get_cell()
+
+    # create intermediate big structure for the relaxed structure
+    bigatoms_rel = structure.repeat((5, 5, 1))
+    positions = bigatoms_rel.get_positions()
+    positions += [-translation[0], -translation[1], 0]
+    positions += -2.0 * scell[0] - 1.0 * scell[1]
+    positions += 0.5 * cell[0] + 0.5 * cell[1]
+    kinds = bigatoms_rel.get_chemical_symbols()
+    rel_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+
+    # create intermediate big structure for the unrelaxed structure
+    bigatoms_rel = unrelaxed.repeat((5, 5, 1))
+    positions = bigatoms_rel.get_positions()
+    positions += [-translation[0], -translation[1], 0]
+    positions += -2.0 * scell[0] - 1.0 * scell[1]
+    positions += 0.5 * cell[0] + 0.5 * cell[1]
+    kinds = bigatoms_rel.get_chemical_symbols()
+    ref_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+
+    refpos = reference.get_positions()
+    refpos += [-translation[0], -translation[1], 0]
+    refpos += 0.5 * cell[0] + 0.5 * cell[1]
+    reference.set_positions(refpos)
+    reference.wrap()
+
+    return rel_struc, ref_struc, reference, cell, N
+
+
+def is_vacancy(defectpath):
+    """
+    Checks whether the current defect is a vacancy or substitutional defect.
+    Returns true if it is a vacancy, false if it is a substitutional defect.
+    """
+    try:
+        defecttype = str(defectpath.absolute()).split(
+            '/')[-2].split('_')[-2].split('.')[-1]
+        if defecttype == 'v':
+            return True
+        else:
+            return False
+    except IndexError:
+        return False
+
+
+def conserved_atoms(ref_struc, primitive, N, defectpath):
+    """
+    Returns True if number of atoms is correct after the mapping,
+    False if the number is not conserved.
+    """
+    if (is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive) - 1)):
+        return False
+    elif (not is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive))):
+        return False
+    else:
+        print('INFO: number of atoms correct in {}'.format(
+            defectpath.absolute()))
+        return True
+
+
+def remove_atoms(structure, indexlist):
+    indices = np.array(indexlist)
+    indices = np.sort(indices)[::-1]
+    for element in indices:
+        structure.pop(element)
+    return structure
+
+
+def indexlist_cut_atoms(structure, threshold):
+    indexlist = []
+    for i in range(len(structure)):
+        pos = structure.get_scaled_positions()[i]
+        # save indices that are outside the new cell
+        if abs(max(pos) > threshold) or min(pos) < -0.01:
+            indexlist.append(i)
+
+    return indexlist
+
+
+def compare_structures(artificial, unrelaxed_rattled):
+    indexlist = []
+    rmindexlist = []
+    for i in range(len(unrelaxed_rattled)):
+        for j in range(len(artificial)):
+            if (abs(max((artificial.get_positions()[j] -
+                         unrelaxed_rattled.get_positions()[i]))) < 0.1
+               and i not in indexlist):
+                indexlist.append(i)
+    for i in range(len(unrelaxed_rattled)):
+        if i not in indexlist:
+            rmindexlist.append(i)
+    return rmindexlist
+
+
+def get_mapped_structure():
+    """Return centered and mapped structure."""
+    defect = Path('.')
+    unrelaxed = read('unrelaxed.json')
+    structure = read('structure.json')
+    primitive = read('../../unrelaxed.json')
+    pristine = read('../../defects.pristine_sc/structure.json')
+    threshold = 0.99
+    translation = return_defect_coordinates(structure, unrelaxed, primitive,
+                                            pristine, defect)
+    rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
+                                                                        unrelaxed,
+                                                                        primitive,
+                                                                        pristine,
+                                                                        translation)
+    indexlist = compare_structures(artificial, ref_struc)
+    ref_struc = remove_atoms(ref_struc, indexlist)
+    rel_struc = remove_atoms(rel_struc, indexlist)
+    indexlist = indexlist_cut_atoms(ref_struc, threshold)
+    ref_struc = remove_atoms(ref_struc, indexlist)
+    rel_struc = remove_atoms(rel_struc, indexlist)
+    # if is_vacancy(defect):
+    #     N_prim = len(primitive) - 1
+    # else:
+    #     N_prim = len(primitive)
+    if not conserved_atoms(ref_struc, primitive, N, defect):
+        threshold = 1.01
+        rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
+                                                                            unrelaxed,
+                                                                            primitive,
+                                                                            pristine,
+                                                                            translation)
+        indexlist = compare_structures(artificial, ref_struc)
+        ref_struc = remove_atoms(ref_struc, indexlist)
+        rel_struc = remove_atoms(rel_struc, indexlist)
+        indexlist = indexlist_cut_atoms(ref_struc, threshold)
+        ref_struc = remove_atoms(ref_struc, indexlist)
+        rel_struc = remove_atoms(rel_struc, indexlist)
+        # if is_vacancy(defect):
+        #     N_prim = len(primitive) - 1
+        # else:
+        #     N_prim = len(primitive)
+    if not conserved_atoms(ref_struc, primitive, N, defect):
+        print('ERROR: number of atoms wrong in {}! Mapping not correct!'.format(
+            defect.absolute()))
+
+    return rel_struc
+
+
 @command(module='asr.analyze_state',
          requires=['structure.json', '../../defects.pristine_sc/structure.json',
                    '../../unrelaxed.json'],
@@ -104,7 +318,7 @@ def calculate(state: int = 0,
 def main(mapping: bool = False,
          symprec: float = 0.1):
     """Analyze wavefunctions and alayze symmetry."""
-    wf_list = return_wavefunction_list()
+    # wf_list = return_wavefunction_list()
 
     if mapping:
         mapped_structure = get_mapped_structure()
@@ -113,7 +327,6 @@ def main(mapping: bool = False,
 
     spg_sym = get_spg_symmetry(mapped_structure)
     center = get_defect_center(mapped_structure)
-
 
 
 def get_localization_ratio(atoms, wf):
