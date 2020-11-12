@@ -42,9 +42,9 @@ class Result(ASRResult):
         ' the --state option will be neglected.', is_flag=True)
 @option('--analyze/--dont-analyze', help='Not only create cube files of '
         'specific states, but also analyze them.', is_flag=True)
-def main(state: int = 0,
-         get_gapstates: bool = False,
-         analyze: bool = False) -> Result:
+def calculate(state: int = 0,
+              get_gapstates: bool = False,
+              analyze: bool = False) -> Result:
     """Write out wavefunction and analyze it.
 
     This recipe reads in an existing gs.gpw file and writes out wavefunctions
@@ -93,6 +93,27 @@ def main(state: int = 0,
         localization=local_ratio_n,
         states_above=states_above,
         states_below=states_below)
+
+
+@command(module='asr.analyze_state',
+         requires=['structure.json', '../../defects.pristine_sc/structure.json',
+                   '../../unrelaxed.json'],
+         resources='1:1h')
+@option('--mapping/--no-mapping', is_flag=True)
+@option('--symprec', type=float)
+def main(mapping: bool = False,
+         symprec: float = 0.1):
+    """Analyze wavefunctions and alayze symmetry."""
+    wf_list = return_wavefunction_list()
+
+    if mapping:
+        mapped_structure = get_mapped_structure()
+    else:
+        mapped_structure = read('structure.json')
+
+    spg_sym = get_spg_symmetry(mapped_structure)
+    center = get_defect_center(mapped_structure)
+
 
 
 def get_localization_ratio(atoms, wf):
