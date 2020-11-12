@@ -348,23 +348,63 @@ def get_spg_symmetry(structure, symprec=0.1):
     return spg_sym.split('^')[0]
 
 
+@prepare_result
+class IrrepResult(ASRResult):
+    """Container for results of an individual irreproducible representation."""
+    sym_name: str
+    sym_score: float
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        sym_name='Name of the irreproducible representation.',
+        sym_score='Score of the respective representation.')
+
+
+@prepare_result
+class SymmetryResult(ASRResult):
+    """Container for symmetry results for a given state."""
+    irreps: typing.List[IrrepResult]
+    best: str
+    error: float
+    loc_ratio: float
+    state: int
+    spin: int
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        irreps='List of irreproducible representations and respective scores.',
+        best='Irreproducible representation with the best score.',
+        error='Error of identification of the best irreproducible representation.',
+        loc_ratio='Localization ratio for a given state.',
+        state='Index of the analyzed state.',
+        spin='Spin of the analyzed state (0 or 1).')
+
+
+@prepare_result
+class Result(ASRResult):
+    """Container for main results for asr.analyze_state."""
+    point_group: str
+    defect_center: typing.Tuple[float, float, float]
+    symmetries: typing.List[SymmetryResult]
+
+    key_descriptions = typing.Dict[str, str] = dict(
+        point_group='Point group in Schoenflies notation.',
+        defect_center='Position of the defect [Å, Å, Å].',
+        symmetries='List of SymmetryResult objects for all states.')
+
+
 @command(module='asr.analyze_state',
          requires=['structure.json', 'unrelaxed.json',
                    '../../defects.pristine_sc/structure.json',
                    '../../unrelaxed.json'],
-         resources='1:1h')
+         resources='1:1h',
+         returns=Result)
 @option('--mapping/--no-mapping', is_flag=True)
-@option('--symprec', type=float)
 @option('--radius', type=float)
 def main(mapping: bool = False,
-         symprec: float = 0.1,
-         radius: float = 2.0):
+         radius: float = 2.0) -> Result:
     """Analyze wavefunctions and analyze symmetry."""
 
     from ase.io.cube import read_cube_data
     from gpaw.point_groups import SymmetryChecker
-
-    # wf_list = return_wavefunction_list()
 
     if mapping:
         mapped_structure = get_mapped_structure()
@@ -400,7 +440,7 @@ def main(mapping: bool = False,
 
     for wf_file in cubefiles:
         spin = str(wf_file)[str(wf_file).find('_') + 1]
-        band = str(wf_file)[str(wf_file).find('.')+ 1: str(wf_file).find('_')]
+        band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
 
         wf, atoms = read_cube_data(str(wf_file))
         localization = get_localization_ratio(atoms, wf)
@@ -410,7 +450,7 @@ def main(mapping: bool = False,
         norm = dct['norm']
         normcut = dct['overlaps'][0]
         error = (np.array(list(dct['characters'].values()))**2).sum()
-        
+
         print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}' +
               ''.join(f'{x:8.3f}' for x in dct['characters'].values()) + '{:9.3}'.format(error))
 
