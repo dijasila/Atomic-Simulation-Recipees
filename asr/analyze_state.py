@@ -25,7 +25,7 @@ class Result(ASRResult):
         dipole='Dipole matrix-elements [Å]',
         localization='Localization ratio of the wavefunction.',
         states_above='States above the Fermi level present.',
-        states_below='States below the Fermi level present.'
+        states_below='States below the Fermi level present.',
     )
 
     # formats = {"ase_webpanel": webpanel}
@@ -362,20 +362,30 @@ def main(mapping: bool = False,
 
     cubefiles = Path('.').glob('*.cube')
 
-    print('spin  band     norm    normcut     best    ' + ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
+    print('spin  band     norm    normcut     best    ' +
+          ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
+
+    labels_up = []
+    labels_down = []
+
     for wf_file in cubefiles:
         spin = str(wf_file)[str(wf_file).find('_') + 1]
-        band = str(wf_file)[str(wf_file).find('.')+1: str(wf_file).find('_')]
+        band = str(wf_file)[str(wf_file).find('.')+ 1: str(wf_file).find('_')]
 
         wf, atoms = read_cube_data(str(wf_file))
+        localization = get_localization_ratio(atoms, wf)
 
         dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
         best = dct['symmetry']
         norm = dct['norm']
         normcut = dct['overlaps'][0]
-        irrmom = (np.array(list(dct['characters'].values()))**2).sum()
+        error = (np.array(list(dct['characters'].values()))**2).sum()
         
-        print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}' + ''.join(f'{x:8.3f}' for x in dct['characters'].values()) + '{:8.3}'.format(irrmom))
+        print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}' +
+              ''.join(f'{x:8.3f}' for x in dct['characters'].values()) + '{:9.3}'.format(error))
+
+        [labels_up, labels_down][0].append(best)
+
 
 def get_localization_ratio(atoms, wf):
     """Returns the localization ratio of the wavefunction,
