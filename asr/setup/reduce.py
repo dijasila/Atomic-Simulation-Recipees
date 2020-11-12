@@ -1,4 +1,4 @@
-from asr.core import command, option
+from asr.core import command, option, ASRResult
 import numpy as np
 from ase.build import cut, niggli_reduce
 from ase.io import read
@@ -46,9 +46,9 @@ def check_if_supercell(spos_ac, Z_a):
 
 
 @command('asr.setup.reduce')
-@option('--initial', help='Initial atomic structure file')
-@option('--final', help='Final atomic structure file')
-def main(initial='original.json', final='unrelaxed.json'):
+@option('--initial', help='Initial atomic structure file', type=str)
+@option('--final', help='Final atomic structure file', type=str)
+def main(initial: str = 'original.json', final: str = 'unrelaxed.json') -> ASRResult:
     """Reduce supercell and perform niggli reduction if possible."""
     atoms = read(initial)
     Z_a = atoms.get_atomic_numbers()

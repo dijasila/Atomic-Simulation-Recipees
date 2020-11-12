@@ -36,7 +36,7 @@ class CalculateResult(ASRResult):
 
 @command(module='asr.berry',
          requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
+         dependencies=['asr.gs'],
          resources='120:10h',
          returns=CalculateResult)
 @option('--gs', help='Ground state', type=str)
@@ -54,7 +54,7 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
-    ND = np.sum(pbc)
+    nd = np.sum(pbc)
 
     """Find the easy axis of magnetic materials"""
     theta, phi = get_spin_axis()
@@ -69,7 +69,7 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
-    if ND == 2:
+    if nd == 2:
         calc = GPAW(gs,
                     kpts=(kperp, kpar, 1),
                     fixdensity=True,
@@ -87,7 +87,7 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
         if world.rank == 0:
             os.system('rm gs_berry.gpw')
 
-    elif ND == 3:
+    elif nd == 3:
         """kx = 0"""
         calc = GPAW(gs,
                     kpts=(1, kperp, kpar),

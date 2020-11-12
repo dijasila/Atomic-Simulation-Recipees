@@ -4,6 +4,7 @@ from asr.core import command, option, ASRResult, prepare_result
 
 @command(module='asr.exchange',
          creates=['gs_2mag.gpw', 'exchange.gpw'],
+         dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'],
          resources='40:10h')
 @option('--gs', help='Ground state on which exchange calculation is based',
@@ -15,6 +16,13 @@ def calculate(gs: str = 'gs.gpw') -> ASRResult:
 
     calc = GPAW(gs, fixdensity=False, txt=None)
     atoms = calc.atoms
+    pbc = atoms.pbc.tolist()
+
+    nd = np.sum(pbc)
+    if nd != 2:
+        raise NotImplementedError('asr.exchange is only implemented '
+                                  'for 2D systems.')
+
     magnetic = magnetic_atoms(atoms)
     assert sum(magnetic) in [1, 2], \
         ('Cannot handle %d magnetic atoms' % sum(magnetic))
@@ -154,7 +162,6 @@ def get_parameters(gs, exchange, txt=False,
             N_afm = 4
             N_fm = 2
         else:
-            print('Line not recognized')
             N_afm = N
             N_fm = 0
     else:
@@ -240,8 +247,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.exchange',
+         dependencies=['asr.exchange@calculate'],
          requires=['gs_2mag.gpw', 'exchange.gpw'],
-         dependencies=['asr.exchange@calculate', 'asr.gs'],
          returns=Result)
 def main() -> Result:
     """Extract Heisenberg parameters."""
