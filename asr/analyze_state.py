@@ -309,8 +309,18 @@ def get_mapped_structure():
     return rel_struc
 
 
+def get_spg_symmetry(structure, symprec=0.1):
+    """Returns the symmetry of a given structure evaluated with spglib."""
+    import spglib as spg
+
+    spg_sym = spg.get_spacegroup(structure, symprec=symprec, symbol_type=1)
+
+    return spg_sym.split('^')[0]
+
+
 @command(module='asr.analyze_state',
-         requires=['structure.json', '../../defects.pristine_sc/structure.json',
+         requires=['structure.json', 'unrelaxed.json',
+                   '../../defects.pristine_sc/structure.json',
                    '../../unrelaxed.json'],
          resources='1:1h')
 @option('--mapping/--no-mapping', is_flag=True)
@@ -326,7 +336,18 @@ def main(mapping: bool = False,
         mapped_structure = read('structure.json')
 
     spg_sym = get_spg_symmetry(mapped_structure)
-    center = get_defect_center(mapped_structure)
+
+    # evaluate coordinates of the defect in the supercell
+    structure = read('structure.json')
+    unrelaxed = read('unrelaxed.json')
+    primitive = read('../../unrelaxed.json')
+    pristine = read('../../defects.pristine_sc/structure.json')
+    defect = Path('.')
+    center = return_defect_coordinates(structure,
+                                       unrelaxed,
+                                       primitive,
+                                       pristine,
+                                       defect)
 
 
 def get_localization_ratio(atoms, wf):
