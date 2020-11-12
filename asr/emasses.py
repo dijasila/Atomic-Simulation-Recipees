@@ -186,7 +186,7 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
         pbc = calc.atoms.pbc
         assert pbc[0] and pbc[1] and not pbc[2]
 
-    k_kc = calc.get_ibz_k_points()
+    k_kc = calc.get_bz_k_points()
     cell_cv = calc.atoms.get_cell()
 
     nkpts = settings['nkpts2']
@@ -840,13 +840,13 @@ def embands(gpw, soc, bandtype, delta=0.1):
     indices = vb_ind if bandtype == 'vb' else cb_ind
     atoms = calc.get_atoms()
     cell_cv = atoms.get_cell()
-    ibz_kc = calc.get_ibz_k_points()
+    bz_kc = calc.get_bz_k_points()
 
-    ibz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ibz_kc)
+    bz_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=bz_kc)
     masses = {'indices': indices}
     for offset, b in enumerate(indices):
         e_k = e_skn[b[0], :, b[1]]
-        masses[b] = em(kpts_kv=ibz_kv * Bohr,
+        masses[b] = em(kpts_kv=bz_kv * Bohr,
                        eps_k=e_k / Hartree, bandtype=bandtype, ndim=ndim)
 
         calc_bs = calculate_bs_along_emass_vecs
