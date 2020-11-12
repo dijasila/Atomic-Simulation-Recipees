@@ -349,6 +349,9 @@ def main(mapping: bool = False,
                                        pristine,
                                        defect)
 
+    print('INFO: defect position = {}, structural symmetry: {}.'.format(
+        center, spg_sym))
+
 
 def get_localization_ratio(atoms, wf):
     """Returns the localization ratio of the wavefunction,
