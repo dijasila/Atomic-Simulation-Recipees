@@ -12,30 +12,40 @@ from ase import Atoms
 
 
 @prepare_result
-class Result(ASRResult):
+class StatesResult(ASRResult):
+    """Container for results of states for one spin channel."""
+    states_channel: typing.List[int]
+    energies_channel: typing.List[float]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        states_channel='List of indices of defect states.',
+        energies_channel='List of energies corresponding to the list of states [eV].'
+    )
+
+
+@prepare_result
+class CalculateResult(ASRResult):
     """Container for analyze_state results."""
-    states: np.ndarray
+    states: typing.List[StatesResult]
     dipole: np.ndarray
     localization: np.ndarray
     states_above: bool
     states_below: bool
 
     key_descriptions: typing.Dict[str, str] = dict(
-        states='List of indices of defect states.',
+        states='List of StatesResult objects for one or two spin channels.',
         dipole='Dipole matrix-elements [Å]',
         localization='Localization ratio of the wavefunction.',
-        states_above='States above the Fermi level present.',
-        states_below='States below the Fermi level present.',
+        states_above='States present above the Fermi level.',
+        states_below='States present below the Fermi level.',
     )
-
-    # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.analyze_state',
          requires=['gs.gpw', 'structure.json',
                    '../../defects.pristine_sc/gs.gpw'],
          resources='24:2h',
-         returns=Result)
+         returns=CalculateResult)
 @option('--state', help='Specify the specific state (band number) that you '
         'want to consider. Note, that this argument is not used when the '
         'gap state flag is active.', type=int)
@@ -46,7 +56,7 @@ class Result(ASRResult):
         'specific states, but also analyze them.', is_flag=True)
 def calculate(state: int = 0,
               get_gapstates: bool = False,
-              analyze: bool = False) -> Result:
+              analyze: bool = False) -> CalculateResult:
     """Write out wavefunction and analyze it.
 
     This recipe reads in an existing gs.gpw file and writes out wavefunctions
@@ -333,7 +343,7 @@ def main(mapping: bool = False,
 
     from ase.io.cube import read_cube_data
     from gpaw.point_groups import SymmetryChecker
-    
+
     # wf_list = return_wavefunction_list()
 
     if mapping:
