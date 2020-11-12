@@ -1,4 +1,6 @@
-from asr.core import command, option
+"""Plasma frequency."""
+from asr.core import command, option, ASRResult, prepare_result
+import typing
 
 
 def get_kpts_size(atoms, density):
@@ -18,7 +20,7 @@ def get_kpts_size(atoms, density):
          dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'])
 @option('--kptdensity', help='k-point density', type=float)
-def calculate(kptdensity: float = 20):
+def calculate(kptdensity: float = 20) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
     from gpaw import GPAW
     from ase.parallel import world
@@ -40,7 +42,7 @@ def calculate(kptdensity: float = 20):
         world.barrier()
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     if row.get('gap', 1) > 0.01:
@@ -54,12 +56,29 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class Result(ASRResult):
+
+    plasmafreq_vv: typing.List[typing.List[float]]
+    plasmafrequency_x: float
+    plasmafrequency_y: float
+
+    key_descriptions = {
+        "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
+        "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
+        "[`eV/Ang^0.5`]",
+        "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
+        "[`eV/Ang^0.5`]",
+    }
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.plasmafrequency',
-         webpanel=webpanel,
+         returns=Result,
          dependencies=['asr.plasmafrequency@calculate'])
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
-def main(tetra: bool = True):
+def main(tetra: bool = True) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
     from ase.io import read
@@ -97,9 +116,7 @@ def main(tetra: bool = True):
             es_file = Path("es_plasma.gpw")
             es_file.unlink()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
-    data = {'plasmafreq_vv': plasmafreq_vv,
-            '__key_descriptions__': {'plasmafreq_vv':
-                                     'Plasma frequency tensor [Hartree]'}}
+    data = {'plasmafreq_vv': plasmafreq_vv}
 
     if nd == 2:
         wp2_v = np.linalg.eigvalsh(plasmafreq_vv[:2, :2])
@@ -107,11 +124,6 @@ def main(tetra: bool = True):
         plasmafreq_v = (np.sqrt(wp2_v * L / 2) * Hartree * Bohr**0.5)
         data['plasmafrequency_x'] = plasmafreq_v[0].real
         data['plasmafrequency_y'] = plasmafreq_v[1].real
-
-        data['__key_descriptions__']['plasmafrequency_x'] = \
-            'KVP: 2D plasma frequency, x-direction [eV/Ang^0.5]'
-        data['__key_descriptions__']['plasmafrequency_y'] = \
-            'KVP: 2D plasma frequency, y-direction [eV/Ang^0.5]'
 
     return data
 

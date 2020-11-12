@@ -1,4 +1,5 @@
-from asr.core import command, option, DictStr
+"""Effective masses."""
+from asr.core import command, option, DictStr, ASRResult
 
 
 class NoGapError(Exception):
@@ -36,7 +37,7 @@ def refine(gpwfilename: str = 'gs.gpw',
                'erange1': 250e-3,
                'nkpts1': 19,
                'erange2': 1e-3,
-               'nkpts2': 9}):
+               'nkpts2': 9}) -> ASRResult:
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
@@ -321,7 +322,9 @@ def get_emass_dict_from_row(row, has_mae=False):
                             if mae < 1:
                                 f10 -= 1
                                 mae *= 10
+
                             maestr = round(mae, 2)
+
                             maestr = str(maestr) + f'e{f10}'
 
                             if offset_num == 0:
@@ -587,10 +590,9 @@ def custom_table(values_dict, title, has_mae=False):
     return table
 
 
-def webpanel(row, key_descriptions):
-    import os
-    has_mae = os.path.exists('results-asr.emasses@validate.json')
 
+def webpanel(result, row, key_descriptions):
+    has_mae = 'results-asr.emasses@validate.json' in row.data
     columns, fnames = create_columns_fnames(row)
 
     electron_dict, hole_dict = get_emass_dict_from_row(row, has_mae)
@@ -696,6 +698,11 @@ def check_soc(spin_band_dict):
     return True
 
 
+class Result(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command('asr.emasses',
          requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
@@ -706,10 +713,10 @@ def check_soc(spin_band_dict):
                        'asr.gs',
                        'asr.structureinfo',
                        'asr.magnetic_anisotropy'],
-         webpanel=webpanel)
+         returns=Result)
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename: str = 'gs.gpw'):
+def main(gpwfilename: str = 'gs.gpw') -> Result:
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -913,7 +920,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
         theta, phi = get_spin_axis()
-        e_km, _, s_kvm = calc2eigs(calc_serial, [0], soc=soc, return_spin=True,
+        e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
@@ -984,6 +991,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             k-points in cartesian coordinates (in units of 1 / Bohr)
         eps_k: (nk,)-shape ndarray
             eigenvalues (in units of Hartree)
+
     Returns
     -------
         out: dct
@@ -1352,6 +1360,7 @@ def evalmae(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
 
     return mae
 
+
 def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Ha, Bohr
@@ -1410,6 +1419,9 @@ def validate():
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
+
+        prefix = data['info'] + '_'
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
     return myresults
 

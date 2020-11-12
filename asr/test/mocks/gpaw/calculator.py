@@ -282,10 +282,10 @@ class ASRCalculator(Calculator):
         Constructs all eigenvalues for the test calculator. The
         valence bands will have a negative curvature and the number of
         valence bands are determined by
-        :py:method:`ASRCalculator.get_number_of_valence_electrons`. Conduction
+        :py:meth:`ASRCalculator.get_number_of_valence_electrons`. Conduction
         bands have positive curvature and are separated from the
         valence bands by a bandgap. The band gap is obtained from
-        :py:method:`ASRCalculator._get_band_gap`.
+        :py:meth:`ASRCalculator._get_band_gap`.
 
         """
         icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
@@ -407,3 +407,20 @@ class ASRCalculator(Calculator):
     def diagonalize_full_hamiltonian(self, ecut=None):
         """Diagonalize full Hamiltonian."""
         pass
+
+    def dos(self, soc=False, theta=0.0, phi=0.0, shift_fermi_level=True):
+        return DOSCalculator(self.get_fermi_level())
+
+    def fixed_density(self, **kwargs):
+        return self
+
+
+class DOSCalculator:
+    def __init__(self, fermi_level):
+        self.fermi_level = fermi_level
+
+    def raw_dos(self, energies, spin=None, width=0.1):
+        return np.ones_like(energies)
+
+    def raw_pdos(self, energies, a, l, m=None, spin=None, width=0.1):
+        return np.ones_like(energies)

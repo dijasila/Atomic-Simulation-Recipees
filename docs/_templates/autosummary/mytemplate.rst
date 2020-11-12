@@ -18,6 +18,7 @@
 
    {% for item in classes %}
    .. autoclass:: {{ item }}
+      :members:
    {%- endfor %}
    {% endif %}
    {% endblock %}
