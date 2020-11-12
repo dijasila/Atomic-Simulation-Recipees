@@ -325,9 +325,15 @@ def get_spg_symmetry(structure, symprec=0.1):
          resources='1:1h')
 @option('--mapping/--no-mapping', is_flag=True)
 @option('--symprec', type=float)
+@option('--radius', type=float)
 def main(mapping: bool = False,
-         symprec: float = 0.1):
-    """Analyze wavefunctions and alayze symmetry."""
+         symprec: float = 0.1,
+         radius: float = 2.0):
+    """Analyze wavefunctions and analyze symmetry."""
+
+    from ase.io.cube import read_cube_data
+    from gpaw.point_groups import SymmetryChecker
+    
     # wf_list = return_wavefunction_list()
 
     if mapping:
@@ -335,7 +341,7 @@ def main(mapping: bool = False,
     else:
         mapped_structure = read('structure.json')
 
-    spg_sym = get_spg_symmetry(mapped_structure)
+    point_group = get_spg_symmetry(mapped_structure)
 
     # evaluate coordinates of the defect in the supercell
     structure = read('structure.json')
@@ -350,8 +356,26 @@ def main(mapping: bool = False,
                                        defect)
 
     print('INFO: defect position = {}, structural symmetry: {}.'.format(
-        center, spg_sym))
+        center, point_group))
 
+    checker = SymmetryChecker(point_group, center, radius=radius)
+
+    cubefiles = Path('.').glob('*.cube')
+
+    print('spin  band     norm    normcut     best    ' + ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
+    for wf_file in cubefiles:
+        spin = str(wf_file)[str(wf_file).find('_') + 1]
+        band = str(wf_file)[str(wf_file).find('.')+1: str(wf_file).find('_')]
+
+        wf, atoms = read_cube_data(str(wf_file))
+
+        dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
+        best = dct['symmetry']
+        norm = dct['norm']
+        normcut = dct['overlaps'][0]
+        irrmom = (np.array(list(dct['characters'].values()))**2).sum()
+        
+        print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}' + ''.join(f'{x:8.3f}' for x in dct['characters'].values()) + '{:8.3}'.format(irrmom))
 
 def get_localization_ratio(atoms, wf):
     """Returns the localization ratio of the wavefunction,
