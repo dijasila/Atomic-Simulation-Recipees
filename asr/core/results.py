@@ -176,18 +176,37 @@ def object_description_to_object(object_description: 'ObjectDescription'):
     return object_description.instantiate()
 
 
-def dct_to_result(dct: dict) -> object:
+def dct_to_result(dct: dict) -> typing.Any:
     """Convert dict representing an ASR result to corresponding result object."""
-    for key, value in dct.items():
-        if not isinstance(value, dict):
-            continue
+    warnings.warn(
+        """
+
+        'asr.core.dct_to_result' will change name to
+        'asr.core.obj_to_result' in the future. Please update your
+        scripts to reflect this change.""",
+        DeprecationWarning,
+    )
+
+    return obj_to_result(dct)
+
+
+def obj_to_result(obj: typing.Any) -> typing.Any:
+    """Convert object representing an ASR result to corresponding result object."""
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            obj[key] = obj_to_result(value)
+    elif isinstance(obj, list):
+        for i, value in enumerate(obj):
+            obj[i] = obj_to_result(value)
+
+    if isinstance(obj, dict):
         try:
-            dct[key] = dct_to_result(value)
+            reader_function = get_reader_function(obj)
+            object_description = reader_function(obj)
+            obj = object_description_to_object(object_description)
         except UnknownDataFormat:
             pass
-    reader_function = get_reader_function(dct)
-    object_description = reader_function(dct)
-    obj = object_description_to_object(object_description)
+
     return obj
 
 

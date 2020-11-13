@@ -92,10 +92,10 @@ def write_file(filename, text):
 
 def dct_to_object(dct):
     """Convert dictionary to object."""
-    from .results import dct_to_result, UnknownDataFormat
+    from .results import obj_to_result, UnknownDataFormat
 
     try:
-        obj = dct_to_result(dct)
+        obj = obj_to_result(dct)
         return obj
     except UnknownDataFormat:
         assert isinstance(dct, dict), 'Cannot convert dct to object!'
