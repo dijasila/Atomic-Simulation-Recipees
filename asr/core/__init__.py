@@ -6,6 +6,7 @@ from .utils import (read_json, write_json, parse_dict_string,  # noqa
                     dct_to_object, read_file, decode_json)  # noqa
 from .types import AtomsFile, DictStr, clickify_docstring  # noqa
 from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,  # noqa
-                      UnknownDataFormat, obj_to_id, decode_object, encode_object)  # noqa
+                      UnknownDataFormat, obj_to_id, decode_object,  # noqa
+                      encode_object)  # noqa
 from .command import (command, option, argument, get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa

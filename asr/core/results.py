@@ -220,6 +220,10 @@ def decode_object(obj: typing.Any) -> typing.Any:
             obj[i] = decode_object(value)
     elif isinstance(obj, tuple):
         obj = tuple(decode_object(value) for value in obj)
+
+    if isinstance(obj, dict):
+        obj = jsonio.object_hook(obj)
+
     if isinstance(obj, dict):
         try:
             reader_function = get_reader_function(obj)
