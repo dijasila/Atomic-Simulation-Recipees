@@ -884,11 +884,12 @@ def test_fix_folders(asr_tmpdir):
 
 @pytest.mark.ci
 @pytest.mark.parametrize('obj', [
-    [MyResult.fromdata(a=1), MyResult.fromdata(a=2)],
     (MyResult.fromdata(a=1), MyResult.fromdata(a=2)),
+    [MyResult.fromdata(a=1), MyResult.fromdata(a=2)],
     MyResult.fromdata(a=MyResult.fromdata(a=2)),
 ])
-def test_deserialize_result_objects(obj):
+def test_encode_decode_result_objects(obj):
     encoded_obj = encode_object(obj)
+    assert not encoded_obj == obj
     decoded_obj = decode_object(encoded_obj)
     assert obj == decoded_obj

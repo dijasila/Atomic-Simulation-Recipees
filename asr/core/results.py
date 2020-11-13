@@ -200,6 +200,8 @@ def encode_object(obj: typing.Any):
         newobj = []
         for value in obj:
             newobj.append(encode_object(value))
+    elif isinstance(obj, tuple):
+        newobj = tuple(encode_object(value) for value in obj)
     else:
         try:
             newobj = encode_object(obj.todict())
@@ -216,7 +218,8 @@ def decode_object(obj: typing.Any) -> typing.Any:
     elif isinstance(obj, list):
         for i, value in enumerate(obj):
             obj[i] = decode_object(value)
-
+    elif isinstance(obj, tuple):
+        obj = tuple(decode_object(value) for value in obj)
     if isinstance(obj, dict):
         try:
             reader_function = get_reader_function(obj)
