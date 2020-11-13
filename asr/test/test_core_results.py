@@ -1,6 +1,8 @@
 from typing import Dict
 from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
-                      dct_to_object, obj_to_id, write_json, read_file, decode_json)
+                      decode_object, encode_object,
+                      obj_to_id, write_json,
+                      read_file, decode_json)
 from asr.utils.fix_object_ids import fix_object_id, _fix_folders
 import pytest
 from asr.gs import Result as GSResult
@@ -813,7 +815,7 @@ def test_read_old_format():
         }
     }
 
-    result = dct_to_object(dct)
+    result = decode_object(dct)
     assert result.formats['ase_webpanel'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
@@ -881,8 +883,12 @@ def test_fix_folders(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_deserialize_list_of_result_objects():
-    list_of_results = [MyResult.fromdata(a=1), MyResult.fromdata(a=2)]
-    dictified_results = [res.todict() for res in list_of_results]
-    new_list_of_results = dct_to_object(dictified_results)
-    assert list_of_results == new_list_of_results
+@pytest.mark.parametrize('obj', [
+    [MyResult.fromdata(a=1), MyResult.fromdata(a=2)],
+    (MyResult.fromdata(a=1), MyResult.fromdata(a=2)),
+    MyResult.fromdata(a=MyResult.fromdata(a=2)),
+])
+def test_deserialize_result_objects(obj):
+    encoded_obj = encode_object(obj)
+    decoded_obj = decode_object(encoded_obj)
+    assert obj == decoded_obj

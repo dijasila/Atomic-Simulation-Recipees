@@ -21,7 +21,7 @@ from ase.io import jsonio
 import copy
 import typing
 from abc import ABC, abstractmethod
-from . import get_recipe_from_name
+from .utils import get_recipe_from_name
 import importlib
 import inspect
 import warnings
@@ -182,22 +182,40 @@ def dct_to_result(dct: dict) -> typing.Any:
         """
 
         'asr.core.dct_to_result' will change name to
-        'asr.core.obj_to_result' in the future. Please update your
+        'asr.core.decode_object' in the future. Please update your
         scripts to reflect this change.""",
         DeprecationWarning,
     )
 
-    return obj_to_result(dct)
+    return decode_object(dct)
 
 
-def obj_to_result(obj: typing.Any) -> typing.Any:
+def encode_object(obj: typing.Any):
+    """Encode object such that it can be deserialized with `decode_object`."""
+    if isinstance(obj, dict):
+        newobj = {}
+        for key, value in obj.items():
+            newobj[key] = encode_object(value)
+    elif isinstance(obj, list):
+        newobj = []
+        for value in obj:
+            newobj.append(encode_object(value))
+    else:
+        try:
+            newobj = encode_object(obj.todict())
+        except AttributeError:
+            newobj = obj
+    return newobj
+
+
+def decode_object(obj: typing.Any) -> typing.Any:
     """Convert object representing an ASR result to corresponding result object."""
     if isinstance(obj, dict):
         for key, value in obj.items():
-            obj[key] = obj_to_result(value)
+            obj[key] = decode_object(value)
     elif isinstance(obj, list):
         for i, value in enumerate(obj):
-            obj[i] = obj_to_result(value)
+            obj[i] = decode_object(value)
 
     if isinstance(obj, dict):
         try:

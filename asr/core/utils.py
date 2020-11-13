@@ -11,6 +11,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, List
+import warnings
 
 import numpy as np
 from ase.io import jsonio
@@ -92,10 +93,15 @@ def write_file(filename, text):
 
 def dct_to_object(dct):
     """Convert dictionary to object."""
-    from .results import obj_to_result, UnknownDataFormat
+    from .results import decode_object, UnknownDataFormat
+    warnings.warn(
+        "asr.core.dct_to_object is renamed to asr.core.decode_object. "
+        "This function will be removed in a future release."
+        "Please update your scripts accordingly.",
+        DeprecationWarning)
 
     try:
-        obj = obj_to_result(dct)
+        obj = decode_object(dct)
         return obj
     except UnknownDataFormat:
         assert isinstance(dct, dict), 'Cannot convert dct to object!'
@@ -113,9 +119,10 @@ def decode_json(text: str) -> dict:
 
 def read_json(filename):
     """Read json file."""
+    from .results import decode_object
     text = read_file(filename)
-    dct = decode_json(text)
-    obj = dct_to_object(dct)
+    literal_object = decode_json(text)
+    obj = decode_object(literal_object)
     return obj
 
 
