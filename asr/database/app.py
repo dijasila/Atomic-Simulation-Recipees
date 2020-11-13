@@ -1,7 +1,7 @@
 """Database web application."""
 from typing import List
 from asr.core import (command, option, argument, ASRResult,
-                      dct_to_result, UnknownDataFormat)
+                      decode_object, UnknownDataFormat)
 
 import tempfile
 from pathlib import Path
@@ -157,7 +157,7 @@ def setup_data_endpoints():
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
         try:
-            result = dct_to_result(row.data[filename])
+            result = decode_object(row.data[filename])
             return render_template(
                 'asr/database/templates/result_object.html',
                 result=result,

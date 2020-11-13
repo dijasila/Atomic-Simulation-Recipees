@@ -14,7 +14,7 @@ potentially also implements ways to decode results. These encoders are:
 - :py:class:`asr.core.results.WebPanelEncoder`
 
 A dictionary representation of a result-object can be converted to a
-result object through :py:func:`asr.core.results.dct_to_result`.
+result object through :py:func:`asr.core.results.decode_object`.
 
 """
 from ase.io import jsonio
@@ -238,6 +238,7 @@ def decode_result(dct: dict) -> 'ASRResult':
     object_description = reader_function(dct)
     obj = object_description_to_object(object_description)
     return obj
+
 
 class ResultEncoder(ABC):
     """Abstract encoder base class.
