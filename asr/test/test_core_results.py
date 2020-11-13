@@ -878,3 +878,11 @@ def test_fix_folders(asr_tmpdir):
     assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
             and dct['kwargs']['data']['gaps_nosoc']['constructor']
             == 'asr.gs::GapsResult')
+
+
+@pytest.mark.ci
+def test_deserialize_list_of_result_objects():
+    list_of_results = [MyResult.fromdata(a=1), MyResult.fromdata(a=2)]
+    dictified_results = [res.todict() for res in list_of_results]
+    new_list_of_results = dct_to_object(dictified_results)
+    assert list_of_results == new_list_of_results
