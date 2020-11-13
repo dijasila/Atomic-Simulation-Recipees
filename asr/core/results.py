@@ -202,11 +202,10 @@ def encode_object(obj: typing.Any):
             newobj.append(encode_object(value))
     elif isinstance(obj, tuple):
         newobj = tuple(encode_object(value) for value in obj)
+    elif hasattr(obj, 'todict'):
+        newobj = encode_object(jsonio.MyEncoder().default(obj))
     else:
-        try:
-            newobj = encode_object(obj.todict())
-        except AttributeError:
-            newobj = obj
+        newobj = obj
     return newobj
 
 
@@ -818,8 +817,8 @@ class ASRResult(object):
             # constructor='asr.core::result_factory',
             args=(),
             kwargs={
-                'data': data_to_dict(copy.deepcopy(self.data)),
-                'metadata': self.metadata.todict(),
+                'data': self.data,
+                'metadata': self.metadata,
                 'strict': self.strict,
                 # 'version': self.version,
             },
@@ -828,7 +827,7 @@ class ASRResult(object):
     # To and from dict
     def todict(self):
         object_description = self.get_object_desc()
-        return object_description.todict()
+        return encode_object(object_description)
 
     @classmethod
     def fromdict(cls, dct: dict):
