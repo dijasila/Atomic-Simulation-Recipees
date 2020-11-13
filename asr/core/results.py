@@ -226,14 +226,18 @@ def decode_object(obj: typing.Any) -> typing.Any:
 
     if isinstance(obj, dict):
         try:
-            reader_function = get_reader_function(obj)
-            object_description = reader_function(obj)
-            obj = object_description_to_object(object_description)
+            obj = decode_result(obj)
         except UnknownDataFormat:
             pass
 
     return obj
 
+
+def decode_result(dct: dict) -> 'ASRResult':
+    reader_function = get_reader_function(dct)
+    object_description = reader_function(dct)
+    obj = object_description_to_object(object_description)
+    return obj
 
 class ResultEncoder(ABC):
     """Abstract encoder base class.
