@@ -375,7 +375,8 @@ class SymmetryResult(ASRResult):
         error='Error of identification of the best irreproducible representation.',
         loc_ratio='Localization ratio for a given state.',
         state='Index of the analyzed state.',
-        spin='Spin of the analyzed state (0 or 1).')
+        spin='Spin of the analyzed state (0 or 1).'
+    )
 
 
 @prepare_result
@@ -385,10 +386,11 @@ class Result(ASRResult):
     defect_center: typing.Tuple[float, float, float]
     symmetries: typing.List[SymmetryResult]
 
-    key_descriptions = typing.Dict[str, str] = dict(
+    key_descriptions: typing.Dict[str, str] = dict(
         point_group='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
-        symmetries='List of SymmetryResult objects for all states.')
+        symmetries='List of SymmetryResult objects for all states.'
+    )
 
 
 @command(module='asr.analyze_state',
