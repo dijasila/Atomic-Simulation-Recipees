@@ -319,11 +319,11 @@ def construct_run_spec(
         name: str,
         parameters: typing.Union[dict, Parameters],
         version: int,
-        codes: typing.Union[typing.List[str], Codes],
+        codes: typing.Union[typing.List[str], Codes] = [],
 ) -> RunSpecification:
     """Construct a run specification."""
     if not isinstance(parameters, Parameters):
-        parameters = Parameters.from_dict(**parameters)
+        parameters = Parameters(parameters)
 
     if not isinstance(codes, Codes):
         codes = Codes([Code.from_string(code) for code in codes])
@@ -548,6 +548,7 @@ class FullFeatureFileCache(AbstractCache):
         self._cache_dir = None
         self.depth = 0
         self.hash_func = hash_func
+        self._filename = 'run_data.json'
 
     @property
     def cache_dir(self) -> Path:
@@ -566,32 +567,49 @@ class FullFeatureFileCache(AbstractCache):
         run_specification = run_record.run_specification
         if self.has(run_record.run_specification):
             raise RunSpecificationAlreadyExists(
-                'You are using the SingleRunFileCache which does not'
-                'support multiple runs of the same function. '
-                'Please specify another cache.'
+                'This Run specification already exists in cache.'
             )
-        if not self.initialized:
-            self.initialize()
+
         run_hash = self.get_hash(run_specification)
         name = run_record.run_specification.name + run_hash[:10]
         filename = self._name_to_results_filename(name)
-        run_record.id = filename
+        run_record.id = run_hash
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
+        self.add_hash_to_table(hash, filename)
         return run_record.id
 
     def get_hash(self, run_specification: RunSpecification):
-        run_spec_to_be_hashed = RunSpecification(
+        run_spec_to_be_hashed = construct_run_spec(
             name=run_specification.name,
             parameters=run_specification.parameters,
             version=run_specification.version
         )
         serialized_object = self.serializer.serialize(run_spec_to_be_hashed)
-        return self.hash_func(serialized_object).hexdigest()
+        return self.hash_func(serialized_object.encode()).hexdigest()
+
+    @property
+    def initialized(self):
+        return Path(self._filename).is_file()
+
+    def initialize(self):
+        assert not self.initialized
+        serialized_object = self.serializer.serialize('{}')
+        self._write_file(self._filename, serialized_object)
+
+    def add_hash_to_table(self, hash, filename):
+        hash_table = self.hash_table
+        hash_table[hash] = filename
+        self._write_file(
+            self._filename,
+            self.serializer.serialize(hash_table)
+        )
 
     @property
     def hash_table(self):
-        text = Path('run_data.json').read_text()
+        if not self.initialized:
+            self.initialize()
+        text = self._read_file(self._filename)
         hash_table = self.serializer.deserialize(text)
         return hash_table
 

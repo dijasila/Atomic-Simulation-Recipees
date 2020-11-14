@@ -7,8 +7,8 @@ def test_cache(asr_tmpdir):
         parameters={'a': 1},
         version=0,
     )
-    run_record = RunRecord(run_spec=run_spec,
-                           result=result)
+    run_record = RunRecord(run_specification=run_spec,
+                           result={'b': 1})
     cache = FullFeatureFileCache()
 
     assert not cache.has(run_spec)
