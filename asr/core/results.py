@@ -14,14 +14,14 @@ potentially also implements ways to decode results. These encoders are:
 - :py:class:`asr.core.results.WebPanelEncoder`
 
 A dictionary representation of a result-object can be converted to a
-result object through :py:func:`asr.core.results.dct_to_result`.
+result object through :py:func:`asr.core.results.decode_object`.
 
 """
 from ase.io import jsonio
 import copy
 import typing
 from abc import ABC, abstractmethod
-from . import get_recipe_from_name
+from .utils import get_recipe_from_name
 import importlib
 import inspect
 import warnings
@@ -38,8 +38,10 @@ def read_hacked_data(dct) -> 'ObjectDescription':
                 metadata[key_name] = value
         else:
             data[key] = value
+    recipe = get_recipe_from_name(dct['__asr_hacked__'])
+    object_id = obj_to_id(recipe.returns)
     obj_desc = ObjectDescription(
-        object_id='asr.core.results::HackedASRResult',
+        object_id=object_id,
         args=(),
         kwargs={'data': data,
                 'metadata': metadata,
@@ -182,15 +184,63 @@ def object_description_to_object(object_description: 'ObjectDescription'):
     return object_description.instantiate()
 
 
-def dct_to_result(dct: dict) -> object:
+def dct_to_result(dct: dict) -> typing.Any:
     """Convert dict representing an ASR result to corresponding result object."""
-    for key, value in dct.items():
-        if not isinstance(value, dict):
-            continue
+    warnings.warn(
+        """
+
+        'asr.core.dct_to_result' will change name to
+        'asr.core.decode_object' in the future. Please update your
+        scripts to reflect this change.""",
+        DeprecationWarning,
+    )
+
+    return decode_object(dct)
+
+
+def encode_object(obj: typing.Any):
+    """Encode object such that it can be deserialized with `decode_object`."""
+    if isinstance(obj, dict):
+        newobj = {}
+        for key, value in obj.items():
+            newobj[key] = encode_object(value)
+    elif isinstance(obj, list):
+        newobj = []
+        for value in obj:
+            newobj.append(encode_object(value))
+    elif isinstance(obj, tuple):
+        newobj = tuple(encode_object(value) for value in obj)
+    elif hasattr(obj, 'todict'):
+        newobj = encode_object(jsonio.MyEncoder().default(obj))
+    else:
+        newobj = obj
+    return newobj
+
+
+def decode_object(obj: typing.Any) -> typing.Any:
+    """Convert object representing an ASR result to corresponding result object."""
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            obj[key] = decode_object(value)
+    elif isinstance(obj, list):
+        for i, value in enumerate(obj):
+            obj[i] = decode_object(value)
+    elif isinstance(obj, tuple):
+        obj = tuple(decode_object(value) for value in obj)
+
+    if isinstance(obj, dict):
+        obj = jsonio.object_hook(obj)
+
+    if isinstance(obj, dict):
         try:
-            dct[key] = dct_to_result(value)
+            obj = decode_result(obj)
         except UnknownDataFormat:
             pass
+
+    return obj
+
+
+def decode_result(dct: dict) -> 'ASRResult':
     reader_function = get_reader_function(dct)
     object_description = reader_function(dct)
     obj = object_description_to_object(object_description)
@@ -673,6 +723,7 @@ class ASRResult(object):
                'str': str}
 
     strict = False
+    _known_data_keys = set()
 
     def __init__(self,
                  data: typing.Dict[str, typing.Any] = {},
@@ -691,24 +742,33 @@ class ASRResult(object):
 
         """
         strict = ((strict is None and self.strict) or strict)
-        if (hasattr(self, '_known_data_keys')):
-            data_keys = set(data)
-            unknown_keys = data_keys - self._known_data_keys
-            msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
-            missing_keys = self._known_data_keys - data_keys
-            msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
-            if strict:
-                assert not missing_keys, msg_miss
-                assert not unknown_keys, msg_ukwn
-            else:
-                if unknown_keys:
-                    warnings.warn(msg_ukwn)
-                if missing_keys:
-                    warnings.warn(msg_miss)
         self.strict = strict
         self._data = data
         self._metadata = MetaData()
         self.metadata.set(**metadata)
+
+        missing_keys = self.get_missing_keys()
+        unknown_keys = self.get_unknown_keys()
+        msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
+        msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
+        if strict:
+            assert not missing_keys, msg_miss
+            assert not unknown_keys, msg_ukwn
+        else:
+            if unknown_keys:
+                warnings.warn(msg_ukwn)
+            if missing_keys:
+                warnings.warn(msg_miss)
+
+    def get_missing_keys(self):
+        data_keys = set(self.data)
+        missing_keys = self._known_data_keys - data_keys
+        return missing_keys
+
+    def get_unknown_keys(self):
+        data_keys = set(self.data)
+        unknown_keys = data_keys - self._known_data_keys
+        return unknown_keys
 
     @classmethod
     def fromdata(cls, **data):
@@ -765,8 +825,8 @@ class ASRResult(object):
             # constructor='asr.core::result_factory',
             args=(),
             kwargs={
-                'data': data_to_dict(copy.deepcopy(self.data)),
-                'metadata': self.metadata.todict(),
+                'data': self.data,
+                'metadata': self.metadata,
                 'strict': self.strict,
                 # 'version': self.version,
             },
@@ -775,7 +835,7 @@ class ASRResult(object):
     # # To and from dict
     # def todict(self):
     #     object_description = self.get_object_desc()
-    #     return object_description.todict()
+    #     return encode_object(object_description)
 
     # @classmethod
     # def fromdict(cls, dct: dict):
@@ -783,6 +843,9 @@ class ASRResult(object):
     #     return obj_desc.instantiate()
 
     # ---- Magic methods ----
+
+    def copy(self):
+        return self.data.copy()
 
     def __getitem__(self, item):
         """Get item from self.data."""

@@ -48,7 +48,7 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import table
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'pointgroup',
+        'crystal_type', 'class', 'spacegroup', 'spgnum', 'pointgroup',
         'ICSD_id', 'COD_id'
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
@@ -99,7 +99,7 @@ class Result(ASRResult):
     spacegroup: str
     spgnum: int
     pointgroup: str
-    crystal_prototype: str
+    crystal_type: str
     spglib_dataset: dict
     formula: str
 
@@ -110,7 +110,7 @@ class Result(ASRResult):
         "spacegroup": "Space group",
         "spgnum": "Space group number",
         "pointgroup": "Point group",
-        "crystal_prototype": "Crystal prototype",
+        "crystal_type": "Crystal type",
         "spglib_dataset": "SPGLib symmetry dataset.",
         "formula": "Chemical formula."
     }
@@ -149,14 +149,14 @@ def main() -> Result:
     dataset = symmetry.dataset
     info['spglib_dataset'] = dataset
 
-    # Get crystal prototype
+    # Get crystal type
     stoi = atoms.symbols.formula.stoichiometry()[0]
     sg = dataset['international']
     number = dataset['number']
     pg = dataset['pointgroup']
     w = ''.join(sorted(set(dataset['wyckoffs'])))
-    crystal_prototype = f'{stoi}-{number}-{w}'
-    info['crystal_prototype'] = crystal_prototype
+    crystal_type = f'{stoi}-{number}-{w}'
+    info['crystal_type'] = crystal_type
     info['spacegroup'] = sg
     info['spgnum'] = number
     from ase.db.core import str_represents, convert_str_to_int_float_or_str

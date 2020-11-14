@@ -58,14 +58,21 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
-    # PDOS without spin-orbit coupling
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[],
-                         [fig('pbe-pdos_nosoc.png', link='empty')]],
-             'plot_descriptions': [{'function': plot_pdos_nosoc,
-                                    'filenames': ['pbe-pdos_nosoc.png']}],
-             'sort': 13}
+    from asr.database.browser import (fig,
+                                      describe_entry, WebPanel)
+    # Projected band structure and DOS panel
+    description = ('Orbital projected band structure '
+                   'and projected density of states, '
+                   'both without spin-orbit coupling')
+    panel = WebPanel(
+        title=describe_entry(
+            'Projected band structure and DOS (PBE)',
+            description=description),
+        columns=[[],
+                 [fig('pbe-pdos_nosoc.png', link='empty')]],
+        plot_descriptions=[{'function': plot_pdos_nosoc,
+                            'filenames': ['pbe-pdos_nosoc.png']}],
+        sort=13)
 
     return [panel]
 
@@ -94,22 +101,38 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
 
 
 @prepare_result
+class PdosResult(ASRResult):
+
+    efermi: float
+    symbols: typing.List[str]
+    energies: typing.List[float]
+    pdos_syl: typing.List[float]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        efermi="Fermi level [eV] of ground state with dense k-mesh.",
+        symbols="Chemical symbols.",
+        energies="Energy mesh of pdos results.",
+        pdos_syl=("Projected density of states [states / eV] for every set of keys "
+                  "'s,y,l', that is spin, symbol and orbital l-quantum number.")
+    )
+
+
+@prepare_result
 class Result(ASRResult):
 
-    pdos_nosoc: typing.List[float]
-    pdos_soc: typing.List[float]
     dos_at_ef_nosoc: float
     dos_at_ef_soc: float
+    pdos_nosoc: PdosResult
+    pdos_soc: PdosResult
 
-    key_descriptions = {
-        "pdos_nosoc": "Projected density of states w/o soc.",
-        "pdos_soc": "Projected density of states",
-        "dos_at_ef_nosoc":
-        "Density of states at the Fermi "
-        "level w/o soc [states/(eV * unit cell)]",
-        "dos_at_ef_soc":
-        "Density of states at the Fermi level [states/(eV * unit cell)]",
-    }
+    key_descriptions: typing.Dict[str, str] = dict(
+        dos_at_ef_nosoc=("Density of states at the Fermi "
+                         "level w/o soc [states / (unit cell * eV)]"),
+        dos_at_ef_soc=("Density of states at the Fermi "
+                       "level [states / (unit cell * eV)])"),
+        pdos_nosoc="Projected density of states w/o soc.",
+        pdos_soc="Projected density of states"
+    )
     formats = {"ase_webpanel": webpanel}
 
 
@@ -120,7 +143,6 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     from gpaw import GPAW
-    from asr.core import singleprec_dict
     from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
 
@@ -143,9 +165,9 @@ def main() -> Result:
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = singleprec_dict(pdos(dos1, calc))
+    results['pdos_nosoc'] = pdos(dos1, calc)
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = singleprec_dict(pdos(dos2, calc))
+    results['pdos_soc'] = pdos(dos2, calc)
 
     return results
 
@@ -161,11 +183,16 @@ def pdos(dos, calc):
 
     Main functionality to do a single pdos calculation.
     """
+    from asr.core import singleprec_dict
+
     # Do calculation
     e_e, pdos_syl, symbols, ef = calculate_pdos(dos, calc)
 
-    return {'pdos_syl': pdos_syl, 'symbols': symbols,
-            'energies': e_e, 'efermi': ef}
+    return PdosResult.fromdata(
+        efermi=ef,
+        symbols=symbols,
+        energies=e_e,
+        pdos_syl=singleprec_dict(pdos_syl))
 
 
 def calculate_pdos(dos, calc):
@@ -420,11 +447,11 @@ def plot_pdos(row, filename, soc=True,
 
     # Annotate E_F
     xlim = ax.get_xlim()
-    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
+    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
     text = plt.text(x0, ef - row.get('evac', 0),
                     r'$E_\mathrm{F}$',
                     fontsize=rcParams['font.size'] * 1.25,
-                    ha='left',
+                    ha='right',
                     va='bottom')
 
     text.set_path_effects([

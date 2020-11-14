@@ -5,12 +5,28 @@ from click import Choice
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import (table,
+                                      fig,
+                                      describe_entry)
+    explanation = 'Static interband polarizability along the'
+    alphax_el = describe_entry('alphax_el', description=explanation + " x-direction")
+    alphay_el = describe_entry('alphay_el', description=explanation + " y-direction")
+    alphaz_el = describe_entry('alphaz_el', description=explanation + " z-direction")
+
+    explanation = 'Static lattice polarizability along the'
+    alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
+    alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
+    alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
+
+    explanation = 'Total static polarizability along the'
+    alphax = describe_entry('alphax', description=explanation + " x-direction")
+    alphay = describe_entry('alphay', description=explanation + " y-direction")
+    alphaz = describe_entry('alphaz', description=explanation + " z-direction")
 
     opt = table(row, 'Property', [
-        'alphax_el', 'alphay_el', 'alphaz_el',
-        'alphax_lat', 'alphay_lat', 'alphaz_lat',
-        'alphax', 'alphay', 'alphaz',
+        alphax_el, alphay_el, alphaz_el,
+        alphax_lat, alphay_lat, alphaz_lat,
+        alphax, alphay, alphaz,
     ], key_descriptions)
 
     panel = {'title': 'Optical polarizability (RPA)',
