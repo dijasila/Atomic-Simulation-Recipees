@@ -1,5 +1,5 @@
-from asr.core import (command, option, dct_to_result,
-                      ASRResult, get_recipe_from_name, UnknownDataFormat)
+from asr.core import (command, option, decode_object,
+                      ASRResult, get_recipe_from_name)
 import copy
 import sys
 import re
@@ -325,12 +325,14 @@ def layout(row: AtomsRow,
     result_objects = []
     for key, value in row.data.items():
         if is_results_file(key):
-            try:
-                obj = dct_to_result(value)
-            except UnknownDataFormat:
+            obj = decode_object(value)
+
+            # Below is to support old C2DB databases that contain
+            # hacked result files with no asr_name
+            if not isinstance(obj, ASRResult):
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
-                obj = dct_to_result(value)
+                obj = decode_object(value)
             result_objects.append(obj)
         else:
             obj = value
