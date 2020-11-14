@@ -26,6 +26,18 @@ from asr.core.results import get_object_matching_obj_id
 from ase.utils import search_current_git_hash
 
 
+def make_property(name):
+
+    def get_data(self):
+        return self.data[name]
+
+    def set_data(self, value):
+        assert self.data[name] is None, f'{name} was already set.'
+        self.data[name] = value
+
+    return property(get_data, set_data)
+
+
 class Parameter:
 
     def __init__(self, name, value, hash_func):
@@ -101,18 +113,6 @@ class RunSpecification:
 
     def __repr__(self):
         return self.__str__()
-
-
-def make_property(name):
-
-    def get_data(self):
-        return self.data[name]
-
-    def set_data(self, value):
-        assert self.data[name] is None, f'{name} was already set.'
-        self.data[name] = value
-
-    return property(get_data, set_data)
 
 
 class RunRecord:
@@ -536,6 +536,123 @@ class SingleRunFileCache(AbstractCache):
                 return run_record
             return wrapped
         return wrapper
+
+from hashlib import sha256
+
+
+class FullFeatureFileCache(AbstractCache):
+
+    def __init__(self, serializer: Serializer = JSONSerializer(),
+                 hash_func=sha256):
+        self.serializer = serializer
+        self._cache_dir = None
+        self.depth = 0
+        self.hash_func = hash_func
+
+    @property
+    def cache_dir(self) -> Path:
+        return self._cache_dir
+
+    @cache_dir.setter
+    def cache_dir(self, value):
+        self._cache_dir = value
+
+    @staticmethod
+    def _name_to_results_filename(name: str):
+        name = name.replace('::', '@').replace('@main', '')
+        return f'results-{name}.json'
+
+    def add(self, run_record: RunRecord):
+        run_specification = run_record.run_specification
+        if self.has(run_record.run_specification):
+            raise RunSpecificationAlreadyExists(
+                'You are using the SingleRunFileCache which does not'
+                'support multiple runs of the same function. '
+                'Please specify another cache.'
+            )
+        if not self.initialized:
+            self.initialize()
+        run_hash = self.get_hash(run_specification)
+        name = run_record.run_specification.name + run_hash[:10]
+        filename = self._name_to_results_filename(name)
+        run_record.id = filename
+        serialized_object = self.serializer.serialize(run_record)
+        self._write_file(filename, serialized_object)
+        return run_record.id
+
+    def get_hash(self, run_specification: RunSpecification):
+        run_spec_to_be_hashed = RunSpecification(
+            name=run_specification.name,
+            parameters=run_specification.parameters,
+            version=run_specification.version
+        )
+        serialized_object = self.serializer.serialize(run_spec_to_be_hashed)
+        return self.hash_func(serialized_object).hexdigest()
+
+    @property
+    def hash_table(self):
+        text = Path('run_data.json').read_text()
+        hash_table = self.serializer.deserialize(text)
+        return hash_table
+
+    @property
+    def hashes(self):
+        return self.hash_table.keys()
+
+    def has(self, run_specification: RunSpecification):
+        run_hash = self.get_hash(run_specification)
+        return run_hash in self.hashes
+
+    def get(self, run_specification: RunSpecification):
+        assert self.has(run_specification), \
+            'No matching run_specification={run_specification}.'
+        run_hash = self.get_hash(run_specification)
+        return self.get_record_from_hash(run_hash)
+
+    def get_record_from_hash(self, run_hash):
+        filename = self.hash_table[run_hash]
+        serialized_object = self._read_file(filename)
+        obj = self.serializer.deserialize(serialized_object)
+        return obj
+
+    def select(self):
+        return [self.get_record_from_hash(run_hash)
+                for run_hash in self.hash_table]
+
+    def _write_file(self, filename: str, text: str):
+        write_file(self.cache_dir / filename, text)
+
+    def _read_file(self, filename: str) -> str:
+        serialized_object = Path(self.cache_dir / filename).read_text()
+        return serialized_object
+
+    def __enter__(self):
+        """Enter context manager."""
+        if self.depth == 0:
+            self.cache_dir = Path('.').absolute()
+        self.depth += 1
+        return self
+
+    def __exit__(self, type, value, traceback):
+        """Exit context manager."""
+        self.depth -= 1
+        if self.depth == 0:
+            self.cache_dir = None
+
+    def wrapper(self, func, run_specification: RunSpecification):
+        def wrapped(*args, **kwargs):
+            with self:
+                if self.has(run_specification):
+                    run_record = self.get(run_specification)
+                else:
+                    run_record = func(*args, **kwargs)
+                    self.add(run_record)
+            return run_record
+        return wrapped
+
+    def __call__(self, run_specification: RunSpecification):
+        return functools.partial(self.wrapper,
+                                 run_specification=run_specification)
 
 
 def to_json(obj):
