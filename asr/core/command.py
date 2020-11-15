@@ -103,6 +103,7 @@ class RunSpecification:
         return function(**self.parameters)
 
     def __str__(self):
+        
         text = [
             'RunSpecification('
             f'name={self.name}',
@@ -153,13 +154,18 @@ class RunRecord:
             f'id={self.id}',
             f'run_specification={self.run_specification}',
             f'side_effects={self.side_effects}',
-            f'result={self.result:str}',
+            f'result={self.result}',
             f'dependencies={self.dependencies})'
         ]
         return ', '.join(text)
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, other):
+        assert self.id
+        assert other.id
+        return self.id == other.id
 
 
 class Resources:
@@ -545,10 +551,10 @@ class FullFeatureFileCache(AbstractCache):
     def __init__(self, serializer: Serializer = JSONSerializer(),
                  hash_func=sha256):
         self.serializer = serializer
-        self._cache_dir = None
+        self._cache_dir = Path('.')
         self.depth = 0
         self.hash_func = hash_func
-        self._filename = 'run_data.json'
+        self._filename = 'run-data.json'
 
     @property
     def cache_dir(self) -> Path:
@@ -576,7 +582,7 @@ class FullFeatureFileCache(AbstractCache):
         run_record.id = run_hash
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
-        self.add_hash_to_table(hash, filename)
+        self.add_hash_to_table(run_hash, filename)
         return run_record.id
 
     def get_hash(self, run_specification: RunSpecification):
@@ -594,12 +600,12 @@ class FullFeatureFileCache(AbstractCache):
 
     def initialize(self):
         assert not self.initialized
-        serialized_object = self.serializer.serialize('{}')
+        serialized_object = self.serializer.serialize({})
         self._write_file(self._filename, serialized_object)
 
-    def add_hash_to_table(self, hash, filename):
+    def add_hash_to_table(self, run_hash, filename):
         hash_table = self.hash_table
-        hash_table[hash] = filename
+        hash_table[run_hash] = filename
         self._write_file(
             self._filename,
             self.serializer.serialize(hash_table)
@@ -623,7 +629,7 @@ class FullFeatureFileCache(AbstractCache):
 
     def get(self, run_specification: RunSpecification):
         assert self.has(run_specification), \
-            'No matching run_specification={run_specification}.'
+            f'No matching run_specification.'
         run_hash = self.get_hash(run_specification)
         return self.get_record_from_hash(run_hash)
 
@@ -646,16 +652,11 @@ class FullFeatureFileCache(AbstractCache):
 
     def __enter__(self):
         """Enter context manager."""
-        if self.depth == 0:
-            self.cache_dir = Path('.').absolute()
-        self.depth += 1
         return self
 
     def __exit__(self, type, value, traceback):
         """Exit context manager."""
-        self.depth -= 1
-        if self.depth == 0:
-            self.cache_dir = None
+        pass
 
     def wrapper(self, func, run_specification: RunSpecification):
         def wrapped(*args, **kwargs):

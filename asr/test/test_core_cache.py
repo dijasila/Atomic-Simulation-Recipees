@@ -14,4 +14,4 @@ def test_cache(asr_tmpdir):
     assert not cache.has(run_spec)
     cache.add(run_record)
     assert cache.has(run_spec)
-    assert cache.get(run_spec) == run_spec
+    assert cache.get(run_spec) == run_record
