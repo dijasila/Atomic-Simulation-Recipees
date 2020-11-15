@@ -22,18 +22,19 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 
     calculaterecord = calculate(
         atoms=test_material,
-        calculator={
-            "name": "gpaw",
-            "kpts": {"density": 6, "gamma": True},
-        },
     )
 
     record = main(atoms=test_material)
     results = record.result
     assert 'gs.gpw' in calculaterecord.side_effects
     dependencies = record.dependencies
-    assert (['results-asr.gs@calculate.json', 'results-asr.magnetic_anisotropy.json']
-            == dependencies)
+    dep_records = [
+        main.cache.get_record_from_hash(run_hash) for run_hash in dependencies
+    ]
+    dep_names = [dep_record.run_specification.name
+                 for dep_record in dep_records]
+    assert (set(dep_names) ==
+            set(['asr.gs::calculate', 'asr.magnetic_anisotropy::main']))
     gsfile = calculaterecord.side_effects['gs.gpw']
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
@@ -43,8 +44,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         spy.assert_called()
 
-    assert Path('results-asr.magnetic_anisotropy.json').is_file()
-    assert Path('results-asr.gs@calculate.json').is_file()
+    assert len(list(Path().glob('results-asr.magnetic_anisotropy*.json'))) == 1
+    assert len(list(Path().glob('results-asr.gs@calculate*.json'))) == 1
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:

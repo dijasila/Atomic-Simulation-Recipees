@@ -877,6 +877,8 @@ class ASRResult(object):
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
+        if fmt == '':
+            fmt = 'str'
         formats = self.get_formats()
         return formats[fmt](self)
 

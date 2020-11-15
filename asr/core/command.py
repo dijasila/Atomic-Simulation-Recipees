@@ -50,6 +50,7 @@ class Parameter:
 class Parameters:
 
     def __init__(self, parameters: typing.Dict[str, Parameter]):
+        self.__dict__.update(parameters)
         self._parameters = parameters
 
     def __hash__(self):
@@ -61,13 +62,7 @@ class Parameters:
 
     def __getitem__(self, key):
         """Get parameter."""
-        return self._parameters[key]
-
-    def __getattr__(self, key):
-        """Get parameter."""
-        if key not in self._parameters:
-            raise AttributeError
-        return self._parameters[key]
+        return getattr(self, key)
 
     def items(self):
         return self._parameters.items()
@@ -100,7 +95,8 @@ class RunSpecification:
     ):
         obj = get_object_matching_obj_id(self.name)
         function = obj.get_wrapped_function()
-        return function(**self.parameters)
+        parameters = copy.deepcopy(self.parameters)
+        return function(**parameters)
 
     def __str__(self):
         
@@ -430,6 +426,7 @@ def json_hook(json_object: dict):
     from ase.io.jsonio import object_hook
 
     if 'cls_id' in json_object:
+        assert '__dict__' in json_object
         cls = get_object_matching_obj_id(json_object['cls_id'])
         obj = cls.__new__(cls)
         obj.__dict__.update(json_object['__dict__'])
@@ -873,6 +870,7 @@ def register_run_spec(run_specification):
 
 
 single_run_file_cache = SingleRunFileCache()
+full_feature_file_cache = FullFeatureFileCache()
 
 
 class ASRCommand:
@@ -896,7 +894,7 @@ class ASRCommand:
             module=None,
             returns=None,
             version=0,
-            cache=single_run_file_cache,
+            cache=full_feature_file_cache,
             dependencies=None,
             creates=None,
             requires=None,
