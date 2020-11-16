@@ -258,6 +258,25 @@ def convert_key_to_tuple(key):
     return tuple(ks)
 
 
+def mareformat(mare):
+    return str(round(mare, 3)) + " %"
+
+
+def maeformat(mae):
+    import numpy as np
+    f10 = np.log(mae) / np.log(10)
+    f10 = round(f10)
+    mae = mae / 10**(f10)
+    if mae < 1:
+        f10 -= 1
+        mae *= 10
+
+    maestr = round(mae, 2)
+
+    maestr = str(maestr) + f'e{f10}'
+    return maestr
+
+
 def get_emass_dict_from_row(row, has_mae=False):
     import numpy as np
     from asr.core import read_json
@@ -299,8 +318,8 @@ def get_emass_dict_from_row(row, has_mae=False):
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
             direction = 0
-            maekey = name.lower() + '_soc_wideareaMAE'
-            maes = data[maekey] if has_mae else None
+            marekey = name.lower() + '_soc_wideareaMARE'
+            mares = data[marekey] if has_mae else None
 
             for k in data.keys():
                 if 'effmass' in k:
@@ -315,24 +334,17 @@ def get_emass_dict_from_row(row, has_mae=False):
                                            / 100) + " m<sub>e</sub>"
 
                         if has_mae:
-                            mae = maes[direction - 1]
-                            f10 = np.log(mae) / np.log(10)
-                            f10 = int(round(f10))
-                            mae = mae / 10**(f10)
-                            if mae < 1:
-                                f10 -= 1
-                                mae *= 10
-                            maestr = round(mae, 1)
-                            maestr = str(maestr) + f'e{f10}'
+                            mare = mares[direction - 1]
+                            marestr = mareformat(mare)
 
                             if offset_num == 0:
                                 my_dict[f'{name}, direction {direction}'] = \
-                                    (f'{mass_str}', maestr)
+                                    (f'{mass_str}', marestr)
                             else:
                                 my_dict['{} {} {}, direction {}'.format(
                                     name, offset_sym,
                                     offset_num, direction)] = \
-                                    (f'{mass_str}', maestr)
+                                    (f'{mass_str}', marestr)
 
                         else:
                             if offset_num == 0:
@@ -579,7 +591,7 @@ def custom_table(values_dict, title, has_mae=False):
 
     if has_mae:
         table = {'type': 'table',
-                 'header': [title, 'Value', 'MAE (25 meV)']}
+                 'header': [title, 'Value', 'MARE (25 meV)']}
     else:
         table = {'type': 'table',
                  'header': [title, 'Value']}
@@ -1358,11 +1370,34 @@ def evalmae(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mae
 
 
+def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
+    from ase.dft.kpoints import kpoint_convert
+    from ase.units import Ha, Bohr
+    import numpy as np
+
+    erange = erange / Ha
+
+    k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+    e_k = e_k.copy() / Ha
+
+    if bt == 'vb':
+        k_inds = np.where(np.abs(e_k - np.max(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+    else:
+        k_inds = np.where(np.abs(e_k - np.min(e_k)) < erange)[0]
+        sk_kv = k_kv[k_inds, :] * Bohr
+
+    emodel_k = evalmodel(sk_kv, c, thirdorder=True)
+    mare = np.mean(np.abs((emodel_k - e_k[k_inds]) / emodel_k)) * 100
+
+    return mare
+
+
 @command(module='asr.emasses',
          requires=['results-asr.emasses.json'],
          dependencies=['asr.emasses'])
-def validate() -> ASRResult:
-    """Calculate MAE of fits over 25 meV.
+def validate():
+    """Calculate MARE of fits over 25 meV.
 
     Perform a calculation for each to validate it
     over an energy range of 25 meV.
@@ -1381,11 +1416,18 @@ def validate() -> ASRResult:
         fitinfo = data['fitcoeff']
         bt = data['info'].split('_')[0]
         maes = []
+        mares = []
         for cutdata in data['bzcuts']:
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
             mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             maes.append(mae)
+            mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
+            mares.append(mare)
+
+        prefix = data['info'] + '_'
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
 
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
