@@ -8,8 +8,6 @@ from ase.io import read, write
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
-from asr.core import command, option
-
 
 
 
@@ -175,13 +173,13 @@ def StrainExact(sa, sb, a1, b1, a2, b2, solution):
     if error != 0:
         with open("errors.log", "a") as f:
             print(str(datetime.now()), file=f)
-            print(f"Lattice match error found for supercell {solution}. Used approximate matching method", "\n", file=f)
-            print(f"A1: {a1}", file=f)
-            print(f"B1: {b1}", file=f)
-            print(f"S1: {S1}", file=f)
-            print(f"A2: {a2}", file=f)
-            print(f"B2: {b2}", file=f)
-            print(f"S2: {S2}", file=f)
+            print(f"Lattice match error found for supercell {total_atoms}_{rot_angle:.1f}_{strain:.2f} (solution {solution}). Used approximate matching method", "\n", file=f)
+            print("A1:", a1, file=f)
+            print("B1:", b1, file=f)
+            print("S1:", S1, file=f)
+            print("A2:", a2, file=f)
+            print("B2:", b2, file=f)
+            print("S2:", S2, file=f)
             print("\n", file=f)
         return ["err", 0]
 
@@ -518,7 +516,7 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
     layer_b["layerlevel"] = []
     for atom_a in layer_a["supercell"]:
         layer_a["layerlevel"].append(1)
-    for atom_b in layer_b["supercell"]:
+    for atom_b in layer_a["supercell"]:
         layer_b["layerlevel"].append(0)
     
     
@@ -537,7 +535,7 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
     
     
     # If the cell mismatch is nonzero, adjust cell lengths
-    if strain > 1.0e-06:
+    if strain != 0.0:
     
         # Get xx and yy stiffness tensor components from C2DB
         stiff_a = [comp_a.c_11, comp_a.c_22, comp_a.c_12]
@@ -623,26 +621,18 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
     if Path(dirname).exists() == False: 
         Path(dirname).mkdir()
     
-    file_json = f"{dirname}/structure.json"
-    file_xyz = f"{dirname}/structure.xyz"
-    file_xsf = f"{dirname}/structure.xsf"
+    file_json = f"{dirname}/results-asr.supercell.json"
+    file_xyz = f"{dirname}/results-asr.supercell.xyz"
 
-    atoms = Atoms.fromdict(supercell)
     if Path(file_json).exists() == False: 
         write_json(file_json, supercell)
     if Path(file_xyz).exists() == False: 
+        atoms = Atoms.fromdict(supercell)
         write(file_xyz, atoms)
-    if Path(file_xsf).exists() == False: 
-        write(file_xsf, atoms)
 
 
-@command('asr.makemoire',
-         requires=['results-asr.moirecells.json'])
-@option('--cells-file', type=str, help='Path of the json file containing the supercell list')
-@option('--solution', type=int, help='Index of the supercell to generate, as found in moirecells.cells or moirecells.json. If combined with the --oneshot option, a single supercell will be generated.')
-@option('--tol', type=float)
-@option('--stress-opt-method', type=str)
-def main(cells_file: str = "results-asr.moirecells.json", solution: int = 0, tol: float = 1.0e-10, stress_opt_method: str = "exact"):
+
+def main(cells_file: str = "results-asr.bilayermatcher.json", solution: int = 0, tol: float = 1.0e-10, stress_opt_method: str = "exact"):
 
     with open(cells_file, "r") as f:
         dct = read_json(cells_file) 

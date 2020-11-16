@@ -4,14 +4,10 @@ from ase.db import connect
 from tqdm import tqdm
 from pathlib import Path
 from ase.io.jsonio import write_json
-from asr.core import command, option
 
 
 
-
-pi = np.pi
-rad2deg = 180 / pi
-
+# --------------------- FUNCTIONS ----------------------------------------
 
 
 # Angle between v1 and v2, measured counter-clockwise.
@@ -120,7 +116,7 @@ def CustomSort(vec, sort_vec):
 
 
 
-def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_internal_angle, max_internal_angle):
+def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, mkdir, max_strain, max_number_of_atoms, min_internal_angle):
 
     # ----------------- DEFINING LATTICES  ------------------
 
@@ -265,13 +261,12 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
                 test_area = area(match_b[i], match_b[j])
                 test_twist = angles[i]
 
-                if abs(angles[i] - angles[j]) <= tol_theta and test_intern >= min_internal_angle and test_intern <= max_internal_angle and natom <= max_number_of_atoms:
-
+                if abs(angles[i] - angles[j]) <= tol_theta and test_intern > min_internal_angle and natom <= max_number_of_atoms
                     max_strain_ij = max(strains[i], strains[j])
                     check = best_duplicate(test_twist, angles_a1b1, max_strain_ij, strain_ab, test_area, areas_b, test_intern, angles_intern)
     
                     # Save new supercells
-                    if check == [1, -1] or store_all == True:
+                    if check == [1, -1] or bool(store_all) == True:
                         superc_a1.append(match_a[i])
                         superc_a2.append(match_a[j])
                         superc_b1.append(match_b[i])
@@ -292,7 +287,7 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
                        
     
                     # Replace equivalent supercells if one with a smaller rotation angle is found.
-                    if check[0] == -1 and store_all == False:
+                    if check[0] == -1 and bool(store_all) == False:
                         superc_a1[check[1]] = match_a[i]
                         superc_a2[check[1]] = match_a[j]
                         superc_b1[check[1]] = match_b[i]
@@ -346,7 +341,7 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
     # ------------------- SAVE TO READABLE FORMAT ---------------------
     
 
-    file_cells = f"{workdir}/moirecells.cells"
+    file_cells = f"{workdir}/results-asr.bilayermatcher.cells"
     with open(file_cells, "w") as log:
     
         print("Layer A unique identifier:", file=log)
@@ -374,7 +369,7 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
                 print("{:>5}".format(b2_coeffs[i][1]), end='', file=log)
                 print("{:>16.6f}".format(angles_intern[i] * rad2deg), end='', file=log)
                 print("{:>16.6f}".format(angles_a1b1[i] * rad2deg), end='', file=log)
-                print("{:>11.4f}\n".format(strain_ab[i]), end='', file=log)
+                print("{:>12.4f}\n".format(strain_ab[i]), end='', file=log)
 
 
     # ------------------- SAVE TO JSON ---------------------
@@ -396,29 +391,18 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
         results["solutions"][f"{i}"]["twist_angle"] = angles_a1b1[i] * rad2deg
         results["solutions"][f"{i}"]["max_strain"] = strain_ab[i]
             
-    file_json = f"{workdir}/moirecells.json"
+    file_json = f"{workdir}/results-asr.bilayermatcher.json"
     write_json(file_json, results)
 
 
 
-@command('asr.findmoire',
-         creates=['moirecells.json', 'moirecells.cells'])
-@option('--max-coef', type=int, help='Max coefficient for linear combinations of the starting vectors')
-@option('--tol-modulus', type=float, help='Tolerance over vector moduli difference for finding matches')
-@option('--tol-theta', type=float, help='Tolerance over rotation angle difference between matching vector pairs')
-@option('--store-all', type=bool, help='True: store all the possible matches. False: store only unique supercell')
-@option('--scan-all', type=bool, help='True: scan linear combinations in all the XY plane. False: scan only the upper half')
-@option('--sort', type=str, help='Sort results by number of atoms or max strain')
-@option('--max-strain', type=float, help='Store only supercells with max (percent) strain lower than the specified one')
-@option('--max-number-of-atoms', type=float, help='Store only supercells with lower number f atoms than the specified one')
-@option('--min-internal-angle', type=float, help='Lower limit for the supercell internal angle (in degrees)')
-@option('--max-internal-angle', type=float, help='Upper limit for the supercell internal angle (in degrees)')
-@option('--overwrite', type=bool, help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
-@option('--database', type=str, help='Path of the .db database file for retrieving structural information')
-@option('--uids', type=str, help='Path of the file containing the unique ID list of the materials to combine')
-def main(max_coef: int = 10, tol_modulus: float = 0.8, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: bool = False, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
 
-    db = connect(database)
+def main(max_coef: int = 10, tol_modulus: float = 0.8, tol_theta: float = 0.05, store_all: int = 0, scan_all: int = 0, sort: str = "natoms", mkdir: str = "True", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = np.pi / 6):
+
+    pi = np.pi
+    rad2deg = 180 / pi
+
+    db = connect('/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db')
 
     with open("/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids", "r") as f:
         monos = [ i.split()[0] for i in f.readlines() ]
@@ -428,23 +412,11 @@ def main(max_coef: int = 10, tol_modulus: float = 0.8, tol_theta: float = 0.05, 
             name_a = db.get(uid=monos[i]).formula
             name_b = db.get(uid=monos[j]).formula
             workdir = f"{name_a}-{name_b}"
-            dirwork = f"{name_b}-{name_a}"
 
-            # Generate directory and results for the current bilayer if they don't exist
-            # or "overwrite" option is passed"
-            if Path(workdir).exists() == False and Path(dirwork).exists() == False:
+            if Path(workdir).exists() == False:
                 Path(workdir).mkdir()
-
-            max_intern = max_internal_angle / rad2deg
-            min_intern = min_internal_angle / rad2deg
-
-            if overwrite == True:
-                Path(f"{workdir}/moirecells.json").unlink(missing_ok=True)
-                Path(f"{workdir}/moirecells.cells").unlink(missing_ok=True)
-
-            if Path(f"{workdir}/moirecells.json").exists() == False:
-                MatchCells(monos[i], monos[j], workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_intern, max_intern)
-
+            if Path(f"{workdir}/results-asr.bilayermatcher.json").exists() == False:
+                MatchCells(monos[i], monos[j], workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, mkdir, max_strain, max_number_of_atoms, min_internal_angle)
             
 
 
