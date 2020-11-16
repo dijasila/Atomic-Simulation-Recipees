@@ -22,6 +22,7 @@ import inspect
 import json
 from asr.core.results import get_object_matching_obj_id
 from ase.utils import search_current_git_hash
+from asr.core.params import get_default_parameters
 
 
 def make_property(name):
@@ -646,6 +647,7 @@ class FullFeatureFileCache(AbstractCache):
             with self:
                 if self.has(run_specification):
                     run_record = self.get(run_specification)
+                    print(f'Using cached record: {run_record}')
                 else:
                     run_record = func(*args, **kwargs)
                     self.add(run_record)
@@ -943,21 +945,19 @@ class ASRCommand:
         for key in self.myparams:
             assert key in myparams, f'param={key} is unknown.'
 
-        if Path('params.json').is_file():
-            # Read defaults from params.json.
-            paramsettings = read_json('params.json').get(self.name, {})
-            if paramsettings:
-                signature_parameters = dict(self.__signature__.parameters)
-                for key, new_default in paramsettings.items():
-                    assert key in signature_parameters, \
-                        f'Unknown param in params.json: param={key}.'
-                    parameter = signature_parameters[key]
-                    signature_parameters[key] = parameter.replace(
-                        default=new_default)
+        default_parameters = get_default_parameters(self.name)
+        if default_parameters:
+            signature_parameters = dict(self.__signature__.parameters)
+            for key, new_default in default_parameters.items():
+                assert key in signature_parameters, \
+                    f'Unknown param in params.json: param={key}.'
+                parameter = signature_parameters[key]
+                signature_parameters[key] = parameter.replace(
+                    default=new_default)
 
-                new_signature = self.__signature__.replace(
-                    parameters=[val for val in signature_parameters.values()])
-                return new_signature
+            new_signature = self.__signature__.replace(
+                parameters=[val for val in signature_parameters.values()])
+            return new_signature
 
         return self.__signature__
 

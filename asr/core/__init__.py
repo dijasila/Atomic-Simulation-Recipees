@@ -10,3 +10,4 @@ from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,
                       encode_object, decode_result)  # noqa
 from .command import (command, option, argument, get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa
+from .params import set_defaults  # noqa

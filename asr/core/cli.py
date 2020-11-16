@@ -1,8 +1,8 @@
 """ASR command line interface."""
 import sys
-from typing import Union
+from typing import Union, Dict, Any
 import asr
-from asr.core import read_json, chdir, ASRCommand
+from asr.core import read_json, chdir, ASRCommand, DictStr, set_defaults
 import click
 from pathlib import Path
 import subprocess
@@ -69,9 +69,12 @@ def cli():
               "Only runs a recipe if it is already done.")
 @click.option('--must-exist', type=str,
               help="Skip folder where this file doesn't exist.")
+@click.option('--defaults', type=DictStr(),
+              help="Set default parameters. Takes precedence over params.json.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
-        skip_if_done, dont_raise, update, must_exist):
+        skip_if_done, dont_raise, update, must_exist,
+        defaults):
     r"""Run recipe or python function in multiple folders.
 
     Examples
@@ -111,6 +114,7 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
         'not_recipe': not_recipe,
         'command': command,
         'must_exist': must_exist,
+        'defaults': defaults,
     }
     if njobs > 1:
         processes = []
@@ -143,7 +147,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 skip_if_done: bool, dont_raise: bool,
                 job_num: Union[int, None] = None,
                 update: bool = False,
-                must_exist: Union[str, None] = None):
+                must_exist: Union[str, None] = None,
+                defaults: Dict[str, Any]):
     """Run command in folders."""
     nfolders = len(folders)
     module, *args = command.split()
@@ -194,7 +199,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
                                job_num=job_num))
                 if is_asr_command:
-                    func.cli(args=args)
+                    with set_defaults(defaults):
+                        func.cli(args=args)
                 else:
                     sys.argv = [mod.__name__] + args
                     func()
