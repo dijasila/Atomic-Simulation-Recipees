@@ -560,7 +560,7 @@ class FullFeatureFileCache(AbstractCache):
             )
 
         run_hash = self.get_hash(run_specification)
-        name = run_record.run_specification.name + run_hash[:10]
+        name = run_record.run_specification.name + '-' + run_hash[:10]
         filename = self._name_to_results_filename(name)
         run_record.id = run_hash
         serialized_object = self.serializer.serialize(run_record)
