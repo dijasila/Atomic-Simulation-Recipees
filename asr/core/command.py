@@ -8,13 +8,11 @@ from . import (
     write_file,
     # file_barrier,
 )
-# import os
 import contextlib
 import functools
 import abc
 import os
 import typing
-# import atexit
 import click
 import copy
 import time
@@ -99,14 +97,7 @@ class RunSpecification:
         return function(**parameters)
 
     def __str__(self):
-        
-        text = [
-            'RunSpecification('
-            f'name={self.name}',
-            f'parameters={self.parameters}',
-            f'version={self.version}',
-            f'codes={self.codes})']
-        return ','.join(text)
+        return f'RunSpec(name={self.name}, params={self.parameters})'
 
     def __repr__(self):
         return self.__str__()
@@ -145,18 +136,13 @@ class RunRecord:
         return self.data['run_specification'].parameters
 
     def __str__(self):
-        text = [
-            'RunRecord('
-            f'id={self.id}',
-            f'run_specification={self.run_specification}',
-            f'side_effects={self.side_effects}',
-            f'result={self.result}',
-            f'dependencies={self.dependencies})'
-        ]
-        return ', '.join(text)
+        return f'RunRec(run_spec={self.run_specification})'
 
     def __repr__(self):
         return self.__str__()
+
+    def __hash__(self):
+        return hash(self.id)
 
     def __eq__(self, other):
         assert self.id

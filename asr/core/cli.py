@@ -258,30 +258,145 @@ def ls():
     for record in records:
         print(record)
 
+
+def draw_plotly_graph(G):
+    import networkx as nx
+    import plotly.graph_objects as go
+
+    pos = nx.planar_layout(G)
+
+    for n, p in pos.items():
+        G.nodes[n]['pos'] = p
+
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = G.nodes[edge[0]]['pos']
+        x1, y1 = G.nodes[edge[1]]['pos']
+        edge_x.append(x0)
+        edge_x.append(x1)
+        edge_x.append(None)
+        edge_y.append(y0)
+        edge_y.append(y1)
+        edge_y.append(None)
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+        mode='lines')
+
+    node_x = []
+    node_y = []
+    for node in G.nodes():
+        x, y = G.nodes[node]['pos']
+        node_x.append(x)
+        node_y.append(y)
+
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers',
+        hoverinfo='text',
+        marker=dict(
+            showscale=True,
+            colorscale='YlGnBu',
+            reversescale=True,
+            color=[],
+            size=10,
+            colorbar=dict(
+                thickness=15,
+                title='Node Connections',
+                xanchor='left',
+                titleside='right'
+            ),
+            line_width=2))
+
+    node_text = []
+    for node in G.nodes:
+        node_text.append(str(node))
+
+    node_trace.text = node_text
+
+    fig = go.Figure(
+        data=[edge_trace, node_trace],
+        layout=go.Layout(
+            title='Dependency tree',
+            titlefont_size=16,
+            showlegend=False,
+            hovermode='closest',
+            margin=dict(b=20, l=5, r=5, t=40),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+    )
+    fig.show()
+
+
+def draw_networkx_graph(G):
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    pos = nx.layout.planar_layout(G)
+
+    nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
+    edges = nx.draw_networkx_edges(
+        G,
+        pos,
+        node_size=10,
+        arrowstyle="->",
+        arrowsize=10,
+        node_color='C0',
+        edge_color='C1',
+        width=2,
+    )
+
+    pc = mpl.collections.PatchCollection(edges)
+    plt.colorbar(pc)
+
+    ax = plt.gca()
+    ax.set_axis_off()
+    plt.show()
+
+
 @cache.command()
-def graph():
-    from asr.core.command import single_run_file_cache
+@click.option('--draw', is_flag=True)
+def graph(draw=False):
+    from asr.core.command import full_feature_file_cache
 
-    single_run_file_cache.cache_dir = Path('.')
-    records = single_run_file_cache.select()
+    records = full_feature_file_cache.select()
 
-    graph = {}
+    if draw:
+        import networkx as nx
+        graph = nx.DiGraph()
+        for record in records:
+            graph.add_node(record)
 
-    for record in records:
-        graph[record.id] = set(record.dependencies)
+        for record in records:
+            for depid in record.dependencies:
+                deprecord = full_feature_file_cache.get_record_from_hash(depid)
+                graph.add_edge(deprecord, record)
 
-    count_edges_to_node = {}
-    for node, edges in graph.items():
-        for edge in edges:
-            count = count_edges_to_node.get(edge, 0) + 1
-            count_edges_to_node[edge] = count
+        draw_networkx_graph(graph)
+        # draw_plotly_graph(graph)
+    else:
+        graph = {}
 
-    sorted_nodes = list(sorted(
+        for record in records:
+            graph[record.id] = set(record.dependencies)
+
+        count_edges_to_node = {}
+        for node, edges in graph.items():
+            for edge in edges:
+                count = count_edges_to_node.get(edge, 0) + 1
+                count_edges_to_node[edge] = count
+
+        sorted_nodes = list(sorted(
             list(graph),
-            key=lambda node: count_edges_to_node.get(node, 0)))
+            key=lambda node: count_edges_to_node.get(node, 0),)
+        )
 
-    for node in sorted_nodes:
-        print(node, '->', graph[node])
+        for node in sorted_nodes:
+            print(node, '->', graph[node])
 
 
 @cli.command()
