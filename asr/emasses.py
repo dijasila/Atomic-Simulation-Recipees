@@ -1395,7 +1395,8 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
 
 @command(module='asr.emasses',
          requires=['results-asr.emasses.json'],
-         dependencies=['asr.emasses'])
+         dependencies=['asr.emasses'],
+         returns=Result)
 def validate() -> Result:
     """Calculate MARE of fits over 25 meV.
 
