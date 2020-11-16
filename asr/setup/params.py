@@ -14,6 +14,8 @@ def main(params: Union[str, None] = None) -> ASRResult:
     values for all recipes to be used for manually changing values
     for specific options.
     """
+    raise NotImplementedError('"asr.setup.params ..." is out of use. '
+                              'Please use the equivalent "asr params ..." CLI command.')
     from pathlib import Path
     from asr.core import get_recipes, read_json, write_json
     from ast import literal_eval
