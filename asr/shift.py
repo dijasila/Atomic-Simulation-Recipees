@@ -36,7 +36,7 @@ def webpanel(result, row, key_descriptions):
            'rows': table}
 
     # Make the figure list
-    npan = len(sym_chi)-1
+    npan = len(sym_chi) - 1
     files = ['shift{}.png'.format(ii + 1) for ii in range(npan)]
     cols = [[fig(f'shift{2 * ii + 1}.png'),
              fig(f'shift{2 * ii + 2}.png')] for ii in range(int(npan / 2))]

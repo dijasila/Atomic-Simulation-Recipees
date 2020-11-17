@@ -191,7 +191,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     gs : str
         The ground state filename.
     kptdensity : float
-       K-point density. 
+        K-point density.
     gauge : int
         Number of unoccupied bands: (#occ. bands) * bandfactor.
     eta : float
@@ -349,9 +349,9 @@ def plot_shg(row, *filename):
             ax.set_title(figtitle)
         ax.set_xlabel(r'Pump photon energy $\hbar\omega$ (eV)')
         if nd == 2:
-            ax.set_ylabel(r'$\chi^{(2)}_$'+f'{pol}$ (nm$^2$/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_$' + f'{pol}$ (nm$^2$/V)')
         else:
-            ax.set_ylabel(r'$\chi^{(2)}_$'+f'{pol}$ (nm/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_$' + f'{pol}$ (nm/V)')
         ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
 
         # Add the legend
