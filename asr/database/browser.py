@@ -1,5 +1,5 @@
-from asr.core import (command, option, dct_to_result,
-                      ASRResult, get_recipe_from_name, UnknownDataFormat)
+from asr.core import (command, option, decode_object,
+                      ASRResult, get_recipe_from_name)
 import copy
 import sys
 import re
@@ -167,13 +167,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
                   'default parameter set below\n'
                   '<b>Default parameters</b>')
 
-    recipe_parameters = recipe.get_parameters()
-    described_params = {}
-    for key, value in params.items():
-        if key in recipe_parameters:
-            key = describe_entry(key, recipe_parameters[key]['help'])
-        described_params[key] = value
-    lst = dict_to_list(described_params, exclude_keys=exclude_keys)
+    lst = dict_to_list(params, exclude_keys=exclude_keys)
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'
     string = '\n'.join(lst)
@@ -330,12 +324,14 @@ def layout(row: AtomsRow,
     result_objects = []
     for key, value in row.data.items():
         if is_results_file(key):
-            try:
-                obj = dct_to_result(value)
-            except UnknownDataFormat:
+            obj = decode_object(value)
+
+            # Below is to support old C2DB databases that contain
+            # hacked result files with no asr_name
+            if not isinstance(obj, ASRResult):
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
-                obj = dct_to_result(value)
+                obj = decode_object(value)
             result_objects.append(obj)
         else:
             obj = value

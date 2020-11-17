@@ -209,6 +209,57 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     return results
 
 
+@command(requires=['results-asr.gw@gw.json'],
+         dependencies=['asr.gw@gw',
+                       'asr.gw@gs'])
+@option('-c', '--correctgw', is_flag=True, default=False)
+@option('-z', '--empz', type=float, default=0.75,
+        help='Replacement Z for unphysical Zs')
+def empirical_mean_z(correctgw: bool = True,
+                     empz: float = 0.75) -> ASRResult:
+    """Apply the empirical-Z method.
+
+    Implements the method described in https://arxiv.org/abs/2009.00314.
+
+    This method consists of replacing the G0W0 Z-value with the empirical
+    mean of Z-values (calculated from C2DB GW calculations) whenever the
+    G0W0 is "quasiparticle-inconsistent", i.e. the G0W0 Z is outside the
+    interval [0.5, 1.0]. The empirical mean Z was found to be
+
+    Z0 = 0.75.
+
+    Pseudocode:
+
+    For all states:
+        if Z not in [0.5, 1.0]:
+            set GW energy = E_KS + Z0 * (Sigma_GW - vxc + exx)
+
+    The last line can be implemented as
+
+    new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
+    """
+    import numpy as np
+    gwresults = read_json('results-asr.gw@gw.json')
+    if not correctgw:
+        return gwresults
+
+    Z0 = empz
+    results = gwresults.copy()
+
+    Z_skn = gwresults['Z']
+    e_skn = gwresults['eps']
+    qp_skn = gwresults['qp']
+    results['qpGW'] = qp_skn.copy()
+
+    indices = np.logical_not(np.logical_and(Z_skn >= 0.5, Z_skn <= 1.0))
+    qp_skn[indices] = e_skn[indices] + \
+        (qp_skn[indices] - e_skn[indices]) * Z0 / Z_skn[indices]
+
+    results['qp'] = qp_skn
+
+    return results
+
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
@@ -289,7 +340,8 @@ class Result(ASRResult):
 
 @command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure'],
+         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure',
+                       'asr.gw@empirical_mean_z'],
          returns=Result)
 def main() -> Result:
     import numpy as np
@@ -300,7 +352,7 @@ def main() -> Result:
     from types import SimpleNamespace
 
     calc = GPAW('gs_gw_nowfs.gpw', txt=None)
-    gwresults = SimpleNamespace(**read_json('results-asr.gw@gw.json'))
+    gwresults = SimpleNamespace(**read_json('results-asr.gw@empirical_mean_z.json'))
 
     lb = gwresults.minband
     ub = gwresults.maxband

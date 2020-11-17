@@ -160,11 +160,11 @@ converting it back to a result object
 .. code-block::
 
    >>> import numpy as np
-   >>> from asr.core import dct_to_result
+   >>> from asr.core import decode_object
    >>> from asr.piezoelectrictensor import Result
    >>> result = Result.fromdata(eps_vvv=np.ones((3, 3, 3), float), eps_clamped_vvv=np.ones((3, 3, 3), float))
    >>> dct = result.format_as('dict')
-   >>> result = dct_to_result(dct)
+   >>> result = decode_object(dct)
 
 
 How-to: Select rows in database that has certain property calculated
