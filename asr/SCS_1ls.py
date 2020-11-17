@@ -16,21 +16,19 @@ def main(structure: str = None, kpoints: int = 18, eta: float = 0.01):
     from gpaw.lcao.scissors import Scissors
     from ase import Atoms
     from ase.io import read
-    from ase.io.jsonio import read_json, write_json
 
-    if structure == "l1.json":
-        gs_name = "l1.gpw"
+    if structure == "layer1.json":
+        gs_name = "layer1.gpw"
         layer_nr = 1
-    elif structure == "l2.json":
-        gs_name = "l2.gpw"
+    elif structure == "layer2.json":
+        gs_name = "layer2.gpw"
         layer_nr = 2
     else:
         raise AssertionError('Only use this recipe for the single layers in the SCS calc!')
 
 
     # Loading the structure
-    dct = read_json(structure)
-    atoms = Atoms.fromdict(dct)
+    atoms = read(structure)
     # Setup the calculator 
     calc = GPAW(mode='lcao',
             xc='PBE',

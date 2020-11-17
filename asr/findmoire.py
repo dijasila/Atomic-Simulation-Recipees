@@ -402,18 +402,32 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_theta, store_all, scan_all, 
 
 
 @command('asr.findmoire')
-@option('--max-coef', type=int, help='Max coefficient for linear combinations of the starting vectors')
-@option('--tol-theta', type=float, help='Tolerance over rotation angle difference between matching vector pairs')
-@option('--store-all', type=bool, help='True: store all the possible matches. False: store only unique supercell')
-@option('--scan-all', type=bool, help='True: scan linear combinations in all the XY plane. False: scan only the upper half')
-@option('--sort', type=str, help='Sort results by number of atoms or max strain')
-@option('--max-strain', type=float, help='Store only supercells with max (percent) strain lower than the specified one')
-@option('--max-number-of-atoms', type=float, help='Store only supercells with lower number f atoms than the specified one')
-@option('--min-internal-angle', type=float, help='Lower limit for the supercell internal angle (in degrees)')
-@option('--max-internal-angle', type=float, help='Upper limit for the supercell internal angle (in degrees)')
-@option('--overwrite', type=bool, help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
-@option('--database', type=str, help='Path of the .db database file for retrieving structural information')
-@option('--uids', type=str, help='Path of the file containing the unique ID list of the materials to combine')
+
+@option('--max-coef', type=int, 
+        help='Max coefficient for linear combinations of the starting vectors')
+@option('--tol-theta', type=float, 
+        help='Tolerance over rotation angle difference between matching vector pairs')
+@option('--store-all', type=bool, 
+        help='True: store all the possible matches. False: store only unique supercell')
+@option('--scan-all', type=bool, 
+        help='True: scan linear combinations in all the XY plane. False: scan only the upper half')
+@option('--sort', type=str, 
+        help='Sort results by number of atoms or max strain')
+@option('--max-strain', type=float, 
+        help='Store only supercells with max (percent) strain lower than the specified one')
+@option('--max-number-of-atoms', type=float, 
+        help='Store only supercells with lower number f atoms than the specified one')
+@option('--min-internal-angle', type=float, 
+        help='Lower limit for the supercell internal angle (in degrees)')
+@option('--max-internal-angle', type=float, 
+        help='Upper limit for the supercell internal angle (in degrees)')
+@option('--overwrite', type=bool, 
+        help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
+@option('--database', type=str, 
+        help='Path of the .db database file for retrieving structural information')
+@option('--uids', type=str, 
+        help='Path of the file containing the unique ID list of the materials to combine')
+
 def main(max_coef: int = 10, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: str = False, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
 
     db = connect(database)

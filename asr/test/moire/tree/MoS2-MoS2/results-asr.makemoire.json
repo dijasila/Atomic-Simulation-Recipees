@@ -1,0 +1,35 @@
+{
+ "object_id": "asr.core.results::ASRResult",
+ "constructor": "asr.core.results::ASRResult",
+ "args": [],
+ "kwargs": {
+  "data": {},
+  "metadata": {
+   "asr_name": "asr.makemoire",
+   "resources": {
+    "time": 0.0967707633972168,
+    "ncores": 1,
+    "tstart": 1605608694.030307,
+    "tend": 1605608694.1270778
+   },
+   "params": {
+    "cells_file": "moirecells.json",
+    "solution": 2,
+    "tol": 1e-10,
+    "stress_opt_method": "exact",
+    "database": "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db",
+    "overwrite": true
+   },
+   "code_versions": {
+    "asr": "0.4.1-b0bdf334468860286af0ab4f74165a9880e15bb4",
+    "ase": "3.21.0b1-54f6fcee4ce8a98b140f6c02b3280e92d34206ce",
+    "gpaw": "20.1.1b1-c906085530160b132531630b5259c68427fe7449"
+   },
+   "creates": {},
+   "requires": {
+    "moirecells.json": "31498c19eac33b4715a71161dff929f3"
+   }
+  },
+  "strict": null
+ }
+}

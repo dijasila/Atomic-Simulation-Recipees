@@ -325,7 +325,7 @@ class Result(ASRResult):
         help='Symmetrize forces and stresses.', is_flag=True)
 def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
-                             'mode': {'name': 'pw', 'ecut': 800},
+                             'mode': {'name': 'lcao'},
                              'xc': 'PBE',
                              'kpts': {'density': 6.0, 'gamma': True},
                              'basis': 'dzp',

@@ -216,7 +216,7 @@ rad2deg = 180 / np.pi
 
 
 
-def MakeCell(cells_file, solution, tol, stress_opt_method):
+def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
 
 
     # ----------------------------- CELL DEFINITION -------------------------------- #
@@ -228,7 +228,7 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
     sc_info = dct["solutions"][solution]
         
     # Get atoms objects for the two layers from C2DB
-    db = connect('/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db')
+    db = connect(database)
     comp_a = db.get(uid=uid_a)
     comp_b = db.get(uid=uid_b)
     
@@ -623,33 +623,47 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
     if Path(dirname).exists() == False: 
         Path(dirname).mkdir()
     
-    file_json = f"{dirname}/structure.json"
-    file_xyz = f"{dirname}/structure.xyz"
-    file_xsf = f"{dirname}/structure.xsf"
+    file_json = f"{dirname}/unrelaxed.json"
+    file_xyz = f"{dirname}/unrelaxed.xyz"
 
     atoms = Atoms.fromdict(supercell)
-    if Path(file_json).exists() == False: 
-        write_json(file_json, supercell)
-    if Path(file_xyz).exists() == False: 
+    atoms.set_tags(layerlevels)
+
+    if Path(file_json).exists() == False or overwrite == True:
+        write(file_json, atoms)
+    else: 
+        print(f"File {file_json} already exists. Pass the --overwrite option if you wish to replace it")
+
+    if Path(file_xyz).exists() == False or overwrite == True:
         write(file_xyz, atoms)
-    if Path(file_xsf).exists() == False: 
-        write(file_xsf, atoms)
+    else: 
+        print(f"File {file_xyz} already exists. Pass the --overwrite option if you wish to replace it")
 
 
 @command('asr.makemoire',
          requires=['moirecells.json'])
-@option('--cells-file', type=str, help='Path of the json file containing the supercell list')
-@option('--solution', type=int, help='Index of the supercell to generate, as found in moirecells.cells or moirecells.json. If combined with the --oneshot option, a single supercell will be generated.')
+
+@option('--cells-file', type=str, 
+        help='Path of the json file containing the supercell list')
+@option('--solution', type=int, 
+        help='For single supercell generation: specify the index of the supercell to generate, as found in moirecells.cells or moirecells.json')
 @option('--tol', type=float)
 @option('--stress-opt-method', type=str)
-def main(cells_file: str = "moirecells.json", solution: int = 0, tol: float = 1.0e-10, stress_opt_method: str = "exact"):
+@option('--database', type=str, 
+        help="Path to the database file")
+@option('--overwrite', type=bool) 
+
+def main(cells_file: str="moirecells.json", solution: int=-1, tol: float=1.0e-10, stress_opt_method: str="exact", database : str='/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db', overwrite: bool = False):
 
     with open(cells_file, "r") as f:
         dct = read_json(cells_file) 
     nsol = dct["number_of_solutions"]
 
-    for sol in tqdm(range(nsol)):
-        MakeCell(cells_file, sol, tol, stress_opt_method)
+    if solution >= 0:
+        MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite) 
+    else:   
+        for sol in tqdm(range(nsol)):
+            MakeCell(cells_file, sol, tol, stress_opt_method, database, overwrite)
 
 
 
