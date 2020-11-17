@@ -173,13 +173,12 @@ class Result(ASRResult):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor')
 @option('--eta', help='Broadening [eV]', type=float)
-@option('--wmax', help='Max pump frequency [eV]', type=float)
-@option('--nw', help='Number of pump frequencies', type=int)
-def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
+@option('--maxomega', help='Max pump frequency [eV]', type=float)
+@option('--nromega', help='Number of pump frequencies', type=int)
+def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
          bandfactor: int = 4, eta: float = 0.05,
-         wmax: float = 10.0, nw: int = 1000) -> Result:
-    """ Calculate the SHG spectrum, only independent tensor elements.
-
+         maxomega: float = 10.0, nromega: int = 1000) -> Result:
+    """Calculate the SHG spectrum, only independent tensor elements.
     The recipe computes the SHG spectrum. The tensor in general have 18 independent
     tensor elements (since it is symmetric). However, the point group symmety reduces
     the number of independent tensor elements.
@@ -196,9 +195,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
         Number of unoccupied bands: (#occ. bands) * bandfactor.
     eta : float
         Broadening used for finding the spectrum.
-    wmax : float
+    maxomega : float
         Max pump frequency.
-    nw : int
+    nromega : int
         Number of pump frequencies.
     """
 
@@ -219,7 +218,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
     if len(sym_chi) == 1:
         raise CentroSymmetric
 
-    w_ls = np.linspace(0, wmax, nw)
+    w_ls = np.linspace(0, maxomega, nromega)
     try:
         # fnames = ['es.gpw', 'mml.npz']
         fnames = []
@@ -335,7 +334,10 @@ def plot_shg(row, *filename):
             maxw = 7
 
         # Plot the data
-        amp_l = shg * 1e18
+        if nd == 2:
+            amp_l = shg * 1e18
+        else:
+            amp_l = shg * 1e9
         amp_l = amp_l[w_l < maxw]
         ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
         ax.plot(w_l[w_l < maxw], np.imag(amp_l), '-', c='C1', label='Im')
@@ -347,15 +349,16 @@ def plot_shg(row, *filename):
         if not (relation is None):
             figtitle = '$' + '$\n$'.join(wrap(relation, 40)) + '$'
             ax.set_title(figtitle)
-        ax.set_xlabel(r'Pump photon energy $\hbar\omega$ (eV)')
+        ax.set_xlabel(r'Pump photon energy $\hbar\omega$ [eV]')
+        polstr = f'{pol}'
         if nd == 2:
-            ax.set_ylabel(r'$\chi^{(2)}_$' + f'{pol}$ (nm$^2$/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_{' + polstr + r'}$ [nm$^2$/V]')
         else:
-            ax.set_ylabel(r'$\chi^{(2)}_$' + f'{pol}$ (nm/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_{' + polstr + r'}$ [nm/V]')
         ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
 
         # Add the legend
-        ax.legend(loc='upper right')
+        ax.legend(loc='best')
 
         # Remove the extra space and save the figure
         plt.tight_layout()

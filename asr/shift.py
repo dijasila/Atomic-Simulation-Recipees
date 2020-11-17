@@ -1,4 +1,6 @@
 import typing
+
+from matplotlib.pyplot import polar
 from asr.core import command, option, ASRResult, prepare_result
 from asr.shg import CentroSymmetric, get_chi_symmtery, get_kpts
 import numpy as np
@@ -84,12 +86,12 @@ class Result(ASRResult):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 @option('--eta', help='Broadening [eV]', type=float)
-@option('--wmax', help='Max pump frequency [eV]', type=float)
-@option('--nw', help='Number of pump frequencies', type=int)
-@option('--etol', help='Energy tolernce [eV]', type=float)
-def main(gs: str = 'gs.gpw', kptdensity: float = 20.0,
-         bandfactor: int = 4, eta: float = 0.05, etol: float = 1e-6,
-         wmax: float = 10.0, nw: int = 1000) -> Result:
+@option('--maxomega', help='Max pump frequency [eV]', type=float)
+@option('--nromega', help='Number of pump frequencies', type=int)
+@option('--energytol', help='Energy tolernce [eV]', type=float)
+def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
+         bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
+         maxomega: float = 10.0, nromega: int = 1000) -> Result:
 
     from ase.io import read
     from gpaw import GPAW
@@ -108,7 +110,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0,
     if len(sym_chi) == 1:
         raise CentroSymmetric
 
-    w_ls = np.linspace(0, wmax, nw)
+    w_ls = np.linspace(0, maxomega, nromega)
     try:
         # fnames = ['es.gpw', 'mml.npz']
         fnames = []
@@ -142,7 +144,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0,
             shift_name = 'shift_{}.npy'.format(pol)
             if not Path(shift_name).is_file():
                 shift = get_shift(
-                    freqs=w_ls, eta=eta, pol=pol,
+                    freqs=w_ls, eta=eta, pol=pol, Etol=energytol,
                     out_name=shift_name, mml_name=mml_name)
             else:
                 shift = np.load(shift_name)
@@ -224,11 +226,12 @@ def plot_shift(row, *filename):
             maxw = 7
 
         # Plot the data
-        amp_l = shift * 1e6
+        if nd == 2:
+            amp_l = shift * 1e15
+        else:
+            amp_l = shift * 1e6
         amp_l = amp_l[w_l < maxw]
         ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
-        ax.plot(w_l[w_l < maxw], np.imag(amp_l), '-', c='C1', label='Im')
-        ax.plot(w_l[w_l < maxw], np.abs(amp_l), '-', c='C2', label='Abs')
 
         # Set the axis limit
         ax.set_xlim(0, maxw)
@@ -236,15 +239,13 @@ def plot_shift(row, *filename):
         if not (relation is None):
             figtitle = '$' + '$\n$'.join(wrap(relation, 40)) + '$'
             ax.set_title(figtitle)
-        ax.set_xlabel(r'Pump photon energy $\hbar\omega$ (eV)')
+        ax.set_xlabel(r'Pump photon energy $\hbar\omega$ [eV]')
+        polstr = f'{pol}'
         if nd == 2:
-            ax.set_ylabel(r'$\sigma^{(2)}_{\gamma \alpha \beta}$ (\mu A/V)')
+            ax.set_ylabel(r'$\sigma^{(2)}_{' + polstr + r'}$ [nm$\mu$A/V$^2$]')
         else:
-            ax.set_ylabel(r'$\sigma^{(2)}_{\gamma \alpha \beta}$ (nm/V)')
+            ax.set_ylabel(r'$\sigma^{(2)}_{' + polstr + r'} [$\mu$A/V$^2$]')
         ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
-
-        # Add the legend
-        ax.legend(loc='upper right')
 
         # Remove the extra space and save the figure
         plt.tight_layout()
