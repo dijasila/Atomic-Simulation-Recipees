@@ -1,6 +1,5 @@
 import typing
 
-from matplotlib.pyplot import polar
 from asr.core import command, option, ASRResult, prepare_result
 from asr.shg import CentroSymmetric, get_chi_symmtery, get_kpts
 import numpy as np
