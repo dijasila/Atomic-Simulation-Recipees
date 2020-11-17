@@ -193,7 +193,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
     kptdensity : float
         K-point density.
     gauge : str
-        Selected gauge (length "lg" or velocity "vg")
+        Selected gauge (length "lg" or velocity "vg").
     bandfactor : int
         Number of unoccupied bands: (#occ. bands) * bandfactor.
     eta : float
@@ -224,25 +224,25 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
     try:
         # fnames = ['es.gpw', 'mml.npz']
         fnames = []
-        if not Path('es.gpw').is_file():
-            calc_old = GPAW(gs, txt=None)
-            nval = calc_old.wfs.nvalence
-
-            calc = GPAW(
-                gs,
-                txt='es.txt',
-                symmetry={'point_group': False, 'time_reversal': True},
-                fixdensity=True,
-                nbands=(bandfactor + 1) * nval,
-                convergence={'bands': bandfactor * nval},
-                occupations={'name': 'fermi-dirac', 'width': 1e-4},
-                kpts=kpts)
-            calc.get_potential_energy()
-            calc.write('es.gpw', mode='all')
-
-        # Calculate momentum matrix:
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
+            if not Path('es.gpw').is_file():
+                calc_old = GPAW(gs, txt=None)
+                nval = calc_old.wfs.nvalence
+
+                calc = GPAW(
+                    gs,
+                    txt='es.txt',
+                    symmetry={'point_group': False, 'time_reversal': True},
+                    fixdensity=True,
+                    nbands=(bandfactor + 1) * nval,
+                    convergence={'bands': bandfactor * nval},
+                    occupations={'name': 'fermi-dirac', 'width': 1e-4},
+                    kpts=kpts)
+                calc.get_potential_energy()
+                calc.write('es.gpw', mode='all')
+
+            # Calculate momentum matrix:
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
 
         # Do the calculation
