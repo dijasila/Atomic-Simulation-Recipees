@@ -637,12 +637,14 @@ def MakeCell(cells_file, solution, tol, stress_opt_method):
 
 
 @command('asr.makemoire',
-         requires=['moirecells.json'])
+         requires=['results-asr.moirecells.json'])
+
+
 @option('--cells-file', type=str, help='Path of the json file containing the supercell list')
 @option('--solution', type=int, help='Index of the supercell to generate, as found in moirecells.cells or moirecells.json. If combined with the --oneshot option, a single supercell will be generated.')
 @option('--tol', type=float)
 @option('--stress-opt-method', type=str)
-def main(cells_file: str = "moirecells.json", solution: int = 0, tol: float = 1.0e-10, stress_opt_method: str = "exact"):
+def main(cells_file: str = "results-asr.moirecells.json", solution: int = 0, tol: float = 1.0e-10, stress_opt_method: str = "exact"):
 
     with open(cells_file, "r") as f:
         dct = read_json(cells_file) 

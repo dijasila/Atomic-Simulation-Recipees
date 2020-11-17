@@ -14,6 +14,7 @@ def main(kpoints: int = 6, eta: float = 0.01):
     from gpaw import GPAW, PW, FermiDirac
     from gpaw.lcao.scissors import Scissors
     from ase.io import read
+    from ase.io.jsonio import read_json, write_json
 
 
     # Loading the structure

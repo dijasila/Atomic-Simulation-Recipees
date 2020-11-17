@@ -1,0 +1,38 @@
+{
+ "object_id": "asr.core.results::ASRResult",
+ "constructor": "asr.core.results::ASRResult",
+ "args": [],
+ "kwargs": {
+  "data": {},
+  "metadata": {
+   "asr_name": "asr.findmoire",
+   "resources": {
+    "time": 1.5365028381347656,
+    "ncores": 1,
+    "tstart": 1605538805.0807781,
+    "tend": 1605538806.617281
+   },
+   "params": {
+    "max_coef": 4,
+    "tol_theta": 0.05,
+    "store_all": false,
+    "scan_all": false,
+    "sort": "natoms",
+    "max_strain": 1.0,
+    "max_number_of_atoms": 300.0,
+    "min_internal_angle": 30.0,
+    "max_internal_angle": 150.0,
+    "overwrite": true,
+    "database": "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db",
+    "uids": "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"
+   },
+   "code_versions": {
+    "asr": "0.4.1-fa6b2f4ffe8f63039b541270e70beab63220551b",
+    "ase": "3.21.0b1-54f6fcee4ce8a98b140f6c02b3280e92d34206ce",
+    "gpaw": "20.1.1b1-c906085530160b132531630b5259c68427fe7449"
+   },
+   "creates": {}
+  },
+  "strict": null
+ }
+}

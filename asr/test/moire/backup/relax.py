@@ -75,10 +75,8 @@ for key, value in UTM.items():
 def is_relax_done(atoms, fmax=0.01, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    done = (f**2).sum(1).max() <= fmax**2
-    if any(smask):
-        s = atoms.get_stress() * np.array(smask)
-        done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
+    s = atoms.get_stress() * smask
+    done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
 
@@ -143,15 +141,13 @@ class SpgAtoms(Atoms):
 
 class myBFGS(BFGS):
 
-    def log(self, smask=[0, 0, 0, 0, 0, 0], forces=None, stress=None):
+    def log(self, forces=None, stress=None):
         if forces is None:
-            forces = self.atoms.get_forces()
+            forces = self.atoms.atoms.get_forces()
+        if stress is None:
+            stress = self.atoms.atoms.get_stress()
         fmax = sqrt((forces**2).sum(axis=1).max())
-        smax = 0
-        if any(smask):
-            if stress is None:
-                stress = self.atoms.get_stress()
-            smax = abs(stress).max()
+        smax = abs(stress).max()
         e = self.atoms.get_potential_energy(
             force_consistent=self.force_consistent)
         T = time.localtime()
@@ -213,18 +209,17 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    if not any(smask):
-        filter = atoms
-    else:
-        filter = ExpCellFilter(atoms, mask=smask)
+    filter = ExpCellFilter(atoms, mask=smask)
     name = Path(tmp_atoms_file).with_suffix('').name
     try:
         trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
         opt = myBFGS(filter,
                      logfile=name,
                      trajectory=trajfile)
+
         # fmax=0 here because we have implemented our own convergence criteria
         runner = opt.irun(fmax=0)
+
         for _ in runner:
             # Check that the symmetry has not been broken
             newdataset = atoms2symmetry(atoms,
@@ -240,7 +235,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
             if (not allow_symmetry_breaking
                and number != number2 and nsym > nsym2):
                 # Log the last step
-                opt.log(smask)
+                opt.log()
                 opt.call_observers()
                 errmsg = 'The symmetry was broken during the relaxation! ' + msg
                 raise BrokenSymmetryError(errmsg)
@@ -255,7 +250,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
                                          translations=newdataset['translations'])
 
             if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
-                opt.log(smask=smask)
+                opt.log()
                 opt.call_observers()
                 break
     finally:
