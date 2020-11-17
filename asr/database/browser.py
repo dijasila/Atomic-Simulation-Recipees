@@ -195,7 +195,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
         header = ('No parameters can be found, meaning that '
                   'the recipe was probably run with the '
                   'default parameter shown below\n'
-                  '<b>Default</b>')
+                  '<b>Default:</b>')
         # link_name = get_recipe_href(name)
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
