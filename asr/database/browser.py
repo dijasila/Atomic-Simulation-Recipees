@@ -142,6 +142,26 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     return lst
 
 
+def get_recipe_href(result):
+    """Get a hyperlink for the recipe documentation associated with a given result.
+
+    Parameters
+    ----------
+    result : asr.core.ASRResult
+
+    Returns
+    -------
+    link_name : str
+    """
+
+    asr_name = (result.metadata.asr_name
+                if 'asr_name' in result.metadata else '(Unknown data source)')
+    link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
+                 f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+
+    return link_name
+
+
 def entry_parameter_description(data, name, exclude_keys: set = set()):
     """Make a parameter description.
 
@@ -367,10 +387,7 @@ def layout(row: AtomsRow,
             'the following ASR Recipes:',
         ]
         for result in data_sources:
-            asr_name = (result.metadata.asr_name
-                        if 'asr_name' in result.metadata else '(Unknown data source)')
-            link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
-                         f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+            link_name = get_recipe_href(result)
             description.append(link_name)
 
         description = '\n'.join(description)
