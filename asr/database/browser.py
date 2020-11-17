@@ -159,6 +159,8 @@ def get_recipe_href(asr_name, name=None):
 
     if name is None:
         name = asr_name
+    # ATM href only works to recipe main
+    asr_name = asr_name.split('@')[0]
     link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
                  f'src/generated/recipe_{asr_name}.html">{name}</a>')
 
@@ -179,23 +181,29 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
 
     """
     recipe = get_recipe_from_name(name)
+    link_name = get_recipe_href(name)
     if (f'results-{name}.json' in data
        and 'params' in data[f'results-{name}.json'].metadata):
-        params = data[f'results-{name}.json'].metadata.params
+        metadata = data[f'results-{name}.json'].metadata
+        params = metadata.params
         header = ''
+        # asr_name = (metadata.asr_name if 'asr_name' in metadata
+        #             else name)  # Fall back to name as best guess for asr_name
+        # link_name = get_recipe_href(asr_name, name=name)
     else:
         params = recipe.get_defaults()
         header = ('No parameters can be found, meaning that '
                   'the recipe was probably run with the '
-                  'default parameter set below\n'
-                  '<b>Default parameters</b>')
+                  'default parameter shown below\n'
+                  '<b>Default</b>')
+        # link_name = get_recipe_href(name)
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'
     string = '\n'.join(lst)
     description = (
-        '<b>Calculation parameters</b>\n'
+        f'<b>Parameters:</b> {link_name}\n'
         + header
         + string
     )
