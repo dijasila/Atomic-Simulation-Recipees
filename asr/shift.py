@@ -91,7 +91,30 @@ class Result(ASRResult):
 def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
          bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
          maxomega: float = 10.0, nromega: int = 1000) -> Result:
+    """Calculate the shift current spectrum, only independent tensor elements.
 
+    The recipe computes the shift current. The tensor in general have 18 independent
+    tensor elements (since it is symmetric). However, the point group symmety reduces
+    the number of independent tensor elements.
+    The shift spectrum is calculated using perturbation theory.
+
+    Parameters
+    ----------
+    gs : str
+        The ground state filename.
+    kptdensity : float
+        K-point density.
+    bandfactor : int
+        Number of unoccupied bands: (#occ. bands) * bandfactor.
+    eta : float
+        Broadening used for finding the spectrum.
+    energytol : float
+        Energy tolernce to remove degeneracies.
+    maxomega : float
+        Max pump frequency.
+    nromega : int
+        Number of pump frequencies.
+    """
     from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world

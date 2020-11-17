@@ -4,13 +4,14 @@ import pytest
 
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Si, BN, GaAs])
-def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
+def test_shift(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
 
-    from asr.shg import get_chi_symmtery, main, CentroSymmetric
+    from asr.shg import get_chi_symmtery, CentroSymmetric
+    from asr.shift import main
     from ase.io import read
     import numpy as np
     import gpaw
-    import gpaw.nlopt.shg
+    import gpaw.nlopt.shift
 
     inputatoms.write('structure.json')
     atoms = read('structure.json')
@@ -26,13 +27,13 @@ def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
 
     w_ls = np.array([0.0, 1.0, 2.0, 3.0])
 
-    def get_shg(
+    def get_shift(
             freqs=w_ls, **kargw):
 
         chi = np.random.rand(len(freqs)) + 1j * np.random.random(len(freqs))
         return np.vstack((freqs, chi))
 
-    mocker.patch.object(gpaw.nlopt.shg, 'get_shg', get_shg)
+    mocker.patch.object(gpaw.nlopt.shift, 'get_shift', get_shift)
 
     # Check the main function and webpanel
     if atoms.get_chemical_symbols()[0] == 'Si':
@@ -41,4 +42,4 @@ def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
     else:
         main(maxomega=3, nromega=4)
         content = get_webcontent()
-        assert 'shg' in content
+        assert 'shift' in content

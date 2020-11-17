@@ -192,7 +192,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
         The ground state filename.
     kptdensity : float
         K-point density.
-    gauge : int
+    gauge : str
+        Selected gauge (length "lg" or velocity "vg")
+    bandfactor : int
         Number of unoccupied bands: (#occ. bands) * bandfactor.
     eta : float
         Broadening used for finding the spectrum.
