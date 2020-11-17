@@ -142,22 +142,25 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     return lst
 
 
-def get_recipe_href(result):
+def get_recipe_href(asr_name, name=None):
     """Get a hyperlink for the recipe documentation associated with a given result.
 
     Parameters
     ----------
-    result : asr.core.ASRResult
+    asr_name : str
+        asr_name variable of recipe
+    name : str/None
+        name for link - falls back to asr_name if None
 
     Returns
     -------
     link_name : str
     """
 
-    asr_name = (result.metadata.asr_name
-                if 'asr_name' in result.metadata else '(Unknown data source)')
+    if name is None:
+        name = asr_name
     link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
-                 f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+                 f'src/generated/recipe_{asr_name}.html">{name}</a>')
 
     return link_name
 
@@ -387,7 +390,9 @@ def layout(row: AtomsRow,
             'the following ASR Recipes:',
         ]
         for result in data_sources:
-            link_name = get_recipe_href(result)
+            asr_name = (result.metadata.asr_name
+                        if 'asr_name' in result.metadata else '(Unknown data source)')
+            link_name = get_recipe_href(asr_name)
             description.append(link_name)
 
         description = '\n'.join(description)
