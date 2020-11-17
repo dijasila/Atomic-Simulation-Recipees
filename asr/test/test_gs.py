@@ -20,21 +20,22 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
     gpaw.GPAW._get_band_gap.return_value = gap
 
-    calculaterecord = calculate(
-        atoms=test_material,
-    )
-
-    record = main(atoms=test_material)
+    calculator = {'name': 'gpaw',
+                  'kpts': {'density': 2, 'gamma': True},
+                  'xc': 'PBE'}
+    calculaterecord = calculate(test_material, calculator)
+    record = main(atoms=test_material,
+                  calculator={'name': 'gpaw', 'kpts': {'density': 2, 'gamma': True},
+                              'xc': 'PBE'})
     results = record.result
-    assert 'gs.gpw' in calculaterecord.side_effects
     dependencies = record.dependencies
     dep_records = [
         main.cache.get_record_from_hash(run_hash) for run_hash in dependencies
     ]
     dep_names = [dep_record.run_specification.name
                  for dep_record in dep_records]
-    assert (set(dep_names) ==
-            set(['asr.gs::calculate', 'asr.magnetic_anisotropy::main']))
+    assert (set(dep_names)
+            == set(['asr.gs::calculate', 'asr.magnetic_anisotropy::main']))
     gsfile = calculaterecord.side_effects['gs.gpw']
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)

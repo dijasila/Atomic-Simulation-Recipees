@@ -1,16 +1,16 @@
 """Magnetic anisotropy."""
 from ase import Atoms
-from asr.core import command, ASRResult, prepare_result, option, AtomsFile
+from asr.core import command, ASRResult, prepare_result, option, AtomsFile, DictStr
 from math import pi
 
 
-def get_spin_axis(atoms):
-    anis = main(atoms=atoms).result
+def get_spin_axis(atoms, calculator):
+    anis = main(atoms=atoms, calculator=calculator).result
     return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
-def get_spin_index(atoms):
-    anis = main(atoms=atoms).result
+def get_spin_index(atoms, calculator):
+    anis = main(atoms=atoms, calculator=calculator).result
     axis = anis['spin_axis']
     if axis == 'z':
         index = 2
@@ -87,7 +87,21 @@ class Result(ASRResult):
          dependencies=['asr.gs@calculate', 'asr.magstate'])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-def main(atoms: Atoms) -> Result:
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'basis': 'dzp',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation
@@ -99,11 +113,14 @@ def main(atoms: Atoms) -> Result:
         phi: Azimuthal angle in radians
     """
     from asr.magstate import main as magstate
+    from asr.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
-    magstateresults = magstate(atoms=atoms).result
+    magstateresults = magstate(
+        atoms=atoms,
+        calculator=calculator).result
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
@@ -120,7 +137,8 @@ def main(atoms: Atoms) -> Result:
         results['spin_axis'] = 'z'
         return Result(data=results)
 
-    calc = GPAW('gs.gpw')
+    calculaterecord = calculategs(atoms=atoms, calculator=calculator)
+    calc = GPAW(calculaterecord.side_effects['gs.gpw'])
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,

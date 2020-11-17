@@ -214,7 +214,7 @@ class GapsResult(ASRResult):
     )
 
 
-def gaps(atoms, calc, soc=True) -> GapsResult:
+def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -229,12 +229,13 @@ def gaps(atoms, calc, soc=True) -> GapsResult:
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(atoms,
                                       soc=soc, direct=False,
-                                      calc=calc)
+                                      calc=calc, calculator=calculator)
     (evbm_ecbm_direct_gap,
      direct_skn_vbm, direct_skn_cbm) = get_gap_info(atoms,
                                                     soc=soc,
                                                     direct=True,
-                                                    calc=calc)
+                                                    calc=calc,
+                                                    calculator=calculator)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -247,7 +248,7 @@ def gaps(atoms, calc, soc=True) -> GapsResult:
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        theta, phi = get_spin_axis(atoms)
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         _, efermi = calc2eigs(calc, soc=True,
                               theta=theta, phi=phi)
     else:
@@ -280,13 +281,13 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(atoms, soc, direct, calc):
+def get_gap_info(atoms, soc, direct, calc, calculator):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
-        theta, phi = get_spin_axis(atoms)
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
@@ -477,11 +478,25 @@ class Result(ASRResult):
          returns=Result)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-def main(atoms: Atoms) -> Result:
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'basis': 'dzp',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     from asr.calculators import get_calculator
     from gpaw.mpi import serial_comm
-    calculaterecord = calculate(atoms=atoms)
+    calculaterecord = calculate(atoms=atoms, calculator=calculator)
 
     # Just some quality control before we start
     calc = get_calculator()(
@@ -514,8 +529,8 @@ def main(atoms: Atoms) -> Result:
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    gaps_nosoc = gaps(atoms, calc, soc=False)
-    gaps_soc = gaps(atoms, calc, soc=True)
+    gaps_nosoc = gaps(atoms, calc, soc=False, calculator=calculator)
+    gaps_soc = gaps(atoms, calc, soc=True, calculator=calculator)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
     return Result.fromdata(
