@@ -32,7 +32,7 @@ def angle_between(v1, v2):
 
 
 # Rotate vector counter-clockwise for positive angles, and vv.sa
-def rot_vec(v, th):
+def rot_vec(v, th): 
     rot_matrix = [ [np.cos(th), -np.sin(th)],    
                    [np.sin(th), np.cos(th)] ]
     return np.dot(rot_matrix, v)
@@ -120,7 +120,7 @@ def CustomSort(vec, sort_vec):
 
 
 
-def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_internal_angle, max_internal_angle):
+def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_internal_angle, max_internal_angle):
 
     # ----------------- DEFINING LATTICES  ------------------
 
@@ -222,7 +222,7 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
         for j in range(len(moduli_b)):
             strain_ij = max([abs(moduli_a[i] - moduli_b[j]) / moduli_a[i] * 100,
                              abs(moduli_a[i] - moduli_b[j]) / moduli_b[j] * 100])
-            if abs(moduli_a[i] - moduli_b[j]) <= tol_modulus and strain_ij < max_strain:
+            if strain_ij < max_strain:
                 angle_ij = angle_between(vectors_a[i], vectors_b[j])
                 match_a.append(vectors_a[i])
                 match_b.append(vectors_b[j])
@@ -401,10 +401,8 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
 
 
 
-@command('asr.findmoire',
-         creates=['moirecells.json', 'moirecells.cells'])
+@command('asr.findmoire')
 @option('--max-coef', type=int, help='Max coefficient for linear combinations of the starting vectors')
-@option('--tol-modulus', type=float, help='Tolerance over vector moduli difference for finding matches')
 @option('--tol-theta', type=float, help='Tolerance over rotation angle difference between matching vector pairs')
 @option('--store-all', type=bool, help='True: store all the possible matches. False: store only unique supercell')
 @option('--scan-all', type=bool, help='True: scan linear combinations in all the XY plane. False: scan only the upper half')
@@ -416,7 +414,7 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_modulus, tol_theta, store_al
 @option('--overwrite', type=bool, help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
 @option('--database', type=str, help='Path of the .db database file for retrieving structural information')
 @option('--uids', type=str, help='Path of the file containing the unique ID list of the materials to combine')
-def main(max_coef: int = 10, tol_modulus: float = 0.8, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: bool = False, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
+def main(max_coef: int = 10, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: str = False, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
 
     db = connect(database)
 
@@ -439,11 +437,14 @@ def main(max_coef: int = 10, tol_modulus: float = 0.8, tol_theta: float = 0.05, 
             min_intern = min_internal_angle / rad2deg
 
             if overwrite == True:
-                Path(f"{workdir}/moirecells.json").unlink(missing_ok=True)
-                Path(f"{workdir}/moirecells.cells").unlink(missing_ok=True)
+                try:
+                    Path(f"{workdir}/moirecells.json").unlink()
+                    Path(f"{workdir}/moirecells.cells").unlink()
+                except:
+                    pass
 
             if Path(f"{workdir}/moirecells.json").exists() == False:
-                MatchCells(monos[i], monos[j], workdir, max_coef, tol_modulus, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_intern, max_intern)
+                MatchCells(monos[i], monos[j], workdir, max_coef, tol_theta, store_all, scan_all, sort, max_strain, max_number_of_atoms, min_intern, max_intern)
 
             
 
