@@ -201,7 +201,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
     nromega : int
         Number of pump frequencies.
     """
-
     from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world
