@@ -199,7 +199,10 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
                                job_num=job_num))
                 if is_asr_command:
-                    with set_defaults(defaults):
+                    if defaults:
+                        with set_defaults(defaults):
+                            func.cli(args=args)
+                    else:
                         func.cli(args=args)
                 else:
                     sys.argv = [mod.__name__] + args

@@ -1182,6 +1182,12 @@ def setup_cli(wrapped, wrapper, defparams, parameters):
         else:
             default = defparams.get(name, None)
 
+        if 'type' in param:
+            try:
+                param['type'].default = default
+            except AttributeError:
+                pass
+
         if argtype == 'option':
             command = co(show_default=True, default=default,
                          *alias, **param)(command)

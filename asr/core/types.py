@@ -46,7 +46,9 @@ class DictStr(click.ParamType):
         """Convert string to a dictionary."""
         if isinstance(value, dict):
             return value
-        return parse_dict_string(value)
+        default = getattr(self, 'default', None)
+        print('default', default)
+        return parse_dict_string(value, default)
 
 
 def clickify_docstring(doc):
