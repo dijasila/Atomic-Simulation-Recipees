@@ -179,6 +179,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
          bandfactor: int = 4, eta: float = 0.05,
          maxomega: float = 10.0, nromega: int = 1000) -> Result:
     """Calculate the SHG spectrum, only independent tensor elements.
+
     The recipe computes the SHG spectrum. The tensor in general have 18 independent
     tensor elements (since it is symmetric). However, the point group symmety reduces
     the number of independent tensor elements.
