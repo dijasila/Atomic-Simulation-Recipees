@@ -155,11 +155,10 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
         Set of keys to exclude from parameter description.
 
     """
-    result = data[f'results-{name}.json']
     recipe = get_recipe_from_name(name)
-    if 'params' in result.metadata:
-        params = result.metadata.params
-        description = str(result.metadata.params)
+    if (f'results-{name}.json' in data
+       and 'params' in data[f'results-{name}.json'].metadata):
+        params = data[f'results-{name}.json'].metadata.params
         header = ''
     else:
         params = recipe.get_defaults()
