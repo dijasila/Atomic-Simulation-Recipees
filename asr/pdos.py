@@ -77,9 +77,8 @@ def webpanel(result, row, key_descriptions):
             'Projected band structure and DOS (PBE)',
             description=description),
         columns=[[],
-                 [fig(describe_entry('pbe-pdos_nosoc.png',
-                                     description=explanation),
-                      link='empty')]],
+                 [describe_entry(fig('pbe-pdos_nosoc.png', link='empty'),
+                                 description=explanation)]],
         plot_descriptions=[{'function': plot_pdos_nosoc,
                             'filenames': ['pbe-pdos_nosoc.png']}],
         sort=13)
