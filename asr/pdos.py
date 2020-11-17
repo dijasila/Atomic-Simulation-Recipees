@@ -65,8 +65,22 @@ def webpanel(result, row, key_descriptions):
     parameter_description = entry_parameter_description(
         row.data,
         'asr.pdos@calculate')
+    dependencies_parameter_descriptions = ''
+    for dependency, exclude_keys in zip(
+            ['asr.gs@calculate'],
+            [set(['kpts', 'nbands',
+                  'txt', 'fixdensity', 'verbose', 'symmetry',
+                  'idiotproof', 'maxiter', 'hund', 'random',
+                  'experimental', 'basis', 'setups'])]
+    ):
+        epd = entry_parameter_description(
+            row.data,
+            dependency,
+            exclude_keys=exclude_keys)
+        dependencies_parameter_descriptions += f'\n{epd}'
     explanation = ('Orbital projected density of states without spin-orbit coupling\n\n'
-                   + parameter_description)
+                   + parameter_description
+                   + dependencies_parameter_descriptions)
 
     # Projected band structure and DOS panel
     description = ('Orbital projected band structure '
