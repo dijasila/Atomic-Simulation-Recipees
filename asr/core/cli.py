@@ -1,6 +1,6 @@
 """ASR command line interface."""
 import sys
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, List
 import asr
 from asr.core import read_json, chdir, ASRCommand, DictStr, set_defaults
 import click
@@ -14,32 +14,32 @@ import importlib
 prt = partial(parprint, flush=True)
 
 
-def format(content, indent=0, title=None, pad=2):
-    colwidth_c = []
-    for row in content:
-        if isinstance(row, str):
-            continue
-        for c, element in enumerate(row):
-            nchar = len(element)
-            try:
-                colwidth_c[c] = max(colwidth_c[c], nchar)
-            except IndexError:
-                colwidth_c.append(nchar)
+# def format(content, indent=0, title=None, pad=2):
+#     colwidth_c = []
+#     for row in content:
+#         if isinstance(row, str):
+#             continue
+#         for c, element in enumerate(row):
+#             nchar = len(element)
+#             try:
+#                 colwidth_c[c] = max(colwidth_c[c], nchar)
+#             except IndexError:
+#                 colwidth_c.append(nchar)
 
-    output = ''
-    if title:
-        output = f'\n{title}\n'
-    for row in content:
-        out = ' ' * indent
-        if isinstance(row, str):
-            output += f'{row}'
-            continue
-        for colw, desc in zip(colwidth_c, row):
-            out += f'{desc: <{colw}}' + ' ' * pad
-        output += out
-        output += '\n'
+#     output = ''
+#     if title:
+#         output = f'\n{title}\n'
+#     for row in content:
+#         out = ' ' * indent
+#         if isinstance(row, str):
+#             output += f'{row}'
+#             continue
+#         for colw, desc in zip(colwidth_c, row):
+#             out += f'{desc: <{colw}}' + ' ' * pad
+#         output += out
+#         output += '\n'
 
-    return output
+#     return output
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -353,15 +353,61 @@ def cache():
     ...
 
 
+def get_item(attrs: List[str], obj):
+
+    for attr in attrs:
+        try:
+            obj = getattr(obj, attr)
+        except AttributeError:
+            obj = obj[attr]
+
+    return obj
+
+
 @cache.command()
-def ls():
-    from asr.core.command import single_run_file_cache
+@click.argument('functionname', required=False)
+@click.option('-f', '--formatting',
+              default=('run_specification.name '
+                       'run_specification.parameters '
+                       'result'), type=str)
+@click.option('-s', '--sort',
+              default='run_specification.name', type=str)
+def ls(functionname, formatting, sort):
+    from asr.core.command import full_feature_file_cache
 
-    single_run_file_cache.cache_dir = Path('.')
-    records = single_run_file_cache.select()
+    records = full_feature_file_cache.select()
 
+    records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
+    items = formatting.split()
+    formats = []
+    for i, item in enumerate(items):
+        item, *fmt = item.split(':')
+        if fmt:
+            fmt = fmt[0]
+        items[i] = item
+        formats.append(fmt)
+    rows = [[item.split('.')[-1] for item in items]]
     for record in records:
-        print(record)
+        run_spec = record.run_specification
+        if functionname and functionname != run_spec.name:
+            continue
+        row = []
+        for item, fmt in zip(items, formats):
+            obj = get_item(item.split('.'), record)
+            if not fmt:
+                fmt = ''
+            row.append(format(obj, fmt))
+        rows.append(row)
+
+    columnwidths = [0] * len(items)
+    for row in rows:
+        for i, column in enumerate(row):
+            columnwidths[i] = max(columnwidths[i], len(column))
+
+    for row in rows:
+        for i, column in enumerate(row):
+            row[i] = column.rjust(columnwidths[i], ' ')
+        print(' '.join(row))
 
 
 def draw_plotly_graph(G):
