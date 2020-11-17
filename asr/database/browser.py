@@ -162,7 +162,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
         header = ''
     else:
         params = recipe.get_defaults()
-        header = ('No parameters can be found, meaning that'
+        header = ('No parameters can be found, meaning that '
                   'the recipe was probably run with the '
                   'default parameter set below\n'
                   '<b>Default parameters</b>')
