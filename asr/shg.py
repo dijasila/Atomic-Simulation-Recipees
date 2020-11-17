@@ -167,17 +167,40 @@ class Result(ASRResult):
          returns=Result)
 @option('--gs', help='Ground state on which response is based',
         type=str)
-@option('--kptdensity', help='K-point density', type=float)
+@option('--kptdensity', help='K-point density [1/Ang]', type=float)
 @option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
         type=str)
 @option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor')
 @option('--eta', help='Broadening [eV]', type=float)
 @option('--wmax', help='Max pump frequency [eV]', type=float)
 @option('--nw', help='Number of pump frequencies', type=int)
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
          bandfactor: int = 4, eta: float = 0.05,
          wmax: float = 10.0, nw: int = 1000) -> Result:
+    """ Calculate the SHG spectrum, only independent tensor elements.
+
+    The recipe computes the SHG spectrum. The tensor in general have 18 independent
+    tensor elements (since it is symmetric). However, the point group symmety reduces
+    the number of independent tensor elements.
+    The SHG spectrum is calculated using perturbation theory, where the perturbation
+    can be written in either the length gauge (r.E) or velocity gauge (p.A).
+
+    Parameters
+    ----------
+    gs : str
+        The ground state filename.
+    kptdensity : float
+       K-point density. 
+    gauge : int
+        Number of unoccupied bands: (#occ. bands) * bandfactor.
+    eta : float
+        Broadening used for finding the spectrum.
+    wmax : float
+        Max pump frequency.
+    nw : int
+        Number of pump frequencies.
+    """
 
     from ase.io import read
     from gpaw import GPAW
@@ -236,8 +259,8 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, gauge: str = 'lg',
                 shg = np.load(shg_name)
 
             # Make the output data
-            fnames.append(shg_name)
-            if nd == 2:
+            # fnames.append(shg_name)
+            if nd == 3:
                 chi_dict[pol] = shg[1]
             else:
                 # Make it a surface chi instead of bulk chi
@@ -326,9 +349,9 @@ def plot_shg(row, *filename):
             ax.set_title(figtitle)
         ax.set_xlabel(r'Pump photon energy $\hbar\omega$ (eV)')
         if nd == 2:
-            ax.set_ylabel(r'$\chi^{(2)}_{\gamma \alpha \beta}$ (nm$^2$/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_$'+f'{pol}$ (nm$^2$/V)')
         else:
-            ax.set_ylabel(r'$\chi^{(2)}_{\gamma \alpha \beta}$ (nm/V)')
+            ax.set_ylabel(r'$\chi^{(2)}_$'+f'{pol}$ (nm/V)')
         ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
 
         # Add the legend
