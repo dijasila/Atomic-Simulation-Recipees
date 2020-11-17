@@ -3,6 +3,7 @@ import numpy as np
 from asr.core import command, option, read_json, ASRResult, prepare_result
 
 
+@prepare_result
 class CalculateResult(ASRResult):
 
     phi0_km: np.ndarray
@@ -224,9 +225,6 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
-
-    if result.Topology == 'Not checked':
-        return []
 
     parameter_description = entry_parameter_description(
         row.data,

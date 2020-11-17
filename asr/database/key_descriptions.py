@@ -4,7 +4,16 @@ from asr.dimensionality import get_dimtypes
 # Style: "KVP: Long description !short description! [unit]
 
 key_descriptions = {
-    "berry": {"Topology": "KVP: Band topology !Topology!"},
+    "berry": {"Topology": "KVP: Band topology !Topology!",
+              "phi0_km": "Berry phase spectrum localized in k0",
+              "s0_km": "Spin of berry phases localized in k0",
+              "phi1_km": "Berry phase spectrum localized in k1",
+              "s1_km": "Spin of berry phases localized in k1",
+              "phi2_km": "Berry phase spectrum localized in k2",
+              "s2_km": "Spin of berry phases localized in k3",
+              "phi0_pi_km": "Berry phase spectrum at k2=pi localized in k0",
+              "s0_pi_km": "Spin of berry at phases at k2=pi localized in k0",
+    },
     "bse": {"E_B": "KVP: Exciton binding energy from BSE "
             "!Exc. bind. energy! [eV]"},
     "convex_hull": {
