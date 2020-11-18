@@ -156,7 +156,6 @@ def get_recipe_href(asr_name, name=None):
     -------
     link_name : str
     """
-
     if name is None:
         name = asr_name
     # ATM href only works to recipe main
