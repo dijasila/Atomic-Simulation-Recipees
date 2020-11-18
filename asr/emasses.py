@@ -720,8 +720,7 @@ class Result(ASRResult):
                        'asr.gs@calculate',
                        'asr.gs',
                        'asr.structureinfo',
-                       'asr.magnetic_anisotropy'],
-         returns=Result)
+                       'asr.magnetic_anisotropy'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
 def main(gpwfilename: str = 'gs.gpw') -> Result:
