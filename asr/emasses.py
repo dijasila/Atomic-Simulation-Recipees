@@ -279,9 +279,8 @@ def maeformat(mae):
 
 def get_emass_dict_from_row(row, has_mae=False):
     import numpy as np
-    from asr.core import read_json
     if has_mae:
-        results = read_json('results-asr.emasses@validate.json')
+        results = row.data['results-asr.emasses@validate.json']
     else:
         results = row.data.get('results-asr.emasses.json')
 
