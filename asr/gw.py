@@ -210,8 +210,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 
 
 @command(requires=['results-asr.gw@gw.json'],
-         dependencies=['asr.gw@gw',
-                       'asr.gw@gs'])
+         dependencies=['asr.gw@gw'])
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
@@ -338,10 +337,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+@command(requires=['gs_gw_nowfs.gpw',
+                   'results-asr.gw@empirical_mean_z.json',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure',
-                       'asr.gw@empirical_mean_z'],
+         dependencies=['asr.bandstructure', 'asr.gw@empirical_mean_z'],
          returns=Result)
 def main() -> Result:
     import numpy as np
