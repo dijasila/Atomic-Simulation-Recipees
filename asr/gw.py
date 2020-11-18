@@ -210,8 +210,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 
 
 @command(requires=['results-asr.gw@gw.json'],
-         dependencies=['asr.gw@gw',
-                       'asr.gw@gs'])
+         dependencies=['asr.gw@gw'])
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
@@ -338,10 +337,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+@command(requires=['gs_gw_nowfs.gpw',
+                   'results-asr.gw@empirical_mean_z.json',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure',
-                       'asr.gw@empirical_mean_z'],
+         dependencies=['asr.bandstructure', 'asr.gw@empirical_mean_z'],
          returns=Result)
 def main() -> Result:
     import numpy as np
@@ -384,8 +383,14 @@ def main() -> Result:
                       'gap_gw_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-
-        results.update(subresults)
+    else:
+        subresults = {'vbm_gw_nosoc': None,
+                      'cbm_gw_nosoc': None,
+                      'gap_dir_gw_nosoc': None,
+                      'gap_gw_nosoc': None,
+                      'kvbm_nosoc': None,
+                      'kcbm_nosoc': None}
+    results.update(subresults)
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
@@ -416,8 +421,14 @@ def main() -> Result:
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        results.update(subresults)
-
+    else:
+        subresults = {'vbm_gw': None,
+                      'cbm_gw': None,
+                      'gap_dir_gw': None,
+                      'gap_gw': None,
+                      'kvbm': None,
+                      'kcbm': None}
+    results.update(subresults)
     results.update({'efermi_gw_nosoc': efermi_nosoc,
                     'efermi_gw_soc': efermi_soc})
 
