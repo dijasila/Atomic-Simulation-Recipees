@@ -11,6 +11,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, List
+import warnings
 
 import numpy as np
 from ase.io import jsonio
@@ -78,18 +79,51 @@ def encode_json(data):
 
 
 def write_json(filename, data):
+    write_file(filename, encode_json(data))
+
+
+def write_file(filename, text):
     from pathlib import Path
     from ase.parallel import world
 
     with file_barrier([filename]):
         if world.rank == 0:
-            Path(filename).write_text(encode_json(data))
+            Path(filename).write_text(text)
+
+
+def dct_to_object(dct):
+    """Convert dictionary to object."""
+    from .results import decode_object, UnknownDataFormat
+    warnings.warn(
+        "asr.core.dct_to_object is renamed to asr.core.decode_object. "
+        "This function will be removed in a future release."
+        "Please update your scripts accordingly.",
+        DeprecationWarning)
+
+    try:
+        obj = decode_object(dct)
+        return obj
+    except UnknownDataFormat:
+        assert isinstance(dct, dict), 'Cannot convert dct to object!'
+        return dct
+
+
+def read_file(filename: str) -> str:
+    return Path(filename).read_text()
+
+
+def decode_json(text: str) -> dict:
+    dct = jsonio.decode(text)
+    return dct
 
 
 def read_json(filename):
-    from pathlib import Path
-    dct = jsonio.decode(Path(filename).read_text())
-    return dct
+    """Read json file."""
+    from .results import decode_object
+    text = read_file(filename)
+    literal_object = decode_json(text)
+    obj = decode_object(literal_object)
+    return obj
 
 
 def unlink(path: Union[str, Path], world=None):
@@ -166,3 +200,60 @@ def singleprec_dict(dct):
             dct[key] = singleprec_dict(value)
 
     return dct
+
+
+def get_recipe_from_name(name):
+    # Get a recipe from a name like asr.gs@postprocessing
+    import importlib
+    assert name.startswith('asr.'), \
+        'Not allowed to load recipe from outside of ASR.'
+    mod, func = parse_mod_func(name)
+    module = importlib.import_module(mod)
+    return getattr(module, func)
+
+
+def parse_mod_func(name):
+    # Split a module function reference like
+    # asr.relax@main into asr.relax and main.
+    mod, *func = name.split('@')
+    if not func:
+        func = ['main']
+
+    assert len(func) == 1, \
+        'You cannot have multiple : in your function description'
+
+    return mod, func[0]
+
+
+def get_dep_tree(name, reload=True):
+    # Get the tree of dependencies from recipe of "name"
+    # by following dependencies of dependencies
+    import importlib
+
+    tmpdeplist = [name]
+
+    for i in range(1000):
+        if i == len(tmpdeplist):
+            break
+        dep = tmpdeplist[i]
+        mod, func = parse_mod_func(dep)
+        module = importlib.import_module(mod)
+
+        assert hasattr(module, func), f'{module}.{func} doesn\'t exist'
+        function = getattr(module, func)
+        dependencies = function.dependencies
+        # if not dependencies and hasattr(module, 'dependencies'):
+        #     dependencies = module.dependencies
+
+        for dependency in dependencies:
+            tmpdeplist.append(dependency)
+    else:
+        raise AssertionError('Unreasonably many dependencies')
+
+    tmpdeplist.reverse()
+    deplist = []
+    for dep in tmpdeplist:
+        if dep not in deplist:
+            deplist.append(dep)
+
+    return deplist

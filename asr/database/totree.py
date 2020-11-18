@@ -1,4 +1,5 @@
-from asr.core import command, argument, option
+"""Convert database to folder tree."""
+from asr.core import command, argument, option, ASRResult
 from asr.utils import timed_print
 from pathlib import Path
 from datetime import datetime
@@ -156,7 +157,8 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
-@command('asr.database.totree')
+@command('asr.database.totree',
+         save_results_file=False)
 @argument('database', nargs=1, type=str)
 @option('--run/--dry-run', is_flag=True)
 @option('-s', '--selection', help='ASE-DB selection', type=str)
@@ -181,7 +183,7 @@ def main(database: str, run: bool = False, selection: str = '',
          ),
          sort: str = None, atomsfile: str = None,
          chunks: int = 1, copy: bool = False,
-         patterns: str = '*', update_tree: bool = False):
+         patterns: str = '*', update_tree: bool = False) -> ASRResult:
     """Unpack an ASE database to a tree of folders.
 
     This setup recipe can unpack an ASE database to into folders
@@ -206,19 +208,19 @@ def main(database: str, run: bool = False, selection: str = '',
     For all these examples, suppose you have a database named "database.db".
 
     Unpack database using default parameters:
-    >>> asr run "database.totree database.db --run"
+    $ asr run "database.totree database.db --run"
     Don't actually unpack the database but do a dry-run:
-    >>> asr run "database.totree database.db"
+    $ asr run "database.totree database.db"
     Only select a part of the database to unpack:
-    >>> asr run "database.totree database.db --selection natoms<3 --run"
+    $ asr run "database.totree database.db --selection natoms<3 --run"
     Set custom folder tree-structure:
-    >>> asr run "database.totree database.db
-    >>> ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
+    $ asr run "database.totree database.db
+    ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
 
     Divide the tree into 2 chunks (in case the study of the materials)
     is divided between 2 people). Also sort after number of atoms,
     so computationally expensive materials are divided evenly:
-    >>> asr run "database.totree database.db --sort natoms --chunks 2 --run"
+    $ asr run "database.totree database.db --sort natoms --chunks 2 --run"
 
     """
     from pathlib import Path

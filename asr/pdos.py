@@ -1,9 +1,11 @@
+"""Projected density of states."""
+from asr.core import command, option, read_json, ASRResult, prepare_result
 from collections import defaultdict
+import typing
 
 import numpy as np
 from ase import Atoms
 
-from asr.core import command, option, read_json
 from asr.utils import magnetic_atoms
 
 
@@ -55,15 +57,22 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 # ---------- Webpanel ---------- #
 
 
-def webpanel(row, key_descriptions):
-    from asr.database.browser import fig
-    # PDOS without spin-orbit coupling
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[],
-                         [fig('pbe-pdos_nosoc.png', link='empty')]],
-             'plot_descriptions': [{'function': plot_pdos_nosoc,
-                                    'filenames': ['pbe-pdos_nosoc.png']}],
-             'sort': 13}
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (fig,
+                                      describe_entry, WebPanel)
+    # Projected band structure and DOS panel
+    description = ('Orbital projected band structure '
+                   'and projected density of states, '
+                   'both without spin-orbit coupling')
+    panel = WebPanel(
+        title=describe_entry(
+            'Projected band structure and DOS (PBE)',
+            description=description),
+        columns=[[],
+                 [fig('pbe-pdos_nosoc.png', link='empty')]],
+        plot_descriptions=[{'function': plot_pdos_nosoc,
+                            'filenames': ['pbe-pdos_nosoc.png']}],
+        sort=13)
 
     return [panel]
 
@@ -81,7 +90,7 @@ def webpanel(row, key_descriptions):
          dependencies=['asr.gs'])
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity: float = 20.0, emptybands: int = 20):
+def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
     from asr.utils.refinegs import refinegs
     refinegs(selfc=False,
              kptdensity=kptdensity, emptybands=emptybands,
@@ -91,14 +100,49 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20):
 # ----- Fast steps ----- #
 
 
+@prepare_result
+class PdosResult(ASRResult):
+
+    efermi: float
+    symbols: typing.List[str]
+    energies: typing.List[float]
+    pdos_syl: typing.List[float]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        efermi="Fermi level [eV] of ground state with dense k-mesh.",
+        symbols="Chemical symbols.",
+        energies="Energy mesh of pdos results.",
+        pdos_syl=("Projected density of states [states / eV] for every set of keys "
+                  "'s,y,l', that is spin, symbol and orbital l-quantum number.")
+    )
+
+
+@prepare_result
+class Result(ASRResult):
+
+    dos_at_ef_nosoc: float
+    dos_at_ef_soc: float
+    pdos_nosoc: PdosResult
+    pdos_soc: PdosResult
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        dos_at_ef_nosoc=("Density of states at the Fermi "
+                         "level w/o soc [states / (unit cell * eV)]"),
+        dos_at_ef_soc=("Density of states at the Fermi "
+                       "level [states / (unit cell * eV)])"),
+        pdos_nosoc="Projected density of states w/o soc.",
+        pdos_soc="Projected density of states"
+    )
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.pdos',
          requires=['results-asr.gs.json', 'pdos.gpw'],
          tests=tests,
          dependencies=['asr.gs', 'asr.pdos@calculate'],
-         webpanel=webpanel)
-def main():
+         returns=Result)
+def main() -> Result:
     from gpaw import GPAW
-    from asr.core import singleprec_dict
     from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
 
@@ -121,25 +165,9 @@ def main():
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = singleprec_dict(pdos(dos1, calc))
+    results['pdos_nosoc'] = pdos(dos1, calc)
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = singleprec_dict(pdos(dos2, calc))
-
-    # Log key descriptions
-    kd = {}
-    kd['pdos_nosoc'] = ('Projected density of states '
-                        'without spin-orbit coupling '
-                        '(PDOS no soc)')
-    kd['pdos_soc'] = ('Projected density of states '
-                      'with spin-orbit coupling '
-                      '(PDOS w. soc)')
-    kd['dos_at_ef_nosoc'] = ('KVP: Density of states at the Fermi energy '
-                             'without spin-orbit coupling '
-                             '(DOS at ef no soc) [states/eV]')
-    kd['dos_at_ef_soc'] = ('KVP: Density of states at the Fermi energy '
-                           'with spin-orbit coupling '
-                           '(DOS at ef w. soc) [states/eV]')
-    results.update({'__key_descriptions__': kd})
+    results['pdos_soc'] = pdos(dos2, calc)
 
     return results
 
@@ -155,11 +183,16 @@ def pdos(dos, calc):
 
     Main functionality to do a single pdos calculation.
     """
+    from asr.core import singleprec_dict
+
     # Do calculation
     e_e, pdos_syl, symbols, ef = calculate_pdos(dos, calc)
 
-    return {'pdos_syl': pdos_syl, 'symbols': symbols,
-            'energies': e_e, 'efermi': ef}
+    return PdosResult.fromdata(
+        efermi=ef,
+        symbols=symbols,
+        energies=e_e,
+        pdos_syl=singleprec_dict(pdos_syl))
 
 
 def calculate_pdos(dos, calc):
@@ -338,6 +371,7 @@ def plot_pdos(row, filename, soc=True,
         return
 
     import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
 
     # Extract raw data
@@ -413,10 +447,11 @@ def plot_pdos(row, filename, soc=True,
 
     # Annotate E_F
     xlim = ax.get_xlim()
-    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.01
+    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
     text = plt.text(x0, ef - row.get('evac', 0),
                     r'$E_\mathrm{F}$',
-                    ha='left',
+                    fontsize=rcParams['font.size'] * 1.25,
+                    ha='right',
                     va='bottom')
 
     text.set_path_effects([

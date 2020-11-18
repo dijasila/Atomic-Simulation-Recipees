@@ -1,9 +1,11 @@
-from asr.core import command, option, read_json
+"""Infrared polarizability."""
+import typing
+from asr.core import command, option, read_json, ASRResult, prepare_result
 
 import numpy as np
 
 
-def webpanel(row, key_descriptions):
+def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig, table
 
     opt = table(
@@ -145,6 +147,32 @@ def create_plot(row, *fnames):
         plt.savefig(fnames[2])
 
 
+@prepare_result
+class Result(ASRResult):
+
+    alpha_wvv: typing.List[typing.List[typing.List[complex]]]
+    omega_w: typing.List[float]
+    alphax_lat: complex
+    alphay_lat: complex
+    alphaz_lat: complex
+    alphax: complex
+    alphay: complex
+    alphaz: complex
+
+    key_descriptions = {
+        "alpha_wvv": "Lattice polarizability.",
+        "omega_w": "Frequency grid [eV].",
+        "alphax_lat": "Lattice polarizability at omega=0 (x-direction).",
+        "alphay_lat": "Lattice polarizability at omega=0 (y-direction).",
+        "alphaz_lat": "Lattice polarizability at omega=0 (z-direction).",
+        "alphax": "Lattice+electronic polarizability at omega=0 (x-direction).",
+        "alphay": "Lattice+electronic polarizability at omega=0 (y-direction).",
+        "alphaz": "Lattice+electronic polarizability at omega=0 (z-direction).",
+    }
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(
     "asr.infraredpolarizability",
     dependencies=["asr.phonons", "asr.borncharges", "asr.polarizability"],
@@ -154,11 +182,11 @@ def create_plot(row, *fnames):
         "results-asr.borncharges.json",
         "results-asr.polarizability.json",
     ],
-    webpanel=webpanel,
+    returns=Result,
 )
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
-def main(nfreq: int = 300, eta: float = 1e-2):
+def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     from ase.io import read
 
     # Get relevant atomic structure

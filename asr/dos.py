@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from asr.core import command, option
   
 def webpanel(row, key_descriptions):
@@ -7,6 +8,10 @@ def webpanel(row, key_descriptions):
              'columns': [[fig('dos.png')], []],
              'plot_descriptions': [{'function': plot,
                                     'filenames': ['dos.png']}]}
+=======
+"""Density of states."""
+from asr.core import command, option, ASRResult
+>>>>>>> origin/master
 
 
     return [panel]
@@ -19,7 +24,7 @@ def webpanel(row, key_descriptions):
 @option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity', type=float)
 def main(name: str = 'dos.gpw', filename: str = 'dos.json',
-         kptdensity: float = 12.0):
+         kptdensity: float = 12.0) -> ASRResult:
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
@@ -84,6 +89,20 @@ def plot(row, fname):
     return plt.gca()
 
 
+<<<<<<< HEAD
+=======
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import fig
+
+    panel = ('Density of states (PBE)',
+             [[fig('dos.png')], []])
+
+    things = [(plot, ['dos.png'])]
+
+    return panel, things
+
+
+>>>>>>> origin/master
 if __name__ == '__main__':
     main.cli()
 

@@ -1,10 +1,15 @@
-from asr.core import command, option
+from asr.core import (command, option, decode_object,
+                      ASRResult, get_recipe_from_name)
+import copy
 import sys
+import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 import traceback
 import os
+from .webpanel import WebPanel
 
+import numpy as np
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
@@ -42,10 +47,16 @@ def create_table(row,  # AtomsRow
         value = row.get(key)
         if value is not None:
             if isinstance(value, float):
+                old_value = value
                 value = '{:.{}f}'.format(value, digits)
+                if hasattr(old_value, '__explanation__'):
+                    value = describe_entry(value, old_value.__explanation__)
             elif not isinstance(value, str):
                 value = str(value)
-            desc, unit = key_descriptions.get(key, ['', key, ''])[1:]
+
+            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
+            if hasattr(key, '__explanation__'):
+                desc = describe_entry(desc, key.__explanation__)
             if unit:
                 value += ' ' + unit
             table.append((desc, value))
@@ -65,6 +76,111 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+class ExplainedStr(str):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+class ExplainedFloat(float):
+    """A mutable string class that support explanations."""
+
+    __explanation__: str
+
+
+value_type_to_explained_type = {}
+
+
+def describe_entry(value, description):
+    """Describe website entry.
+
+    This function sets an __explanation__ attribute on the given object
+    which is used by the web application to generate additional explanations.
+    """
+    if hasattr(value, '__explanation__'):
+        value.__explanation__ += '\n' + description
+        return value
+
+    value_type = type(value)
+    if value_type in value_type_to_explained_type:
+        value = value_type_to_explained_type[value_type](value)
+        value.__explanation__ = description
+        return value
+
+    class ExplainedType(value_type):
+
+        __explanation__: str
+
+    value_type_to_explained_type[value_type] = ExplainedType
+    return describe_entry(value, description)
+
+
+def describe_entries(rows, description):
+    for ir, row in enumerate(rows):
+        for ic, value in enumerate(row):
+            if isinstance(value, dict):
+                raise ValueError(f'Incompatible value={value}')
+            value = describe_entry(value, description)
+            rows[ir][ic] = value
+    return rows
+
+
+def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
+    lst = []
+    for key, value in dct.items():
+        if key in exclude_keys:
+            continue
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            lst2 = dict_to_list(value,
+                                indent=indent + 2,
+                                char=char)
+            lst.extend([indent * char + f'<b>{key}</b>='] + lst2)
+        else:
+            lst.append(indent * char + f'<b>{key}</b>={value}')
+    return lst
+
+
+def entry_parameter_description(data, name, exclude_keys: set = set()):
+    """Make a parameter description.
+
+    Parameters
+    ----------
+    data: dict
+        Data object containing result objects (typically row.data).
+    name: str
+        Name of recipe from which to extract parameters, e.g. "asr.gs@calculate".
+    exclude_keys: set
+        Set of keys to exclude from parameter description.
+
+    """
+    result = data[f'results-{name}.json']
+    recipe = get_recipe_from_name(name)
+    if 'params' in result.metadata:
+        params = result.metadata.params
+        description = str(result.metadata.params)
+        header = ''
+    else:
+        params = recipe.get_defaults()
+        header = ('No parameters can be found, meaning that'
+                  'the recipe was probably run with the '
+                  'default parameter set below\n'
+                  '<b>Default parameters</b>')
+
+    lst = dict_to_list(params, exclude_keys=exclude_keys)
+    lst[0] = '<pre><code>' + lst[0]
+    lst[-1] = lst[-1] + '</code></pre>'
+    string = '\n'.join(lst)
+    description = (
+        '<b>Calculation parameters</b>\n'
+        + header
+        + string
+    )
+
+    return description
+
+
 def val2str(row, key: str, digits=2) -> str:
     value = row.get(key)
     if value is not None:
@@ -77,16 +193,54 @@ def val2str(row, key: str, digits=2) -> str:
     return value
 
 
-def fig(filename: str, link: str = None) -> 'Dict[str, Any]':
+def fig(filename: str, link: str = None,
+        caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
     dct = {'type': 'figure', 'filename': filename}
     if link:
         dct['link'] = link
+    if caption:
+        dct['caption'] = caption
     return dct
 
 
 def table(row, title, keys, kd={}, digits=2):
     return create_table(row, [title, 'Value'], keys, kd, digits)
+
+
+def make_bold(text: str) -> str:
+    return f'<b>{text}</b>'
+
+
+def matrixtable(M, digits=2, unit='',
+                rowlabels=None, columnlabels=None, title=None):
+    shape_of_M = np.shape(M)
+    shape = (shape_of_M[0] + 1, shape_of_M[1] + 1)
+
+    rows = []
+    for i in range(0, shape[0]):
+        rows.append([])
+        for j in range(0, shape[1]):
+            rows[i].append("")
+
+    for column_index in range(shape[1]):
+        if column_index == 0 and title is not None:
+            rows[0][0] = make_bold(title)
+        elif column_index > 0 and columnlabels is not None:
+            rows[0][column_index] = make_bold(columnlabels[column_index - 1])
+
+    for row_index in range(shape[0]):
+        if row_index > 0:
+            rows[row_index][0] = make_bold(rowlabels[row_index - 1])
+
+    for i in range(1, shape[0]):
+        for j in range(1, shape[1]):
+            value = M[i - 1][j - 1]
+            rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
+
+    table = dict(type='table',
+                 rows=rows)
+    return table
 
 
 def merge_panels(page):
@@ -127,41 +281,101 @@ def merge_panels(page):
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+        panel = WebPanel(**panel)
         page[title] = panel
+
+
+def extract_recipe_from_filename(filename: str):
+    """Parse filename and return recipe name."""
+    pattern = re.compile('results-(.*)\.json')  # noqa
+    m = pattern.match(filename)
+    return m.group(1)
+
+
+def is_results_file(filename):
+    return filename.startswith('results-') and filename.endswith('.json')
+
+
+class RowWrapper:
+
+    def __init__(self, row):
+        self._row = row
+        self._data = copy.deepcopy(row.data)
+
+    def __getattr__(self, key):
+        """Wrap attribute lookup of AtomsRow."""
+        if key == 'data':
+            return self._data
+        return getattr(self._row, key)
+
+    def __contains__(self, key):
+        """Wrap contains of atomsrow."""
+        return self._row.__contains__(key)
 
 
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
-    from asr.core import get_recipes
     page = {}
     exclude = set()
 
+    row = RowWrapper(row)
+
+    result_objects = []
+    for key, value in row.data.items():
+        if is_results_file(key):
+            obj = decode_object(value)
+
+            # Below is to support old C2DB databases that contain
+            # hacked result files with no asr_name
+            if not isinstance(obj, ASRResult):
+                recipename = extract_recipe_from_filename(key)
+                value['__asr_hacked__'] = recipename
+                obj = decode_object(value)
+            result_objects.append(obj)
+        else:
+            obj = value
+        row.data[key] = obj
+        assert row.data[key] == obj
+
+    panel_data_sources = {}
     # Locate all webpanels
-    recipes = get_recipes()
-    for recipe in recipes:
-        if not recipe.webpanel:
+    for result in result_objects:
+        if 'ase_webpanel' not in result.get_formats():
             continue
-        # We assume that there should be a results file in
-        if f'results-{recipe.name}.json' not in row.data:
+        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        if not panels:
             continue
-        try:
-            panels = recipe.webpanel(row, key_descriptions)
-        except Exception:
-            traceback.print_exc()
-            panels = []
-        for thispanel in panels:
-            assert 'title' in thispanel, f'No title in {recipe.name} webpanel'
-            panel = {'columns': [[], []],
-                     'plot_descriptions': [],
-                     'sort': 99}
-            panel.update(thispanel)
-            paneltitle = panel['title']
+
+        for panel in panels:
+            assert 'title' in panel, f'No title in {result} webpanel'
+            if not isinstance(panel, WebPanel):
+                panel = WebPanel(**panel)
+            paneltitle = describe_entry(panel['title'], description='')
+
             if paneltitle in page:
+                panel_data_sources[paneltitle].append(result)
                 page[paneltitle].append(panel)
             else:
+                panel_data_sources[paneltitle] = [result]
                 page[paneltitle] = [panel]
+
+    for paneltitle, data_sources in panel_data_sources.items():
+        description = [
+            '<b>General Panel Information</b>',
+            'This panel contains information calculated with '
+            'the following ASR Recipes:',
+        ]
+        for result in data_sources:
+            asr_name = (result.metadata.asr_name
+                        if 'asr_name' in result.metadata else '(Unknown data source)')
+            link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
+                         f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+            description.append(link_name)
+
+        description = '\n'.join(description)
+        describe_entry(paneltitle, description=description)
 
     merge_panels(page)
     page = [panel for _, panel in page.items()]
@@ -234,7 +448,8 @@ def layout(row: AtomsRow,
 @option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
-def main(database: str = 'database.db', only_figures: bool = False):
+def main(database: str = 'database.db',
+         only_figures: bool = False) -> ASRResult:
     """Open results in web browser."""
     import subprocess
     from pathlib import Path

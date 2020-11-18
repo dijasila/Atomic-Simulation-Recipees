@@ -1,16 +1,48 @@
-"""Relax an atomic structure.
+"""Relax atomic structures.
 
 By defaults read from "unrelaxed.json" from disk and relaxes
 structures and saves the final relaxed structure in "structure.json".
 
-The relax recipe has a couple of note-worthy features::
+The relax recipe has a couple of note-worthy features:
 
   - It automatically handles structures of any dimensionality
   - It tries to enforce symmetries
   - It continously checks after each step that no symmetries are broken,
     and raises an error if this happens.
-"""
 
+
+The recipe also supports relaxing structure with vdW forces using DFTD3.
+To install DFTD3 do
+
+.. code-block:: console
+
+   $ mkdir ~/DFTD3 && cd ~/DFTD3
+   $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
+   $ tar -zxf dftd3.tgz
+   $ make
+   $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
+   $ source ~/.bashrc
+
+Examples
+--------
+Relax without using DFTD3
+
+.. code-block:: console
+
+   $ ase build -x diamond Si unrelaxed.json
+   $ asr run "relax --nod3"
+
+Relax using the LDA exchange-correlation functional
+
+.. code-block:: console
+
+   $ ase build -x diamond Si unrelaxed.json
+   $ asr run "relax --calculator {'xc':'LDA',...}"
+
+
+
+"""
+import typing
 from pathlib import Path
 import numpy as np
 from ase.io import write, Trajectory
@@ -18,7 +50,7 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
-from asr.core import command, option, AtomsFile, DictStr
+from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
 from math import sqrt
 import time
 
@@ -233,8 +265,42 @@ def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
+@prepare_result
+class Result(ASRResult):
+    """Result class for :py:func:`asr.relax.main`."""
+
+    version: int = 0
+
+    atoms: Atoms
+    images: typing.List[Atoms]
+    etot: float
+    edft: float
+    spos: np.ndarray
+    symbols: typing.List[str]
+    a: float
+    b: float
+    c: float
+    alpha: float
+    beta: float
+    gamma: float
+    key_descriptions = \
+        {'atoms': 'Relaxed atomic structure.',
+         'images': 'Path taken when relaxing structure.',
+         'etot': 'Total energy [eV]',
+         'edft': 'DFT total energy [eV]',
+         'spos': 'Array: Scaled positions',
+         'symbols': 'Array: Chemical symbols',
+         'a': 'Cell parameter a [Ang]',
+         'b': 'Cell parameter b [Ang]',
+         'c': 'Cell parameter c [Ang]',
+         'alpha': 'Cell parameter alpha [deg]',
+         'beta': 'Cell parameter beta [deg]',
+         'gamma': 'Cell parameter gamma [deg]'}
+
+
 @command('asr.relax',
-         creates=['structure.json'])
+         creates=['structure.json'],
+         returns=Result)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
@@ -265,40 +331,39 @@ def main(atoms: Atoms,
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
                              'charge': 0},
-         tmp_atoms: Atoms = None,
+         tmp_atoms: typing.Optional[Atoms] = None,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
          fmax: float = 0.01,
-         enforce_symmetry: bool = True):
+         enforce_symmetry: bool = True) -> Result:
     """Relax atomic positions and unit cell.
 
-    By default, this recipe takes the atomic structure in
-    'unrelaxed.json' and relaxes the structure including the DFTD3 van
-    der Waals correction. The relaxed structure is saved to
-    `structure.json` which can be processed by other recipes.
+    The relaxed structure is saved to `structure.json` which can be processed
+    by other recipes.
 
-    To install DFTD3 do::
-
-      $ mkdir ~/DFTD3 && cd ~/DFTD3
-      $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
-      $ tar -zxf dftd3.tgz
-      $ make
-      $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
-      $ source ~/.bashrc
-
-    Examples
-    --------
-    Relax without using DFTD3::
-
-      $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --nod3"
-
-    Relax using the LDA exchange-correlation functional::
-
-      $ ase build -x diamond Si unrelaxed.json
-      $ asr run "relax --calculator {'xc':'LDA',...}"
+    Parameters
+    ----------
+    atoms
+        Atomic structure to relax.
+    calculator
+        Calculator dictionary description.
+    tmp_atoms
+        Atoms from a restarted calculation.
+    tmp_atoms_file
+        Filename to save relaxed trajectory in.
+    d3
+        Relax using DFTD3.
+    fixcell
+        Fix cell when relaxing, thus only relaxing atomic positions.
+    allow_symmetry_breaking
+        Allow structure to break symmetry.
+    fmax
+        Maximum force tolerance.
+    enforce_symmetry
+        Enforce symmetries. When enabled, the atomic structure, forces and
+        stresses will be symmetrized at each step of the relaxation.
 
     """
     from ase.calculators.calculator import get_calculator_class
@@ -363,43 +428,31 @@ def main(atoms: Atoms,
     etot = atoms.get_potential_energy()
 
     cellpar = atoms.cell.cellpar()
-    results = {'etot': etot,
-               'edft': edft,
-               'a': cellpar[0],
-               'b': cellpar[1],
-               'c': cellpar[2],
-               'alpha': cellpar[3],
-               'beta': cellpar[4],
-               'gamma': cellpar[5],
-               'spos': atoms.get_scaled_positions(),
-               'symbols': atoms.get_chemical_symbols()}
 
-    # Calculator specific metadata
-    if calculatorname == 'gpaw':
-        # Get setup fingerprints
-        fingerprint = {}
-        for setup in calc.setups:
-            fingerprint[setup.symbol] = setup.fingerprint
-        results['__log__'] = {'nvalence': calc.setups.nvalence,
-                              'setup_fingerprints': fingerprint}
+    # XXX
+    # metadata = calc.get_metadata()
 
-    results['__key_descriptions__'] = \
-        {'etot': 'Total energy [eV]',
-         'edft': 'DFT total energy [eV]',
-         'spos': 'Array: Scaled positions',
-         'symbols': 'Array: Chemical symbols',
-         'a': 'Cell parameter a [Ang]',
-         'b': 'Cell parameter b [Ang]',
-         'c': 'Cell parameter c [Ang]',
-         'alpha': 'Cell parameter alpha [deg]',
-         'beta': 'Cell parameter beta [deg]',
-         'gamma': 'Cell parameter gamma [deg]'}
-
-    # For nm set magnetic moments to zero XXX
     # Save atomic structure
     write('structure.json', atoms)
 
-    return results
+    trajectory = Trajectory(tmp_atoms_file, 'r')
+    images = []
+    for image in trajectory:
+        images.append(image)
+    return Result.fromdata(
+        atoms=atoms.copy(),
+        etot=etot,
+        edft=edft,
+        a=cellpar[0],
+        b=cellpar[1],
+        c=cellpar[2],
+        alpha=cellpar[3],
+        beta=cellpar[4],
+        gamma=cellpar[5],
+        spos=atoms.get_scaled_positions(),
+        symbols=atoms.get_chemical_symbols(),
+        images=images
+    )
 
 
 if __name__ == '__main__':
