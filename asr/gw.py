@@ -383,8 +383,14 @@ def main() -> Result:
                       'gap_gw_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-
-        results.update(subresults)
+    else:
+        subresults = {'vbm_gw_nosoc': None,
+                      'cbm_gw_nosoc': None,
+                      'gap_dir_gw_nosoc': None,
+                      'gap_gw_nosoc': None,
+                      'kvbm_nosoc': None,
+                      'kcbm_nosoc': None}
+    results.update(subresults)
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
@@ -415,8 +421,14 @@ def main() -> Result:
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        results.update(subresults)
-
+    else:
+        subresults = {'vbm_gw': None,
+                      'cbm_gw': None,
+                      'gap_dir_gw': None,
+                      'gap_gw': None,
+                      'kvbm': None,
+                      'kcbm': None}
+    results.update(subresults)
     results.update({'efermi_gw_nosoc': efermi_nosoc,
                     'efermi_gw_soc': efermi_soc})
 
