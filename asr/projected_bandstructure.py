@@ -9,14 +9,39 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import (fig,
+                                      entry_parameter_description,
+                                      describe_entry, WebPanel)
 
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[fig('pbe-projected-bs.png', link='empty')],
-                         [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': projected_bs_pbe,
-                                    'filenames': ['pbe-projected-bs.png']}],
-             'sort': 13.5}
+    # Projected band structure figure
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.bandstructure@calculate')
+    dependencies_parameter_descriptions = ''
+    for dependency, exclude_keys in zip(
+            ['asr.gs@calculate'],
+            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                  'idiotproof', 'maxiter', 'hund', 'random',
+                  'experimental', 'basis', 'setups'])]
+    ):
+        epd = entry_parameter_description(
+            row.data,
+            dependency,
+            exclude_keys=exclude_keys)
+        dependencies_parameter_descriptions += f'\n{epd}'
+    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+                   + parameter_description
+                   + '\nCalculated on top of:'
+                   + dependencies_parameter_descriptions)
+
+    panel = WebPanel(
+        title='Projected band structure and DOS (PBE)',
+        columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
+                                 description=explanation)],
+                 [fig('bz-with-gaps.png')]],
+        plot_descriptions=[{'function': projected_bs_pbe,
+                            'filenames': ['pbe-projected-bs.png']}],
+        sort=13.5)
 
     return [panel]
 
@@ -24,15 +49,15 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
 
-    weight_skni: typing.List[typing.List[typing.List[float]]]
-    yl_i: typing.List[typing.Tuple[str, str]]
     symbols: typing.List[str]
+    yl_i: typing.List[typing.Tuple[str, str]]
+    weight_skni: typing.List[typing.List[typing.List[float]]]
 
-    key_descriptions = {
-        "weight_skni": "Weight of each projector (indexed by (s, k, n)) on orbitals i.",
-        "yl_i": "Symbol and orbital angular momentum string ('y,l') of each orbital i.",
-        "symbols": "Chemical symbols.",
-    }
+    key_descriptions: typing.Dict[str, str] = dict(
+        symbols="Chemical symbols.",
+        yl_i="Symbol and orbital angular momentum string ('y,l') of each orbital i.",
+        weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
+    )
 
     formats = {'ase_webpanel': webpanel}
 

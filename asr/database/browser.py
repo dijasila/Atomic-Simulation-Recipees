@@ -1,5 +1,5 @@
-from asr.core import (command, option, dct_to_result,
-                      ASRResult, get_recipe_from_name, UnknownDataFormat)
+from asr.core import (command, option, decode_object,
+                      ASRResult, get_recipe_from_name)
 import copy
 import sys
 import re
@@ -92,6 +92,11 @@ value_type_to_explained_type = {}
 
 
 def describe_entry(value, description):
+    """Describe website entry.
+
+    This function sets an __explanation__ attribute on the given object
+    which is used by the web application to generate additional explanations.
+    """
     if hasattr(value, '__explanation__'):
         value.__explanation__ += '\n' + description
         return value
@@ -137,32 +142,67 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
     return lst
 
 
+def get_recipe_href(asr_name, name=None):
+    """Get a hyperlink for the recipe documentation associated with a given result.
+
+    Parameters
+    ----------
+    asr_name : str
+        asr_name variable of recipe
+    name : str/None
+        name for link - falls back to asr_name if None
+
+    Returns
+    -------
+    link_name : str
+    """
+    if name is None:
+        name = asr_name
+    # ATM href only works to recipe main
+    asr_name = asr_name.split('@')[0]
+    link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
+                 f'src/generated/recipe_{asr_name}.html">{name}</a>')
+
+    return link_name
+
+
 def entry_parameter_description(data, name, exclude_keys: set = set()):
-    result = data[f'results-{name}.json']
+    """Make a parameter description.
+
+    Parameters
+    ----------
+    data: dict
+        Data object containing result objects (typically row.data).
+    name: str
+        Name of recipe from which to extract parameters, e.g. "asr.gs@calculate".
+    exclude_keys: set
+        Set of keys to exclude from parameter description.
+
+    """
     recipe = get_recipe_from_name(name)
-    if 'params' in result.metadata:
-        params = result.metadata.params
-        description = str(result.metadata.params)
+    link_name = get_recipe_href(name)
+    if (f'results-{name}.json' in data
+       and 'params' in data[f'results-{name}.json'].metadata):
+        metadata = data[f'results-{name}.json'].metadata
+        params = metadata.params
         header = ''
+        # asr_name = (metadata.asr_name if 'asr_name' in metadata
+        #             else name)  # Fall back to name as best guess for asr_name
+        # link_name = get_recipe_href(asr_name, name=name)
     else:
         params = recipe.get_defaults()
-        header = ('No parameters can be found, meaning that'
+        header = ('No parameters can be found, meaning that '
                   'the recipe was probably run with the '
-                  'default parameter set below\n'
-                  '<b>Default parameters</b>')
+                  'default parameter shown below\n'
+                  '<b>Default:</b>')
+        # link_name = get_recipe_href(name)
 
-    recipe_parameters = recipe.get_parameters()
-    described_params = {}
-    for key, value in params.items():
-        if key in recipe_parameters:
-            key = describe_entry(key, recipe_parameters[key]['help'])
-        described_params[key] = value
-    lst = dict_to_list(described_params, exclude_keys=exclude_keys)
+    lst = dict_to_list(params, exclude_keys=exclude_keys)
     lst[0] = '<pre><code>' + lst[0]
     lst[-1] = lst[-1] + '</code></pre>'
     string = '\n'.join(lst)
     description = (
-        '<b>Calculation parameters</b>\n'
+        f'<b>Parameters:</b> {link_name}\n'
         + header
         + string
     )
@@ -314,12 +354,14 @@ def layout(row: AtomsRow,
     result_objects = []
     for key, value in row.data.items():
         if is_results_file(key):
-            try:
-                obj = dct_to_result(value)
-            except UnknownDataFormat:
+            obj = decode_object(value)
+
+            # Below is to support old C2DB databases that contain
+            # hacked result files with no asr_name
+            if not isinstance(obj, ASRResult):
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
-                obj = dct_to_result(value)
+                obj = decode_object(value)
             result_objects.append(obj)
         else:
             obj = value
@@ -357,8 +399,7 @@ def layout(row: AtomsRow,
         for result in data_sources:
             asr_name = (result.metadata.asr_name
                         if 'asr_name' in result.metadata else '(Unknown data source)')
-            link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
-                         f'src/generated/recipe_{asr_name}.html">{asr_name}</a>')
+            link_name = get_recipe_href(asr_name)
             description.append(link_name)
 
         description = '\n'.join(description)
