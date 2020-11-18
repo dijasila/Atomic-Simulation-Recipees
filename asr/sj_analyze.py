@@ -5,6 +5,7 @@ from gpaw import restart
 import typing
 
 
+# TODO: fix sj-bug
 # TODO: add chemical potential considerations
 # TODO: add second y-axis
 # TODO: implement reduced effective charge transition levels
@@ -215,9 +216,9 @@ def get_transition_level(transition) -> TransitionResults:
         e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
-        occ = []
-        [occ.append(v) for v in ev if v < e_fermi]
-        e_trans = max(occ)
+        unocc = []
+        [unocc.append(v) for v in ev if v > e_fermi]
+        e_trans = min(unocc)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     # LUMO
@@ -227,9 +228,9 @@ def get_transition_level(transition) -> TransitionResults:
         e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
-        unocc = []
-        [unocc.append(v) for v in ev if v > e_fermi]
-        e_trans = min(unocc)
+        occ = []
+        [occ.append(v) for v in ev if v < e_fermi]
+        e_trans = max(occ)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
