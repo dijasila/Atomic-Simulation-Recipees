@@ -14,10 +14,45 @@ import typing
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
-                                      describe_entry)
+                                      describe_entry, table, matrixtable)
+    import numpy as np
+
+    # parameter_description = entry_parameter_description(
+    #     row.data,
+    #     'asr.sj_analyze')
+
+    # explained_keys = []
+    # for key in ['transitions', 'eform', 'pristine']:
+    #     if key in result.description:
+    #         key_description = result.key_descriptions[key]
+    #         explanation = (f'{key_description} '
+    #                         'blablabla.\n\n'
+    #                         + parameter_description)
+    #         explained_key = describe_entry(key, description=explanation)
+    #     else:
+    #         explained_key = key
+    #     explained_keys.append(explained_key)
+
+    trans_results = result.transitions
+    transition_labels = []
+    transition_array = np.zeros((len(trans_results), 3))
+    for i, element in enumerate(trans_results):
+        transition_labels.append(element['transition_name'])
+        transition_array[i, 0] = element['transition_values']['transition']
+        transition_array[i, 1] = element['transition_values']['erelax']
+        transition_array[i, 2] = element['transition_values']['evac']
+    # transitions_table = table(trans_results[0], 'Transition levels',
+    #                           ['transition_values', trans_results[0]['transition_values']['transition'],
+    #                            trans_results[0]['transition_values']['erelax']],
+    #                           key_descriptions, 4)
+
+    transitions_table = matrixtable(transition_array,
+                                    title='Transition Levels [eV]',
+                                    columnlabels=['Transition', 'Relax contribution', 'Vacuum level'],
+                                    rowlabels=transition_labels)
 
     panel = WebPanel('Slater-Janak',
-                     columns=[[describe_entry(fig('sj_transitions.png'), 'transitions')]],
+                     columns=[[transitions_table], [describe_entry(fig('sj_transitions.png'), 'transitions')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']}],
                      sort=11)
@@ -143,15 +178,15 @@ def calculate_transitions():
         transition_results = get_transition_level(transition)
         transition_list.append(transition_results)
 
-    # for q in [-3, -2, -1, 1, 2, 3]:
-    #     if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
-    #         transition = [q, q + 1]
-    #         transition_results = get_transition_level(transition)
-    #         transition_list.append(transition_results)
-    #     if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
-    #         transition = [q, q - 1]
-    #         transition_results = get_transition_level(transition)
-    #         transition_list.append(transition_results)
+    for q in [-3, -2, -1, 1, 2, 3]:
+        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q + 1]
+            transition_results = get_transition_level(transition)
+            transition_list.append(transition_results)
+        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q - 1]
+            transition_results = get_transition_level(transition)
+            transition_list.append(transition_results)
 
     return transition_list
 
