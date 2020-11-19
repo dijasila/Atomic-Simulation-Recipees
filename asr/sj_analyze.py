@@ -5,12 +5,9 @@ from gpaw import restart
 import typing
 
 
-# TODO: fix sj-bug
 # TODO: add chemical potential considerations
 # TODO: add second y-axis
 # TODO: implement reduced effective charge transition levels
-# TODO: make webpanel compatible with new ASRResults object
-# TODO: check whether new ASRResult object is correctly implemented
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
@@ -19,37 +16,30 @@ def webpanel(result, row, key_descriptions):
 
     # parameter_description = entry_parameter_description(
     #     row.data,
-    #     'asr.sj_analyze')
-    # print(parameter_description)
+    #     'asr.sj_analyze',
+    #     exclude_keys=set(['transitions', 'pristine']))
 
     # explained_keys = []
-    # for key in ['transitions', 'eform', 'pristine']:
-    #     if key in result.description:
+    # for key in ['eform']:
+    #     if key in result.key_descriptions:
     #         key_description = result.key_descriptions[key]
-    #         explanation = (f'{key_description} '
-    #                         'blablabla.\n\n'
-    #                         + parameter_description)
+    #         explanation = key_description
     #         explained_key = describe_entry(key, description=explanation)
     #     else:
     #         explained_key = key
-    #     explained_keys.append(explained_key)
 
     trans_results = result.transitions
     transition_labels = []
-    transition_array = np.zeros((len(trans_results), 3))
+    transition_array = np.zeros((len(trans_results), 2))
     for i, element in enumerate(trans_results):
         transition_labels.append(element['transition_name'])
-        transition_array[i, 0] = element['transition_values']['transition']
+        transition_array[i, 0] = element['transition_values']['transition'] - element['transition_values']['evac']
         transition_array[i, 1] = element['transition_values']['erelax']
-        transition_array[i, 2] = element['transition_values']['evac']
-    # transitions_table = table(trans_results[0], 'Transition levels',
-    #                           ['transition_values', trans_results[0]['transition_values']['transition'],
-    #                            trans_results[0]['transition_values']['erelax']],
-    #                           key_descriptions, 4)
 
     transitions_table = matrixtable(transition_array,
-                                    title='Transition Levels [eV]',
-                                    columnlabels=['Transition', 'Relax contribution', 'Vacuum level'],
+                                    title='Transition',
+                                    columnlabels=[describe_entry('Transition Energy [eV]', description='SJ calculated transition level'),
+                                                  describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
                                     rowlabels=transition_labels)
 
     panel = WebPanel('Charge Transition Levels (Slater-Janak)',
@@ -63,9 +53,9 @@ def webpanel(result, row, key_descriptions):
     formation = WebPanel('Defect Stability',
                          columns=[[describe_entry(fig('formation.png'), 'Formation energies')]],
                          plot_descriptions=[{'function': plot_formation_energies,
-                                             'filenames': ['formation.png']},
+                                             'filenames': ['formation.png']}
                                              ],
-                         sort=12)
+                         sort=13)
 
     # summary = WebPanel(title=describe_entry('Summary',
     #     description='This panel contains a summary of the most '
