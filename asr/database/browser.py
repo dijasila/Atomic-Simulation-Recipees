@@ -91,28 +91,34 @@ class ExplainedFloat(float):
 value_type_to_explained_type = {}
 
 
-def describe_entry(value, description):
+def describe_entry(value, description, title='Help'):
     """Describe website entry.
 
     This function sets an __explanation__ attribute on the given object
     which is used by the web application to generate additional explanations.
     """
     if hasattr(value, '__explanation__'):
-        value.__explanation__ += '\n' + description
+        if value.__explanation__ == '':
+            value.__explanation__ += description
+        else:
+            value.__explanation__ += '\n' + description
+        value.__explanation_title__ = title
         return value
 
     value_type = type(value)
     if value_type in value_type_to_explained_type:
         value = value_type_to_explained_type[value_type](value)
         value.__explanation__ = description
+        value.__explanation_title__ = title
         return value
 
     class ExplainedType(value_type):
 
         __explanation__: str
+        __explanation_title__: str
 
     value_type_to_explained_type[value_type] = ExplainedType
-    return describe_entry(value, description)
+    return describe_entry(value, description, title)
 
 
 def describe_entries(rows, description):
@@ -392,7 +398,6 @@ def layout(row: AtomsRow,
 
     for paneltitle, data_sources in panel_data_sources.items():
         description = [
-            '<b>General Panel Information</b>',
             'This panel contains information calculated with '
             'the following ASR Recipes:',
         ]
@@ -403,7 +408,8 @@ def layout(row: AtomsRow,
             description.append(link_name)
 
         description = '\n'.join(description)
-        describe_entry(paneltitle, description=description)
+        describe_entry(paneltitle, description=description,
+                       title='General panel information')
 
     merge_panels(page)
     page = [panel for _, panel in page.items()]
