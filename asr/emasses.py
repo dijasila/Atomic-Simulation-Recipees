@@ -723,7 +723,7 @@ class Result(ASRResult):
                        'asr.magnetic_anisotropy'])
 @option('--gpwfilename', type=str,
         help='GS Filename')
-def main(gpwfilename: str = 'gs.gpw') -> Result:
+def main(gpwfilename: str = 'gs.gpw') -> ASRResult:
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
