@@ -186,7 +186,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
         results = {
             'sigma': sigma_dict,
             'symm': sym_chi,
-            'freqs': w_ls,}
+            'freqs': w_ls, }
 
     finally:
         world.barrier()
