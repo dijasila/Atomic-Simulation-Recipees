@@ -20,6 +20,7 @@ def webpanel(result, row, key_descriptions):
     # parameter_description = entry_parameter_description(
     #     row.data,
     #     'asr.sj_analyze')
+    # print(parameter_description)
 
     # explained_keys = []
     # for key in ['transitions', 'eform', 'pristine']:
@@ -52,10 +53,19 @@ def webpanel(result, row, key_descriptions):
                                     rowlabels=transition_labels)
 
     panel = WebPanel('Slater-Janak',
-                     columns=[[transitions_table], [describe_entry(fig('sj_transitions.png'), 'transitions')]],
+                     columns=[[transitions_table], [describe_entry(fig('sj_transitions.png'), 'transitions')],
+                              [describe_entry(fig('sj_transsitions.png'), '2transitions')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
-                                         'filenames': ['sj_transitions.png']}],
+                                         'filenames': ['sj_transitions.png']}
+                                         ],
                      sort=11)
+
+    formation = WebPanel('Formation energies',
+                         columns=[[describe_entry(fig('formation.png'), 'Formation energiess')]],
+                         plot_descriptions=[{'function': plot_formation_energies,
+                                             'filenames': ['formation.png']},
+                                             ],
+                         sort=12)
 
     # summary = WebPanel(title=describe_entry('Summary',
     #     description='This panel contains a summary of the most '
@@ -65,7 +75,7 @@ def webpanel(result, row, key_descriptions):
     #                         'filenames': ['sj_transitions.png']}],
     #     sort=10)
 
-    return [panel]
+    return [panel, formation]
 
 
 @prepare_result
@@ -172,20 +182,20 @@ def calculate_transitions():
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
         transition = [0, +1]
-        transition_results = get_transition_level(transition)
+        transition_results = get_transition_level(transition, 0)
         transition_list.append(transition_results)
         transition = [0, -1]
-        transition_results = get_transition_level(transition)
+        transition_results = get_transition_level(transition, 0)
         transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
-            transition_results = get_transition_level(transition)
+            transition_results = get_transition_level(transition, q)
             transition_list.append(transition_results)
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
-            transition_results = get_transition_level(transition)
+            transition_results = get_transition_level(transition, q)
             transition_list.append(transition_results)
 
     return transition_list
@@ -242,7 +252,7 @@ def calculate_neutral_formation_energy():
     return eform
 
 
-def get_transition_level(transition) -> TransitionResults:
+def get_transition_level(transition, charge) -> TransitionResults:
     """
     Calculates the charge transition level for a given charge transition.
 
@@ -251,8 +261,9 @@ def get_transition_level(transition) -> TransitionResults:
     """
     # extrac HOMO or LUMO
     # HOMO
+    charge = str(charge)
     if transition[0] > transition[1]:
-        _, calc = restart('sj_-0.5/gs.gpw', txt=None)
+        _, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
         e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
@@ -264,7 +275,7 @@ def get_transition_level(transition) -> TransitionResults:
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
-        _, calc = restart('sj_+0.5/gs.gpw', txt=None)
+        _, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
         e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
@@ -302,101 +313,124 @@ def return_transition_values(e_trans, e_cor, e_ref) -> TransitionValues:
         evac=e_ref)
 
 
-# def plot_formation_energies(row, fname):
-#     """
-#     Using the calculated charge transition levels, plot the formation energy curve
-#     for a given defect as a function of the fermi energy.
-#     """
-#     import matplotlib.pyplot as plt
-# 
-#     data = row.data.get('results-asr.sj_analyze.json')
-#     eform = data['eform']
-# 
-#     vbm = data['pristine']['vbm'] - data['pristine']['evac']
-#     cbm = data['pristine']['cbm'] - data['pristine']['evac']
-# 
-#     transitions = data['transitions']
-# 
-#     fig, ax1 = plt.subplots()
-# 
-#     ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-#     ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
-#     ax1.axhline(0, color='black', linestyle='dotted')
-# 
-#     plt.xlim(vbm - (0.1 * (cbm - vbm)), cbm + (0.1 * (cbm - vbm)))
-#     plt.ylim(-1, eform + 0.1 * eform)
-#     energy_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
-#     energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
-#     ax1.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black')
-# 
-#     translist_m = []
-#     translist_p = []
-#     for i, element in enumerate(sorted(transitions)):
-#         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-#         name = element
-#         if name.split('/')[0].startswith('-'):
-#             translist_m.append(energy)
-#         else:
-#             translist_p.append(energy)
-#     translist_m.append(cbm)
-#     translist_p.append(vbm)
-# 
-#     ax2 = ax1.twiny()
-# 
-#     i = 0
-#     j = 0
-#     enlist = []
-#     tickslist = []
-#     for element in sorted(transitions):
-#         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-#         name = element
-#         if name.split('/')[1].startswith('0') and name.split('/')[0].startswith('-'):
-#             y_1 = eform
-#             y_2 = eform
-#         else:
-#             y_1 = None
-#         if name.split('/')[0].startswith('-'):
-#             enlist.append(energy)
-#             tickslist.append(name)
-#             a = float(name.split('/')[0])
-#             b = y_2 - a * translist_m[i]
-#             if y_1 is None:
-#                 y_1 = a * translist_m[i] + b
-#             y_2 = a * translist_m[i + 1] + b
-#             ax1.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black')
-#             i += 1
-#         ax1.axvline(energy, color='grey', linestyle='-.')
-#     for element in sorted(transitions):
-#         energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-#         name = element
-#         if name.split('/')[0].startswith('0') and not name.split('/')[0].startswith('-'):
-#             y_1 = eform
-#             y_2 = eform
-#         else:
-#             y_2 = None
-#         if not name.split('/')[0].startswith('-'):
-#             enlist.append(energy)
-#             tickslist.append(name)
-#             a = float(name.split('/')[1])
-#             print(a)
-#             b = y_1 - a * translist_p[j]
-#             diff = abs(translist_p[j] - translist_p[j + 1])
-#             if y_2 is None:
-#                 y_2 = a * translist_p[j] + b
-#             y_1 = a * (translist_p[j] - diff) + b
-#             print(y_1, y_2, translist_p[j], translist_p[j + 1])
-#             ax1.plot([translist_p[j + 1], energy], [y_1, y_2], color='black')
-#             j += 1
-#         ax1.axvline(energy, color='grey', linestyle='-.')
-# 
-#     ax1.set_ylabel('$E_{form}$ (eV)')
-#     ax1.set_xlabel('$E_F$ (eV)')
-#     ax2.set_xlim(ax1.get_xlim())
-#     ax2.set_xticks(enlist)
-#     ax2.set_xticklabels(tickslist)
-#     plt.tight_layout()
-#     plt.savefig(fname)
-#     plt.close()
+def order_transitions(transitions):
+    translist = []
+    nameslist = []
+    reflist = ['0/1', '1/2', '2/3', '0/-1', '-1/-2', '-2/-3']
+    print('Unordered list:')
+    for element in transitions:
+        print(element['transition_name'])
+    for element in transitions:
+        if element['transition_name'] in reflist:
+            translist.append(element)
+            nameslist.append(element['transition_name'])
+
+    ordered_list = []
+    for element in reflist:
+        for oelement in transitions:
+            if element == oelement['transition_name']:
+                # ordered_list[element] = transitions[element]
+                ordered_list.append(oelement)
+    print('Ordered list:')
+    for element in ordered_list:
+        print(element['transition_name'])
+    return ordered_list
+
+
+def plot_formation_energies(row, fname):
+    import matplotlib.pyplot as plt
+
+    data = row.data.get('results-asr.sj_analyze.json')
+
+    vbm = data['pristine']['vbm'] - data['pristine']['evac']
+    cbm = data['pristine']['cbm'] - data['pristine']['evac']
+    gap = cbm - vbm
+    eform = data['eform']
+
+    transitions = data['transitions']
+
+    fig, ax1 = plt.subplots()
+
+    ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
+    ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+    ax1.axvline(vbm, color='C0')
+    ax1.axvline(cbm, color='C1')
+    ax1.axhline(0, color='black', linestyle='dotted')
+    ax1.plot([vbm, cbm], [eform, eform], color='black')
+
+    ax1.set_xlim(vbm - 0.1 * gap, cbm + 0.1 * gap)
+    #ax1.set_ylim(-0.1, eform + 0.2 * eform)
+    for trans in transitions:
+        if trans['transition_name'] == '0/1' or trans['transition_name'] == '0/-1':
+            trans_val = trans['transition_values']
+            e_pm = trans_val['transition'] - trans_val['erelax'] - trans_val['evac']
+        if e_pm < cbm and e_pm > vbm:
+            ax1.axvline(e_pm, color='black', linestyle='-.')
+
+    transitions = order_transitions(transitions)
+
+    # enlist = []
+    # for element in transitions:
+    #     enlist.append(transitions[element][0] - transitions[element][1] - transitions[element][2])
+
+    # ax2 = ax[l].twiny()
+
+    # tickslist = []
+    # labellist = []
+    # for i, element in enumerate(transitions):
+    #     energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
+    #     enlist.append(energy)
+    #     name = element
+    #     if energy > vbm and energy < cbm:
+    #         ax[l].axvline(energy, color='grey', linestyle='-.')
+    #         if name.split('/')[1].startswith('0') and name.split('/')[0].startswith('-'):
+    #             y1 = eform
+    #             y2 = eform
+    #         elif name.split('/')[0].startswith('0'):
+    #             y1 = eform
+    #             y2 = eform
+    #         elif not name.split('/')[0].startswith('-'):
+    #             y2 = None
+    #         else:
+    #             y1 = None
+    #         if name.split('/')[0].startswith('-'):
+    #             tickslist.append(energy)
+    #             labellist.append(name)
+    #             a = float(name.split('/')[0])
+    #             b = get_b(enlist[i], y2, a)
+    #             if y1 is None:
+    #                 y1 = f(enlist[i], a, b)
+    #             y2 = f(enlist[i + 1], a, b)
+    #             print(enlist[i], enlist[i+1], y1, y2, a)
+    #             ax[l].plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+    #             ax[l].plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
+    #         elif not name.split('/')[0].startswith('-'):
+    #             tickslist.append(energy)
+    #             labellist.append(name)
+    #             a = float(name.split('/')[1])
+    #             b = get_b(enlist[i], y1, a)
+    #             if y2 is None:
+    #                 y2 = f(enlist[i], a, b)
+    #             y1 = f(enlist[i + 1], a, b)
+    #             print(enlist[i], enlist[i+1], y1, y2, a)
+    #             ax[l].plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+    #             ax[l].plot([enlist[i + 1], enlist[i]], [y1, y2], color='black', marker='s')
+    # ax[l].set_xlabel('$E_F$ [eV]')
+    # # ax[l].set_xticks([-4.7, -3.7])
+    # ax[l].set_ylim(-0.1, 2.6)
+    # # ax[l].tick_params(axis='both')
+    # ax2.set_xlim(ax[l].get_xlim())
+    # ax2.set_xticks(tickslist)
+    # ax2.set_xticklabels(labellist)
+
+    # # ax[1].set_yticks([])
+    # # ax[1].set_yticklabels([])
+    # ax[0].set_ylabel('Formation energy [eV]')
+    # ax[0].text(-4, 0.5, '$v_C$')
+    # ax[1].text(-4, 0.5, '$C_{Si}$')
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
 
 
 def plot_charge_transitions(row, fname):
