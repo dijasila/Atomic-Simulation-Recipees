@@ -43,19 +43,21 @@ def webpanel(result, row, key_descriptions):
                                     rowlabels=transition_labels)
 
     panel = WebPanel('Charge Transition Levels (Slater-Janak)',
-                     columns=[[transitions_table], [describe_entry(fig('sj_transitions.png'), 'transitions')],
-                              [describe_entry(fig('sj_transsitions.png'), '2transitions')]],
+                     columns=[[describe_entry(fig('sj_transitions.png'), 'transitions'), transitions_table],
+                              [describe_entry(fig('formation.png'), 'Formation energies')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
-                                         'filenames': ['sj_transitions.png']}
+                                         'filenames': ['sj_transitions.png']},
+                                        {'function': plot_formation_energies,
+                                         'filenames': ['formation.png']}
                                          ],
                      sort=11)
 
-    formation = WebPanel('Defect Stability',
-                         columns=[[describe_entry(fig('formation.png'), 'Formation energies')]],
-                         plot_descriptions=[{'function': plot_formation_energies,
-                                             'filenames': ['formation.png']}
-                                             ],
-                         sort=13)
+    # formation = WebPanel('Defect Stability',
+    #                      columns=[[describe_entry(fig('formation.png'), 'Formation energies')]],
+    #                      plot_descriptions=[{'function': plot_formation_energies,
+    #                                          'filenames': ['formation.png']}
+    #                                          ],
+    #                      sort=13)
 
     # summary = WebPanel(title=describe_entry('Summary',
     #     description='This panel contains a summary of the most '
@@ -65,7 +67,7 @@ def webpanel(result, row, key_descriptions):
     #                         'filenames': ['sj_transitions.png']}],
     #     sort=10)
 
-    return [panel, formation]
+    return [panel]
 
 
 @prepare_result
