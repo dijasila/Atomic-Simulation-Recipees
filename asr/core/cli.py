@@ -251,7 +251,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                         sys.argv = [mod.__name__] + args
                         res = func()
                 if pipe:
-                    click.echo(pickle.dumps(res.result.atoms), nl=False)
+                    click.echo(pickle.dumps(res), nl=False)
             except click.Abort:
                 break
             except Exception as e:
