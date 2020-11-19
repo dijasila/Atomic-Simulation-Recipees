@@ -76,8 +76,8 @@ class Result(ASRResult):
 
 
 @command('asr.shift',
-         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
-         requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'],
+         requires=['structure.json', 'gs.gpw'],
          returns=Result)
 @option('--gs', help='Ground state on which response is based',
         type=str)
@@ -88,9 +88,11 @@ class Result(ASRResult):
 @option('--maxomega', help='Max pump frequency [eV]', type=float)
 @option('--nromega', help='Number of pump frequencies', type=int)
 @option('--energytol', help='Energy tolernce [eV]', type=float)
+@option('--removefiles', help='Remove created files', type=bool)
 def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
          bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
-         maxomega: float = 10.0, nromega: int = 1000) -> Result:
+         maxomega: float = 10.0, nromega: int = 1000,
+         removefiles: bool = False) -> Result:
     """Calculate the shift current spectrum, only independent tensor elements.
 
     The recipe computes the shift current. The tensor in general have 18 independent
@@ -114,6 +116,8 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
         Max pump frequency.
     nromega : int
         Number of pump frequencies.
+    removefiles : bool
+        Remove intermediate files that are created.
     """
     from ase.io import read
     from gpaw import GPAW
@@ -153,9 +157,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
                     kpts=kpts)
                 calc.get_potential_energy()
                 calc.write('es.gpw', mode='all')
+                fnames.append('es.gpw')
 
             # Calculate momentum matrix:
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
+            fnames.append(mml_name)
 
         # Do the calculation
         sigma_dict = {}
@@ -191,7 +197,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
 
     finally:
         world.barrier()
-        if world.rank == 0:
+        if world.rank == 0 and removefiles:
             for filename in fnames:
                 es_file = Path(filename)
                 if es_file.is_file():

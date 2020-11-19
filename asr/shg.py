@@ -162,8 +162,8 @@ class Result(ASRResult):
 
 
 @command('asr.shg',
-         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
-         requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'],
+         requires=['structure.json', 'gs.gpw'],
          returns=Result)
 @option('--gs', help='Ground state on which response is based',
         type=str)
@@ -175,9 +175,11 @@ class Result(ASRResult):
 @option('--eta', help='Broadening [eV]', type=float)
 @option('--maxomega', help='Max pump frequency [eV]', type=float)
 @option('--nromega', help='Number of pump frequencies', type=int)
+@option('--removefiles', help='Remove created files', type=bool)
 def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
          bandfactor: int = 4, eta: float = 0.05,
-         maxomega: float = 10.0, nromega: int = 1000) -> Result:
+         maxomega: float = 10.0, nromega: int = 1000,
+         removefiles: bool = False) -> Result:
     """Calculate the SHG spectrum, only independent tensor elements.
 
     The recipe computes the SHG spectrum. The tensor in general have 18 independent
@@ -202,6 +204,8 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
         Max pump frequency.
     nromega : int
         Number of pump frequencies.
+    removefiles : bool
+        Remove intermediate files that are created.
     """
     from ase.io import read
     from gpaw import GPAW
@@ -241,9 +245,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
                     kpts=kpts)
                 calc.get_potential_energy()
                 calc.write('es.gpw', mode='all')
+                fnames.append('es.gpw')
 
             # Calculate momentum matrix:
             make_nlodata(gs_name='es.gpw', out_name=mml_name)
+            fnames.append(mml_name)
 
         # Do the calculation
         chi_dict = {}
@@ -260,7 +266,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
                 shg = np.load(shg_name)
 
             # Make the output data
-            # fnames.append(shg_name)
+            fnames.append(shg_name)
             if nd == 3:
                 chi_dict[pol] = shg[1]
             else:
@@ -279,7 +285,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
 
     finally:
         world.barrier()
-        if world.rank == 0:
+        if world.rank == 0 and removefiles:
             for filename in fnames:
                 es_file = Path(filename)
                 if es_file.is_file():
