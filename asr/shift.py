@@ -1,7 +1,7 @@
 import typing
 
 from asr.core import command, option, ASRResult, prepare_result
-from asr.shg import CentroSymmetric, get_chi_symmtery, get_kpts
+from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 import numpy as np
 
 
@@ -11,8 +11,6 @@ def webpanel(result, row, key_descriptions):
 
     # Get the data
     data = row.data.get('results-asr.shift.json')
-    if data is None:
-        return
 
     # Make the table
     sym_chi = data.get('symm')
@@ -64,13 +62,11 @@ class Result(ASRResult):
     freqs: typing.List[float]
     sigma: typing.Dict[str, typing.Any]
     symm: typing.Dict[str, str]
-    par: typing.Dict[str, typing.Any]
 
     key_descriptions = {
         "freqs": "Pump photon energy [eV]",
         "sigma": "Non-zero shift conductivity tensor elements in SI units",
-        "symm": "Symmtery relation of shift conductivity tensor",
-        "par": "Shift current paramters",
+        "symm": "Symmetry relation of shift conductivity tensor",
     }
     formats = {"ase_webpanel": webpanel}
 
@@ -96,7 +92,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
     """Calculate the shift current spectrum, only independent tensor elements.
 
     The recipe computes the shift current. The tensor in general have 18 independent
-    tensor elements (since it is symmetric). However, the point group symmety reduces
+    tensor elements (since it is symmetric). However, the point group symmetry reduces
     the number of independent tensor elements.
     The shift spectrum is calculated using perturbation theory.
 
@@ -130,7 +126,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
-    sym_chi = get_chi_symmtery(atoms)
+    sym_chi = get_chi_symmetry(atoms)
 
     # If the structure has inversion symmetry do nothing
     if len(sym_chi) == 1:
@@ -180,20 +176,17 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
             # Make the output data
             # fnames.append(shift_name)
             if nd == 3:
-                sigma_dict[pol] = shift[1]
+                sigma_dict[pol] = shift[1] * 1e6
             else:
                 # Make it a surface chi instead of bulk chi
                 cellsize = atoms.cell.cellpar()
-                sigma_dict[pol] = shift[1] * cellsize[2] * 1e-10
+                sigma_dict[pol] = shift[1] * cellsize[2] * 1e5
 
         # Make the output data
         results = {
             'sigma': sigma_dict,
             'symm': sym_chi,
-            'freqs': w_ls,
-            'par': {'eta': eta,
-                    'nbands': f'{(bandfactor + 1)*100}%',
-                    'kpts': {'density': kptdensity, 'gamma': True}, }}
+            'freqs': w_ls,}
 
     finally:
         world.barrier()
@@ -254,10 +247,7 @@ def plot_shift(row, *filename):
             maxw = 7
 
         # Plot the data
-        if nd == 2:
-            amp_l = shift * 1e15
-        else:
-            amp_l = shift * 1e6
+        amp_l = shift
         amp_l = amp_l[w_l < maxw]
         ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
 

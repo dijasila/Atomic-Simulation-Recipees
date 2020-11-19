@@ -9,7 +9,7 @@ class CentroSymmetric(Exception):
     pass
 
 
-def get_chi_symmtery(atoms, sym_th=1e-3):
+def get_chi_symmetry(atoms, sym_th=1e-3):
 
     # Get the symmetry of the structure and operations
     import spglib
@@ -18,7 +18,7 @@ def get_chi_symmtery(atoms, sym_th=1e-3):
                               atoms.get_atomic_numbers()), symprec=sym_th)
     op_scc = sg['rotations']
 
-    # Make a random symmterized matrix
+    # Make a random symmetrized matrix
     chi_vvv = 1 + np.random.rand(3, 3, 3)
     for v1 in range(3):
         chi_vvv[v1] = (chi_vvv[v1] + chi_vvv[v1].T) / 2.0
@@ -150,13 +150,11 @@ class Result(ASRResult):
     freqs: typing.List[float]
     chi: typing.Dict[str, typing.Any]
     symm: typing.Dict[str, str]
-    par: typing.Dict[str, typing.Any]
 
     key_descriptions = {
         "freqs": "Pump photon energy [eV]",
         "chi": "Non-zero SHG tensor elements in SI units",
-        "symm": "Symmtery relation of SHG tensor",
-        "par": "SHG paramters",
+        "symm": "Symmetry relation of SHG tensor",
     }
     formats = {"ase_webpanel": webpanel}
 
@@ -218,7 +216,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
-    sym_chi = get_chi_symmtery(atoms)
+    sym_chi = get_chi_symmetry(atoms)
 
     # If the structure has inversion symmetry do nothing
     if len(sym_chi) == 1:
@@ -268,20 +266,17 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
             # Make the output data
             fnames.append(shg_name)
             if nd == 3:
-                chi_dict[pol] = shg[1]
+                chi_dict[pol] = shg[1] * 1e9
             else:
                 # Make it a surface chi instead of bulk chi
                 cellsize = atoms.cell.cellpar()
-                chi_dict[pol] = shg[1] * cellsize[2] * 1e-10
+                chi_dict[pol] = shg[1] * cellsize[2] * 1e8
 
         # Make the output data
         results = {
             'chi': chi_dict,
             'symm': sym_chi,
-            'freqs': w_ls,
-            'par': {'eta': eta, 'gauge': gauge,
-                    'nbands': f'{(bandfactor + 1)*100}%',
-                    'kpts': {'density': kptdensity, 'gamma': True}, }}
+            'freqs': w_ls,}
 
     finally:
         world.barrier()
@@ -306,8 +301,6 @@ def plot_shg(row, *filename):
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
-    if data is None:
-        return
 
     # Remove the files if it is already exist
     for fname in filename:
@@ -342,10 +335,7 @@ def plot_shg(row, *filename):
             maxw = 7
 
         # Plot the data
-        if nd == 2:
-            amp_l = shg * 1e18
-        else:
-            amp_l = shg * 1e9
+        amp_l = shg
         amp_l = amp_l[w_l < maxw]
         ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
         ax.plot(w_l[w_l < maxw], np.imag(amp_l), '-', c='C1', label='Im')
@@ -386,11 +376,11 @@ def plot_shg(row, *filename):
         wind=[wind], theta=0, phi=0,
         pte=np.sin(psi), ptm=np.cos(psi), outname=None, outbasis='pol')
     ax = plt.subplot(111, projection='polar')
-    ax.plot(psi, np.abs(chipol[0]) * 1e18, 'C0', lw=1.0)
-    ax.plot(psi, np.abs(chipol[1]) * 1e18, 'C1', lw=1.0)
+    ax.plot(psi, np.abs(chipol[0]), 'C0', lw=1.0)
+    ax.plot(psi, np.abs(chipol[1]), 'C1', lw=1.0)
     # Set the y limits
     ax.grid(True)
-    rmax = np.amax(np.abs(chipol) * 1e18)
+    rmax = np.amax(np.abs(chipol))
     if np.abs(rmax) < 1e-6:
         rmax = 1e-4
         ax.plot(0, 0, 'o', color='b', markersize=5)
@@ -519,11 +509,6 @@ def calc_polarized_shg(
     else:
         raise NotImplementedError
 
-    # Save it to the file
-    if outname is None:
-        np.save('shgpol.npy', chipol_new)
-    else:
-        np.save('{}.npy'.format(outname), chipol_new)
     return chipol_new
 
 
