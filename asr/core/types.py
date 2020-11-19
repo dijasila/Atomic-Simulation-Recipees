@@ -3,6 +3,7 @@ import click
 from ase.io import read
 from ase.io.formats import UnknownFileTypeError
 from asr.core import parse_dict_string
+import pickle
 
 
 class AtomsFile(click.ParamType):
@@ -29,8 +30,10 @@ class AtomsFile(click.ParamType):
 
     def convert(self, value, param, ctx):
         """Convert string to atoms object."""
+        if value == '-':
+            return pickle.loads(click.get_binary_stream('stdin').read())
         try:
-            return read(value, parallel=False)
+            return read(value, parallel=False, format='json')
         except (IOError, UnknownFileTypeError, StopIteration):
             if self.must_exist:
                 raise
@@ -47,7 +50,6 @@ class DictStr(click.ParamType):
         if isinstance(value, dict):
             return value
         default = getattr(self, 'default', None)
-        print('default', default)
         return parse_dict_string(value, default)
 
 

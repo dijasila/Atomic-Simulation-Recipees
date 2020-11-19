@@ -33,7 +33,6 @@ def set_defaults(parameters: typing.Dict[str, typing.Any]):
         defaults[name] = recipe.get_defaults()
 
     parameters = fill_in_defaults(parameters, defaults)
-    print('new_parameters', parameters)
     prev_params = copy.deepcopy(PARAMETERS)
     PARAMETERS.update(parameters)
     yield

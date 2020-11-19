@@ -1,5 +1,6 @@
 """ASR command line interface."""
 import sys
+import os
 from typing import Union, Dict, Any, List
 import asr
 from asr.core import read_json, chdir, ASRCommand, DictStr, set_defaults
@@ -9,9 +10,42 @@ import subprocess
 from ase.parallel import parprint
 from functools import partial
 import importlib
+from contextlib import contextmanager
+import pickle
 
 
 prt = partial(parprint, flush=True)
+
+
+def fileno(file_or_fd):
+    fd = getattr(file_or_fd, 'fileno', lambda: file_or_fd)()
+    if not isinstance(fd, int):
+        raise ValueError("Expected a file (`.fileno()`) or a file descriptor")
+    return fd
+
+
+@contextmanager
+def stdout_redirected(to=os.devnull, stdout=None):
+    if stdout is None:
+       stdout = sys.stdout
+
+    stdout_fd = fileno(stdout)
+    # copy stdout_fd before it is overwritten
+    # NOTE: `copied` is inheritable on Windows when duplicating a standard stream
+    with os.fdopen(os.dup(stdout_fd), 'wb') as copied:
+        stdout.flush()  # flush library buffers that dup2 knows nothing about
+        try:
+            os.dup2(fileno(to), stdout_fd)  # $ exec >&to
+        except ValueError:  # filename
+            with open(to, 'wb') as to_file:
+                os.dup2(to_file.fileno(), stdout_fd)  # $ exec > to
+        try:
+            yield stdout  # allow code to be run with the redirected stdout
+        finally:
+            # restore stdout to its previous value
+            # NOTE: dup2 makes stdout_fd inheritable unconditionally
+            stdout.flush()
+            os.dup2(copied.fileno(), stdout_fd)  # $ exec >&copied
 
 
 # def format(content, indent=0, title=None, pad=2):
@@ -71,10 +105,12 @@ def cli():
               help="Skip folder where this file doesn't exist.")
 @click.option('--defaults', type=DictStr(),
               help="Set default parameters. Takes precedence over params.json.")
+@click.option('--pipe', is_flag=True,
+              help="Write result to stdout.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
         skip_if_done, dont_raise, update, must_exist,
-        defaults):
+        defaults, pipe):
     r"""Run recipe or python function in multiple folders.
 
     Examples
@@ -115,6 +151,7 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
         'command': command,
         'must_exist': must_exist,
         'defaults': defaults,
+        'pipe': pipe,
     }
     if njobs > 1:
         processes = []
@@ -148,7 +185,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 job_num: Union[int, None] = None,
                 update: bool = False,
                 must_exist: Union[str, None] = None,
-                defaults: Dict[str, Any]):
+                defaults: Dict[str, Any],
+                pipe: bool = False):
     """Run command in folders."""
     nfolders = len(folders)
     module, *args = command.split()
@@ -196,17 +234,24 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     continue
                 elif must_exist and not Path(must_exist).exists():
                     continue
-                prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
-                               job_num=job_num))
-                if is_asr_command:
-                    if defaults:
-                        with set_defaults(defaults):
-                            func.cli(args=args)
-                    else:
-                        func.cli(args=args)
+                if pipe:
+                    to = os.devnull
                 else:
-                    sys.argv = [mod.__name__] + args
-                    func()
+                    to = sys.stdout
+                with stdout_redirected(to):
+                    prt(append_job(f'In folder: {folder} ({i + 1}/{nfolders})',
+                                   job_num=job_num))
+                    if is_asr_command:
+                        if defaults:
+                            with set_defaults(defaults):
+                                res = func.cli(args=args)
+                        else:
+                            res = func.cli(args=args)
+                    else:
+                        sys.argv = [mod.__name__] + args
+                        res = func()
+                if pipe:
+                    click.echo(pickle.dumps(res.result.atoms), nl=False)
             except click.Abort:
                 break
             except Exception as e:
