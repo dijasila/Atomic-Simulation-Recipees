@@ -52,7 +52,7 @@ def webpanel(result, row, key_descriptions):
                                     columnlabels=['Transition', 'Relax contribution', 'Vacuum level'],
                                     rowlabels=transition_labels)
 
-    panel = WebPanel('Slater-Janak',
+    panel = WebPanel('Charge Transition Levels (Slater-Janak)',
                      columns=[[transitions_table], [describe_entry(fig('sj_transitions.png'), 'transitions')],
                               [describe_entry(fig('sj_transsitions.png'), '2transitions')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
@@ -60,8 +60,8 @@ def webpanel(result, row, key_descriptions):
                                          ],
                      sort=11)
 
-    formation = WebPanel('Formation energies',
-                         columns=[[describe_entry(fig('formation.png'), 'Formation energiess')]],
+    formation = WebPanel('Defect Stability',
+                         columns=[[describe_entry(fig('formation.png'), 'Formation energies')]],
                          plot_descriptions=[{'function': plot_formation_energies,
                                              'filenames': ['formation.png']},
                                              ],
@@ -317,9 +317,7 @@ def order_transitions(transitions):
     translist = []
     nameslist = []
     reflist = ['0/1', '1/2', '2/3', '0/-1', '-1/-2', '-2/-3']
-    print('Unordered list:')
-    for element in transitions:
-        print(element['transition_name'])
+
     for element in transitions:
         if element['transition_name'] in reflist:
             translist.append(element)
@@ -329,12 +327,17 @@ def order_transitions(transitions):
     for element in reflist:
         for oelement in transitions:
             if element == oelement['transition_name']:
-                # ordered_list[element] = transitions[element]
                 ordered_list.append(oelement)
-    print('Ordered list:')
-    for element in ordered_list:
-        print(element['transition_name'])
+
     return ordered_list
+
+
+def get_b(x, y, a):
+    return y - a * x
+
+
+def f(x, a, b):
+    return a * x + b
 
 
 def plot_formation_energies(row, fname):
@@ -358,8 +361,12 @@ def plot_formation_energies(row, fname):
     ax1.axhline(0, color='black', linestyle='dotted')
     ax1.plot([vbm, cbm], [eform, eform], color='black')
 
-    ax1.set_xlim(vbm - 0.1 * gap, cbm + 0.1 * gap)
-    #ax1.set_ylim(-0.1, eform + 0.2 * eform)
+    ax1.set_xlim(vbm - 0.2 * gap, cbm + 0.2 * gap)
+    ax1.set_ylim(-0.1, eform + 0.2 * eform)
+    yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
+    ax1.text(vbm - 0.1 * gap, 0.5 * yrange, 'VBM', ha='center', va='center', rotation=90, weight='bold', color='white')
+    ax1.text(cbm + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center', va='center', rotation=90, weight='bold', color='white')
+
     for trans in transitions:
         if trans['transition_name'] == '0/1' or trans['transition_name'] == '0/-1':
             trans_val = trans['transition_values']
@@ -369,65 +376,62 @@ def plot_formation_energies(row, fname):
 
     transitions = order_transitions(transitions)
 
-    # enlist = []
-    # for element in transitions:
-    #     enlist.append(transitions[element][0] - transitions[element][1] - transitions[element][2])
+    enlist = []
+    for element in transitions:
+        enlist.append(element['transition_values']['transition'] -
+                      element['transition_values']['erelax'] -
+                      element['transition_values']['evac'])
 
-    # ax2 = ax[l].twiny()
+    ax2 = ax1.twiny()
 
-    # tickslist = []
-    # labellist = []
-    # for i, element in enumerate(transitions):
-    #     energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-    #     enlist.append(energy)
-    #     name = element
-    #     if energy > vbm and energy < cbm:
-    #         ax[l].axvline(energy, color='grey', linestyle='-.')
-    #         if name.split('/')[1].startswith('0') and name.split('/')[0].startswith('-'):
-    #             y1 = eform
-    #             y2 = eform
-    #         elif name.split('/')[0].startswith('0'):
-    #             y1 = eform
-    #             y2 = eform
-    #         elif not name.split('/')[0].startswith('-'):
-    #             y2 = None
-    #         else:
-    #             y1 = None
-    #         if name.split('/')[0].startswith('-'):
-    #             tickslist.append(energy)
-    #             labellist.append(name)
-    #             a = float(name.split('/')[0])
-    #             b = get_b(enlist[i], y2, a)
-    #             if y1 is None:
-    #                 y1 = f(enlist[i], a, b)
-    #             y2 = f(enlist[i + 1], a, b)
-    #             print(enlist[i], enlist[i+1], y1, y2, a)
-    #             ax[l].plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-    #             ax[l].plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
-    #         elif not name.split('/')[0].startswith('-'):
-    #             tickslist.append(energy)
-    #             labellist.append(name)
-    #             a = float(name.split('/')[1])
-    #             b = get_b(enlist[i], y1, a)
-    #             if y2 is None:
-    #                 y2 = f(enlist[i], a, b)
-    #             y1 = f(enlist[i + 1], a, b)
-    #             print(enlist[i], enlist[i+1], y1, y2, a)
-    #             ax[l].plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-    #             ax[l].plot([enlist[i + 1], enlist[i]], [y1, y2], color='black', marker='s')
-    # ax[l].set_xlabel('$E_F$ [eV]')
-    # # ax[l].set_xticks([-4.7, -3.7])
-    # ax[l].set_ylim(-0.1, 2.6)
-    # # ax[l].tick_params(axis='both')
-    # ax2.set_xlim(ax[l].get_xlim())
-    # ax2.set_xticks(tickslist)
-    # ax2.set_xticklabels(labellist)
+    tickslist = []
+    labellist = []
+    for i, element in enumerate(transitions):
+        energy = (element['transition_values']['transition'] -
+                  element['transition_values']['erelax'] -
+                  element['transition_values']['evac'])
+        enlist.append(energy)
+        name = element['transition_name']
+        if energy > vbm and energy < cbm:
+            ax1.axvline(energy, color='grey', linestyle='-.')
+            if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
+                y1 = eform
+                y2 = eform
+            elif name.split('/')[1].startswith('0'):
+                y1 = eform
+                y2 = eform
+            elif not name.split('/')[1].startswith('-'):
+                y2 = None
+            else:
+                y1 = None
+            if name.split('/')[1].startswith('-'):
+                tickslist.append(energy)
+                labellist.append(name)
+                a = float(name.split('/')[1])
+                b = get_b(enlist[i], y2, a)
+                if y1 is None:
+                    y1 = f(enlist[i], a, b)
+                y2 = f(enlist[i + 1], a, b)
+                print(enlist[i], enlist[i+1], y1, y2, a)
+                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+                ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
+            elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
+                tickslist.append(energy)
+                labellist.append(name)
+                a = float(name.split('/')[1])
+                b = get_b(enlist[i], y1, a)
+                if y2 is None:
+                    y2 = f(enlist[i], a, b)
+                y1 = f(enlist[i + 1], a, b)
+                print(enlist[i], enlist[i+1], y1, y2, a)
+                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+                ax1.plot([enlist[i + 1], enlist[i]], [y1, y2], color='black', marker='s')
+    ax1.set_xlabel('$E_F$ [eV]')
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(tickslist)
+    ax2.set_xticklabels(labellist)
 
-    # # ax[1].set_yticks([])
-    # # ax[1].set_yticklabels([])
-    # ax[0].set_ylabel('Formation energy [eV]')
-    # ax[0].text(-4, 0.5, '$v_C$')
-    # ax[1].text(-4, 0.5, '$C_{Si}$')
+    ax1.set_ylabel('Formation energy [eV]')
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
