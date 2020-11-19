@@ -13,13 +13,22 @@ import typing
 # TODO: check whether new ASRResult object is correctly implemented
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import (fig, WebPanel, entry_parameter_description,
+                                      describe_entry)
 
-    panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [fig('sj_transitions.png')],
-             'plot_descriptions': [{'function': plot_charge_transitions,
-                                    'filenames': ['sj_transitions.png']}],
-             'sort': 12}
+    panel = WebPanel('Slater-Janak',
+                     columns=[[describe_entry(fig('sj_transitions.png'), 'transitions')]],
+                     plot_descriptions=[{'function': plot_charge_transitions,
+                                         'filenames': ['sj_transitions.png']}],
+                     sort=11)
+
+    # summary = WebPanel(title=describe_entry('Summary',
+    #     description='This panel contains a summary of the most '
+    #                 'important properties of the material.'),
+    #     columns=[],
+    #     plot_descriptions=[{'function': plot_charge_transitions,
+    #                         'filenames': ['sj_transitions.png']}],
+    #     sort=10)
 
     return [panel]
 
