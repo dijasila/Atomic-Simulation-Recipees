@@ -848,7 +848,7 @@ def register_run_spec(run_specification):
     def wrapper(func):
 
         def wrapped(*args, **kwargs):
-            run_record = func(cli*args, **kwargs)
+            run_record = func(*args, **kwargs)
             run_record.run_specification = run_specification
             return run_record
 
