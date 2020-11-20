@@ -427,13 +427,18 @@ def MatchCells(lyr_a, lyr_b, workdir, max_coef, tol_theta, store_all, scan_all, 
         help='Path of the .db database file for retrieving structural information')
 @option('--uids', type=str, 
         help='Path of the file containing the unique ID list of the materials to combine')
+@option('--uid-a', type=str)
+@option('--uid-b', type=str)
 
-def main(max_coef: int = 10, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: str = False, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
+def main(max_coef: int = 10, tol_theta: float = 0.05, store_all: bool = False, scan_all: bool = False, sort: str = "natoms", max_strain: float = 1.0, max_number_of_atoms: int = 300, min_internal_angle: float = 30.0, max_internal_angle: float = 150.0, overwrite: str = False, uid_a: str = None, uid_b: str = None, database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", uids: str = "/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids"):
 
     db = connect(database)
 
-    with open("/home/niflheim/steame/venvs/hetero-bilayer-new/venv/asr/asr/test/moire/tree/uids", "r") as f:
-        monos = [ i.split()[0] for i in f.readlines() ]
+    if uid_a and uid_b:
+        monos = [uid_a, uid_b]
+    else: 
+        with open(uids, "r") as f:
+            monos = [ i.split()[0] for i in f.readlines() ]
 
     for i in range(len(monos)):
         for j in range(i, len(monos)):

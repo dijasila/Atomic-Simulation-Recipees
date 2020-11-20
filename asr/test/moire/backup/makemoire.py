@@ -1,14 +1,14 @@
 import argparse
 import numpy as np
+from numpy import linalg
 from ase import Atoms
 from ase.db import connect
-from ase.io.jsonio import read_json
-from ase.io import write
+from ase.io.jsonio import write_json, read_json
+from ase.io import read, write
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
 from asr.core import command, option
-from spglib import get_spacegroup
 
 
 
@@ -77,15 +77,6 @@ def ScaleXY(vec, fac_x, fac_y):
 
 def norm(vec):
     return np.linalg.norm(vec)
-
-
-
-def GetSymmetry(atoms):
-    lattice = atoms.get_cell()
-    positions = atoms.get_scaled_positions()
-    numbers = atoms.get_atomic_numbers()
-    return get_spacegroup(atoms, symprec=1e-5)
-
 
 
 
@@ -624,6 +615,9 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
                          [layer_b["v3"][0], layer_b["v3"][1], z_const_supercell]]
     supercell["positions"] = final_supercell
     supercell["pbc"] = [True, True, False]
+    supercell["info"] = {}
+    supercell["info"]["layerlevels"] = layerlevels
+    supercell["info"]["strain"] = strain
     
     dirname = f"{total_atoms}_{rot_angle:.1f}_{strain:.2f}"
     if Path(dirname).exists() == False: 
@@ -634,9 +628,6 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
 
     atoms = Atoms.fromdict(supercell)
     atoms.set_tags(layerlevels)
-    spacegroup = GetSymmetry(atoms)[0]
-    spacegroup_nr = GetSymmetry(atoms)[1]
-    print(spacegroup_nr)
 
     if Path(file_json).exists() == False or overwrite == True:
         write(file_json, atoms)

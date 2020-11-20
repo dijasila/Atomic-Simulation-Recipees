@@ -21,8 +21,8 @@ def main(kpoints: int = 6, eta: float = 0.01):
     dct = read_json('structure.json')
     atoms = Atoms.fromdict(dct)
     # Define the projector
-    c1 = GPAW('l1.gpw', txt = None)
-    c2 = GPAW('l2.gpw', txt = None)
+    c1 = GPAW('layer1.gpw', txt = None)
+    c2 = GPAW('layer2.gpw', txt = None)
     shifts = json.load(open('shifts.json', 'r'))
 
     shift_v1 = shifts['shift_v1']
