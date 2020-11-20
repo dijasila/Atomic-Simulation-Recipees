@@ -18,8 +18,7 @@ def main(kpoints: int = 6, eta: float = 0.01):
 
 
     # Loading the structure
-    dct = read_json('structure.json')
-    atoms = Atoms.fromdict(dct)
+    atoms = read('structure.json')
     # Define the projector
     c1 = GPAW('layer1.gpw', txt = None)
     c2 = GPAW('layer2.gpw', txt = None)
