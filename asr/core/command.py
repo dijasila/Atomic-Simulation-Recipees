@@ -517,7 +517,7 @@ class FullFeatureFileCache(AbstractCache):
     def __init__(self, serializer: Serializer = JSONSerializer(),
                  hash_func=sha256):
         self.serializer = serializer
-        self._cache_dir = Path('.')
+        self._cache_dir = Path('.asr/records')
         self.depth = 0
         self.hash_func = hash_func
         self._filename = 'run-data.json'
@@ -562,7 +562,7 @@ class FullFeatureFileCache(AbstractCache):
 
     @property
     def initialized(self):
-        return Path(self._filename).is_file()
+        return (self.cache_dir / Path(self._filename)).is_file()
 
     def initialize(self):
         assert not self.initialized
@@ -610,6 +610,8 @@ class FullFeatureFileCache(AbstractCache):
                 for run_hash in self.hash_table]
 
     def _write_file(self, filename: str, text: str):
+        if not self.cache_dir.is_dir():
+            os.makedirs(self.cache_dir)
         write_file(self.cache_dir / filename, text)
 
     def _read_file(self, filename: str) -> str:
