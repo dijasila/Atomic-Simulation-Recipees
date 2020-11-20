@@ -10,6 +10,34 @@ from ase import Atoms
 
 # TODO: implement webpanel
 
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (fig, WebPanel, entry_parameter_description,
+                                      describe_entry, table, matrixtable)
+    import numpy as np
+
+    basictable = table(row, 'Structure info', [
+        describe_entry('pointgroup', description='test'), 'defect_center'
+    ], key_descriptions, 2)
+
+    # rows = basictable['rows']
+
+    # panel = {'title': 'Symmetry',
+    #          'columns': [[basictable,
+    #                       {'type': 'table', 'header': ['Testtable', ''],
+    #                        'rows': [],
+    #                        'columnwidth': 4}]],
+    #                        'sort': -1}
+
+    summary = {'title': 'Summary',
+               'columns': [[basictable]],
+               'sort': -1}
+
+    panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
+             'columns': [[basictable]],
+             'sort': 2}
+
+    return [panel]
+
 
 @prepare_result
 class StatesResult(ASRResult):
@@ -382,15 +410,17 @@ class SymmetryResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
-    point_group: str
+    pointgroup: str
     defect_center: typing.Tuple[float, float, float]
     symmetries: typing.List[SymmetryResult]
 
     key_descriptions: typing.Dict[str, str] = dict(
-        point_group='Point group in Schoenflies notation.',
+        pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
         symmetries='List of SymmetryResult objects for all states.'
     )
+
+    formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.analyze_state',
@@ -473,7 +503,7 @@ def main(mapping: bool = False,
         symmetry_results.append(symmetry_result)
 
     return Result.fromdata(
-        point_group=point_group,
+        pointgroup=point_group,
         defect_center=center,
         symmetries=symmetry_results)
 
