@@ -8,16 +8,56 @@ from pathlib import Path
 from ase import Atoms
 
 
-# TODO: implement webpanel
+def get_atoms_close_to_defect(center):
+    """Returns list of the ten atoms closest to the defect."""
+    from ase.io import read
+    atoms = read('structure.json')
+
+    distancelist = []
+    indexlist = []
+    ghost_atoms = atoms.copy()
+    ghost_atoms.append(Atoms('H', cell=atoms.get_cell(), positions=[center])[0])
+    for i, atom in enumerate(ghost_atoms[:-1]):
+        meancell = np.mean(atoms.get_cell_lengths_and_angles()[:2])
+        distance = ghost_atoms.get_distance(-1, i, mic=True)
+        distancelist.append(distance)
+        indexlist.append(i)
+
+    orderarray = np.zeros((len(indexlist), 2))
+    for i, element in enumerate(indexlist):
+        orderarray[i, 0] = element
+        orderarray[i, 1] = distancelist[i]
+    orderarray = orderarray[orderarray[:, 1].argsort()]
+
+    return orderarray
+
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
                                       describe_entry, table, matrixtable)
     import numpy as np
+    from ase.io import read
 
-    basictable = table(row, 'Structure info', [
+    basictable = table(row, 'Defect info', [
         describe_entry('pointgroup', description='test'), 'defect_center'
     ], key_descriptions, 2)
+
+    hf_results = result.hyperfine
+    center = result.defect_center
+    orderarray = get_atoms_close_to_defect(center)
+    hf_array = np.zeros((10, 4))
+    hf_atoms = []
+    for i, element in enumerate(orderarray[:10, 0]):
+        hf_atoms.append(hf_results[int(element)]['kind'] + str(hf_results[int(element)]['index']))
+        hf_array[i, 0] = hf_results[int(element)]['magmom']
+        hf_array[i, 1] = hf_results[int(element)]['eigenvalues'][0]
+        hf_array[i, 2] = hf_results[int(element)]['eigenvalues'][1]
+        hf_array[i, 3] = hf_results[int(element)]['eigenvalues'][2]
+
+    hf_table = matrixtable(hf_array,
+        title='HF components',
+        columnlabels=['Magn. moment', 'Axx', 'Ayy', 'Azz'],
+        rowlabels=hf_atoms)
 
     # rows = basictable['rows']
 
@@ -36,7 +76,11 @@ def webpanel(result, row, key_descriptions):
              'columns': [[basictable]],
              'sort': 2}
 
-    return [panel]
+    hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
+                 'columns': [[hf_table]],
+                 'sort': 2}
+
+    return [panel, summary, hyperfine]
 
 
 @prepare_result
@@ -408,16 +452,35 @@ class SymmetryResult(ASRResult):
 
 
 @prepare_result
+class HyperfineResult(ASRResult):
+    """Container for hyperfine coupling results."""
+    index: int
+    kind: str
+    magmom: float
+    eigenvalues: typing.Tuple[float, float, float]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        index='Atom index.',
+        kind='Atom type.',
+        magmom='Magnetic moment.',
+        eigenvalues='Tuple of the three main HF components [MHz].'
+    )
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
     pointgroup: str
     defect_center: typing.Tuple[float, float, float]
     symmetries: typing.List[SymmetryResult]
+    hyperfine: typing.List[HyperfineResult]
+
 
     key_descriptions: typing.Dict[str, str] = dict(
         pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
-        symmetries='List of SymmetryResult objects for all states.'
+        symmetries='List of SymmetryResult objects for all states.',
+        hyperfine='List of HyperfineResult objects for all atoms.'
     )
 
     formats = {'ase_webpanel': webpanel}
@@ -432,7 +495,7 @@ class Result(ASRResult):
 @option('--mapping/--no-mapping', is_flag=True)
 @option('--radius', type=float)
 @option('--hf/--no-hf', is_flag=True)
-def main(mapping: bool = False,
+def main(mapping: bool = True,
          radius: float = 2.0,
          hf: bool = True) -> Result:
     """Analyze wavefunctions and analyze symmetry."""
@@ -507,12 +570,13 @@ def main(mapping: bool = False,
     if hf:
         print('INFO: calculate hyperfine properties.')
         atoms, calc = restart('gs.gpw', txt=None)
-        hr_results = get_hyperfine_results(atoms, calc)
+        hf_results = calculate_hyperfine(atoms, calc)
 
     return Result.fromdata(
         pointgroup=point_group,
         defect_center=center,
-        symmetries=symmetry_results)
+        symmetries=symmetry_results,
+        hyperfine=hf_results)
 
 
 def return_symmetry_result(irreps, best, error, loc_ratio,
@@ -535,7 +599,7 @@ def return_irrep_result(sym_name, sym_score) -> IrrepResult:
         sym_score=sym_score)
 
 
-def get_hyperfine_results(atoms, calc):
+def calculate_hyperfine(atoms, calc):
     "Calculate hyperfine splitting."
     from math import pi
     import numpy as np
@@ -561,6 +625,7 @@ def get_hyperfine_results(atoms, calc):
     print('  atom  magmom      ', '       '.join(columns))
 
     used = {}
+    hyperfine_results = []
     for a, A_vv in enumerate(A_avv):
         symbol = symbols[a]
         magmom = magmoms[a]
@@ -568,6 +633,13 @@ def get_hyperfine_results(atoms, calc):
         used[symbol] = g_factor
         A_vv *= g_factor / total_magmom * scale
         numbers = np.linalg.eigvalsh(A_vv)
+        hyperfine_result = HyperfineResult.fromdata(
+            index=a,
+            kind=symbol,
+            magmom=magmom,
+            eigenvalues=numbers)
+        hyperfine_results.append(hyperfine_result)
+
 
         print(f'{a:3} {symbol:>2}  {magmom:6.3f}',
           ''.join(f'{x:9.2f}' for x in numbers))
@@ -578,6 +650,8 @@ def get_hyperfine_results(atoms, calc):
     print('\nG-factors used:')
     for symbol, g in used.items():
         print(f'{symbol:2} {g:10.3f}')
+
+    return hyperfine_results
 
 
 def get_localization_ratio(atoms, wf):
