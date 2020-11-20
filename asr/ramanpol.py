@@ -1,26 +1,17 @@
-import io
-import numpy as np
-import os
-from matplotlib import pyplot as plt
-from pathlib import Path
-import typing
 
 import numpy as np
-import os
-from matplotlib import pyplot as plt
+import os, sys, typing
+import matplotlib.pyplot as plt
 from pathlib import Path
 
-from gpaw import GPAW, PW
 from gpaw.mpi import world
 from phonopy import Phonopy
 from phonopy.structure.atoms import PhonopyAtoms
 from phonopy.units import THzToCm
 from ase.io import read
 from ase.atoms import Atoms
-from asr.core import read_json, write_json
 from gpaw.mpi import world
-from gpaw.nlopt.basic import load_data
-from gpaw.nlopt.matrixel import make_nlodata
+
 from gpaw.utilities.progressbar import ProgressBar
 from ase.utils.timing import Timer
 from ase.parallel import parprint
@@ -32,23 +23,18 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
 
     # Make a table from the phonon modes
-    data = row.data.get('results-asr.raman.json')
+    data = row.data.get('results-asr.ramanpol.json')
     if data:
         table = []
         freqs_l = data['freqs_l']
         w_l, rep_l = count_deg(freqs_l)
-        # print(w_l)
-        # print(rep_l)
         nph = len(w_l)
         for ii in range(nph):
             key = 'Mode {}'.format(ii + 1)
             table.append(
                 (key,
                  np.array2string(
-                     np.abs(
-                         w_l[ii]),
-                     precision=1),
-                    rep_l[ii]))
+                     np.abs(w_l[ii]), precision=1), rep_l[ii]))
         opt = {'type': 'table',
                'header': ['Mode', 'Frequency (1/cm)', 'Degeneracy'],
                'rows': table}
@@ -58,11 +44,11 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': 'Raman spectrum (RPA)',
              'columns': [[fig('Raman.png')], [opt]],
              'plot_descriptions':
-                 [{'function': plot_raman,
-                   'filenames': ['Raman.png']}],
+                 [{'function': plot_raman, 'filenames': ['Raman.png']}],
              'sort': 22}
 
     return [panel]
+
 
 @prepare_result
 class Result(ASRResult):
@@ -70,11 +56,13 @@ class Result(ASRResult):
     freqs_l: typing.List[float]
     wavelength_w: typing.List[float]
     amplitudes_vvwl: typing.List[typing.List[typing.List[typing.List[complex]]]]
+    irrep_l: typing.List
 
     key_descriptions = {
         'freqs_l': 'Phonon frequencies (the Gamma point) [1/cm]',
         'wavelength_w': 'Laser excitation wavelength [nm]',
         'amplitudes_vvwl': 'Raman tensor [a.u.]',
+        'irrep_l': 'Irreducible representation label',
     }
     formats = {'ase_webpanel': webpanel}
 
@@ -83,60 +71,81 @@ class Result(ASRResult):
     requires=['structure.json'], 
     returns=Result)
 @option('--disp', type=float, help='Displacement size')
+@option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
 @option('--wavelengths', type=list, help='Excitation wavelengths [nm]')
 @option('--eta', type=float, help='Excitation broadening [eV]')
-@option('--calc_ph', help='Calculator params. for phonon', type=DictStr())
-@option('--calc_chi', help='Calculator params. for chi', type=DictStr())
+@option('--prefix', type=str, help='Prefix for filenames')
+@option('--calc_ph', type=DictStr(), help='Calculator params. for phonon')
+@option('--calc_chi', type=DictStr(), help='Calculator params. for chi')
+@option('--removefiles', type=str, help='Remove intermediate files')
 def main(
-    disp: float = 0.05,
-    wavelengths: typing.List[float] = [488.0, 532.0],
-    eta: float = 0.05,
+    disp: float = 0.05, eta: float = 0.1, dftd3: bool = True,
+    wavelengths: typing.List[float] = [
+        488.0, 532.0, 633.0, 1064.0, 1550.0, 12400.0],
+    removefiles: str = 'gs', prefix: str = '',
     calc_ph: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
         'basis': 'dzp',
-        'kpts': {'density': 6.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'forces': 1.0e-4},
+        'kpts': {'density': 10.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+        'convergence': {'forces': 1.0e-5},
         'symmetry': {'point_group': False},
-        'txt': 'gs_phonons.txt',
-        'charge': 0},
+        'txt': 'gs_phonons.txt'},
     calc_chi: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
         'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
+        'kpts': {'density': 20.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
         'nbands': '200%',
         'convergence': {'bands': -5},
         'symmetry': {'point_group': False},
-        'txt': 'gs_chi.txt',
-        'charge': 0}, ) -> ASRResult:
+        'txt': 'gs_chi.txt'}, ) -> ASRResult:
 
-    parprint('Starting a phonon calculation ...')
-    if not Path('phonons.json').is_file():
-        find_phonons(disp=disp, calculator=calc_ph)
-    ph = read_json('phonons.json')
-    freqs_l = ph['freqs_l']
-    u_lav = ph['u_lav']
-    parprint('The phonons are calculated and loaded.')
+    try:
+        timer = Timer()
+        with timer('Phonon calculations'):
+            parprint('Starting a phonon calculation ...')
+            if not Path(prefix+'phonons.json').is_file():
+                find_phonons(calculator=calc_ph, dftd3=dftd3,
+                             disp=disp, prefix=prefix)
+            ph = read_json(prefix+'phonons.json')
+            freqs_l = ph['freqs_l']
+            u_lav = ph['u_lav']
+            irrep_l = ph['irrep_l']
+            parprint('The phonons are calculated and loaded.')
+            if world.rank == 0:
+                if removefiles == 'all':
+                    for ff in Path().glob(prefix+'phonons.*.json'):
+                        if ff.is_file():
+                            ff.unlink()
 
-    parprint('Starting a Raman calculation ...')
-    freqs = [1240/wavelength for wavelength in wavelengths]
-    I_vvwl = get_raman_tensor(
-        calc_chi, freqs_l, u_lav,
-        w_w=freqs, eta=eta, disp=disp)
-    parprint('The Raman tensors are fully computed.')
+        with timer('Raman calculations'):
+            parprint('Starting a Raman calculation ...')
+            freqs = [1240/wavelength for wavelength in wavelengths]
+            original_stdout = sys.stdout 
+            with open(prefix+'raman.txt', 'a') as ff:
+                sys.stdout = ff
+                I_vvwl = get_raman_tensor(
+                    calc_chi, freqs_l, u_lav, prefix=prefix,
+                    removefiles=removefiles, w_w=freqs, eta=eta, disp=disp)
+                sys.stdout.flush()
+                sys.stdout = original_stdout
+            parprint('The Raman tensors are fully computed.')
 
-    # Make the output data
-    results = {
-        'amplitudes_vvwl': I_vvwl, 
-        'wavelength_w': wavelengths,
-        'freqs_l': freqs_l, }
+        # Make the output data
+        results = {
+            'amplitudes_vvwl': I_vvwl, 
+            'wavelength_w': wavelengths,
+            'freqs_l': freqs_l, 
+            'irrep_l': irrep_l, }
+
+    finally:
+        if world.rank == 0:
+            timer.write()
 
     return results
 
@@ -148,7 +157,7 @@ def plot_raman(row, filename):
     # All required settings
     params = {'broadening': 3.0,  # in cm^-1
               'wavelength': 1, # index
-              'polarization': ['xx', 'yy', 'zz'],
+              'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
               'temperature': 300}
 
     # Read the data from the disk
@@ -171,30 +180,21 @@ def plot_raman(row, filename):
     cm = 1 / 8065.544
     kbT = kB * params['temperature'] / cm
 
-    def calcspectrum(wlist, rlist, ww, gamma=10, shift=0, kbT=kbT):
+    def calcspectrum(wavelength, w_l, I_l, ww, gamma=10, shift=0, kbT=kbT):
         rr = np.zeros(np.size(ww))
-        for wi, ri in zip(wlist, rlist):
+        freq = 1240 / wavelength
+        for wi, ri in zip(w_l, I_l):
             if wi > 1e-1:
                 nw = 1 / (np.exp(wi / kbT) - 1)
-                curr = (1 + nw) * np.abs(ri)**2
+                curr = (1 + nw) * np.abs(ri)**2 #/ wi * (freq-wi) ** 4
                 rr = rr + curr * gauss(ww - wi - shift, gamma)
         return rr
 
-    # Make a latex type formula
-    def getformula(matstr):
-        matformula = r''
-        for ch in matstr:
-            if ch.isdigit():
-                matformula += '$_' + ch + '$'
-            else:
-                matformula += ch
-        return matformula
-
     # Set the variables and parameters
     wavelength_w = data['wavelength_w']
-    print(wavelength_w)
     freqs_l = data['freqs_l']
     amplitudes_vvwl = data['amplitudes_vvwl']
+    irrep_l = data['irrep_l']
     selpol = params['polarization']
     gamma = params['broadening']
     waveind = params['wavelength']
@@ -214,10 +214,11 @@ def plot_raman(row, filename):
     rr = {}
     maxr = np.zeros(len(selpol))
     for ii, pol in enumerate(selpol):
-        d_i = 0 * (pol[0] == 'x') + 1 * (pol[0] == 'y') + 2 * (pol[0] == 'z')
-        d_o = 0 * (pol[1] == 'x') + 1 * (pol[1] == 'y') + 2 * (pol[1] == 'z')
+        d_i = 'xyz'.index(pol[0])
+        d_o = 'xyz'.index(pol[1])
         rr[pol] = calcspectrum(
-            freqs_l, amplitudes_vvwl[d_i, d_o, waveind], ww, gamma=gamma)
+            wavelength_w[waveind], freqs_l,
+            amplitudes_vvwl[d_i, d_o, waveind], ww, gamma=gamma)
         maxr[ii] = np.max(rr[pol])
 
     # Make the figure panel and add y=0 axis
@@ -226,9 +227,13 @@ def plot_raman(row, filename):
 
     # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):
-        ax.plot(ww, rr[pol] / np.max(maxr), c='C' + str(ipol), label=pol)
-    ax.set_xlabel('Raman shift (cm$^{-1}$)')
-    ax.set_ylabel('Raman intensity (a.u.)')
+        if ipol>2:
+            sty = '--'
+        else:
+            sty = '-'
+        ax.plot(ww, rr[pol] / np.max(maxr), sty, c='C' + str(ipol), label=pol)
+    ax.set_xlabel('Raman shift [cm$^{-1}$]')
+    ax.set_ylabel('Raman intensity [a.u.]')
     ax.set_ylim((-0.1, 1.1))
     ax.set_yticks([0, 0.5, 1.0])
     ax.set_xlim((minw, maxw))
@@ -240,10 +245,19 @@ def plot_raman(row, filename):
     w_l, rep_l = count_deg(freqs_l)
 
     # Add the phonon bars to the figure with showing their degeneracy factors
+    for irrep, freq in zip(irrep_l, freqs_l):
+        if irrep:
+            irrep2 = ''
+            for ch in irrep:
+                if ch.isdigit():
+                    irrep2 += '$_'+ch+'$'
+                else:
+                    irrep2 += ch
+            plt.text(freq, -0.1, irrep2, ha='center', va='bottom', rotation=0)
     pltbar = plt.bar(w_l, -0.04, width=maxw / 100, color='k')
-    for idx, rect in enumerate(pltbar):
-        ax.text(rect.get_x() + rect.get_width() / 2., -0.1,
-                str(int(rep_l[idx])), ha='center', va='bottom', rotation=0)
+    # for idx, rect in enumerate(pltbar):
+    #     ax.text(rect.get_x() + rect.get_width() / 2., -0.1,
+    #             str(int(rep_l[idx])), ha='center', va='bottom', rotation=0)
 
     # Remove the extra space and save the figure
     plt.tight_layout()
@@ -269,12 +283,33 @@ def count_deg(freqs_l, freq_err=2):
     return w_l, rep_l
 
 
+def symmetrize_chi(atoms, chi_vvl):
+    import spglib
+    sg = spglib.get_symmetry((
+        atoms.cell,
+        atoms.get_scaled_positions(),
+        atoms.get_atomic_numbers()), symprec=1e-4)
+    op_scc = sg['rotations']
+    cell_cv = atoms.cell
+    op_svv = [np.linalg.inv(cell_cv).dot(op_cc.T).dot(cell_cv) for
+                op_cc in op_scc]
+    nop = len(op_svv)
+    sym_chi_vvl = np.zeros_like(chi_vvl)
+    for op_vv in op_svv:
+        sym_chi_vvl += np.einsum('il,jm,lmn->ijn',
+                                op_vv, op_vv, chi_vvl)
+    sym_chi_vvl /= nop
+
+
 def get_raman_tensor(
-    calculator, freqs_l, u_lav, removefiles='no',
+    calculator, freqs_l, u_lav, removefiles='no', prefix='',
     w_w=[0.0, 2.33], eta=0.05, disp=0.05):
 
     from ase.calculators.calculator import get_calculator_class
+    from gpaw.nlopt.matrixel import make_nlodata
+
     name = calculator.pop('name')
+    calculator['txt'] = prefix + calculator['txt']
     calc = get_calculator_class(name)(**calculator)
 
     atoms = read('structure.json')
@@ -297,27 +332,39 @@ def get_raman_tensor(
         for ind in range(2):
             atoms_new.set_positions(pos_Nav + mode_av * disp * (2 * ind - 1))
             sign = ['+', '-'][ind % 2]
-            gs_name = 'gs_{}{}.gpw'.format(mode, sign)
-            if not Path(gs_name).is_file():
-                parprint(f'Starting a GS calculation for mode {mode}{sign} ...')
-                atoms_new.calc = calc
-                atoms_new.get_potential_energy()  
-                calc.write(gs_name, 'all')
-                parprint(f'The GS calculation for mode {mode}{sign} is done.')
-
-            # Calculate momentum matrix:
-            mml_name = 'mml_{}{}.npz'.format(mode, sign)
+            mml_name = prefix+f'mml_{mode}{sign}.npz'
             if not Path(mml_name).is_file():
+                gs_name = prefix+f'gs_{mode}{sign}.gpw'
+                if not Path(gs_name).is_file():
+                    parprint(f'Starting a GS calculation for mode {mode}{sign} ...')
+                    atoms_new.calc = calc
+                    atoms_new.get_potential_energy()  
+                    calc.write(gs_name, 'all')
+                    parprint(f'The GS calculation for mode {mode}{sign} is done.')
+                    sys.stdout.flush()
+
+                # Calculate momentum matrix:
                 make_nlodata(gs_name=gs_name, out_name=mml_name)
+                if world.rank == 0:
+                    if removefiles == 'all' or removefiles == 'gs':
+                        ff = Path(gs_name)
+                        if ff.is_file():
+                            ff.unlink()
 
             parprint(f'Starting a chi calculation for mode {mode}{sign} ...')
-            chi_vvl = get_chi_tensor(
-                freqs=w_w,
-                eta=eta,
+            chi_vvw = get_chi_tensor(
+                freqs=w_w, eta=eta,
                 mml_name=mml_name)
+            sym_chi_vvw = symmetrize_chi(atoms_new, chi_vvw)
+            # sym_chi_vvw = chi_vvw
             parprint(f'The chi calculation for mode {mode}{sign} is done.')
+            sys.stdout.flush()
+            if removefiles == 'all' or removefiles == 'chi':
+                ff = Path(mml_name)
+                if ff.is_file():
+                    ff.unlink()
 
-            chi_ivvw[ind] = chi_vvl
+            chi_ivvw[ind] = chi_vvw
 
         alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
         I_vvwl[:, :, :, mode] = alp_vvw
@@ -325,53 +372,20 @@ def get_raman_tensor(
     return I_vvwl
 
 
-def calc_raman_spectrum(freqs_l, I_vvl, temp=300, gamma=3):
-
-    def gauss(w, g):
-        gauss = 1 / (g*np.sqrt(2 * np.pi))*np.exp(-0.5*w**2/g**2)
-        gauss[gauss<1e-16] = 0
-        return gauss
-    
-    from ase.units import kB
-    cm = 1/8065.544
-    kbT = kB*temp/cm # meV
-    maxw = min([int(np.max(freqs_l)+300), int(1.25*np.max(freqs_l))])
-    minw = 0
-    ww = np.linspace(minw, maxw, 5*maxw)
-    ram_vvl = np.zeros((3, 3, len(ww)))
-
-    # Loop over phonons frequencies
-    for mode, freq in enumerate(freqs_l):
-        nw = 1/(np.exp(freq/kbT)-1)
-        # Make the spectrum
-        for ii in range(9):
-            v1, v2 = ii // 3, ii % 3
-            ram_vvl[v1, v2] +=  np.abs(I_vvl[v1, v2, mode])**2 * gauss(ww-freq, gamma) * (1 + nw)
-
-    return ram_vvl
-
-
-def find_phonons(
-    disp: float = 0.05,
-    calculator: dict = {'name': 'gpaw',
-                        'mode': {'name': 'pw', 'ecut': 800},
-                        'xc': 'PBE',
-                        'basis': 'dzp',
-                        'kpts': {'density': 6.0, 'gamma': True},
-                        'occupations': {'name': 'fermi-dirac',
-                                        'width': 0.05},
-                        'convergence': {'forces': 1.0e-4},
-                        'symmetry': {'point_group': False},
-                        'txt': 'phonons.txt',
-                        'charge': 0}):
+def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
 
     from ase.calculators.calculator import get_calculator_class
+    from ase.calculators.dftd3 import DFTD3
+
     name = calculator.pop('name')
+    calculator['txt'] = prefix + calculator['txt']
     calc = get_calculator_class(name)(**calculator)
+    if dftd3:
+        calc = DFTD3(dft=calc, cutoff=60)
 
     # Remove empty files:
     if world.rank == 0:
-        for ff in Path().glob('phonons.*.json'):
+        for ff in Path().glob(prefix+'phonons.*.json'):
             if ff.stat().st_size == 0:
                 ff.unlink()
 
@@ -393,27 +407,22 @@ def find_phonons(
         cell=scell.get_cell(),
         pbc=atoms.pbc)
 
+    set_of_forces = []
     for ind, cell in enumerate(displaced_sc):
         # Sign of the displacement
         sign = ['+', '-'][ind % 2]
-        filename = 'phonons.{0}{1}.json'.format(ind // 2, sign)
+        filename = prefix+'phonons.{0}{1}.json'.format(ind // 2, sign)
         if Path(filename).is_file():
             forces = read_json(filename)['force']
-
-        atoms_new.set_scaled_positions(cell.get_scaled_positions())
-        atoms_new.calc = calc
-        forces = atoms_new.get_forces()
+        else:
+            atoms_new.set_scaled_positions(cell.get_scaled_positions())
+            atoms_new.calc = calc
+            forces = atoms_new.get_forces()
+            
         drift_force = forces.sum(axis=0)
         for force in forces:
             force -= drift_force / forces.shape[0]
         write_json(filename, {'force': forces})
-
-    set_of_forces = []
-    for ind, cell in enumerate(displaced_sc):
-        # Sign of the diplacement
-        sign = ['+', '-'][ind % 2]
-        filename = "phonons.{0}{1}.json".format(ind // 2, sign)
-        forces = read_json(filename)['force']
         set_of_forces.append(forces)
 
     phonon.produce_force_constants(
@@ -435,36 +444,18 @@ def find_phonons(
     results = {
         'freqs_l': freqs_l,
         'u_lav': u_lav,
-        'irreps': irreps}
-    write_json('phonons.json', results)
+        'irrep_l': irreps}
+    write_json(prefix+'phonons.json', results)
     # return freqs_l, u_lav, irreps
 
 
 def get_chi_tensor(
-        freqs=[1.0],
-        eta=0.05,
-        eshift=0.0,
+        freqs=[1.0], eta=0.05,
         ftol=1e-4, Etol=1e-6,
-        band_n=None,
-        mml_name='mml.npz'):
-    """Calculate RPA chi spectrum for nonmagnetic semiconductors.
+        band_n=None, mml_name='mml.npz'):
 
-    Parameters:
-
-    freqs:
-        Excitation frequency array (a numpy array or list)
-    eta:
-        Broadening, a number or an array (default 0.05 eV)
-    Etol, ftol:
-        Tol. in energy and fermi to consider degeneracy
-    band_n:
-        List of bands in the sum (default 0 to nb)
-    mml_name:
-        The momentum filename (default 'mml.npz')
-    """
-
-    # Useful variables
-    # pol_v = ['xyz'.index(ii) for ii in pol]
+    from gpaw.nlopt.basic import load_data
+    
     freqs = np.array(freqs)
     nw = len(freqs)
     w_lc = freqs + 1e-12 + 1j * eta  # Add small value to avoid 0
@@ -487,7 +478,7 @@ def get_chi_tensor(
             for v2 in range(v1, 3):
                 sum_l = calc_chi(
                     w_lc, f_n, E_n, p_vnn, [v1, v2],
-                    band_n, ftol, Etol, eshift)
+                    band_n, ftol, Etol, eshift=0)
                 tmp[v1, v2] = sum_l
                 tmp[v2, v1] = sum_l
         # Add it to previous with a weight
@@ -522,6 +513,7 @@ def calc_chi(
             sum_l += 2*fnm*np.real(p_vnn[pol_v[0], nni, mmi]*p_vnn[pol_v[1], mmi, nni])/(Emn*(w_l**2-Emn**2)) 
 
     return sum_l
+
 
 if __name__ == "__main__":
    main.cli() 
