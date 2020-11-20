@@ -4,13 +4,7 @@ import sys
 import typing
 from pathlib import Path
 
-from gpaw.mpi import world
-from phonopy import Phonopy
-from phonopy.structure.atoms import PhonopyAtoms
-from phonopy.units import THzToCm
 from ase.io import read
-from ase.atoms import Atoms
-from ase.utils.timing import Timer
 from ase.parallel import parprint
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json, prepare_result)
@@ -103,6 +97,8 @@ def main(
         'symmetry': {'point_group': False},
         'txt': 'gs_chi.txt'}, ) -> ASRResult:
 
+    from ase.utils.timing import Timer
+    from gpaw.mpi import world
     try:
         timer = Timer()
         with timer('Phonon calculations'):
@@ -124,14 +120,9 @@ def main(
         with timer('Raman calculations'):
             parprint('Starting a Raman calculation ...')
             freqs = [1240 / wavelength for wavelength in wavelengths]
-            original_stdout = sys.stdout
-            with open(prefix + 'raman.txt', 'a') as ff:
-                sys.stdout = ff
-                I_vvwl = get_raman_tensor(
-                    calc_chi, freqs_l, u_lav, prefix=prefix,
-                    removefiles=removefiles, w_w=freqs, eta=eta, disp=disp)
-                sys.stdout.flush()
-                sys.stdout = original_stdout
+            I_vvwl = get_raman_tensor(
+                calc_chi, freqs_l, u_lav, prefix=prefix,
+                removefiles=removefiles, w_w=freqs, eta=eta, disp=disp)
             parprint('The Raman tensors are fully computed.')
 
         # Make the output data
@@ -299,6 +290,7 @@ def get_raman_tensor(
 
     from ase.calculators.calculator import get_calculator_class
     from gpaw.nlopt.matrixel import make_nlodata
+    from gpaw.mpi import world
 
     name = calculator.pop('name')
     calculator['txt'] = prefix + calculator['txt']
@@ -368,6 +360,11 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
 
     from ase.calculators.calculator import get_calculator_class
     from ase.calculators.dftd3 import DFTD3
+    from phonopy import Phonopy
+    from phonopy.structure.atoms import PhonopyAtoms
+    from phonopy.units import THzToCm
+    from ase.atoms import Atoms
+    from gpaw.mpi import world
 
     name = calculator.pop('name')
     calculator['txt'] = prefix + calculator['txt']
@@ -386,7 +383,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     supercell = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     phonopy_atoms = PhonopyAtoms(
         symbols=atoms.symbols,
-        cell=atoms.get_cell(),
+        cell=atoms.cell,
         scaled_positions=atoms.get_scaled_positions())
 
     phonon = Phonopy(phonopy_atoms, supercell)
@@ -396,7 +393,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     atoms_new = Atoms(
         symbols=scell.get_chemical_symbols(),
         scaled_positions=scell.get_scaled_positions(),
-        cell=scell.get_cell(),
+        cell=scell.cell,
         pbc=atoms.pbc)
 
     set_of_forces = []
@@ -429,7 +426,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     phonon.set_irreps(q_c)
     ob = phonon._irreps
     irreps = []
-    for nr, (deg, irr) in enumerate(
+    for _, (deg, irr) in enumerate(
             zip(ob._degenerate_sets, ob._ir_labels)):
         irreps += [irr] * len(deg)
 
@@ -446,6 +443,7 @@ def get_chi_tensor(
         band_n=None, mml_name='mml.npz'):
 
     from gpaw.nlopt.basic import load_data
+    from gpaw.mpi import world
 
     freqs = np.array(freqs)
     nw = len(freqs)
