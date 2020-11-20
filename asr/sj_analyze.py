@@ -384,8 +384,11 @@ def plot_formation_energies(row, fname):
                   element['transition_values']['evac'])
         enlist.append(energy)
         name = element['transition_name']
-        if energy > vbm and energy < cbm:
+        if (energy >= vbm - 0.2 * gap) and (energy <= cbm + 0.2 * gap):
             ax1.axvline(energy, color='grey', linestyle='-.')
+            tickslist.append(energy)
+            labellist.append(name)
+        if energy > vbm and energy < cbm:
             if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
                 y1 = eform
                 y2 = eform
@@ -397,8 +400,6 @@ def plot_formation_energies(row, fname):
             else:
                 y1 = None
             if name.split('/')[1].startswith('-'):
-                tickslist.append(energy)
-                labellist.append(name)
                 a = float(name.split('/')[1])
                 b = get_b(enlist[i], y2, a)
                 if y1 is None:
@@ -408,8 +409,8 @@ def plot_formation_energies(row, fname):
                 ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
                 ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
             elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
-                tickslist.append(energy)
-                labellist.append(name)
+                # tickslist.append(energy)
+                # labellist.append(name)
                 a = float(name.split('/')[1])
                 b = get_b(enlist[i], y1, a)
                 if y2 is None:
@@ -462,12 +463,13 @@ def plot_charge_transitions(row, fname):
         y = (trans['transition_values']['transition'] -
              trans['transition_values']['erelax'] -
              trans['transition_values']['evac'])
-        plt.plot([-0.5, 0.5], [y, y], color='black')
-        if i % 2 == 0:
-            plt.text(0.6, y, trans['transition_name'], ha='left', va='center')
-        else:
-            plt.text(-0.6, y, trans['transition_name'], ha='right', va='center')
-        i += 1
+        if y <= (cbm + 0.2 * gap) or y >= (vbm - 0.2 * gap):
+            plt.plot([-0.5, 0.5], [y, y], color='black')
+            if i % 2 == 0:
+                plt.text(0.6, y, trans['transition_name'], ha='left', va='center')
+            else:
+                plt.text(-0.6, y, trans['transition_name'], ha='right', va='center')
+            i += 1
 
     plt.ylabel('$E - E_{vac}$ [eV]')
     plt.yticks()
