@@ -97,3 +97,17 @@ def clickify_docstring(doc):
     doc = '\n'.join(clickdoc)
 
     return doc
+
+
+class CalculatorSpecification(click.ParamType):
+    """Read atoms object from filename and return Atoms object."""
+
+    name = "calculator_specification"
+
+    def convert(self, value, param, ctx):
+        """Convert string to a dictionary."""
+        if isinstance(value, dict):
+            return value
+        default = getattr(self, 'default', None)
+        value = parse_dict_string(value, default)
+        return value

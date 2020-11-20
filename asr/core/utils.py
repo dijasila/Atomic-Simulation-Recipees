@@ -25,17 +25,32 @@ def parse_dict_string(string, dct=None):
         dct = {}
 
     # Locate ellipsis
-    string = string.replace('...', 'None:None')
-    tmpdct = literal_eval(string)
+    if string.startswith('{'):
+        string = string.replace('...', 'None:None')
+        tmpdct = literal_eval(string)
+    else:
+        parts = string.split(',')
+        tmpdct = {}
+        for part in parts:
+            if part == '...':
+                tmpdct[None] = None
+            else:
+                key, value = part.split('=')
+                value = literal_eval(value)
+                tmpdct[key] = value
+
     recursive_update(tmpdct, dct)
     return tmpdct
 
 
 def recursive_update(dct, defaultdct):
     """Recursively update defualtdct with values from dct."""
-    if None in dct:
+    if None in dct or 'None' in dct:
         # This marks that we take default values from defaultdct
-        del dct[None]
+        if None in dct:
+            del dct[None]
+        else:
+            del dct['None']
         for key in defaultdct:
             if key not in dct:
                 dct[key] = defaultdct[key]

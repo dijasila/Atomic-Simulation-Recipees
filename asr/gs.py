@@ -497,32 +497,12 @@ def main(atoms: Atoms,
     from asr.calculators import get_calculator
     from gpaw.mpi import serial_comm
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
-
-    # Just some quality control before we start
     calc = get_calculator()(
         calculaterecord.side_effects['gs.gpw'],
         txt=None,
         communicator=serial_comm
     )
     calc.atoms.calc = calc
-    # pbc = atoms.pbc
-    # ndim = np.sum(pbc)
-
-    # if ndim == 2:
-    #     assert not pbc[2], \
-    #         'The third unit cell axis should be aperiodic for a 2D material!'
-    #     # For 2D materials we check that the calculater used a dipole
-    #     # correction if the material has an out-of-plane dipole
-
-    #     # Small hack
-    #     atoms = calc.atoms
-    #     atoms.calc = calc
-    #     evacdiffmin = 10e-3
-    #     if evacdiff(calc.atoms) > evacdiffmin:
-    #         assert calc.todict().get('poissonsolver', {}) == \
-    #             {'dipolelayer': 'xy'}, \
-    #             ('The ground state has a finite dipole moment along aperiodic '
-    #              'axis but calculation was without dipole correction.')
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)

@@ -51,6 +51,7 @@ from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
+from asr.calculators import set_calculator_hook
 from math import sqrt
 import time
 
@@ -299,7 +300,8 @@ class Result(ASRResult):
 
 @command('asr.relax',
          creates=['structure.json'],
-         returns=Result)
+         returns=Result,
+         argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',

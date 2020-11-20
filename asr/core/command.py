@@ -23,6 +23,9 @@ import json
 from asr.core.results import get_object_matching_obj_id
 from ase.utils import search_current_git_hash
 from asr.core.params import get_default_parameters
+from hashlib import sha256
+from asr.core.results import obj_to_id
+import ase.io.jsonio
 
 
 def make_property(name):
@@ -35,6 +38,63 @@ def make_property(name):
         self.data[name] = value
 
     return property(get_data, set_data)
+
+
+class Serializer(abc.ABC):
+
+    @abc.abstractmethod
+    def serialize(obj: typing.Any) -> str:
+        pass
+
+    @abc.abstractmethod
+    def deserialize(serialized: str) -> typing.Any:
+        pass
+
+
+class ASRJSONEncoder(json.JSONEncoder):
+
+    def default(self, obj) -> dict:
+
+        try:
+            return ase.io.jsonio.MyEncoder.default(self, obj)
+        except TypeError:
+            pass
+        if hasattr(obj, '__dict__'):
+            cls_id = obj_to_id(obj.__class__)
+            obj = {'cls_id': cls_id, '__dict__':
+                   copy.copy(obj.__dict__)}
+
+            return obj
+        return json.JSONEncoder.default(self, obj)
+
+
+def json_hook(json_object: dict):
+    from asr.core.results import get_object_matching_obj_id
+    from ase.io.jsonio import object_hook
+
+    if 'cls_id' in json_object:
+        assert '__dict__' in json_object
+        cls = get_object_matching_obj_id(json_object['cls_id'])
+        obj = cls.__new__(cls)
+        obj.__dict__.update(json_object['__dict__'])
+        return obj
+
+    return object_hook(json_object)
+
+
+class JSONSerializer(Serializer):
+
+    encoder = ASRJSONEncoder().encode
+    decoder = json.JSONDecoder(object_hook=json_hook).decode
+    accepted_types = {dict, list, str, int, float, bool, type(None)}
+
+    def serialize(self, obj) -> str:
+        """Serialize object to JSON."""
+        return self.encoder(obj)
+
+    def deserialize(self, serialized: str) -> typing.Any:
+        """Deserialize json object."""
+        return self.decoder(serialized)
 
 
 class Parameter:
@@ -212,23 +272,23 @@ side_effects_stack = []
 
 class RegisterSideEffects():
 
-    def __init__(self, side_effects_stack=side_effects_stack):
+    def __init__(self, side_effects_stack=side_effects_stack,
+                 serializer=JSONSerializer(), hash_func=sha256):
         self.side_effects_stack = side_effects_stack
         self._root_dir = None
+        self.serializer = serializer
+        self.hash_func = hash_func
+
+    def get_hash_of_run_spec(self, run_spec):
+        return self.hash_func(
+            self.serializer.serialize(
+                run_spec
+            ).encode()
+        ).hexdigest()
 
     def get_workdir_name(self, root_dir, run_specification: RunSpecification) -> Path:
-        run_number = 1
-        workdirformat = '.asr/{run_specification.name}{}'
-        while (root_dir / workdirformat.format(
-                run_number,
-                run_specification=run_specification)).is_dir():
-            run_number += 1
-
-        workdir = (
-            root_dir / workdirformat.format(
-                run_number,
-                run_specification=run_specification)).absolute()
-
+        hsh = self.get_hash_of_run_spec(run_specification)
+        workdir = root_dir / f'.asr/{run_specification.name}{hsh[:8]}'
         return workdir
 
     def chdir_to_root_dir(self):
@@ -359,82 +419,6 @@ class RunSpecificationAlreadyExists(Exception):
     pass
 
 
-class Serializer(abc.ABC):
-
-    @abc.abstractmethod
-    def serialize(obj: typing.Any) -> str:
-        pass
-
-    @abc.abstractmethod
-    def deserialize(serialized: str) -> typing.Any:
-        pass
-
-
-from asr.core.results import obj_to_id
-from numpy import ndarray
-import ase.io.jsonio
-
-
-class ASRJSONEncoder(json.JSONEncoder):
-
-    def default(self, obj) -> dict:
-
-        try:
-            return ase.io.jsonio.MyEncoder.default(self, obj)
-        except TypeError:
-            pass
-        if hasattr(obj, '__dict__'):
-            cls_id = obj_to_id(obj.__class__)
-            # dct = {}
-            # for key, value in obj.__dict__.items():
-            #     dct[key] = self.default(value)
-            obj = {'cls_id': cls_id, '__dict__':
-                   copy.copy(obj.__dict__)}
-
-            return obj
-        return json.JSONEncoder.default(self, obj)
-        # obj_type = type(obj)
-
-        # if obj_type == dict:
-        #     for key, value in obj.items():
-        #         obj[key] = self.default(value)
-        #     return obj
-        # elif obj_type in [tuple, list]:
-        #     obj = list(obj)
-        #     for i, value in enumerate(obj):
-        #         obj[i] = self.default(value)
-        #     return obj
-        # elif obj_type in {str, int, float, bool, type(None)}:
-        #     return obj
-
-
-def json_hook(json_object: dict):
-    from asr.core.results import get_object_matching_obj_id
-    from ase.io.jsonio import object_hook
-
-    if 'cls_id' in json_object:
-        assert '__dict__' in json_object
-        cls = get_object_matching_obj_id(json_object['cls_id'])
-        obj = cls.__new__(cls)
-        obj.__dict__.update(json_object['__dict__'])
-        return obj
-
-    return object_hook(json_object)
-
-
-class JSONSerializer(Serializer):
-
-    encoder = ASRJSONEncoder().encode
-    decoder = json.JSONDecoder(object_hook=json_hook).decode
-    accepted_types = {dict, list, str, int, float, bool, type(None)}
-
-    def serialize(self, obj) -> str:
-        """Serialize object to JSON."""
-        return self.encoder(obj)
-
-    def deserialize(self, serialized: str) -> typing.Any:
-        """Deserialize json object."""
-        return self.decoder(serialized)
 
 
 class SingleRunFileCache(AbstractCache):
@@ -526,8 +510,6 @@ class SingleRunFileCache(AbstractCache):
                 return run_record
             return wrapped
         return wrapper
-
-from hashlib import sha256
 
 
 class FullFeatureFileCache(AbstractCache):
@@ -889,6 +871,7 @@ class ASRCommand:
             resources=None,
             tests=None,
             save_results_file=None,
+            argument_hooks=None,
     ):
         """Construct an instance of an ASRCommand.
 
@@ -903,6 +886,7 @@ class ASRCommand:
 
         self.cache = cache
         self.version = version
+        self.argument_hooks = argument_hooks
 
         import inspect
         mod = inspect.getmodule(wrapped_function)
@@ -1067,6 +1051,8 @@ class ASRCommand:
 
         parameters = apply_defaults(self.get_signature(), *args, **kwargs)
         parameters = Parameters(parameters=parameters)
+        for hook in self.argument_hooks:
+            parameters = hook(parameters)
 
         run_specification = construct_run_spec(
             name=obj_to_id(self.get_wrapped_function()),

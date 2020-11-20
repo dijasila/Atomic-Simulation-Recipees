@@ -1,33 +1,57 @@
-from asr.core import read_json
-from pathlib import Path
+from ase import Atoms
+import typing
 
 
-def get_calculator():
-    if not Path('params.json').is_file():
-        name = 'GPAW'
-    else:
-        params = read_json('params.json')
-        name = params.get('_calculator', 'GPAW')
+def default(atoms, dct):
+    return dct
 
-    if name == 'GPAW':
-        from gpaw import GPAW
-        return GPAW
-    elif name == 'EMT':
-        from ase.calculators.emt import EMT
-        import ase.io.ulm as ulm
 
-        class ASREMT(EMT):
-            def __init__(self, **kwargs):
-                EMT.__init__(self)
+def asr_gpaw_parameter_factory(atoms, dct):
+    nd = sum(atoms.pbc)
+    if nd == 2:
+        assert not atoms.get_pbc()[2], \
+            ('The third unit cell axis should be aperiodic for '
+             'a 2D material!')
+        dct['poissonsolver'] = {'dipolelayer': 'xy'}
 
-            def write(self, filename):
+    precision = dct.pop('precision')
+    assert precision in {'low', 'high', None}
+    if precision == 'low':
+        dct.update({'mode': {'name': 'pw', 'ecut': 350},
+                    'kpts': {'density': 2.0, 'gamma': True},
+                    'symmetry': {'symmorphic': False},
+                    'convergence': {'forces': 1e-3}})
+    elif precision == 'high':
+        dct.update({'mode': {'name': 'pw', 'ecut': 800},
+                    'kpts': {'density': 12.0, 'gamma': True},
+                    'symmetry': {'symmorphic': False},
+                    'convergence': {'forces': 1e-4},
+                    'charge': 0})
+    return dct
 
-                from ase.io.trajectory import write_atoms
-                with ulm.open(filename, 'w') as w:
-                    write_atoms(w.child('atoms'), self.atoms)
-                    w.child('results').write(**self.results)
-                    w.child('wave_functions').write(foo='bar')
-                    w.child('occupations').write(fermilevel=42)
-        return ASREMT
-    else:
-        raise NotImplementedError('Unknown DFT calculator')
+
+asr_parameter_factories = {'gpaw': asr_gpaw_parameter_factory,
+                           'default': default}
+
+
+def get_parameter_factory(name):
+    factory = asr_parameter_factories.get(
+        name,
+        asr_parameter_factories['default'],
+    )
+    return factory
+
+
+def get_calculator_spec(atoms: Atoms, dct: typing.Dict[str, typing.Any]):
+    calculatorname = dct['name']
+    factory = get_parameter_factory(calculatorname)
+    calcspec = factory(atoms, dct)
+    return calcspec
+
+
+def set_calculator_hook(parameters):
+    from asr.calculators import get_calculator_spec
+    atoms = parameters.atoms
+    calc_spec = get_calculator_spec(atoms, parameters.calculator)
+    parameters.calculator = calc_spec
+    return parameters
