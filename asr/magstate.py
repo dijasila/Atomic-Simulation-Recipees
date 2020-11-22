@@ -1,5 +1,7 @@
 """Module for determining magnetic state."""
-from asr.core import command, ASRResult, prepare_result, option, AtomsFile, DictStr
+from asr.core import (command, ASRResult, prepare_result, option,
+                      AtomsFile, DictStr)
+from asr.calculators import set_calculator_hook
 from ase import Atoms
 import typing
 
@@ -52,7 +54,8 @@ class Result(ASRResult):
 
 
 @command('asr.magstate',
-         returns=Result)
+         returns=Result,
+         argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

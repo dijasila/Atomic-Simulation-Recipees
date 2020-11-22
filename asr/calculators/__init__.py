@@ -1,4 +1,5 @@
 from ase import Atoms
+import copy
 import typing
 
 
@@ -7,6 +8,7 @@ def default(atoms, dct):
 
 
 def asr_gpaw_parameter_factory(atoms, dct):
+    dct = copy.deepcopy(dct)
     nd = sum(atoms.pbc)
     if nd == 2:
         assert not atoms.get_pbc()[2], \
@@ -14,7 +16,8 @@ def asr_gpaw_parameter_factory(atoms, dct):
              'a 2D material!')
         dct['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    precision = dct.pop('precision')
+
+    precision = dct.pop('precision', None)
     assert precision in {'low', 'high', None}
     if precision == 'low':
         dct.update({'mode': {'name': 'pw', 'ecut': 350},

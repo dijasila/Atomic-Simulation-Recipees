@@ -8,6 +8,7 @@ from . import (
     write_file,
     # file_barrier,
 )
+import uuid
 import contextlib
 import functools
 import abc
@@ -34,7 +35,7 @@ def make_property(name):
         return self.data[name]
 
     def set_data(self, value):
-        assert self.data[name] is None, f'{name} was already set.'
+        # assert self.data[name] is None, f'{name} was already set.'
         self.data[name] = value
 
     return property(get_data, set_data)
@@ -163,6 +164,67 @@ class RunSpecification:
     def __repr__(self):
         return self.__str__()
 
+class Dependant:
+
+
+    def __init__(self, obj, records: typing.List['RunRecord']):
+        self.obj = obj
+        self.records = records
+
+    def __getattr__(self, attr):
+        obj_attr = getattr(self.obj, attr)
+        if attr.startswith('__'):
+            return obj_attr
+        return Dependant(
+            obj=getattr(self.obj, attr),
+            records=self.records,
+        )
+
+    def __getitem__(self, item):
+        return Dependant(self.obj[item],
+                         records=self.records)
+
+methods = [
+        '__add__',
+        '__sub__',
+        '__mul__',
+        '__matmul__',
+        '__truediv__',
+        '__floordiv__',
+        '__mod__',
+        '__divmod__',
+        '__pow__',
+        '__lshift__',
+        '__rshift__',
+        '__and__',
+        '__xor__',
+        '__or__',
+    ]
+
+
+def make_method(method_name):
+
+    def method(self, *args, **kwargs):
+        return getattr(self.obj, method_name)(*args, **kwargs)
+
+    return method
+
+
+for meth in methods:
+
+    method = make_method(meth)
+    setattr(Dependant, meth, method)
+
+
+def find_dependencies(dct):
+    dependencies = []
+    for key, value in dct.items():
+        if isinstance(value, Dependant):
+            dependencies.extend(value.dependencies)
+        elif isinstance(value, dict):
+            dependencies.extend(find_dependencies(value))
+    return dependencies
+
 
 class RunRecord:
 
@@ -175,26 +237,28 @@ class RunRecord:
             resources: 'Resources' = None,
             side_effects: 'SideEffects' = None,
             dependencies: 'Dependencies' = None,
-            id: typing.Optional[typing.Union[str, int]] = None,
     ):
+        self.uid = uuid.uuid4().hex
         self.data = dict(
             run_specification=run_specification,
             result=result,
             resources=resources,
             side_effects=side_effects,
-            dependencies=dependencies,
-            id=id)
+            dependencies=dependencies)
 
     result = make_property('result')
     side_effects = make_property('side_effects')
     dependencies = make_property('dependencies')
-    id = make_property('id')
     run_specification = make_property('run_specification')
     resources = make_property('resources')
 
     @property
     def parameters(self):
         return self.data['run_specification'].parameters
+
+    @property
+    def dependencies(self):
+        return find_dependencies(self.data)
 
     def __str__(self):
         return f'RunRec(run_spec={self.run_specification})'
@@ -203,12 +267,21 @@ class RunRecord:
         return self.__str__()
 
     def __hash__(self):
-        return hash(self.id)
+        return hash(str(self.run_specification))
+
+    def __getattr__(self, attr):
+        if attr in self.data:
+            return Dependant(
+                self.data[attr],
+                records=[self],
+            )
+        else:
+            raise AttributeError
 
     def __eq__(self, other):
-        assert self.id
-        assert other.id
-        return self.id == other.id
+        if not isinstance(other, RunRecord):
+            return False
+        return hash(self) == hash(other)
 
 
 class Resources:
@@ -772,7 +845,9 @@ class RegisterDependencies:
 
                 with self as dependencies:
                     run_record = func(*args, **kwargs)
-                run_record.dependencies = dependencies
+                if dependencies:
+                    run_record.result = Dependant(
+                        run_record.result, dependencies)
                 return run_record
 
             return wrapped
@@ -784,8 +859,8 @@ class RegisterDependencies:
             run_record = func(*args, **kwargs)
             if self.dependency_stack:
                 dependencies = self.dependency_stack[-1]
-                if run_record.id not in dependencies:
-                    dependencies.append(run_record.id)
+                if run_record.uid not in dependencies:
+                    dependencies.append(run_record.uid)
 
             return run_record
         return wrapped
@@ -888,7 +963,10 @@ class ASRCommand:
 
         self.cache = cache
         self.version = version
-        self.argument_hooks = argument_hooks
+        if argument_hooks is None:
+            self.argument_hooks = []
+        else:
+            self.argument_hooks = argument_hooks
 
         import inspect
         mod = inspect.getmodule(wrapped_function)

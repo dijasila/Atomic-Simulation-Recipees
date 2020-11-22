@@ -1,7 +1,9 @@
 """Electronic ground state properties."""
 from ase import Atoms
 from asr.core import (
-    command, option, DictStr, ASRResult, prepare_result, AtomsFile)
+    command, option, DictStr, ASRResult, prepare_result, AtomsFile,
+)
+from asr.calculators import set_calculator_hook
 import numpy as np
 import typing
 
@@ -9,7 +11,8 @@ import typing
 @command(module='asr.gs',
          creates=['gs.gpw'],
          requires=['structure.json'],
-         resources='8:10h')
+         resources='8:10h',
+         argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
@@ -475,7 +478,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.gs',
-         returns=Result)
+         returns=Result,
+         argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
@@ -494,10 +498,11 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    from asr.calculators import get_calculator
+    from ase.calculators.calculator import get_calculator_class
     from gpaw.mpi import serial_comm
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
-    calc = get_calculator()(
+    name = calculator.get('name')
+    calc = get_calculator_class(name)(
         calculaterecord.side_effects['gs.gpw'],
         txt=None,
         communicator=serial_comm

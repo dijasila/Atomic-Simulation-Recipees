@@ -1,6 +1,8 @@
 """Magnetic anisotropy."""
 from ase import Atoms
-from asr.core import command, ASRResult, prepare_result, option, AtomsFile, DictStr
+from asr.core import (command, ASRResult, prepare_result,
+                      option, AtomsFile, DictStr)
+from asr.calculators import set_calculator_hook
 from math import pi
 
 
@@ -84,7 +86,8 @@ class Result(ASRResult):
 @command('asr.magnetic_anisotropy',
          tests=tests,
          returns=Result,
-         dependencies=['asr.gs@calculate', 'asr.magstate'])
+         dependencies=['asr.gs@calculate', 'asr.magstate'],
+         argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
