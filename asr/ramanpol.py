@@ -122,12 +122,20 @@ def main(
             parprint('Starting a Raman calculation ...')
             freqs_w = [1240 / wavelength for wavelength in wavelengths]
             if not Path(prefix + 'chis.json').is_file():
-                I_vvwl = get_raman_tensor(
+                I_vvwl = get_chi_tensors(
                     calc_chi, freqs_l, u_lav, prefix=prefix, eta=eta,
                     removefiles=removefiles, freqs_w=freqs_w, disp=disp)
-                parprint('The Raman tensors are fully computed.')
+            parprint('All chi tensors are computed.')
             chis = read_json(prefix + 'chis.json')
-            I_vvwl = chis['I_vvwl']
+            chi_livvw = chis['chi_livvw']
+            I_vvwl = np.zeros((3, 3, len(freqs_w), len(freqs_l)), complex)
+            for mode, freq in enumerate(freqs_l):
+                if freq < 0.1:
+                    continue
+                chi_ivvw = chi_livvw[mode - 3]
+                alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
+                I_vvwl[:, :, :, mode] = alp_vvw
+            parprint('The Raman tensors are fully computed.')
 
         # Make the output data
         results = {
@@ -289,7 +297,7 @@ def symmetrize_chi(atoms, chi_vvl):
     return sym_chi_vvl / nop
 
 
-def get_raman_tensor(
+def get_chi_tensors(
     calculator, freqs_l, u_lav, removefiles='no', prefix='',
         freqs_w=[0.0, 2.33], eta=0.05, disp=0.05):
 
@@ -303,7 +311,6 @@ def get_raman_tensor(
 
     atoms = read('structure.json')
     mass_a = atoms.get_masses()
-    I_vvwl = np.zeros((3, 3, len(freqs_w), len(freqs_l)), complex)
     set_chi_ivvw = []
     for mode, freq in enumerate(freqs_l):
         if freq < 0.1:
@@ -356,17 +363,15 @@ def get_raman_tensor(
             chi_ivvw[ind] = sym_chi_vvw
 
         set_chi_ivvw.append(chi_ivvw)
-        alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
-        I_vvwl[:, :, :, mode] = alp_vvw
+        # alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
+        # I_vvwl[:, :, :, mode] = alp_vvw
 
     results = {
-        'I_vvwl': I_vvwl,
         'freqs_w': freqs_w,
         'chi_livvw': np.array(set_chi_ivvw),
         'disp': disp}
     write_json(prefix + 'chis.json', results)
-
-    return I_vvwl
+    # return I_vvwl
 
 
 def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
