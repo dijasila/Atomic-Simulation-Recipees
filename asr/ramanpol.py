@@ -73,14 +73,15 @@ class Result(ASRResult):
 def main(
     disp: float = 0.05, eta: float = 0.1, dftd3: bool = True,
     wavelengths: typing.List[float] = [
-        488.0, 532.0, 633.0, 1064.0, 1550.0, 12400.0],
+        488.0, 532.0, 594.0, 612.0, 633.0, 708.0, 780.0,
+        850.0, 1064.0, 1550.0, 2600.0, 4800.0, 10600.0],
     removefiles: str = 'gs', prefix: str = '',
     calc_ph: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
         'basis': 'dzp',
-        'kpts': {'density': 10.0, 'gamma': True},
+        'kpts': {'density': 6.0, 'gamma': True},
         'occupations': {'name': 'fermi-dirac', 'width': 0.05},
         'convergence': {'forces': 1.0e-5},
         'symmetry': {'point_group': False},
@@ -90,7 +91,7 @@ def main(
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
         'basis': 'dzp',
-        'kpts': {'density': 20.0, 'gamma': True},
+        'kpts': {'density': 12.0, 'gamma': True},
         'occupations': {'name': 'fermi-dirac', 'width': 0.05},
         'nbands': '200%',
         'convergence': {'bands': -5},
@@ -119,11 +120,14 @@ def main(
 
         with timer('Raman calculations'):
             parprint('Starting a Raman calculation ...')
-            freqs = [1240 / wavelength for wavelength in wavelengths]
-            I_vvwl = get_raman_tensor(
-                calc_chi, freqs_l, u_lav, prefix=prefix,
-                removefiles=removefiles, w_w=freqs, eta=eta, disp=disp)
-            parprint('The Raman tensors are fully computed.')
+            freqs_w = [1240 / wavelength for wavelength in wavelengths]
+            if not Path(prefix + 'chis.json').is_file():
+                I_vvwl = get_raman_tensor(
+                    calc_chi, freqs_l, u_lav, prefix=prefix, eta=eta,
+                    removefiles=removefiles, freqs_w=freqs_w, disp=disp)
+                parprint('The Raman tensors are fully computed.')
+            chis = read_json(prefix + 'chis.json')
+            I_vvwl = chis['I_vvwl']
 
         # Make the output data
         results = {
@@ -139,18 +143,8 @@ def main(
     return results
 
 
-def plot_raman(row, filename):
-    # Import the required modules
-    import matplotlib.pyplot as plt
-
-    # All required settings
-    params = {'broadening': 3.0,  # in cm^-1
-              'wavelength': 1,  # index
-              'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
-              'temperature': 300}  # in K
-
-    # Read the data from the disk
-    data = row.data.get('results-asr.ramanpol.json')
+def calcspectrum(wavelength, w_l, I_l, ww, gamma=3, shift=0, temp=300):
+    from ase.units import kB
 
     # Gaussian function definition
     def gauss(w, g):
@@ -158,20 +152,30 @@ def plot_raman(row, filename):
         gauss[gauss < 1e-16] = 0
         return gauss
 
-    # Compute spectrum based on a set of resonances
-    from ase.units import kB
     cm = 1 / 8065.544
-    kbT = kB * params['temperature'] / cm
+    kbT = kB * temp / cm
+    rr = np.zeros(np.size(ww))
+    freq = 1240 / wavelength / cm
+    for wi, ri in zip(w_l, I_l):
+        if wi > 1e-1:
+            nw = 1 / (np.exp(wi / kbT) - 1)
+            curr = (1 + nw) * np.abs(ri)**2 / wi * (freq - wi)**4
+            rr = rr + curr * gauss(ww - wi - shift, gamma)
+    return rr
 
-    def calcspectrum(wavelength, w_l, I_l, ww, gamma=10, shift=0, kbT=kbT):
-        rr = np.zeros(np.size(ww))
-        freq = 1240 / wavelength
-        for wi, ri in zip(w_l, I_l):
-            if wi > 1e-1:
-                nw = 1 / (np.exp(wi / kbT) - 1)
-                curr = (1 + nw) * np.abs(ri)**2 / wi * (freq - wi)**4
-                rr = rr + curr * gauss(ww - wi - shift, gamma)
-        return rr
+
+def plot_raman(row, filename):
+    # Import the required modules
+    import matplotlib.pyplot as plt
+
+    # All required settings
+    params = {'broadening': 1.0,  # in cm^-1
+              'wavelength': 2,  # index
+              'polarization': ['xx', 'yy', 'zz'],
+              'temperature': 300}  # in K
+
+    # Read the data from the disk
+    data = row.data.get('results-asr.ramanpol.json')
 
     # Set the variables and parameters
     wavelength_w = data['wavelength_w']
@@ -200,8 +204,8 @@ def plot_raman(row, filename):
         d_i = 'xyz'.index(pol[0])
         d_o = 'xyz'.index(pol[1])
         rr[pol] = calcspectrum(
-            wavelength_w[waveind], freqs_l,
-            amplitudes_vvwl[d_i, d_o, waveind], ww, gamma=gamma)
+            wavelength_w[waveind], freqs_l, amplitudes_vvwl[d_i, d_o, waveind],
+            ww, gamma=gamma, temp=params['temperature'])
         maxr[ii] = np.max(rr[pol])
 
     # Make the figure panel and add y=0 axis
@@ -281,12 +285,13 @@ def symmetrize_chi(atoms, chi_vvl):
     for op_vv in op_svv:
         sym_chi_vvl += np.einsum('il,jm,lmn->ijn',
                                  op_vv, op_vv, chi_vvl)
-    sym_chi_vvl /= nop
+
+    return sym_chi_vvl / nop
 
 
 def get_raman_tensor(
     calculator, freqs_l, u_lav, removefiles='no', prefix='',
-        w_w=[0.0, 2.33], eta=0.05, disp=0.05):
+        freqs_w=[0.0, 2.33], eta=0.05, disp=0.05):
 
     from ase.calculators.calculator import get_calculator_class
     from gpaw.nlopt.matrixel import make_nlodata
@@ -298,12 +303,12 @@ def get_raman_tensor(
 
     atoms = read('structure.json')
     mass_a = atoms.get_masses()
-    I_vvwl = np.zeros((3, 3, len(w_w), len(freqs_l)), complex)
-
+    I_vvwl = np.zeros((3, 3, len(freqs_w), len(freqs_l)), complex)
+    set_chi_ivvw = []
     for mode, freq in enumerate(freqs_l):
         if freq < 0.1:
             continue
-        chi_ivvw = np.zeros((2, 3, 3, len(w_w)), complex)
+        chi_ivvw = np.zeros((2, 3, 3, len(freqs_w)), complex)
 
         # Make the displaced structure
         atoms_new = atoms.copy()
@@ -337,7 +342,7 @@ def get_raman_tensor(
 
             parprint(f'Starting a chi calculation for mode {mode}{sign} ...')
             chi_vvw = get_chi_tensor(
-                freqs=w_w, eta=eta,
+                freqs=freqs_w, eta=eta,
                 mml_name=mml_name)
             sym_chi_vvw = symmetrize_chi(atoms_new, chi_vvw)
             # sym_chi_vvw = chi_vvw
@@ -350,8 +355,16 @@ def get_raman_tensor(
 
             chi_ivvw[ind] = sym_chi_vvw
 
+        set_chi_ivvw.append(chi_ivvw)
         alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
         I_vvwl[:, :, :, mode] = alp_vvw
+
+    results = {
+        'I_vvwl': I_vvwl,
+        'freqs_w': freqs_w,
+        'chi_livvw': np.array(set_chi_ivvw),
+        'disp': disp}
+    write_json(prefix + 'chis.json', results)
 
     return I_vvwl
 
@@ -383,7 +396,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     supercell = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     phonopy_atoms = PhonopyAtoms(
         symbols=atoms.symbols,
-        cell=atoms.cell,
+        cell=atoms.get_cell(),
         scaled_positions=atoms.get_scaled_positions())
 
     phonon = Phonopy(phonopy_atoms, supercell)
@@ -393,7 +406,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     atoms_new = Atoms(
         symbols=scell.get_chemical_symbols(),
         scaled_positions=scell.get_scaled_positions(),
-        cell=scell.cell,
+        cell=scell.get_cell(),
         pbc=atoms.pbc)
 
     set_of_forces = []
