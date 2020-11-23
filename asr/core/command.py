@@ -24,6 +24,7 @@ import json
 from asr.core.results import get_object_matching_obj_id
 from ase.utils import search_current_git_hash
 from asr.core.params import get_default_parameters
+from asr.core.dependencies import Dependant
 from hashlib import sha256
 from asr.core.results import obj_to_id
 import ase.io.jsonio
@@ -73,7 +74,6 @@ def json_hook(json_object: dict):
     from asr.core.results import get_object_matching_obj_id
     from ase.io.jsonio import object_hook
 
-    print(json_object)
     if 'cls_id' in json_object:
         assert '__dict__' in json_object
         cls = get_object_matching_obj_id(json_object['cls_id'])
@@ -112,24 +112,23 @@ class Parameters:
 
     def __init__(self, parameters: typing.Dict[str, Parameter]):
         self.__dict__.update(parameters)
-        self._parameters = parameters
 
     def __hash__(self):
         """Make parameter hash."""
-        return hash(self._parameters)
+        return hash(self.__dict__)
 
     def keys(self):
-        return self._parameters.keys()
+        return self.__dict__.keys()
 
     def __getitem__(self, key):
         """Get parameter."""
         return getattr(self, key)
 
     def items(self):
-        return self._parameters.items()
+        return self.__dict__.items()
 
     def __str__(self):
-        return str(self._parameters)
+        return str(self.__dict__)
 
     def __repr__(self):
         return self.__str__()
@@ -181,6 +180,7 @@ class RunRecord:
             run_specification: RunSpecification = None,
             resources: 'Resources' = None,
             side_effects: 'SideEffects' = None,
+            dependencies: typing.List[str] = None,
     ):
         self.uid = uuid.uuid4().hex
         self.data = dict(
@@ -188,15 +188,12 @@ class RunRecord:
             result=result,
             resources=resources,
             side_effects=side_effects,
+            dependencies=dependencies,
         )
 
     @property
     def parameters(self):
         return self.data['run_specification'].parameters
-
-    @property
-    def dependencies(self):
-        return find_dependencies(self.data)
 
     def __str__(self):
         string = str(self.run_specification)
@@ -212,19 +209,9 @@ class RunRecord:
         return hash(str(self.run_specification))
 
     def __getattr__(self, attr):
-        print('getattr', attr)
-        data = object.__getattribute__(self, 'data')
-        print(data, data)
-        if attr in ['result', 'side_effects']:
-            return Dependant(
-                data[attr],
-                dependencies=[self.uid],
-            )
-        elif attr in data:
-            return data[attr]
-        else:
-            return object.__getattribute__(self, attr)
-
+        if attr in self.data:
+            return self.data[attr]
+        raise AttributeError
 
     def __eq__(self, other):
         if not isinstance(other, RunRecord):
@@ -266,14 +253,11 @@ def _register_resources(run_specification: RunSpecification):
     resources.ncores = world.size
 
 
-def register_resources(run_specification: RunSpecification):
-
+def register_resources():
     def wrapper(func):
-
-        def wrapped(*args, **kwargs):
-
+        def wrapped(run_specification):
             with _register_resources(run_specification) as resources:
-                run_record = func(*args, **kwargs)
+                run_record = func(run_specification)
             run_record.resources = resources
             return run_record
         return wrapped
@@ -339,10 +323,10 @@ class RegisterSideEffects():
         )
         self.side_effects_stack.pop()
 
-    def make_decorator(self, run_specification):
+    def make_decorator(self):
 
         def decorator(func):
-            def wrapped(*args, **kwargs):
+            def wrapped(run_specification):
                 current_dir = Path().absolute()
                 if self._root_dir is None:
                     self._root_dir = current_dir
@@ -351,7 +335,7 @@ class RegisterSideEffects():
                 side_effects = {}
                 with chdir(workdir, create=True):
                     with self as side_effects:
-                        run_record = func(*args, **kwargs)
+                        run_record = func(run_specification)
                     run_record.side_effects = side_effects
 
                 if not self.side_effects_stack:
@@ -361,8 +345,8 @@ class RegisterSideEffects():
 
         return decorator
 
-    def __call__(self, run_specification):
-        return self.make_decorator(run_specification)
+    def __call__(self):
+        return self.make_decorator()
 
 
 class Code:
@@ -515,17 +499,15 @@ class SingleRunFileCache(AbstractCache):
         if self.depth == 0:
             self.cache_dir = None
 
-    def __call__(self, run_specification: RunSpecification):
+    def __call__(self):
 
         def wrapper(func):
-
-            def wrapped(*args, **kwargs):
+            def wrapped(run_specification):
                 with self:
                     if self.has(run_specification):
                         run_record = self.get(run_specification)
                     else:
-                        run_record = func(*args, **kwargs)
-                        # run_record = construct_run_record(**run_data)
+                        run_record = func(run_specification)
                         self.add(run_record)
                 return run_record
             return wrapped
@@ -648,21 +630,20 @@ class FullFeatureFileCache(AbstractCache):
         """Exit context manager."""
         pass
 
-    def wrapper(self, func, run_specification: RunSpecification):
-        def wrapped(*args, **kwargs):
+    def wrapper(self, func):
+        def wrapped(run_specification):
             with self:
                 if self.has(run_specification):
                     run_record = self.get(run_specification)
                     print(f'Using cached record: {run_record}')
                 else:
-                    run_record = func(*args, **kwargs)
+                    run_record = func(run_specification)
                     self.add(run_record)
             return run_record
         return wrapped
 
-    def __call__(self, run_specification: RunSpecification):
-        return functools.partial(self.wrapper,
-                                 run_specification=run_specification)
+    def __call__(self):
+        return functools.partial(self.wrapper)
 
 
 def to_json(obj):
@@ -782,86 +763,67 @@ class RegisterDependencies:
         self.dependency_stack.append(dependencies)
         return dependencies
 
+    def parse_argument_dependencies(self, parameters: Parameters):
+
+        kwargs = {}
+        for key, value in parameters.items():
+            if isinstance(value, Dependant):
+                kwargs[key] = value.dependant_obj
+                self.register_uids(value.dependencies)
+            else:
+                kwargs[key] = value
+
+        return Parameters(kwargs)
+
     def __exit__(self, type, value, traceback):
         """Pop frame of dependency stack."""
         self.dependency_stack.pop()
 
-    def __call__(self, run_specification: RunSpecification):
+    def __call__(self):
 
         def wrapper(func):
 
-            def wrapped(*args, **kwargs):
-
+            def wrapped(run_specification):
                 with self as dependencies:
-                    run_record = func(*args, **kwargs)
-                if dependencies:
-                    run_record.result = Dependant(
-                        run_record.result, dependencies)
+                    parameters = self.parse_argument_dependencies(
+                        run_specification.parameters
+                    )
+                    run_specification.parameters = parameters
+                    run_record = func(run_specification)
+                run_record.dependencies = dependencies
                 return run_record
 
             return wrapped
         return wrapper
+
+    def register_uids(self, uids):
+        dependencies = self.dependency_stack[-1]
+        for uid in uids:
+            if uid not in dependencies:
+                dependencies.append(uid)
 
     def register(self, func):
         """Register dependency."""
         def wrapped(*args, **kwargs):
             run_record = func(*args, **kwargs)
             if self.dependency_stack:
-                dependencies = self.dependency_stack[-1]
-                if run_record.uid not in dependencies:
-                    dependencies.append(run_record.uid)
+                self.register_uids([run_record.uid])
 
             return run_record
         return wrapped
 
 
 register_dependencies = RegisterDependencies()
-
-
-# def register_dependencies(run_specification: RunSpecification):
-#     """Register dependencies."""
-
-#     def wrapper(func):
-
-#         def wrapped(*args, **kwargs):
-
-#             with RegisterDependencies(run_specification) as dependencies:
-#                 result = func(*args, **kwargs)
-#             result = {'dependencies': dependencies, **result}
-
-#             return result
-#         return wrapped
-#     return wrapper
-
-
 register_side_effects = RegisterSideEffects()
 
-# def register_side_effects(run_specification: RunSpecification):
 
-#     def wrapper(func):
-
-#         def wrapped(*args, **kwargs):
-#             with RegisterSideEffects(run_specification) as side_effects:
-#                 result = func(*args, **kwargs)
-#             result = {'side_effects': side_effects, **result}
-#             return result
-
-#         return wrapped
-
-#     return wrapper
-
-
-def register_run_spec(run_specification):
-
+def register_run_spec():
     def wrapper(func):
-
-        def wrapped(*args, **kwargs):
-            run_record = func(*args, **kwargs)
+        def wrapped(run_specification):
+            run_record = func(run_specification)
             run_record.run_specification = run_specification
             return run_record
-
         return wrapped
-
     return wrapper
 
 
@@ -1083,6 +1045,7 @@ class ASRCommand:
         for hook in self.argument_hooks:
             parameters = hook(parameters)
 
+
         run_specification = construct_run_spec(
             name=obj_to_id(self.get_wrapped_function()),
             parameters=parameters,
@@ -1093,22 +1056,22 @@ class ASRCommand:
         cache = self.cache
 
         @register_dependencies.register
-        @cache(run_specification)
-        @register_dependencies(run_specification)
-        @register_side_effects(run_specification)
-        @register_run_spec(run_specification)
-        @register_resources(run_specification)
-        def execute_run_spec():
-            name = run_specification.name
-            parameters = run_specification.parameters
+        @cache()
+        @register_dependencies()
+        @register_side_effects()
+        @register_run_spec()
+        @register_resources()
+        def execute_run_spec(run_spec):
+            name = run_spec.name
+            parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
             print(f'Running {name}({paramstring})')
-            result = run_specification()
+            result = run_spec()
             run_record = RunRecord(result=result)
             return run_record
 
-        run_record = execute_run_spec()
+        run_record = execute_run_spec(run_specification)
         register_side_effects.restore_to_previous_workdir()
         return run_record
 

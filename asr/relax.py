@@ -434,7 +434,7 @@ def main(atoms: Atoms,
     for image in trajectory:
         images.append(image)
     return Result.fromdata(
-        atoms=atoms.copy(),
+        atoms=Atoms(atoms.copy()),
         etot=etot,
         edft=edft,
         a=cellpar[0],
