@@ -3,6 +3,7 @@ from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
+from asr.core.command import ASRControl
 from asr.calculators import set_calculator_hook
 import numpy as np
 import typing
@@ -12,11 +13,13 @@ import typing
          creates=['gs.gpw'],
          requires=['structure.json'],
          resources='8:10h',
-         argument_hooks=[set_calculator_hook])
+         argument_hooks=[set_calculator_hook],
+         pass_control=True)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(
+        asrcontrol: ASRControl,
         atoms: Atoms,
         calculator: dict = {
             'name': 'gpaw',
@@ -30,7 +33,8 @@ def calculate(
             'nbands': '200%',
             'txt': 'gs.txt',
             'charge': 0
-        }) -> ASRResult:
+        },
+) -> ASRResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -61,7 +65,9 @@ def calculate(
     except PropertyNotImplementedError:
         pass
     atoms.get_potential_energy()
-    atoms.calc.write('gs.gpw')
+    gsfilename = 'gs.gpw'
+    atoms.calc.write(gsfilename)
+    asrcontrol.register_side_effect(gsfilename)
 
     return ASRResult()
 

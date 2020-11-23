@@ -26,6 +26,7 @@ from ase.utils import search_current_git_hash
 from asr.core.params import get_default_parameters
 from asr.core.dependencies import Dependant
 from hashlib import sha256
+import shutil
 from asr.core.results import obj_to_id
 import ase.io.jsonio
 
@@ -40,6 +41,11 @@ def make_property(name):
         self.data[name] = value
 
     return property(get_data, set_data)
+
+
+class ASRControl:
+
+    pass
 
 
 class Serializer(abc.ABC):
@@ -152,11 +158,13 @@ class RunSpecification:
 
     def __call__(
             self,
+            *args,
+            **kwargs
     ):
         obj = get_object_matching_obj_id(self.name)
         function = obj.get_wrapped_function()
         parameters = copy.deepcopy(self.parameters)
-        return function(**parameters)
+        return function(*args, **kwargs, **parameters)
 
     def __str__(self):
         return f'RunSpec(name={self.name}, params={self.parameters})'
@@ -253,17 +261,6 @@ def _register_resources(run_specification: RunSpecification):
     resources.ncores = world.size
 
 
-def register_resources():
-    def wrapper(func):
-        def wrapped(run_specification):
-            with _register_resources(run_specification) as resources:
-                run_record = func(run_specification)
-            run_record.resources = resources
-            return run_record
-        return wrapped
-    return wrapper
-
-
 class SideEffect:
 
     def __init__(self, filename):
@@ -273,6 +270,17 @@ class SideEffect:
 
 
 side_effects_stack = []
+
+
+def move_files(mapping: typing.Dict[str, str]):
+
+    for filename, final_filename in mapping.items():
+
+        path = Path(filename)
+        directory = Path(final_filename).parent
+        if not directory.is_dir():
+            os.makedirs(directory)
+        path.rename(final_filename)
 
 
 class RegisterSideEffects():
@@ -302,40 +310,64 @@ class RegisterSideEffects():
 
     def restore_to_previous_workdir(self):
         if self.side_effects_stack:
-            os.chdir(self.side_effects_stack[-1][0])
+            os.chdir(self.side_effects_stack[-1]['workdir'])
 
     def __enter__(self):
         """Append empty side effect object to stack."""
-        side_effects = {}
-        current_work_dir = os.getcwd()
+        frame = {
+            'side_effects': {},
+            'clean_files': [],
+            'files_to_save': [],
+            'workdir': None,
+        }
 
-        self.side_effects_stack.append([current_work_dir, side_effects])
-        return side_effects
+        self.side_effects_stack.append(frame)
+        return frame
 
     def __exit__(self, type, value, traceback):
         """Register side effects and pop side effects from stack."""
-        current_work_dir, side_effects = self.side_effects_stack[-1]
-        side_effects.update(
-            {
-                path.name: str(path.absolute())
-                for path in Path().glob('*')
-            }
-        )
+        frame = self.side_effects_stack[-1]
+        for filename in frame['clean_files']:
+            Path(filename).unlink()
         self.side_effects_stack.pop()
 
-    def make_decorator(self):
+    def get_side_effect_name(self, filename, uid):
+        side_effect_destination_dir = Path(
+            self._root_dir / '.asr/side_effects').absolute()
+        return str(side_effect_destination_dir / (uid[:15] + filename))
+
+    def make_decorator(
+            self,
+    ):
 
         def decorator(func):
-            def wrapped(run_specification):
+            def wrapped(asrcontrol, run_specification):
                 current_dir = Path().absolute()
                 if self._root_dir is None:
                     self._root_dir = current_dir
 
                 workdir = self.get_workdir_name(self._root_dir, run_specification)
-                side_effects = {}
-                with chdir(workdir, create=True):
-                    with self as side_effects:
-                        run_record = func(run_specification)
+                asrcontrol.register_side_effect = self.register_single_side_effect
+
+                with self as frame:
+                    with chdir(workdir, create=True):
+                        frame['workdir'] = workdir
+                        side_effects = frame['side_effects']
+                        run_record = func(asrcontrol, run_specification)
+                        files_to_save = frame['files_to_save']
+                        side_effects.update(
+                            {
+                                filename: self.get_side_effect_name(
+                                    filename, run_record.uid)
+                                for filename in files_to_save
+                                if Path(filename).is_file()
+                            }
+                        )
+                        move_files(
+                            side_effects,
+                        )
+
+                    shutil.rmtree(workdir)
                     run_record.side_effects = side_effects
 
                 if not self.side_effects_stack:
@@ -344,6 +376,10 @@ class RegisterSideEffects():
             return wrapped
 
         return decorator
+
+    def register_single_side_effect(self, filename):
+        frame = self.side_effects_stack[-1]
+        frame['files_to_save'].append(filename)
 
     def __call__(self):
         return self.make_decorator()
@@ -631,13 +667,13 @@ class FullFeatureFileCache(AbstractCache):
         pass
 
     def wrapper(self, func):
-        def wrapped(run_specification):
+        def wrapped(asrcontrol, run_specification):
             with self:
                 if self.has(run_specification):
                     run_record = self.get(run_specification)
                     print(f'Using cached record: {run_record}')
                 else:
-                    run_record = func(run_specification)
+                    run_record = func(asrcontrol, run_specification)
                     self.add(run_record)
             return run_record
         return wrapped
@@ -783,13 +819,13 @@ class RegisterDependencies:
 
         def wrapper(func):
 
-            def wrapped(run_specification):
+            def wrapped(asrcontrol, run_specification):
                 with self as dependencies:
                     parameters = self.parse_argument_dependencies(
                         run_specification.parameters
                     )
                     run_specification.parameters = parameters
-                    run_record = func(run_specification)
+                    run_record = func(asrcontrol, run_specification)
                 run_record.dependencies = dependencies
                 return run_record
 
@@ -817,10 +853,21 @@ register_dependencies = RegisterDependencies()
 register_side_effects = RegisterSideEffects()
 
 
+def register_resources():
+    def wrapper(func):
+        def wrapped(asrcontrol, run_specification):
+            with _register_resources(run_specification) as resources:
+                run_record = func(asrcontrol, run_specification)
+            run_record.resources = resources
+            return run_record
+        return wrapped
+    return wrapper
+
+
 def register_run_spec():
     def wrapper(func):
-        def wrapped(run_specification):
-            run_record = func(run_specification)
+        def wrapped(asrcontrol, run_specification):
+            run_record = func(asrcontrol, run_specification)
             run_record.run_specification = run_specification
             return run_record
         return wrapped
@@ -860,6 +907,7 @@ class ASRCommand:
             tests=None,
             save_results_file=None,
             argument_hooks=None,
+            pass_control=False,
     ):
         """Construct an instance of an ASRCommand.
 
@@ -878,7 +926,7 @@ class ASRCommand:
             self.argument_hooks = []
         else:
             self.argument_hooks = argument_hooks
-
+        self.pass_control = pass_control
         import inspect
         mod = inspect.getmodule(wrapped_function)
         module = mod.__name__
@@ -910,8 +958,10 @@ class ASRCommand:
         """Return signature with updated defaults based on params.json."""
         myparams = []
         for key, value in self.__signature__.parameters.items():
+            if key == 'asrcontrol':
+                continue
             assert key in self.myparams, \
-                f'Missing description for param={key}.'
+                f'Missing description for param={key},value={value}.'
             myparams.append(key)
 
         # Check that all annotated parameters can be found in the
@@ -1045,7 +1095,6 @@ class ASRCommand:
         for hook in self.argument_hooks:
             parameters = hook(parameters)
 
-
         run_specification = construct_run_spec(
             name=obj_to_id(self.get_wrapped_function()),
             parameters=parameters,
@@ -1061,17 +1110,21 @@ class ASRCommand:
         @register_side_effects()
         @register_run_spec()
         @register_resources()
-        def execute_run_spec(run_spec):
+        def execute_run_spec(asrcontrol, run_spec):
             name = run_spec.name
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
             print(f'Running {name}({paramstring})')
-            result = run_spec()
+            if self.pass_control:
+                result = run_spec(asrcontrol=asrcontrol)
+            else:
+                result = run_spec()
             run_record = RunRecord(result=result)
             return run_record
 
-        run_record = execute_run_spec(run_specification)
+        asrcontrol = ASRControl()
+        run_record = execute_run_spec(asrcontrol, run_specification)
         register_side_effects.restore_to_previous_workdir()
         return run_record
 
@@ -1085,7 +1138,6 @@ def get_package_version_and_hash(package: str):
 
 
 def command(*decoargs, **decokwargs):
-
 
     def decorator(func):
         return ASRCommand(func, *decoargs, **decokwargs)
@@ -1183,7 +1235,7 @@ def apply_defaults(signature, *args, **kwargs):
     defaults where relevant.
 
     """
-    bound_arguments = signature.bind(*args, **kwargs)
+    bound_arguments = signature.bind_partial(*args, **kwargs)
     bound_arguments.apply_defaults()
     params = copy.deepcopy(dict(bound_arguments.arguments))
     return params
