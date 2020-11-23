@@ -578,7 +578,7 @@ def graph(draw=False):
         graph = {}
 
         for record in records:
-            graph[record.id] = set(record.dependencies)
+            graph[record.uid] = record.dependencies
 
         count_edges_to_node = {}
         for node, edges in graph.items():

@@ -167,9 +167,9 @@ class RunSpecification:
 class Dependant:
 
 
-    def __init__(self, obj, records: typing.List['RunRecord']):
+    def __init__(self, obj, dependencies: typing.List[str]):
         self.obj = obj
-        self.records = records
+        self.dependencies = dependencies
 
     def __getattr__(self, attr):
         obj_attr = getattr(self.obj, attr)
@@ -177,29 +177,69 @@ class Dependant:
             return obj_attr
         return Dependant(
             obj=getattr(self.obj, attr),
-            records=self.records,
+            dependencies=self.dependencies,
         )
 
     def __getitem__(self, item):
         return Dependant(self.obj[item],
-                         records=self.records)
+                         dependencies=self.dependencies)
+
 
 methods = [
-        '__add__',
-        '__sub__',
-        '__mul__',
-        '__matmul__',
-        '__truediv__',
-        '__floordiv__',
-        '__mod__',
-        '__divmod__',
-        '__pow__',
-        '__lshift__',
-        '__rshift__',
-        '__and__',
-        '__xor__',
-        '__or__',
-    ]
+    '__add__',
+    '__sub__',
+    '__mul__',
+    '__matmul__',
+    '__truediv__',
+    '__floordiv__',
+    '__mod__',
+    '__divmod__',
+    '__pow__',
+    '__lshift__',
+    '__rshift__',
+    '__and__',
+    '__xor__',
+    '__or__',
+    '__radd__',
+    '__rsub__',
+    '__rmul__',
+    '__rmatmul__',
+    '__rtruediv__',
+    '__rfloordiv__',
+    '__rmod__',
+    '__rdivmod__',
+    '__rpow__',
+    '__rlshift__',
+    '__rrshift__',
+    '__rand__',
+    '__rxor__',
+    '__ror__',
+    '__iadd__',
+    '__isub__',
+    '__imul__',
+    '__imatmul__',
+    '__itruediv__',
+    '__ifloordiv__',
+    '__imod__',
+    '__ipow__',
+    '__ilshift__',
+    '__irshift__',
+    '__iand__',
+    '__ixor__',
+    '__ior__',
+    '__neg__',
+    '__pos__',
+    '__abs__',
+    '__invert__',
+    '__complex__',
+    '__int__',
+    '__float__',
+    '__index__',
+    '__round__',
+    '__trunc__',
+    '__floor__',
+    '__ceil__',
+]
 
 
 def make_method(method_name):
@@ -229,6 +269,11 @@ def find_dependencies(dct):
 class RunRecord:
 
     record_version: int = 0
+    result = make_property('result')
+    side_effects = make_property('side_effects')
+    dependencies = make_property('dependencies')
+    run_specification = make_property('run_specification')
+    resources = make_property('resources')
 
     def __init__(
             self,
@@ -236,7 +281,6 @@ class RunRecord:
             run_specification: RunSpecification = None,
             resources: 'Resources' = None,
             side_effects: 'SideEffects' = None,
-            dependencies: 'Dependencies' = None,
     ):
         self.uid = uuid.uuid4().hex
         self.data = dict(
@@ -244,13 +288,7 @@ class RunRecord:
             result=result,
             resources=resources,
             side_effects=side_effects,
-            dependencies=dependencies)
-
-    result = make_property('result')
-    side_effects = make_property('side_effects')
-    dependencies = make_property('dependencies')
-    run_specification = make_property('run_specification')
-    resources = make_property('resources')
+        )
 
     @property
     def parameters(self):
@@ -270,13 +308,16 @@ class RunRecord:
         return hash(str(self.run_specification))
 
     def __getattr__(self, attr):
-        if attr in self.data:
+        if attr in ['result', 'side_effects']:
             return Dependant(
                 self.data[attr],
-                records=[self],
+                dependencies=[self.uid],
             )
+        elif attr in self.data:
+            return self.data[attr]
         else:
-            raise AttributeError
+            return object.__getattribute__(self, attr)
+
 
     def __eq__(self, other):
         if not isinstance(other, RunRecord):
