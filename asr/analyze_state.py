@@ -32,6 +32,26 @@ def get_atoms_close_to_defect(center):
     return orderarray
 
 
+def get_symmetry_array(sym_results):
+    import numpy as np
+
+    Nrows = len(sym_results)
+    symmetry_array = np.empty((Nrows, 5), dtype='<U21')
+    symmetry_array = np.zeros((Nrows, 5))
+    sym_rowlabels = []
+    for i, row in enumerate(symmetry_array):
+        rowname = sym_results[i]['best']
+        sym_rowlabels.append(rowname)
+        symmetry_array[i, 0] = sym_results[i]['state']
+        symmetry_array[i, 1] = sym_results[i]['spin']
+        symmetry_array[i, 2] = sym_results[i]['energy']
+        symmetry_array[i, 3] = sym_results[i]['error']
+        symmetry_array[i, 4] = sym_results[i]['loc_ratio']
+
+    return symmetry_array, sym_rowlabels
+
+
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
                                       describe_entry, table, matrixtable)
@@ -64,7 +84,13 @@ def webpanel(result, row, key_descriptions):
     defect_table = matrixtable(defect_array,
         title=describe_entry('Defect',description='Position of the defect atom.'),
         columnlabels=['x (Å)', 'y (Å)', 'z (Å)'],
-        rowlabels=[str(result.defect_name)])
+        rowlabels=result.defect_name)
+
+    symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
+    symmetry_table = matrixtable(symmetry_array,
+        title='Symmetry label',
+        columnlabels=['State', 'Spin', 'Energy [eV]', 'Error', 'Localization ratio'],
+        rowlabels=symmetry_rownames)
 
     # rows = basictable['rows']
 
@@ -80,7 +106,7 @@ def webpanel(result, row, key_descriptions):
                'sort': 1}
 
     panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
-             'columns': [[basictable]],
+             'columns': [[basictable], [symmetry_table]],
              'sort': 2}
 
     hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
