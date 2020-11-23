@@ -19,14 +19,23 @@ def webpanel(result, row, key_descriptions):
     #     'asr.sj_analyze',
     #     exclude_keys=set(['transitions', 'pristine']))
 
-    # explained_keys = []
-    # for key in ['eform']:
-    #     if key in result.key_descriptions:
-    #         key_description = result.key_descriptions[key]
-    #         explanation = key_description
-    #         explained_key = describe_entry(key, description=explanation)
-    #     else:
-    #         explained_key = key
+    explained_keys = []
+    for key in ['eform']:
+        if key in result.key_descriptions:
+            key_description = result.key_descriptions[key]
+            explanation = key_description
+            explained_key = describe_entry(key, description=explanation)
+        else:
+            explained_key = key
+        explained_keys.append(explained_key)
+
+    formation_table_sum = table(result, 'Defect properties', [])
+    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+        f'{result.eform:.2f} eV']])
+
+    formation_table = table(result, 'Defect formation', [])
+    formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+        f'{result.eform:.2f} eV']])
 
     trans_results = result.transitions
     transition_labels = []
@@ -45,7 +54,7 @@ def webpanel(result, row, key_descriptions):
     panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
                      description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
                      columns=[[describe_entry(fig('sj_transitions.png'), 'transitions'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Formation energies')]],
+                              [describe_entry(fig('formation.png'), 'Formation energies'), formation_table]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']},
                                         {'function': plot_formation_energies,
@@ -59,16 +68,12 @@ def webpanel(result, row, key_descriptions):
     #                                          'filenames': ['formation.png']}
     #                                          ],
     #                      sort=13)
+    formation_table['title'] = 'De'
+    summary = {'title': 'Summary',
+               'columns': [[formation_table_sum], []],
+               'sort':1}
 
-    # summary = WebPanel(title=describe_entry('Summary',
-    #     description='This panel contains a summary of the most '
-    #                 'important properties of the material.'),
-    #     columns=[],
-    #     plot_descriptions=[{'function': plot_charge_transitions,
-    #                         'filenames': ['sj_transitions.png']}],
-    #     sort=10)
-
-    return [panel]
+    return [panel, summary]
 
 
 @prepare_result

@@ -51,6 +51,15 @@ def get_symmetry_array(sym_results):
     return symmetry_array, sym_rowlabels
 
 
+def get_gyro_array(gfactors_results):
+    array = np.zeros((len(gfactors_results), 1))
+    symbollist = []
+    for i, g in enumerate(gfactors_results):
+        array[i, 0] = g['g']
+        symbollist.append(g['symbol'])
+
+    return array, symbollist
+
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
@@ -58,7 +67,7 @@ def webpanel(result, row, key_descriptions):
     import numpy as np
     from ase.io import read
 
-    basictable = table(row, 'Defect info', [
+    basictable = table(row, 'Defect properties', [
         describe_entry('pointgroup', description=result.key_descriptions['pointgroup'])],
                        key_descriptions, 2)
 
@@ -69,10 +78,10 @@ def webpanel(result, row, key_descriptions):
     hf_atoms = []
     for i, element in enumerate(orderarray[:10, 0]):
         hf_atoms.append(hf_results[int(element)]['kind'] + str(hf_results[int(element)]['index']))
-        hf_array[i, 0] = hf_results[int(element)]['magmom']
-        hf_array[i, 1] = hf_results[int(element)]['eigenvalues'][0]
-        hf_array[i, 2] = hf_results[int(element)]['eigenvalues'][1]
-        hf_array[i, 3] = hf_results[int(element)]['eigenvalues'][2]
+        hf_array[i, 0] = f"{int(hf_results[int(element)]['magmom']):2d}"
+        hf_array[i, 1] = f"{hf_results[int(element)]['eigenvalues'][0]:.2f}"
+        hf_array[i, 2] = f"{hf_results[int(element)]['eigenvalues'][1]:.2f}"
+        hf_array[i, 3] = f"{hf_results[int(element)]['eigenvalues'][2]:.2f}"
 
     defect_array = np.array([[center[0], center[1], center[2]]])
 
@@ -82,7 +91,7 @@ def webpanel(result, row, key_descriptions):
         rowlabels=hf_atoms)
 
     defect_table = matrixtable(defect_array,
-        title=describe_entry('Defect',description='Position of the defect atom.'),
+        title=describe_entry('Defect position',description='Position of the defect atom.'),
         columnlabels=['x (Å)', 'y (Å)', 'z (Å)'],
         rowlabels=result.defect_name)
 
@@ -91,6 +100,12 @@ def webpanel(result, row, key_descriptions):
         title='Symmetry label',
         columnlabels=['State', 'Spin', 'Energy [eV]', 'Error', 'Localization ratio'],
         rowlabels=symmetry_rownames)
+
+    gyro_array, gyro_rownames = get_gyro_array(result.gfactors)
+    gyro_table = matrixtable(gyro_array,
+        title='Symbol',
+        columnlabels=['g-factor'],
+        rowlabels=gyro_rownames)
 
     # rows = basictable['rows']
 
@@ -106,11 +121,11 @@ def webpanel(result, row, key_descriptions):
                'sort': 1}
 
     panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
-             'columns': [[basictable], [symmetry_table]],
+             'columns': [[basictable, defect_table], [symmetry_table]],
              'sort': 2}
 
     hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
-                 'columns': [[hf_table]],
+                 'columns': [[hf_table], [gyro_table]],
                  'sort': 2}
 
     return [panel, summary, hyperfine]
@@ -503,6 +518,18 @@ class HyperfineResult(ASRResult):
 
 
 @prepare_result
+class GyromagneticResult(ASRResult):
+    """Container for gyromagnetic factor results."""
+    symbol: str
+    g: float
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        symbol='Atomic species.',
+        g='g-factor for the isotope.'
+    )
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
     pointgroup: str
@@ -510,6 +537,7 @@ class Result(ASRResult):
     defect_name: str
     symmetries: typing.List[SymmetryResult]
     hyperfine: typing.List[HyperfineResult]
+    gfactors: typing.List[GyromagneticResult]
 
 
     key_descriptions: typing.Dict[str, str] = dict(
@@ -517,7 +545,8 @@ class Result(ASRResult):
         defect_center='Position of the defect [Å, Å, Å].',
         defect_name='Name of the defect ({type}_{position})',
         symmetries='List of SymmetryResult objects for all states.',
-        hyperfine='List of HyperfineResult objects for all atoms.'
+        hyperfine='List of HyperfineResult objects for all atoms.',
+        gfactors='List of GyromagneticResult objects for each atom species.'
     )
 
     formats = {'ase_webpanel': webpanel}
@@ -619,14 +648,15 @@ def main(mapping: bool = True,
     if hf:
         print('INFO: calculate hyperfine properties.')
         atoms, calc = restart('gs.gpw', txt=None)
-        hf_results = calculate_hyperfine(atoms, calc)
+        hf_results, gfactor_results = calculate_hyperfine(atoms, calc)
 
     return Result.fromdata(
         pointgroup=point_group,
         defect_center=center,
         defect_name=defectname,
         symmetries=symmetry_results,
-        hyperfine=hf_results)
+        hyperfine=hf_results,
+        gfactors=gfactor_results)
 
 
 def return_symmetry_result(irreps, best, error, loc_ratio,
@@ -699,10 +729,15 @@ def calculate_hyperfine(atoms, calc):
     print(f'Total magnetic moment: {total_magmom:.3f}')
 
     print('\nG-factors used:')
+    gyro_results = []
     for symbol, g in used.items():
         print(f'{symbol:2} {g:10.3f}')
+        gyro_result = GyromagneticResult.fromdata(
+                symbol=symbol,
+                g=g)
+        gyro_results.append(gyro_result)
 
-    return hyperfine_results
+    return hyperfine_results, gyro_results
 
 
 def get_localization_ratio(atoms, wf):
