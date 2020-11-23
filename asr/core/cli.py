@@ -596,7 +596,7 @@ def graph(draw=False):
         )
 
         for node in sorted_nodes:
-            print(node, '->', graph[node])
+            print(node, '<-', graph[node])
 
 
 @cli.command()

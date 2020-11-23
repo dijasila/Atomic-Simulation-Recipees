@@ -213,6 +213,12 @@ class RunRecord:
     def __repr__(self):
         return self.__str__()
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __hash__(self):
         return hash(str(self.run_specification))
 
