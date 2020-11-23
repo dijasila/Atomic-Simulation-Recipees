@@ -330,7 +330,7 @@ def get_emass_dict_from_row(row, has_mae=False):
                             mass_str = "N/A"
                         else:
                             mass_str = str(round(abs(mass) * 100)
-                                           / 100) + " m<sub>e</sub>"
+                                           / 100) + " m<sub>0</sub>"
 
                         if has_mae:
                             mare = mares[direction - 1]
