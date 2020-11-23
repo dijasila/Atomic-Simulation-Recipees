@@ -54,10 +54,17 @@ def webpanel(result, row, key_descriptions):
         hf_array[i, 2] = hf_results[int(element)]['eigenvalues'][1]
         hf_array[i, 3] = hf_results[int(element)]['eigenvalues'][2]
 
+    defect_array = np.array([center[0], center[1], center[2]])
+
     hf_table = matrixtable(hf_array,
         title='HF components',
         columnlabels=['Magn. moment', 'Axx', 'Ayy', 'Azz'],
         rowlabels=hf_atoms)
+
+    defect_table = matrixtable(defect_array,
+        title='Defect center',
+        columnlabels=['x(Å)', 'y(Å)', 'z(Å)'],
+        rowlabels=[result.defect_name])
 
     # rows = basictable['rows']
 
@@ -69,7 +76,7 @@ def webpanel(result, row, key_descriptions):
     #                        'sort': -1}
 
     summary = {'title': 'Summary',
-               'columns': [[basictable]],
+               'columns': [[basictable], [defect_table]],
                'sort': -1}
 
     panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
@@ -472,6 +479,7 @@ class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
     pointgroup: str
     defect_center: typing.Tuple[float, float, float]
+    defect_name: str
     symmetries: typing.List[SymmetryResult]
     hyperfine: typing.List[HyperfineResult]
 
@@ -479,6 +487,7 @@ class Result(ASRResult):
     key_descriptions: typing.Dict[str, str] = dict(
         pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
+        defect_name='Name of the defect ({type}_{position})',
         symmetries='List of SymmetryResult objects for all states.',
         hyperfine='List of HyperfineResult objects for all atoms.'
     )
@@ -516,6 +525,8 @@ def main(mapping: bool = True,
     primitive = read('../../unrelaxed.json')
     pristine = read('../../defects.pristine_sc/structure.json')
     defect = Path('.')
+    defecttype, defectpos = get_defect_info(primitive, defect)
+    defectname = defecttype + '_' + defectpos
     center = return_defect_coordinates(structure,
                                        unrelaxed,
                                        primitive,
@@ -575,6 +586,7 @@ def main(mapping: bool = True,
     return Result.fromdata(
         pointgroup=point_group,
         defect_center=center,
+        defect_name=defectname,
         symmetries=symmetry_results,
         hyperfine=hf_results)
 
