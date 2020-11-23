@@ -36,6 +36,9 @@ def webpanel(result, row, key_descriptions):
     formation_table = table(result, 'Defect formation', [])
     formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform:.2f} eV']])
+    for chempot in results.chemical_potentials:
+        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.symbol}", description=chempot.key_descriptions['symbol']),
+            f"{chempot.eref:.2f} eV"]])
 
     trans_results = result.transitions
     transition_labels = []
@@ -68,7 +71,6 @@ def webpanel(result, row, key_descriptions):
     #                                          'filenames': ['formation.png']}
     #                                          ],
     #                      sort=13)
-    formation_table['title'] = 'De'
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum], []],
                'sort':1}
@@ -123,17 +125,30 @@ class TransitionListResults(ASRResult):
 
 
 @prepare_result
+class ChemicalPotentialResult(ASRResult):
+    """Container for results related to chemical potentials."""
+    element: str
+    eref: float
+
+    key_descriptions = dict(
+        element='Atomic species.',
+        eref='Reference energy extracted from OQMD [eV].')
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
     transitions: typing.List[TransitionResults]
     pristine: PristineResults
     eform: float
+    chemical_potentials: typing.List[ChemicalPotentialResult]
 
     key_descriptions = dict(
         transitions='Charge transition levels with [transition energy, '
                         'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
-        eform='Neutral formation energy without chemical potentials applied [eV]')
+        eform='Neutral formation energy without chemical potentials applied [eV]',
+        chemical_potentials='List of ChemicalPotentialResult objects for each species.')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -156,7 +171,13 @@ def main() -> Result:
     print('INFO: calculate charge transition levels for defect {}.'.format(
         defectsystem))
 
-    # Initialize results dictionary
+    # get list of different kinds present in the system and extract chemical potential
+    # references
+    kindlist = get_kindlist()
+    chempot_list = []
+    for kind in kindlist:
+        chempot_result = get_chemical_potentials(kind)
+        chempot_list.append(chempot_result)
 
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions()
@@ -169,7 +190,29 @@ def main() -> Result:
 
     return Result.fromdata(transitions=transition_list,
                            pristine=pris,
-                           eform=eform)
+                           eform=eform,
+                           chemical_potentials=chempot_list)
+
+
+def get_kindlist():
+    """Return list of elements present in the structure."""
+    from ase.io import read
+
+    atoms = read('structure.json')
+    kindlist = []
+
+    for symbol in atoms.get_chemical_symbols():
+        if symbol not in kindlist:
+            kindlist.append(symbol)
+
+    return kindlist
+
+
+def get_chemical_potentials(kind):
+    """TBD"""
+    return ChemicalPotentialResult.fromdata(
+        element=kind,
+        eref=0.0)
 
 
 def calculate_transitions():
