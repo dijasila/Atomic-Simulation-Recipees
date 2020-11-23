@@ -42,7 +42,8 @@ def webpanel(result, row, key_descriptions):
                                                   describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
                                     rowlabels=transition_labels)
 
-    panel = WebPanel('Charge Transition Levels (Slater-Janak)',
+    panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
+                     description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
                      columns=[[describe_entry(fig('sj_transitions.png'), 'transitions'), transitions_table],
                               [describe_entry(fig('formation.png'), 'Formation energies')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
@@ -463,7 +464,7 @@ def plot_charge_transitions(row, fname):
         y = (trans['transition_values']['transition'] -
              trans['transition_values']['erelax'] -
              trans['transition_values']['evac'])
-        if y <= (cbm + 0.2 * gap) or y >= (vbm - 0.2 * gap):
+        if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
             plt.plot([-0.5, 0.5], [y, y], color='black')
             if i % 2 == 0:
                 plt.text(0.6, y, trans['transition_name'], ha='left', va='center')

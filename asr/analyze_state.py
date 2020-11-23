@@ -39,8 +39,8 @@ def webpanel(result, row, key_descriptions):
     from ase.io import read
 
     basictable = table(row, 'Defect info', [
-        describe_entry('pointgroup', description='test'), 'defect_center'
-    ], key_descriptions, 2)
+        describe_entry('pointgroup', description=result.key_descriptions['pointgroup'])],
+                       key_descriptions, 2)
 
     hf_results = result.hyperfine
     center = result.defect_center
@@ -54,17 +54,17 @@ def webpanel(result, row, key_descriptions):
         hf_array[i, 2] = hf_results[int(element)]['eigenvalues'][1]
         hf_array[i, 3] = hf_results[int(element)]['eigenvalues'][2]
 
-    defect_array = np.array([center[0], center[1], center[2]])
+    defect_array = np.array([[center[0], center[1], center[2]]])
 
     hf_table = matrixtable(hf_array,
-        title='HF components',
-        columnlabels=['Magn. moment', 'Axx', 'Ayy', 'Azz'],
+        title='Atom',
+        columnlabels=['Magn. moment', 'Axx (MHz)', 'Ayy (MHz)', 'Azz (MHz)'],
         rowlabels=hf_atoms)
 
     defect_table = matrixtable(defect_array,
-        title='Defect center',
-        columnlabels=['x(Å)', 'y(Å)', 'z(Å)'],
-        rowlabels=[result.defect_name])
+        title=describe_entry('Defect',description='Position of the defect atom.'),
+        columnlabels=['x (Å)', 'y (Å)', 'z (Å)'],
+        rowlabels=[str(result.defect_name)])
 
     # rows = basictable['rows']
 
@@ -77,7 +77,7 @@ def webpanel(result, row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[basictable], [defect_table]],
-               'sort': -1}
+               'sort': 1}
 
     panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
              'columns': [[basictable]],
@@ -447,6 +447,7 @@ class SymmetryResult(ASRResult):
     loc_ratio: float
     state: int
     spin: int
+    energy: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         irreps='List of irreproducible representations and respective scores.',
@@ -454,7 +455,8 @@ class SymmetryResult(ASRResult):
         error='Error of identification of the best irreproducible representation.',
         loc_ratio='Localization ratio for a given state.',
         state='Index of the analyzed state.',
-        spin='Spin of the analyzed state (0 or 1).'
+        spin='Spin of the analyzed state (0 or 1).',
+        energy='Energy of specific state with internal GPAW reference [eV].'
     )
 
 
@@ -546,10 +548,14 @@ def main(mapping: bool = True,
     labels_up = []
     labels_down = []
 
+    # read in calc once
+    _, calc = restart('gs.gpw', txt=None)
+
     symmetry_results = []
     for wf_file in cubefiles:
         spin = str(wf_file)[str(wf_file).find('_') + 1]
         band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+        energy = calc.get_eigenvalues(spin=int(spin))[int(band)]
 
         wf, atoms = read_cube_data(str(wf_file))
         localization = get_localization_ratio(atoms, wf)
@@ -575,7 +581,8 @@ def main(mapping: bool = True,
                                                  error,
                                                  localization,
                                                  band,
-                                                 spin)
+                                                 spin,
+                                                 energy)
         symmetry_results.append(symmetry_result)
 
     if hf:
@@ -592,7 +599,7 @@ def main(mapping: bool = True,
 
 
 def return_symmetry_result(irreps, best, error, loc_ratio,
-        state, spin) -> SymmetryResult:
+        state, spin, energy) -> SymmetryResult:
     """Returns SymmetryResult for a specific state."""
     return SymmetryResult.fromdata(
         irreps=irreps,
@@ -600,7 +607,8 @@ def return_symmetry_result(irreps, best, error, loc_ratio,
         error=error,
         loc_ratio=loc_ratio,
         state=state,
-        spin=spin)
+        spin=spin,
+        energy=energy)
 
 
 def return_irrep_result(sym_name, sym_score) -> IrrepResult:
