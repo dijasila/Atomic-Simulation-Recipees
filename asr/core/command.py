@@ -164,8 +164,8 @@ class RunSpecification:
     def __repr__(self):
         return self.__str__()
 
-class Dependant:
 
+class Dependant:
 
     def __init__(self, obj, dependencies: typing.List[str]):
         self.obj = obj
