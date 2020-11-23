@@ -36,9 +36,11 @@ def webpanel(result, row, key_descriptions):
     formation_table = table(result, 'Defect formation', [])
     formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform:.2f} eV']])
-    for chempot in results.chemical_potentials:
-        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.symbol}", description=chempot.key_descriptions['symbol']),
+    for chempot in result.chemical_potentials:
+        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['element']),
             f"{chempot.eref:.2f} eV"]])
+    formation_table['rows'].extend([[describe_entry(f"Heat of formation (TBD)", description=result.key_descriptions['hof']),
+        f"{result.hof:.2f} eV"]])
 
     trans_results = result.transitions
     transition_labels = []
@@ -56,8 +58,8 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
                      description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
-                     columns=[[describe_entry(fig('sj_transitions.png'), 'transitions'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Formation energies'), formation_table]],
+                     columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
+                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.'), formation_table]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']},
                                         {'function': plot_formation_energies,
@@ -142,13 +144,15 @@ class Result(ASRResult):
     pristine: PristineResults
     eform: float
     chemical_potentials: typing.List[ChemicalPotentialResult]
+    hof: float
 
     key_descriptions = dict(
         transitions='Charge transition levels with [transition energy, '
                         'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
         eform='Neutral formation energy without chemical potentials applied [eV]',
-        chemical_potentials='List of ChemicalPotentialResult objects for each species.')
+        chemical_potentials='List of ChemicalPotentialResult objects for each species.',
+        hof='Heat of formation for the pristine monolayer [eV]')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -179,6 +183,9 @@ def main() -> Result:
         chempot_result = get_chemical_potentials(kind)
         chempot_list.append(chempot_result)
 
+    # get heat of formation
+    hof = get_heat_of_formation()
+
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions()
 
@@ -191,7 +198,13 @@ def main() -> Result:
     return Result.fromdata(transitions=transition_list,
                            pristine=pris,
                            eform=eform,
-                           chemical_potentials=chempot_list)
+                           chemical_potentials=chempot_list,
+                           hof=hof)
+
+
+def get_heat_of_formation():
+    """To be implemented."""
+    return -1.234
 
 
 def get_kindlist():

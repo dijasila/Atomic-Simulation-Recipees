@@ -91,9 +91,9 @@ def webpanel(result, row, key_descriptions):
         rowlabels=hf_atoms)
 
     defect_table = matrixtable(defect_array,
-        title=describe_entry('Defect position',description='Position of the defect atom.'),
+        title=describe_entry('Defect position', description='Position of the defect atom.'),
         columnlabels=['x (Å)', 'y (Å)', 'z (Å)'],
-        rowlabels=result.defect_name)
+        rowlabels=[result.defect_name])
 
     symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
     symmetry_table = matrixtable(symmetry_array,
@@ -120,9 +120,15 @@ def webpanel(result, row, key_descriptions):
                'columns': [[basictable], [defect_table]],
                'sort': 1}
 
-    panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis'),
+    panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis.'),
              'columns': [[basictable, defect_table], [symmetry_table]],
              'sort': 2}
+    # panel = WebPanel(describe_entry('Symmetry analysis (structure and defect states)',
+    #                  description='Structural and electronic symmetry analysis'),
+    #                  columns=[[basictable, defect_table], [describe_entry(fig('ks_gap.png'), 'KS states within the pristine band gap.'), symmetry_table]],
+    #                  plot_descriptions=[{'function': plot_gapstates_dummy,
+    #                                      'filenames': ['ks_gap.png']}],
+    #                  sort=3)
 
     hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
                  'columns': [[hf_table], [gyro_table]],
@@ -799,6 +805,16 @@ def plot_gapstates(row, fname):
     ax.set_xticks([])
     ax.set_ylabel('Energy (eV)', size=15)
 
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
+
+
+def plot_gapstates_dummy(row, fname):
+    from matplotlib import pyplot
+    plt.xlim(-1,1)
+    plt.ylim(-1,1)
+    plt.text(0, 0, 'KS DEFECT STATE PLOT', ha='center', va='center', weight='bold')
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
