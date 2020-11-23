@@ -73,6 +73,7 @@ def json_hook(json_object: dict):
     from asr.core.results import get_object_matching_obj_id
     from ase.io.jsonio import object_hook
 
+    print(json_object)
     if 'cls_id' in json_object:
         assert '__dict__' in json_object
         cls = get_object_matching_obj_id(json_object['cls_id'])
@@ -165,111 +166,10 @@ class RunSpecification:
         return self.__str__()
 
 
-class Dependant:
-
-    def __init__(self, obj, dependencies: typing.List[str]):
-        self.obj = obj
-        self.dependencies = dependencies
-
-    def __getattr__(self, attr):
-        obj_attr = getattr(self.obj, attr)
-        if attr.startswith('__'):
-            return obj_attr
-        return Dependant(
-            obj=getattr(self.obj, attr),
-            dependencies=self.dependencies,
-        )
-
-    def __getitem__(self, item):
-        return Dependant(self.obj[item],
-                         dependencies=self.dependencies)
-
-
-methods = [
-    '__add__',
-    '__sub__',
-    '__mul__',
-    '__matmul__',
-    '__truediv__',
-    '__floordiv__',
-    '__mod__',
-    '__divmod__',
-    '__pow__',
-    '__lshift__',
-    '__rshift__',
-    '__and__',
-    '__xor__',
-    '__or__',
-    '__radd__',
-    '__rsub__',
-    '__rmul__',
-    '__rmatmul__',
-    '__rtruediv__',
-    '__rfloordiv__',
-    '__rmod__',
-    '__rdivmod__',
-    '__rpow__',
-    '__rlshift__',
-    '__rrshift__',
-    '__rand__',
-    '__rxor__',
-    '__ror__',
-    '__iadd__',
-    '__isub__',
-    '__imul__',
-    '__imatmul__',
-    '__itruediv__',
-    '__ifloordiv__',
-    '__imod__',
-    '__ipow__',
-    '__ilshift__',
-    '__irshift__',
-    '__iand__',
-    '__ixor__',
-    '__ior__',
-    '__neg__',
-    '__pos__',
-    '__abs__',
-    '__invert__',
-    '__complex__',
-    '__int__',
-    '__float__',
-    '__index__',
-    '__round__',
-    '__trunc__',
-    '__floor__',
-    '__ceil__',
-]
-
-
-def make_method(method_name):
-
-    def method(self, *args, **kwargs):
-        return getattr(self.obj, method_name)(*args, **kwargs)
-
-    return method
-
-
-for meth in methods:
-
-    method = make_method(meth)
-    setattr(Dependant, meth, method)
-
-
-def find_dependencies(dct):
-    dependencies = []
-    for key, value in dct.items():
-        if isinstance(value, Dependant):
-            dependencies.extend(value.dependencies)
-        elif isinstance(value, dict):
-            dependencies.extend(find_dependencies(value))
-    return dependencies
-
-
 class RunRecord:
 
     record_version: int = 0
-    result = make_property('result')
+    # result = make_property('result')
     side_effects = make_property('side_effects')
     dependencies = make_property('dependencies')
     run_specification = make_property('run_specification')
@@ -299,7 +199,11 @@ class RunRecord:
         return find_dependencies(self.data)
 
     def __str__(self):
-        return f'RunRec(run_spec={self.run_specification})'
+        string = str(self.run_specification)
+        maxlength = 25
+        if len(string) > maxlength:
+            string = string[:maxlength] + '...'
+        return f'RunRec({string})'
 
     def __repr__(self):
         return self.__str__()
@@ -308,13 +212,16 @@ class RunRecord:
         return hash(str(self.run_specification))
 
     def __getattr__(self, attr):
+        print('getattr', attr)
+        data = object.__getattribute__(self, 'data')
+        print(data, data)
         if attr in ['result', 'side_effects']:
             return Dependant(
-                self.data[attr],
+                data[attr],
                 dependencies=[self.uid],
             )
-        elif attr in self.data:
-            return self.data[attr]
+        elif attr in data:
+            return data[attr]
         else:
             return object.__getattribute__(self, attr)
 
@@ -564,10 +471,9 @@ class SingleRunFileCache(AbstractCache):
             )
         name = run_record.run_specification.name
         filename = self._name_to_results_filename(name)
-        run_record.id = filename
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
-        return run_record.id
+        return filename
 
     def has(self, run_specification: RunSpecification):
         name = run_specification.name
@@ -659,11 +565,10 @@ class FullFeatureFileCache(AbstractCache):
         run_hash = self.get_hash(run_specification)
         name = run_record.run_specification.name + '-' + run_hash[:10]
         filename = self._name_to_results_filename(name)
-        run_record.id = run_hash
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
         self.add_hash_to_table(run_hash, filename)
-        return run_record.id
+        return run_hash
 
     def get_hash(self, run_specification: RunSpecification):
         run_spec_to_be_hashed = construct_run_spec(
@@ -718,6 +623,9 @@ class FullFeatureFileCache(AbstractCache):
         serialized_object = self._read_file(filename)
         obj = self.serializer.deserialize(serialized_object)
         return obj
+
+    def get_record_from_uid(self, uid):
+        return [record for record in self.select() if record.uid == uid][0]
 
     def select(self):
         return [self.get_record_from_hash(run_hash)

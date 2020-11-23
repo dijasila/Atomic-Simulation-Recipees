@@ -556,6 +556,7 @@ def draw_networkx_graph(G):
 
 @cache.command()
 @click.option('--draw', is_flag=True)
+
 def graph(draw=False):
     from asr.core.command import full_feature_file_cache
 
@@ -569,16 +570,19 @@ def graph(draw=False):
 
         for record in records:
             for depid in record.dependencies:
-                deprecord = full_feature_file_cache.get_record_from_hash(depid)
+                deprecord = full_feature_file_cache.get_record_from_uid(depid)
                 graph.add_edge(deprecord, record)
 
         draw_networkx_graph(graph)
-        # draw_plotly_graph(graph)
+        draw_plotly_graph(graph)
     else:
         graph = {}
 
         for record in records:
-            graph[record.uid] = record.dependencies
+            graph[record] = [
+                full_feature_file_cache.get_record_from_uid(uid)
+                for uid in record.dependencies
+            ]
 
         count_edges_to_node = {}
         for node, edges in graph.items():
