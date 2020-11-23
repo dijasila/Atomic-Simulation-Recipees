@@ -456,7 +456,7 @@ class SymmetryResult(ASRResult):
         loc_ratio='Localization ratio for a given state.',
         state='Index of the analyzed state.',
         spin='Spin of the analyzed state (0 or 1).',
-        energy='Energy of specific state with internal GPAW reference [eV].'
+        energy='Energy of specific state wrt. vacuum level [eV].'
     )
 
 
@@ -512,6 +512,7 @@ def main(mapping: bool = True,
     """Analyze wavefunctions and analyze symmetry."""
 
     from ase.io.cube import read_cube_data
+    from asr.core import read_json
     from gpaw.point_groups import SymmetryChecker
 
     if mapping:
@@ -551,11 +552,15 @@ def main(mapping: bool = True,
     # read in calc once
     _, calc = restart('gs.gpw', txt=None)
 
+    # get vacuum level to reference energies
+    res_def = read_json('results-asr.gs.json')
+    evac = res_def.evac
+
     symmetry_results = []
     for wf_file in cubefiles:
         spin = str(wf_file)[str(wf_file).find('_') + 1]
         band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
-        energy = calc.get_eigenvalues(spin=int(spin))[int(band)]
+        energy = calc.get_eigenvalues(spin=int(spin))[int(band)] - evac
 
         wf, atoms = read_cube_data(str(wf_file))
         localization = get_localization_ratio(atoms, wf)
