@@ -16,7 +16,6 @@ def asr_gpaw_parameter_factory(atoms, dct):
              'a 2D material!')
         dct['poissonsolver'] = {'dipolelayer': 'xy'}
 
-
     precision = dct.pop('precision', None)
     assert precision in {'low', 'high', None}
     if precision == 'low':
