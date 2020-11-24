@@ -26,6 +26,7 @@ from ase.utils import search_current_git_hash
 from asr.core.params import get_default_parameters
 from asr.core.dependencies import Dependant
 from hashlib import sha256
+from asr.core.utils import sha256sum
 import shutil
 from asr.core.results import obj_to_id
 import ase.io.jsonio
@@ -150,11 +151,13 @@ class RunSpecification:
             parameters: Parameters,
             version: int,
             codes: 'Codes',
+            uid: str,
     ):
-        self.parameters = parameters
         self.name = name
+        self.parameters = parameters
         self.codes = codes
         self.version = version
+        self.uid = uid
 
     def __call__(
             self,
@@ -176,7 +179,7 @@ class RunSpecification:
 class RunRecord:
 
     record_version: int = 0
-    # result = make_property('result')
+    result = make_property('result')
     side_effects = make_property('side_effects')
     dependencies = make_property('dependencies')
     run_specification = make_property('run_specification')
@@ -190,7 +193,6 @@ class RunRecord:
             side_effects: 'SideEffects' = None,
             dependencies: typing.List[str] = None,
     ):
-        self.uid = uuid.uuid4().hex
         self.data = dict(
             run_specification=run_specification,
             result=result,
@@ -202,6 +204,10 @@ class RunRecord:
     @property
     def parameters(self):
         return self.data['run_specification'].parameters
+
+    @property
+    def uid(self):
+        return self.data['run_specification'].uid
 
     def __str__(self):
         string = str(self.run_specification)
@@ -269,20 +275,21 @@ def _register_resources(run_specification: RunSpecification):
 
 class SideEffect:
 
-    def __init__(self, filename):
-
-        self.filename
-        self.hash = None
+    def __init__(self, filename, path):
+        self.filename = filename
+        self.path = path
+        self.hashes = {'sha256': sha256sum(filename)}
 
 
 side_effects_stack = []
 
 
-def move_files(mapping: typing.Dict[str, str]):
+def move_files(mapping: typing.Dict[str, SideEffect]):
 
-    for filename, final_filename in mapping.items():
+    for filename, side_effect in mapping.items():
 
         path = Path(filename)
+        final_filename = side_effect.path
         directory = Path(final_filename).parent
         if not directory.is_dir():
             os.makedirs(directory)
@@ -323,7 +330,6 @@ class RegisterSideEffects():
         frame = {
             'side_effects': {},
             'clean_files': [],
-            'files_to_save': [],
             'workdir': None,
         }
 
@@ -353,28 +359,23 @@ class RegisterSideEffects():
                     self._root_dir = current_dir
 
                 workdir = self.get_workdir_name(self._root_dir, run_specification)
-                asrcontrol.register_side_effect = self.register_single_side_effect
-
                 with self as frame:
+                    def register_side_effect(filename):
+                        print(run_specification.__dict__)
+                        return self.register_single_side_effect(
+                            filename,
+                            run_specification.uid
+                        )
+                    asrcontrol.register_side_effect = register_side_effect
                     with chdir(workdir, create=True):
                         frame['workdir'] = workdir
-                        side_effects = frame['side_effects']
                         run_record = func(asrcontrol, run_specification)
-                        files_to_save = frame['files_to_save']
-                        side_effects.update(
-                            {
-                                filename: self.get_side_effect_name(
-                                    filename, run_record.uid)
-                                for filename in files_to_save
-                                if Path(filename).is_file()
-                            }
-                        )
                         move_files(
-                            side_effects,
+                            frame['side_effects'],
                         )
 
                     shutil.rmtree(workdir)
-                    run_record.side_effects = side_effects
+                    run_record.side_effects = frame['side_effects']
 
                 if not self.side_effects_stack:
                     self._root_dir = None
@@ -383,9 +384,14 @@ class RegisterSideEffects():
 
         return decorator
 
-    def register_single_side_effect(self, filename):
+    def register_single_side_effect(self, filename, uid):
         frame = self.side_effects_stack[-1]
-        frame['files_to_save'].append(filename)
+        name = self.get_side_effect_name(
+            filename, uid
+        )
+        side_effect = SideEffect(filename, name)
+        frame['side_effects'][filename] = side_effect
+        return side_effect
 
     def __call__(self):
         return self.make_decorator()
@@ -416,6 +422,7 @@ def construct_run_spec(
         parameters: typing.Union[dict, Parameters],
         version: int,
         codes: typing.Union[typing.List[str], Codes] = [],
+        uid: str = None
 ) -> RunSpecification:
     """Construct a run specification."""
     if not isinstance(parameters, Parameters):
@@ -424,11 +431,15 @@ def construct_run_spec(
     if not isinstance(codes, Codes):
         codes = Codes([Code.from_string(code) for code in codes])
 
+    if uid is None:
+        uid = uuid.uuid4().hex
+
     return RunSpecification(
         name=name,
         parameters=parameters,
         version=version,
         codes=codes,
+        uid=uid,
     )
 
 
@@ -598,7 +609,8 @@ class FullFeatureFileCache(AbstractCache):
         run_spec_to_be_hashed = construct_run_spec(
             name=run_specification.name,
             parameters=run_specification.parameters,
-            version=run_specification.version
+            version=run_specification.version,
+            uid='0',
         )
         serialized_object = self.serializer.serialize(run_spec_to_be_hashed)
         return self.hash_func(serialized_object.encode()).hexdigest()
@@ -848,6 +860,7 @@ class RegisterDependencies:
         """Register dependency."""
         def wrapped(*args, **kwargs):
             run_record = func(*args, **kwargs)
+            print(run_record)
             if self.dependency_stack:
                 self.register_uids([run_record.uid])
 

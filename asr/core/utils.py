@@ -75,6 +75,15 @@ def md5sum(filename):
     return hash.hexdigest()
 
 
+def sha256sum(filename):
+    from hashlib import sha256
+    hash = sha256()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(128 * hash.block_size), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
 @contextmanager
 def chdir(folder, create=False, empty=False):
     dir = os.getcwd()

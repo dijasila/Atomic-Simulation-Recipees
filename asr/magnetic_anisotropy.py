@@ -141,7 +141,7 @@ def main(atoms: Atoms,
         return Result(data=results)
 
     calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = GPAW(calculaterecord.side_effects['gs.gpw'])
+    calc = GPAW(calculaterecord.result.calculation.path)
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,

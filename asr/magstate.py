@@ -78,7 +78,7 @@ def main(atoms: Atoms,
     from asr.gs import calculate as calculategs
 
     calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = GPAW(calculaterecord.side_effects['gs.gpw'], txt=None)
+    calc = GPAW(calculaterecord.result.calculation.path, txt=None)
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)
