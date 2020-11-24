@@ -106,7 +106,7 @@
 {% for row in data.rows %}
     <tr>
       {% for value in row %}
-        <td>{{ value|safe }} {{ help(value) }}</td>
+        <td>{{ help(value) }} {{ value|safe }}</td>
     {% endfor %}
     </tr>
 {% endfor %}

@@ -45,10 +45,30 @@ def get_reduced_formula(formula, stoichiometry=False):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table
+    from asr.database.browser import (table, describe_entry, code, bold,
+                                      br, href, dl, div)
 
+    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    crystal_type = describe_entry(
+        'crystal_type',
+        "The crystal type is defined as "
+        + br
+        + div(bold('-'.join([code('stoi'),
+                             code('spg no.'),
+                             code('occ. wyck. pos.')])), 'well well-sm text-center')
+        + bold('where')
+        + dl(
+            [
+                [code('stoi'), 'Stoichiometry.'],
+                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
+                [code('occ. wyck. pos.'),
+                 'Alphabetically sorted list of occupied'
+                 f'wyckoff positions determined with {spglib}.'],
+            ]
+        )
+    )
     basictable = table(row, 'Structure info', [
-        'crystal_type', 'class', 'spacegroup', 'spgnum', 'pointgroup',
+        crystal_type, 'class', 'spacegroup', 'spgnum', 'pointgroup',
         'ICSD_id', 'COD_id'
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
