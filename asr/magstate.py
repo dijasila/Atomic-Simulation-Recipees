@@ -74,11 +74,10 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Determine magnetic state."""
-    from gpaw import GPAW
     from asr.gs import calculate as calculategs
 
     calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = GPAW(calculaterecord.result.calculation.path, txt=None)
+    calc = calculaterecord.result.calculation.load()
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)

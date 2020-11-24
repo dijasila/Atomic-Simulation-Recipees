@@ -119,7 +119,6 @@ def main(atoms: Atoms,
     from asr.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
-    from gpaw import GPAW
 
     magstateresults = magstate(
         atoms=atoms,
@@ -141,7 +140,7 @@ def main(atoms: Atoms,
         return Result(data=results)
 
     calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = GPAW(calculaterecord.result.calculation.path)
+    calc = calculaterecord.result.calculation.load()
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,

@@ -3,8 +3,8 @@ from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
-from asr.core.command import ASRControl, SideEffect
-from asr.calculators import set_calculator_hook
+from asr.core.command import ASRControl
+from asr.calculators import set_calculator_hook, Calculation
 import numpy as np
 import typing
 
@@ -12,7 +12,7 @@ import typing
 @prepare_result
 class GroundStateCalculationResult(ASRResult):
 
-    calculation: SideEffect
+    calculation: Calculation
 
     key_descriptions = dict(calculation='Calculation object')
 
@@ -63,7 +63,7 @@ def calculate(
             'The third unit cell axis should be aperiodic for a 2D material!'
         calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    from ase.calculators.calculator import get_calculator_class
+    from asr.calculators import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
@@ -74,11 +74,11 @@ def calculate(
     except PropertyNotImplementedError:
         pass
     atoms.get_potential_energy()
-
-    gsfilename = 'gs.gpw'
-    atoms.calc.write(gsfilename)
-    side_effect = asrcontrol.register_side_effect(gsfilename)
-    return GroundStateCalculationResult.fromdata(calculation=side_effect)
+    calculation = calc.save(id='gs')
+    for i, filename in enumerate(calculation.paths):
+        side_effect = asrcontrol.register_side_effect(filename)
+        calculation.paths[i] = side_effect.path
+    return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
 def webpanel(result, row, key_descriptions):
@@ -513,15 +513,14 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    from ase.calculators.calculator import get_calculator_class
-    from gpaw.mpi import serial_comm
+    # from ase.calculators.calculator import get_calculator_class
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
-    name = calculator.get('name')
-    calc = get_calculator_class(name)(
-        calculaterecord.result.calculation.path,
-        txt=None,
-        communicator=serial_comm
-    )
+    calc = calculaterecord.result.calculation.load()
+    # calc = get_calculator_class(
+    #     calculaterecord.result.calculation.path,
+    #     txt=None,
+    #     communicator=serial_comm
+    # )
     calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information
