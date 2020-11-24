@@ -203,7 +203,7 @@ def bs_hse(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig, table, describe_entry
 
     if row.get('gap_hse', 0) > 0.0:
         hse = table(row, 'Property',
@@ -235,11 +235,17 @@ def webpanel(result, row, key_descriptions):
              'sort': 15}
 
     if row.get('gap_hse'):
-        hse_table = table(row, 'Electronic properties', ['gap_hse'],
-                          key_descriptions)
-        # rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+
+        bandgaphse = describe_entry(
+            'Band gap (HSE)',
+            'The electronic band gap calculated with '
+            'G0W0 including spin-orbit effects. \n\n',
+        )
+        rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
-                   'columns': [[hse_table]],
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
                    'sort': 11}
         return [panel, summary]
 

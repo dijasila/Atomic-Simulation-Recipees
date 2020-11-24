@@ -56,24 +56,68 @@ def webpanel(result, row, key_descriptions):
         + div(bold('-'.join([code('stoi'),
                              code('spg no.'),
                              code('occ. wyck. pos.')])), 'well well-sm text-center')
-        + bold('where')
+        + 'where'
         + dl(
             [
                 [code('stoi'), 'Stoichiometry.'],
                 [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
                 [code('occ. wyck. pos.'),
-                 'Alphabetically sorted list of occupied'
+                 'Alphabetically sorted list of occupied '
                  f'wyckoff positions determined with {spglib}.'],
             ]
         )
     )
+
+    cls = describe_entry(
+        'class',
+        "The material class is a manually attributed name that is given to "
+        "a material for historical reasons and is therefore not well-defined "
+        "but can be useful classifying materials."
+    )
+
+    spg_list_link = href(
+        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+    )
+    spacegroup = describe_entry(
+        'spacegroup',
+        f"The {spg_list_link} is determined with {spglib}."
+    )
+
+    spgnum = describe_entry(
+        'spgnum',
+        f"The {spg_list_link} number is determined with {spglib}."
+    )
+
+    pointgroup = describe_entry(
+        'pointgroup',
+        f"The point group is determined with {spglib}."
+    )
+
+    icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
+                     'https://icsd.products.fiz-karlsruhe.de/')
+
+    icsd_id = describe_entry(
+        'icsd_id',
+        f"ID of a closely related material in the {icsd_link}."
+    )
+
+    cod_link = href(
+        'Crystallography Open Database (COD)',
+        'http://crystallography.net/cod/browse.html'
+    )
+
+    cod_id = describe_entry(
+        'cod_id',
+        f"ID of a closely related material in the {cod_link}."
+    )
+
     basictable = table(row, 'Structure info', [
-        crystal_type, 'class', 'spacegroup', 'spgnum', 'pointgroup',
-        'ICSD_id', 'COD_id'
+        crystal_type, cls, spacegroup, spgnum, pointgroup,
+        icsd_id, cod_id
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
     rows = basictable['rows']
-    codid = row.get('COD_id')
+    codid = row.get('cod_id')
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
@@ -83,9 +127,13 @@ def webpanel(result, row, key_descriptions):
                 tmprow[1] = href
 
     doi = row.get('doi')
+    doistring = describe_entry(
+        'Reported DOI',
+        'DOI of article where material has been synthesized.'
+    )
     if doi:
         rows.append([
-            'Monolayer reported DOI',
+            doistring,
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
