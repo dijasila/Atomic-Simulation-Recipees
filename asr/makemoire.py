@@ -84,8 +84,9 @@ def GetSymmetry(atoms):
     lattice = atoms.get_cell()
     positions = atoms.get_scaled_positions()
     numbers = atoms.get_atomic_numbers()
-    return get_spacegroup(atoms, symprec=1e-5)
-
+    cell = (lattice, positions, numbers)
+    spgrp = get_spacegroup(cell, symprec=1e-5)
+    return spgrp.replace('(', '').replace(')','').split()
 
 
 
@@ -636,7 +637,6 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
     atoms.set_tags(layerlevels)
     spacegroup = GetSymmetry(atoms)[0]
     spacegroup_nr = GetSymmetry(atoms)[1]
-    print(spacegroup_nr)
 
     if Path(file_json).exists() == False or overwrite == True:
         write(file_json, atoms)
