@@ -37,10 +37,10 @@ def webpanel(result, row, key_descriptions):
     formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform:.2f} eV']])
     for chempot in result.chemical_potentials:
-        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['element']),
-            f"{chempot.eref:.2f} eV"]])
+        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['eref']),
+            f"{chempot.eref:.2f} eV/atom"]])
     formation_table['rows'].extend([[describe_entry(f"Heat of formation (TBD)", description=result.key_descriptions['hof']),
-        f"{result.hof:.2f} eV"]])
+        f"{result.hof:.2f} eV/atom"]])
 
     trans_results = result.transitions
     transition_labels = []
