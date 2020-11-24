@@ -14,7 +14,7 @@ def webpanel(result, row, key_descriptions):
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
     table = {'type': 'table',
-             'header': ['atom index', 'symbol', 'charge'],
+             'header': ['Atom index', 'Atom type', 'Charge (e)'],
              'rows': rows}
     title_description = 'Bader charge analysis.'
 
