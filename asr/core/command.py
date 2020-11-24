@@ -361,7 +361,6 @@ class RegisterSideEffects():
                 workdir = self.get_workdir_name(self._root_dir, run_specification)
                 with self as frame:
                     def register_side_effect(filename):
-                        print(run_specification.__dict__)
                         return self.register_single_side_effect(
                             filename,
                             run_specification.uid
@@ -860,7 +859,6 @@ class RegisterDependencies:
         """Register dependency."""
         def wrapped(*args, **kwargs):
             run_record = func(*args, **kwargs)
-            print(run_record)
             if self.dependency_stack:
                 self.register_uids([run_record.uid])
 
