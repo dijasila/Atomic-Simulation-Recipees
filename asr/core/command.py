@@ -280,6 +280,9 @@ class SideEffect:
         self.path = path
         self.hashes = {'sha256': sha256sum(filename)}
 
+    def restore(self):
+        Path(self.filename).write_bytes(Path(self.path).read_bytes())
+
 
 side_effects_stack = []
 
