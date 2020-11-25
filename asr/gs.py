@@ -516,11 +516,6 @@ def main(atoms: Atoms,
     # from ase.calculators.calculator import get_calculator_class
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
     calc = calculaterecord.result.calculation.load()
-    # calc = get_calculator_class(
-    #     calculaterecord.result.calculation.path,
-    #     txt=None,
-    #     communicator=serial_comm
-    # )
     calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information
