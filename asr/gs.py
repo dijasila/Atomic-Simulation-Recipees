@@ -514,7 +514,7 @@ def main(atoms: Atoms,
          }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
-    calc = calculaterecord.result.calculation.load()
+    calc = calculaterecord.result.calculation.load(parallel=False)
     calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information

@@ -82,10 +82,59 @@ class Calculation:
         self.paths = paths
         self.state = state
 
-    def load(self) -> Calculator:
+    def load(self, *args, **kwargs) -> Calculator:
         """Restart calculation."""
         cls = get_calculator_class(self.cls_name)
-        return cls.load(self)
+        return cls.load(self, *args, **kwargs)
+
+
+class ASRAdapter(ABC):
+
+    def __init__(self, cls):
+        self.cls = cls
+        self.calculator = None
+
+    def __call__(self, *args, **kwargs):
+        self.calculator = self.cls(*args, **kwargs)
+        return self
+
+    def __getattr__(self, attr):  # noqa
+        if hasattr(self.calculator, attr):
+            return getattr(self.calculator, attr)
+        raise AttributeError
+
+    @abstractmethod
+    def save(self, id) -> Calculation:
+        pass
+
+    @abstractmethod
+    def load(cls, calculation: Calculation, *args, **kwargs) -> 'ASRAdapter':
+        pass
+
+
+class GPAWLikeAdapter(ASRAdapter):
+
+    def save(self, id) -> Calculation:
+        filename = f'{id}.gpw'
+        self.write(filename)
+        return Calculation(
+            id=id,
+            cls_name='gpaw',
+            paths=[filename],
+        )
+
+    def load(self,
+             calculation: Calculation,
+             parallel=False) -> 'GPAWLikeAdapter':
+        if parallel:
+            self.calculator = self.cls(calculation.paths[0])
+            return self
+        from gpaw.mpi import serial_comm
+        self.calculator = self.cls(
+            calculation.paths[0],
+            communicator=serial_comm,
+        )
+        return self
 
 
 def get_calculator_class(name):
@@ -98,24 +147,30 @@ def get_calculator_class(name):
     cls = ase_get_calculator_class(name)
 
     if name == 'gpaw':
+        calc = GPAWLikeAdapter(cls)
+        return calc
 
-        class GPAWAdapter(cls):
+    elif name == 'quantumespresso':
+
+        class QEAdapter(ASRAdapter):
 
             def save(self, id) -> Calculation:
-                filename = f'{id}.gpw'
-                self.write(filename)
-                return Calculation(id=id, cls_name='gpaw', paths=[filename])
+                filenames = ['qe1.txt', 'qe2.txt']
 
-            @classmethod
-            def load(cls, calculation: Calculation) -> 'GPAWAdapter':
-                from gpaw.mpi import serial_comm
-                return cls(
-                    calculation.paths[0],
-                    txt=None,
-                    communicator=serial_comm,
+                return Calculation(
+                    id=id, cls_name='quantumespresso', paths=filenames,
+                    state=self.__dict__,
                 )
 
-        return GPAWAdapter
+            @classmethod
+            def load(cls, calculation: Calculation) -> 'QEAdapter':
+                for side_effect in calculation.paths:
+                    side_effect.restore()
+                obj = cls.__new__(cls)
+                obj.__dict__.update(calculation.state)
+                return obj
+
+        return QEAdapter
 
     elif name == 'emt':
 

@@ -280,6 +280,12 @@ class SideEffect:
         self.path = path
         self.hashes = {'sha256': sha256sum(filename)}
 
+    def __str__(self):  # noqa
+        return f'SideEffect({self.filename})'
+
+    def __fspath__(self):  # noqa
+        return self.path
+
     def restore(self):
         Path(self.filename).write_bytes(Path(self.path).read_bytes())
 
