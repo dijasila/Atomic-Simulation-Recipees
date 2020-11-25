@@ -513,7 +513,6 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    # from ase.calculators.calculator import get_calculator_class
     calculaterecord = calculate(atoms=atoms, calculator=calculator)
     calc = calculaterecord.result.calculation.load()
     calc.atoms.calc = calc
