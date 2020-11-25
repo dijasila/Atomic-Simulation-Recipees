@@ -103,7 +103,7 @@ def get_calculator_class(name):
 
             def save(self, id) -> Calculation:
                 filename = f'{id}.gpw'
-                self.calculator.write(filename)
+                self.write(filename)
                 return Calculation(id=id, cls_name='gpaw', paths=[filename])
 
             @classmethod
