@@ -707,8 +707,7 @@ def check_soc(spin_band_dict):
 
 
 class Result(ASRResult):
-
-    formats = {"ase_webpanel": webpanel}
+    pass
 
 
 @command('asr.emasses',
@@ -1391,11 +1390,16 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+class ValidateResult(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.emasses',
          requires=['results-asr.emasses.json'],
          dependencies=['asr.emasses'],
-         returns=Result)
-def validate() -> Result:
+         returns=ValidateResult)
+def validate() -> ValidateResult:
     """Calculate MARE of fits over 25 meV.
 
     Perform a calculation for each to validate it
