@@ -168,8 +168,8 @@ key_descriptions = {
     "info.json": {
         'class': 'KVP: Material class',
         'doi': 'KVP: Monolayer reported DOI',
-        'icsd_id': 'KVP: ICSD id of parent bulk structure',
-        'cod_id': 'KVP: COD id of parent bulk structure'
+        'icsd_id': 'KVP: Related ICSD id',
+        'cod_id': 'KVP: Related COD id'
     },
     "emasses": {
         'emass_vb_dir1':

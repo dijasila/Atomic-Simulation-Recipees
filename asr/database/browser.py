@@ -172,6 +172,51 @@ def get_recipe_href(asr_name, name=None):
     return link_name
 
 
+def make_html_tag_wrapper(tag):
+
+    def wrap_tag(text):
+        return f'<{tag}>{text}</{tag}>'
+
+    return wrap_tag
+
+
+def div(text, cls=''):
+
+    return f'<div class="{cls}">{text}</div>'
+
+
+li = make_html_tag_wrapper('li')
+bold = make_html_tag_wrapper('b')
+pre = make_html_tag_wrapper('pre')
+code = make_html_tag_wrapper('code')
+dt = make_html_tag_wrapper('dt')
+dd = make_html_tag_wrapper('dd')
+
+br = '</br>'
+
+
+def ul(items):
+
+    text = ''
+    for item in items:
+        text += li(item)
+
+    return '<ul>' + text + '<ul>'
+
+
+def dl(items):
+
+    text = ''
+    for item1, item2 in items:
+        text += dt(item1) + dd(item2)
+
+    return '<dl class="dl-horizontal">' + text + '<dl>'
+
+
+def href(text, link):
+    return f'<a href="{link}">{text}</a>'
+
+
 def entry_parameter_description(data, name, exclude_keys: set = set()):
     """Make a parameter description.
 

@@ -260,7 +260,7 @@ def empirical_mean_z(correctgw: bool = True,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+    from asr.database.browser import fig, table, describe_entry
 
     prop = table(row, 'Property', [
         'gap_gw', 'gap_dir_gw',
@@ -286,7 +286,16 @@ def webpanel(result, row, key_descriptions):
              'sort': 16}
 
     if row.get('gap_gw'):
-        rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+        description = (
+            'The electronic band gap calculated with '
+            'G0W0 including spin-orbit effects. \n\n'
+        )
+        rows = [
+            [
+                describe_entry('Band gap (G0W0)', description),
+                f'{row.gap_gw:0.2f} eV'
+            ]
+        ]
 
         summary = {'title': 'Summary',
                    'columns': [[{'type': 'table',

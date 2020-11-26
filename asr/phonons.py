@@ -118,7 +118,7 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig, describe_entry
+    from asr.database.browser import table, fig, describe_entry, dl
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
     panel = {'title': 'Phonons',
@@ -132,8 +132,21 @@ def webpanel(result, row, key_descriptions):
     high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup'
     low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
 
-    row = ['Dynamical (phonons)',
-           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
+    row = [
+        describe_entry(
+            'Dynamical (phonons)',
+            'Classifier for the dynamical stability of a material '
+            'based on the minimum eigenvalues of the Hessian '
+            'in a phonon calculation.'
+            + dl(
+                [
+                    ["LOW", low],
+                    ["HIGH", high],
+                ]
+            )
+        ),
+        dynstab.upper()
+    ]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
