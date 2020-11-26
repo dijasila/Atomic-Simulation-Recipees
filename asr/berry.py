@@ -152,9 +152,10 @@ def plot_phases(row, f0, f1, f2, fpi):
     import pylab as plt
 
     results = row.data['results-asr.berry@calculate.json']
-    for f in [f0, f1, f2, fpi]:
-        phit_km = results.get('phi%s_km' % f[12:-4])
-        St_km = results.get('s%s_km' % f[12:-4])
+    for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
+        print(results)
+        phit_km = results[f'phi{label}_km']
+        St_km = results[f's{label}_km']
         if phit_km is None:
             continue
         Nk = len(St_km)
@@ -194,7 +195,7 @@ def plot_phases(row, f0, f1, f2, fpi):
             dir = 'z'
 
         cbar = plt.colorbar()
-        cbar.set_label(r'$\langle S_%s\rangle/\hbar$' % dir, size=16)
+        cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
 
         if f == f0:
             plt.title(r'$\tilde k_2=0$', size=22)
@@ -230,7 +231,7 @@ def webpanel(result, row, key_descriptions):
         'asr.gs@calculate')
     description = ('Topological invariant characterizing the occupied bands \n\n'
                    + parameter_description)
-    datarow = ['Band topology', describe_entry(result.Topology, description)]
+    datarow = [describe_entry('Band topology', description), result.Topology]
 
     summary = WebPanel(title='Summary',
                        columns=[[{'type': 'table',
@@ -244,10 +245,10 @@ def webpanel(result, row, key_descriptions):
                          sort=15)
 
     berry_phases = WebPanel(title='Berry phase',
-                            columns=[[fig('berry_phases0.png'),
-                                      fig('berry_phases0_pi.png')],
-                                     [fig('berry_phases1.png'),
-                                      fig('berry_phases2.png')]],
+                            columns=[[fig('berry-phases0.png'),
+                                      fig('berry-phases0_pi.png')],
+                                     [fig('berry-phases1.png'),
+                                      fig('berry-phases2.png')]],
                             plot_descriptions=[{'function': plot_phases,
                                                 'filenames': ['berry-phases0.png',
                                                               'berry-phases1.png',
