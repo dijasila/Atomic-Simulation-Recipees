@@ -68,6 +68,7 @@ def distance_to_sc(nd, atoms, dist_max):
     'asr.phonopy',
     requires=['structure.json', 'gs.gpw']
 )
+@option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
 @option('--distance', type=float, help='Displacement size')
 @option('--dist_max', type=float,
         help='Maximum distance between atoms in the supercell')
@@ -75,7 +76,7 @@ def distance_to_sc(nd, atoms, dist_max):
 @option('--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(distance: float = 0.05, fsname: str = 'phonons',
+def calculate(distance: float = 0.05, fsname: str = 'phonons', dftd3: bool = False,
               supercell: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
@@ -90,7 +91,7 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons',
                                   'charge': 0}) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
-
+    from ase.calculators.dftd3 import DFTD3
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
@@ -105,6 +106,8 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons',
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
+    if dftd3:
+        calc = DFTD3(dft=calc, cutoff=60)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
