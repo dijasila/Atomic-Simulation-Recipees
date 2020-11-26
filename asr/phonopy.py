@@ -65,18 +65,18 @@ def distance_to_sc(nd, atoms, dist_max):
 
 
 @command(
-    "asr.phonopy",
-    requires=["structure.json", "gs.gpw"]
+    'asr.phonopy',
+    requires=['structure.json', 'gs.gpw']
 )
-@option("--d", type=float, help="Displacement size")
-@option("--dist_max", type=float,
-        help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file", type=str)
-@option('--sc', nargs=3, type=int,
+@option('--d', '--distance', type=float, help='Displacement size')
+@option('--dist_max', type=float,
+        help='Maximum distance between atoms in the supercell')
+@option('--fsname', help='Name for forces file', type=str)
+@option('--sc', '--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
+def calculate(distance: float = 0.05, fsname: str = 'phonons',
+              supercell: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
@@ -95,12 +95,12 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob(fsname + ".*.json"):
+        for f in Path().glob(fsname + '.*.json'):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
 
-    atoms = read("structure.json")
+    atoms = read('structure.json')
 
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
@@ -110,12 +110,12 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
     from asr.utils import is_magnetic
 
     if is_magnetic():
-        gsold = get_calculator()("gs.gpw", txt=None)
+        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.get_pbc())
-    sc = list(map(int, sc))
+    sc = list(map(int, supercell))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
 
@@ -134,7 +134,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
-    phonon.generate_displacements(distance=d, is_plusminus=True)
+    phonon.generate_displacements(distance=distance, is_plusminus=True)
     displaced_sc = phonon.get_supercells_with_displacements()
 
     from ase.atoms import Atoms
@@ -153,16 +153,16 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         # Displacement number
         a = n // 2
         # Sign of the displacement
-        sign = ["+", "-"][n % 2]
+        sign = ['+', '-'][n % 2]
 
-        filename = fsname + ".{0}{1}.json".format(a, sign)
+        filename = fsname + '.{0}{1}.json'.format(a, sign)
 
         if Path(filename).is_file():
-            forces = read_json(filename)["force"]
+            forces = read_json(filename)['force']
             set_of_forces.append(forces)
             # Number of forces equals to the number of atoms in the supercell
             assert len(forces) == len(atoms) * np.prod(sc), (
-                "Wrong supercell size!")
+                'Wrong supercell size!')
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
@@ -173,7 +173,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         for force in forces:
             force -= drift_force / forces.shape[0]
         set_of_forces.append(forces)
-        write_json(filename, {"force": forces})
+        write_json(filename, {'force': forces})
 
     phonon.produce_force_constants(
         forces=set_of_forces,
@@ -184,7 +184,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
 
 
 def requires():
-    return ["results-asr.phonopy@calculate.json"]
+    return ['results-asr.phonopy@calculate.json']
 
 
 def webpanel(result, row, key_descriptions):
@@ -240,15 +240,15 @@ class Result(ASRResult):
     dynamic_stability_phonons: int
 
     key_descriptions = dict(
-        omega_kl= "Phonon frequencies.",
-        minhessianeig= "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
-        eigs_kl= "Dynamical matrix eigenvalues.",
-        q_qc= "List of momenta consistent with supercell.",
-        phi_anv= "Force constants.",
-        u_klav= "Phonon modes.",
-        irr_l= "Phonon irreducible representations.",
-        path= "Phonon bandstructure path.",
-        dynamic_stability_phonons= "Phonon dynamic stability (low/high)",
+        omega_kl= 'Phonon frequencies.',
+        minhessianeig= 'Minimum eigenvalue of Hessian [`eV/Ang^2`]',
+        eigs_kl= 'Dynamical matrix eigenvalues.',
+        q_qc= 'List of momenta consistent with supercell.',
+        phi_anv= 'Force constants.',
+        u_klav= 'Phonon modes.',
+        irr_l= 'Phonon irreducible representations.',
+        path= 'Phonon bandstructure path.',
+        dynamic_stability_phonons= 'Phonon dynamic stability (low/high)',
     )
 
     formats = {"ase_webpanel": webpanel}
@@ -259,26 +259,26 @@ class HessResult(ASRResult):
     minhessianeig: float 
 
     key_descriptions: typing.Dict[str, str] = dict(
-        minhessianeig= "Minimum eigenvalue of Hessian [`eV/Ang^2`]"
+        minhessianeig= 'Minimum eigenvalue of Hessian [`eV/Ang^2`]'
     )
 
 
 @command(
-    "asr.phonopy",
+    'asr.phonopy',
     requires=requires,
     returns=Result,
-    dependencies=["asr.phonopy@calculate"],
+    dependencies=['asr.phonopy@calculate'],
 )
-@option("--rc", type=float, help="Cutoff force constants matrix")
+@option('--rc', type=float, help='Cutoff force constants matrix')
 def main(rc: float = None):
     import phonopy
     from phonopy.units import THzToEv
 
-    calculateresult = read_json("results-asr.phonopy@calculate.json")
-    dist_max = calculateresult.metadata.params["dist_max"]
-    sc = calculateresult.metadata.params["sc"]
+    calculateresult = read_json('results-asr.phonopy@calculate.json')
+    dist_max = calculateresult.metadata.params['dist_max']
+    sc = calculateresult.metadata.params['supercell']
     sc = list(map(int, sc))
-    atoms = read("structure.json")
+    atoms = read('structure.json')
     nd = sum(atoms.get_pbc())
 
     if np.array(sc).any() == 0:
@@ -356,27 +356,27 @@ def main(rc: float = None):
 def plot_phonons(row, fname):
     import matplotlib.pyplot as plt
 
-    data = row.data.get("results-asr.phonopy.json")
+    data = row.data.get('results-asr.phonopy.json')
     if data is None:
         return
 
-    omega_kl = data["omega_kl"]
+    omega_kl = data['omega_kl']
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
 
     x0 = -0.0005  # eV
-    for x, color in [(gamma[gamma < x0], "r"), (gamma[gamma >= x0], "b")]:
+    for x, color in [(gamma[gamma < x0], 'r'), (gamma[gamma >= x0], 'b')]:
         if len(x) > 0:
             markerline, _, _ = ax.stem(
                 x * 1000,
                 np.ones_like(x),
                 bottom=-1,
-                markerfmt=color + "o",
-                linefmt=color + "-",
+                markerfmt=color + 'o',
+                linefmt=color + '-',
             )
             plt.setp(markerline, alpha=0.4)
-    ax.set_xlabel(r"phonon frequency at $\Gamma$ [meV]")
+    ax.set_xlabel(r'phonon frequency at $\Gamma$ [meV]')
     ax.axis(ymin=0.0, ymax=1.3)
     plt.tight_layout()
     plt.savefig(fname)
@@ -387,15 +387,15 @@ def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
 
-    data = row.data.get("results-asr.phonopy.json")
-    path = data["path"]
-    energies = data["omega_kl"]
+    data = row.data.get('results-asr.phonopy.json')
+    path = data['path']
+    energies = data['omega_kl']
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)
     bs.plot(
         color="k",
         emin=np.min(energies * 1.1),
         emax=np.max(energies * 1.1),
-        ylabel="Phonon frequencies [meV]",
+        ylabel='Phonon frequencies [meV]',
     )
 
     plt.tight_layout()
@@ -404,10 +404,10 @@ def plot_bandstructure(row, fname):
 
 
 @command(
-    "asr.phonopy",
+    'asr.phonopy',
     requires=requires,
     webpanel=webpanel,
-    dependencies=["asr.phonopy"],
+    dependencies=['asr.phonopy'],
 )
 @option('-q', '--momentum', nargs=3, type=float,
         help='Phonon momentum')
@@ -425,9 +425,9 @@ def write_mode(momentum: typing.List[float] = [0, 0, 0], mode: int = 0,
 
     q_c = momentum
     atoms = read('structure.json')
-    data = read_json("results-asr.phonopy.json")
-    u_klav = data["u_klav"]
-    q_qc = data["q_qc"]
+    data = read_json('results-asr.phonopy.json')
+    u_klav = data['u_klav']
+    q_qc = data['q_qc']
     diff_kc = np.array(list(q_qc)) - q_c
     diff_kc -= np.round(diff_kc)
     ind = np.argwhere(np.all(np.abs(diff_kc) < 1e-2, 1))[0, 0]
@@ -465,5 +465,5 @@ def write_mode(momentum: typing.List[float] = [0, 0, 0], mode: int = 0,
     traj.close()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main.cli()
