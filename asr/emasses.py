@@ -707,8 +707,7 @@ def check_soc(spin_band_dict):
 
 
 class Result(ASRResult):
-
-    formats = {"ase_webpanel": webpanel}
+    pass
 
 
 @command('asr.emasses',
@@ -1392,7 +1391,8 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
 
 
 class ValidateResult(ASRResult):
-    pass
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.emasses',
