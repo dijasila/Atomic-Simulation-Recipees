@@ -68,11 +68,11 @@ def distance_to_sc(nd, atoms, dist_max):
     'asr.phonopy',
     requires=['structure.json', 'gs.gpw']
 )
-@option('--d', '--distance', type=float, help='Displacement size')
+@option('--distance', type=float, help='Displacement size')
 @option('--dist_max', type=float,
         help='Maximum distance between atoms in the supercell')
 @option('--fsname', help='Name for forces file', type=str)
-@option('--sc', '--supercell', nargs=3, type=int,
+@option('--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(distance: float = 0.05, fsname: str = 'phonons',
@@ -270,7 +270,8 @@ class HessResult(ASRResult):
     dependencies=['asr.phonopy@calculate'],
 )
 @option('--rc', type=float, help='Cutoff force constants matrix')
-def main(rc: float = None):
+@option('--nqpts', type=int, help='Number of points in the path')
+def main(rc: float = None, nqpts: int = 100):
     import phonopy
     from phonopy.units import THzToEv
 
@@ -290,7 +291,6 @@ def main(rc: float = None):
         phonon.set_force_constants_zero_with_radius(rc)
         phonon.symmetrize_force_constants()
 
-    nqpts = 100
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
