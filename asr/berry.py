@@ -1,6 +1,6 @@
 """Topological analysis of electronic structure."""
 import numpy as np
-from asr.core import command, option, read_json, ASRResult, prepare_result
+from asr.core import command, option, ASRResult, prepare_result
 
 
 @prepare_result
@@ -149,7 +149,6 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
 
 
 def plot_phases(row, f0, f1, f2, fpi):
-    import os
     import pylab as plt
 
     results = row.data['results-asr.berry@calculate.json']
@@ -188,8 +187,8 @@ def plot_phases(row, f0, f1, f2, fpi):
                     s=5,
                     marker='o')
 
-        if os.path.isfile('results-asr.magnetic_anisotropy.json'):
-            anis = read_json('results-asr.magnetic_anisotropy.json')
+        if 'results-asr.magnetic_anisotropy.json' in row.data:
+            anis = row.data['results-asr.magnetic_anisotropy.json']
             dir = anis['spin_axis']
         else:
             dir = 'z'
