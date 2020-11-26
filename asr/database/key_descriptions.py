@@ -4,7 +4,17 @@ from asr.dimensionality import get_dimtypes
 # Style: "KVP: Long description !short description! [unit]
 
 key_descriptions = {
-    "berry": {"Topology": "KVP: Band topology !Topology!"},
+    "berry": {
+        "Topology": "KVP: Band topology !Topology!",
+        "phi0_km": "Berry phase spectrum localized in k0",
+        "s0_km": "Spin of berry phases localized in k0",
+        "phi1_km": "Berry phase spectrum localized in k1",
+        "s1_km": "Spin of berry phases localized in k1",
+        "phi2_km": "Berry phase spectrum localized in k2",
+        "s2_km": "Spin of berry phases localized in k3",
+        "phi0_pi_km": "Berry phase spectrum at k2=pi localized in k0",
+        "s0_pi_km": "Spin of berry at phases at k2=pi localized in k0",
+    },
     "bse": {"E_B": "KVP: Exciton binding energy from BSE "
             "!Exc. bind. energy! [eV]"},
     "convex_hull": {
@@ -87,6 +97,13 @@ key_descriptions = {
         "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
         "dE_zy":
         "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
+    },
+    "exchange": {
+        "J": "KVP: Nearest neighbor exchange coupling [meV]",
+        "A": "KVP: Single-ion anisotropy (out-of-plane) [meV]",
+        "lam": "KVP: Anisotropic exchange (out-of-plane) [meV]",
+        "spin": "KVP: Maximum value of S_z at magnetic sites",
+        "N_nn": "KVP: Number of nearest neighbors",
     },
     "pdos": {
         "pdos_nosoc":
