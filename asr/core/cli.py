@@ -234,6 +234,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     continue
                 elif must_exist and not Path(must_exist).exists():
                     continue
+                # Do isatty in stead of --pipe
                 if pipe:
                     to = os.devnull
                 else:

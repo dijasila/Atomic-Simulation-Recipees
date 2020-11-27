@@ -24,7 +24,7 @@ import json
 from asr.core.results import get_object_matching_obj_id
 from ase.utils import search_current_git_hash
 from asr.core.params import get_default_parameters
-from asr.core.dependencies import Dependant
+from asr.core.dependencies import find_dependencies, mark_dependencies
 from hashlib import sha256
 from asr.core.utils import sha256sum
 import shutil
@@ -64,16 +64,16 @@ class ASRJSONEncoder(json.JSONEncoder):
 
     def default(self, obj) -> dict:
 
-        try:
-            return ase.io.jsonio.MyEncoder.default(self, obj)
-        except TypeError:
-            pass
         if hasattr(obj, '__dict__'):
             cls_id = obj_to_id(obj.__class__)
             obj = {'cls_id': cls_id, '__dict__':
                    copy.copy(obj.__dict__)}
-
             return obj
+
+        try:
+            return ase.io.jsonio.MyEncoder.default(self, obj)
+        except TypeError:
+            pass
         return json.JSONEncoder.default(self, obj)
 
 
@@ -827,15 +827,11 @@ class RegisterDependencies:
 
     def parse_argument_dependencies(self, parameters: Parameters):
 
-        kwargs = {}
         for key, value in parameters.items():
-            if isinstance(value, Dependant):
-                kwargs[key] = value.dependant_obj
-                self.register_uids(value.dependencies)
-            else:
-                kwargs[key] = value
+            uids = find_dependencies(value)
+            self.register_uids(uids)
 
-        return Parameters(kwargs)
+        return parameters
 
     def __exit__(self, type, value, traceback):
         """Pop frame of dependency stack."""
@@ -852,6 +848,9 @@ class RegisterDependencies:
                     )
                     run_specification.parameters = parameters
                     run_record = func(asrcontrol, run_specification)
+                mark_dependencies(run_record.result, run_record.uid)
+                for uid in dependencies:
+                    mark_dependencies(run_record.result, uid)
                 run_record.dependencies = dependencies
                 return run_record
 
@@ -868,6 +867,7 @@ class RegisterDependencies:
         """Register dependency."""
         def wrapped(*args, **kwargs):
             run_record = func(*args, **kwargs)
+            
             if self.dependency_stack:
                 self.register_uids([run_record.uid])
 

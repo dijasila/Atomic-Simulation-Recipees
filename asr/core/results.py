@@ -171,7 +171,7 @@ def get_object_matching_obj_id(asr_obj_id):
             problematic result files.'"""
         )
 
-    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
+    assert asr_obj_id.startswith(('asr.', 'ase.')), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
     cls = getattr(mod, name)
 

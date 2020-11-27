@@ -432,6 +432,7 @@ def main(atoms: Atoms,
     trajectory = Trajectory(tmp_atoms_file, 'r')
     images = []
     for image in trajectory:
+        image.calc = None
         images.append(image)
     return Result.fromdata(
         atoms=Atoms(atoms.copy()),

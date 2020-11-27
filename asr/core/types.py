@@ -3,7 +3,7 @@ import click
 from ase.io import read
 from ase.io.formats import UnknownFileTypeError
 from asr.core import parse_dict_string
-from asr.core.dependencies import Dependant
+from asr.core.dependencies import mark_dependencies
 import pickle
 
 
@@ -46,7 +46,6 @@ class AtomsFile(click.ParamType):
             attrs = value[1:].split('.')
             obj = pickle.loads(click.get_binary_stream('stdin').read())
             attr = get_attribute(obj, attrs)
-            attr = Dependant(attr, dependencies=[obj.uid])
             return attr
         try:
             return read(value, parallel=False, format='json')
