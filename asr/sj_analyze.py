@@ -247,15 +247,15 @@ def calculate_transitions():
         transition_results = get_transition_level(transition, 0)
         transition_list.append(transition_results)
 
-    # for q in [-3, -2, -1, 1, 2, 3]:
-    #     if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
-    #         transition = [q, q + 1]
-    #         transition_results = get_transition_level(transition, q)
-    #         transition_list.append(transition_results)
-    #     if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
-    #         transition = [q, q - 1]
-    #         transition_results = get_transition_level(transition, q)
-    #         transition_list.append(transition_results)
+    for q in [-3, -2, -1, 1, 2, 3]:
+        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q + 1]
+            transition_results = get_transition_level(transition, q)
+            transition_list.append(transition_results)
+        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
+            transition = [q, q - 1]
+            transition_results = get_transition_level(transition, q)
+            transition_list.append(transition_results)
 
     return transition_list
 
