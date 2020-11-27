@@ -172,8 +172,11 @@ def main() -> Result:
     """
     p = Path('.')
     defectsystem = str(p.absolute()).split('/')[-2]
-    print('INFO: calculate charge transition levels for defect {}.'.format(
+    print('INFO: calculate formation energy and charge transition levels for defect {}.'.format(
         defectsystem))
+
+    # get neutral formation energy without chemical potentials applied
+    eform, standard_states = calculate_neutral_formation_energy()
 
     # get heat of formation
     hof = get_heat_of_formation()
@@ -183,11 +186,6 @@ def main() -> Result:
 
     # get pristine band edges for correct referencing and plotting
     pris = get_pristine_band_edges()
-
-    # get neutral formation energy without chemical potentials applied
-    eform, standard_states = calculate_neutral_formation_energy()
-
-    print(eform)
 
     return Result.fromdata(transitions=transition_list,
                            pristine=pris,
