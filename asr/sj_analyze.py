@@ -127,8 +127,8 @@ class TransitionListResults(ASRResult):
 
 
 @prepare_result
-class ChemicalPotentialResult(ASRResult):
-    """Container for results related to chemical potentials."""
+class StandardStateResult(ASRResult):
+    """Container for results related to the standard state of the present defect."""
     element: str
     eref: float
 
@@ -143,15 +143,15 @@ class Result(ASRResult):
     transitions: typing.List[TransitionResults]
     pristine: PristineResults
     eform: float
-    chemical_potentials: typing.List[ChemicalPotentialResult]
+    standard_states: typing.List[StandardStateResult]
     hof: float
 
     key_descriptions = dict(
         transitions='Charge transition levels with [transition energy, '
                         'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
-        eform='Neutral formation energy without chemical potentials applied [eV]',
-        chemical_potentials='List of ChemicalPotentialResult objects for each species.',
+        eform='Neutral formation energy wrt. standard states of defect species [eV]',
+        standard_states='List of StandardStateResult objects for each species.',
         hof='Heat of formation for the pristine monolayer [eV]')
 
     formats = {"ase_webpanel": webpanel}
@@ -175,14 +175,6 @@ def main() -> Result:
     print('INFO: calculate charge transition levels for defect {}.'.format(
         defectsystem))
 
-    # get list of different kinds present in the system and extract chemical potential
-    # references
-    kindlist = get_kindlist()
-    chempot_list = []
-    for kind in kindlist:
-        chempot_result = get_chemical_potentials(kind)
-        chempot_list.append(chempot_result)
-
     # get heat of formation
     hof = get_heat_of_formation()
 
@@ -193,18 +185,32 @@ def main() -> Result:
     pris = get_pristine_band_edges()
 
     # get neutral formation energy without chemical potentials applied
-    eform = calculate_neutral_formation_energy()
+    eform, standard_states = calculate_neutral_formation_energy()
+
+    print(eform)
 
     return Result.fromdata(transitions=transition_list,
                            pristine=pris,
                            eform=eform,
-                           chemical_potentials=chempot_list,
+                           standard_states=standard_states,
                            hof=hof)
 
 
 def get_heat_of_formation():
     """To be implemented."""
-    return -1.234
+    from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
+    from ase.db import connect
+    from ase.io import read
+
+    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+    atoms = read('../../unrelaxed.json')
+    hash = get_hash_of_atoms(atoms)
+    uid = get_uid_of_atoms(atoms, hash)
+
+    for row in db.select(uid=uid):
+        hof = row.hform
+
+    return hof
 
 
 def get_kindlist():
@@ -221,13 +227,6 @@ def get_kindlist():
     return kindlist
 
 
-def get_chemical_potentials(kind):
-    """TBD"""
-    return ChemicalPotentialResult.fromdata(
-        element=kind,
-        eref=0.0)
-
-
 def calculate_transitions():
     """Calculate all of the present transitions and return an
     ASRResults object (TransitionResults)."""
@@ -242,15 +241,15 @@ def calculate_transitions():
         transition_results = get_transition_level(transition, 0)
         transition_list.append(transition_results)
 
-    for q in [-3, -2, -1, 1, 2, 3]:
-        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
-            transition = [q, q + 1]
-            transition_results = get_transition_level(transition, q)
-            transition_list.append(transition_results)
-        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
-            transition = [q, q - 1]
-            transition_results = get_transition_level(transition, q)
-            transition_list.append(transition_results)
+    # for q in [-3, -2, -1, 1, 2, 3]:
+    #     if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
+    #         transition = [q, q + 1]
+    #         transition_results = get_transition_level(transition, q)
+    #         transition_list.append(transition_results)
+    #     if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
+    #         transition = [q, q - 1]
+    #         transition_results = get_transition_level(transition, q)
+    #         transition_list.append(transition_results)
 
     return transition_list
 
@@ -281,13 +280,32 @@ def get_pristine_band_edges() -> PristineResults:
         evac=evac)
 
 
-def obtain_chemical_potential():
+def obtain_chemical_potential(symbol, db):
     """
-    Function to evaluate the chemical potential limits for a given defect.
+    Function to extract the standard state of a given element.
+    """
+    energies_ss = []
+    if symbol == 'v':
+        eref = 0.
+    else:
+        for row in db.select(symbol, ns=1):
+            energies_ss.append(row.oqmd_energy_pa)
+        eref = min(energies_ss)
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TBD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    """
-    return None
+    return StandardStateResult.fromdata(
+        element=symbol,
+        eref=eref)
+
+
+def get_defect_info():
+    """Return defect_type, and defect_position of present defect."""
+    from pathlib import Path
+
+    p = Path('.')
+    d_type = str(p.absolute()).split('/')[-2].split('_')[-2].split('.')[-1]
+    d_pos = str(p.absolute()).split('/')[-2].split('_')[-1]
+
+    return d_type, d_pos
 
 
 def calculate_neutral_formation_energy():
@@ -298,12 +316,24 @@ def calculate_neutral_formation_energy():
     plot.
     """
     from asr.core import read_json
+    from ase.db import connect
+
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
 
     eform = results_def['etot'] - results_pris['etot']
 
-    return eform
+    # next, extract standard state energies for particular defect
+    def_add, def_remove = get_defect_info()
+    # extract standard states of defect atoms from OQMD
+    db = connect('/home/niflheim/fafb/db/oqmd12.db')
+    standard_states = []
+    standard_states.append(obtain_chemical_potential(def_add, db))
+    standard_states.append(obtain_chemical_potential(def_remove, db))
+
+    eform = eform - standard_states[0].eref + standard_states[1].eref
+
+    return eform, standard_states
 
 
 def get_transition_level(transition, charge) -> TransitionResults:
