@@ -536,6 +536,19 @@ class GyromagneticResult(ASRResult):
 
 
 @prepare_result
+class PristineResults(ASRResult):
+    """Container for pristine band gap results."""
+    vbm: float
+    cbm: float
+    evac: float
+
+    key_descriptions = dict(
+        vbm='Pristine valence band maximum [eV].',
+        cbm='Pristien conduction band minimum [eV]',
+        evac='Pristine vacuum level [eV]')
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
     pointgroup: str
@@ -544,6 +557,7 @@ class Result(ASRResult):
     symmetries: typing.List[SymmetryResult]
     hyperfine: typing.List[HyperfineResult]
     gfactors: typing.List[GyromagneticResult]
+    pristine: PristineResults
 
 
     key_descriptions: typing.Dict[str, str] = dict(
@@ -552,7 +566,8 @@ class Result(ASRResult):
         defect_name='Name of the defect ({type}_{position})',
         symmetries='List of SymmetryResult objects for all states.',
         hyperfine='List of HyperfineResult objects for all atoms.',
-        gfactors='List of GyromagneticResult objects for each atom species.'
+        gfactors='List of GyromagneticResult objects for each atom species.',
+        pristine='Container for pristine band gap results.'
     )
 
     formats = {'ase_webpanel': webpanel}
@@ -656,13 +671,42 @@ def main(mapping: bool = True,
         atoms, calc = restart('gs.gpw', txt=None)
         hf_results, gfactor_results = calculate_hyperfine(atoms, calc)
 
+    pristine_results = get_pristine_band_edges()
+
     return Result.fromdata(
         pointgroup=point_group,
         defect_center=center,
         defect_name=defectname,
         symmetries=symmetry_results,
         hyperfine=hf_results,
-        gfactors=gfactor_results)
+        gfactors=gfactor_results,
+        pristine=pristine_results)
+
+
+def get_pristine_band_edges() -> PristineResults:
+    """
+    Returns band edges and vaccum level for the host system.
+    """
+    from asr.core import read_json
+
+    print('INFO: extract pristine band edges.')
+    if Path('./../../defects.pristine_sc/results-asr.gs.json').is_file():
+        results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+        _, calc = restart('gs.gpw', txt=None)
+        vbm = results_pris['vbm']
+        cbm = results_pris['cbm']
+        evac = results_pris['evac']
+        # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        # evac = (evac_z[0] + evac_z[-1]) / 2.
+    else:
+        vbm = None
+        cbm = None
+        evac = None
+
+    return PristineResults.fromdata(
+        vbm=vbm,
+        cbm=cbm,
+        evac=evac)
 
 
 def return_symmetry_result(irreps, best, error, loc_ratio,
