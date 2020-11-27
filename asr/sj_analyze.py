@@ -36,11 +36,15 @@ def webpanel(result, row, key_descriptions):
     formation_table = table(result, 'Defect formation', [])
     formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform:.2f} eV']])
-    for chempot in result.chemical_potentials:
-        formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['eref']),
-            f"{chempot.eref:.2f} eV/atom"]])
-    formation_table['rows'].extend([[describe_entry(f"Heat of formation (TBD)", description=result.key_descriptions['hof']),
+    # for chempot in result.chemical_potentials:
+    #     formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['eref']),
+    #         f"{chempot.eref:.2f} eV/atom"]])
+    pristine_table_sum = table(result, 'Pristine summary', [])
+    pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
         f"{result.hof:.2f} eV/atom"]])
+    gap = result.pristine.cbm - result.pristine.vbm
+    pristine_table_sum['rows'].extend([[describe_entry("Band gap (PBE)", description="Pristine band gap [eV]."),
+        f"{gap:.2f} eV"]])
 
     trans_results = result.transitions
     transition_labels = []
@@ -74,7 +78,7 @@ def webpanel(result, row, key_descriptions):
     #                                          ],
     #                      sort=13)
     summary = {'title': 'Summary',
-               'columns': [[formation_table_sum], []],
+               'columns': [[formation_table_sum, pristine_table_sum], []],
                'sort':1}
 
     return [panel, summary]
@@ -160,6 +164,10 @@ class Result(ASRResult):
 @command(module='asr.sj_analyze',
          webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
+                   '../../unrelaxed.json',
+                   '../../defects.pristine_sc/results-asr.gs.json',
+                   '../../defects.pristine_sc/gs.gpw',
+                   'gs.gpw',
                    'results-asr.setup.defects.json'],
          resources='24:2h',
          returns=Result)
@@ -287,7 +295,7 @@ def obtain_chemical_potential(symbol, db):
         eref = 0.
     else:
         for row in db.select(symbol, ns=1):
-            energies_ss.append(row.oqmd_energy_pa)
+            energies_ss.append(row.energy/row.natoms)
         eref = min(energies_ss)
 
     return StandardStateResult.fromdata(
