@@ -94,16 +94,13 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
 
     nv_s = [np.max(nv_s), np.max(nv_s)]
     nc_s = [np.max(nc_s), np.max(nc_s)]
-    print('nv_s, nc_s', nv_s, nc_s)
+
     valence_bands = []
     conduction_bands = []
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-
-    print(valence_bands)
-    print(conduction_bands)
 
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
@@ -198,7 +195,7 @@ def absorption(row, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
+    data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
     absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:

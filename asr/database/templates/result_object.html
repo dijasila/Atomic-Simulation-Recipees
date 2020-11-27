@@ -16,7 +16,7 @@
 
   {% for key, description in result.key_descriptions.items()|sort %}
   {% if key not in result %}
-  <b>{{ description }}</b> (key={{ key }}):<pre>{{ result[key] }}</pre>
+  <b>{{ description }}</b> (key={{ key }}):<pre>{{ None }}</pre>
   <br>
   {% endif %}
   {% endfor %}
