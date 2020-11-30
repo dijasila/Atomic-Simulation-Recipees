@@ -98,7 +98,7 @@ def webpanel(result, row, key_descriptions):
     symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
     symmetry_table = matrixtable(symmetry_array,
         title='Symmetry label',
-        columnlabels=['State', 'Spin', 'Energy [eV]', 'Error', 'Localization ratio'],
+        columnlabels=['State', 'Spin', 'Energy [eV]', 'Accuracy', 'Localization ratio'],
         rowlabels=symmetry_rownames)
 
     gyro_array, gyro_rownames = get_gyro_array(result.gfactors)
@@ -120,15 +120,15 @@ def webpanel(result, row, key_descriptions):
                'columns': [[basictable], [defect_table]],
                'sort': 1}
 
-    panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis.'),
-             'columns': [[basictable, defect_table], [symmetry_table]],
-             'sort': 2}
-    # panel = WebPanel(describe_entry('Symmetry analysis (structure and defect states)',
-    #                  description='Structural and electronic symmetry analysis'),
-    #                  columns=[[basictable, defect_table], [describe_entry(fig('ks_gap.png'), 'KS states within the pristine band gap.'), symmetry_table]],
-    #                  plot_descriptions=[{'function': plot_gapstates_dummy,
-    #                                      'filenames': ['ks_gap.png']}],
-    #                  sort=3)
+    # panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis.'),
+    #          'columns': [[basictable, defect_table], [symmetry_table]],
+    #          'sort': 2}
+    panel = WebPanel(describe_entry('Symmetry analysis (structure and defect states)',
+                     description='Structural and electronic symmetry analysis'),
+                     columns=[[describe_entry(fig('ks_gap.png'), 'KS states within the pristine band gap.'), basictable, defect_table], [symmetry_table]],
+                     plot_descriptions=[{'function': plot_gapstates,
+                                         'filenames': ['ks_gap.png']}],
+                     sort=3)
 
     hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
                  'columns': [[hf_table], [gyro_table]],
