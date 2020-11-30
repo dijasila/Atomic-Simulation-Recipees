@@ -1,37 +1,36 @@
 """Module for registering dependencies between recipes."""
-import typing
-import copy
+from .params import Parameters
 
 
-class Dependant:
+# class Dependant:
 
-    def __init__(self, obj, dependencies: typing.List[str]):
-        self.dependant_obj = obj
-        self.dependencies = dependencies
+#     def __init__(self, obj, dependencies: typing.List[str]):
+#         self.dependant_obj = obj
+#         self.dependencies = dependencies
 
-    def __getstate__(self):
-        return self.__dict__
+#     def __getstate__(self):
+#         return self.__dict__
 
-    def __setstate__(self, state):
-        self.__dict__.update(state)
+#     def __setstate__(self, state):
+#         self.__dict__.update(state)
 
-    def __copy__(self):
-        return Dependant(self.dependant_obj, self.dependencies)
+#     def __copy__(self):
+#         return Dependant(self.dependant_obj, self.dependencies)
 
-    def __deepcopy__(self, memo):
-        return Dependant(
-            copy.deepcopy(self.dependant_obj, memo),
-            copy.deepcopy(self.dependencies)
-        )
+#     def __deepcopy__(self, memo):
+#         return Dependant(
+#             copy.deepcopy(self.dependant_obj, memo),
+#             copy.deepcopy(self.dependencies)
+#         )
 
-    def __call__(self, *args, **kwargs):
-        return self.dependant_obj(*args, **kwargs)
+#     def __call__(self, *args, **kwargs):
+#         return self.dependant_obj(*args, **kwargs)
 
-    def __getattr__(self, attr):
-        return getattr(self.dependant_obj, attr)
+#     def __getattr__(self, attr):
+#         return getattr(self.dependant_obj, attr)
 
 
-def find_dependencies(obj):
+def find_dependencies(obj):  # noqa
     dependencies = []
     dependencies.extend(get_dependencies(obj))
 
@@ -44,7 +43,7 @@ def find_dependencies(obj):
 DEPATTR = '__deps__'
 
 
-def get_values_of_object(obj):
+def get_values_of_object(obj):  # noqa
     values = []
     if isinstance(obj, dict):
         for key, value in obj.items():
@@ -59,7 +58,7 @@ def get_values_of_object(obj):
     return values
 
 
-def mark_dependencies(obj, uid):
+def mark_dependencies(obj, uid):  # noqa
     mark_dependency(obj, uid)
 
     values = get_values_of_object(obj)
@@ -91,3 +90,71 @@ def get_dependencies(obj):
     Return None if no deps.
     """
     return getattr(obj, DEPATTR, [])
+
+
+dependency_stack = []
+
+
+class RegisterDependencies:
+    """Register dependencies."""
+
+    def __init__(self, dependency_stack=dependency_stack):  # noqa
+        self.dependency_stack = dependency_stack
+
+    def __enter__(self):
+        """Add frame to dependency stack."""
+        dependencies = []
+        self.dependency_stack.append(dependencies)
+        return dependencies
+
+    def parse_argument_dependencies(self, parameters: Parameters):  # noqa
+
+        for key, value in parameters.items():
+            uids = find_dependencies(value)
+            self.register_uids(uids)
+
+        return parameters
+
+    def __exit__(self, type, value, traceback):
+        """Pop frame of dependency stack."""
+        self.dependency_stack.pop()
+
+    def __call__(self):  # noqa
+
+        def wrapper(func):
+
+            def wrapped(asrcontrol, run_specification):
+                with self as dependencies:
+                    parameters = self.parse_argument_dependencies(
+                        run_specification.parameters
+                    )
+                    run_specification.parameters = parameters
+                    run_record = func(asrcontrol, run_specification)
+                mark_dependencies(run_record.result, run_record.uid)
+                for uid in dependencies:
+                    mark_dependencies(run_record.result, uid)
+                run_record.dependencies = dependencies
+                return run_record
+
+            return wrapped
+        return wrapper
+
+    def register_uids(self, uids):  # noqa
+        dependencies = self.dependency_stack[-1]
+        for uid in uids:
+            if uid not in dependencies:
+                dependencies.append(uid)
+
+    def register(self, func):
+        """Register dependency."""
+        def wrapped(*args, **kwargs):
+            run_record = func(*args, **kwargs)
+
+            if self.dependency_stack:
+                self.register_uids([run_record.uid])
+
+            return run_record
+        return wrapped
+
+
+register_dependencies = RegisterDependencies()

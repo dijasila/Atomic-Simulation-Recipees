@@ -1,3 +1,5 @@
+"""Implement parameter handling."""
+
 import pathlib
 import typing
 import contextlib
@@ -26,7 +28,7 @@ PARAMETERS = {}
 
 
 @contextlib.contextmanager
-def set_defaults(parameters: typing.Dict[str, typing.Any]):
+def set_defaults(parameters: typing.Dict[str, typing.Any]):  # noqa
     defaults = {}
     for name in parameters:
         recipe = get_recipe_from_name(name)
@@ -43,7 +45,7 @@ def set_defaults(parameters: typing.Dict[str, typing.Any]):
     PARAMETERS.update(prev_params)
 
 
-def get_default_parameters(name, list_of_defaults=None):
+def get_default_parameters(name, list_of_defaults=None):  # noqa
 
     if list_of_defaults is None:
         list_of_defaults = [PARAMETERS]
@@ -56,3 +58,38 @@ def get_default_parameters(name, list_of_defaults=None):
             return defaults[name]
 
     return {}
+
+
+# class Parameter:
+
+#     def __init__(self, name, value, hash_func):
+
+#         self.name = name
+#         self.value = value
+#         self.hash_func = hash_func
+
+
+class Parameters:  # noqa
+
+    def __init__(self, parameters: typing.Dict[str, typing.Any]):  # noqa
+        self.__dict__.update(parameters)
+
+    def __hash__(self):
+        """Make parameter hash."""
+        return hash(self.__dict__)
+
+    def keys(self):  # noqa
+        return self.__dict__.keys()
+
+    def __getitem__(self, key):
+        """Get parameter."""
+        return getattr(self, key)
+
+    def items(self):  # noqa
+        return self.__dict__.items()
+
+    def __str__(self):  # noqa
+        return str(self.__dict__)
+
+    def __repr__(self):  # noqa
+        return self.__str__()
