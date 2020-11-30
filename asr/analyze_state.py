@@ -194,14 +194,17 @@ def calculate(state: int = 0,
 
     Test.
     """
+    from asr.core import read_json
+
     atoms = read('structure.json')
     print('INFO: run fixdensity calculation')
     calc = GPAW('gs.gpw', txt='analyze_states.txt')
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     if get_gapstates:
         print('INFO: evaluate gapstates ...')
-        states, states_above, states_below = return_gapstates_fix(calc, spin=0)
+        states, states_above, states_below, eref = return_gapstates(calc, spin=0)
     elif not get_gapstates:
+        eref = read_json('results-asr.gs.json')['evac']
         states = [state]
         states_above = False
         states_below = False
@@ -213,14 +216,14 @@ def calculate(state: int = 0,
     print('INFO: write wavefunctions of gapstates ...')
     for band in states:
         wf = calc.get_pseudo_wave_function(band=band, spin=0)
-        energy = calc.get_potential_energy()
+        energy = calc.get_potential_energy() + eref
         energies_0.append(energy)
         fname = 'wf.{0}_{1}.cube'.format(band, 0)
         write(fname, atoms, data=wf)
         local_ratio_n.append(get_localization_ratio(atoms, wf))
         if calc.get_number_of_spins() == 2:
             wf = calc.get_pseudo_wave_function(band=band, spin=1)
-            energy = calc.get_potential_energy()
+            energy = calc.get_potential_energy() + eref
             energies_1.append(energy)
             fname = 'wf.{0}_{1}.cube'.format(band, 1)
             write(fname, atoms, data=wf)
@@ -934,17 +937,34 @@ def return_gapstates(calc_def, spin=0):
     vbm = results_pris['vbm'] - results_pris['evac']
     cbm = results_pris['cbm'] - results_pris['evac']
 
-    es_def = calc_def.get_eigenvalues() - results_def['evac']
-    es_pris = calc_pris.get_eigenvalues() - results_pris['evac']
+    evac_def = results_def['evac']
+    evac_pris = results_pris['evac']
+
+    es_def = calc_def.get_eigenvalues() - evac_def
+    ef_def = calc_def.get_fermi_level() - evac_def
+    es_pris = calc_pris.get_eigenvalues() - evac_pris
 
     diff = es_pris[0] - es_def[0]
     states_def = es_def + diff
+    ef_def = ef_def + diff
+
+    states_above = False
+    states_below = False
+    for state in states_def:
+        if state < cbm and state > vbm and state > ef_def:
+            states_above = True
+        elif state < cbm and state > vbm and state < ef_def:
+            states_below = True
 
     statelist = []
     [statelist.append(i) for i, state in enumerate(states_def) if (
         state < cbm and state > vbm)]
 
-    return statelist
+    # return reference for defect states (align lowest energy states of
+    # pristine and defect system
+    ref = diff - evac_def
+
+    return statelist, states_above, states_below, ref
 
 
 def return_gapstates_fix(calc_def, spin=0):
