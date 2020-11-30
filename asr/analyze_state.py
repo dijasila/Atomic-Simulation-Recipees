@@ -117,7 +117,7 @@ def webpanel(result, row, key_descriptions):
     #                        'sort': -1}
 
     summary = {'title': 'Summary',
-               'columns': [[basictable], [defect_table]],
+               'columns': [[basictable, defect_table], []],
                'sort': 1}
 
     # panel = {'title': describe_entry('Symmetry analysis (structure and defect states)', description='Structural and electronic symmetry analysis.'),
@@ -131,7 +131,7 @@ def webpanel(result, row, key_descriptions):
                      sort=3)
 
     hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
-                 'columns': [[hf_table], [gyro_table]],
+            'columns': [[hf_table, gyro_table], [{'type': 'atoms'}]],
                  'sort': 2}
 
     return [panel, summary, hyperfine]

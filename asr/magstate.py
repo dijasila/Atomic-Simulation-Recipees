@@ -30,7 +30,8 @@ def webpanel(result, row, key_descriptions):
                              'header': ['Electronic properties', ''],
                              'rows': rows}]],
                'sort': 0}
-    return [summary]
+    # return [summary]
+    return []
 
 
 @prepare_result

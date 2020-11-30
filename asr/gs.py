@@ -132,7 +132,8 @@ def webpanel(result, row, key_descriptions):
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)
 
-    return [panel, summary]
+    # return [panel, summary]
+    return []
 
 
 def bz_with_band_extremums(row, fname):
