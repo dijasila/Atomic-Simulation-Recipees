@@ -134,7 +134,7 @@ def requires():
 def webpanel(result, row, key_descriptions):
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    panel = {'title': 'Phonons',
+    panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['phonon_bs.png']}],

@@ -117,9 +117,12 @@ def webpanel(result, row, key_descriptions):
                  ['Conduction band minimum wrt. Fermi level',
                   f'{result.cbm - result.efermi:.2f} eV']])
 
-    panel = WebPanel(title='Basic electronic properties (PBE)',
-                     columns=[[t], [fig('bz-with-gaps.png')]],
-                     sort=10)
+    panel = WebPanel(
+        title=describe_entry(
+            'Basic electronic properties (PBE)',
+            panel_description),
+        columns=[[t], [fig('bz-with-gaps.png')]],
+        sort=10)
 
     parameter_description = entry_parameter_description(
         row.data,

@@ -1,8 +1,7 @@
 """Stiffness tensor."""
 import typing
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (matrixtable, describe_entry,
-                                  entry_parameter_description, dl,
+from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 
 panel_description = make_panel_description(
@@ -62,20 +61,7 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    title_description = """
-The stiffness tensor is defined as the derivative of the stress with respect to
-strain. The stiffness tensor is calculated using a finite difference procedure
-with the parameters listed below.
-
-"""
-
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.stiffness'
-    )
-    title_description += parameter_description
-
-    panel = {'title': describe_entry('Stiffness tensor', description=title_description),
+    panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
