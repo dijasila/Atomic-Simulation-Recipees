@@ -1,5 +1,16 @@
 """Fermi surfaces."""
 from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import fig, make_panel_description, describe_entry
+
+
+panel_description = make_panel_description(
+    """The Fermi surface calculated with spin-orbit interactions. The expectation
+value of S_i (where i=z for non-magnetic materials and otherwise is the
+magnetic easy axis) indicated by the color code.""",
+    articles=[
+        'C2DB',
+    ],
+)
 
 
 def bz_vertices(cell):
@@ -58,9 +69,8 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
 
-    panel = {'title': 'Fermi surface',
+    panel = {'title': describe_entry('Fermi surface', panel_description),
              'columns': [[fig('fermi_surface.png')]],
              'plot_descriptions': [{'function': plot_fermi,
                                     'filenames': ['fermi_surface.png']}],

@@ -1,7 +1,23 @@
 """Electronic ground state properties."""
 from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.database.browser import (
+    table, fig,
+    entry_parameter_description,
+    describe_entry, WebPanel,
+    make_panel_description
+)
+
+
 import numpy as np
 import typing
+
+panel_description = make_panel_description(
+    """
+Electronic properties derived from a ground state density functional theory
+calculation.
+""",
+    articles=['C2DB'],
+)
 
 
 @command(module='asr.gs',
@@ -59,9 +75,6 @@ def calculate(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
 
     parameter_description = entry_parameter_description(
         row.data,
@@ -104,9 +117,12 @@ def webpanel(result, row, key_descriptions):
                  ['Conduction band minimum wrt. Fermi level',
                   f'{result.cbm - result.efermi:.2f} eV']])
 
-    panel = WebPanel(title='Basic electronic properties (PBE)',
-                     columns=[[t], [fig('bz-with-gaps.png')]],
-                     sort=10)
+    panel = WebPanel(
+        title=describe_entry(
+            'Basic electronic properties (PBE)',
+            panel_description),
+        columns=[[t], [fig('bz-with-gaps.png')]],
+        sort=10)
 
     parameter_description = entry_parameter_description(
         row.data,
