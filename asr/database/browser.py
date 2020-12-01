@@ -59,7 +59,7 @@ def create_table(row,  # AtomsRow
                 desc = describe_entry(desc, key.__explanation__)
             if unit:
                 value += ' ' + unit
-            table.append((desc, value))
+            table.append([desc, value])
     return {'type': 'table',
             'header': header,
             'rows': table}
