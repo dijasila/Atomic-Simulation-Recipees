@@ -1,5 +1,22 @@
 """Effective masses."""
 from asr.core import command, option, DictStr, ASRResult
+from asr.database.browser import make_panel_description, describe_entry
+
+panel_description = make_panel_description(
+    """
+The effective mass tensor represents the second derivative of the band energy
+w.r.t. wave vector at a band extremum. The effective masses of the valence
+bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
+mass tensor. The latter is determined by fitting a 2nd order polynomium to the
+band energies on a fine k-point mesh around the band extrema. Spin-orbit
+interactions are included. The “parabolicity” of the band is quantified by the
+mean absolute relative error (MARE) of the fit to the band energy in an energy
+range of 25 meV.
+""",
+    articles=[
+        'C2DB',
+    ],
+)
 
 
 class NoGapError(Exception):
@@ -610,7 +627,8 @@ def webpanel(result, row, key_descriptions):
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
-    panel = {'title': 'Effective masses (PBE)',
+    panel = {'title': describe_entry('Effective masses (PBE)',
+                                     panel_description),
              'columns': columns,
              'plot_descriptions':
              [{'function': make_the_plots,
