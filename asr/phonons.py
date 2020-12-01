@@ -10,6 +10,20 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 
 from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (
+    table, fig, describe_entry, dl, make_panel_description)
+
+panel_description = make_panel_description(
+    """
+The Gamma-point phonons of a supercell containing the primitive unit cell
+repeated 2 times along each periodic direction. In the Brillouin zone (BZ) of
+the primitive cell, this yields the phonons at the Gamma-point and
+high-symmetry points at the BZ boundary. A negative eigenvalue of the Hessian
+matrix (the second derivative of the energy w.r.t. to atomic displacements)
+indicates a dynamical instability.
+""",
+    articles=['C2DB'],
+)
 
 
 def creates():
@@ -118,7 +132,6 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig, describe_entry, dl
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
     panel = {'title': 'Phonons',
