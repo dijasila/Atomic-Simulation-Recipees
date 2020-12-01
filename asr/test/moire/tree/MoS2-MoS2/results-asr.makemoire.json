@@ -7,21 +7,21 @@
   "metadata": {
    "asr_name": "asr.makemoire",
    "resources": {
-    "time": 0.8841829299926758,
+    "time": 0.8914828300476074,
     "ncores": 1,
-    "tstart": 1605862452.377255,
-    "tend": 1605862453.261438
+    "tstart": 1606222205.560315,
+    "tend": 1606222206.4517977
    },
    "params": {
     "cells_file": "moirecells.json",
-    "solution": 5,
+    "solution": -1,
     "tol": 1e-10,
     "stress_opt_method": "exact",
     "database": "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db",
     "overwrite": false
    },
    "code_versions": {
-    "asr": "0.4.1-b3a24500360a65bbe3d555aef249304676a7e78b",
+    "asr": "0.4.1-fd80c628f848a73efb951717280d6764323079a2",
     "ase": "3.21.0b1-54f6fcee4ce8a98b140f6c02b3280e92d34206ce",
     "gpaw": "20.1.1b1-c906085530160b132531630b5259c68427fe7449"
    },

@@ -7,11 +7,8 @@ from ase.io.jsonio import write_json
 from asr.core import command, option
 
 
-
-
 pi = np.pi
 rad2deg = 180 / pi
-
 
 
 # Angle between v1 and v2, measured counter-clockwise.

@@ -37,7 +37,7 @@ def main(kpoints: int = 6, eta: float = 0.01):
             basis='dzp',
             kpts=(kpoints, kpoints, 1),
             occupations=FermiDirac(eta),
-            eigensolver=SO,
+            eigensolver=SO, 
             txt='asr.bilayers_scs_gs.txt')
     atoms.calc = calc
     atoms.get_potential_energy()
