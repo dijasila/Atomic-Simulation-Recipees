@@ -239,7 +239,7 @@ def webpanel(result, row, key_descriptions):
         bandgaphse = describe_entry(
             'Band gap (HSE)',
             'The electronic band gap calculated with '
-            'G0W0 including spin-orbit effects. \n\n',
+            'HSE including spin-orbit effects. \n\n',
         )
         rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
