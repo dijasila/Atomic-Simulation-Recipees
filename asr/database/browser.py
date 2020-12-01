@@ -192,8 +192,9 @@ pre = make_html_tag_wrapper('pre')
 code = make_html_tag_wrapper('code')
 dt = make_html_tag_wrapper('dt')
 dd = make_html_tag_wrapper('dd')
+par = make_html_tag_wrapper('p')
 
-br = '</br>'
+br = '<br>'
 
 
 def ul(items):
@@ -227,18 +228,38 @@ modeling and discovery of atomically thin crystals, 2D Mater. 5 042002
 }
 
 
+def normalize_string(text):
+    while text.endswith('\n'):
+        text = text[:-1]
+    while text.startswith('\n'):
+        text = text[1:]
+    while text.endswith(br):
+        text = text[:-len(br)]
+    while text.startswith(br):
+        text = text[len(br):]
+    return text
+
+
 def make_panel_description(text, articles=None):
 
-    if not text.endswith('\n'):
-        description = text + '\n'
-    else:
-        description = text
     if articles:
-        description += br + bold('Relevant article(s):')
-        description += ul([
-            static_article_links.get(article, article) for article in articles]
+        articles = (
+            bold('Relevant article(s):')
+            + ul([
+                static_article_links.get(article, article) for article in articles]
+            )
         )
-    return description
+        elements = [text, articles]
+    else:
+        elements = [text]
+
+    return combine_elements(elements)
+
+
+def combine_elements(items, spacer=(br + br)):
+    items = [normalize_string(item) for item in items]
+
+    return spacer.join(items)
 
 
 def entry_parameter_description(data, name, exclude_keys: set = set()):
@@ -465,11 +486,11 @@ def layout(row: AtomsRow,
 
     for paneltitle, data_sources in panel_data_sources.items():
 
-        description = ''
+        elements = []
         for panel in page[paneltitle]:
             tit = panel['title']
             if hasattr(tit, '__explanation__'):
-                description += tit.__explanation__
+                elements += [par(tit.__explanation__)]
 
         recipe_links = []
         for result in data_sources:
@@ -478,12 +499,12 @@ def layout(row: AtomsRow,
             link_name = get_recipe_href(asr_name)
             recipe_links.append(link_name)
 
-        description += (
-            br + bold("Relevant recipes") + br
-            + 'This panel contains information calculated with '
-            'the following ASR Recipes:' + br + ul(recipe_links)
-        )
-
+        links = (bold("Relevant recipes")
+                 + br
+                 + 'This panel contains information calculated with '
+                 'the following ASR Recipes:' + br + ul(recipe_links))
+        elements.append(par(links))
+        description = combine_elements(elements, spacer='')
         describe_entry(paneltitle, description=description,
                        title='General panel information')
 
