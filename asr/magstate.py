@@ -30,8 +30,8 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import describe_entry, dl, code
 
     is_magnetic = describe_entry(
-        'is_magnetic',
-        'Determined with'
+        'Magnetic',
+        'Is material magnetic?'
         + dl(
             [
                 [
