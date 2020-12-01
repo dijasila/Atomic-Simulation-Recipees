@@ -141,7 +141,8 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
         if isinstance(value, dict):
             lst2 = dict_to_list(value,
                                 indent=indent + 2,
-                                char=char)
+                                char=char,
+                                exclude_keys=exclude_keys)
             lst.extend([indent * char + f'<b>{key}</b>='] + lst2)
         else:
             lst.append(indent * char + f'<b>{key}</b>={value}')
