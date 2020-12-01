@@ -1,6 +1,7 @@
 """Magnetic anisotropy."""
 from asr.core import command, read_json, ASRResult, prepare_result
-from asr.database.browser import table, make_panel_description, describe_entry
+from asr.database.browser import (
+    table, make_panel_description, describe_entry, href)
 from math import pi
 
 panel_description = make_panel_description(
@@ -8,7 +9,13 @@ panel_description = make_panel_description(
 Electronic properties derived from a ground state density functional theory
 calculation.
 """,
-    articles=['C2DB'],
+    articles=[
+        'C2DB',
+        href("""D. Torelli et al. High throughput computational screening for 2D
+ferromagnetic materials: the critical role of anisotropy and local
+correlations, 2D Mater. 6 045018 (2019)""",
+             'https://doi.org/10.1088/2053-1583/ab2c43'),
+    ],
 )
 
 
