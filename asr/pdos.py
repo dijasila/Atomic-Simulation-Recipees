@@ -82,13 +82,8 @@ def webpanel(result, row, key_descriptions):
                    + dependencies_parameter_descriptions)
 
     # Projected band structure and DOS panel
-    description = ('Orbital projected band structure '
-                   'and projected density of states, '
-                   'both without spin-orbit coupling')
     panel = WebPanel(
-        title=describe_entry(
-            'Projected band structure and DOS (PBE)',
-            description=description),
+        title='Projected band structure and DOS (PBE)',
         columns=[[],
                  [describe_entry(fig('pbe-pdos_nosoc.png', link='empty'),
                                  description=explanation)]],

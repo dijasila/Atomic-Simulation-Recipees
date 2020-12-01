@@ -4,6 +4,17 @@ import numpy as np
 from asr.core import command, ASRResult, prepare_result
 import typing
 
+from asr.database.browser import make_panel_description
+
+panel_description = make_panel_description(
+    """The single-particle band structure and density of states projected onto
+atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+plots.""",
+    articles=[
+        'C2DB',
+    ],
+)
+
 
 # ---------- Webpanel ---------- #
 
@@ -34,7 +45,9 @@ def webpanel(result, row, key_descriptions):
                    + dependencies_parameter_descriptions)
 
     panel = WebPanel(
-        title='Projected band structure and DOS (PBE)',
+        title=describe_entry(
+            'Projected band structure and DOS (PBE)',
+            panel_description),
         columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
                                  description=explanation)],
                  [fig('bz-with-gaps.png')]],
