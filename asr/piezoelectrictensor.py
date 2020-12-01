@@ -67,12 +67,13 @@ def webpanel(result, row, key_descriptions):
     etable = matrixtable(e_ij,
                          columnlabels=voigt_labels,
                          rowlabels=['x', 'y', 'z'],
-                         title='Piezoelectric tensor (e/Å<sup>dim-1</sup>)')
+                         title='c<sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
-    e0table = matrixtable(e0_ij,
-                          columnlabels=voigt_labels,
-                          rowlabels=['x', 'y', 'z'],
-                          title='Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)')
+    e0table = matrixtable(
+        e0_ij,
+        columnlabels=voigt_labels,
+        rowlabels=['x', 'y', 'z'],
+        title='c<sup>clamped</sup><sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
     columns = [[etable], [e0table]]
 
