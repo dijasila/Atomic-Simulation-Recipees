@@ -1,7 +1,22 @@
 """Bethe Salpeter absorption spectrum."""
-from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
 import typing
+
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, make_panel_description, describe_entry)
+
+
+panel_description = make_panel_description(
+    """The optical absorption calculated from the Bethe-Salpeter Equation
+(BSE). The BSE 2-particle Hamiltonian is constructed using the wave functions
+from a DFT calculation with the direct band gap adjusted to match the direct
+band gap from a G0W0 calculation. Spin orbit interactions are included.  The
+result of the random phase approximation (RPA) with the same direct band gap
+adjustment as used for BSE but without spin-orbit interactions, is also shown.
+""",
+    articles=['C2DB'],
+)
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -236,7 +251,6 @@ def absorption(row, filename, direction='x'):
 def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
-    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
@@ -248,7 +262,8 @@ def webpanel(result, row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE and RPA)',
+        panel = {'title': describe_entry('Optical absorption (BSE and RPA)',
+                                         panel_description),
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
