@@ -1,6 +1,5 @@
 """Structural information."""
 from asr.core import command, ASRResult, prepare_result
-import typing
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -123,7 +122,7 @@ def webpanel(result, row, key_descriptions):
         for tmprow in rows:
             href = ('<a href="http://www.crystallography.net/cod/'
                     + '{id}.html">{id}</a>'.format(id=codid))
-            if 'COD' in tmprow[0]:
+            if 'cod_id' in tmprow[0]:
                 tmprow[1] = href
 
     doi = row.get('doi')
@@ -161,7 +160,7 @@ tests = [{'description': 'Test SI.',
 @prepare_result
 class Result(ASRResult):
 
-    cell_area: typing.Optional[float]
+    cell_area: float
     has_inversion_symmetry: bool
     stoichiometry: str
     spacegroup: str
