@@ -1,12 +1,25 @@
 """Stiffness tensor."""
-from asr.core import command, option, ASRResult, prepare_result
 import typing
+from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (matrixtable, describe_entry,
+                                  entry_parameter_description, dl,
+                                  make_panel_description)
+
+panel_description = make_panel_description(
+    """
+The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
+material to the applied strain. In Voigt notation, C is expressed as a NxN
+matrix relating the N independent components of the stress and strain
+tensors. C is calculated as a finite difference of the stress under an applied
+stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+indicates a dynamical instability.
+""",
+    articles=['C2DB'],
+)
 
 
 def webpanel(result, row, key_descriptions):
     import numpy as np
-    from asr.database.browser import (matrixtable, describe_entry,
-                                      entry_parameter_description, dl)
 
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
