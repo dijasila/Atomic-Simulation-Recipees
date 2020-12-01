@@ -5,6 +5,9 @@ from pathlib import Path
 import functools
 
 from asr.core import command, argument, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, describe_entry, dl, br, make_panel_description
+)
 
 from ase.db import connect
 from ase.io import read
@@ -14,19 +17,25 @@ from ase.db.row import AtomsRow
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table, describe_entry, dl, br
+panel_description = make_panel_description(
+    """
+The heat of formation (ΔH) is the internal energy of a compound relative
+to the standard states of the constituent elements at T=0 K.  The energy above
+the convex hull is the internal energy relative to the most stable (possibly
+mixed) phase of the constituent elements at T=0 K.
+""",
+    articles=['C2DB'],
+)
 
-    caption = """
-    The convex hull describes stability
-    with respect to other phases."""
+
+def webpanel(result, row, key_descriptions):
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png', caption=caption)],
+    panel = {'title': describe_entry('Thermodynamic stability', panel_description),
+             'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function':
                                     functools.partial(plot, thisrow=row),

@@ -79,7 +79,6 @@ def webpanel(result, row, key_descriptions):
         dependencies_parameter_descriptions += f'\n{epd}'
     explanation = ('Orbital projected density of states without spin-orbit coupling\n\n'
                    + parameter_description
-                   + '\nCalculated on top of:'
                    + dependencies_parameter_descriptions)
 
     # Projected band structure and DOS panel

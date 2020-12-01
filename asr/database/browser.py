@@ -102,14 +102,14 @@ def describe_entry(value, description, title='Help'):
             value.__explanation__ += description
         else:
             value.__explanation__ += '\n' + description
-        value.__explanation_title__ = title
+        value.__explanation_title__ = bold(title)
         return value
 
     value_type = type(value)
     if value_type in value_type_to_explained_type:
         value = value_type_to_explained_type[value_type](value)
         value.__explanation__ = description
-        value.__explanation_title__ = title
+        value.__explanation_title__ = bold(title)
         return value
 
     class ExplainedType(value_type):
@@ -218,6 +218,28 @@ def href(text, link):
     return f'<a href="{link}">{text}</a>'
 
 
+static_article_links = {'C2DB': href(
+    """S. Haastrup et al. The Computational 2D Materials Database: high-throughput
+modeling and discovery of atomically thin crystals, 2D Mater. 5 042002
+(2018).""",
+    'https://doi.org/10.1088/2053-1583/aacfc1'
+)
+}
+
+
+def make_panel_description(text, articles=None):
+
+    description = (
+        text
+    )
+    if articles:
+        description += br + bold('Relevant article(s):')
+        for article in articles:
+            link = static_article_links.get(article, article)
+            description += br + link
+    return description
+
+
 def entry_parameter_description(data, name, exclude_keys: set = set()):
     """Make a parameter description.
 
@@ -237,25 +259,23 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
        and 'params' in data[f'results-{name}.json'].metadata):
         metadata = data[f'results-{name}.json'].metadata
         params = metadata.params
-        header = ''
+        # header = ''
         # asr_name = (metadata.asr_name if 'asr_name' in metadata
         #             else name)  # Fall back to name as best guess for asr_name
         # link_name = get_recipe_href(asr_name, name=name)
     else:
         params = recipe.get_defaults()
-        header = ('No parameters can be found, meaning that '
-                  'the recipe was probably run with the '
-                  'default parameter shown below\n'
-                  '<b>Default:</b>')
+        # header = ('No parameters can be found, meaning that '
+        #           'the recipe was probably run with the '
+        #           'default parameter shown below\n'
+        #           '<b>Default:</b>')
         # link_name = get_recipe_href(name)
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
-    lst[0] = '<pre><code>' + lst[0]
-    lst[-1] = lst[-1] + '</code></pre>'
-    string = '\n'.join(lst)
+    string = pre(code('\n'.join(lst)))
     description = (
-        f'<b>Parameters:</b> {link_name}\n'
-        + header
+        bold(f'Parameters ({link_name})')
+        + br
         + string
     )
 
@@ -444,7 +464,8 @@ def layout(row: AtomsRow,
 
     for paneltitle, data_sources in panel_data_sources.items():
         description = [
-            'This panel contains information calculated with '
+            bold("Relevant recipes") + br
+            + 'This panel contains information calculated with '
             'the following ASR Recipes:',
         ]
         for result in data_sources:
