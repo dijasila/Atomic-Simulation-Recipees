@@ -97,6 +97,7 @@ def describe_entry(value, description, title='Help'):
     This function sets an __explanation__ attribute on the given object
     which is used by the web application to generate additional explanations.
     """
+    description = normalize_string(description)
     if hasattr(value, '__explanation__'):
         if value.__explanation__ == '':
             value.__explanation__ += description
