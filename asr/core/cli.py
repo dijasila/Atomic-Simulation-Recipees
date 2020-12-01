@@ -419,9 +419,9 @@ def get_item(attrs: List[str], obj):
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 def ls(functionname, formatting, sort):
-    from asr.core.command import full_feature_file_cache
+    from asr.core.command import file_system_cache
 
-    records = full_feature_file_cache.select()
+    records = file_system_cache.select()
 
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
@@ -559,9 +559,9 @@ def draw_networkx_graph(G):
 @click.option('--draw', is_flag=True)
 
 def graph(draw=False):
-    from asr.core.command import full_feature_file_cache
+    from asr.core.command import file_system_cache
 
-    records = full_feature_file_cache.select()
+    records = file_system_cache.select()
 
     if draw:
         import networkx as nx
@@ -571,7 +571,7 @@ def graph(draw=False):
 
         for record in records:
             for depid in record.dependencies:
-                deprecord = full_feature_file_cache.get_record_from_uid(depid)
+                deprecord = file_system_cache.get(uid=depid)
                 graph.add_edge(deprecord, record)
 
         draw_networkx_graph(graph)
@@ -581,7 +581,7 @@ def graph(draw=False):
 
         for record in records:
             graph[record] = [
-                full_feature_file_cache.get_record_from_uid(uid)
+                file_system_cache.get(uid=uid)
                 for uid in record.dependencies
             ]
 

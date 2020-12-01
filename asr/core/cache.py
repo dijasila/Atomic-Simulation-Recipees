@@ -145,7 +145,6 @@ class FileCacheBackend(AbstractCache):  # noqa
 
     @staticmethod
     def _name_to_results_filename(name: str):
-        name = name.replace('::', '@').replace('@main', '')
         return f'results-{name}.json'
 
     def add(self, run_record: RunRecord):  # noqa
@@ -222,8 +221,13 @@ class FileCacheBackend(AbstractCache):  # noqa
         return [record for record in self.select() if record.uid == uid][0]
 
     def select(self, selection=None):  # noqa
-        return [self.get_record_from_hash(run_hash)
-                for run_hash in self.hash_table]
+        all_records = [self.get_record_from_hash(run_hash)
+                       for run_hash in self.hash_table]
+        selected = []
+        for record in all_records:
+            if selection.matches(record):
+                selected.append(record)
+        return selected
 
     def _write_file(self, filename: str, text: str):
         if not self.cache_dir.is_dir():
@@ -233,6 +237,28 @@ class FileCacheBackend(AbstractCache):  # noqa
     def _read_file(self, filename: str) -> str:
         serialized_object = pathlib.Path(self.cache_dir / filename).read_text()
         return serialized_object
+
+
+class NoSuchAttribute(Exception):
+
+    pass
+
+
+class Selection:
+
+    def __init__(self, **selection):
+        self.selection = self.normalize_selection(selection)
+
+    def matches(self, obj):
+        for attr, value in self.selection.items():
+            try:
+                objvalue = self.get_attribute(attr, obj)
+            except NoSuchAttribute:
+                return False
+            if value is None:  # Do not compare
+                return True
+            else:
+                return value == objvalue
 
 
 class Cache:  # noqa
@@ -248,21 +274,28 @@ class Cache:  # noqa
 
         self.backend.add(run_record)
 
-    def has(self, run_specification: RunSpecification):  # noqa
-        return self.backend.has(run_specification)
+    def has(self, **selection):  # noqa
+        return self.backend.has(**selection)
 
-    def get(self, run_specification: RunSpecification):  # noqa
-        assert self.has(run_specification), \
+    def get(self, **selection):  # noqa
+        assert self.has(**selection), \
             'No matching run_specification.'
-        return self.backend.get(run_specification)
+        return self.backend.get(**selection)
 
-    def select(self, selection=None):  # noqa
+    def select(self, **selection):  # noqa
+        """Select records.
+
+        Selection can be in the style of
+
+        cache.select(uid=uid)
+        cache.select(name='asr.gs::main')
+        """
         return self.backend.select(selection)
 
     def wrapper(self, func):  # noqa
         def wrapped(asrcontrol, run_specification):
-            if self.has(run_specification):
-                run_record = self.get(run_specification)
+            if self.has(run_specification=run_specification):
+                run_record = self.get(run_specification=run_specification)
                 print(f'Using cached record: {run_record}')
             else:
                 run_record = func(asrcontrol, run_specification)
@@ -274,5 +307,4 @@ class Cache:  # noqa
         return self.wrapper
 
 
-single_run_file_cache = SingleRunFileCache()
-full_feature_file_cache = Cache(backend=FileCacheBackend())
+file_system_cache = Cache(backend=FileCacheBackend())

@@ -167,8 +167,8 @@ class ASRCommand:
             'The wrapped object should be callable'
 
         if cache is None:
-            from .cache import full_feature_file_cache
-            cache = full_feature_file_cache
+            from .cache import file_system_cache
+            cache = file_system_cache
         self.cache = cache
         self.version = version
         if argument_hooks is None:
