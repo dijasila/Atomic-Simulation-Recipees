@@ -1,6 +1,5 @@
 """Implement cache functionality."""
 import abc
-import functools
 import os
 import pathlib
 import hashlib
@@ -133,23 +132,16 @@ class SingleRunFileCache(AbstractCache):  # noqa
         return wrapper
 
 
-class FullFeatureFileCache(AbstractCache):  # noqa
+class FileCacheBackend(AbstractCache):  # noqa
 
-    def __init__(self, serializer: Serializer = JSONSerializer(),  # noqa
+    def __init__(self,
+                 cache_dir: str = '.asr/records',
+                 serializer: Serializer = JSONSerializer(),
                  hash_func=hashlib.sha256):  # noqa
         self.serializer = serializer
-        self._cache_dir = pathlib.Path('.asr/records')
-        self.depth = 0
+        self.cache_dir = pathlib.Path(cache_dir)
         self.hash_func = hash_func
-        self._filename = 'run-data.json'
-
-    @property
-    def cache_dir(self) -> pathlib.Path:  # noqa
-        return self._cache_dir
-
-    @cache_dir.setter
-    def cache_dir(self, value):
-        self._cache_dir = value
+        self.filename = 'run-data.json'
 
     @staticmethod
     def _name_to_results_filename(name: str):
@@ -183,18 +175,18 @@ class FullFeatureFileCache(AbstractCache):  # noqa
 
     @property
     def initialized(self):  # noqa
-        return (self.cache_dir / pathlib.Path(self._filename)).is_file()
+        return (self.cache_dir / pathlib.Path(self.filename)).is_file()
 
     def initialize(self):  # noqa
         assert not self.initialized
         serialized_object = self.serializer.serialize({})
-        self._write_file(self._filename, serialized_object)
+        self._write_file(self.filename, serialized_object)
 
     def add_hash_to_table(self, run_hash, filename):  # noqa
         hash_table = self.hash_table
         hash_table[run_hash] = filename
         self._write_file(
-            self._filename,
+            self.filename,
             self.serializer.serialize(hash_table)
         )
 
@@ -202,7 +194,7 @@ class FullFeatureFileCache(AbstractCache):  # noqa
     def hash_table(self):  # noqa
         if not self.initialized:
             self.initialize()
-        text = self._read_file(self._filename)
+        text = self._read_file(self.filename)
         hash_table = self.serializer.deserialize(text)
         return hash_table
 
@@ -229,7 +221,7 @@ class FullFeatureFileCache(AbstractCache):  # noqa
     def get_record_from_uid(self, uid):  # noqa
         return [record for record in self.select() if record.uid == uid][0]
 
-    def select(self):  # noqa
+    def select(self, selection=None):  # noqa
         return [self.get_record_from_hash(run_hash)
                 for run_hash in self.hash_table]
 
@@ -242,29 +234,45 @@ class FullFeatureFileCache(AbstractCache):  # noqa
         serialized_object = pathlib.Path(self.cache_dir / filename).read_text()
         return serialized_object
 
-    def __enter__(self):
-        """Enter context manager."""
-        return self
 
-    def __exit__(self, type, value, traceback):
-        """Exit context manager."""
-        pass
+class Cache:  # noqa
+
+    def __init__(self, backend):
+        self.backend = backend
+
+    def add(self, run_record: RunRecord):  # noqa
+        if self.has(run_record.run_specification):
+            raise RunSpecificationAlreadyExists(
+                'This Run specification already exists in cache.'
+            )
+
+        self.backend.add(run_record)
+
+    def has(self, run_specification: RunSpecification):  # noqa
+        return self.backend.has(run_specification)
+
+    def get(self, run_specification: RunSpecification):  # noqa
+        assert self.has(run_specification), \
+            'No matching run_specification.'
+        return self.backend.get(run_specification)
+
+    def select(self, selection=None):  # noqa
+        return self.backend.select(selection)
 
     def wrapper(self, func):  # noqa
         def wrapped(asrcontrol, run_specification):
-            with self:
-                if self.has(run_specification):
-                    run_record = self.get(run_specification)
-                    print(f'Using cached record: {run_record}')
-                else:
-                    run_record = func(asrcontrol, run_specification)
-                    self.add(run_record)
+            if self.has(run_specification):
+                run_record = self.get(run_specification)
+                print(f'Using cached record: {run_record}')
+            else:
+                run_record = func(asrcontrol, run_specification)
+                self.add(run_record)
             return run_record
         return wrapped
 
     def __call__(self):  # noqa
-        return functools.partial(self.wrapper)
+        return self.wrapper
 
 
 single_run_file_cache = SingleRunFileCache()
-full_feature_file_cache = FullFeatureFileCache()
+full_feature_file_cache = Cache(backend=FileCacheBackend())
