@@ -2,6 +2,16 @@
 from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
+from asr.database.browser import (
+    fig, table, describe_entry, make_panel_description)
+
+panel_description = make_panel_description(
+    """The single-particle band structure calculated with the HSE06
+xc-functional. The calculations are performed non-self-consistently with the
+wave functions from a GGA calculation. Spin-orbit interactions are included
+non-self-consistently.""",
+    articles=['C2DB'],
+)
 
 
 @command(module='asr.hse',
@@ -203,7 +213,6 @@ def bs_hse(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table, describe_entry
 
     if row.get('gap_hse', 0) > 0.0:
         hse = table(row, 'Property',
@@ -227,7 +236,8 @@ def webpanel(result, row, key_descriptions):
                     [],
                     kd=key_descriptions)
 
-    panel = {'title': 'Electronic band structure (HSE)',
+    panel = {'title': describe_entry('Electronic band structure (HSE)',
+                                     panel_description),
              'columns': [[fig('hse-bs.png')],
                          [fig('bz-with-gaps.png'), hse]],
              'plot_descriptions': [{'function': bs_hse,

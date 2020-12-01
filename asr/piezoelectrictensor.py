@@ -13,8 +13,8 @@ from asr.database.browser import matrixtable, make_panel_description, describe_e
 
 
 panel_description = make_panel_description("""
-The piezoelectric tensor, e?, is a rank-3 tensor relating the macroscopic
-polarization to an applied strain. In Voigt notation, e? is expressed as a 3xN
+The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
+polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
 matrix relating the (x,y,z) components of the polarizability to the N
 independent components of the strain tensor. The polarization in a periodic
 direction is calculated as an integral over Berry phases. The polarization in a

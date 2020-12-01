@@ -18,12 +18,10 @@ known_methods = ['DFT', 'DFT+D3']
 
 
 panel_description = make_panel_description(
-    """
-The heat of formation (ΔH) is the internal energy of a compound relative
-to the standard states of the constituent elements at T=0 K.  The energy above
-the convex hull is the internal energy relative to the most stable (possibly
-mixed) phase of the constituent elements at T=0 K.
-""",
+    """The heat of formation (ΔH) is the internal energy of a compound relative to
+the standard states of the constituent elements at T=0 K.  The energy above the
+convex hull is the internal energy relative to the most stable (possibly mixed)
+phase of the constituent elements at T=0 K.""",
     articles=['C2DB'],
 )
 

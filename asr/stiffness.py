@@ -73,7 +73,7 @@ def webpanel(result, row, key_descriptions):
         describe_entry(
             'Dynamical (stiffness)',
             'Classifier for the dynamical stability of a material '
-            'based on the minimum of the stiffness tensor.'
+            'based on the minimum eigenvalue of the stiffness tensor.'
             + dl(
                 [
                     ["LOW", low],

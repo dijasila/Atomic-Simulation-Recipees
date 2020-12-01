@@ -149,8 +149,7 @@ def webpanel(result, row, key_descriptions):
         describe_entry(
             'Dynamical (phonons)',
             'Classifier for the dynamical stability of a material '
-            'based on the minimum eigenvalues of the Hessian '
-            'in a phonon calculation.'
+            'based on the minimum eigenvalue of the Hessian.'
             + dl(
                 [
                     ["LOW", low],
