@@ -163,17 +163,20 @@ class Result(ASRResult):
          dependencies=['asr.gs@calculate'],
          requires=['structure.json', 'gs.gpw'],
          returns=Result)
-@option('--gs', help='Ground state on which response is based',
-        type=str)
-@option('--kptdensity', help='K-point density [1/Ang]', type=float)
-@option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
-        type=str)
+# @command('asr.shg',
+#          requires=['structure.json'],
+#          returns=Result)
+@option('--gs', type=str,
+        help='Ground state on which response is based')
+@option('--kptdensity', type=float, help='K-point density [1/Ang]')
+@option('--gauge', type=str,
+        help='Selected gauge (length "lg" or velocity "vg")')
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor')
-@option('--eta', help='Broadening [eV]', type=float)
-@option('--maxomega', help='Max pump frequency [eV]', type=float)
-@option('--nromega', help='Number of pump frequencies', type=int)
-@option('--removefiles', help='Remove created files', type=bool)
+@option('--eta', type=float, help='Broadening [eV]')
+@option('--maxomega', type=float, help='Max pump frequency [eV]')
+@option('--nromega', type=int, help='Number of pump frequencies')
+@option('--removefiles', is_flag=True, help='Remove created files')
 def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
          bandfactor: int = 4, eta: float = 0.05,
          maxomega: float = 10.0, nromega: int = 1000,
@@ -229,9 +232,21 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
+                # calc = GPAW(
+                #     txt='gs.txt',
+                #     nbands='200%',
+                #     basis='dzp',
+                #     convergence={'bands': 'CBM+3.0'},
+                #     occupations={'name': 'fermi-dirac', 'width': 0.05},
+                #     spinpol=False,
+                #     poissonsolver={'dipolelayer': 'xy'},
+                #     kpts={'density': 12, 'gamma': True})
+                # atoms.calc = calc
+                # atoms.get_potential_energy()
+                # calc.write(gs)
+
                 calc_old = GPAW(gs, txt=None)
                 nval = calc_old.wfs.nvalence
-
                 calc = GPAW(
                     gs,
                     txt='es.txt',
@@ -337,6 +352,7 @@ def plot_shg(row, *filename):
         # Plot the data
         amp_l = shg
         amp_l = amp_l[w_l < maxw]
+        # print(amp_l[0].real)
         ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
         ax.plot(w_l[w_l < maxw], np.imag(amp_l), '-', c='C1', label='Im')
         ax.plot(w_l[w_l < maxw], np.abs(amp_l), '-', c='C2', label='Abs')

@@ -63,7 +63,7 @@ class Result(ASRResult):
     requires=['structure.json'],
     returns=Result)
 @option('--disp', type=float, help='Displacement size')
-@option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
+@option('--d3/--nod3', is_flag=True, help='Enable DFT-D3 for phonon calculations')
 @option('--wavelengths', type=list, help='Excitation wavelengths [nm]')
 @option('--eta', type=float, help='Excitation broadening [eV]')
 @option('--prefix', type=str, help='Prefix for filenames')
@@ -71,7 +71,7 @@ class Result(ASRResult):
 @option('--calc_chi', type=DictStr(), help='Calculator params. for chi')
 @option('--removefiles', type=str, help='Remove intermediate files')
 def main(
-    disp: float = 0.05, eta: float = 0.1, dftd3: bool = True,
+    disp: float = 0.05, eta: float = 0.2, d3: bool = True,
     wavelengths: typing.List[float] = [
         488.0, 532.0, 594.0, 612.0, 633.0, 708.0, 780.0,
         850.0, 1064.0, 1550.0, 2600.0, 4800.0, 10600.0],
@@ -91,7 +91,7 @@ def main(
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
         'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
+        'kpts': {'density': 15.0, 'gamma': True},
         'occupations': {'name': 'fermi-dirac', 'width': 0.05},
         'nbands': '200%',
         'convergence': {'bands': -5},
@@ -105,7 +105,7 @@ def main(
         with timer('Phonon calculations'):
             parprint('Starting a phonon calculation ...')
             if not Path(prefix + 'phonons.json').is_file():
-                find_phonons(calculator=calc_ph, dftd3=dftd3,
+                find_phonons(calculator=calc_ph, dftd3=d3,
                              disp=disp, prefix=prefix)
             ph = read_json(prefix + 'phonons.json')
             freqs_l = ph['freqs_l']
@@ -122,18 +122,18 @@ def main(
             parprint('Starting a Raman calculation ...')
             freqs_w = [1240 / wavelength for wavelength in wavelengths]
             if not Path(prefix + 'chis.json').is_file():
-                I_vvwl = get_chi_tensors(
+                get_chis(
                     calc_chi, freqs_l, u_lav, prefix=prefix, eta=eta,
                     removefiles=removefiles, freqs_w=freqs_w, disp=disp)
             parprint('All chi tensors are computed.')
             chis = read_json(prefix + 'chis.json')
             chi_livvw = chis['chi_livvw']
             I_vvwl = np.zeros((3, 3, len(freqs_w), len(freqs_l)), complex)
-            for mode, freq in enumerate(freqs_l):
-                if freq < 0.1:
+            for mode, _ in enumerate(freqs_l):
+                if mode < 3:
                     continue
                 chi_ivvw = chi_livvw[mode - 3]
-                alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
+                alp_vvw = (chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
                 I_vvwl[:, :, :, mode] = alp_vvw
             parprint('The Raman tensors are fully computed.')
 
@@ -164,6 +164,7 @@ def calcspectrum(wavelength, w_l, I_l, ww, gamma=3, shift=0, temp=300):
     kbT = kB * temp / cm
     rr = np.zeros(np.size(ww))
     freq = 1240 / wavelength / cm
+    # print(freq)
     for wi, ri in zip(w_l, I_l):
         if wi > 1e-1:
             nw = 1 / (np.exp(wi / kbT) - 1)
@@ -173,13 +174,14 @@ def calcspectrum(wavelength, w_l, I_l, ww, gamma=3, shift=0, temp=300):
 
 
 def plot_raman(row, filename):
-    # Import the required modules
+
     import matplotlib.pyplot as plt
 
     # All required settings
-    params = {'broadening': 1.0,  # in cm^-1
-              'wavelength': 2,  # index
+    params = {'broadening': 3.0,  # in cm^-1
+              'wavelength': 1,  # index
               'polarization': ['xx', 'yy', 'zz'],
+            #   'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
               'temperature': 300}  # in K
 
     # Read the data from the disk
@@ -202,11 +204,36 @@ def plot_raman(row, filename):
             ampshape[2] != waveshape) or (ampshape[3] != freqshape):
         return
 
+    # Make the figure panel and add y=0 axis
+    ax = plt.figure().add_subplot(111)
+    ax.axhline(y=0, color='k')
+
     # Make the spectrum
     maxw = min([int(np.max(freqs_l) + 200), int(1.2 * np.max(freqs_l))])
     minw = -maxw / 100
     ww = np.linspace(minw, maxw, 2 * maxw)
     rr = {}
+    # I_hh = np.zeros((len(freqs_l)))
+    # I_hv = np.zeros((len(freqs_l)))
+    # for mode in range(len(freqs_l)):
+    #     I_vv = amplitudes_vvwl[:, :, waveind, mode]
+    #     ak = 1/3*(I_vv[0, 0]+I_vv[1, 1]+I_vv[2, 2])
+    #     bk2 = 1/2*((I_vv[0, 0]-I_vv[1, 1])**2+(I_vv[0, 0]-I_vv[2, 2])**2+(I_vv[1, 1]-I_vv[2, 2])**2) \
+    #         +3*(I_vv[0, 1]**2+I_vv[0, 2]**2+I_vv[1, 2]**2)
+    #     I_hh[mode] = np.abs(ak**2+4/45*bk2)
+    #     I_hv[mode] = 3/45*np.abs(bk2)
+    # maxr = np.zeros(2)
+    # rr[0] = calcspectrum(
+    #     wavelength_w[waveind], freqs_l, I_hh,
+    #     ww, gamma=gamma, temp=params['temperature'])
+    # maxr[0] = np.max(rr[0])
+    # rr[1] = calcspectrum(
+    #     wavelength_w[waveind], freqs_l, I_hv,
+    #     ww, gamma=gamma, temp=params['temperature'])
+    # maxr[1] = np.max(rr[1])
+    # ax.plot(ww, rr[0] / np.max(rr[0]), c='C0', label='HH')
+    # ax.plot(ww, rr[1] / np.max(rr[1]), c='C1', label='HV')
+
     maxr = np.zeros(len(selpol))
     for ii, pol in enumerate(selpol):
         d_i = 'xyz'.index(pol[0])
@@ -215,23 +242,21 @@ def plot_raman(row, filename):
             wavelength_w[waveind], freqs_l, amplitudes_vvwl[d_i, d_o, waveind],
             ww, gamma=gamma, temp=params['temperature'])
         maxr[ii] = np.max(rr[pol])
-
-    # Make the figure panel and add y=0 axis
-    ax = plt.figure().add_subplot(111)
-    ax.axhline(y=0, color="k")
-
-    # Plot the data and add the axis labels
     for ipol, pol in enumerate(selpol):
         if ipol > 2:
             sty = '--'
         else:
             sty = '-'
         ax.plot(ww, rr[pol] / np.max(maxr), sty, c='C' + str(ipol), label=pol)
+
+    # Add the axis labels
     ax.set_xlabel('Raman shift [cm$^{-1}$]')
     ax.set_ylabel('Raman intensity [a.u.]')
+    ax.set_title(f'Excitation wavelength {wavelength_w[waveind]} [nm]')
     ax.set_ylim((-0.1, 1.1))
     ax.set_yticks([0, 0.5, 1.0])
     ax.set_xlim((minw, maxw))
+    # ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
 
     # Add the legend to figure
     ax.legend()
@@ -257,6 +282,100 @@ def plot_raman(row, filename):
     # Remove the extra space and save the figure
     plt.tight_layout()
     plt.savefig(filename)
+
+    # Now make the polarization resolved plot
+    # psi = np.linspace(0, 2 * np.pi, 201)
+    # ram_par, ram_perp = calc_polarized_raman(
+    #     amplitudes_vvwl, freqs_l, waveind,
+    #     theta=0.0, phi=0.0,
+    #     pte=np.sin(psi), ptm=np.cos(psi))
+    # ax = plt.subplot(111, projection='polar')
+    # mode = 6
+    # ax.plot(psi, np.abs(ram_par[mode]), 'C0', lw=1.0)
+    # ax.plot(psi, np.abs(ram_perp[mode]), 'C1', lw=1.0)
+    # # Set the y limits
+    # ax.grid(True)
+    # rmax1 = np.amax(np.abs(ram_par[mode]))
+    # rmax2 = np.amax(np.abs(ram_perp[mode]))
+    # rmax = max(rmax1, rmax2)
+    # if np.abs(rmax) < 1e-6:
+    #     rmax = 1e-4
+    #     ax.plot(0, 0, 'o', color='b', markersize=5)
+    # ax.set_rlim(0, 1.2 * rmax)
+    # ax.set_rgrids([rmax], fmt=r'%4.2g')
+    # labs = [r'  $\theta=0$', '45', '90', '135', '180', '225', '270', '315']
+    # ax.set_thetagrids([0, 45, 90, 135, 180, 225, 270, 315], labels=labs)
+
+    # # Put a legend below current axis
+    # ax.legend([r'Parallel: |$\chi^{(2)}_{\theta \theta \theta}$|',
+    #            r'Perpendicular: |$\chi^{(2)}_{(\theta+90)\theta \theta}$|'],
+    #           loc='upper center', bbox_to_anchor=(0.5, -0.15),
+    #           fancybox=True, ncol=2)
+
+    # # Remove the extra space and save the figure
+    # plt.tight_layout()
+    # plt.savefig(filename)
+
+    return ax
+
+
+def calc_polarized_raman(
+        amplitudes_vvwl, freqs_l, wind,
+        theta=0.0, phi=0.0,
+        pte=[1.0], ptm=[0.0]):
+
+    # Check the input arguments
+    pte = np.array(pte)
+    ptm = np.array(ptm)
+    assert np.all(
+        np.abs(pte) ** 2 + np.abs(ptm) ** 2) == 1, \
+        '|pte|**2+|ptm|**2 should be one.'
+    assert len(pte) == len(ptm), 'Size of pte and ptm should be the same.'
+
+    # Useful variables
+    costh = np.cos(theta)
+    sinth = np.sin(theta)
+    cosphi = np.cos(phi)
+    sinphi = np.sin(phi)
+    npsi = len(pte)
+
+    # Transfer matrix between (x y z)/(atm ate k) unit vectors basis
+    if theta == 0:
+        in_bas = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        out_bas = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    else:
+        in_bas = [[cosphi * costh, sinphi * costh, -sinth],
+                    [-sinphi, cosphi, 0],
+                    [sinth * cosphi, sinth * sinphi, costh]]
+        out_bas = [[cosphi * costh, sinphi * costh, sinth],
+                    [-sinphi, cosphi, 0],
+                    [-sinth * cosphi, -sinth * sinphi, costh]]
+    in_bas = np.array(in_bas)
+    out_bas = np.array(out_bas)
+
+    # in xyz coordinate
+    Ein = np.zeros((3, npsi), dtype=complex)
+    Epar = np.zeros((3, npsi), dtype=complex)
+    Eperp = np.zeros((3, npsi), dtype=complex)
+    for ii in range(3):
+        Ein[ii] = (1 * in_bas[0][ii] + 0 * in_bas[1][ii])
+        Epar[ii] = (pte * out_bas[0][ii] + ptm * out_bas[1][ii])
+        Eperp[ii] = (ptm * out_bas[0][ii] - pte * out_bas[1][ii])
+
+    # Compute the Raman
+    nph = len(freqs_l)
+    ram_par = np.zeros((nph, npsi), complex)
+    ram_perp = np.zeros((nph, npsi), complex)
+    for ii in range(3):
+        for jj in range(3):
+            for kk in range(nph): 
+                ram_par[kk, :] += amplitudes_vvwl[ii, jj, wind, kk] * Ein[ii, :] * Epar[jj, :]
+                ram_perp[kk, :] += amplitudes_vvwl[ii, jj, wind, kk] * Ein[ii, :] * Eperp[jj, :]
+    ram_par = np.abs(ram_par)**2
+    ram_perp = np.abs(ram_perp)**2
+
+    # Return the output
+    return ram_par, ram_perp
 
 
 def count_deg(freqs_l, freq_err=2):
@@ -297,13 +416,14 @@ def symmetrize_chi(atoms, chi_vvl):
     return sym_chi_vvl / nop
 
 
-def get_chi_tensors(
+def get_chis(
     calculator, freqs_l, u_lav, removefiles='no', prefix='',
         freqs_w=[0.0, 2.33], eta=0.05, disp=0.05):
 
     from ase.calculators.calculator import get_calculator_class
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.mpi import world
+    from gpaw.nlopt.linear import get_chi_tensor
 
     name = calculator.pop('name')
     calculator['txt'] = prefix + calculator['txt']
@@ -313,7 +433,7 @@ def get_chi_tensors(
     mass_a = atoms.get_masses()
     set_chi_ivvw = []
     for mode, freq in enumerate(freqs_l):
-        if freq < 0.1:
+        if mode < 3:
             continue
         chi_ivvw = np.zeros((2, 3, 3, len(freqs_w)), complex)
 
@@ -341,6 +461,7 @@ def get_chi_tensors(
 
                 # Calculate momentum matrix:
                 make_nlodata(gs_name=gs_name, out_name=mml_name)
+
                 if world.rank == 0:
                     if removefiles == 'all' or removefiles == 'gs':
                         ff = Path(gs_name)
@@ -363,15 +484,12 @@ def get_chi_tensors(
             chi_ivvw[ind] = sym_chi_vvw
 
         set_chi_ivvw.append(chi_ivvw)
-        # alp_vvw = np.abs(chi_ivvw[1] - chi_ivvw[0]) / (2 * disp)
-        # I_vvwl[:, :, :, mode] = alp_vvw
 
     results = {
         'freqs_w': freqs_w,
         'chi_livvw': np.array(set_chi_ivvw),
         'disp': disp}
     write_json(prefix + 'chis.json', results)
-    # return I_vvwl
 
 
 def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
@@ -441,9 +559,9 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
     freqs_l, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
     freqs_l *= THzToCm
     u_lav = u_ll.T.reshape(3 * len(atoms), len(atoms), 3)
+    irreps = []
     phonon.set_irreps(q_c)
     ob = phonon._irreps
-    irreps = []
     for _, (deg, irr) in enumerate(
             zip(ob._degenerate_sets, ob._ir_labels)):
         irreps += [irr] * len(deg)
@@ -453,74 +571,6 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
         'u_lav': u_lav,
         'irrep_l': irreps}
     write_json(prefix + 'phonons.json', results)
-
-
-def get_chi_tensor(
-        freqs=[1.0], eta=0.05,
-        ftol=1e-4, Etol=1e-6,
-        band_n=None, mml_name='mml.npz'):
-
-    from gpaw.nlopt.basic import load_data
-    from gpaw.mpi import world
-
-    freqs = np.array(freqs)
-    nw = len(freqs)
-    w_lc = freqs + 1e-12 + 1j * eta  # Add small value to avoid 0
-
-    # Load the required data
-    k_info = load_data(mml_name=mml_name)
-    _, tmp = k_info.popitem()
-    nb = len(tmp[1])
-    if band_n is None:
-        band_n = list(range(nb))
-
-    # Initialize the outputs
-    sum_vvl = np.zeros((3, 3, nw), complex)
-
-    # Do the calculations
-    for _, (we, f_n, E_n, p_vnn) in k_info.items():
-        tmp = np.zeros((3, 3, nw), complex)
-        for v1 in range(3):
-            for v2 in range(v1, 3):
-                sum_l = calc_chi(
-                    w_lc, f_n, E_n, p_vnn, [v1, v2],
-                    band_n, ftol, Etol, eshift=0)
-                tmp[v1, v2] = sum_l
-                tmp[v2, v1] = sum_l
-        # Add it to previous with a weight
-        sum_vvl += tmp * we
-
-    world.sum(sum_vvl)
-    chi_vvl = sum_vvl
-
-    return chi_vvl
-
-
-def calc_chi(
-    w_l, f_n, E_n, p_vnn, pol_v,
-        band_n=None, ftol=1e-4, Etol=1e-6, eshift=0):
-
-    # Initialize variables
-    nb = len(f_n)
-    if band_n is None:
-        band_n = list(range(nb))
-    sum_l = np.zeros(w_l.size, complex)
-
-    # Loop over bands
-    for nni in band_n:
-        for mmi in band_n:
-            if mmi <= nni:
-                continue
-            fnm = f_n[nni] - f_n[mmi]
-            Emn = E_n[mmi] - E_n[nni] + fnm * eshift
-            if np.abs(fnm) < ftol or np.abs(Emn) < Etol:
-                continue
-            # *2 for real, /2 for TRS
-            sum_l += 2 * fnm * np.real(
-                p_vnn[pol_v[0], nni, mmi] * p_vnn[pol_v[1], mmi, nni]) \
-                / (Emn * (w_l**2 - Emn**2))
-
-    return sum_l
 
 
 if __name__ == "__main__":
