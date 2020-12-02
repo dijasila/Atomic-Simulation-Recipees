@@ -8,6 +8,7 @@ import typing
 
 
 # TODO: write general write_links function and put into core functionality
+# TODO: implement more create_links functions for other projects
 
 
 @prepare_result
