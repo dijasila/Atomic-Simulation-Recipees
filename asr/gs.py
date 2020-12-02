@@ -173,99 +173,6 @@ def bz_with_band_extremums(row, fname):
     plt.savefig(fname)
 
 
-<<<<<<< HEAD
-@command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
-         webpanel=webpanel)
-def main():
-    """Extract derived quantities from groundstate in gs.gpw."""
-    import numpy as np
-    from ase.io import read
-    from asr.calculators import get_calculator
-    from gpaw.mpi import serial_comm
-
-    # Just some quality control before we start
-    atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
-                            communicator=serial_comm)
-    pbc = atoms.pbc
-    ndim = np.sum(pbc)
-
-    if ndim == 2:
-        assert not pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        # For 2D materials we check that the calculater used a dipole
-        # correction if the material has an out-of-plane dipole
-
-        # Small hack
-        atoms = calc.atoms
-        atoms.calc = calc
-        evacdiffmin = 10e-3
-        if evacdiff(calc.atoms) > evacdiffmin:
-            assert calc.todict().get('poissonsolver', {}) == \
-                {'dipolelayer': 'xy'}, \
-                ('The ground state has a finite dipole moment along aperiodic '
-                 'axis but calculation was without dipole correction.')
-
-    # Now that some checks are done, we can extract information
-    forces = calc.get_property('forces', allow_calculation=False)
-    stresses = calc.get_property('stress', allow_calculation=False)
-    etot = calc.get_potential_energy()
-
-    results = {'forces': forces,
-               'stresses': stresses,
-               'etot': etot}
-
-    results['gaps_nosoc'] = gaps(calc, soc=False)
-    results['gap_dir_nosoc'] = results['gaps_nosoc']['gap_dir']
-    results['gap_nosoc'] = results['gaps_nosoc']['gap']
-    results.update(gaps(calc, soc=True))
-    # Vacuum level is calculated for c2db backwards compability
-    if int(np.sum(atoms.get_pbc())) == 2: #in [1, 2]:
-        vac = vacuumlevels(atoms, calc)
-        results['vacuumlevels'] = vac
-        results['dipz'] = vac['dipz']
-        results['evac'] = vac['evacmean']
-        results['evacdiff'] = vac['evacdiff']
-        results['workfunction'] = results['evac'] - results['efermi']
-
-    elif int(np.sum(atoms.get_pbc())) == 1:
-        results['evac'] = calc.get_electrostatic_potential()[0, 0, 0]
-        results['workfunction'] = results['evac'] - results['efermi']
-
-    fingerprint = {}
-    for setup in calc.setups:
-        fingerprint[setup.symbol] = setup.fingerprint
-    results['__setup_fingerprints__'] = fingerprint
-    results['__key_descriptions__'] = {
-        # Saved arrays
-        'forces': 'Forces on atoms [eV/Angstrom]',
-        'stresses': 'Stress on unit cell [eV/Angstrom^dim]',
-        # Key value pairs
-        'etot': 'KVP: Total energy (Tot. En.) [eV]',
-        'evac': 'KVP: Vacuum level (Vacuum level) [eV]',
-        'evacdiff': 'KVP: Vacuum level shift (Vacuum level shift) [eV]',
-        'dipz': 'KVP: Out-of-plane dipole [e * Ang]',
-        'efermi': 'KVP: Fermi level (Fermi level) [eV]',
-        'gap': 'KVP: Band gap (Band gap) [eV]',
-        'vbm': 'KVP: Valence band maximum (Val. band max.) [eV]',
-        'cbm': 'KVP: Conduction band minimum (Cond. band max.) [eV]',
-        'gap_dir': 'KVP: Direct band gap (Dir. band gap) [eV]',
-        'vbm_dir': ('KVP: Direct valence band maximum '
-                    '(Dir. val. band max.) [eV]'),
-        'cbm_dir': ('KVP: Direct conduction band minimum '
-                    '(Dir. cond. band max.) [eV]'),
-        'gap_dir_nosoc': ('KVP: Direct gap without SOC '
-                          '(Dir. gap wo. soc.) [eV]')}
-
-    return results
-
-
-def gaps(calc, soc=True):
-=======
 @prepare_result
 class GapsResult(ASRResult):
 
@@ -305,7 +212,6 @@ class GapsResult(ASRResult):
 
 
 def gaps(calc, soc=True) -> GapsResult:
->>>>>>> origin/master
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -442,9 +348,7 @@ def vacuumlevels(atoms, calc, n=8):
         number of gridpoints away from the edge to evaluate the vac levels
     """
     import numpy as np
-<<<<<<< HEAD
  
-=======
 
     if not np.sum(atoms.get_pbc()) == 2:
         return VacuumLevelResults.fromdata(
@@ -457,7 +361,6 @@ def vacuumlevels(atoms, calc, n=8):
             evacmean=None,
             efermi_nosoc=None)
 
->>>>>>> origin/master
     # Record electrostatic potential as a function of z
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
     z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
