@@ -19,28 +19,34 @@ import typing
 def create(databaselink: str,
            databases: Union[str, None] = None):
     """Create links between entries in given ASE databases."""
+
+    # connect to the link database and create dictionary of databases to
+    # link to
     link_db = connect(databaselink)
     db_connections = {}  # [link_db]
     for dbfilenames in databases:
         db = connect(dbfilenames)
         db_connections[dbfilenames] = db
 
+    # create dictionary which maps all uids to a row for a given database
+    # save the uids_to_row dictionary for every database
     uids_for_each_db = {}
     for dbfilename, dbconnection in db_connections.items():
         uids_to_row = {}
         for row in dbconnection.select(include_data=False):
             uids_to_row[row.uid] = row
-
         uids_for_each_db[dbfilename] = uids_to_row
 
-    print(f"INFO: create links for webpanel of DB {link_db.metadata['title']}")
-    print(f"INFO: link to the following databases:")
-    for i in range(0, len(db_connections)):
-        print(f"..... {db_connections[i].metadata['title']}")
+    # print(f"INFO: create links for webpanel of DB {link_db.metadata['title']}")
+    # print(f"INFO: link to the following databases:")
+    # for i in range(0, len(db_connections)):
+    #     print(f"..... {db_connections[i].metadata['title']}")
 
     linkfilename = 'links.json'
+    # loop over all rows of the database to link to
     for i, refrow in enumerate(link_db.select()):
         data = refrow.data
+        # if links.json present in respecttive row, create links
         if linkfilename in data:
             formatted_links = []
             uids_to_link_to = refrow.data[linkfilename]
@@ -61,22 +67,22 @@ def create(databaselink: str,
                 data['links'] = formatted_links
                 link_db.update(refrow.id, data={"links": data['links']})
 
-        data = {'links': {}}
-        refid = refrow.id
-        for database in db_connections:
-            linklist = []
-            urllist = []
-            for j, row in enumerate(database.select()):
-                if row.link_uid == refrow.link_uid:
-                    name = database.metadata['internal_links']['link_name']
-                    url = database.metadata['internal_links']['link_url']
-                    link_name = '{name}'.format(name=name)
-                    link_url = eval(f"f'{url}'")
-                    linklist.append(link_name)
-                    urllist.append(link_url)
-            data['links'][f"{database.metadata['title']}"] = {'link_names': linklist,
-                                                              'link_urls': urllist}
-        link_db.update(refid, data={"links": data['links']})
+        # data = {'links': {}}
+        # refid = refrow.id
+        # for database in db_connections:
+        #     linklist = []
+        #     urllist = []
+        #     for j, row in enumerate(database.select()):
+        #         if row.link_uid == refrow.link_uid:
+        #             name = database.metadata['internal_links']['link_name']
+        #             url = database.metadata['internal_links']['link_url']
+        #             link_name = '{name}'.format(name=name)
+        #             link_url = eval(f"f'{url}'")
+        #             linklist.append(link_name)
+        #             urllist.append(link_url)
+        #     data['links'][f"{database.metadata['title']}"] = {'link_names': linklist,
+        #                                                       'link_urls': urllist}
+        # link_db.update(refid, data={"links": data['links']})
 
 
 @prepare_result
