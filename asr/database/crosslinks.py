@@ -6,6 +6,18 @@ from ase.db.row import AtomsRow
 import typing
 
 
+@prepare_result
+class Result(ASRResult):
+    """Container for crosslinks results."""
+    link_db: str
+    connection_dbs: typing.List[str]
+
+    key_descriptions = dict(
+        link_db='DB that links get created for.',
+        connection_dbs='List of DB that link_db should create links for.'
+    )
+
+
 @command('asr.database.crosslinks')
 @option('--databaselink', type=str)
 @argument('databases', nargs=-1, type=str)
@@ -57,90 +69,76 @@ def create(databaselink: str,
     return ASRResult()
 
 
-@prepare_result
-class LinkResults(ASRResult):
-    """Container for links to a specific Database."""
-
-    name: str
-    link_names: typing.List[str]
-    link_urls: typing.List[str]
-
-    key_descriptions = dict(
-        name='Name of the DB that that the initial DB is linked to.',
-        link_names='List of names of the links to that specific DB.',
-        link_urls='List of urls of the links to that specific DB.')
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for database crosslinks results."""
-
-    linked_database: str
-    links: typing.List[LinkResults]
-
-    key_descriptions = dict(
-        linked_database='Database that crosslinks got created for.',
-        links='List of LinkResults containers.')
-
-
-def return_link_results(linklist, urllist, db_name) -> LinkResults:
-    return LinkResults.fromdata(
-        name=db_name,
-        link_names=linklist,
-        link_urls=urllist)
-
-
-@command(module='asr.database.crosslinks',
-         dependencies=['asr.database.material_fingerprint',
-                       'asr.database.crosslinks@create'],
-         returns=Result)
-@argument('database', nargs=1, type=str)
-def main(database: str) -> Result:
-    """Create links.
-
-    Use created crosslink names and urls from asr.database.crosslinks@create
-    and write HTML code for representation on webpage.
-    """
-    # First, get uid of structure in current directory to compare to respective
-    # uid in the database
-    results_fingerprint = read_json('results-asr.database.material_fingerprint.json')
-    structure_uid = results_fingerprint['uid']
-
-    # Second, connect to the crosslinked database and obtain the names, urls,
-    # and types
-    db = connect(database)
-    for row in db.select():
-        if row.uid == structure_uid:
-            links = row.data['links']
-
-    link_results_list = []
-    for element in links:
-        link_results = return_link_results(links[element]['link_names'],
-                                           links[element]['link_urls'],
-                                           element)
-        link_results_list.append(link_results)
-
-    return Result.fromdata(linked_database=database,
-                           links=link_results_list)
-
-
-def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
-    import numpy as np
-
-    data = row.data.get('results-asr.database.crosslinks.json')
-    links = data['links']
-    names = []
-    urls = []
-    types = []
-    for element in links:
-        for j in range(len(links[element]['link_names'])):
-            names.append(links[element]['link_names'][j])
-            urls.append(links[element]['link_urls'][j])
-            types.append(element)
-
-    table_array = np.array([names, urls, types])
-
-    return table_array
+# @prepare_result
+# class Result(ASRResult):
+#     """Container for database crosslinks results."""
+# 
+#     linked_database: str
+#     links: typing.List[LinkResults]
+# 
+#     key_descriptions = dict(
+#         linked_database='Database that crosslinks got created for.',
+#         links='List of LinkResults containers.')
+# 
+ 
+# def return_link_results(linklist, urllist, db_name) -> LinkResults:
+#     return LinkResults.fromdata(
+#         name=db_name,
+#         link_names=linklist,
+#         link_urls=urllist)
+# 
+# 
+# @command(module='asr.database.crosslinks',
+#          dependencies=['asr.database.material_fingerprint',
+#                        'asr.database.crosslinks@create'],
+#          returns=Result)
+# @argument('database', nargs=1, type=str)
+# def main(database: str) -> Result:
+#     """Create links.
+# 
+#     Use created crosslink names and urls from asr.database.crosslinks@create
+#     and write HTML code for representation on webpage.
+#     """
+#     # First, get uid of structure in current directory to compare to respective
+#     # uid in the database
+#     results_fingerprint = read_json('results-asr.database.material_fingerprint.json')
+#     structure_uid = results_fingerprint['uid']
+# 
+#     # Second, connect to the crosslinked database and obtain the names, urls,
+#     # and types
+#     db = connect(database)
+#     for row in db.select():
+#         if row.uid == structure_uid:
+#             links = row.data['links']
+# 
+#     link_results_list = []
+#     for element in links:
+#         link_results = return_link_results(links[element]['link_names'],
+#                                            links[element]['link_urls'],
+#                                            element)
+#         link_results_list.append(link_results)
+# 
+#     return Result.fromdata(linked_database=database,
+#                            links=link_results_list)
+# 
+# 
+# def link_tables(row: AtomsRow) -> List[Dict[str, Any]]:
+#     import numpy as np
+# 
+#     data = row.data.get('results-asr.database.crosslinks.json')
+#     links = data['links']
+#     names = []
+#     urls = []
+#     types = []
+#     for element in links:
+#         for j in range(len(links[element]['link_names'])):
+#             names.append(links[element]['link_names'][j])
+#             urls.append(links[element]['link_urls'][j])
+#             types.append(element)
+# 
+#     table_array = np.array([names, urls, types])
+# 
+#     return table_array
 
 
 if __name__ == '__main__':

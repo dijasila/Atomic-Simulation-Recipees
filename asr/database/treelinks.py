@@ -60,6 +60,8 @@ def create_defect_links(path):
     uid = fingerprint_res['uid']
     uids.append(uid)
 
-    write_links(path, uids)
+    links = {'uids': uids}
+
+    write_links(path, links)
 
     return uids
