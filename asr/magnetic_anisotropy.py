@@ -1,6 +1,22 @@
 """Magnetic anisotropy."""
 from asr.core import command, read_json, ASRResult, prepare_result
+from asr.database.browser import (
+    table, make_panel_description, describe_entry, href)
 from math import pi
+
+panel_description = make_panel_description(
+    """
+Electronic properties derived from a ground state density functional theory
+calculation.
+""",
+    articles=[
+        'C2DB',
+        href("""D. Torelli et al. High throughput computational screening for 2D
+ferromagnetic materials: the critical role of anisotropy and local
+correlations, 2D Mater. 6 045018 (2019)""",
+             'https://doi.org/10.1088/2053-1583/ab2c43'),
+    ],
+)
 
 
 def get_spin_axis():
@@ -31,14 +47,16 @@ def spin_axis(theta, phi):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table
     if row.get('magstate', 'NM') == 'NM':
         return []
 
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
-    panel = {'title': 'Basic magnetic properties (PBE)',
+    panel = {'title':
+             describe_entry(
+                 'Basic magnetic properties (PBE)',
+                 panel_description),
              'columns': [[magtable], []],
              'sort': 11}
     return [panel]
