@@ -1,8 +1,5 @@
-from typing import Union, List, Dict, Any
-from asr.core import (command, option, argument, ASRResult, prepare_result,
+from asr.core import (command, option, ASRResult, prepare_result,
                       read_json)
-from ase.db import connect
-from ase.db.row import AtomsRow
 from pathlib import Path
 import typing
 
@@ -14,6 +11,7 @@ import typing
 @prepare_result
 class Result(ASRResult):
     """Container for treelinks result."""
+
     links: typing.List[str]
 
     key_descriptions: typing.Dict[str, str] = dict(
@@ -28,17 +26,19 @@ class Result(ASRResult):
         is_flag=True)
 def main(defects: bool = False,
          c2db: bool = False) -> Result:
-   """Create links.json based on the tree-structure.
+    """Create links.json based on the tree-structure.
 
-   Choose the respective option to choose, which kind of tree is
-   currently present."""
-   p = Path('.')
-   if defects:
-       links = create_defect_links(path=p)
-   elif c2db:
-       links = create_c2db_links(path=p)
+    Choose the respective option to choose, which kind of tree is
+    currently present.
+    """
+    p = Path('.')
+    if defects:
+        links = create_defect_links(path=p)
+    elif c2db:
+        # links = create_c2db_links(path=p)
+        pass
 
-   return Result.fromdata(links=links)
+    return Result.fromdata(links=links)
 
 
 def write_links(path, link_uids):
@@ -47,18 +47,22 @@ def write_links(path, link_uids):
 
 
 def create_defect_links(path):
-    """Return a list of structure uids to link to based on
-    the tree structure created from setup.defects."""
+    """Return a list of structure uids to link to.
+
+    Based on the tree structure created from setup.defects.
+    """
     parent = Path(path.absolute() / '../../../')
 
     folders = list(parent.glob('**/charge_0/'))
     uids = []
     for folder in folders:
-        fingerprint_res = read_json(folder / 'results-asr.database.material_fingerprint.json')
+        fingerprint_res = read_json(folder
+                                    / 'results-asr.database.material_fingerprint.json')
         uid = fingerprint_res['uid']
         uids.append(uid)
 
-    fingerprint_res = read_json(parent / 'results-asr.database.material_fingerprint.json')
+    fingerprint_res = read_json(parent
+                                / 'results-asr.database.material_fingerprint.json')
     uid = fingerprint_res['uid']
     uids.append(uid)
 

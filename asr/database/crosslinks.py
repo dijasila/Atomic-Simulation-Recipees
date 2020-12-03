@@ -10,6 +10,7 @@ import typing
 @prepare_result
 class Result(ASRResult):
     """Container for crosslinks results."""
+
     target_db: str
     link_dbs: typing.List[str]
 
@@ -26,9 +27,7 @@ class Result(ASRResult):
 @argument('dbs', nargs=-1, type=str)
 def main(target: str,
          dbs: typing.Union[str, None] = None) -> Result:
-    """Create links between entries in given ASE databases.
-
-    """
+    """Create links between entries in given ASE databases."""
     # connect to target and linking DBs
     link_db = connect(target)
     db_connections = {}
@@ -89,17 +88,20 @@ def main(target: str,
 
 
 def check_metadata(db, dbname, target):
-    """Evaluate whether the metadata of a given database is in accordance with
-    the standard format needed for the crosslinks recipe."""
+    """Check metadata of a given database.
+
+    Evaluate whether it is in accordance with the standard format needed
+    for the crosslinks recipe.
+    """
     metadata = db.metadata
     if target:
         print(f'INFO: check metadata of target DB ({dbname}) ...')
     elif not target:
         print(f'INFO: check metadata of linkage DB ({dbname}) ...')
 
-    if ('link_name' in metadata.keys() and
-        'link_url' in metadata.keys() and
-        'title' in metadata.keys()):
+    if ('link_name' in metadata.keys()
+        and 'link_url' in metadata.keys()
+            and 'title' in metadata.keys()):
         pass
     else:
         raise KeyError(f'Metadata of DB ({dbname}) is not in '
