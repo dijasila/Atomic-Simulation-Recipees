@@ -670,6 +670,15 @@ def fromtree(
          njobs=njobs)
 
 
+@database.command()
+@click.argument("databases", nargs=-1, type=str)
+@click.option("--host", help="Host address.", type=str, default='0.0.0.0')
+@click.option("--test", is_flag=True, help="Test the app.")
+def app(databases, host, test):
+    from asr.database.app import main
+    main(databases=databases, host=host, test=test)
+
+
 @cli.command()
 @click.argument('recipe')
 @click.argument('hashes', required=False, nargs=-1, metavar='[HASH]...')

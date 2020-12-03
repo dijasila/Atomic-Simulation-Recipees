@@ -240,10 +240,6 @@ def initialize_project(database):
     }
 
 
-@command()
-@argument("databases", nargs=-1, type=str)
-@option("--host", help="Host address.", type=str)
-@option("--test", is_flag=True, help="Test the app.")
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False) -> ASRResult:
     for database in databases:

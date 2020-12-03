@@ -399,25 +399,27 @@ def layout(row: AtomsRow,
     """Page layout."""
     page = {}
     exclude = set()
+    from asr.database.fromtree import serializer
 
     row = RowWrapper(row)
+    records = serializer.deserialize(row.data['records'])
+    result_objects = [record.result for record in records]
 
-    result_objects = []
-    for key, value in row.data.items():
-        if is_results_file(key):
-            obj = decode_object(value)
+    # for key, value in row.data.items():
+    #     if is_results_file(key):
+    #         obj = decode_object(value)
 
-            # Below is to support old C2DB databases that contain
-            # hacked result files with no asr_name
-            if not isinstance(obj, ASRResult):
-                recipename = extract_recipe_from_filename(key)
-                value['__asr_hacked__'] = recipename
-                obj = decode_object(value)
-            result_objects.append(obj)
-        else:
-            obj = value
-        row.data[key] = obj
-        assert row.data[key] == obj
+    #         # Below is to support old C2DB databases that contain
+    #         # hacked result files with no asr_name
+    #         if not isinstance(obj, ASRResult):
+    #             recipename = extract_recipe_from_filename(key)
+    #             value['__asr_hacked__'] = recipename
+    #             obj = decode_object(value)
+    #         result_objects.append(obj)
+    #     else:
+    #         obj = value
+    #     row.data[key] = obj
+    #     assert row.data[key] == obj
 
     panel_data_sources = {}
     # Locate all webpanels
