@@ -199,7 +199,6 @@ def main(atoms) -> Result:
     the atomic structure in `structure.json`.
     """
     import numpy as np
-    from ase.io import read
 
     info = {}
 

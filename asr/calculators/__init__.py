@@ -29,10 +29,15 @@ def asr_gpaw_parameter_factory(atoms, dct):
         dct['poissonsolver'] = {'dipolelayer': 'xy'}
 
     precision = dct.pop('precision', None)
-    assert precision in {'low', 'high', None}
+    assert precision in {'low', 'medium', 'high', None}
     if precision == 'low':
         dct.update({'mode': {'name': 'pw', 'ecut': 350},
                     'kpts': {'density': 2.0, 'gamma': True},
+                    'symmetry': {'symmorphic': False},
+                    'convergence': {'forces': 1e-3}})
+    elif precision == 'medium':
+        dct.update({'mode': {'name': 'pw', 'ecut': 500},
+                    'kpts': {'density': 4.0, 'gamma': True},
                     'symmetry': {'symmorphic': False},
                     'convergence': {'forces': 1e-3}})
     elif precision == 'high':
