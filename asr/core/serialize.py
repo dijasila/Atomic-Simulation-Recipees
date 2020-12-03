@@ -26,6 +26,11 @@ class ASRJSONEncoder(json.JSONEncoder):  # noqa
                    copy.copy(obj.__dict__)}
             return obj
 
+        if isinstance(obj, set):
+            return {
+                'asr_type': 'set',
+                'value': list(obj),
+            }
         try:
             return ase.io.jsonio.MyEncoder.default(self, obj)
         except TypeError:
@@ -43,6 +48,12 @@ def json_hook(json_object: dict):  # noqa
         obj = cls.__new__(cls)
         obj.__dict__.update(json_object['__dict__'])
         return obj
+
+    asr_type = json_object.get('asr_type')
+
+    if asr_type is not None:
+        if asr_type == 'set':
+            return set(json_object['value'])
 
     return object_hook(json_object)
 
