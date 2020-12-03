@@ -4,7 +4,7 @@ from typing import Union, List
 from ase import Atoms
 from ase.io import read
 from ase.db import connect
-from asr.core import command, option, argument, chdir, read_json, ASRResult
+from asr.core import chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
@@ -16,6 +16,9 @@ import os
 import glob
 import sys
 import traceback
+from asr.core.serialize import JSONSerializer
+
+serializer = JSONSerializer()
 
 
 class MissingUIDS(Exception):
@@ -212,12 +215,15 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
 def get_material_uid(atoms: Atoms):
     """Get UID of atoms."""
-    if mf.done:
-        return read_json(
-            'results-asr.database.material_fingerprint.json')['uid']
+    # if mf.done:
+    #     return read_json(
+    #         'results-asr.database.material_fingerprint.json')['uid']
 
     hash = get_hash_of_atoms(atoms)
     return get_uid_of_atoms(atoms, hash)
+
+
+
 
 
 def collect_folder(folder: Path, atomsname: str, patterns: List[str],
@@ -256,15 +262,22 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                'uid': uid}
         data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
+        from asr.core.cache import get_cache
+        cache = get_cache()
+        if cache:
+            records = cache.select()
+            if records:
+                data['records'] = serializer.serialize(records)
+
         for name in Path().glob('*'):
             if name.is_dir() and any(fnmatch(name, pattern)
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
-                tmpkvp, tmpdata = collect_file(name)
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
+            # elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
+            #     tmpkvp, tmpdata = collect_file(name)
+            #     kvp.update(tmpkvp)
+            #     data.update(tmpdata)
 
         if not data['__children__']:
             del data['__children__']
@@ -418,22 +431,12 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
         name.unlink()
 
 
-@command('asr.database.fromtree', save_results_file=False)
-@argument('folders', nargs=-1, type=str)
-@option('-r', '--recursive', is_flag=True,
-        help='Recurse and collect subdirectories.')
-@option('--children-patterns', type=str)
-@option('--patterns', help='Only select files matching pattern.', type=str)
-@option('--dbname', help='Database name.', type=str)
-@option('--njobs', type=int,
-        help='Delegate collection of database to NJOBS subprocesses. '
-        'Can significantly speed up database collection.')
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
-         njobs: int = 1) -> ASRResult:
+         njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
 
@@ -490,7 +493,3 @@ def main(folders: Union[str, None] = None,
     if duplicate_uids:
         raise MissingUIDS(
             'Duplicate uids in database.')
-
-
-if __name__ == '__main__':
-    main.cli()

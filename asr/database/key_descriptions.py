@@ -237,8 +237,6 @@ for recipe in get_recipes():
 key_descriptions['extra'] = extras
 
 
-@command()
-@argument('database', type=str)
 def main(database: str) -> ASRResult:
     """Analyze database and set metadata.
 
