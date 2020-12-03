@@ -22,8 +22,10 @@ class Result(ASRResult):
 
 
 @command('asr.database.treelinks')
-@option('--defects/--no-defects', is_flag=True)
-@option('--c2db/--no-c2db', is_flag=True)
+@option('--defects/--no-defects', help='Set this flag for a defect tree structure.',
+        is_flag=True)
+@option('--c2db/--no-c2db', help='Set this flag for a c2db tree structure.',
+        is_flag=True)
 def main(defects: bool = False,
          c2db: bool = False) -> Result:
    """Create links.json based on the tree-structure.

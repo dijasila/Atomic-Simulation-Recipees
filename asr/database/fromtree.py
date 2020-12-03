@@ -431,7 +431,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""

@@ -12,7 +12,7 @@ class Result(ASRResult):
     link_db: str
     connection_dbs: typing.List[str]
 
-    key_descriptions = dict(
+    key_descriptions: typing.Dict[str, str] = dict(
         link_db='DB that links get created for.',
         connection_dbs='List of DB that link_db should create links for.'
     )
@@ -22,7 +22,7 @@ class Result(ASRResult):
 @option('--databaselink', type=str)
 @argument('databases', nargs=-1, type=str)
 def create(databaselink: str,
-           databases: Union[str, None] = None) -> ASRResult:
+           databases: Union[str, None] = None) -> Result:
     """Create links between entries in given ASE databases."""
     # connect to the link database and create dictionary of databases to
     # link to
@@ -40,6 +40,7 @@ def create(databaselink: str,
         for row in dbconnection.select(include_data=False):
             uids_to_row[row.uid] = row
         uids_for_each_db[dbfilename] = uids_to_row
+    print(uids_for_each_db)
 
     linkfilename = 'links.json'
     # loop over all rows of the database to link to
@@ -47,10 +48,12 @@ def create(databaselink: str,
         data = refrow.data
         # if links.json present in respecttive row, create links
         if linkfilename in data:
+            print('links.json present! Start linking entries...')
             formatted_links = []
             uids_to_link_to = refrow.data[linkfilename]
-            for uid in uids_to_link_to:
+            for uid in uids_to_link_to['uids']:
                 for dbfilename, uids_to_row in uids_for_each_db.items():
+                    print(uids_to_row.keys(), uid)
                     metadata = db_connections[dbfilename].metadata
                     row = uids_to_row.get(uid, None)
                     if not row:
@@ -59,6 +62,7 @@ def create(databaselink: str,
                     link_name_pattern = metadata['link_name']
                     link_url_pattern = metadata['link_url']
                     if row:
+                        print('DOING STUFF')
                         name = link_name_pattern.format(row=row, metadata=metadata)
                         url = link_url_pattern.format(row=row, metadata=metadata)
                         formatted_links.append((name, url, title))
@@ -66,7 +70,9 @@ def create(databaselink: str,
                 data['links'] = formatted_links
                 link_db.update(refrow.id, data={"links": data['links']})
 
-    return ASRResult()
+    return Result.fromdata(
+        link_db=databaselink,
+        connection_dbs=databases)
 
 
 # @prepare_result
