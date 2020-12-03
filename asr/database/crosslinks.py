@@ -1,68 +1,67 @@
-from typing import Union, List, Dict, Any
-from asr.core import (command, option, argument, ASRResult, prepare_result,
-                      read_json)
+from asr.core import (command, option, argument, ASRResult, prepare_result)
 from ase.db import connect
-from ase.db.row import AtomsRow
 import typing
+
+
+# TODO: - standardisation of links.json (names, write and read processes)
+# TODO: - what else would be interesting for the results?
 
 
 @prepare_result
 class Result(ASRResult):
     """Container for crosslinks results."""
-    link_db: str
-    connection_dbs: typing.List[str]
+    target_db: str
+    link_dbs: typing.List[str]
 
     key_descriptions: typing.Dict[str, str] = dict(
-        link_db='DB that links get created for.',
-        connection_dbs='List of DB that link_db should create links for.'
+        target_db='DB that links get created for.',
+        link_dbs='List of DB that link_db should create links for.'
     )
 
 
 @command('asr.database.crosslinks',
          returns=Result)
-@option('--databaselink', type=str,
+@option('--target', type=str,
         help='DB that links get created for.')
-@argument('databases', nargs=-1, type=str,
-          help='DBs that target DB should link to.')
-def create(databaselink: str,
-           databases: Union[str, None] = None) -> Result:
+@argument('dbs', nargs=-1, type=str)
+def main(target: str,
+         dbs: typing.Union[str, None] = None) -> Result:
     """Create links between entries in given ASE databases.
 
     """
     # connect to target and linking DBs
-    link_db = connect(databaselink)
+    link_db = connect(target)
     db_connections = {}
-    for dbfilenames in databases:
+    for dbfilenames in dbs:
         db = connect(dbfilenames)
         db_connections[dbfilenames] = db
 
     # make sure all DBs possess the correct metadata structure
-    check_metadata(link_db, db_name, target=True)
+    check_metadata(link_db, target, target=True)
     for dbfilename, dbconnection in db_connections.items():
         check_metadata(dbconnection, dbfilename, target=False)
+    print('INFO: metadata of input DBs has the correct metadata structure.')
+    print('===================================================='
+          '====================================================')
 
-    # create dictionary which maps all uids to a row for a given database
-    # save the uids_to_row dictionary for every database
+    # for each linking DB, map uid to respective row
     uids_for_each_db = {}
     for dbfilename, dbconnection in db_connections.items():
         uids_to_row = {}
         for row in dbconnection.select(include_data=False):
             uids_to_row[row.uid] = row
         uids_for_each_db[dbfilename] = uids_to_row
-    print(uids_for_each_db)
 
+    # loop over all rows of target DB and link to predefined links in links.json
+    print(f'INFO: start linking to DB {target} ...')
     linkfilename = 'links.json'
-    # loop over all rows of the database to link to
     for i, refrow in enumerate(link_db.select()):
         data = refrow.data
-        # if links.json present in respecttive row, create links
         if linkfilename in data:
-            print('links.json present! Start linking entries...')
             formatted_links = []
             uids_to_link_to = refrow.data[linkfilename]
             for uid in uids_to_link_to['uids']:
                 for dbfilename, uids_to_row in uids_for_each_db.items():
-                    print(uids_to_row.keys(), uid)
                     metadata = db_connections[dbfilename].metadata
                     row = uids_to_row.get(uid, None)
                     if not row:
@@ -71,17 +70,43 @@ def create(databaselink: str,
                     link_name_pattern = metadata['link_name']
                     link_url_pattern = metadata['link_url']
                     if row:
-                        print('DOING STUFF')
                         name = link_name_pattern.format(row=row, metadata=metadata)
                         url = link_url_pattern.format(row=row, metadata=metadata)
                         formatted_links.append((name, url, title))
             if formatted_links:
                 data['links'] = formatted_links
                 link_db.update(refrow.id, data={"links": data['links']})
+                print(f'INFO: append links to row {i} ({refrow.formula}). '
+                      f'Number of created links for this row: {len(formatted_links)}.')
+
+    print('===================================================='
+          '====================================================')
+    print(f'INFO: finished linking to DB {target}!')
 
     return Result.fromdata(
-        link_db=databaselink,
-        connection_dbs=databases)
+        target_db=target,
+        link_dbs=dbs)
+
+
+def check_metadata(db, dbname, target):
+    """Evaluate whether the metadata of a given database is in accordance with
+    the standard format needed for the crosslinks recipe."""
+    metadata = db.metadata
+    if target:
+        print(f'INFO: check metadata of target DB ({dbname}) ...')
+    elif not target:
+        print(f'INFO: check metadata of linkage DB ({dbname}) ...')
+
+    if ('link_name' in metadata.keys() and
+        'link_url' in metadata.keys() and
+        'title' in metadata.keys()):
+        pass
+    else:
+        raise KeyError(f'Metadata of DB ({dbname}) is not in '
+                       'accordance with the standard format needed '
+                       'for asr.database.crosslinks! '
+                       'The following keys '
+                       'are needed: "title", "link_name", "link_url"!')
 
 
 if __name__ == '__main__':
