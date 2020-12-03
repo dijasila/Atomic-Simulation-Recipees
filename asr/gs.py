@@ -165,6 +165,8 @@ def bz_with_band_extremums(row, fname):
     op_scc = row.data[
         'results-asr.structureinfo.json']['spglib_dataset']['rotations']
     if cbm_c is not None:
+        if not row.is_magnetic:
+            op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
         icell_cv = np.linalg.inv(row.cell).T
         vbm_style = {'marker': 'o', 'facecolor': 'w',
