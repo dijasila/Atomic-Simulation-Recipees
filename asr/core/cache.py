@@ -140,11 +140,9 @@ class FileCacheBackend:  # noqa
             self,
             cache_dir: str = '.asr/records',
             serializer: Serializer = JSONSerializer(),
-            # hash_func=hashlib.sha256,
     ):
         self.serializer = serializer
         self.cache_dir = pathlib.Path(cache_dir)
-        # self.hash_func = hash_func
         self.filename = 'run-data.json'
 
     @staticmethod
@@ -161,16 +159,6 @@ class FileCacheBackend:  # noqa
         self._write_file(filename, serialized_object)
         self.add_uid_to_table(run_uid, filename)
         return run_uid
-
-    # def get_hash(self, run_specification: RunSpecification):  # noqa
-    #     run_spec_to_be_hashed = construct_run_spec(  # noqa
-    #         name=run_specification.name,
-    #         parameters=run_specification.parameters,
-    #         version=run_specification.version,
-    #         uid='0',
-    #     )
-    #     serialized_object = self.serializer.serialize(run_spec_to_be_hashed)
-    #     return self.hash_func(serialized_object.encode()).hexdigest()
 
     @property
     def initialized(self):  # noqa
@@ -197,35 +185,18 @@ class FileCacheBackend:  # noqa
         uid_table = self.serializer.deserialize(text)
         return uid_table
 
-    # @property
-    # def hashes(self):  # noqa
-    #     return self.hash_table.keys()
-
     def has(self, selection: 'Selection'):  # noqa
         records = self.select()
         for record in records:
             if selection.matches(record):
                 return True
         return False
-        # run_hash = self.get_hash(run_specification)
-        # return run_hash in self.hashes
-
-    # def get(self, run_specification: RunSpecification):  # noqa
-    #     assert self.has(run_specification), \
-    #         'No matching run_specification.'
-    #     run_hash = self.get_hash(run_specification)
-    #     return self.get_record_from_hash(run_hash)
 
     def get_record_from_uid(self, run_uid):  # noqa
         filename = self.uid_table[run_uid]
         serialized_object = self._read_file(filename)
         obj = self.serializer.deserialize(serialized_object)
         return obj
-
-    # def get_record_from_uid(self, uid):  # noqa
-    #     self.uid_table
-    #     return
-    # [record for record in self.select() if record.uid == uid][0]
 
     def select(self, selection: 'Selection' = None):
         all_records = [self.get_record_from_uid(run_uid)
@@ -403,7 +374,7 @@ class Cache:  # noqa
         assert self.has(**selection), \
             'No matching run_specification.'
         records = self.select(**selection)
-        assert len(records) == 1, 'More than one record matched!'
+        assert len(records) == 1, f'More than one record matched! records={records}'
         return records[0]
 
     def select(self, **selection):  # noqa
@@ -421,18 +392,14 @@ class Cache:  # noqa
 
     def wrapper(self, func):  # noqa
         def wrapped(asrcontrol, run_specification):
-            # run_spec_to_match = construct_run_spec(  # noqa
-            #     name=run_specification.name,
-            #     # parameters=run_specification.parameters,
-            #     # version=run_specification.version,
-            # )
             selection = {
                 'run_specification.name': run_specification.name,
                 'run_specification.parameters': run_specification.parameters,
             }
             if self.has(**selection):
                 run_record = self.get(**selection)
-                print(f'{run_specification.name}: Found cached record.uid={run_record.uid}')
+                print(f'{run_specification.name}: '
+                      f'Found cached record.uid={run_record.uid}')
             else:
                 run_record = func(asrcontrol, run_specification)
                 self.add(run_record)
@@ -441,6 +408,28 @@ class Cache:  # noqa
 
     def __call__(self):  # noqa
         return self.wrapper
+
+
+class MemoryCache:
+
+    def __init__(self):
+        self.records = {}
+
+    def add(self, record):
+        self.records[record.uid] = record
+
+    def has(self, selection: Selection):
+        for value in self.records.values():
+            if selection.matches(value):
+                return True
+        return False
+
+    def select(self, selection: Selection):
+        selected = []
+        for record in self.records.values():
+            if selection.matches(record):
+                selected.append(record)
+        return selected
 
 
 def get_cache():

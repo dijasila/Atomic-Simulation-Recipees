@@ -444,10 +444,16 @@ def layout(row: AtomsRow,
     page = {}
     exclude = set()
     from asr.database.fromtree import serializer
+    from asr.core.cache import Cache, MemoryCache
 
     row = RowWrapper(row)
     records = serializer.deserialize(row.data['records'])
 
+    cache = Cache(backend=MemoryCache())
+    for record in records:
+        cache.add(record)
+
+    row.cache = cache
     # for key, value in row.data.items():
     #     if is_results_file(key):
     #         obj = decode_object(value)

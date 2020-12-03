@@ -1,5 +1,5 @@
 """Structural information."""
-from asr.core import command, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -189,7 +189,9 @@ class Result(ASRResult):
          tests=tests,
          requires=['structure.json'],
          returns=Result)
-def main() -> Result:
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+def main(atoms) -> Result:
     """Get structural information of atomic structure.
 
     This recipe produces information such as the space group and magnetic
@@ -199,7 +201,6 @@ def main() -> Result:
     import numpy as np
     from ase.io import read
 
-    atoms = read('structure.json')
     info = {}
 
     formula = atoms.get_chemical_formula(mode='metal')

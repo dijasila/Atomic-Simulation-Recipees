@@ -274,6 +274,26 @@ class ASRCommand:
         """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
+    def get(self, cache=None, **selection):
+        if cache is None:
+            cache = self.cache
+
+        selection['run_specification'] = dict(
+            name=obj_to_id(self.get_wrapped_function())
+        )
+
+        return cache.get(**selection)
+
+    def select(self, cache=None, **selection):
+        if cache is None:
+            cache = self.cache
+
+        selection['run_specification'] = dict(
+            name=obj_to_id(self.get_wrapped_function())
+        )
+
+        return cache.select(**selection)
+
     def main(self, *args, **kwargs):
         """Return results from wrapped function.
 

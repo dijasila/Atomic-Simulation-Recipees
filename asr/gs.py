@@ -176,17 +176,18 @@ def webpanel(result, row, key_descriptions):
 def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.structureinfo import main as structinfo
     import numpy as np
     ndim = sum(row.pbc)
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = row.data.get('results-asr.gs.json')
+    gsresults = main.get(cache=row.cache).result
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-    op_scc = row.data[
-        'results-asr.structureinfo.json']['spglib_dataset']['rotations']
+    structresult = structinfo.get(cache=row.cache).result
+    op_scc = structresult['spglib_dataset']['rotations']
     if cbm_c is not None:
         if not row.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
