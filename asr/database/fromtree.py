@@ -267,8 +267,6 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
         if cache:
             records = cache.select()
             for record in records:
-                print(record)
-                print(record.result)
                 kvp.update(get_key_value_pairs(record.result))
             if records:
                 data['records'] = serializer.serialize(records)

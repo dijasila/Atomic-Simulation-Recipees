@@ -403,7 +403,6 @@ def layout(row: AtomsRow,
 
     row = RowWrapper(row)
     records = serializer.deserialize(row.data['records'])
-    result_objects = [record.result for record in records]
 
     # for key, value in row.data.items():
     #     if is_results_file(key):
@@ -423,7 +422,8 @@ def layout(row: AtomsRow,
 
     panel_data_sources = {}
     # Locate all webpanels
-    for result in result_objects:
+    for record in records:
+        result = record.result
         if 'ase_webpanel' not in result.get_formats():
             continue
         panels = result.format_as('ase_webpanel', row, key_descriptions)
@@ -437,10 +437,10 @@ def layout(row: AtomsRow,
             paneltitle = describe_entry(panel['title'], description='')
 
             if paneltitle in page:
-                panel_data_sources[paneltitle].append(result)
+                panel_data_sources[paneltitle].append(record)
                 page[paneltitle].append(panel)
             else:
-                panel_data_sources[paneltitle] = [result]
+                panel_data_sources[paneltitle] = [record]
                 page[paneltitle] = [panel]
 
     for paneltitle, data_sources in panel_data_sources.items():
@@ -448,9 +448,8 @@ def layout(row: AtomsRow,
             'This panel contains information calculated with '
             'the following ASR Recipes:',
         ]
-        for result in data_sources:
-            asr_name = (result.metadata.asr_name
-                        if 'asr_name' in result.metadata else '(Unknown data source)')
+        for record in data_sources:
+            asr_name = record.run_specification.name
             link_name = get_recipe_href(asr_name)
             description.append(link_name)
 
