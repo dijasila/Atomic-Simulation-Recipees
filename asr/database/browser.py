@@ -167,7 +167,7 @@ def get_recipe_href(asr_name, name=None):
     if name is None:
         name = asr_name
     # ATM href only works to recipe main
-    asr_name = asr_name.split('@')[0]
+    asr_name = asr_name.split('::')[0]
     link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
                  f'src/generated/recipe_{asr_name}.html">{name}</a>')
 
@@ -496,9 +496,8 @@ def layout(row: AtomsRow,
                 elements += [par(tit.__explanation__)]
 
         recipe_links = []
-        for result in data_sources:
-            asr_name = (result.metadata.asr_name
-                        if 'asr_name' in result.metadata else '(Unknown data source)')
+        for record in data_sources:
+            asr_name = record.run_specification.name
 
             link_name = get_recipe_href(asr_name)
             recipe_links.append(link_name)
