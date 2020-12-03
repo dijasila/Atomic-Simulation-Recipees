@@ -636,6 +636,40 @@ def results(name, show):
         plt.show()
 
 
+@cli.group()
+def database():
+    """ASR material project database."""
+    pass
+
+
+@database.command()
+@click.argument('folders', nargs=-1, type=str)
+@click.option('-r', '--recursive', is_flag=True,
+              help='Recurse and collect subdirectories.')
+@click.option('--children-patterns', type=str, default='*')
+@click.option('--patterns', help='Only select files matching pattern.', type=str,
+              default='info.json,params.json,results-asr.*.json')
+@click.option('--dbname', help='Database name.', type=str, default='database.db')
+@click.option('--njobs', type=int, default=1,
+              help='Delegate collection of database to NJOBS subprocesses. '
+              'Can significantly speed up database collection.')
+def fromtree(
+        folders: Union[str, None],
+        recursive: bool,
+        children_patterns: str,
+        patterns: str,
+        dbname: str,
+        njobs: int,
+):
+    from asr.database.fromtree import main
+
+    main(folders=folders, recursive=recursive,
+         children_patterns=children_patterns,
+         patterns=patterns,
+         dbname=dbname,
+         njobs=njobs)
+
+
 @cli.command()
 @click.argument('recipe')
 @click.argument('hashes', required=False, nargs=-1, metavar='[HASH]...')
