@@ -32,32 +32,25 @@ def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
     from asr.database.browser import describe_entry, dl, code
 
-    magnetic_state = describe_entry(
-        'Magnetic state',
-        'Magnetic state classifier that can take the values'
+    is_magnetic = describe_entry(
+        'Magnetic',
+        'Is material magnetic?'
         + dl(
             [
                 [
-                    'NM',
-                    code('if max(abs(atomic_magnetic_moments)) < '
+                    'Magnetic',
+                    code('if max(abs(atomic_magnetic_moments)) > '
                          f'{atomic_mom_threshold}')
                 ],
                 [
-                    'AFM',
-                    code('if max(abs(atomic_magnetic_moments)) > '
-                         f'{atomic_mom_threshold} and '
-                         'abs(total_mag_mom) < {total_mom_threshold}'),
-                ],
-                [
-                    'FM',
+                    'Not magnetic',
                     code('otherwise'),
-                ]
-
+                ],
             ]
         )
     )
 
-    rows = [[magnetic_state, row.magstate]]
+    rows = [[is_magnetic, row.is_magnetic]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],

@@ -153,10 +153,11 @@ def plot_phases(row, f0, f1, f2, fpi):
 
     results = row.data['results-asr.berry@calculate.json']
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
-        print(results)
-        phit_km = results[f'phi{label}_km']
-        St_km = results[f's{label}_km']
+        phit_km = results.get(f'phi{label}_km')
         if phit_km is None:
+            continue
+        St_km = results.get(f's{label}_km')
+        if St_km is None:
             continue
         Nk = len(St_km)
 

@@ -5,8 +5,24 @@ from asr.core import (
 )
 from asr.core.command import ASRControl
 from asr.calculators import set_calculator_hook, Calculation
+
+from asr.database.browser import (
+    table, fig,
+    entry_parameter_description,
+    describe_entry, WebPanel,
+    make_panel_description
+)
+
 import numpy as np
 import typing
+
+panel_description = make_panel_description(
+    """
+Electronic properties derived from a ground state density functional theory
+calculation.
+""",
+    articles=['C2DB'],
+)
 
 
 @prepare_result
@@ -82,9 +98,6 @@ def calculate(
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
 
     parameter_description = entry_parameter_description(
         row.data,
@@ -127,9 +140,12 @@ def webpanel(result, row, key_descriptions):
                  ['Conduction band minimum wrt. Fermi level',
                   f'{result.cbm - result.efermi:.2f} eV']])
 
-    panel = WebPanel(title='Basic electronic properties (PBE)',
-                     columns=[[t], [fig('bz-with-gaps.png')]],
-                     sort=10)
+    panel = WebPanel(
+        title=describe_entry(
+            'Basic electronic properties (PBE)',
+            panel_description),
+        columns=[[t], [fig('bz-with-gaps.png')]],
+        sort=10)
 
     parameter_description = entry_parameter_description(
         row.data,
@@ -161,6 +177,7 @@ def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
+    ndim = sum(row.pbc)
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
@@ -171,6 +188,8 @@ def bz_with_band_extremums(row, fname):
     op_scc = row.data[
         'results-asr.structureinfo.json']['spglib_dataset']['rotations']
     if cbm_c is not None:
+        if not row.is_magnetic:
+            op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
         icell_cv = np.linalg.inv(row.cell).T
         vbm_style = {'marker': 'o', 'facecolor': 'w',
@@ -181,8 +200,15 @@ def bz_with_band_extremums(row, fname):
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
-        ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
-        ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+        if ndim < 3:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+        else:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]],
+                       [vbm_sv[:, 2]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]],
+                       [cbm_sv[:, 2]], **cbm_style, label='CBM')
+
         xlim = np.array(ax.get_xlim()) * 1.4
         ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
