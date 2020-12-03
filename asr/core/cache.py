@@ -330,7 +330,7 @@ class Selection:
                 pass
             elif isinstance(value, Atoms):
                 comparator = functools.partial(compare_atoms, value)
-            elif isinstance(value, list):
+            elif isinstance(value, (list, tuple)):
                 comparator = functools.partial(
                     compare_lists,
                     value,
@@ -344,7 +344,7 @@ class Selection:
                 for keynorm, valuenorm in norm.items():
                     normalized['.'.join([key, keynorm])] = valuenorm
             else:
-                raise AssertionError('Unknown type', type(value))
+                raise AssertionError(f'Unknown type {type(value)}')
 
             if comparator is not None:
                 normalized[key] = comparator
@@ -432,7 +432,7 @@ class Cache:  # noqa
             }
             if self.has(**selection):
                 run_record = self.get(**selection)
-                print(f'Using cached record: {run_record}')
+                print(f'{run_specification.name}: Found cached record.uid={run_record.uid}')
             else:
                 run_record = func(asrcontrol, run_specification)
                 self.add(run_record)
@@ -441,6 +441,10 @@ class Cache:  # noqa
 
     def __call__(self):  # noqa
         return self.wrapper
+
+
+def get_cache():
+    return file_system_cache
 
 
 file_system_cache = Cache(backend=FileCacheBackend())
