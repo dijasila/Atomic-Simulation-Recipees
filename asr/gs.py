@@ -154,6 +154,7 @@ def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
+    ndim = sum(row.pbc)
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
@@ -174,8 +175,15 @@ def bz_with_band_extremums(row, fname):
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
-        ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
-        ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+        if ndim < 3:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+        else:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]],
+                       [vbm_sv[:, 2]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]],
+                       [cbm_sv[:, 2]], **cbm_style, label='CBM')
+
         xlim = np.array(ax.get_xlim()) * 1.4
         ylim = np.array(ax.get_ylim()) * 1.4
         ax.set_xlim(xlim)
