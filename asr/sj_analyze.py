@@ -23,13 +23,13 @@ def webpanel(result, row, key_descriptions):
             explained_key = key
         explained_keys.append(explained_key)
 
-    formation_table_sum = table(result, 'Defect properties', [])
-    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
-        f'{result.eform:.2f} eV']])
+    # formation_table_sum = table(result, 'Defect properties', [])
+    # formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+    #     f'{result.eform:.2f} eV']])
 
-    formation_table = table(result, 'Defect formation', [])
-    formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
-        f'{result.eform:.2f} eV']])
+    # formation_table = table(result, 'Defect formation', [])
+    # formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+    #     f'{result.eform:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
         f"{result.hof:.2f} eV/atom"]])
@@ -54,7 +54,7 @@ def webpanel(result, row, key_descriptions):
     panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
                      description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
                      columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.'), formation_table]],
+                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']},
                                         {'function': plot_formation_energies,
@@ -63,7 +63,8 @@ def webpanel(result, row, key_descriptions):
                      sort=11)
 
     summary = {'title': 'Summary',
-               'columns': [[formation_table_sum, pristine_table_sum], []],
+               'columns': [[# formation_table_sum, 
+                   pristine_table_sum], []],
                'sort':1}
 
     return [panel, summary]
@@ -562,6 +563,61 @@ def f(x, a, b):
 #     plt.tight_layout()
 #     plt.savefig(fname)
 #     plt.close()
+
+
+def plot_formation_energies(row, fname):
+    """Plot formation energies and transition levels within the gap."""
+    import matplotlib.pyplot as plt
+
+    data = row.data.get('results-asr.sj_analyze.json')
+
+    vbm = data['pristine']['vbm'] - data['pristine']['evac']
+    cbm = data['pristine']['cbm'] - data['pristine']['evac']
+    gap = cbm - vbm
+    eform = data['eform']
+    transitions = data['transitions']
+
+    fig, ax1 = plt.subplots()
+
+    ax1.fill_betweenx([-10, 30], -10, 0, color='C0', alpha=0.5)
+    ax1.fill_betweenx([-10, 30], gap + 10, gap, color='C1', alpha=0.5)
+    ax1.axvline(0, color='C0')
+    ax1.axvline(gap, color='C1')
+    ax1.axhline(0, color='black', linestyle='dotted')
+    for element in eform:
+        ax1.plot([0, gap], [f(0, element[1], element[0]),
+                            f(gap, element[1], element[0])],
+                            color='black',
+                            linestyle='dashed')
+
+    ax1.set_xlim(- 0.2 * gap, gap + 0.2 * gap)
+    ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
+    yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
+    ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
+             va='center', rotation=90, weight='bold', color='white')
+    ax1.text(gap + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center',
+             va='center', rotation=90, weight='bold', color='white')
+
+    tickslist = []
+    labellist = []
+    for element in transitions:
+        energy = (element['transition_values']['transition']
+                  - element['transition_values']['erelax']
+                  - element['transition_values']['evac'] - vbm)
+        name = element['transition_name']
+        if energy > -0.2 * gap and energy < (gap + 0.2 * gap):
+            tickslist.append(energy)
+            labellist.append(name)
+            ax1.axvline(energy, color='grey', linestyle='dotted')
+
+    ax2 = ax1.twiny()
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(tickslist)
+    ax2.set_xticklabels(labellist)
+
+
+    plt.savefig(fname)
+    plt.close()
 
 
 def plot_charge_transitions(row, fname):
