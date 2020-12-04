@@ -492,8 +492,8 @@ def plot_formation_energies(row, fname):
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
-                            color='black',
-                            linestyle='dashed')
+                            color='grey',
+                            linestyle='dotted')
 
     ax1.set_xlim(- 0.2 * gap, gap + 0.2 * gap)
     ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
@@ -548,7 +548,7 @@ def plot_formation_energies(row, fname):
     ax2.set_xticks(tickslist)
     ax2.set_xticklabels(labellist)
     ax1.set_xlabel('$E_{\mathrm{F}}$ [eV]')
-    ax1.set_ylabel('$E^{\mathrm{formation}}$ [eV]')
+    ax1.set_ylabel('Formation energy [eV]')
 
 
     plt.savefig(fname)
