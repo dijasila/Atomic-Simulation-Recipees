@@ -5,10 +5,7 @@ from gpaw import restart
 import typing
 
 
-# TODO: - return formation energies for all charge states
-#         at VBM in results for compability with self-consistent
-#         evaluation of the equilibrium Fermi level
-#         FORMAT: (eform(q), q)
+# TODO: - redo plot_formation_energies() based on new results structure
 
 
 def webpanel(result, row, key_descriptions):
@@ -134,7 +131,7 @@ class Result(ASRResult):
     """Container for Slater Janak results."""
     transitions: typing.List[TransitionResults]
     pristine: PristineResults
-    eform: float
+    eform: typing.List[typing.Tuple[float, int]]
     standard_states: typing.List[StandardStateResult]
     hof: float
 
@@ -142,7 +139,7 @@ class Result(ASRResult):
         transitions='Charge transition levels with [transition energy, '
                         'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
-        eform='Neutral formation energy wrt. standard states of defect species [eV]',
+        eform='List of formation energy tuples (eform wrt. standard states [eV], charge state)',
         standard_states='List of StandardStateResult objects for each species.',
         hof='Heat of formation for the pristine monolayer [eV]')
 
@@ -174,41 +171,31 @@ def main() -> Result:
     # get heat of formation
     hof = get_heat_of_formation()
 
-    # # Obtain a list of all transitions with the respective ASRResults object
-    # transition_list = calculate_transitions()
+    # Obtain a list of all transitions with the respective ASRResults object
+    transition_list = calculate_transitions()
 
-    # # get pristine band edges for correct referencing and plotting
-    # pris = get_pristine_band_edges()
+    # get pristine band edges for correct referencing and plotting
+    pris = get_pristine_band_edges()
 
-    # # get neutral formation energy without chemical potentials applied
-    # eform, standard_states = calculate_neutral_formation_energy()
+    # get neutral formation energy without chemical potentials applied
+    eform, standard_states = calculate_neutral_formation_energy()
 
-    # # get formation energies for all charge states based on neutral
-    # # formation energy, as well as charge transition levels, and pristine results
-    all_eform = calculate_formation_energies()
+    # get formation energies for all charge states based on neutral
+    # formation energy, as well as charge transition levels, and pristine results
+    eform = calculate_formation_energies(eform, transition_list, pris)
 
-    return Result.fromdata(transitions=transition_list,
+    return Result.fromdata(eform=eform,
+                           transitions=transition_list,
                            pristine=pris,
-                           eform=eform,
                            standard_states=standard_states,
                            hof=hof)
 
 
-def calculate_formation_energies():
+def calculate_formation_energies(eform, transitions, pristine):
     """Calculate formation energies for all charge states at the VB band edge."""
     from asr.core import read_json
-    # ## INPUTS ###
-    data = read_json('results-asr.sj_analyze.json')
-    # pristine
-    pristine = data['pristine']
     vbm = pristine['vbm'] - pristine['evac']
     cbm = pristine['cbm'] - pristine['evac']
-    gap = cbm - vbm
-    # neutral formation energy
-    eform = data['eform']
-    # transitions
-    transitions = data['transitions']
-    # ## END INPUT SECTION ###
 
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
@@ -219,7 +206,7 @@ def calculate_formation_energies():
                       element['transition_values']['erelax'] -
                       element['transition_values']['evac'])
 
-    eform_list = []
+    eform_list = [(eform, 0)]
     for i, element in enumerate(transitions):
         enlist.append(element['transition_values']['transition'] -
                       element['transition_values']['erelax'] -
@@ -241,16 +228,14 @@ def calculate_formation_energies():
             if y1 is None:
                 y1 = f(enlist[i], a, b)
             y2 = f(enlist[i + 1], a, b)
-            eform_list.append((f(vbm, a, b), a))
+            eform_list.append((f(vbm, a, b), int(a)))
         elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
             a = float(name.split('/')[1])
             b = get_b(enlist[i], y1, a)
             if y2 is None:
                 y2 = f(enlist[i], a, b)
             y1 = f(enlist[i + 1], a, b)
-            eform_list.append((f(vbm, a, b), a))
-
-    print(eform_list)
+            eform_list.append((f(vbm, a, b), int(a)))
 
     return eform_list
 
@@ -325,9 +310,9 @@ def get_pristine_band_edges() -> PristineResults:
         _, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        # evac = results_pris['evac']
-        evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        evac = (evac_z[0] + evac_z[-1]) / 2.
+        evac = results_pris['evac']
+        # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
         vbm = None
         cbm = None
@@ -483,100 +468,100 @@ def f(x, a, b):
     return a * x + b
 
 
-def plot_formation_energies(row, fname):
-    import matplotlib.pyplot as plt
-
-    data = row.data.get('results-asr.sj_analyze.json')
-
-    vbm = data['pristine']['vbm'] - data['pristine']['evac']
-    cbm = data['pristine']['cbm'] - data['pristine']['evac']
-    gap = cbm - vbm
-    eform = data['eform']
-
-    transitions = data['transitions']
-
-    fig, ax1 = plt.subplots()
-
-    ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-    ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
-    ax1.axvline(vbm, color='C0')
-    ax1.axvline(cbm, color='C1')
-    ax1.axhline(0, color='black', linestyle='dotted')
-    ax1.plot([vbm, cbm], [eform, eform], color='black')
-
-    ax1.set_xlim(vbm - 0.2 * gap, cbm + 0.2 * gap)
-    ax1.set_ylim(-0.1, eform + 0.2 * eform)
-    yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
-    ax1.text(vbm - 0.1 * gap, 0.5 * yrange, 'VBM', ha='center', va='center', rotation=90, weight='bold', color='white')
-    ax1.text(cbm + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center', va='center', rotation=90, weight='bold', color='white')
-
-    for trans in transitions:
-        if trans['transition_name'] == '0/1' or trans['transition_name'] == '0/-1':
-            trans_val = trans['transition_values']
-            e_pm = trans_val['transition'] - trans_val['erelax'] - trans_val['evac']
-        if e_pm < cbm and e_pm > vbm:
-            ax1.axvline(e_pm, color='black', linestyle='-.')
-
-    transitions = order_transitions(transitions)
-
-    enlist = []
-    for element in transitions:
-        enlist.append(element['transition_values']['transition'] -
-                      element['transition_values']['erelax'] -
-                      element['transition_values']['evac'])
-
-    ax2 = ax1.twiny()
-
-    tickslist = []
-    labellist = []
-    for i, element in enumerate(transitions):
-        energy = (element['transition_values']['transition'] -
-                  element['transition_values']['erelax'] -
-                  element['transition_values']['evac'])
-        enlist.append(energy)
-        name = element['transition_name']
-        if (energy >= vbm - 0.2 * gap) and (energy <= cbm + 0.2 * gap):
-            ax1.axvline(energy, color='grey', linestyle='-.')
-            tickslist.append(energy)
-            labellist.append(name)
-        if energy > vbm and energy < cbm:
-            if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
-                y1 = eform
-                y2 = eform
-            elif name.split('/')[1].startswith('0'):
-                y1 = eform
-                y2 = eform
-            elif not name.split('/')[1].startswith('-'):
-                y2 = None
-            else:
-                y1 = None
-            if name.split('/')[1].startswith('-'):
-                a = float(name.split('/')[1])
-                b = get_b(enlist[i], y2, a)
-                if y1 is None:
-                    y1 = f(enlist[i], a, b)
-                y2 = f(enlist[i + 1], a, b)
-                print(enlist[i], enlist[i+1], y1, y2, a)
-                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-                ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
-            elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
-                a = float(name.split('/')[1])
-                b = get_b(enlist[i], y1, a)
-                if y2 is None:
-                    y2 = f(enlist[i], a, b)
-                y1 = f(enlist[i + 1], a, b)
-                print(enlist[i], enlist[i+1], y1, y2, a)
-                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-                ax1.plot([enlist[i + 1], enlist[i]], [y1, y2], color='black', marker='s')
-    ax1.set_xlabel('$E_F$ [eV]')
-    ax2.set_xlim(ax1.get_xlim())
-    ax2.set_xticks(tickslist)
-    ax2.set_xticklabels(labellist)
-
-    ax1.set_ylabel('Formation energy [eV]')
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
+# def plot_formation_energies(row, fname):
+#     import matplotlib.pyplot as plt
+# 
+#     data = row.data.get('results-asr.sj_analyze.json')
+# 
+#     vbm = data['pristine']['vbm'] - data['pristine']['evac']
+#     cbm = data['pristine']['cbm'] - data['pristine']['evac']
+#     gap = cbm - vbm
+#     eform = data['eform']
+# 
+#     transitions = data['transitions']
+# 
+#     fig, ax1 = plt.subplots()
+# 
+#     ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
+#     ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+#     ax1.axvline(vbm, color='C0')
+#     ax1.axvline(cbm, color='C1')
+#     ax1.axhline(0, color='black', linestyle='dotted')
+#     ax1.plot([vbm, cbm], [eform, eform], color='black')
+# 
+#     ax1.set_xlim(vbm - 0.2 * gap, cbm + 0.2 * gap)
+#     ax1.set_ylim(-0.1, eform + 0.2 * eform)
+#     yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
+#     ax1.text(vbm - 0.1 * gap, 0.5 * yrange, 'VBM', ha='center', va='center', rotation=90, weight='bold', color='white')
+#     ax1.text(cbm + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center', va='center', rotation=90, weight='bold', color='white')
+# 
+#     for trans in transitions:
+#         if trans['transition_name'] == '0/1' or trans['transition_name'] == '0/-1':
+#             trans_val = trans['transition_values']
+#             e_pm = trans_val['transition'] - trans_val['erelax'] - trans_val['evac']
+#         if e_pm < cbm and e_pm > vbm:
+#             ax1.axvline(e_pm, color='black', linestyle='-.')
+# 
+#     transitions = order_transitions(transitions)
+# 
+#     enlist = []
+#     for element in transitions:
+#         enlist.append(element['transition_values']['transition'] -
+#                       element['transition_values']['erelax'] -
+#                       element['transition_values']['evac'])
+# 
+#     ax2 = ax1.twiny()
+# 
+#     tickslist = []
+#     labellist = []
+#     for i, element in enumerate(transitions):
+#         energy = (element['transition_values']['transition'] -
+#                   element['transition_values']['erelax'] -
+#                   element['transition_values']['evac'])
+#         enlist.append(energy)
+#         name = element['transition_name']
+#         if (energy >= vbm - 0.2 * gap) and (energy <= cbm + 0.2 * gap):
+#             ax1.axvline(energy, color='grey', linestyle='-.')
+#             tickslist.append(energy)
+#             labellist.append(name)
+#         if energy > vbm and energy < cbm:
+#             if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
+#                 y1 = eform
+#                 y2 = eform
+#             elif name.split('/')[1].startswith('0'):
+#                 y1 = eform
+#                 y2 = eform
+#             elif not name.split('/')[1].startswith('-'):
+#                 y2 = None
+#             else:
+#                 y1 = None
+#             if name.split('/')[1].startswith('-'):
+#                 a = float(name.split('/')[1])
+#                 b = get_b(enlist[i], y2, a)
+#                 if y1 is None:
+#                     y1 = f(enlist[i], a, b)
+#                 y2 = f(enlist[i + 1], a, b)
+#                 print(enlist[i], enlist[i+1], y1, y2, a)
+#                 ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+#                 ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
+#             elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
+#                 a = float(name.split('/')[1])
+#                 b = get_b(enlist[i], y1, a)
+#                 if y2 is None:
+#                     y2 = f(enlist[i], a, b)
+#                 y1 = f(enlist[i + 1], a, b)
+#                 print(enlist[i], enlist[i+1], y1, y2, a)
+#                 ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
+#                 ax1.plot([enlist[i + 1], enlist[i]], [y1, y2], color='black', marker='s')
+#     ax1.set_xlabel('$E_F$ [eV]')
+#     ax2.set_xlim(ax1.get_xlim())
+#     ax2.set_xticks(tickslist)
+#     ax2.set_xticklabels(labellist)
+# 
+#     ax1.set_ylabel('Formation energy [eV]')
+#     plt.tight_layout()
+#     plt.savefig(fname)
+#     plt.close()
 
 
 def plot_charge_transitions(row, fname):
