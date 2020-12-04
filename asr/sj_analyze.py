@@ -171,23 +171,88 @@ def main() -> Result:
     print('INFO: calculate formation energy and charge transition levels for defect {}.'.format(
         defectsystem))
 
-    # get neutral formation energy without chemical potentials applied
-    eform, standard_states = calculate_neutral_formation_energy()
-
     # get heat of formation
     hof = get_heat_of_formation()
 
-    # Obtain a list of all transitions with the respective ASRResults object
-    transition_list = calculate_transitions()
+    # # Obtain a list of all transitions with the respective ASRResults object
+    # transition_list = calculate_transitions()
 
-    # get pristine band edges for correct referencing and plotting
-    pris = get_pristine_band_edges()
+    # # get pristine band edges for correct referencing and plotting
+    # pris = get_pristine_band_edges()
+
+    # # get neutral formation energy without chemical potentials applied
+    # eform, standard_states = calculate_neutral_formation_energy()
+
+    # # get formation energies for all charge states based on neutral
+    # # formation energy, as well as charge transition levels, and pristine results
+    all_eform = calculate_formation_energies()
 
     return Result.fromdata(transitions=transition_list,
                            pristine=pris,
                            eform=eform,
                            standard_states=standard_states,
                            hof=hof)
+
+
+def calculate_formation_energies():
+    """Calculate formation energies for all charge states at the VB band edge."""
+    from asr.core import read_json
+    # ## INPUTS ###
+    data = read_json('results-asr.sj_analyze.json')
+    # pristine
+    pristine = data['pristine']
+    vbm = pristine['vbm'] - pristine['evac']
+    cbm = pristine['cbm'] - pristine['evac']
+    gap = cbm - vbm
+    # neutral formation energy
+    eform = data['eform']
+    # transitions
+    transitions = data['transitions']
+    # ## END INPUT SECTION ###
+
+    # CALCULATION OF FORMATION ENERGIES
+    transitions = order_transitions(transitions)
+    enlist = []
+    for element in transitions:
+        print(element['transition_name'])
+        enlist.append(element['transition_values']['transition'] -
+                      element['transition_values']['erelax'] -
+                      element['transition_values']['evac'])
+
+    eform_list = []
+    for i, element in enumerate(transitions):
+        enlist.append(element['transition_values']['transition'] -
+                      element['transition_values']['erelax'] -
+                      element['transition_values']['evac'])
+        name = element['transition_name']
+        if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
+            y1 = eform
+            y2 = eform
+        elif name.split('/')[0].startswith('0'):
+            y1 = eform
+            y2 = eform
+        elif not name.split('/')[1].startswith('-'):
+            y2 = None
+        else:
+            y1 = None
+        if name.split('/')[1].startswith('-'):
+            a = float(name.split('/')[1])
+            b = get_b(enlist[i], y2, a)
+            if y1 is None:
+                y1 = f(enlist[i], a, b)
+            y2 = f(enlist[i + 1], a, b)
+            eform_list.append((f(vbm, a, b), a))
+        elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
+            a = float(name.split('/')[1])
+            b = get_b(enlist[i], y1, a)
+            if y2 is None:
+                y2 = f(enlist[i], a, b)
+            y1 = f(enlist[i + 1], a, b)
+            eform_list.append((f(vbm, a, b), a))
+
+    print(eform_list)
+
+    return eform_list
 
 
 def get_heat_of_formation():
