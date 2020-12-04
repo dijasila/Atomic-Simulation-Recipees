@@ -23,13 +23,14 @@ def webpanel(result, row, key_descriptions):
             explained_key = key
         explained_keys.append(explained_key)
 
-    # formation_table_sum = table(result, 'Defect properties', [])
-    # formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
-    #     f'{result.eform:.2f} eV']])
+    formation_table_sum = table(result, 'Defect properties', [])
+    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+        f'{result.eform[0][0]:.2f} eV']])
 
-    # formation_table = table(result, 'Defect formation', [])
-    # formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
-    #     f'{result.eform:.2f} eV']])
+    formation_table = table(result, 'Defect formation', [])
+    for element in result.eform:
+        formation_table['rows'].extend([[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)', description=result.key_descriptions['eform']),
+            f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
         f"{result.hof:.2f} eV/atom"]])
@@ -63,7 +64,7 @@ def webpanel(result, row, key_descriptions):
                      sort=11)
 
     summary = {'title': 'Summary',
-               'columns': [[# formation_table_sum, 
+               'columns': [[formation_table_sum, 
                    pristine_table_sum], []],
                'sort':1}
 
