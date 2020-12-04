@@ -97,6 +97,75 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
+def get_attribute(obj, attrs):
+
+    if not attrs:
+        return obj
+
+    for attr in attrs:
+        if hasattr(obj, attr):
+            obj = getattr(obj, attr, None)
+        elif attr in obj:
+            obj = obj[attr]
+        else:
+            obj = None
+
+    return obj
+
+
+def parse_selectors(selector: str):
+    op, attr = selector.split(',')
+    attrs = attr.split('.')
+    if op == '-':
+        sign = -1
+    else:
+        sign = 1
+    return sign, attrs
+
+
+def cache_webpanel(*selectors):
+
+    def decorator(func):
+        def wrapper(result, row, key_descriptions):
+            cache = row.cache
+            records = main.select(cache=cache)
+
+            sortattrs = []
+            for selector in selectors:
+                sign, attrs = parse_selectors(selector)
+
+                sortattrs.append([sign,
+                                  'run_specification', 'parameters', *attrs])
+
+            records = sorted(
+                records,
+                key=lambda x: tuple(
+                    sign * get_attribute(x, attrs)
+                    for sign, *attrs in sortattrs)
+            )
+
+            webpanels_r = []
+            for record in records:
+                webpanels_r.append(func(record.result, row, key_descriptions))
+
+            representative_panels = webpanels_r[-1]
+            for equivalent_panels in zip(*webpanels_r):
+                columns_e = [panel['columns'] for panel in equivalent_panels]
+                for ip, representative_panel in enumerate(representative_panels):
+                    representative_columns = representative_panel['columns']
+                    for ic, column in enumerate(representative_columns):
+                        for ie, element in enumerate(column):
+                            if element['type'] == 'table':
+                                rows = element['rows']
+                                for ir, row in enumerate(rows):
+                                    for iv, value in enumerate(row):
+                                        pass
+            return representative_panels
+        return wrapper
+    return decorator
+
+
+@cache_webpanel('+,calculator.mode.ecut', '+,calculator.kpts.density')
 def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
@@ -183,7 +252,7 @@ def bz_with_band_extremums(row, fname):
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = main.get(cache=row.cache).result
+    gsresults = main.select(cache=row.cache)[0].result
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
     structresult = structinfo.get(cache=row.cache).result

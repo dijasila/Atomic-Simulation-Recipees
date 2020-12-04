@@ -471,11 +471,16 @@ def layout(row: AtomsRow,
     #     assert row.data[key] == obj
 
     panel_data_sources = {}
+    recipes_treated = set()
     # Locate all webpanels
     for record in records:
         result = record.result
         if 'ase_webpanel' not in result.get_formats():
             continue
+        if record.run_specification.name in recipes_treated:
+            continue
+
+        recipes_treated.add(record.run_specification.name)
         panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
