@@ -42,8 +42,8 @@ class AtomsFile(click.ParamType):
 
     def convert(self, value, param, ctx):
         """Convert string to atoms object."""
-        if value.startswith('-'):
-            attrs = value[1:].split('.')
+        if value.startswith('stdin.'):
+            attrs = value.split('.')[1:]
             obj = pickle.loads(click.get_binary_stream('stdin').read())
             attr = get_attribute(obj, attrs)
             return attr

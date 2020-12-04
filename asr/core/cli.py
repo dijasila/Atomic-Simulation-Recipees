@@ -105,12 +105,10 @@ def cli():
               help="Skip folder where this file doesn't exist.")
 @click.option('--defaults', type=DictStr(),
               help="Set default parameters. Takes precedence over params.json.")
-@click.option('--pipe', is_flag=True,
-              help="Write result to stdout.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
         skip_if_done, dont_raise, update, must_exist,
-        defaults, pipe):
+        defaults):
     r"""Run recipe or python function in multiple folders.
 
     Examples
@@ -151,7 +149,6 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
         'command': command,
         'must_exist': must_exist,
         'defaults': defaults,
-        'pipe': pipe,
     }
     if njobs > 1:
         processes = []
@@ -185,8 +182,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                 job_num: Union[int, None] = None,
                 update: bool = False,
                 must_exist: Union[str, None] = None,
-                defaults: Dict[str, Any],
-                pipe: bool = False):
+                defaults: Dict[str, Any]):
     """Run command in folders."""
     nfolders = len(folders)
     module, *args = command.split()
@@ -234,7 +230,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     continue
                 elif must_exist and not Path(must_exist).exists():
                     continue
-                # Do isatty in stead of --pipe
+                pipe = not sys.stdout.isatty()
                 if pipe:
                     to = os.devnull
                 else:
