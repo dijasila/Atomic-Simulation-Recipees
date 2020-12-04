@@ -183,8 +183,24 @@ def make_html_tag_wrapper(tag):
 
 
 def div(text, cls=''):
-
     return f'<div class="{cls}">{text}</div>'
+
+
+def html_table(rows, header=None):
+    text = '<table class="table">'
+    if header is not None:
+        headtext = ''
+        for value in header:
+            headtext += th(value)
+        text += thead(headtext)
+    for row in rows:
+        rowtext = ''
+        for value in row:
+            rowtext += td(value)
+        rowtext = tr(rowtext)
+        text += rowtext
+    text += '</table>'
+    return text
 
 
 li = make_html_tag_wrapper('li')
@@ -193,6 +209,10 @@ pre = make_html_tag_wrapper('pre')
 code = make_html_tag_wrapper('code')
 dt = make_html_tag_wrapper('dt')
 dd = make_html_tag_wrapper('dd')
+tr = make_html_tag_wrapper('tr')
+td = make_html_tag_wrapper('td')
+th = make_html_tag_wrapper('th')
+thead = make_html_tag_wrapper('thead')
 par = make_html_tag_wrapper('p')
 
 br = '<br>'

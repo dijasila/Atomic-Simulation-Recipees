@@ -123,7 +123,33 @@ def parse_selectors(selector: str):
     return sign, attrs
 
 
+def get_panels_values(panels):
+    for ip, panel in enumerate(panels):
+        columns = panel['columns']
+        for ic, column in enumerate(columns):
+            for ie, element in enumerate(column):
+                if element['type'] == 'table':
+                    rows = element['rows']
+                    for ir, row in enumerate(rows):
+                        for iv, value in enumerate(row):
+                            if iv > 0:
+                                yield value, (ip, 'columns', ic, ie, 'rows', ir, iv)
+
+
+def get_value(panels, indices):
+    value = panels
+    for ind in indices:
+        value = value[ind]
+    return value
+
+
+def set_value(panels, indices, value):
+    values = get_value(panels, indices[:-1])
+    values[indices[-1]] = value
+
+
 def cache_webpanel(*selectors):
+    from asr.database.browser import html_table, par, br, bold
 
     def decorator(func):
         def wrapper(result, row, key_descriptions):
@@ -131,17 +157,19 @@ def cache_webpanel(*selectors):
             records = main.select(cache=cache)
 
             sortattrs = []
+            signs = []
             for selector in selectors:
                 sign, attrs = parse_selectors(selector)
 
-                sortattrs.append([sign,
+                signs.append(sign)
+                sortattrs.append([
                                   'run_specification', 'parameters', *attrs])
 
             records = sorted(
                 records,
                 key=lambda x: tuple(
                     sign * get_attribute(x, attrs)
-                    for sign, *attrs in sortattrs)
+                    for sign, attrs in zip(signs, sortattrs))
             )
 
             webpanels_r = []
@@ -149,17 +177,22 @@ def cache_webpanel(*selectors):
                 webpanels_r.append(func(record.result, row, key_descriptions))
 
             representative_panels = webpanels_r[-1]
-            for equivalent_panels in zip(*webpanels_r):
-                columns_e = [panel['columns'] for panel in equivalent_panels]
-                for ip, representative_panel in enumerate(representative_panels):
-                    representative_columns = representative_panel['columns']
-                    for ic, column in enumerate(representative_columns):
-                        for ie, element in enumerate(column):
-                            if element['type'] == 'table':
-                                rows = element['rows']
-                                for ir, row in enumerate(rows):
-                                    for iv, value in enumerate(row):
-                                        pass
+            for value, indices in get_panels_values(representative_panels):
+                table = []
+                header = ['.'.join(attrs[-2:]) for attrs in sortattrs] + ['value']
+                for record, webpanels in zip(records, webpanels_r):
+                    other_value = get_value(webpanels, indices)
+                    row = (
+                        [get_attribute(record, attrs) for attrs in sortattrs]
+                        + [other_value]
+                    )
+                    table.append(row)
+
+                html = par(bold('Convergence') + br +
+                           html_table(table, header=header))
+                value = describe_entry(value, description=html)
+                set_value(webpanels, indices, value)
+
             return representative_panels
         return wrapper
     return decorator
