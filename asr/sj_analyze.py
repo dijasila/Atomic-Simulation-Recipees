@@ -5,19 +5,16 @@ from gpaw import restart
 import typing
 
 
-# TODO: add chemical potential considerations
-# TODO: add second y-axis
-# TODO: implement reduced effective charge transition levels
+# TODO: - return formation energies for all charge states
+#         at VBM in results for compability with self-consistent
+#         evaluation of the equilibrium Fermi level
+#         FORMAT: (eform(q), q)
+
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel, entry_parameter_description,
                                       describe_entry, table, matrixtable)
     import numpy as np
-
-    # parameter_description = entry_parameter_description(
-    #     row.data,
-    #     'asr.sj_analyze',
-    #     exclude_keys=set(['transitions', 'pristine']))
 
     explained_keys = []
     for key in ['eform']:
@@ -36,9 +33,6 @@ def webpanel(result, row, key_descriptions):
     formation_table = table(result, 'Defect formation', [])
     formation_table['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform:.2f} eV']])
-    # for chempot in result.chemical_potentials:
-    #     formation_table['rows'].extend([[describe_entry(f"chem pot. {chempot.element} (TBD)", description=chempot.key_descriptions['eref']),
-    #         f"{chempot.eref:.2f} eV/atom"]])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
         f"{result.hof:.2f} eV/atom"]])
@@ -71,12 +65,6 @@ def webpanel(result, row, key_descriptions):
                                          ],
                      sort=11)
 
-    # formation = WebPanel('Defect Stability',
-    #                      columns=[[describe_entry(fig('formation.png'), 'Formation energies')]],
-    #                      plot_descriptions=[{'function': plot_formation_energies,
-    #                                          'filenames': ['formation.png']}
-    #                                          ],
-    #                      sort=13)
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum, pristine_table_sum], []],
                'sort':1}
@@ -507,8 +495,6 @@ def plot_formation_energies(row, fname):
                 ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
                 ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
             elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
-                # tickslist.append(energy)
-                # labellist.append(name)
                 a = float(name.split('/')[1])
                 b = get_b(enlist[i], y1, a)
                 if y2 is None:
