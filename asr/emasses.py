@@ -1,5 +1,22 @@
 """Effective masses."""
 from asr.core import command, option, DictStr, ASRResult
+from asr.database.browser import make_panel_description, describe_entry
+
+panel_description = make_panel_description(
+    """
+The effective mass tensor represents the second derivative of the band energy
+w.r.t. wave vector at a band extremum. The effective masses of the valence
+bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
+mass tensor. The latter is determined by fitting a 2nd order polynomium to the
+band energies on a fine k-point mesh around the band extrema. Spin-orbit
+interactions are included. The “parabolicity” of the band is quantified by the
+mean absolute relative error (MARE) of the fit to the band energy in an energy
+range of 25 meV.
+""",
+    articles=[
+        'C2DB',
+    ],
+)
 
 
 class NoGapError(Exception):
@@ -330,7 +347,7 @@ def get_emass_dict_from_row(row, has_mae=False):
                             mass_str = "N/A"
                         else:
                             mass_str = str(round(abs(mass) * 100)
-                                           / 100) + " m<sub>e</sub>"
+                                           / 100) + " m<sub>0</sub>"
 
                         if has_mae:
                             mare = mares[direction - 1]
@@ -610,7 +627,8 @@ def webpanel(result, row, key_descriptions):
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
-    panel = {'title': 'Effective masses (PBE)',
+    panel = {'title': describe_entry('Effective masses (PBE)',
+                                     panel_description),
              'columns': columns,
              'plot_descriptions':
              [{'function': make_the_plots,
@@ -707,8 +725,7 @@ def check_soc(spin_band_dict):
 
 
 class Result(ASRResult):
-
-    formats = {"ase_webpanel": webpanel}
+    pass
 
 
 @command('asr.emasses',
@@ -1391,11 +1408,16 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+class ValidateResult(ASRResult):
+
+    formats = {"ase_webpanel": webpanel}
+
+
 @command(module='asr.emasses',
          requires=['results-asr.emasses.json'],
          dependencies=['asr.emasses'],
-         returns=Result)
-def validate() -> Result:
+         returns=ValidateResult)
+def validate() -> ValidateResult:
     """Calculate MARE of fits over 25 meV.
 
     Perform a calculation for each to validate it

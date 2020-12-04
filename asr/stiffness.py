@@ -1,12 +1,24 @@
 """Stiffness tensor."""
-from asr.core import command, option, ASRResult, prepare_result
 import typing
+from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (matrixtable, describe_entry, dl,
+                                  make_panel_description)
+
+panel_description = make_panel_description(
+    """
+The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
+material to the applied strain. In Voigt notation, C is expressed as a NxN
+matrix relating the N independent components of the stress and strain
+tensors. C is calculated as a finite difference of the stress under an applied
+stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+indicates a dynamical instability.
+""",
+    articles=['C2DB'],
+)
 
 
 def webpanel(result, row, key_descriptions):
     import numpy as np
-    from asr.database.browser import (matrixtable, describe_entry,
-                                      entry_parameter_description)
 
     stiffnessdata = row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
@@ -49,20 +61,7 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    title_description = """
-The stiffness tensor is defined as the derivative of the stress with respect to
-strain. The stiffness tensor is calculated using a finite difference procedure
-with the parameters listed below.
-
-"""
-
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.stiffness'
-    )
-    title_description += parameter_description
-
-    panel = {'title': describe_entry('Stiffness tensor', description=title_description),
+    panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
@@ -70,8 +69,19 @@ with the parameters listed below.
     high = 'Min. Stiffness eig. > 0'
     low = 'Min. Stiffness eig. < 0'
 
-    row = ['Dynamical (stiffness)',
-           describe_entry(dynstab.upper(), f"LOW: {low}\nHIGH: {high}")]
+    row = [
+        describe_entry(
+            'Dynamical (stiffness)',
+            'Classifier for the dynamical stability of a material '
+            'based on the minimum eigenvalue of the stiffness tensor.'
+            + dl(
+                [
+                    ["LOW", low],
+                    ["HIGH", high],
+                ]
+            )
+        ),
+        dynstab.upper()]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',

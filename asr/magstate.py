@@ -2,6 +2,9 @@
 from asr.core import command, ASRResult, prepare_result
 import typing
 
+atomic_mom_threshold = 0.1
+total_mom_threshold = 0.1
+
 
 def get_magstate(calc):
     """Determine the magstate of calc."""
@@ -11,12 +14,12 @@ def get_magstate(calc):
         return 'nm'
 
     maximum_mom = abs(magmoms).max()
-    if maximum_mom < 0.1:
+    if maximum_mom < atomic_mom_threshold:
         return 'nm'
 
     magmom = calc.get_magnetic_moment()
 
-    if abs(magmom) < 0.01 and maximum_mom > 0.1:
+    if abs(magmom) < total_mom_threshold and maximum_mom > atomic_mom_threshold:
         return 'afm'
 
     return 'fm'
@@ -24,7 +27,27 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    rows = [['Magnetic state', row.magstate]]
+    from asr.database.browser import describe_entry, dl, code
+
+    is_magnetic = describe_entry(
+        'Magnetic',
+        'Is material magnetic?'
+        + dl(
+            [
+                [
+                    'Magnetic',
+                    code('if max(abs(atomic_magnetic_moments)) > '
+                         f'{atomic_mom_threshold}')
+                ],
+                [
+                    'Not magnetic',
+                    code('otherwise'),
+                ],
+            ]
+        )
+    )
+
+    rows = [[is_magnetic, row.is_magnetic]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
