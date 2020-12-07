@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import h5py
 import os.path
 from os import path
+import typing
 
 #ase
 from ase import Atoms
@@ -34,7 +35,6 @@ from phonopy.interface.calculator import get_default_physical_units
 import phonopy.cui.load_helper as load_helper
 
 #gpaw
-
 from gpaw import GPAW, PW, FermiDirac, mpi
 
 def hiphive_fc23(atoms, cellsize, number_structures, rattle, mindistance, nat_dim, cut1, cut2, cut3, fc2n, fc3n, calculator):
@@ -50,10 +50,11 @@ def hiphive_fc23(atoms, cellsize, number_structures, rattle, mindistance, nat_di
    else:
      #2D calc
      multiplier=np.array([[cellsize,0,0],[0,cellsize,0],[0,0,1]])
-
    #calculator type
+
    atoms_ideal = make_supercell(aa, multiplier)
    atoms_ideal.pbc = (1, 1, 1)
+   print(atoms_ideal)
    if calculator=='DFT':
      calc = GPAW(mode='lcao',
                basis='dzp',
@@ -140,8 +141,34 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n, t1, t2, ts
       ph3.set_phph_interaction()
       ph3.run_thermal_conductivity(temperatures=range(t1, t2, tstep), boundary_mfp=1e6, write_kappa=True)
 
+@prepare_result
+class Result(ASRResult):
+    formats = {}
+     #    formats = {"ase_webpanel": webpanel}
 
-@command('asr.anharmonic_phonons')
+    temperature: float
+    frequencies: typing.List[float]
+    lifetimes: typing.List[float]
+    kappa_00: float
+    kappa_tensor: typing.List[float]
+
+    key_descriptions = dict(
+        kappa_00='Thermal conductivity',
+        kappa_tensor='Kappa tensor',
+        temperature='Temperature',
+        frequencies='Frequencies',
+        lifetimes='Lifetimes')
+
+@command(
+    "asr.anharmonic_phonons3_result",
+    dependencies=[],
+    requires=[
+        "structure.json",
+    ],
+    returns=Result,
+)
+
+#@command('asr.anharmonic_phonons3')
 @option('--atoms', type=str, default='structure.json')
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
 @option("--calculator", help="calculator type. DFT is the default", type=str)
@@ -157,7 +184,7 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n, t1, t2, ts
 @option("--t2", help="last temperature for thermal conductivity calculation", type=int)
 @option("--tstep", help=" temperature step for thermal conductivity calculation", type=int)
 
-def main(atoms: Atoms, cellsize: int=5,calculator: str='DFT', rattle: float=0.03, nat_dim: int=2,cut1: float=6.0, cut2: float=5.0, cut3: float=4.0, mindistance: float=2.3, number_structures: int=10,mesh_ph3: int=10,t1=300,t2=301,tstep=1):
+def main(atoms: Atoms, cellsize: int=6,calculator: str='DFT', rattle: float=0.03, nat_dim: int=2,cut1: float=6.0, cut2: float=5.0, cut3: float=4.0, mindistance: float=2.3, number_structures: int=25,mesh_ph3: int=20,t1=300,t2=301,tstep=1)-> Result:
 
    fc2n='fc2.hdf5'
    fc3n='fc3.hdf5'
