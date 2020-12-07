@@ -29,7 +29,7 @@ def main(include: str = '',
     """Create links.json based on the tree-structure.
 
     Choose the respective option to choose, which kind of tree is
-    currently present.
+    currently present. !Change that description!
     """
     p = Path('.')
 
@@ -48,23 +48,28 @@ def create_defect_links(path):
 
     Based on the tree structure created from setup.defects.
     """
-    parent = Path(path.absolute() / '../../../')
+    # parent = Path(path.abolute())
+    # is_found = False
 
-    folders = list(parent.glob('**/charge_0/'))
-    uids = []
-    for folder in folders:
-        fingerprint_res = read_json(folder
-                                    / 'results-asr.database.material_fingerprint.json')
-        uid = fingerprint_res['uid']
-        uids.append(uid)
+    # while not is_found:
+    #     parent = Path(parent.absolute() / '../')
+    #     if str(parent.absolute()).e
 
-    fingerprint_res = read_json(parent
-                                / 'results-asr.database.material_fingerprint.json')
-    uid = fingerprint_res['uid']
-    uids.append(uid)
+    # folders = list(parent.glob('**/charge_0/'))
+    # uids = []
+    # for folder in folders:
+    #     fingerprint_res = read_json(folder
+    #                                 / 'results-asr.database.material_fingerprint.json')
+    #     uid = fingerprint_res['uid']
+    #     uids.append(uid)
 
-    links = {'uids': uids}
+    # fingerprint_res = read_json(parent
+    #                             / 'results-asr.database.material_fingerprint.json')
+    # uid = fingerprint_res['uid']
+    # uids.append(uid)
 
-    write_links(path, links)
+    # links = {'uids': uids}
 
-    return uids
+    # write_links(path, links)
+
+    # return uids
