@@ -27,7 +27,7 @@ def fileno(file_or_fd):
 @contextmanager
 def stdout_redirected(to=os.devnull, stdout=None):
     if stdout is None:
-       stdout = sys.stdout
+        stdout = sys.stdout
 
     stdout_fd = fileno(stdout)
     # copy stdout_fd before it is overwritten
@@ -407,6 +407,19 @@ def get_item(attrs: List[str], obj):
 
 
 @cache.command()
+def migrate(apply=False):
+    """Look for cache migrations."""
+    from asr.core.cache import get_cache
+    cache = get_cache()
+    migrations = cache.get_migrations()
+    if migrations:
+        print('You have unapplied migrations.')
+        migrations.apply()
+    else:
+        print('No migrations to be applied.')
+
+
+@cache.command()
 @click.argument('functionname', required=False)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
@@ -415,10 +428,12 @@ def get_item(attrs: List[str], obj):
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 def ls(functionname, formatting, sort):
-    from asr.core.cache import file_system_cache
+    from asr.core.cache import get_cache
 
-    records = file_system_cache.select()
+    cache = get_cache()
 
+    print(cache)
+    records = cache.select()
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []

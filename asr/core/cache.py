@@ -4,6 +4,7 @@ import os
 import pathlib
 import functools
 import numpy as np
+import fnmatch
 from .record import RunRecord
 from .specification import RunSpecification
 from .utils import write_file
@@ -134,7 +135,90 @@ class SingleRunFileCache(AbstractCache):  # noqa
         return wrapper
 
 
-class FileCacheBackend:  # noqa
+def migrate_legacy_backend():
+    pass
+
+
+class LegacyFileSystemBackend:
+
+    version: int = 0
+
+    migrations = {
+        'FileCacheBackend': migrate_legacy_backend
+    }
+
+    relevant_patterns = [
+        'results-asr.*.json',
+        'displacements*/*/results-asr.gs.json',
+        'strains*/results-asr.gs.json',
+    ]
+
+    skip_patterns = [
+        'results-asr.database.fromtree.json',
+    ]
+
+    def add(self, run_record: RunRecord):  # noqa
+        raise NotImplementedError
+
+    @property
+    def uid_table(self):  # noqa
+        table = {}
+        for pattern in self.relevant_patterns:
+            for path in pathlib.Path().glob(pattern):
+                filepath = str(path)
+                if any(fnmatch.fnmatch(filepath, skip_pattern)
+                       for skip_pattern in self.skip_patterns):
+                    continue
+                table[str(path)] = str(path)
+        return table
+
+    def has(self, selection: 'Selection'):  # noqa
+        records = self.select()
+        for record in records:
+            if selection.matches(record):
+                return True
+        return False
+
+    def get_record_from_uid(self, run_uid):  # noqa
+        from asr.core import read_json
+        filename = self.uid_table[run_uid]
+        result = read_json(filename)
+        print('filename', filename)
+        from asr.core.results import MetaDataNotSetError
+        print('result', result)
+        try:
+            parameters = result.metadata.params
+        except MetaDataNotSetError:
+            parameters = {}
+        try:
+            code_versions = result.metadata.code_versions
+        except MetaDataNotSetError:
+            code_versions = {}
+
+        return RunRecord(
+            run_specification=RunSpecification(
+                name=result.metadata.asr_name,
+                parameters=parameters,
+                version=-1,
+                codes=code_versions,
+                uid=None,
+            ),
+            result=result,
+        )
+
+    def select(self, selection: 'Selection' = None):
+        all_records = [self.get_record_from_uid(uid)
+                       for uid in self.uid_table]
+        if selection is None:
+            return all_records
+        selected = []
+        for record in all_records:
+            if selection.matches(record):
+                selected.append(record)
+        return selected
+
+
+class FileCacheBackend():  # noqa
 
     def __init__(
             self,
@@ -152,7 +236,6 @@ class FileCacheBackend:  # noqa
     def add(self, run_record: RunRecord):  # noqa
         run_specification = run_record.run_specification
         run_uid = run_specification.uid
-        # run_hash = self.get_hash(run_specification)
         name = run_record.run_specification.name + '-' + run_uid[:10]
         filename = self._name_to_results_filename(name)
         serialized_object = self.serializer.serialize(run_record)
@@ -278,25 +361,15 @@ class Selection:
     def do_not_compare(self, x):
         return True
 
-    # def normalize_value(self, value):
-    #     if isinstance(value, np.ndarray):
-    #         return value.tolist()
-    #     return value
-
     def normalize_selection(self, selection: dict):
         normalized = {}
 
         for key, value in selection.items():
-            # value = self.normalize_value(value)
             comparator = None
             if isinstance(value, dict):
                 norm = self.normalize_selection(value)
                 for keynorm, valuenorm in norm.items():
                     normalized['.'.join([key, keynorm])] = valuenorm
-            # elif isinstance(value, Parameters):
-            #     norm = self.normalize_selection(value.__dict__)
-            #     for keynorm, valuenorm in norm.items():
-            #         normalized['.'.join([key, keynorm])] = valuenorm
             elif value is None:
                 pass
             elif isinstance(value, Atoms):
@@ -352,6 +425,8 @@ class Selection:
 
 
 class Cache:  # noqa
+
+    migrations = {'backend migration': migrate_legacy_backend}
 
     def __init__(self, backend):
         self.backend = backend
@@ -433,7 +508,13 @@ class MemoryCache:
 
 
 def get_cache():
-    return file_system_cache
+    from .config import config
+
+    if config.backend == 'fscache':
+        return file_system_cache
+    elif config.backend == 'legacyfscache':
+        return legacy_file_system_cache
 
 
 file_system_cache = Cache(backend=FileCacheBackend())
+legacy_file_system_cache = Cache(backend=LegacyFileSystemBackend())
