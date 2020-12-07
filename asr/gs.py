@@ -49,8 +49,10 @@ def calculate(calculator: dict = {
     from asr.relax import set_initial_magnetic_moments
     atoms = read('structure.json')
 
-    if not atoms.has('initial_magmoms'):
-        set_initial_magnetic_moments(atoms)
+    # if not atoms.has('initial_magmoms'):
+    #     set_initial_magnetic_moments(atoms)
+    set_initial_magnetic_moments(atoms)
+    print(atoms.get_initial_magnetic_moments())
 
     nd = np.sum(atoms.pbc)
     if nd == 2:
