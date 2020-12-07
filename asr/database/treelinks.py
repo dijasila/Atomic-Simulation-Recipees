@@ -24,8 +24,8 @@ class Result(ASRResult):
         type=CommaStr())
 @option('--exclude', help='Comma-separated string of folders to exclude.',
         type=CommaStr())
-def main(include: str = 'charge_0,charge_1',
-         exclude: str = 'charge_2') -> Result:
+def main(include: str = '',
+         exclude: str = '') -> Result:
     """Create links.json based on the tree-structure.
 
     Choose the respective option to choose, which kind of tree is
@@ -33,14 +33,7 @@ def main(include: str = 'charge_0,charge_1',
     """
     p = Path('.')
 
-    print(include, exclude)
-
-    links = []
-    # if defects:
-    #     links = create_defect_links(path=p)
-    # elif c2db:
-    #     # links = create_c2db_links(path=p)
-    #     pass
+    links = create_tree_links(path=p, include, exclude)
 
     return Result.fromdata(links=links)
 
