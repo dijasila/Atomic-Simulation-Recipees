@@ -1,5 +1,5 @@
 from asr.core import (command, option, ASRResult, prepare_result,
-                      read_json)
+                      read_json, CommaStr)
 from pathlib import Path
 import typing
 
@@ -20,23 +20,27 @@ class Result(ASRResult):
 
 
 @command('asr.database.treelinks')
-@option('--defects/--no-defects', help='Set this flag for a defect tree structure.',
-        is_flag=True)
-@option('--c2db/--no-c2db', help='Set this flag for a c2db tree structure.',
-        is_flag=True)
-def main(defects: bool = False,
-         c2db: bool = False) -> Result:
+@option('--include', help='Comma-separated string of folders to include.',
+        type=CommaStr())
+@option('--exclude', help='Comma-separated string of folders to exclude.',
+        type=CommaStr())
+def main(include: str = 'charge_0,charge_1',
+         exclude: str = 'charge_2') -> Result:
     """Create links.json based on the tree-structure.
 
     Choose the respective option to choose, which kind of tree is
     currently present.
     """
     p = Path('.')
-    if defects:
-        links = create_defect_links(path=p)
-    elif c2db:
-        # links = create_c2db_links(path=p)
-        pass
+
+    print(include, exclude)
+
+    links = []
+    # if defects:
+    #     links = create_defect_links(path=p)
+    # elif c2db:
+    #     # links = create_c2db_links(path=p)
+    #     pass
 
     return Result.fromdata(links=links)
 
