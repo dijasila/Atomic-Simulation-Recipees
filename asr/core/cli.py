@@ -446,7 +446,11 @@ def ls(functionname, formatting, sort):
             obj = get_item(item.split('.'), record)
             if not fmt:
                 fmt = ''
-            row.append(format(obj, fmt))
+            text = format(obj, fmt)
+            maxlen = 40
+            if len(text) > maxlen:
+                text = text[:maxlen] + '...'
+            row.append(text)
         rows.append(row)
 
     columnwidths = [0] * len(items)

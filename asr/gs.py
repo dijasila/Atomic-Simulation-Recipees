@@ -1,10 +1,12 @@
 """Electronic ground state properties."""
+import pathlib
 from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
 from asr.core.command import ASRControl
-from asr.calculators import set_calculator_hook, Calculation
+from asr.calculators import (
+    set_calculator_hook, Calculation, get_calculator_class)
 
 from asr.database.browser import (
     table, fig,
@@ -27,6 +29,15 @@ calculation.
 
 @prepare_result
 class GroundStateCalculationResult(ASRResult):
+
+    def migrate(self):
+        cls = type(self)
+        if 'calculation' not in self:
+            if pathlib.Path('gs.gpw').is_file():
+                Calc = get_calculator_class('gpaw')
+                calc = Calc()
+                calculation = calc.save(id='gs')
+                return cls.fromdata(calculation=calculation)
 
     calculation: Calculation
 
@@ -79,7 +90,6 @@ def calculate(
             'The third unit cell axis should be aperiodic for a 2D material!'
         calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    from asr.calculators import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
@@ -156,6 +166,7 @@ def cache_webpanel(*selectors):
             cache = row.cache
             records = main.select(cache=cache)
 
+            print('-' * 20, 'gsrecords', records)
             sortattrs = []
             signs = []
             for selector in selectors:

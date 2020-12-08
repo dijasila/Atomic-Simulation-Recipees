@@ -136,15 +136,7 @@ class SingleRunFileCache(AbstractCache):  # noqa
         return wrapper
 
 
-def migrate_legacy_backend():
-    pass
-
-
-class LegacyFileSystemBackend:
-
-    def migrate(self):
-        pass
-
+def find_results_files():
     relevant_patterns = [
         'results-asr.*.json',
         'displacements*/*/results-*.json',
@@ -160,6 +152,56 @@ class LegacyFileSystemBackend:
         '*asr.setup.params.json',
         '*asr.setup.params.json',
     ]
+
+    for pattern in relevant_patterns:
+        for path in pathlib.Path().glob(pattern):
+            filepath = str(path)
+            if any(fnmatch.fnmatch(filepath, skip_pattern)
+                   for skip_pattern in skip_patterns):
+                continue
+            yield path
+
+
+def construct_record_from_resultsfile(path):
+    from asr.core.results import MetaDataNotSetError
+    from asr.core import read_json
+    from ase.io import read
+    result = read_json(path)
+    atoms = read(path.parent / 'structure.json')
+    try:
+        parameters = result.metadata.params
+    except MetaDataNotSetError:
+        parameters = {}
+    if 'atoms' not in parameters:
+        parameters['atoms'] = atoms.copy()
+    try:
+        code_versions = result.metadata.code_versions
+    except MetaDataNotSetError:
+        code_versions = {}
+
+    name = result.metadata.asr_name
+
+    if '@' not in name:
+        name += '::main'
+    else:
+        name = name.replace('@', '::')
+
+    return RunRecord(
+        run_specification=RunSpecification(
+            name=name,
+            parameters=parameters,
+            version=-1,
+            codes=code_versions,
+            uid=uuid.uuid4().hex,
+        ),
+        result=result,
+    )
+
+
+class LegacyFileSystemBackend:
+
+    def migrate(self):
+        pass
 
     def add(self, run_record: RunRecord):  # noqa
         raise NotImplementedError
@@ -201,9 +243,16 @@ class LegacyFileSystemBackend:
         except MetaDataNotSetError:
             code_versions = {}
 
+        name = result.metadata.asr_name
+
+        if '@' not in name:
+            name += '::main'
+        else:
+            name = name.replace('@', '::')
+
         return RunRecord(
             run_specification=RunSpecification(
-                name=result.metadata.asr_name,
+                name=name,
                 parameters=parameters,
                 version=-1,
                 codes=code_versions,
@@ -227,10 +276,15 @@ class LegacyFileSystemBackend:
 class FileCacheBackend():  # noqa
 
     def migrate(self):
-        legacy_file_system_cache.migrate()
-        records = legacy_file_system_cache.select()
-        for record in records:
-            sel = Selection(run_specification=record.run_specification)
+        for resultsfile in find_results_files():
+            record = construct_record_from_resultsfile(resultsfile)
+            selection = {
+                'run_specification.name':
+                record.run_specification.name,
+                'run_specification.parameters':
+                record.run_specification.parameters,
+            }
+            sel = Selection(**selection)
             if not self.has(sel):
                 self.add(record)
 

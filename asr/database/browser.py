@@ -501,7 +501,11 @@ def layout(row: AtomsRow,
             continue
 
         recipes_treated.add(record.run_specification.name)
-        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        try:
+            panels = result.format_as('ase_webpanel', row, key_descriptions)
+        except Exception:
+            panels = []
+            traceback.print_exc()
         if not panels:
             continue
 
