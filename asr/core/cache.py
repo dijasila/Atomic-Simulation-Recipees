@@ -5,6 +5,7 @@ import pathlib
 import functools
 import numpy as np
 import fnmatch
+import uuid
 from .record import RunRecord
 from .specification import RunSpecification
 from .utils import write_file
@@ -206,7 +207,7 @@ class LegacyFileSystemBackend:
                 parameters=parameters,
                 version=-1,
                 codes=code_versions,
-                uid=None,
+                uid=uuid.uuid4().hex,
             ),
             result=result,
         )
@@ -231,7 +232,7 @@ class FileCacheBackend():  # noqa
         for record in records:
             sel = Selection(run_specification=record.run_specification)
             if not self.has(sel):
-                record.add(record)
+                self.add(record)
 
     def __init__(
             self,
@@ -333,10 +334,18 @@ def flatten_list(lst):
 def compare_lists(lst1, lst2):
     flatlst1 = flatten_list(lst1)
     flatlst2 = flatten_list(lst2)
+    if not len(flatlst1) == len(flatlst2):
+        return False
     for value1, value2 in zip(flatlst1, flatlst2):
         if not value1 == value2:
             return False
     return True
+
+
+def compare_ndarrays(array1, array2):
+    lst1 = array1.tolist()
+    lst2 = array2.tolist()
+    return compare_lists(lst1, lst2)
 
 
 def approx(value1, rtol=1e-3):
@@ -387,6 +396,11 @@ class Selection:
                 pass
             elif isinstance(value, Atoms):
                 comparator = functools.partial(compare_atoms, value)
+            elif isinstance(value, np.ndarray):
+                comparator = functools.partial(
+                    compare_ndarrays,
+                    value,
+                )
             elif isinstance(value, (list, tuple)):
                 comparator = functools.partial(
                     compare_lists,
