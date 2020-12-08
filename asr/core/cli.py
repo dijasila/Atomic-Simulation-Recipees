@@ -411,20 +411,14 @@ def migrate(apply=False):
     """Look for cache migrations."""
     from asr.core.cache import get_cache
     cache = get_cache()
-    migrations = cache.get_migrations()
-    if migrations:
-        print('You have unapplied migrations.')
-        migrations.apply()
-    else:
-        print('No migrations to be applied.')
+    cache.migrate()
 
 
 @cache.command()
 @click.argument('functionname', required=False)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
-                       'run_specification.parameters '
-                       'result'), type=str)
+                       'run_specification.parameters '), type=str)
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 def ls(functionname, formatting, sort):
@@ -432,7 +426,6 @@ def ls(functionname, formatting, sort):
 
     cache = get_cache()
 
-    print(cache)
     records = cache.select()
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()

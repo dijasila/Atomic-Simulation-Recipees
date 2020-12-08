@@ -141,20 +141,23 @@ def migrate_legacy_backend():
 
 class LegacyFileSystemBackend:
 
-    version: int = 0
-
-    migrations = {
-        'FileCacheBackend': migrate_legacy_backend
-    }
+    def migrate(self):
+        pass
 
     relevant_patterns = [
         'results-asr.*.json',
-        'displacements*/*/results-asr.gs.json',
-        'strains*/results-asr.gs.json',
+        'displacements*/*/results-*.json',
+        'strains*/results-*.json',
     ]
 
     skip_patterns = [
         'results-asr.database.fromtree.json',
+        'results-asr.database.app.json',
+        'displacements*/*/results-asr.database.material_fingerprint.json',
+        'strains*/results-asr.database.material_fingerprint.json',
+        'results-asr.gs@calculate.json',
+        '*asr.setup.params.json',
+        '*asr.setup.params.json',
     ]
 
     def add(self, run_record: RunRecord):  # noqa
@@ -179,13 +182,15 @@ class LegacyFileSystemBackend:
                 return True
         return False
 
-    def get_record_from_uid(self, run_uid):  # noqa
+    def get_result_from_uid(self, uid):  # noqa: D102
         from asr.core import read_json
-        filename = self.uid_table[run_uid]
+        filename = self.uid_table[uid]
         result = read_json(filename)
-        print('filename', filename)
+        return result
+
+    def get_record_from_uid(self, uid):  # noqa
         from asr.core.results import MetaDataNotSetError
-        print('result', result)
+        result = self.get_result_from_uid(uid)
         try:
             parameters = result.metadata.params
         except MetaDataNotSetError:
@@ -219,6 +224,14 @@ class LegacyFileSystemBackend:
 
 
 class FileCacheBackend():  # noqa
+
+    def migrate(self):
+        legacy_file_system_cache.migrate()
+        records = legacy_file_system_cache.select()
+        for record in records:
+            sel = Selection(run_specification=record.run_specification)
+            if not self.has(sel):
+                record.add(record)
 
     def __init__(
             self,
@@ -426,7 +439,9 @@ class Selection:
 
 class Cache:  # noqa
 
-    migrations = {'backend migration': migrate_legacy_backend}
+    def migrate(self):
+        """Migrate cache data."""
+        self.backend.migrate()
 
     def __init__(self, backend):
         self.backend = backend
