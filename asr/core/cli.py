@@ -398,10 +398,12 @@ def cache():
 def get_item(attrs: List[str], obj):
 
     for attr in attrs:
-        try:
+        if hasattr(obj, attr):
             obj = getattr(obj, attr)
-        except AttributeError:
+        elif attr in obj:
             obj = obj[attr]
+        else:
+            obj = None
 
     return obj
 
@@ -421,7 +423,9 @@ def migrate(apply=False):
                        'run_specification.parameters '), type=str)
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
-def ls(functionname, formatting, sort):
+@click.option('-w', '--width', default=40, type=int,
+              help='Maximum width of column.')
+def ls(functionname, formatting, sort, width):
     from asr.core.cache import get_cache
 
     cache = get_cache()
@@ -447,9 +451,8 @@ def ls(functionname, formatting, sort):
             if not fmt:
                 fmt = ''
             text = format(obj, fmt)
-            maxlen = 40
-            if len(text) > maxlen:
-                text = text[:maxlen] + '...'
+            if len(text) > width:
+                text = text[:width] + '...'
             row.append(text)
         rows.append(row)
 

@@ -6,6 +6,7 @@ import functools
 import numpy as np
 import fnmatch
 import uuid
+from .params import Parameters
 from .record import RunRecord
 from .specification import RunSpecification
 from .utils import write_file
@@ -200,15 +201,29 @@ def construct_record_from_resultsfile(path):
         parameters = result.metadata.params
     except MetaDataNotSetError:
         parameters = {}
+
+    parameters = Parameters(parameters)
     if 'atoms' not in parameters:
-        parameters['atoms'] = atoms.copy()
+        parameters.atoms = atoms.copy()
+
     try:
         code_versions = result.metadata.code_versions
     except MetaDataNotSetError:
         code_versions = {}
 
-    name = result.metadata.asr_name
+    from asr.core.resources import Resources
+    try:
+        resources = result.metadata.resources
+        resources = Resources(
+            execution_start=resources.get('tstart'),
+            execution_end=resources.get('tend'),
+            execution_duration=resources['time'],
+            ncores=resources['ncores'],
+        )
+    except MetaDataNotSetError:
+        resources = Resources()
 
+    name = result.metadata.asr_name
     if '@' not in name:
         name += '::main'
     else:
@@ -222,6 +237,7 @@ def construct_record_from_resultsfile(path):
             codes=code_versions,
             uid=uuid.uuid4().hex,
         ),
+        resources=resources,
         result=result,
     )
 

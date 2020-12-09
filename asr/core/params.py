@@ -93,3 +93,6 @@ class Parameters:  # noqa
 
     def __repr__(self):  # noqa
         return self.__str__()
+
+    def __contains__(self, key):
+        return key in self.__dict__

@@ -44,14 +44,14 @@ def migrate(record):
     if 'atoms' not in run_spec.parameters:
         is_migrated = True
         calc = record.result.calculation.load()
-        run_spec.parameters['atoms'] = calc.atoms
+        run_spec.parameters.atoms = calc.atoms
 
     if 'calculator' not in run_spec.parameters:
         is_migrated = True
         calculation = record.result.calculation
         calc = calculation.load()
-        parameters = {'name': calculation.cls_name, **calc.parameters}
-        run_spec['parameters']['calculator'] = parameters
+        calc_parameters = {'name': calculation.cls_name, **calc.parameters}
+        run_spec.parameters.calculator = calc_parameters
 
     if is_migrated:
         record.run_specification = run_spec

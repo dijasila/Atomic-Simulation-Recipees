@@ -19,10 +19,13 @@ class RunRecord:  # noqa
             self,
             result: typing.Any,
             run_specification: RunSpecification = None,
-            resources: 'Resources' = None,
+            resources: Resources = None,
             side_effects: 'SideEffects' = None,
             dependencies: typing.List[str] = None,
     ):
+        assert type(run_specification) == RunSpecification
+        assert type(resources) == Resources
+        # XXX strictly enforce rest of types.
         self.data = dict(
             run_specification=run_specification,
             result=result,
