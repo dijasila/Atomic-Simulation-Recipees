@@ -128,12 +128,7 @@ def get_attribute(obj, attrs):
         return obj
 
     for attr in attrs:
-        if hasattr(obj, attr):
-            obj = getattr(obj, attr, None)
-        elif attr in obj:
-            obj = obj[attr]
-        else:
-            obj = None
+        obj = getattr(obj, attr, None)
 
     return obj
 
@@ -181,7 +176,6 @@ def cache_webpanel(*selectors):
             cache = row.cache
             records = main.select(cache=cache)
 
-            print('-' * 20, 'gsrecords', records)
             sortattrs = []
             signs = []
             for selector in selectors:
@@ -191,11 +185,19 @@ def cache_webpanel(*selectors):
                 sortattrs.append([
                                   'run_specification', 'parameters', *attrs])
 
+            def keysort(x):
+                keys = []
+                for sign, attrs in zip(signs, sortattrs):
+                    value = get_attribute(x, attrs)
+                    if value is not None:
+                        keys.append(sign * value)
+                    else:
+                        keys.append(None)
+                return keys
+
             records = sorted(
                 records,
-                key=lambda x: tuple(
-                    sign * get_attribute(x, attrs)
-                    for sign, attrs in zip(signs, sortattrs))
+                key=keysort,
             )
 
             webpanels_r = []
