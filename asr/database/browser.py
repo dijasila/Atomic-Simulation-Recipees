@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 
+from asr.core.cache import Cache, MemoryCache
+
 assert sys.version_info >= (3, 4)
 
 plotlyjs = (
@@ -440,16 +442,55 @@ def is_results_file(filename):
     return filename.startswith('results-') and filename.endswith('.json')
 
 
+class DataCache:
+
+    def __init__(self, cache):
+        self.cache = cache
+
+    def __getitem__(self, item):
+        selection = self.filename_to_selection(item)
+        records = self.cache.select(**selection)
+        record = records[0]
+        return record.result
+
+    def filename_to_selection(self, filename):
+
+        funcname = filename[8:-5]
+        if '@' not in funcname:
+            funcname += '::main'
+        else:
+            funcname = funcname.replace('@', '::')
+        return {'run_specification.name': funcname}
+
+    def get(self, item, default=None):
+        if item in self:
+            return self[item]
+        return default
+
+    def __contains__(self, item):
+        selection = self.filename_to_selection(item)
+        return self.cache.has(**selection)
+
+
 class RowWrapper:
 
     def __init__(self, row):
+        from asr.database.fromtree import serializer
+        cache = Cache(backend=MemoryCache())
+        records = serializer.deserialize(row.data['records'])
+        self.records = records
+        for record in records:
+            cache.add(record)
         self._row = row
-        self._data = copy.deepcopy(row.data)
+        self.cache = cache
+        self.datacache = DataCache(cache)
+
+    @property
+    def data(self):
+        return self.datacache
 
     def __getattr__(self, key):
         """Wrap attribute lookup of AtomsRow."""
-        if key == 'data':
-            return self._data
         return getattr(self._row, key)
 
     def __contains__(self, key):
@@ -463,17 +504,11 @@ def layout(row: AtomsRow,
     """Page layout."""
     page = {}
     exclude = set()
-    from asr.database.fromtree import serializer
-    from asr.core.cache import Cache, MemoryCache
 
-    row = RowWrapper(row)
-    records = serializer.deserialize(row.data['records'])
+    row = RowWrapper(
+        row,
+    )
 
-    cache = Cache(backend=MemoryCache())
-    for record in records:
-        cache.add(record)
-
-    row.cache = cache
     # for key, value in row.data.items():
     #     if is_results_file(key):
     #         obj = decode_object(value)
@@ -493,7 +528,7 @@ def layout(row: AtomsRow,
     panel_data_sources = {}
     recipes_treated = set()
     # Locate all webpanels
-    for record in records:
+    for record in row.records:
         result = record.result
         if 'ase_webpanel' not in result.get_formats():
             continue
