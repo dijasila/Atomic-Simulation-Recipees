@@ -13,7 +13,8 @@ from asr.database.browser import (
     table, fig,
     entry_parameter_description,
     describe_entry, WebPanel,
-    make_panel_description
+    make_panel_description,
+    cache_webpanel,
 )
 
 import numpy as np
@@ -122,111 +123,12 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-def get_attribute(obj, attrs):
-
-    if not attrs:
-        return obj
-
-    for attr in attrs:
-        obj = getattr(obj, attr, None)
-
-    return obj
-
-
-def parse_selectors(selector: str):
-    op, attr = selector.split(',')
-    attrs = attr.split('.')
-    if op == '-':
-        sign = -1
-    else:
-        sign = 1
-    return sign, attrs
-
-
-def get_panels_values(panels):
-    for ip, panel in enumerate(panels):
-        columns = panel['columns']
-        for ic, column in enumerate(columns):
-            for ie, element in enumerate(column):
-                if element['type'] == 'table':
-                    rows = element['rows']
-                    for ir, row in enumerate(rows):
-                        for iv, value in enumerate(row):
-                            if iv > 0:
-                                yield value, (ip, 'columns', ic, ie, 'rows', ir, iv)
-
-
-def get_value(panels, indices):
-    value = panels
-    for ind in indices:
-        value = value[ind]
-    return value
-
-
-def set_value(panels, indices, value):
-    values = get_value(panels, indices[:-1])
-    values[indices[-1]] = value
-
-
-def cache_webpanel(*selectors):
-    from asr.database.browser import html_table, par, br, bold
-
-    def decorator(func):
-        def wrapper(result, row, key_descriptions):
-            cache = row.cache
-            records = main.select(cache=cache)
-
-            sortattrs = []
-            signs = []
-            for selector in selectors:
-                sign, attrs = parse_selectors(selector)
-
-                signs.append(sign)
-                sortattrs.append([
-                                  'run_specification', 'parameters', *attrs])
-
-            def keysort(x):
-                keys = []
-                for sign, attrs in zip(signs, sortattrs):
-                    value = get_attribute(x, attrs)
-                    if value is not None:
-                        keys.append(sign * value)
-                    else:
-                        keys.append(None)
-                return keys
-
-            records = sorted(
-                records,
-                key=keysort,
-            )
-
-            webpanels_r = []
-            for record in records:
-                webpanels_r.append(func(record.result, row, key_descriptions))
-
-            representative_panels = webpanels_r[-1]
-            for value, indices in get_panels_values(representative_panels):
-                table = []
-                header = ['.'.join(attrs[-2:]) for attrs in sortattrs] + ['value']
-                for record, webpanels in zip(records, webpanels_r):
-                    other_value = get_value(webpanels, indices)
-                    row = (
-                        [get_attribute(record, attrs) for attrs in sortattrs]
-                        + [other_value]
-                    )
-                    table.append(row)
-
-                html = par(bold('Convergence') + br +
-                           html_table(table, header=header))
-                value = describe_entry(value, description=html)
-                set_value(webpanels, indices, value)
-
-            return representative_panels
-        return wrapper
-    return decorator
-
-
-@cache_webpanel('+,calculator.mode.ecut', '+,calculator.kpts.density')
+@cache_webpanel(
+    'asr.gs@main',
+    '+,calculator.mode.ecut',
+    '+,calculator.kpts.density',
+    '+,calculator.kpts.size',
+)
 def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
