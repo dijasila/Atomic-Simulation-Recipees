@@ -146,9 +146,9 @@ def find_results_files():
     skip_patterns = [
         'results-asr.database.fromtree.json',
         'results-asr.database.app.json',
+        'results-asr.database.key_descriptions.json',
         'displacements*/*/results-asr.database.material_fingerprint.json',
         'strains*/results-asr.database.material_fingerprint.json',
-        'results-asr.gs@calculate.json',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
     ]
@@ -164,9 +164,37 @@ def find_results_files():
 
 def construct_record_from_resultsfile(path):
     from asr.core.results import MetaDataNotSetError
-    from asr.core import read_json
+    from asr.core import read_json, get_recipe_from_name, ASRResult
     from ase.io import read
     result = read_json(path)
+    recipename = path.with_suffix('').name.split('-')[1]
+
+    if isinstance(result, ASRResult):
+        data = result.data
+        metadata = result.metadata.todict()
+    else:
+        assert isinstance(result, dict)
+        if recipename == 'asr.gs@calculate':
+            from asr.gs import GroundStateCalculationResult
+            from asr.calculators import Calculation
+            calculation = Calculation(
+                id='gs',
+                cls_name='gpaw',
+                paths=['gs.gpw'],
+            )
+            result = GroundStateCalculationResult.fromdata(
+                calculation=calculation)
+            data = result.data
+            metadata = {'asr_name': recipename}
+        else:
+            raise AssertionError(f'Unparsable old results file: path={path}')
+
+    recipe = get_recipe_from_name(recipename)
+    result = recipe.returns(
+        data=data,
+        metadata=metadata,
+        strict=False)
+
     atoms = read(path.parent / 'structure.json')
     try:
         parameters = result.metadata.params
@@ -278,6 +306,10 @@ class FileCacheBackend():  # noqa
     def migrate(self):
         for resultsfile in find_results_files():
             record = construct_record_from_resultsfile(resultsfile)
+            migrated_record = record.migrate()
+            if migrated_record:
+                print('-#' * 20, 'found migrated_record', migrated_record)
+                record = migrated_record
             selection = {
                 'run_specification.name':
                 record.run_specification.name,

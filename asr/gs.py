@@ -1,12 +1,13 @@
 """Electronic ground state properties."""
 import pathlib
 from ase import Atoms
+from ase.io import read
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
 from asr.core.command import ASRControl
 from asr.calculators import (
-    set_calculator_hook, Calculation, get_calculator_class)
+    set_calculator_hook, Calculation, get_calculator_class, Calculation)
 
 from asr.database.browser import (
     table, fig,
@@ -30,18 +31,31 @@ calculation.
 @prepare_result
 class GroundStateCalculationResult(ASRResult):
 
-    def migrate(self):
-        cls = type(self)
-        if 'calculation' not in self:
-            if pathlib.Path('gs.gpw').is_file():
-                Calc = get_calculator_class('gpaw')
-                calc = Calc()
-                calculation = calc.save(id='gs')
-                return cls.fromdata(calculation=calculation)
-
     calculation: Calculation
 
     key_descriptions = dict(calculation='Calculation object')
+
+
+def migrate(record):
+    """Migrate old ground state records."""
+    is_migrated = False
+
+    run_spec = record.run_specification
+    if 'atoms' not in run_spec.parameters:
+        is_migrated = True
+        calc = record.result.calculation.load()
+        run_spec.parameters['atoms'] = calc.atoms
+
+    if 'calculator' not in run_spec.parameters:
+        is_migrated = True
+        calculation = record.result.calculation
+        calc = calculation.load()
+        parameters = {'name': calculation.cls_name, **calc.parameters}
+        run_spec['parameters']['calculator'] = parameters
+
+    if is_migrated:
+        record.run_specification = run_spec
+        return record
 
 
 @command(module='asr.gs',
@@ -50,7 +64,8 @@ class GroundStateCalculationResult(ASRResult):
          resources='8:10h',
          argument_hooks=[set_calculator_hook],
          pass_control=True,
-         returns=GroundStateCalculationResult)
+         returns=GroundStateCalculationResult,
+         migrate=migrate)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

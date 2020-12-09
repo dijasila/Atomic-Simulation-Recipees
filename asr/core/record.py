@@ -3,6 +3,7 @@ import typing
 from .specification import RunSpecification
 from .resources import Resources
 from .utils import make_property
+from .results import get_object_matching_obj_id
 
 
 class RunRecord:  # noqa
@@ -37,6 +38,36 @@ class RunRecord:  # noqa
     @property
     def uid(self):  # noqa
         return self.data['run_specification'].uid
+
+    def migrate(self):
+        obj = get_object_matching_obj_id(self.run_specification.name)
+        if hasattr(obj, 'migrate'):
+            record = obj.migrate(self)
+        else:
+            record = self
+
+        is_migrated = False
+        migrated_data = {}
+        for attr in [
+                'result',
+                'run_specification',
+                'resources',
+                'side_effects',
+                'dependencies']:
+
+            attribute = getattr(record, attr)
+            if hasattr(attribute, 'migrate'):
+                migrated = attribute.migrate()
+                if migrated:
+                    is_migrated = True
+                    migrated_data[attr] = migrated
+                else:
+                    migrated_data[attr] = attribute
+            else:
+                migrated_data[attr] = attribute
+
+        if is_migrated:
+            return RunRecord(**migrated)
 
     def __str__(self):  # noqa
         string = str(self.run_specification)

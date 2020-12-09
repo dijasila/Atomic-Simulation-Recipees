@@ -154,6 +154,7 @@ class ASRCommand:
             save_results_file=None,
             argument_hooks=None,
             pass_control=False,
+            migrate=None,
     ):
         """Construct an instance of an ASRCommand.
 
@@ -170,6 +171,7 @@ class ASRCommand:
             from .cache import file_system_cache
             cache = file_system_cache
         self.cache = cache
+        self._migrate = migrate
         self.version = version
         if argument_hooks is None:
             self.argument_hooks = []
@@ -202,6 +204,11 @@ class ASRCommand:
 
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
+
+    def migrate(self, record):
+        if self._migrate:
+            return self._migrate(record)
+        return record
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
