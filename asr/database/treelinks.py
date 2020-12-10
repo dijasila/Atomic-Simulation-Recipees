@@ -47,13 +47,16 @@ def recursive_through_folders(path, include, exclude):
     """
     import os
 
+    atomfile = 'structure.json'
     folders = []
+
     for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
         for add in include:
             for dir in dirs:
                 if dir == add:
                     folder = Path(root + '/' + dir)
-                    print(root, dir, files, folder)
+                    if Path(folder / atomfile).is_file():
+                        folders.append(folder)
 
     return folders
 
@@ -63,31 +66,20 @@ def create_tree_links(folders):
 
     Based on the tree structure created from setup.defects.
     """
-    # import os
+    uids = []
+    for folder in folders:
+        fingerprint_res = read_json(folder
+                                    / 'results-asr.database.material_fingerprint.json')
+        uid = fingerprint_res['uid']
+        uids.append(uid)
 
-    return None
-    # parent = Path(path.abolute())
-    # is_found = False
+    fingerprint_res = read_json(folder
+                                / 'results-asr.database.material_fingerprint.json')
+    uid = fingerprint_res['uid']
+    uids.append(uid)
 
-    # while not is_found:
-    #     parent = Path(parent.absolute() / '../')
-    #     if str(parent.absolute()).e
+    links = {'uids': uids}
 
-    # folders = list(parent.glob('**/charge_0/'))
-    # uids = []
-    # for folder in folders:
-    #     fingerprint_res = read_json(folder
-    #                                 / 'results-asr.database.material_fingerprint.json')
-    #     uid = fingerprint_res['uid']
-    #     uids.append(uid)
+    write_links(folder, links)
 
-    # fingerprint_res = read_json(parent
-    #                             / 'results-asr.database.material_fingerprint.json')
-    # uid = fingerprint_res['uid']
-    # uids.append(uid)
-
-    # links = {'uids': uids}
-
-    # write_links(path, links)
-
-    # return uids
+    return uids
