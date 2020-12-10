@@ -4,10 +4,6 @@ from pathlib import Path
 import typing
 
 
-# TODO: write general write_links function and put into core functionality
-# TODO: implement more create_links functions for other projects
-
-
 @prepare_result
 class Result(ASRResult):
     """Container for treelinks result."""
@@ -33,7 +29,8 @@ def main(include: str = '',
     """
     p = Path('.')
 
-    links = create_tree_links(path=p, include, exclude)
+    folders = recursive_through_folders(p, include, exclude)
+    links = create_tree_links(folders)
 
     return Result.fromdata(links=links)
 
@@ -43,11 +40,32 @@ def write_links(path, link_uids):
     write_json(path / 'links.json', link_uids)
 
 
-def create_defect_links(path):
+def recursive_through_folders(path, include, exclude):
+    """Go through folders recursively to find folders.
+
+    Find folders with 'include' specifically and exclude folders with 'exclude'.
+    """
+    import os
+
+    folders = []
+    for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
+        for add in include:
+            for dir in dirs:
+                if dir == add:
+                    folder = Path(root + '/' + dir)
+                    print(root, dir, files, folder)
+
+    return folders
+
+
+def create_tree_links(folders):
     """Return a list of structure uids to link to.
 
     Based on the tree structure created from setup.defects.
     """
+    # import os
+
+    return None
     # parent = Path(path.abolute())
     # is_found = False
 
