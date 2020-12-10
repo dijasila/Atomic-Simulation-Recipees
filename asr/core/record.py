@@ -4,6 +4,7 @@ from .specification import RunSpecification
 from .resources import Resources
 from .utils import make_property
 from .results import get_object_matching_obj_id
+from .migrate import is_migratable
 
 
 class RunRecord:  # noqa
@@ -14,6 +15,7 @@ class RunRecord:  # noqa
     dependencies = make_property('dependencies')
     run_specification = make_property('run_specification')
     resources = make_property('resources')
+    tags = make_property('tags')
 
     def __init__(  # noqa
             self,
@@ -22,6 +24,7 @@ class RunRecord:  # noqa
             resources: Resources = None,
             side_effects: 'SideEffects' = None,
             dependencies: typing.List[str] = None,
+            tags: typing.List[str] = None,
     ):
         assert type(run_specification) == RunSpecification
         assert type(resources) == Resources
@@ -32,6 +35,7 @@ class RunRecord:  # noqa
             resources=resources,
             side_effects=side_effects,
             dependencies=dependencies,
+            tags=tags,
         )
 
     @property
@@ -42,35 +46,11 @@ class RunRecord:  # noqa
     def uid(self):  # noqa
         return self.data['run_specification'].uid
 
-    def migrate(self):
+    def migrate(self, cache):
+        """Delegate migration to function objects."""
         obj = get_object_matching_obj_id(self.run_specification.name)
-        if hasattr(obj, 'migrate'):
-            record = obj.migrate(self)
-        else:
-            record = self
-
-        is_migrated = False
-        migrated_data = {}
-        for attr in [
-                'result',
-                'run_specification',
-                'resources',
-                'side_effects',
-                'dependencies']:
-
-            attribute = getattr(record, attr)
-            if hasattr(attribute, 'migrate'):
-                migrated = attribute.migrate()
-                if migrated:
-                    is_migrated = True
-                    migrated_data[attr] = migrated
-                else:
-                    migrated_data[attr] = attribute
-            else:
-                migrated_data[attr] = attribute
-
-        if is_migrated:
-            return RunRecord(**migrated)
+        if is_migratable(obj):
+            obj.migrate(cache)
 
     def __str__(self):  # noqa
         string = str(self.run_specification)

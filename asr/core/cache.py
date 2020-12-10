@@ -239,7 +239,16 @@ def construct_record_from_resultsfile(path):
         ),
         resources=resources,
         result=result,
+        tags=['C2DB'],
     )
+
+
+def get_old_records():
+    records = []
+    for resultsfile in find_results_files():
+        record = construct_record_from_resultsfile(resultsfile)
+        records.append(record)
+    return records
 
 
 class LegacyFileSystemBackend:
@@ -319,22 +328,18 @@ class LegacyFileSystemBackend:
 
 class FileCacheBackend():  # noqa
 
-    def migrate(self):
-        for resultsfile in find_results_files():
-            record = construct_record_from_resultsfile(resultsfile)
-            migrated_record = record.migrate()
-            if migrated_record:
-                print('-#' * 20, 'found migrated_record', migrated_record)
-                record = migrated_record
+    def migrate(self, cache):
+        records = get_old_records()
+
+        for record in records:
             selection = {
                 'run_specification.name':
                 record.run_specification.name,
                 'run_specification.parameters':
                 record.run_specification.parameters,
             }
-            sel = Selection(**selection)
-            if not self.has(sel):
-                self.add(record)
+            if not cache.has(**selection):
+                cache.add(record)
 
     def __init__(
             self,
@@ -553,21 +558,53 @@ class Selection:
         return str(self.selection)
 
 
+class TwoStageCache:
+
+    def __init__(self, staging, backend):
+        self.staging = staging
+        self.backend = backend
+
+    def add(self, record):
+        return self.staging.add(record)
+
+    def has(self, selection: Selection):
+        staging_has = self.staging.has(selection)
+        backend_has = self.backend.has(selection)
+        return staging_has or backend_has
+
+    def select(self, selection: Selection):
+        staging_records = self.staging.select(selection)
+        backend_records = self.backend.select(selection)
+        return staging_records + backend_records
+
+
 class Cache:  # noqa
 
     def migrate(self):
         """Migrate cache data."""
-        self.backend.migrate()
+        staging_backend = MemoryCache()
+        file_system_backend = FileCacheBackend()
+        staging = Cache(backend=staging_backend)
+        migration_cache = Cache(
+            backend=TwoStageCache(
+                staging=staging_backend,
+                backend=file_system_backend,
+            )
+        )
+
+        self.backend.migrate(migration_cache)
+
+        for record in self.select():
+            record.migrate(migration_cache)
+
+        for record in staging.select():
+            if record not in self:
+                self.add(record)
 
     def __init__(self, backend):
         self.backend = backend
 
     def add(self, run_record: RunRecord):  # noqa
-        if self.has(run_specification=run_record.run_specification):
-            raise RunSpecificationAlreadyExists(
-                'This Run specification already exists in cache.'
-            )
-
         self.backend.add(run_record)
 
     def has(self, **selection):  # noqa
@@ -609,11 +646,15 @@ class Cache:  # noqa
             else:
                 run_record = func(asrcontrol, run_specification)
                 self.add(run_record)
-            return run_record
+
+                return run_record
         return wrapped
 
     def __call__(self):  # noqa
         return self.wrapper
+
+    def __contains__(self, record):
+        return self.has(run_specification=record.run_specification)
 
 
 class MemoryCache:

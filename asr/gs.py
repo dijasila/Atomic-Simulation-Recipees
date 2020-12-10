@@ -37,36 +37,32 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
-def migrate(record):
+def migrate_calculate_record(cache):
     """Migrate old ground state records."""
     is_migrated = False
 
-    run_spec = record.run_specification
-    if 'atoms' not in run_spec.parameters:
-        is_migrated = True
-        calc = record.result.calculation.load()
-        run_spec.parameters.atoms = calc.atoms
-
-    if 'calculator' not in run_spec.parameters:
-        is_migrated = True
+    records = cache.select(
+        **{
+            'run_specification.name': 'asr.gs::calculate',
+            'tags': lambda x: 'C2DB' in x,
+        }
+    )
+    for record in records:
+        run_spec = record.run_specification
         calculation = record.result.calculation
         calc = calculation.load()
         calc_parameters = {'name': calculation.cls_name, **calc.parameters}
+        run_spec.parameters.atoms = calc.atoms
         run_spec.parameters.calculator = calc_parameters
-
-    if is_migrated:
         record.run_specification = run_spec
-        return record
+        cache.add(record)
 
 
 @command(module='asr.gs',
-         creates=['gs.gpw'],
-         requires=['structure.json'],
-         resources='8:10h',
          argument_hooks=[set_calculator_hook],
          pass_control=True,
          returns=GroundStateCalculationResult,
-         migrate=migrate)
+         migrate=migrate_calculate_record)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
@@ -550,9 +546,35 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def migrate_c2db_records(cache):
+    """Migrate asr.gs::main records to have parameters."""
+    calculaterecord = cache.get(
+        **{
+            'run_specification.name': 'asr.gs::calculate',
+            'tags': lambda tags: 'C2DB' in tags,
+        }
+    )
+    record = cache.get(
+        **{
+            'run_specification.name': 'asr.gs::main',
+            'tags': lambda tags: 'C2DB' in tags,
+        }
+    )
+    parameters = calculaterecord.run_specification.parameters
+    record.run_specification.parameters = parameters
+    cache.add(record)
+
+
+def migrate(cache):
+    """Migrate ground state records."""
+    migrate_calculate_record(cache)
+    migrate_c2db_records(cache)
+
+
 @command(module='asr.gs',
          returns=Result,
-         argument_hooks=[set_calculator_hook])
+         argument_hooks=[set_calculator_hook],
+         migrate=migrate)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
