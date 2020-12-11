@@ -1,7 +1,12 @@
+import os
+import typing
+from pathlib import Path
+from fnmatch import fnmatch
 from asr.core import (command, option, ASRResult, prepare_result,
                       read_json, CommaStr)
-from pathlib import Path
-import typing
+
+
+# TODO: implement write_links() function properly
 
 
 @prepare_result
@@ -36,13 +41,25 @@ def main(include: str = '',
     else:
         links = []
         print('INFO: No links created based on the tree structure.')
-    print('INFO: Added new links to links.json.')
+    print('INFO: Added links to links.json.')
 
     return Result.fromdata(links=links)
 
 
 def write_links(path, link_uids):
-    from asr.core import write_json
+    """NEEDS TO BE PROPERLY IMPLEMENTED!"""
+    from asr.core import write_json  # , read_json
+    # if Path(path / 'links.json').is_file():
+    #     links = read_json(Path(path / 'links.json'))['uids']
+    #     assert isinstance(links, list), 'links.json broken!'
+    #     print('INFO: Old links: {}'.format(links))
+    #     for link in link_uids['uids']:
+    #         if link not in links:
+    #             links.append(link)
+    #     print('INFO: Updated links: {}'.format(links))
+    # else:
+    #     links = link_uids
+
     write_json(path / 'links.json', link_uids)
 
 
@@ -51,25 +68,28 @@ def recursive_through_folders(path, include, exclude):
 
     Find folders with 'include' specifically and exclude folders with 'exclude'.
     """
-    import os
-
     atomfile = 'structure.json'
     folders = []
 
     if exclude == ['']:
         for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
-            for add in include:
-                for dir in dirs:
-                    if dir == add or include == ['']:
+            for dir in dirs:
+                for add in include:
+                    rootlist = root.split('/')
+                    if (fnmatch(dir, add) or include == ['']
+                       or any(fnmatch(rootstring, add)
+                              for rootstring in rootlist)):
                         folder = Path(root + '/' + dir)
                         if Path(folder / atomfile).is_file():
                             folders.append(folder)
     elif include == [''] and exclude != ['']:
         for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
-            for rm in exclude:
-                for dir in dirs:
+            for dir in dirs:
+                for rm in exclude:
                     rootlist = root.split('/')
-                    if dir != rm and rm not in rootlist:
+                    if (not fnmatch(dir, rm)
+                       and not any(fnmatch(rootstring, rm)
+                                   for rootstring in rootlist)):
                         folder = Path(root + '/' + dir)
                         if Path(folder / atomfile).is_file():
                             folders.append(folder)
