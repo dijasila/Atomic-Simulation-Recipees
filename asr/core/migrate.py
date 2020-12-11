@@ -3,3 +3,8 @@ def is_migratable(obj):
         if obj.migrate is not None:
             return True
     return False
+
+
+class NoMigrationError(Exception):
+
+    pass

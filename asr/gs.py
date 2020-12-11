@@ -37,25 +37,44 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
+def only(func):
+    ntimes = [0]
+
+    def wrapper(*args, **kwargs):
+        ntimes[0] += 1
+        if ntimes[0] > 1:
+            return
+        else:
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
+@only
 def migrate_calculate_record(cache):
     """Migrate old ground state records."""
-    is_migrated = False
+    migration_label = 'Migrate record from C2DB.'
+    selection = {
+        'run_specification.name': 'asr.gs::calculate',
+        'migrations': lambda migrations: migration_label not in migrations,
+    }
+    orig_records = cache.select(**selection)
 
-    records = cache.select(
-        **{
-            'run_specification.name': 'asr.gs::calculate',
-            'tags': lambda x: 'C2DB' in x,
-        }
-    )
-    for record in records:
-        run_spec = record.run_specification
-        calculation = record.result.calculation
-        calc = calculation.load()
-        calc_parameters = {'name': calculation.cls_name, **calc.parameters}
-        run_spec.parameters.atoms = calc.atoms
-        run_spec.parameters.calculator = calc_parameters
-        record.run_specification = run_spec
-        cache.add(record)
+    if len(orig_records) == 0:
+        return
+    assert len(orig_records) == 1, [
+        orig_record.migrations for orig_record in orig_records]
+
+    orig_record = orig_records[0]
+    migrated_record = orig_record.copy()
+    run_spec = migrated_record.run_specification
+    calculation = migrated_record.result.calculation
+    calc = calculation.load()
+    calc_parameters = {'name': calculation.cls_name, **calc.parameters}
+    run_spec.parameters.atoms = calc.atoms
+    run_spec.parameters.calculator = calc_parameters
+    migrated_record.run_specification = run_spec
+    cache.migrate_record(orig_record, migrated_record, migration_label)
 
 
 @command(module='asr.gs',
@@ -546,8 +565,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def migrate_c2db_records(cache):
+@only
+def migrate_main_record(cache):
     """Migrate asr.gs::main records to have parameters."""
+    migration_label = 'Migrate record from C2DB.'
     calculaterecord = cache.get(
         **{
             'run_specification.name': 'asr.gs::calculate',
@@ -557,18 +578,19 @@ def migrate_c2db_records(cache):
     record = cache.get(
         **{
             'run_specification.name': 'asr.gs::main',
-            'tags': lambda tags: 'C2DB' in tags,
+            'migrations': lambda migrations: migration_label not in migrations,
         }
     )
+    migrated_record = record.copy()
     parameters = calculaterecord.run_specification.parameters
     record.run_specification.parameters = parameters
-    cache.add(record)
+    cache.migrate_record(record, migrated_record, migration_label)
 
 
 def migrate(cache):
     """Migrate ground state records."""
     migrate_calculate_record(cache)
-    migrate_c2db_records(cache)
+    migrate_main_record(cache)
 
 
 @command(module='asr.gs',

@@ -6,6 +6,10 @@ from .codes import Codes, Code
 from .results import get_object_matching_obj_id
 
 
+def get_new_uuid():
+    return uuid.uuid4().hex
+
+
 class RunSpecification:  # noqa
 
     def __init__(  # noqa
@@ -78,7 +82,7 @@ def construct_run_spec(
         codes = Codes([Code.from_string(code) for code in codes])
 
     if uid is None:
-        uid = uuid.uuid4().hex
+        uid = get_new_uuid()
 
     return RunSpecification(
         name=name,

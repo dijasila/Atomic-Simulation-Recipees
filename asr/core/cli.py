@@ -425,12 +425,14 @@ def migrate(apply=False):
               default='run_specification.name', type=str)
 @click.option('-w', '--width', default=40, type=int,
               help='Maximum width of column.')
-def ls(functionname, formatting, sort, width):
+@click.option('-i', '--include-migrated', is_flag=True,
+              help='Also include migrated records.')
+def ls(functionname, formatting, sort, width, include_migrated):
     from asr.core.cache import get_cache
 
     cache = get_cache()
 
-    records = cache.select()
+    records = cache.select(include_migrated=include_migrated)
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []

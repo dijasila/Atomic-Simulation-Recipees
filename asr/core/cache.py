@@ -70,12 +70,6 @@ class SingleRunFileCache(AbstractCache):  # noqa
         return f'results-{name}.json'
 
     def add(self, run_record: RunRecord):  # noqa
-        if self.has(run_record.run_specification):
-            raise RunSpecificationAlreadyExists(
-                'You are using the SingleRunFileCache which does not'
-                'support multiple runs of the same function. '
-                'Please specify another cache.'
-            )
         name = run_record.run_specification.name
         filename = self._name_to_results_filename(name)
         serialized_object = self.serializer.serialize(run_record)
@@ -517,10 +511,12 @@ class Selection:
                 comparator = value.__eq__
             elif type(value) is float:
                 comparator = approx(value)
-            elif hasattr(value, '__dict__'):
+            elif hasattr(value, '__dict__') and value.__dict__:
                 norm = self.normalize_selection(value.__dict__)
                 for keynorm, valuenorm in norm.items():
                     normalized['.'.join([key, keynorm])] = valuenorm
+            elif callable(value):
+                comparator = value
             else:
                 raise AssertionError(f'Unknown type {type(value)}')
 
@@ -574,8 +570,10 @@ class TwoStageCache:
 
     def select(self, selection: Selection):
         staging_records = self.staging.select(selection)
+        if staging_records:
+            return staging_records
         backend_records = self.backend.select(selection)
-        return staging_records + backend_records
+        return backend_records
 
 
 class Cache:  # noqa
@@ -597,15 +595,45 @@ class Cache:  # noqa
         for record in self.select():
             record.migrate(migration_cache)
 
-        for record in staging.select():
-            if record not in self:
+        for record in staging.select(include_migrated=True):
+            if record in self:
+                print(f'Updating {record.uid=}')
+                self.update(record)
+            else:
+                print(f'Adding {record.uid=}')
                 self.add(record)
 
     def __init__(self, backend):
         self.backend = backend
 
     def add(self, run_record: RunRecord):  # noqa
+        selection = {'run_specification.uid': run_record.run_specification.uid}
+        has_uid = self.has(**selection)
+        assert not has_uid, (
+            'This uid already exists in the cache. Cannot overwrite.'
+        )
         self.backend.add(run_record)
+
+    def update(self, record: RunRecord):
+        """Update existing record with record.uid."""
+        selection = {'run_specification.uid': record.uid}
+        has_uid = self.has(**selection)
+        assert has_uid, 'Unknown run UID to update.'
+        self.backend.add(record)
+
+    def migrate_record(
+            self, original_record, migrated_record, migration_label):
+        from asr.core.specification import get_new_uuid
+        migrated_uid = get_new_uuid()
+        original_uid = original_record.uid
+
+        migrated_record.run_specification.uid = migrated_uid
+
+        original_record.migrated_to = migrated_uid
+        migrated_record.migrated_from = original_uid
+        migrated_record.migrations.append(migration_label)
+        self.update(original_record)
+        self.add(migrated_record)
 
     def has(self, **selection):  # noqa
         selection = Selection(
@@ -620,7 +648,7 @@ class Cache:  # noqa
         assert len(records) == 1, f'More than one record matched! records={records}'
         return records[0]
 
-    def select(self, **selection):  # noqa
+    def select(self, include_migrated=False, **selection):  # noqa
         """Select records.
 
         Selection can be in the style of
@@ -628,6 +656,11 @@ class Cache:  # noqa
         cache.select(uid=uid)
         cache.select(name='asr.gs::main')
         """
+        if include_migrated is not None:
+            if not include_migrated:
+                selection['migrated_to'] = (
+                    lambda migrated_to: migrated_to is None
+                )
         selection = Selection(
             **selection
         )
@@ -654,7 +687,7 @@ class Cache:  # noqa
         return self.wrapper
 
     def __contains__(self, record):
-        return self.has(run_specification=record.run_specification)
+        return self.has(uid=record.uid)
 
 
 class MemoryCache:
