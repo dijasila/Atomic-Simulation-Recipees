@@ -4,7 +4,6 @@ import typing
 
 
 # TODO: - standardisation of links.json (names, write and read processes)
-# TODO: - what else would be interesting for the results?
 
 
 @prepare_result
@@ -58,7 +57,7 @@ def main(target: str,
         data = refrow.data
         if linkfilename in data:
             formatted_links = []
-            uids_to_link_to = refrow.data[linkfilename]
+            uids_to_link_to = refrow.data[linkfilename]['uids']
             for uid in uids_to_link_to['uids']:
                 for dbfilename, uids_to_row in uids_for_each_db.items():
                     metadata = db_connections[dbfilename].metadata
