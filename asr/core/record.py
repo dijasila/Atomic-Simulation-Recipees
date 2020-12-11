@@ -33,10 +33,14 @@ class RunRecord:  # noqa
             migrated_to: str = None,
             tags: typing.List[str] = None,
     ):
-        assert type(run_specification) == RunSpecification
-        assert type(resources) == Resources
         if migrations is None:
             migrations = []
+
+        if resources is None:
+            resources = Resources()
+
+        assert type(run_specification) == RunSpecification
+        assert type(resources) == Resources
         # XXX strictly enforce rest of types.
         self.data = dict(
             run_specification=run_specification,

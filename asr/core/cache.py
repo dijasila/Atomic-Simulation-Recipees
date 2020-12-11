@@ -680,7 +680,7 @@ class Cache:  # noqa
                 run_record = func(asrcontrol, run_specification)
                 self.add(run_record)
 
-                return run_record
+            return run_record
         return wrapped
 
     def __call__(self):  # noqa
