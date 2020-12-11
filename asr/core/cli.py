@@ -417,7 +417,7 @@ def migrate(apply=False):
 
 
 @cache.command()
-@click.argument('functionname', required=False)
+@click.argument('selection', required=False, nargs=-1)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
                        'run_specification.parameters '), type=str)
@@ -427,12 +427,23 @@ def migrate(apply=False):
               help='Maximum width of column.')
 @click.option('-i', '--include-migrated', is_flag=True,
               help='Also include migrated records.')
-def ls(functionname, formatting, sort, width, include_migrated):
+def ls(selection, formatting, sort, width, include_migrated):
     from asr.core.cache import get_cache
-
+    if selection:
+        newsel = {}
+        for keyvalue in selection:
+            key, value = keyvalue.split('=')
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+            newsel[key] = value
+        selection = newsel
+    else:
+        selection = {}
     cache = get_cache()
 
-    records = cache.select(include_migrated=include_migrated)
+    records = cache.select(**selection, include_migrated=include_migrated)
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []
@@ -444,9 +455,6 @@ def ls(functionname, formatting, sort, width, include_migrated):
         formats.append(fmt)
     rows = [[item.split('.')[-1] for item in items]]
     for record in records:
-        run_spec = record.run_specification
-        if functionname and functionname != run_spec.name:
-            continue
         row = []
         for item, fmt in zip(items, formats):
             obj = get_item(item.split('.'), record)

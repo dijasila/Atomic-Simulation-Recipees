@@ -62,6 +62,10 @@ class RunRecord:  # noqa
     def uid(self):  # noqa
         return self.data['run_specification'].uid
 
+    @property
+    def name(self):  # noqa
+        return self.data['run_specification'].name
+
     def migrate(self, cache):
         """Delegate migration to function objects."""
         obj = get_object_matching_obj_id(self.run_specification.name)
