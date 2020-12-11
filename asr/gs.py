@@ -86,7 +86,6 @@ def migrate_calculate_record(cache):
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(
-        asrcontrol: ASRControl,
         atoms: Atoms,
         calculator: dict = {
             'name': 'gpaw',
@@ -101,6 +100,8 @@ def calculate(
             'txt': 'gs.txt',
             'charge': 0
         },
+        *,
+        asrcontrol: ASRControl,
 ) -> GroundStateCalculationResult:
     """Calculate ground state file.
 

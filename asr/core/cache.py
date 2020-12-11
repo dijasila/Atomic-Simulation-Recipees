@@ -597,10 +597,8 @@ class Cache:  # noqa
 
         for record in staging.select(include_migrated=True):
             if record in self:
-                print(f'Updating {record.uid=}')
                 self.update(record)
             else:
-                print(f'Adding {record.uid=}')
                 self.add(record)
 
     def __init__(self, backend):
