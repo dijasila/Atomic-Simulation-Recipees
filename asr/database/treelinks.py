@@ -30,7 +30,13 @@ def main(include: str = '',
     p = Path('.')
 
     folders = recursive_through_folders(p, include, exclude)
-    links = create_tree_links(folders)
+    if folders != []:
+        links = create_tree_links(folders)
+        print('INFO: Created links based on the tree structure.')
+    else:
+        links = []
+        print('INFO: No links created based on the tree structure.')
+    print('INFO: Added new links to links.json.')
 
     return Result.fromdata(links=links)
 
@@ -50,13 +56,26 @@ def recursive_through_folders(path, include, exclude):
     atomfile = 'structure.json'
     folders = []
 
-    for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
-        for add in include:
-            for dir in dirs:
-                if dir == add:
-                    folder = Path(root + '/' + dir)
-                    if Path(folder / atomfile).is_file():
-                        folders.append(folder)
+    if exclude == ['']:
+        for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
+            for add in include:
+                for dir in dirs:
+                    if dir == add or include == ['']:
+                        folder = Path(root + '/' + dir)
+                        if Path(folder / atomfile).is_file():
+                            folders.append(folder)
+    elif include == [''] and exclude != ['']:
+        for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
+            for rm in exclude:
+                for dir in dirs:
+                    rootlist = root.split('/')
+                    if dir != rm and rm not in rootlist:
+                        folder = Path(root + '/' + dir)
+                        if Path(folder / atomfile).is_file():
+                            folders.append(folder)
+    elif include != [''] and exclude != ['']:
+        raise AssertionError('It is not possible to give both an include and exclude '
+                             'list as input to asr.database.treelinks!')
 
     return folders
 
@@ -66,17 +85,16 @@ def create_tree_links(folders):
 
     Based on the tree structure created from setup.defects.
     """
+    print('INFO: Create links for the following folders:')
+
     uids = []
     for folder in folders:
         fingerprint_res = read_json(folder
                                     / 'results-asr.database.material_fingerprint.json')
         uid = fingerprint_res['uid']
-        uids.append(uid)
-
-    fingerprint_res = read_json(folder
-                                / 'results-asr.database.material_fingerprint.json')
-    uid = fingerprint_res['uid']
-    uids.append(uid)
+        if uid not in uids:
+            uids.append(uid)
+            print(f"      {folder.absolute()} -> uid: {uid}")
 
     links = {'uids': uids}
 
