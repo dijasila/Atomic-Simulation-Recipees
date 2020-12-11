@@ -654,8 +654,13 @@ def get_attribute(obj, attrs):
         return obj
 
     for attr in attrs:
-        obj = getattr(obj, attr, None)
+        print(f'{obj=}')
+        try:
+            obj = obj[attr]
+        except TypeError:
+            obj = getattr(obj, attr, None)
 
+    print(f'{obj=}')
     return obj
 
 

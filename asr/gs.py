@@ -143,7 +143,6 @@ def calculate(
     'asr.gs@main',
     '+,calculator.mode.ecut',
     '+,calculator.kpts.density',
-    '+,calculator.kpts.size',
 )
 def webpanel(result, row, key_descriptions):
 
