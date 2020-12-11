@@ -198,6 +198,9 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
 
     if cell_type == 'hexagonal':
         for top, (U_cc, t_c) in zip(rotated_mats, transforms):
+            if len(positions) == 1:
+                break
+
             x = positions[1, 0]
             y = positions[1, 1]
             append_helper(x, y, top, atoms, (U_cc, t_c))
