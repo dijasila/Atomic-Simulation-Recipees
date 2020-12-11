@@ -748,6 +748,8 @@ def cache_webpanel(recipename, *selectors):
                     )
                     table.append(row)
 
+                # Most important entry on top
+                table = table[::-1]
                 html = par(bold('Convergence') + br +
                            html_table(table, header=header))
                 value = describe_entry(value, description=html)
