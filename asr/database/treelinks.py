@@ -48,17 +48,7 @@ def main(include: str = '',
 
 def write_links(path, link_uids):
     """NEEDS TO BE PROPERLY IMPLEMENTED!"""
-    from asr.core import write_json  # , read_json
-    # if Path(path / 'links.json').is_file():
-    #     links = read_json(Path(path / 'links.json'))['uids']
-    #     assert isinstance(links, list), 'links.json broken!'
-    #     print('INFO: Old links: {}'.format(links))
-    #     for link in link_uids['uids']:
-    #         if link not in links:
-    #             links.append(link)
-    #     print('INFO: Updated links: {}'.format(links))
-    # else:
-    #     links = link_uids
+    from asr.core import write_json
 
     write_json(path / 'links.json', link_uids)
 
