@@ -18,7 +18,7 @@ class RunRecord:  # noqa
     resources = make_property('resources')
     migrated_from = make_property('migrated_from')
     migrated_to = make_property('migrated_to')
-    migrations = make_property('migrations')
+    migration_id = make_property('migration_id')
     tags = make_property('tags')
 
     def __init__(  # noqa
@@ -28,14 +28,11 @@ class RunRecord:  # noqa
             resources: Resources = None,
             side_effects: 'SideEffects' = None,
             dependencies: typing.List[str] = None,
-            migrations: typing.List[str] = None,
+            migration_id: str = None,
             migrated_from: str = None,
             migrated_to: str = None,
             tags: typing.List[str] = None,
     ):
-        if migrations is None:
-            migrations = []
-
         if resources is None:
             resources = Resources()
 
@@ -48,7 +45,7 @@ class RunRecord:  # noqa
             resources=resources,
             side_effects=side_effects,
             dependencies=dependencies,
-            migrations=migrations,
+            migration_id=migration_id,
             migrated_from=migrated_from,
             migrated_to=migrated_to,
             tags=tags,
@@ -66,11 +63,11 @@ class RunRecord:  # noqa
     def name(self):  # noqa
         return self.data['run_specification'].name
 
-    def migrate(self, cache):
+    def get_migrations(self, cache):
         """Delegate migration to function objects."""
         obj = get_object_matching_obj_id(self.run_specification.name)
-        if is_migratable(obj):
-            obj.migrate(cache)
+        if obj.migrations:
+            return obj.migrations(cache)
 
     def copy(self):
         data = copy.deepcopy(self.data)

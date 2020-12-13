@@ -400,20 +400,47 @@ def get_item(attrs: List[str], obj):
     for attr in attrs:
         if hasattr(obj, attr):
             obj = getattr(obj, attr)
-        elif attr in obj:
-            obj = obj[attr]
         else:
-            obj = None
+            try:
+                obj = obj[attr]
+            except TypeError:
+                obj = None
 
     return obj
 
 
 @cache.command()
+@click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 def migrate(apply=False):
     """Look for cache migrations."""
     from asr.core.cache import get_cache
     cache = get_cache()
-    cache.migrate()
+    migrations = cache.get_migrations()
+
+    if apply:
+        migrations.apply()
+    else:
+        if migrations:
+            migr_text = str(migrations).split('\n')
+
+            if len(migr_text) > 5:
+                migr_text = migr_text[:3] + ['...'] + migr_text[-2:]
+            text = '\n'.join(migr_text)
+
+            print(
+                '\n'.join(
+                    [
+                        'You have unapplied migrations:',
+                        text,
+                        '',
+                        'Run',
+                        '    $ asr cache migrate --apply',
+                        'to apply these migrations.',
+                    ]
+                )
+            )
+        else:
+            print('All records up to date. No migrations to apply.')
 
 
 @cache.command()

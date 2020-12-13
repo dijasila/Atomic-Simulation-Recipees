@@ -131,120 +131,6 @@ class SingleRunFileCache(AbstractCache):  # noqa
         return wrapper
 
 
-def find_results_files():
-    relevant_patterns = [
-        'results-asr.*.json',
-        'displacements*/*/results-*.json',
-        'strains*/results-*.json',
-    ]
-
-    skip_patterns = [
-        'results-asr.database.fromtree.json',
-        'results-asr.database.app.json',
-        'results-asr.database.key_descriptions.json',
-        'displacements*/*/results-asr.database.material_fingerprint.json',
-        'strains*/results-asr.database.material_fingerprint.json',
-        '*asr.setup.params.json',
-        '*asr.setup.params.json',
-    ]
-
-    for pattern in relevant_patterns:
-        for path in pathlib.Path().glob(pattern):
-            filepath = str(path)
-            if any(fnmatch.fnmatch(filepath, skip_pattern)
-                   for skip_pattern in skip_patterns):
-                continue
-            yield path
-
-
-def construct_record_from_resultsfile(path):
-    from asr.core.results import MetaDataNotSetError
-    from asr.core import read_json, get_recipe_from_name, ASRResult
-    from ase.io import read
-    result = read_json(path)
-    recipename = path.with_suffix('').name.split('-')[1]
-
-    if isinstance(result, ASRResult):
-        data = result.data
-        metadata = result.metadata.todict()
-    else:
-        assert isinstance(result, dict)
-        if recipename == 'asr.gs@calculate':
-            from asr.gs import GroundStateCalculationResult
-            from asr.calculators import Calculation
-            calculation = Calculation(
-                id='gs',
-                cls_name='gpaw',
-                paths=['gs.gpw'],
-            )
-            result = GroundStateCalculationResult.fromdata(
-                calculation=calculation)
-            data = result.data
-            metadata = {'asr_name': recipename}
-        else:
-            raise AssertionError(f'Unparsable old results file: path={path}')
-
-    recipe = get_recipe_from_name(recipename)
-    result = recipe.returns(
-        data=data,
-        metadata=metadata,
-        strict=False)
-
-    atoms = read(path.parent / 'structure.json')
-    try:
-        parameters = result.metadata.params
-    except MetaDataNotSetError:
-        parameters = {}
-
-    parameters = Parameters(parameters)
-    if 'atoms' not in parameters:
-        parameters.atoms = atoms.copy()
-
-    try:
-        code_versions = result.metadata.code_versions
-    except MetaDataNotSetError:
-        code_versions = {}
-
-    from asr.core.resources import Resources
-    try:
-        resources = result.metadata.resources
-        resources = Resources(
-            execution_start=resources.get('tstart'),
-            execution_end=resources.get('tend'),
-            execution_duration=resources['time'],
-            ncores=resources['ncores'],
-        )
-    except MetaDataNotSetError:
-        resources = Resources()
-
-    name = result.metadata.asr_name
-    if '@' not in name:
-        name += '::main'
-    else:
-        name = name.replace('@', '::')
-
-    return RunRecord(
-        run_specification=RunSpecification(
-            name=name,
-            parameters=parameters,
-            version=-1,
-            codes=code_versions,
-            uid=uuid.uuid4().hex,
-        ),
-        resources=resources,
-        result=result,
-        tags=['C2DB'],
-    )
-
-
-def get_old_records():
-    records = []
-    for resultsfile in find_results_files():
-        record = construct_record_from_resultsfile(resultsfile)
-        records.append(record)
-    return records
-
-
 class LegacyFileSystemBackend:
 
     def migrate(self):
@@ -322,18 +208,18 @@ class LegacyFileSystemBackend:
 
 class FileCacheBackend():  # noqa
 
-    def migrate(self, cache):
-        records = get_old_records()
+    # def migrate(self, cache):
+    #     records = get_old_records()
 
-        for record in records:
-            selection = {
-                'run_specification.name':
-                record.run_specification.name,
-                'run_specification.parameters':
-                record.run_specification.parameters,
-            }
-            if not cache.has(**selection):
-                cache.add(record)
+    #     for record in records:
+    #         selection = {
+    #             'run_specification.name':
+    #             record.run_specification.name,
+    #             'run_specification.parameters':
+    #             record.run_specification.parameters,
+    #         }
+    #         if not cache.has(**selection):
+    #             cache.add(record)
 
     def __init__(
             self,
@@ -578,28 +464,32 @@ class TwoStageCache:
 
 class Cache:  # noqa
 
-    def migrate(self):
+    def get_migrations(self):
         """Migrate cache data."""
-        staging_backend = MemoryCache()
-        file_system_backend = FileCacheBackend()
-        staging = Cache(backend=staging_backend)
-        migration_cache = Cache(
-            backend=TwoStageCache(
-                staging=staging_backend,
-                backend=file_system_backend,
-            )
+        # staging_backend = MemoryCache()
+        # file_system_backend = FileCacheBackend()
+
+        # migration_cache = Cache(
+        #     backend=TwoStageCache(
+        #         staging=staging_backend,
+        #         backend=file_system_backend,
+        #     )
+        # )
+
+        from asr.core.migrate import (
+            Migrations,
+            Migration,
+            generate_resultsfile_migrations,
+            generate_record_migrations,
         )
-
-        self.backend.migrate(migration_cache)
-
-        for record in self.select():
-            record.migrate(migration_cache)
-
-        for record in staging.select(include_migrated=True):
-            if record in self:
-                self.update(record)
-            else:
-                self.add(record)
+        migrations = Migrations(
+            generators=[
+                generate_resultsfile_migrations,
+                generate_record_migrations,
+            ],
+            cache=self,
+        )
+        return migrations
 
     def __init__(self, backend):
         self.backend = backend
