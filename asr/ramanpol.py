@@ -75,7 +75,7 @@ def main(
     wavelengths: typing.List[float] = [
         488.0, 532.0, 594.0, 612.0, 633.0, 708.0, 780.0,
         850.0, 1064.0, 1550.0, 2600.0, 4800.0, 10600.0],
-    removefiles: str = 'gs', prefix: str = '',
+    removefiles: str = 'chi', prefix: str = '',
     calc_ph: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
@@ -101,6 +101,13 @@ def main(
     from ase.utils.timing import Timer
     from gpaw.mpi import world
     try:
+        # atoms = read('structure.json')
+        # import spglib
+        # sg = spglib.get_spacegroup((
+        #     atoms.cell,
+        #     atoms.get_scaled_positions(),
+        #     atoms.get_atomic_numbers()), symprec=1e-3)
+        # print(sg)
         timer = Timer()
         with timer('Phonon calculations'):
             parprint('Starting a phonon calculation ...')
@@ -180,8 +187,8 @@ def plot_raman(row, filename):
     # All required settings
     params = {'broadening': 3.0,  # in cm^-1
               'wavelength': 1,  # index
-              'polarization': ['xx', 'yy', 'zz'],
-            #   'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
+            #   'polarization': ['xx', 'yy', 'zz'],
+              'polarization': ['xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
               'temperature': 300}  # in K
 
     # Read the data from the disk
@@ -213,6 +220,7 @@ def plot_raman(row, filename):
     minw = -maxw / 100
     ww = np.linspace(minw, maxw, 2 * maxw)
     rr = {}
+
     # I_hh = np.zeros((len(freqs_l)))
     # I_hv = np.zeros((len(freqs_l)))
     # for mode in range(len(freqs_l)):
@@ -358,7 +366,7 @@ def calc_polarized_raman(
     Epar = np.zeros((3, npsi), dtype=complex)
     Eperp = np.zeros((3, npsi), dtype=complex)
     for ii in range(3):
-        Ein[ii] = (1 * in_bas[0][ii] + 0 * in_bas[1][ii])
+        Ein[ii] = (pte * in_bas[0][ii] + ptm * in_bas[1][ii])
         Epar[ii] = (pte * out_bas[0][ii] + ptm * out_bas[1][ii])
         Eperp[ii] = (ptm * out_bas[0][ii] - pte * out_bas[1][ii])
 
@@ -402,7 +410,7 @@ def symmetrize_chi(atoms, chi_vvl):
     sg = spglib.get_symmetry((
         atoms.cell,
         atoms.get_scaled_positions(),
-        atoms.get_atomic_numbers()), symprec=1e-4)
+        atoms.get_atomic_numbers()), symprec=1e-3)
     op_scc = sg['rotations']
     cell_cv = atoms.cell
     op_svv = [np.linalg.inv(cell_cv).dot(op_cc.T).dot(cell_cv) for
@@ -432,6 +440,7 @@ def get_chis(
     atoms = read('structure.json')
     mass_a = atoms.get_masses()
     set_chi_ivvw = []
+    mml_names = []
     for mode, freq in enumerate(freqs_l):
         if mode < 3:
             continue
@@ -444,11 +453,12 @@ def get_chis(
         n_a = np.linalg.norm(mode_av, axis=1)
         mode_av /= np.max(n_a)
         mode_av /= np.sqrt(mass_a)[:, np.newaxis]
-
+        
         for ind in range(2):
             atoms_new.set_positions(pos_Nav + mode_av * disp * (2 * ind - 1))
             sign = ['+', '-'][ind % 2]
             mml_name = prefix + f'mml_{mode}{sign}.npz'
+            mml_names.append(mml_name)
             if not Path(mml_name).is_file():
                 gs_name = prefix + f'gs_{mode}{sign}.gpw'
                 if not Path(gs_name).is_file():
@@ -462,8 +472,9 @@ def get_chis(
                 # Calculate momentum matrix:
                 make_nlodata(gs_name=gs_name, out_name=mml_name)
 
-                if world.rank == 0:
-                    if removefiles == 'all' or removefiles == 'gs':
+                if removefiles in ['all', 'gs', 'chi']:
+                    world.barrier()
+                    if world.rank == 0:
                         ff = Path(gs_name)
                         if ff.is_file():
                             ff.unlink()
@@ -476,15 +487,19 @@ def get_chis(
             # sym_chi_vvw = chi_vvw
             parprint(f'The chi calculation for mode {mode}{sign} is done.')
             sys.stdout.flush()
-            if removefiles == 'all' or removefiles == 'chi':
-                ff = Path(mml_name)
-                if ff.is_file():
-                    ff.unlink()
 
             chi_ivvw[ind] = sym_chi_vvw
 
         set_chi_ivvw.append(chi_ivvw)
 
+    # Remove extra files
+    if removefiles in ['all', 'chi']:
+        world.barrier()
+        if world.rank == 0:
+            for mml_name in mml_names:
+                ff = Path(mml_name)
+                if ff.is_file():
+                    ff.unlink()
     results = {
         'freqs_w': freqs_w,
         'chi_livvw': np.array(set_chi_ivvw),
@@ -522,7 +537,7 @@ def find_phonons(calculator, dftd3=False, disp=0.05, prefix=''):
         cell=atoms.get_cell(),
         scaled_positions=atoms.get_scaled_positions())
 
-    phonon = Phonopy(phonopy_atoms, supercell)
+    phonon = Phonopy(phonopy_atoms, supercell, symprec=1e-3)
     phonon.generate_displacements(distance=disp, is_plusminus=True)
     displaced_sc = phonon.get_supercells_with_displacements()
     scell = displaced_sc[0]
