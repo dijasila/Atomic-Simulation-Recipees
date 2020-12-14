@@ -42,7 +42,7 @@ def migrate_calculate_record(cache, selection):
     orig_records = cache.select(**selection)
 
     assert len(orig_records) == 1, [
-        orig_record.migration for orig_record in orig_records]
+        orig_record.migration_id for orig_record in orig_records]
 
     orig_record = orig_records[0]
     migrated_record = orig_record.copy()
