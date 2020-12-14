@@ -470,7 +470,7 @@ def ls(selection, formatting, sort, width, include_migrated):
         selection = {}
     cache = get_cache()
 
-    records = cache.select(**selection, include_migrated=include_migrated)
+    records = cache.select(**selection)
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []

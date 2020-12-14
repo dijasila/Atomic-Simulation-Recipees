@@ -536,7 +536,7 @@ class Cache:  # noqa
         assert len(records) == 1, f'More than one record matched! records={records}'
         return records[0]
 
-    def select(self, include_migrated=False, **selection):  # noqa
+    def select(self, **selection):  # noqa
         """Select records.
 
         Selection can be in the style of
@@ -544,11 +544,6 @@ class Cache:  # noqa
         cache.select(uid=uid)
         cache.select(name='asr.gs::main')
         """
-        if include_migrated is not None:
-            if not include_migrated:
-                selection['migrated_to'] = (
-                    lambda migrated_to: migrated_to is None
-                )
         selection = Selection(
             **selection
         )
@@ -559,6 +554,7 @@ class Cache:  # noqa
             selection = {
                 'run_specification.name': run_specification.name,
                 'run_specification.parameters': run_specification.parameters,
+                'migrated_to': lambda migrated_to: migrated_to is None,
             }
             if self.has(**selection):
                 run_record = self.get(**selection)

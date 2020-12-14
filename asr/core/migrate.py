@@ -24,7 +24,7 @@ class Migrations:
         self.generators = generators
         self.cache = cache
         self.done = {record.migration_id
-                     for record in cache.select(include_migrated=True)
+                     for record in cache.select()
                      if record.migration_id}
 
     def __bool__(self):
@@ -204,26 +204,27 @@ def get_old_records():
     return records
 
 
-def add_resultsfile_record(cache, resultsfile):
+def add_resultsfile_record(resultsfile):
     record = construct_record_from_resultsfile(resultsfile)
     return None, record
 
 
+def get_resultfile_migration(path):
+    return Migration(
+        add_resultsfile_record,
+        name='Migrate resultsfile ' + str(path),
+        args=(path, ),
+    )
+
+
 def generate_resultsfile_migrations(cache):
     for resultsfile in find_results_files():
-        yield Migration(
-            add_resultsfile_record,
-            name='Migrate resultsfile ' + str(resultsfile),
-            args=(cache, resultsfile))
+        yield get_resultfile_migration(resultsfile)
 
 
 def generate_record_migrations(cache):
-
-    migrations = []
     for record in cache.select():
         record_migrations = record.get_migrations(cache)
         if record_migrations:
-            migrations.extend(record_migrations)
-
-    for migration in migrations:
-        yield migration
+            for migration in record_migrations:
+                yield migration

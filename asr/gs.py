@@ -67,7 +67,7 @@ def get_gs_calculate_migrations(cache):
         return [
             Migration(
                 migrate_calculate_record,
-                name='Add calculator parameter to asr.gs@calculate record.',
+                name='Add calculator parameter to gs.calculate record.',
                 args=(cache, selection)
             ),
         ]
@@ -563,15 +563,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def migrate_main_record(cache, selection):
+def migrate_main_record(cache, calculateselection, mainselection):
     """Migrate asr.gs::main records to have parameters."""
-    calculaterecord = cache.get(
-        **{
-            'run_specification.name': 'asr.gs::calculate',
-            'tags': lambda tags: 'C2DB' in tags,
-        }
-    )
-    original_record = cache.get(**selection)
+    calculaterecord = cache.get(**calculateselection)
+    original_record = cache.get(**mainselection)
     migrated_record = original_record.copy()
     parameters = calculaterecord.run_specification.parameters
     migrated_record.run_specification.parameters = parameters
@@ -580,19 +575,28 @@ def migrate_main_record(cache, selection):
 
 def get_gs_main_migrations(cache):
     """Migrate ground state records."""
-    from asr.core.migrate import Migration
+    from asr.core.migrate import Migration, get_resultfile_migration
+
     migrations = get_gs_calculate_migrations(cache)
 
     if migrations:
-        selection = {
+        calculateselection = {
+            'run_specification.name': 'asr.gs::calculate',
+            'migration_id': migrations[0].id,
+        }
+        migration = get_resultfile_migration('results-asr.gs.json')
+        mainselection = {
             'run_specification.name': 'asr.gs::main',
-            'migration_id': 'Migrate resultsfile results-asr.gs.json',
+            'migration_id': migration.id,
         }
         migrations.append(Migration(
             migrate_main_record,
             name="Add atoms and calculator to gs.main record.",
-            args=(cache, selection)),
+            args=(cache, calculateselection, mainselection)),
         )
+    else:
+        print('Found no matches!')
+    return migrations
 
 
 @command(module='asr.gs',
