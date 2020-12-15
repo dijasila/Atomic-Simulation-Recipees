@@ -11,3 +11,4 @@ from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,
 from .command import (command, option, argument, get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa
 from .params import set_defaults  # noqa
+from .cache import get_cache  # noqa
