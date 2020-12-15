@@ -53,8 +53,9 @@ def asr_tmpdir(request, tmp_path_factory):
 
 def _get_webcontent(name='database.db'):
     from asr.database.fromtree import main as fromtree
-    from asr.database.material_fingerprint import main as mf
-    mf()
+    # from asr.database.material_fingerprint import main as mf
+
+    # mf()
     fromtree(recursive=True)
     content = ""
     from asr.database import app as appmodule

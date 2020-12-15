@@ -6,7 +6,6 @@ from ase.io import read
 from ase.db import connect
 from asr.core import chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
-from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
     get_hash_of_atoms
 from asr.database.check import main as check_database

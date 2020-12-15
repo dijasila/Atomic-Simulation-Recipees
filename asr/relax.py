@@ -275,6 +275,8 @@ class Result(ASRResult):
     images: typing.List[Atoms]
     etot: float
     edft: float
+    forces: np.ndarray
+    stress: np.ndarray
     spos: np.ndarray
     symbols: typing.List[str]
     a: float
@@ -288,6 +290,8 @@ class Result(ASRResult):
          'images': 'Path taken when relaxing structure.',
          'etot': 'Total energy [eV]',
          'edft': 'DFT total energy [eV]',
+         'forces': 'Forces on atoms after relaxation.',
+         'stress': 'Stress on cell after relaxation.',
          'spos': 'Array: Scaled positions',
          'symbols': 'Array: Chemical symbols',
          'a': 'Cell parameter a [Ang]',
@@ -420,6 +424,8 @@ def main(atoms: Atoms,
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
+    forces = atoms.get_forces()
+    stress = atoms.get_stress()
 
     cellpar = atoms.cell.cellpar()
 
@@ -427,7 +433,7 @@ def main(atoms: Atoms,
     # metadata = calc.get_metadata()
 
     # Save atomic structure
-    write('structure.json', atoms)
+    # write('structure.json', atoms)
 
     trajectory = Trajectory(tmp_atoms_file, 'r')
     images = []
@@ -438,6 +444,8 @@ def main(atoms: Atoms,
         atoms=Atoms(atoms.copy()),
         etot=etot,
         edft=edft,
+        forces=forces,
+        stress=stress,
         a=cellpar[0],
         b=cellpar[1],
         c=cellpar[2],

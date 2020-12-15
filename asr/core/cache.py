@@ -397,7 +397,8 @@ class Selection:
                 comparator = value.__eq__
             elif type(value) is float:
                 comparator = approx(value)
-            elif hasattr(value, '__dict__') and value.__dict__:
+            elif ((hasattr(value, '__dict__') and value.__dict__) or
+                  isinstance(value, Parameters)):
                 norm = self.normalize_selection(value.__dict__)
                 for keynorm, valuenorm in norm.items():
                     normalized['.'.join([key, keynorm])] = valuenorm

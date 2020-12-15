@@ -1,6 +1,7 @@
 """Stiffness tensor."""
 import typing
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult, prepare_result, AtomsFile, DictStr)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 
@@ -55,13 +56,14 @@ def webpanel(result, row, key_descriptions):
             rows=[])
         eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
+                   + [['Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
 
     eigtable = dict(
         type='table',
         rows=eigrows)
 
-    panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
+    panel = {'title': describe_entry(
+        'Stiffness tensor', description=panel_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
@@ -133,8 +135,6 @@ class Result(ASRResult):
     c_65: float
     c_66: float
 
-    __links__: typing.List[str]
-
     stiffness_tensor: typing.List[typing.List[float]]
     eigenvalues: typing.List[complex]
     dynamic_stability_stiffness: str
@@ -182,8 +182,8 @@ class Result(ASRResult):
         "speed_of_sound_x": "Speed of sound (x) [m/s]",
         "speed_of_sound_y": "Speed of sound (y) [m/s]",
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
-        "dynamic_stability_stiffness": "Stiffness dynamic stability (low/high)",
-        "__links__": "UIDs to strained folders."
+        "dynamic_stability_stiffness":
+        "Stiffness dynamic stability (low/high)",
     }
 
     formats = {"ase_webpanel": webpanel}
@@ -191,48 +191,46 @@ class Result(ASRResult):
 
 @command(module='asr.stiffness',
          returns=Result)
+@option('--atoms', type=AtomsFile(), help='Atoms to be strained.')
+@option('-c', '--calculator', help='Calculator and its parameters.',
+        type=DictStr())
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
-def main(strain_percent: float = 1.0) -> Result:
+def main(atoms,
+         calculator: dict = {'name': 'gpaw',
+                             'mode': {'name': 'pw', 'ecut': 800},
+                             'xc': 'PBE',
+                             'kpts': {'density': 6.0, 'gamma': True},
+                             'basis': 'dzp',
+                             'symmetry': {'symmorphic': False},
+                             'convergence': {'forces': 1e-4},
+                             'txt': 'relax.txt',
+                             'occupations': {'name': 'fermi-dirac',
+                                             'width': 0.05},
+                             'charge': 0},
+         strain_percent: float = 1.0) -> Result:
     """Calculate stiffness tensor."""
-    from asr.setup.strains import main as setupstrains
-    from asr.setup.strains import get_relevant_strains, get_strained_folder_name
+    from asr.setup.strains import main as make_strained_atoms
+    from asr.setup.strains import get_relevant_strains
     from asr.relax import main as relax
-    from ase.io import read
     from ase.units import J
-    from asr.core import read_json, chdir
-    from asr.database.material_fingerprint import main as computemf
     import numpy as np
 
-    if not setupstrains.done:
-        setupstrains(strain_percent=strain_percent)
-
-    atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
     ij_to_voigt = [[0, 5, 4],
                    [5, 1, 3],
                    [4, 3, 2]]
 
-    links = {}
     stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
-            folder = get_strained_folder_name(sign * strain_percent, i, j)
-            with chdir(folder):
-                if not relax.done:
-                    relax()
-
-                if not computemf.done:
-                    computemf()
-            mf = read_json(folder / ('results-asr.database.'
-                                     'material_fingerprint.json'))
-            links[str(folder)] = mf['uid']
-            structurefile = folder / 'structure.json'
-            structure = read(str(structurefile))
-            # The structure already has the stress if it was
-            # calculated
-            stress = structure.get_stress(voigt=True)
+            strained_atoms = make_strained_atoms(
+                atoms,
+                strain_percent=sign * strain_percent,
+                i=i, j=j).result
+            relaxrecord = relax(strained_atoms, calculator=calculator)
+            stress = relaxrecord.result.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 
@@ -281,7 +279,6 @@ def main(strain_percent: float = 1.0) -> Result:
         for j in range(stiffness_shape[1]):
             data[f'c_{i + 1}{j + 1}'] = stiffness[i, j]
 
-    data['__links__'] = links
     data['stiffness_tensor'] = stiffness
 
     if nd == 1:
@@ -291,7 +288,7 @@ def main(strain_percent: float = 1.0) -> Result:
     data['eigenvalues'] = eigs
     dynamic_stability_stiffness = ['low', 'high'][int(eigs.min() > 0)]
     data['dynamic_stability_stiffness'] = dynamic_stability_stiffness
-    return data
+    return Result(data=data)
 
 
 if __name__ == '__main__':

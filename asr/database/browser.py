@@ -530,6 +530,8 @@ def layout(row: AtomsRow,
     # Locate all webpanels
     for record in row.records:
         result = record.result
+        if not isinstance(result, ASRResult):
+            continue
         if 'ase_webpanel' not in result.get_formats():
             continue
         if record.run_specification.name in recipes_treated:
@@ -654,13 +656,13 @@ def get_attribute(obj, attrs):
         return obj
 
     for attr in attrs:
-        print(f'{obj=}')
+        print(f'obj={obj}')
         try:
             obj = obj[attr]
         except TypeError:
             obj = getattr(obj, attr, None)
 
-    print(f'{obj=}')
+    print(f'obj={obj}')
     return obj
 
 
