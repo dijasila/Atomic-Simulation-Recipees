@@ -583,7 +583,10 @@ def draw_networkx_graph(G):
 
     pos = nx.layout.planar_layout(G)
 
-    nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
+    # nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
+    labels = {node: node.name for node in G.nodes}
+    nx.draw_networkx_labels(G, pos, labels=labels,
+                            verticalalignment='bottom')
     edges = nx.draw_networkx_edges(
         G,
         pos,
@@ -594,42 +597,43 @@ def draw_networkx_graph(G):
         edge_color='C1',
         width=2,
     )
-
-    pc = mpl.collections.PatchCollection(edges)
-    plt.colorbar(pc)
+    nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
+    mpl.collections.PatchCollection(edges)
 
     ax = plt.gca()
     ax.set_axis_off()
+    plt.tight_layout()
     plt.show()
 
 
 @cache.command()
 @click.option('--draw', is_flag=True)
 def graph(draw=False):
-    from asr.core.cache import file_system_cache
+    from asr.core import get_cache
 
-    records = file_system_cache.select()
+    cache = get_cache()
+    records = cache.select()
 
     if draw:
         import networkx as nx
         graph = nx.DiGraph()
         for record in records:
-            graph.add_node(record)
+            graph.add_node(record, label=record.name)
 
         for record in records:
             for depid in record.dependencies:
-                deprecord = file_system_cache.get(
+                deprecord = cache.get(
                     run_specification=dict(uid=depid))
                 graph.add_edge(deprecord, record)
 
         draw_networkx_graph(graph)
-        draw_plotly_graph(graph)
+        # draw_plotly_graph(graph)
     else:
         graph = {}
 
         for record in records:
             graph[record] = [
-                file_system_cache.get(run_specification=dict(uid=uid))
+                cache.get(run_specification=dict(uid=uid))
                 for uid in record.dependencies
             ]
 
