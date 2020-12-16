@@ -4,6 +4,7 @@ from asr.stack_bilayer import translation
 from gpaw import GPAW, PW, FermiDirac
 import numpy as np
 from ase.calculators.dftd3 import DFTD3
+import os
 
 
 def convert_mixer(mixer):
@@ -55,6 +56,7 @@ def get_bilayer(atoms, top_layer, magmoms, config=None):
 
     return bilayer
 
+
 @command(module='asr.bilayer_magnetism',
          requires=['results-asr.magstate.json'],
          resources='24:10h',
@@ -76,6 +78,10 @@ def main(u, mixer=None):
 
     If mixer is not None, a custom mixer is used for the GPAW calculation.
     """
+    if os.path.exists('results-asr.magstate.json'):
+        magdata = read_json('results-asr.magstate.json')
+        if not magdata['is_magnetic']:
+            return {}
 
     atoms = read('../structure.json')
     top_layer = read('toplayer.json')
