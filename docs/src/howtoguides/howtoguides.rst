@@ -1,5 +1,6 @@
 .. _How to guides:
 
+=============
 How-to guides
 =============
 The tools of ASR can be combined to perform complicated tasks with little
@@ -97,9 +98,6 @@ converting it back to a result object
    >>> result = decode_object(dct)
 
 
-Database specific How-tos
-=========================
-
 How-to: Select rows in database with results from specific recipe
 -----------------------------------------------------------------
 
@@ -128,3 +126,4 @@ results of the ``asr.bandstructure`` recipe. Then do
 .. literalinclude:: retrieve_results_from_database.py
 
     
+>
