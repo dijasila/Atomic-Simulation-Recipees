@@ -498,6 +498,24 @@ class RowWrapper:
         return self._row.__contains__(key)
 
 
+def parse_row_data(data: dict):
+    newdata = {}
+    for key, value in data.items():
+        if is_results_file(key):
+            obj = decode_object(value)
+
+            # Below is to support old C2DB databases that contain
+            # hacked result files with no asr_name
+            if not isinstance(obj, ASRResult):
+                recipename = extract_recipe_from_filename(key)
+                value['__asr_hacked__'] = recipename
+                obj = decode_object(value)
+        else:
+            obj = value
+        newdata[key] = obj
+    return newdata
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
@@ -508,22 +526,6 @@ def layout(row: AtomsRow,
     row = RowWrapper(
         row,
     )
-
-    # for key, value in row.data.items():
-    #     if is_results_file(key):
-    #         obj = decode_object(value)
-
-    #         # Below is to support old C2DB databases that contain
-    #         # hacked result files with no asr_name
-    #         if not isinstance(obj, ASRResult):
-    #             recipename = extract_recipe_from_filename(key)
-    #             value['__asr_hacked__'] = recipename
-    #             obj = decode_object(value)
-    #         result_objects.append(obj)
-    #     else:
-    #         obj = value
-    #     row.data[key] = obj
-    #     assert row.data[key] == obj
 
     panel_data_sources = {}
     recipes_treated = set()

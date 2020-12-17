@@ -11,18 +11,16 @@ from asr.database.browser import (
     make_panel_description, href)
 
 panel_description = make_panel_description(
-    """The Bader charge analysis ascribes a net charge to an atom by partitioning
-the electron density according to its zero-flux surfaces.""",
+    """The Bader charge analysis ascribes a net charge to an atom
+by partitioning the electron density according to its zero-flux surfaces.""",
     articles=[
-        href("""W. Tang et al. A grid-based Bader analysis algorithm without lattice
-bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
-             'https://doi.org/10.1088/0953-8984/21/8/084204'),
-    ]
-)
+        href("""W. Tang et al. A grid-based Bader analysis algorithm
+without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
+             'https://doi.org/10.1088/0953-8984/21/8/084204')])
 
 
 def webpanel(result, row, key_descriptions):
-    rows = [[str(a), symbol, f'{charge:.3f}']
+    rows = [[str(a), symbol, f'{charge:.2f}']
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
     table = {'type': 'table',
