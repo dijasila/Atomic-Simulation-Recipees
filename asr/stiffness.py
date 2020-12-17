@@ -191,7 +191,8 @@ class Result(ASRResult):
 
 @command(module='asr.stiffness',
          returns=Result)
-@option('--atoms', type=AtomsFile(), help='Atoms to be strained.')
+@option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
+        default='structure.json')
 @option('-c', '--calculator', help='Calculator and its parameters.',
         type=DictStr())
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
@@ -229,7 +230,9 @@ def main(atoms,
                 atoms,
                 strain_percent=sign * strain_percent,
                 i=i, j=j).result
-            relaxrecord = relax(strained_atoms, calculator=calculator)
+            relaxrecord = relax(strained_atoms,
+                                calculator=calculator,
+                                fixcell=True)
             stress = relaxrecord.result.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)

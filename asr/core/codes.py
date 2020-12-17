@@ -24,8 +24,20 @@ class Code:  # noqa
 
         return cls(package, version, git_hash)
 
+    def __str__(self):
+        if self.git_hash:
+            return (f'Code(package={self.package}, '
+                    f'version={self.version}, '
+                    f'git={self.git_hash[:8]})')
+        return f'version={self.version}'
 
 class Codes:  # noqa
 
     def __init__(self, codes: typing.List[Code]):  # noqa
         self.codes = codes
+
+    def __str__(self):
+        codes = []
+        for code in self.codes:
+            codes.append(str(code))
+        return '[' + ', '.join(codes) + ']'

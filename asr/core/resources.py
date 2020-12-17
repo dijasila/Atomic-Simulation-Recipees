@@ -24,6 +24,10 @@ class Resources:  # noqa
     execution_duration = make_property('execution_duration')
     ncores = make_property('ncores')
 
+    def __str__(self):
+        return (f'Resources(time={self.execution_duration:.1f}s, '
+                f'ncores={self.ncores})')
+
 
 @contextlib.contextmanager
 def _register_resources(run_specification: RunSpecification):

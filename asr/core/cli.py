@@ -484,7 +484,10 @@ def ls(selection, formatting, sort, width, include_migrated):
     for record in records:
         row = []
         for item, fmt in zip(items, formats):
-            obj = get_item(item.split('.'), record)
+            if item == 'record':
+                obj = record
+            else:
+                obj = get_item(item.split('.'), record)
             if not fmt:
                 fmt = ''
             text = format(obj, fmt)
@@ -576,17 +579,20 @@ def draw_plotly_graph(G):
     fig.show()
 
 
-def draw_networkx_graph(G):
+def draw_networkx_graph(G, labels=False, saveto=None):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import networkx as nx
 
     pos = nx.layout.planar_layout(G)
 
-    # nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
-    labels = {node: node.name for node in G.nodes}
-    nx.draw_networkx_labels(G, pos, labels=labels,
-                            verticalalignment='bottom')
+    if labels:
+        lab = {node: node.name for node in G.nodes}
+        nx.draw_networkx_labels(G, pos, labels=lab,
+                                verticalalignment='bottom')
+    else:
+        nx.draw_networkx_nodes(G, pos, node_size=50, node_color="C0")
+
     edges = nx.draw_networkx_edges(
         G,
         pos,
@@ -603,12 +609,16 @@ def draw_networkx_graph(G):
     ax = plt.gca()
     ax.set_axis_off()
     plt.tight_layout()
+    if saveto:
+        plt.savefig(saveto)
     plt.show()
 
 
 @cache.command()
 @click.option('--draw', is_flag=True)
-def graph(draw=False):
+@click.option('--labels', is_flag=True)
+@click.option('--saveto', help='Save to filename')
+def graph(draw=False, labels=False, saveto=None):
     from asr.core import get_cache
 
     cache = get_cache()
@@ -626,7 +636,7 @@ def graph(draw=False):
                     run_specification=dict(uid=depid))
                 graph.add_edge(deprecord, record)
 
-        draw_networkx_graph(graph)
+        draw_networkx_graph(graph, labels=labels, saveto=saveto)
         # draw_plotly_graph(graph)
     else:
         graph = {}

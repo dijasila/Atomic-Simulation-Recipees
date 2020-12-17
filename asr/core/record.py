@@ -74,11 +74,15 @@ class RunRecord:  # noqa
         return RunRecord(**data)
 
     def __str__(self):  # noqa
-        string = str(self.run_specification)
-        maxlength = 25
-        if len(string) > maxlength:
-            string = string[:maxlength] + '...'
-        return f'RunRec({string})'
+        strings = []
+        for name, value in self.data.items():
+            if name == 'result':
+                txt = str(value)
+                if len(txt) > 30:
+                    strings.append('result=' + str(value)[:30] + '...')
+                    continue
+            strings.append(f'{name}={value}')
+        return 'RunRecord(' + ', '.join(strings) + ')'
 
     def __repr__(self):  # noqa
         return self.__str__()
