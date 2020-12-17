@@ -78,11 +78,6 @@ def main(u, mixer=None):
 
     If mixer is not None, a custom mixer is used for the GPAW calculation.
     """
-    if os.path.exists('results-asr.magstate.json'):
-        magdata = read_json('results-asr.magstate.json')
-        if not magdata['is_magnetic']:
-            return {}
-
     atoms = read('../structure.json')
     top_layer = read('toplayer.json')
 
