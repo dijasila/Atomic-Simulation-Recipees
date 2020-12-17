@@ -63,8 +63,8 @@ def get_bilayer(atoms, top_layer, magmoms, config=None):
          dependencies=['asr.magstate',
                        'asr.relax_bilayer'])
 @option('-m', '--mixer', help='help', type=DictStr())
-@argument('u', type=float)  # U = 3
-def main(u, mixer=None):
+@option('-u', '--hubbardu', type=float, default=3, help="Hubbard U correction")  # U = 3
+def main(hubbardu: float = 3, mixer=None):
     """Calculate the energy difference between FM and AFM configurations.
 
     Returns the energy difference between the FM and
@@ -78,6 +78,7 @@ def main(u, mixer=None):
 
     If mixer is not None, a custom mixer is used for the GPAW calculation.
     """
+    u = hubbardu
     atoms = read('../structure.json')
     top_layer = read('toplayer.json')
 
