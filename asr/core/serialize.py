@@ -3,7 +3,12 @@ import copy
 import ase
 import json
 import typing
+import pathlib
+import os
+from .config import config
 from .results import obj_to_id
+from .filetype import ExternalFile
+
 
 class Serializer(abc.ABC):  # noqa
 
@@ -19,6 +24,19 @@ class Serializer(abc.ABC):  # noqa
 class ASRJSONEncoder(json.JSONEncoder):  # noqa
 
     def default(self, obj) -> dict:  # noqa
+
+        if isinstance(obj, ExternalFile):
+            path = pathlib.Path(obj.path)
+            newpath = (
+                config.root
+                / 'external_files'
+                / (obj.checksum()[:12] + path.name)
+            )
+            directory = newpath.parent
+            if not directory.is_dir():
+                os.makedirs(directory)
+            path.rename(newpath)
+            obj.path = str(newpath)
 
         if hasattr(obj, '__dict__'):
             cls_id = obj_to_id(obj.__class__)

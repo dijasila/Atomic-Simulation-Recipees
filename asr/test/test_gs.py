@@ -39,7 +39,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
                  for dep_record in dep_records]
     assert (set(dep_names)
             == set(['asr.gs::calculate', 'asr.magnetic_anisotropy::main']))
-    gsfile = calculaterecord.side_effects['gs.gpw']
+    gsfile = calculaterecord.result.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
     gs['atoms'].has('initial_magmoms')

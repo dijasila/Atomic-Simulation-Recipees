@@ -123,7 +123,7 @@ class RegisterSideEffects():  # noqa
                             frame['side_effects'],
                         )
 
-                    shutil.rmtree(workdir)
+                    # shutil.rmtree(workdir)
                     run_record.side_effects = frame['side_effects']
 
                 if not self.side_effects_stack:

@@ -131,9 +131,6 @@ def calculate(
         pass
     atoms.get_potential_energy()
     calculation = calc.save(id='gs')
-    for i, filename in enumerate(calculation.paths):
-        side_effect = asrcontrol.register_side_effect(filename)
-        calculation.paths[i] = side_effect.path
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 

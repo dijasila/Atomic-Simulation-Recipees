@@ -4,9 +4,10 @@ Implement parameter factories and calculator adapters.
 
 """
 
-from ase import Atoms
+import pathlib
 import copy
 import typing
+from ase import Atoms
 from ase.calculators.calculator import get_calculator_class \
     as ase_get_calculator_class
 from ase.calculators.calculator import Calculator
@@ -82,9 +83,11 @@ class Calculation:
     """Persist calculation state."""
 
     def __init__(self, id, cls_name, state=None, paths=None):  # noqa
+        from asr.core import ExternalFile
         self.id = id
         self.cls_name = cls_name
-        self.paths = paths
+        self.paths = [ExternalFile(pathlib.Path(path))
+                      for path in paths]
         self.state = state
 
     def load(self, *args, **kwargs) -> Calculator:
@@ -136,7 +139,7 @@ class GPAWLikeAdapter(ASRAdapter):
             return self
         from gpaw.mpi import serial_comm
         self.calculator = self.cls(
-            calculation.paths[0],
+            pathlib.Path(calculation.paths[0]),
             communicator=serial_comm,
         )
         return self
