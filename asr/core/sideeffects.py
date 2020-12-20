@@ -2,7 +2,6 @@
 
 import os
 import pathlib
-import shutil
 import typing
 from .serialize import JSONSerializer
 from hashlib import sha256

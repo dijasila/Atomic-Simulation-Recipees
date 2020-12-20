@@ -62,10 +62,12 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    panel = {'title': describe_entry(
-        'Stiffness tensor', description=panel_description),
-             'columns': [[ctable], [eigtable]],
-             'sort': 2}
+    panel = {
+        'title': describe_entry(
+            'Stiffness tensor', description=panel_description
+        ),
+        'columns': [[ctable], [eigtable]],
+        'sort': 2}
 
     dynstab = row.dynamic_stability_stiffness
     high = 'Min. Stiffness eig. > 0'

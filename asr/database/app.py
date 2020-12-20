@@ -1,7 +1,6 @@
 """Database web application."""
 from typing import List
-from asr.core import (command, option, argument, ASRResult,
-                      decode_object, UnknownDataFormat)
+from asr.core import (ASRResult, decode_object, UnknownDataFormat)
 
 import tempfile
 from pathlib import Path
@@ -226,7 +225,7 @@ def initialize_project(database):
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
             metadata.get(
-                "table_template", f"asr/database/templates/table.html",
+                "table_template", "asr/database/templates/table.html",
             )
         ),
         "search_template": str(

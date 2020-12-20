@@ -45,7 +45,7 @@ Relax using the LDA exchange-correlation functional
 import typing
 from pathlib import Path
 import numpy as np
-from ase.io import write, Trajectory
+from ase.io import Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError

@@ -222,9 +222,6 @@ def get_material_uid(atoms: Atoms):
     return get_uid_of_atoms(atoms, hash)
 
 
-
-
-
 def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                    children_patterns=[]):
     """Collect data from a material folder.
@@ -275,10 +272,6 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            # elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
-            #     tmpkvp, tmpdata = collect_file(name)
-            #     kvp.update(tmpkvp)
-            #     data.update(tmpdata)
 
         if not data['__children__']:
             del data['__children__']

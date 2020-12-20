@@ -3,7 +3,6 @@ import click
 from ase.io import read
 from ase.io.formats import UnknownFileTypeError
 from asr.core import parse_dict_string
-from asr.core.dependencies import mark_dependencies
 import pickle
 
 

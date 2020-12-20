@@ -5,7 +5,6 @@ from .specification import RunSpecification
 from .resources import Resources
 from .utils import make_property
 from .results import get_object_matching_obj_id
-from .migrate import is_migratable
 
 
 class RunRecord:  # noqa
@@ -26,7 +25,7 @@ class RunRecord:  # noqa
             result: typing.Any,
             run_specification: RunSpecification = None,
             resources: Resources = None,
-            side_effects: 'SideEffects' = None,
+            side_effects: dict = None,
             dependencies: typing.List[str] = None,
             migration_id: str = None,
             migrated_from: str = None,

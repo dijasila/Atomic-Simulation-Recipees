@@ -397,8 +397,8 @@ class Selection:
                 comparator = value.__eq__
             elif type(value) is float:
                 comparator = approx(value)
-            elif ((hasattr(value, '__dict__') and value.__dict__) or
-                  isinstance(value, Parameters)):
+            elif ((hasattr(value, '__dict__') and value.__dict__)
+                  or isinstance(value, Parameters)):
                 norm = self.normalize_selection(value.__dict__)
                 for keynorm, valuenorm in norm.items():
                     normalized['.'.join([key, keynorm])] = valuenorm
@@ -467,19 +467,8 @@ class Cache:  # noqa
 
     def get_migrations(self):
         """Migrate cache data."""
-        # staging_backend = MemoryCache()
-        # file_system_backend = FileCacheBackend()
-
-        # migration_cache = Cache(
-        #     backend=TwoStageCache(
-        #         staging=staging_backend,
-        #         backend=file_system_backend,
-        #     )
-        # )
-
         from asr.core.migrate import (
             Migrations,
-            Migration,
             generate_resultsfile_migrations,
             generate_record_migrations,
         )

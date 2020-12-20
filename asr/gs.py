@@ -1,13 +1,11 @@
 """Electronic ground state properties."""
-import pathlib
 from ase import Atoms
-from ase.io import read
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
 from asr.core.command import ASRControl
 from asr.calculators import (
-    set_calculator_hook, Calculation, get_calculator_class, Calculation)
+    set_calculator_hook, Calculation, get_calculator_class)
 
 from asr.database.browser import (
     table, fig,

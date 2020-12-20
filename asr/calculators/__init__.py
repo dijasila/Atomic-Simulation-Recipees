@@ -11,7 +11,7 @@ from ase import Atoms
 from ase.calculators.calculator import get_calculator_class \
     as ase_get_calculator_class
 from ase.calculators.calculator import Calculator
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC, abstractmethod
 
 
 def default(atoms, dct):

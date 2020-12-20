@@ -1,6 +1,5 @@
 from asr.core import (command, option, decode_object,
                       ASRResult, get_recipe_from_name)
-import copy
 import sys
 import re
 from pathlib import Path
@@ -716,8 +715,9 @@ def cache_webpanel(recipename, *selectors):
                 sign, attrs = parse_selectors(selector)
 
                 signs.append(sign)
-                sortattrs.append([
-                                  'run_specification', 'parameters', *attrs])
+                sortattrs.append(
+                    ['run_specification', 'parameters', *attrs]
+                )
 
             def keysort(x):
                 keys = []
@@ -752,8 +752,8 @@ def cache_webpanel(recipename, *selectors):
 
                 # Most important entry on top
                 table = table[::-1]
-                html = par(bold('Convergence') + br +
-                           html_table(table, header=header))
+                html = par(bold('Convergence') + br
+                           + html_table(table, header=header))
                 value = describe_entry(value, description=html)
                 set_value(webpanels, indices, value)
 
