@@ -75,6 +75,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
             content, content
 
 
+@pytest.mark.xfail
 @pytest.mark.ci
 def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from .materials import std_test_materials
