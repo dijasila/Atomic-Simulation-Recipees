@@ -8,6 +8,8 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     from pathlib import Path
     import numpy as np
     from asr.hse import main
+    from asr.structureinfo import main as structinfo
+
     test_material.write('structure.json')
 
     def non_self_consistent_eigenvalues(calc,
@@ -37,8 +39,12 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         return calc.eigenvalues[np.newaxis]
 
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
-    results = main()
+    results = main(atoms=test_material).result
     assert results['gap_hse_nosoc'] == pytest.approx(2.0)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2.0)
+
+    # We need to call structureinfo in order to make the webpanel.
+    # This should be fixed in the future.
+    structinfo(atoms=test_material)
     html = get_webcontent()
     assert 'hse-bs.png' in html
