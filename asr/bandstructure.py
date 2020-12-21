@@ -519,12 +519,6 @@ def main(
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    from asr.structureinfo import main as structinfo
-
-    # XXX: Structureinfo is needed for the webpanel to function.
-    # This is not really a standard dependency and it should probably
-    # be fixed in the future.
-    structinfo(atoms=atoms)
 
     bsrecord = calculate(
         atoms=atoms,
