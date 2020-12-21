@@ -75,7 +75,6 @@ def get_gs_calculate_migrations(cache):
 
 @command(module='asr.gs',
          argument_hooks=[set_calculator_hook],
-         pass_control=True,
          returns=GroundStateCalculationResult,
          migrations=get_gs_calculate_migrations)
 @option('-a', '--atoms', help='Atomic structure.',
@@ -95,10 +94,7 @@ def calculate(
             'nbands': '200%',
             'txt': 'gs.txt',
             'charge': 0
-        },
-        *,
-        asrcontrol: ASRControl,
-) -> GroundStateCalculationResult:
+        }) -> GroundStateCalculationResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
