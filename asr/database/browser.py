@@ -50,6 +50,9 @@ def create_table(row,  # AtomsRow
             if isinstance(value, float):
                 old_value = value
                 value = '{:.{}f}'.format(value, digits)
+                print('key', key)
+                print('value', value)
+                print('digits', digits)
                 if hasattr(old_value, '__explanation__'):
                     value = describe_entry(value, old_value.__explanation__)
             elif not isinstance(value, str):
@@ -657,10 +660,13 @@ def get_attribute(obj, attrs):
         return obj
 
     for attr in attrs:
-        try:
-            obj = obj[attr]
-        except TypeError:
-            obj = getattr(obj, attr, None)
+        if hasattr(obj, attr):
+            obj = getattr(obj, attr)
+        else:
+            try:
+                obj = obj[attr]
+            except (TypeError, KeyError):
+                obj = None
 
     return obj
 

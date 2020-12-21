@@ -138,7 +138,6 @@ def calculate(
     '+,calculator.kpts.density',
 )
 def webpanel(result, row, key_descriptions):
-
     parameter_description = entry_parameter_description(
         row.data,
         'asr.gs@calculate',

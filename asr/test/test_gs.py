@@ -14,6 +14,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     from asr.core import read_json
     from asr.core.cache import get_cache
     from asr.gs import calculate, main
+    from ase.parallel import world
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
@@ -23,7 +24,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 
     calculator = {'name': 'gpaw',
                   'kpts': {'density': 2, 'gamma': True},
-                  'xc': 'PBE'}
+                  'xc': 'PBE',
+                  'mode': {'name': 'pw', 'ecut': 800}}
     calculaterecord = calculate(test_material, calculator)
     record = main(
         atoms=test_material,
@@ -60,50 +62,10 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         assert results.get("gap") == approx(0)
 
-
-@pytest.mark.ci
-@pytest.mark.parallel
-@pytest.mark.parametrize("gap", [0, 1])
-@pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs_webcontent(asr_tmpdir_w_params, mockgpaw, mocker,
-                       get_webcontent,
-                       test_material, gap, fermi_level):
-    import asr.relax
-    from asr.core import read_json
-    from asr.gs import calculate, main
-    from ase.io import write
-    from ase.parallel import world
-    import gpaw
-    mocker.patch.object(gpaw.GPAW, "_get_band_gap")
-    mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
-    spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
-    gpaw.GPAW._get_fermi_level.return_value = fermi_level
-    gpaw.GPAW._get_band_gap.return_value = gap
-
-    write('structure.json', test_material)
-    calculate(
-        calculator={
-            "name": "gpaw",
-            "kpts": {"density": 6, "gamma": True},
-        },
-    )
-
-    results = main().result
-    gs = read_json('gs.gpw')
-    gs['atoms'].has('initial_magmoms')
-    if test_material.has('initial_magmoms'):
-        spy.assert_not_called()
-    else:
-        spy.assert_called()
-
-    assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
-    assert results.get("efermi") == approx(fermi_level, abs=0.1)
-    if gap >= fermi_level:
-        assert results.get("gap") == approx(gap)
-    else:
-        assert results.get("gap") == approx(0)
-
+    test_material.write('structure.json')
     if world.size == 1:
+        from asr.structureinfo import main as structureinfo
+        structureinfo(atoms=test_material)
         content = get_webcontent()
         resultgap = results.get("gap")
 
