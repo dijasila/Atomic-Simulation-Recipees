@@ -3,7 +3,6 @@ from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
-from asr.core.command import ASRControl
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
 
@@ -221,8 +220,13 @@ def bz_with_band_extremums(row, fname):
     gsresults = main.select(cache=row.cache)[0].result
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-    structresult = structinfo.get(cache=row.cache).result
-    op_scc = structresult['spglib_dataset']['rotations']
+
+    structrecords = structinfo.select(cache=row.cache)
+    if structrecords:
+        structresult = structrecords[0].result
+        op_scc = structresult['spglib_dataset']['rotations']
+    else:
+        op_scc = np.array([np.eye(3, dtype=float)])
     if cbm_c is not None:
         if not row.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])

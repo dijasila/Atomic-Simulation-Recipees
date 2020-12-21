@@ -50,9 +50,6 @@ def create_table(row,  # AtomsRow
             if isinstance(value, float):
                 old_value = value
                 value = '{:.{}f}'.format(value, digits)
-                print('key', key)
-                print('value', value)
-                print('digits', digits)
                 if hasattr(old_value, '__explanation__'):
                     value = describe_entry(value, old_value.__explanation__)
             elif not isinstance(value, str):

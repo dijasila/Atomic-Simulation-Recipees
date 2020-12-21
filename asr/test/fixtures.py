@@ -112,11 +112,9 @@ def asr_tmpdir_w_params(asr_tmpdir):
         },
         'asr.bandstructure@calculate': {
             'npoints': 10,
-            'emptybands': 5,
         },
         'asr.hse@calculate': {
             'kptdensity': 2,
-            'emptybands': 5,
         },
         'asr.gw@gs': {
             'kptdensity': 2,

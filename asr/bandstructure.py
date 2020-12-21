@@ -1,6 +1,14 @@
 """Electronic band structures."""
 from typing import Union
-from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
+from ase import Atoms
+from asr.calculators import Calculation
+from asr.core import (
+    command, option, ASRResult, singleprec_dict, prepare_result,
+    DictStr, AtomsFile
+)
+from asr.gs import calculate as calculategs
+from asr.gs import main as maings
+
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 panel_description = make_panel_description(
@@ -11,38 +19,69 @@ the magnetic easy axis) indicated by the color code.""",
 )
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw'],
-         creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'])
+@prepare_result
+class BandstructureCalculationResult(ASRResult):
+
+    calculation: Calculation
+
+    key_descriptions = dict(calculation='Calculation object')
+
+
+@command(
+    'asr.bandstructure',
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@option('-b', '--bscalculator',
+        help='Bandstructure Calculator params.',
+        type=DictStr())
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints', type=int)
-@option('--emptybands', type=int)
-def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
-              emptybands: int = 20) -> ASRResult:
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def calculate(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'basis': 'dzp',
+            'kpts': {'density': 12.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'bands': 'CBM+3.0'},
+            'nbands': '200%',
+            'txt': 'gs.txt',
+            'charge': 0
+        },
+        bscalculator: dict = {
+            'basis': 'dzp',
+            'nbands': -20,
+            'txt': 'bs.txt',
+            'fixdensity': True,
+            'convergence': {
+                'bands': -10},
+            'symmetry': 'off'
+        },
+        kptpath: Union[str, None] = None,
+        npoints: int = 400,
+) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-    from gpaw import GPAW
-    from ase.io import read
-    atoms = read('structure.json')
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
     else:
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                    pbc=atoms.pbc)
 
-    convbands = emptybands // 2
-    parms = {
-        'basis': 'dzp',
-        'nbands': -emptybands,
-        'txt': 'bs.txt',
-        'fixdensity': True,
-        'kpts': path,
-        'convergence': {
-            'bands': -convbands},
-        'symmetry': 'off'}
-    calc = GPAW('gs.gpw', **parms)
+    record = calculategs(atoms=atoms, calculator=calculator)
+    calculation = record.result.calculation
+    bscalculator['kpts'] = path
+    calc = calculation.load(**bscalculator)
     calc.get_potential_energy()
-    calc.write('bs.gpw')
+    calculation = calc.save(id='bs')
+    return BandstructureCalculationResult.fromdata(calculation=calculation)
+
 
 
 def bs_pbe_html(row,
@@ -437,25 +476,64 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.bandstructure@calculate', 'asr.gs',
-                       'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         returns=Result)
-def main() -> Result:
-    from gpaw import GPAW
+@command('asr.bandstructure')
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@option('-b', '--bscalculator',
+        help='Bandstructure Calculator params.',
+        type=DictStr())
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def main(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'basis': 'dzp',
+            'kpts': {'density': 12.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'bands': 'CBM+3.0'},
+            'nbands': '200%',
+            'txt': 'gs.txt',
+            'charge': 0
+        },
+        bscalculator: dict = {
+            'basis': 'dzp',
+            'nbands': -20,
+            'txt': 'bs.txt',
+            'fixdensity': True,
+            'convergence': {
+                'bands': -10},
+            'symmetry': 'off'
+        },
+        kptpath: Union[str, None] = None,
+        npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from asr.core import read_json
     import copy
     import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.structureinfo import main as structinfo
 
-    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
-    calc = GPAW('bs.gpw', txt=None)
+    # XXX: Structureinfo is needed for the webpanel to function.
+    # This is not really a standard dependency and it should probably
+    # be fixed in the future.
+    structinfo(atoms=atoms)
+
+    bsrecord = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        bscalculator=bscalculator,
+    )
+    gsrecord = calculategs(atoms=atoms, calculator=calculator)
+    ref = gsrecord.result.calculation.load().get_fermi_level()
+    calc = bsrecord.result.calculation.load()
     atoms = calc.atoms
     path = calc.parameters.kpts
     if not isinstance(path, BandPath):
@@ -474,7 +552,8 @@ def main() -> Result:
     bsresults = bs.todict()
 
     # Save Fermi levels
-    gsresults = read_json('results-asr.gs.json')
+    maingsrecord = maings(atoms=atoms, calculator=calculator)
+    gsresults = maingsrecord.result
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
@@ -484,13 +563,15 @@ def main() -> Result:
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
 
     # We use a larger symmetry tolerance because we want to correctly
     # color spins which doesn't always happen due to slightly broken
     # symmetries, hence tolerance=1e-2.
+    # XXX This is only compatible with GPAW
+    bsfile = bsrecord.result.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        bsfile, soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
@@ -502,7 +583,11 @@ def main() -> Result:
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
 
     if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, get_spin_index(), :]  # take x, y or z component
+        sz_mk = s_mvk[
+            :,
+            get_spin_index(atoms=atoms,
+                           calculator=calculator),
+            :]  # take x, y or z component
     else:
         sz_mk = s_mvk
 
