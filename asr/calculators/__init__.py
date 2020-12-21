@@ -200,3 +200,8 @@ def get_calculator_class(name):
         return EMTAdapter
     else:
         return cls
+
+
+def construct_calculator(calcspec):
+    name = calcspec.pop('name')
+    return get_calculator_class(name)(**calcspec)

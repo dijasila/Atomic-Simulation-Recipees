@@ -25,5 +25,6 @@ class ExternalFile:  # noqa
     def restore(self):  # noqa
         assert not self.filename == self.path, \
             'The file already exists.'
+        path = find_root() / pathlib.Path(self.path)
         pathlib.Path(self.filename).write_bytes(
-            pathlib.Path(self.path).read_bytes())
+            path.read_bytes())

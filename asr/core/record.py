@@ -7,7 +7,7 @@ from .utils import make_property
 from .results import get_object_matching_obj_id
 
 
-class RunRecord:  # noqa
+class RunRecord:
 
     record_version: int = 0
     result = make_property('result')
