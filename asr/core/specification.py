@@ -80,7 +80,14 @@ def construct_run_spec(
         parameters = Parameters(parameters)
 
     if not isinstance(codes, Codes):
-        codes = Codes([Code.from_string(code) for code in codes])
+        lst_codes = []
+        for codestr in codes:
+            try:
+                code = Code.from_string(codestr)
+                lst_codes.append(code)
+            except ModuleNotFoundError:
+                pass
+        codes = Codes(lst_codes)
 
     if uid is None:
         uid = get_new_uuid()

@@ -7,15 +7,11 @@ import numpy as np
 def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
     """Test that the relaxation recipe actually produces a structure.json."""
     from asr.relax import main as relax
-    from ase.io import read
-
-    results = relax(test_material,
-                    calculator={
-                        "name": "gpaw",
-                        "kpts": {"density": 2, "gamma": True},
-                    })
-    print(results)
-    read('structure.json')
+    relax(test_material,
+          calculator={
+              "name": "gpaw",
+              "kpts": {"density": 2, "gamma": True},
+          })
 
 
 @pytest.mark.ci
@@ -38,13 +34,13 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
             [initial_magmoms] * len(test_material))
 
     test_material.write('unrelaxed.json')
-    main.cli([])
+    result = main.cli([]).result
+    relaxed = result.atoms
 
-    relaxed = read('structure.json')
     assert relaxed.has('initial_magmoms')
 
     if final_magmoms > 0.1:
-        assert all(relaxed.get_magnetic_moments() == 1)
+        assert all(result.magmoms == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
 

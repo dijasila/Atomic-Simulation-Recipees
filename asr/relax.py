@@ -285,6 +285,7 @@ class Result(ASRResult):
     alpha: float
     beta: float
     gamma: float
+    magmoms: typing.List[float]
     key_descriptions = \
         {'atoms': 'Relaxed atomic structure.',
          'images': 'Path taken when relaxing structure.',
@@ -299,7 +300,8 @@ class Result(ASRResult):
          'c': 'Cell parameter c [Ang]',
          'alpha': 'Cell parameter alpha [deg]',
          'beta': 'Cell parameter beta [deg]',
-         'gamma': 'Cell parameter gamma [deg]'}
+         'gamma': 'Cell parameter gamma [deg]',
+         'magmoms': 'Atomic magnetic moments of relaxed structure [mu_B]'}
 
 
 @command('asr.relax',
@@ -421,6 +423,7 @@ def main(atoms: Atoms,
                       fixcell=fixcell,
                       allow_symmetry_breaking=allow_symmetry_breaking,
                       dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+        magmoms = np.zeros(len(atoms))
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
@@ -454,7 +457,8 @@ def main(atoms: Atoms,
         gamma=cellpar[5],
         spos=atoms.get_scaled_positions(),
         symbols=atoms.get_chemical_symbols(),
-        images=images
+        images=images,
+        magmoms=magmoms,
     )
 
 
