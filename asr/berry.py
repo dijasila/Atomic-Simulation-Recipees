@@ -1,6 +1,13 @@
 """Topological analysis of electronic structure."""
 import numpy as np
-from asr.core import command, option, ASRResult, prepare_result
+
+from ase import Atoms
+
+from asr.gs import calculate as gscalculate
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+)
 
 
 @prepare_result
@@ -35,30 +42,29 @@ class CalculateResult(ASRResult):
     }
 
 
-@command(module='asr.berry',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs'],
-         resources='120:10h',
-         returns=CalculateResult)
-@option('--gs', help='Ground state', type=str)
+@command(module='asr.berry')
+@atomsopt
+@calcopt
 @option('--kpar', help='K-points along path', type=int)
 @option('--kperp', help='K-points orthogonal to path', type=int)
-def calculate(gs: str = 'gs.gpw', kpar: int = 120,
-              kperp: int = 7) -> CalculateResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kpar: int = 120,
+        kperp: int = 7
+) -> CalculateResult:
     """Calculate ground state on specified k-point grid."""
     import os
-    from ase.io import read
     from gpaw import GPAW
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
     from asr.magnetic_anisotropy import get_spin_axis
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
 
     """Find the easy axis of magnetic materials"""
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
 
     results = {}
     results['phi0_km'] = None
@@ -70,12 +76,15 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
+    rec = gscalculate(atoms=atoms, calculator=calculator)
+
     if nd == 2:
-        calc = GPAW(gs,
-                    kpts=(kperp, kpar, 1),
-                    fixdensity=True,
-                    symmetry='off',
-                    txt='gs_berry.txt')
+        calc = rec.result.calculation.load(
+            kpts=(kperp, kpar, 1),
+            fixdensity=True,
+            symmetry='off',
+            txt='gs_berry.txt',
+        )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -90,11 +99,12 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
 
     elif nd == 3:
         """kx = 0"""
-        calc = GPAW(gs,
-                    kpts=(1, kperp, kpar),
-                    fixdensity=True,
-                    symmetry='off',
-                    txt='gs_berry.txt')
+        calc = rec.result.calculation.load(
+            kpts=(1, kperp, kpar),
+            fixdensity=True,
+            symmetry='off',
+            txt='gs_berry.txt'
+        )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -268,15 +278,29 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.berry',
-         requires=['results-asr.berry@calculate.json'],
-         dependencies=['asr.berry@calculate'],
-         returns=Result)
-def main() -> Result:
+@command(module='asr.berry')
+@atomsopt
+@calcopt
+@option('--kpar', help='K-points along path', type=int)
+@option('--kperp', help='K-points orthogonal to path', type=int)
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kpar: int = 120,
+        kperp: int = 7
+) -> Result:
     from pathlib import Path
     from ase.parallel import paropen
 
+    calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kpar=kpar,
+        kperp=kperp,
+    )
     data = {}
+
+    # XXX This is no longer really working.
     if Path('topology.dat').is_file():
         f = paropen('topology.dat', 'r')
         top = f.readline()

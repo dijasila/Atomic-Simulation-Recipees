@@ -9,7 +9,6 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     import numpy as np
     from asr.berry import calculate
 
-    test_material.write('structure.json')
     kpar = 10
     nbands = 2
 
@@ -24,7 +23,7 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
 
     mocker.patch('gpaw.berryphase.parallel_transport', create=True,
                  new=parallel_transport)
-    results = calculate()
+    results = calculate(atoms=test_material).result
 
     # check that all phi_km and s_km are returned by asr.berry@calculate
     # note that asr.berry@calculate does not return any phi_km, s_km for 1D materials
@@ -45,6 +44,7 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         f.close()
 
     from asr.berry import main
-    results = main()
+    results = main(atoms=test_material).result
     assert results['Topology'] == topology
+    test_material.write('structure.json')
     get_webcontent()
