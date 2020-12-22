@@ -48,32 +48,32 @@ def stdout_redirected(to=os.devnull, stdout=None):
             os.dup2(copied.fileno(), stdout_fd)  # $ exec >&copied
 
 
-# def format(content, indent=0, title=None, pad=2):
-#     colwidth_c = []
-#     for row in content:
-#         if isinstance(row, str):
-#             continue
-#         for c, element in enumerate(row):
-#             nchar = len(element)
-#             try:
-#                 colwidth_c[c] = max(colwidth_c[c], nchar)
-#             except IndexError:
-#                 colwidth_c.append(nchar)
+def format_list(content, indent=0, title=None, pad=2):
+    colwidth_c = []
+    for row in content:
+        if isinstance(row, str):
+            continue
+        for c, element in enumerate(row):
+            nchar = len(element)
+            try:
+                colwidth_c[c] = max(colwidth_c[c], nchar)
+            except IndexError:
+                colwidth_c.append(nchar)
 
-#     output = ''
-#     if title:
-#         output = f'\n{title}\n'
-#     for row in content:
-#         out = ' ' * indent
-#         if isinstance(row, str):
-#             output += f'{row}'
-#             continue
-#         for colw, desc in zip(colwidth_c, row):
-#             out += f'{desc: <{colw}}' + ' ' * pad
-#         output += out
-#         output += '\n'
+    output = ''
+    if title:
+        output = f'\n{title}\n'
+    for row in content:
+        out = ' ' * indent
+        if isinstance(row, str):
+            output += f'{row}'
+            continue
+        for colw, desc in zip(colwidth_c, row):
+            out += f'{desc: <{colw}}' + ' ' * pad
+        output += out
+        output += '\n'
 
-#     return output
+    return output
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -151,6 +151,7 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
         'defaults': defaults,
     }
     if njobs > 1:
+        prt(f'Number of jobs: {njobs}')
         processes = []
         for job in range(njobs):
             kwargs['job_num'] = job
@@ -277,7 +278,7 @@ def asrlist(search):
              ['----', '-----------']]
 
     for recipe in recipes:
-        longhelp = recipe._main.__doc__
+        longhelp = recipe.get_wrapped_function().__doc__
         if not longhelp:
             longhelp = ''
 
@@ -290,7 +291,7 @@ def asrlist(search):
         panel += [status]
     panel += ['\n']
 
-    print(format(panel))
+    print(format_list(panel))
 
 
 @cli.command()
