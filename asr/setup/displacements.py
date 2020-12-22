@@ -49,9 +49,7 @@ def main(
     """Generate atomic displacements.
 
     Generate atomic structures with displaced atoms.
-
     """
-
     displaced_atoms = []
     for ia, iv, sign in get_all_displacements(atoms):
         new_structure = displace_atom(atoms, ia, iv, sign, displacement)

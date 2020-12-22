@@ -14,7 +14,7 @@ import numpy as np
 from ase import Atoms
 
 from asr.core import (
-    command, option, ASRResult, atomsopt, calcopt)
+    command, ASRResult, atomsopt, calcopt)
 
 
 class AtomsTooCloseToBoundary(Exception):

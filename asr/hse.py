@@ -50,7 +50,6 @@ def calculate(
         emptybands: int = 20,
 ) -> HSECalculationResult:
     """Calculate HSE corrections."""
-
     eigs, calc, hse_nowfs = hse(
         atoms=atoms,
         calculator=calculator,
@@ -152,7 +151,6 @@ def MP_interpolate(
     by interpolating a correction onto the PBE band structure.
     """
     import numpy as np
-    from gpaw import GPAW
     from gpaw.spinorbit import soc_eigenstates
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)

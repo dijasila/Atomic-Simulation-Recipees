@@ -55,7 +55,6 @@ def calculate(
 ) -> CalculateResult:
     """Calculate ground state on specified k-point grid."""
     import os
-    from gpaw import GPAW
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
     from asr.magnetic_anisotropy import get_spin_axis

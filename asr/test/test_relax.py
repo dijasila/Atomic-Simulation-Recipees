@@ -23,7 +23,6 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     """Test that the initial magnetic moments are correctly set."""
     import asr.relax
     from asr.relax import main
-    from ase.io import read
     from gpaw import GPAW
     mocker.patch.object(GPAW, "_get_magmoms")
     spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")

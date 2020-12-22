@@ -139,7 +139,6 @@ def gs(
 ) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
-    from gpaw import GPAW
     import numpy as np
 
     # check that the system is a semiconductor

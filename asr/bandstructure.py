@@ -71,7 +71,6 @@ def calculate(
     return BandstructureCalculationResult.fromdata(calculation=calculation)
 
 
-
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 6.4),
