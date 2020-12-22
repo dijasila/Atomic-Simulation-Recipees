@@ -10,7 +10,11 @@ The central recipe of this module is :func:`asr.formalpolarization.main`.
 
 """
 import numpy as np
-from asr.core import command, option, DictStr, ASRResult
+
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, atomsopt, calcopt)
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -85,23 +89,24 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
 
 
 @command('asr.formalpolarization')
-@option('--gpwname', help='Formal polarization gpw file name.', type=str)
-@option('--calculator', help='Calculator parameters.', type=DictStr())
-def main(gpwname: str = 'formalpol.gpw',
-         calculator: dict = {
-             'name': 'gpaw',
-             'mode': {'name': 'pw', 'ecut': 800},
-             'xc': 'PBE',
-             'basis': 'dzp',
-             'kpts': {'density': 12.0},
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'symmetry': 'off',
-             'convergence': {'eigenstates': 1e-11,
-                             'density': 1e-7},
-             'txt': 'formalpol.txt',
-             'charge': 0
-         }) -> ASRResult:
+@atomsopt
+@calcopt
+def main(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'basis': 'dzp',
+            'kpts': {'density': 12.0},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'symmetry': 'off',
+            'convergence': {'eigenstates': 1e-11,
+                            'density': 1e-7},
+            'txt': 'formalpol.txt',
+            'charge': 0,
+        }) -> ASRResult:
     """Calculate the formal polarization phase.
 
     Calculate the formal polarization geometric phase necesarry for in
@@ -110,19 +115,21 @@ def main(gpwname: str = 'formalpol.gpw',
     from pathlib import Path
     from gpaw.mpi import world
     from ase.units import Bohr
-    from ase.io import read
-    atoms = read('structure.json')
 
+    gpwname = 'formalpol.gpw'
     dist_a = distance_to_non_pbc_boundary(atoms)
     if dist_a is not None and np.any(dist_a < 1):
         raise AtomsTooCloseToBoundary(
             'The atoms are too close to a non-pbc boundary '
             'which creates problems when using a dipole correction. '
-            f'Please center the atoms in the unit-cell. Distances (Å): {dist_a}.')
+            f'Please center the atoms in the unit-cell. Distances (Å): {dist_a}.'
+        )
 
-    calc = get_wavefunctions(atoms=atoms,
-                             name=gpwname,
-                             calculator=calculator)
+    calc = get_wavefunctions(
+        atoms=atoms,
+        name=gpwname,
+        calculator=calculator,
+    )
     electronic_phase_c = get_electronic_polarization_phase(calc)
     atomic_phase_c = get_atomic_polarization_phase(calc)
     dipole_v = calc.get_dipole_moment() / Bohr
