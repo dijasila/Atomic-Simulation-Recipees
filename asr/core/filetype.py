@@ -10,6 +10,10 @@ class ExternalFile:  # noqa
         self.filename = str(path)
         self.hashes = {'sha256': sha256sum(path)}
 
+    @classmethod
+    def fromstr(cls, string):
+        return cls(pathlib.Path(string))
+
     def __str__(self):  # noqa
         return f'ExternalFile({self.path})'
 

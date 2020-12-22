@@ -249,7 +249,7 @@ class ASRCommand:
         for key, value in signature.parameters.items():
             if value.default is not inspect.Parameter.empty:
                 defparams[key] = value.default
-        return defparams
+        return Parameters(parameters=defparams)
 
     def get_parameters(self):
         """Get the parameters of this function."""

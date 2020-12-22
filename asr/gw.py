@@ -1,5 +1,10 @@
 """DFT GW."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
+from ase import Atoms
+from asr.core import (
+    command, option, ASRResult, prepare_result,
+    atomsopt, calcopt, ExternalFile, DictStr)
+from asr.gs import calculate as calculategs
+from asr.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
@@ -121,19 +126,25 @@ def get_kpts_size(atoms, kptdensity):
     return kpts
 
 
-@command(requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=['gs_gw.gpw', 'gs_gw_nowfs.gpw'])
+@command()
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
-def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
+def gs(
+        atoms: Atoms,
+        calculator: dict = calculategs.defaults.calculator,
+        kptdensity: float = 5.0,
+        ecut: float = 200.0,
+) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     import numpy as np
 
     # check that the system is a semiconductor
-    calc = GPAW('gs.gpw', txt=None)
+    rec = calculategs(atoms=atoms, calculator=calculator)
+    calc = rec.result.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = "
@@ -161,42 +172,62 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-    calc = GPAW(
-        'gs.gpw',
+
+    calc = rec.result.calculation.load(
         txt='gs_gw.txt',
         fixdensity=True,
         kpts=kpts,
-        parallel={'domain': 1})
+        parallel={'domain': 1},
+    )
     calc.get_potential_energy()
     calc.diagonalize_full_hamiltonian(ecut=ecut)
-    calc.write('gs_gw_nowfs.gpw')
-    calc.write('gs_gw.gpw', mode='all')
+    gs_gw_nowfs = 'gs_gw_nowfs.gpw'
+    gs_gw = 'gs_gw.gpw'
+    calc.write(gs_gw_nowfs)
+    calc.write(gs_gw, mode='all')
+
+    return {
+        gs_gw_nowfs: ExternalFile.fromstr(gs_gw_nowfs),
+        gs_gw: ExternalFile.fromstr(gs_gw),
+    }
 
 
-@command(requires=['gs_gw.gpw'],
-         dependencies=['asr.gw@gs'])
+@command()
+@atomsopt
+@calcopt
+@option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--mode', help='GW mode',
         type=Choice(['G0W0', 'GWG']))
-def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
+def gw(atoms: Atoms,
+       calculator: dict = gs.defaults.calculator,
+       kptdensity: float = gs.defaults.kptdensity,
+       ecut: float = gs.defaults.ecut,
+       mode: str = 'G0W0'):
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
-    from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
     import numpy as np
 
     # check that the system is a semiconductor
-    calc = GPAW('gs.gpw', txt=None)
+    rec = calculategs(atoms=atoms, calculator=calculator)
+    calc = rec.result.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
+
+    if len(atoms) > 4:
+        raise Exception("GW: Only for small systems, "
+                        + str(len(atoms)) + " > 4 atoms!")
+
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = "
                         + str(pbe_gap) + " eV is too small!")
 
-    # check that the system is small enough
-    atoms = calc.get_atoms()
-    if len(atoms) > 4:
-        raise Exception("GW: Only for small systems, "
-                        + str(len(atoms)) + " > 4 atoms!")
+    rec = gs(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+    )
 
     # Setup parameters
     dim = np.sum(atoms.pbc.tolist())
@@ -220,7 +251,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 
     lb, ub = max(calc.wfs.nvalence // 2 - 8, 0), calc.wfs.nvalence // 2 + 4
 
-    calc = G0W0(calc='gs_gw.gpw',
+    calc = G0W0(calc=rec.result['gs_gw.gpw'],
                 bands=(lb, ub),
                 ecut=ecut,
                 ecut_extrapolation=True,
@@ -237,13 +268,25 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     return results
 
 
-@command(requires=['results-asr.gw@gw.json'],
-         dependencies=['asr.gw@gw'])
+@command()
+@atomsopt
+@calcopt
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--mode', help='GW mode',
+        type=Choice(['G0W0', 'GWG']))
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
-def empirical_mean_z(correctgw: bool = True,
-                     empz: float = 0.75) -> ASRResult:
+def empirical_mean_z(
+        atoms: Atoms,
+        calculator: dict = gw.defaults.calculator,
+        kptdensity: float = gw.defaults.kptdensity,
+        ecut: float = gw.defaults.ecut,
+        mode: str = gw.defaults.mode,
+        correctgw: bool = True,
+        empz: float = 0.75,
+):
     """Apply the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.
@@ -266,7 +309,15 @@ def empirical_mean_z(correctgw: bool = True,
     new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
     """
     import numpy as np
-    gwresults = read_json('results-asr.gw@gw.json')
+
+    rec = gw(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+        mode=mode,
+    )
+    gwresults = rec.result
     if not correctgw:
         return gwresults
 
@@ -374,12 +425,35 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(requires=['gs_gw_nowfs.gpw',
-                   'results-asr.gw@empirical_mean_z.json',
-                   'results-asr.bandstructure.json'],
-         dependencies=['asr.bandstructure', 'asr.gw@empirical_mean_z'],
-         returns=Result)
-def main() -> Result:
+@command()
+@atomsopt
+@calcopt
+@option('-b', '--bscalculator',
+        help='Bandstructure Calculator params.',
+        type=DictStr())
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--mode', help='GW mode',
+        type=Choice(['G0W0', 'GWG']))
+@option('-c', '--correctgw', is_flag=True, default=False)
+@option('-z', '--empz', type=float, default=0.75,
+        help='Replacement Z for unphysical Zs')
+def main(
+        atoms: Atoms,
+        calculator: dict = gw.defaults.calculator,
+        bscalculator: dict = bsmain.defaults.calculator,
+        kptpath: dict = bsmain.defaults.kptpath,
+        npoints: dict = bsmain.defaults.npoints,
+        kptdensity: float = gw.defaults.kptdensity,
+        ecut: float = gw.defaults.ecut,
+        mode: str = gw.defaults.mode,
+        correctgw: bool = True,
+        empz: float = 0.75,
+) -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils import fermi_level
@@ -387,16 +461,41 @@ def main() -> Result:
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
 
-    calc = GPAW('gs_gw_nowfs.gpw', txt=None)
-    gwresults = SimpleNamespace(**read_json('results-asr.gw@empirical_mean_z.json'))
+    gsrec = gs(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+    )
+    calc = GPAW(gsrec.result['gs_gw_nowfs.gpw'], txt=None)
 
+    gwresults = empirical_mean_z(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+        mode=mode,
+        correctgw=correctgw,
+        empz=empz,
+    ).result
+    gwresults = SimpleNamespace(**gwresults)
     lb = gwresults.minband
     ub = gwresults.maxband
 
     delta_skn = gwresults.qp - gwresults.eps
 
     # Interpolate band structure
-    results = MP_interpolate(calc, delta_skn, lb, ub)
+    results = MP_interpolate(
+        atoms,
+        calculator,
+        bscalculator,
+        kptpath,
+        npoints,
+        calc,
+        delta_skn,
+        lb,
+        ub,
+    )
 
     # First get stuff without SOC
     eps_skn = gwresults.qp
@@ -432,7 +531,7 @@ def main() -> Result:
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
     from asr.magnetic_anisotropy import get_spin_axis
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)

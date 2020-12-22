@@ -2,7 +2,7 @@
 from ase import Atoms
 from asr.calculators import Calculation
 from asr.core import (
-    command, option, read_json, ASRResult,
+    command, option, ASRResult,
     prepare_result, AtomsFile, DictStr,
 )
 import typing
@@ -45,19 +45,7 @@ class HSECalculationResult(ASRResult):
 @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
         atoms: Atoms,
-        calculator: dict = {
-            'name': 'gpaw',
-            'mode': {'name': 'pw', 'ecut': 800},
-            'xc': 'PBE',
-            'basis': 'dzp',
-            'kpts': {'density': 12.0, 'gamma': True},
-            'occupations': {'name': 'fermi-dirac',
-                            'width': 0.05},
-            'convergence': {'bands': 'CBM+3.0'},
-            'nbands': '200%',
-            'txt': 'gs.txt',
-            'charge': 0
-        },
+        calculator: dict = calculategs.defaults.calculator,
         kptdensity: float = 8.0,
         emptybands: int = 20,
 ) -> HSECalculationResult:
@@ -391,30 +379,10 @@ class Result(ASRResult):
         help='Number of points along k-point path.')
 def main(
         atoms: Atoms,
-        calculator: dict = {
-            'name': 'gpaw',
-            'mode': {'name': 'pw', 'ecut': 800},
-            'xc': 'PBE',
-            'basis': 'dzp',
-            'kpts': {'density': 12.0, 'gamma': True},
-            'occupations': {'name': 'fermi-dirac',
-                            'width': 0.05},
-            'convergence': {'bands': 'CBM+3.0'},
-            'nbands': '200%',
-            'txt': 'gs.txt',
-            'charge': 0
-        },
-        bscalculator: dict = {
-            'basis': 'dzp',
-            'nbands': -20,
-            'txt': 'bs.txt',
-            'fixdensity': True,
-            'convergence': {
-                'bands': -10},
-            'symmetry': 'off'
-        },
-        kptpath: typing.Union[str, None] = None,
-        npoints: int = 400,
+        calculator: dict = calculategs.defaults.calculator,
+        bscalculator: dict = bscalculate.defaults.bscalculator,
+        kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
+        npoints: int = bscalculate.defaults.npoints,
         kptdensity: float = 8.0,
         emptybands: int = 20,
 ) -> Result:

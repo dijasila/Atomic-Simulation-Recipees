@@ -13,3 +13,4 @@ from .command import (command, option, argument, get_recipes, ASRCommand,  # noq
                       get_recipes)  # noqa
 from .params import set_defaults  # noqa
 from .cache import get_cache  # noqa
+from .shortcuts import atomsopt, calcopt  # noqa
