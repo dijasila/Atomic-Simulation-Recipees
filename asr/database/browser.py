@@ -308,7 +308,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
         #             else name)  # Fall back to name as best guess for asr_name
         # link_name = get_recipe_href(asr_name, name=name)
     else:
-        params = recipe.get_defaults()
+        params = recipe.defaults
         # header = ('No parameters can be found, meaning that '
         #           'the recipe was probably run with the '
         #           'default parameter shown below\n'

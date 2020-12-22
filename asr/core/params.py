@@ -32,7 +32,7 @@ def set_defaults(parameters: typing.Dict[str, typing.Any]):  # noqa
     defaults = {}
     for name in parameters:
         recipe = get_recipe_from_name(name)
-        defaults[name] = recipe.get_defaults()
+        defaults[name] = recipe.defaults
 
     parameters = fill_in_defaults(parameters, defaults)
     prev_params = copy.deepcopy(PARAMETERS)

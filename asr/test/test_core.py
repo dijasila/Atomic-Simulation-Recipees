@@ -22,7 +22,7 @@ def recipe():
 @pytest.mark.ci
 def test_recipe_defaults(asr_tmpdir, recipe):
     """Test that recipe.get_defaults returns correct defaults."""
-    defaults = recipe.get_defaults()
+    defaults = recipe.defaults
     assert defaults == {'ny': 4}
 
 
@@ -32,7 +32,7 @@ def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
     from asr.core import write_json
     params = {'test_recipe@tmp_recipe': {'ny': 5}}
     write_json('params.json', params)
-    defaults = recipe.get_defaults()
+    defaults = recipe.defaults
     assert defaults == {'ny': 5}
 
 

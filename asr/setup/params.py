@@ -26,7 +26,7 @@ def main(params: Union[str, None] = None) -> ASRResult:
     defparamdict = {}
     recipes = get_recipes()
     for recipe in recipes:
-        defparams = recipe.get_defaults()
+        defparams = recipe.defaults
         defparamdict[recipe.name] = defparams
 
     p = Path('params.json')

@@ -315,7 +315,7 @@ def params(params: Union[str, None] = None):
     defparamdict = {}
     recipes = get_recipes()
     for recipe in recipes:
-        defparams = recipe.get_defaults()
+        defparams = recipe.defaults
         defparamdict[recipe.name] = defparams
 
     p = Path('params.json')

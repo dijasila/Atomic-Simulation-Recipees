@@ -241,7 +241,8 @@ class ASRCommand:
 
         return self.__signature__
 
-    def get_defaults(self):
+    @property
+    def defaults(self):
         """Get default parameters based on signature and params.json."""
         signature = self.get_signature()
         defparams = {}
@@ -266,7 +267,7 @@ class ASRCommand:
         command = setup_cli(
             self.get_wrapped_function(),
             self.main,
-            self.get_defaults(),
+            self.defaults,
             self.get_parameters()
         )
         return command(standalone_mode=False,

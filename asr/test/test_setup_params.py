@@ -68,7 +68,7 @@ recipes = get_recipes()
                                      recipes)))
 def test_setup_params_parametrize(asr_tmpdir, recipe):
     from asr.setup.params import main as setupparams
-    defparams = recipe.get_defaults()
+    defparams = recipe.defaults
     defparamdict = {recipe.name: defparams}
     setupparams(params=defparamdict)
     setupparams(params=defparamdict)
