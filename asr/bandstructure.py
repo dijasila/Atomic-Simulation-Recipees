@@ -524,6 +524,8 @@ def main(
         atoms=atoms,
         calculator=calculator,
         bscalculator=bscalculator,
+        npoints=npoints,
+        kptpath=kptpath,
     )
     gsrecord = calculategs(atoms=atoms, calculator=calculator)
     ref = gsrecord.result.calculation.load().get_fermi_level()
