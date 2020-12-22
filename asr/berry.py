@@ -283,36 +283,24 @@ class Result(ASRResult):
 @calcopt
 @option('--kpar', help='K-points along path', type=int)
 @option('--kperp', help='K-points orthogonal to path', type=int)
+@option('--topology', help='Specify topology', type=str)
 def main(
         atoms: Atoms,
         calculator: dict = gscalculate.defaults.calculator,
         kpar: int = 120,
-        kperp: int = 7
+        kperp: int = 7,
+        topology: str = 'Not checked!',
 ) -> Result:
-    from pathlib import Path
-    from ase.parallel import paropen
-
     calculate(
         atoms=atoms,
         calculator=calculator,
         kpar=kpar,
         kperp=kperp,
     )
-    data = {}
 
-    # XXX This is no longer really working.
-    if Path('topology.dat').is_file():
-        f = paropen('topology.dat', 'r')
-        top = f.readline()
-        f.close()
-        data['Topology'] = top
-    else:
-        f = paropen('topology.dat', 'w')
-        print('Not checked!', file=f)
-        f.close()
-        data['Topology'] = 'Not checked'
-
-    return data
+    # XXX Note I changed this behaviour Thomas. We need to talk.
+    data = {'Topology': topology}
+    return Result(data=data)
 
 
 if __name__ == '__main__':

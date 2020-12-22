@@ -36,15 +36,8 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-    if topology != 'Not checked':
-        # write topology.dat
-        from ase.parallel import paropen
-        f = paropen('topology.dat', 'w')
-        print(topology, file=f, end='')
-        f.close()
-
     from asr.berry import main
-    results = main(atoms=test_material).result
+    results = main(atoms=test_material, topology=topology).result
     assert results['Topology'] == topology
     test_material.write('structure.json')
     get_webcontent()
