@@ -117,3 +117,22 @@ def test_pdos_full(asr_tmpdir_w_params):
          f"{dosef_soc1}, {dosef_soc2}")
 
     print('All good')
+
+
+@pytest.mark.integration_test_gpaw
+def test_pdos_gpaw_integration(asr_tmpdir_w_params):
+    from ase.build import bulk
+    from asr.gs import calculate
+    from asr.pdos import main
+
+    atoms = bulk('Li')
+    atoms.write('structure.json')
+    calculate(
+        calculator={
+            "name": "gpaw",
+            "kpts": {"density": 2, "gamma": True},
+            "xc": "PBE",
+            "txt": 'gs.txt',
+        },
+    )
+    main()
