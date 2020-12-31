@@ -404,8 +404,8 @@ class Selection:
                     normalized['.'.join([key, keynorm])] = valuenorm
             elif callable(value):
                 comparator = value
-            else:
-                raise AssertionError(f'Unknown type {type(value)}')
+            # else: XXX Make special comparator type.
+            #     raise AssertionError(f'Unknown type {type(value)}')
 
             if comparator is not None:
                 normalized[key] = comparator
