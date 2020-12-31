@@ -205,6 +205,8 @@ def encode_object(obj: typing.Any):
         newobj = tuple(encode_object(value) for value in obj)
     elif hasattr(obj, 'todict'):
         newobj = encode_object(jsonio.MyEncoder().default(obj))
+    elif hasattr(obj, 'to_object_desc'):
+        newobj = encode_object(obj.to_object_desc())
     else:
         newobj = obj
     return newobj
@@ -274,7 +276,7 @@ class JSONEncoder(ResultEncoder):
     def decode(self, cls, json_string: str):
         """Decode json string."""
         dct = jsonio.decode(json_string)
-        return cls.fromdict(dct)
+        return cls.from_object_desc(dct)
 
 
 class HTMLEncoder(ResultEncoder):
@@ -311,11 +313,11 @@ class DictEncoder(ResultEncoder):
 
     def encode(self, result: 'ASRResult'):
         """Encode ASRResult object as dict."""
-        return result.todict()
+        return result.to_object_desc()
 
     def decode(self, cls, dct: dict):
         """Decode dict."""
-        return cls.fromdict(dct)
+        return cls.from_object_desc(dct)
 
 
 def get_key_descriptions(obj):
@@ -825,15 +827,15 @@ class ASRResult(object):
             },
         )
 
-    # # To and from dict
-    # def todict(self):
-    #     object_description = self.get_object_desc()
-    #     return encode_object(object_description)
+    # To and from dict
+    def to_object_desc(self):
+        object_description = self.get_object_desc()
+        return encode_object(object_description)
 
-    # @classmethod
-    # def fromdict(cls, dct: dict):
-    #     obj_desc = ObjectDescription.fromdict(dct)
-    #     return obj_desc.instantiate()
+    @classmethod
+    def from_object_desc(cls, dct: dict):
+        obj_desc = ObjectDescription.fromdict(dct)
+        return obj_desc.instantiate()
 
     # ---- Magic methods ----
 

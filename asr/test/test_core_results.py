@@ -59,7 +59,7 @@ def test_results_object(capsys):
     assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel', 'str'])
     print(results)
     captured = capsys.readouterr()
-    assert captured.out == 'a=1\n'
+    assert captured.out == 'Result(a=1)\n'
 
     assert isinstance(results.format_as('ase_webpanel', {}, {}), list)
 
@@ -78,7 +78,7 @@ def test_results_object(capsys):
 
 @pytest.mark.ci
 def test_reading_result():
-    result = recipe()
+    result = recipe().result
     jsonresult = result.format_as('json')
     new_result = recipe.returns.from_format(jsonresult, format='json')
 

@@ -94,5 +94,13 @@ class Parameters:  # noqa
     def __repr__(self):  # noqa
         return self.__str__()
 
+    def get(self, key, default=None):
+        return self.__dict__.get(key, default)
+
+    def __eq__(self, other):
+        if not type(self) == type(other):
+            return False
+        return self.__dict__ == other.__dict__
+
     def __contains__(self, key):
         return key in self.__dict__

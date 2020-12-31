@@ -264,12 +264,7 @@ class ASRCommand:
             List of command line arguments. If None: Read arguments from
             sys.argv.
         """
-        command = setup_cli(
-            self.get_wrapped_function(),
-            self.main,
-            self.defaults,
-            self.get_parameters()
-        )
+        command = make_cli_command(self)
         return command(standalone_mode=False,
                        prog_name=f'asr run {self.name}', args=args)
 
@@ -476,6 +471,16 @@ def get_recipes():
             if isinstance(attr, ASRCommand) or hasattr(attr, 'is_recipe'):
                 functions.append(attr)
     return functions
+
+
+def make_cli_command(asr_command: ASRCommand):
+    command = setup_cli(
+        asr_command.get_wrapped_function(),
+        asr_command.main,
+        asr_command.defaults,
+        asr_command.get_parameters(),
+    )
+    return command
 
 
 def setup_cli(wrapped, wrapper, defparams, parameters):
