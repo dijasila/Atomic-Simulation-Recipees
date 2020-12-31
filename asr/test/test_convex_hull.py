@@ -40,8 +40,10 @@ def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
     atoms = bulk(metal_atoms[0])
     atoms = atoms.repeat((1, 1, nmetalatoms))
     atoms.set_chemical_symbols(metal_atoms)
-    atoms.write('structure.json')
-    results = main(databases=['references.db'])
+
+    results = main(atoms=atoms, databases=[connect('references.db')]).result
     assert results['hform'] == -sum(energies[element]
                                     for element in metal_atoms) / nmetalatoms
+
+    atoms.write('structure.json')
     get_webcontent()

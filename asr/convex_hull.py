@@ -4,15 +4,19 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import functools
 
-from asr.core import command, argument, ASRResult, prepare_result
+from asr.core import (
+    command, argument, ASRResult, prepare_result,
+    atomsopt, calcopt, ASEDatabase,
+)
 from asr.database.browser import (
     fig, table, describe_entry, dl, br, make_panel_description
 )
 
-from ase.db import connect
-from ase.io import read
+from ase import Atoms
 from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
+
+from asr.gs import main as groundstate
 
 known_methods = ['DFT', 'DFT+D3']
 
@@ -109,8 +113,14 @@ class Result(ASRResult):
          dependencies=['asr.structureinfo',
                        'asr.database.material_fingerprint'],
          returns=Result)
-@argument('databases', nargs=-1, type=str)
-def main(databases: List[str]) -> Result:
+@atomsopt
+@calcopt
+@argument('databases', nargs=-1, type=ASEDatabase)
+def main(
+        atoms: Atoms,
+        calculator: dict = groundstate.defaults.calculator,
+        databases: List[str] = [],
+) -> Result:
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -158,14 +168,13 @@ def main(databases: List[str]) -> Result:
         List of filenames of databases.
 
     """
-    from asr.relax import main as relax
-    from asr.gs import main as groundstate
     from asr.core import read_json
-    atoms = read('structure.json')
 
-    if not relax.done:
-        if not groundstate.done:
-            groundstate()
+    # XXX Add possibility of D3 correction again
+    if not groundstate.select():
+        record = groundstate(atoms=atoms, calculator=calculator)
+        usingd3 = False
+        energy = record.result.etot
 
     # TODO: Make separate recipe for calculating vdW correction to total energy
     for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
@@ -185,9 +194,8 @@ def main(databases: List[str]) -> Result:
 
     dbdata = {}
     reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
-    for database in databases:
+    for refdb in databases:
         # Connect to databases and save relevant rows
-        refdb = connect(database)
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
@@ -197,19 +205,24 @@ def main(databases: List[str]) -> Result:
         assert dbmethod == mymethod, \
             ('You are using a reference database with '
              f'inconsistent methods: {mymethod} (this material) != '
-             f'{dbmethod} ({database})')
+             f'{dbmethod} ({refdb.database})')
 
         rows = []
         # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
-        dbdata[database] = {'rows': rows,
-                            'metadata': metadata}
+        dbdata[refdb.filename] = {
+            'rows': rows,
+            'metadata': metadata,
+        }
 
     ref_database = databases[0]
-    ref_metadata = dbdata[ref_database]['metadata']
+    ref_metadata = dbdata[ref_database.filename]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(atoms, ref_database,
-                                          energy_key=ref_energy_key)
+    ref_energies = get_reference_energies(
+        atoms,
+        ref_database,
+        energy_key=ref_energy_key,
+    )
     hform = hof(energy,
                 count,
                 ref_energies)
@@ -268,12 +281,11 @@ def main(databases: List[str]) -> Result:
     return Result(data=results)
 
 
-def get_reference_energies(atoms, references, energy_key='energy'):
+def get_reference_energies(atoms, refdb, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
     ref_energies = {}
-    refdb = connect(references)
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]

@@ -67,6 +67,18 @@ class DictStr(click.ParamType):
         return parse_dict_string(value, default)
 
 
+class ASEDatabase(click.ParamType):
+    """Read atoms object from filename and return Atoms object."""
+
+    name = "ase_database"
+
+    def convert(self, value, param, ctx):
+        """Convert string to a dictionary."""
+        from ase.db import connect
+        con = connect(value)
+        return con
+
+
 def clickify_docstring(doc):
     """Take a standard docstring a make it Click compatible."""
     if doc is None:
