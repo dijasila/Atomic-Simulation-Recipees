@@ -1,5 +1,5 @@
 """Convert database to folder tree."""
-from asr.core import command, argument, option, ASRResult
+from asr.core import ASRResult
 from asr.utils import timed_print
 from pathlib import Path
 from datetime import datetime
@@ -11,11 +11,10 @@ def make_folder_tree(*, folders, chunks,
                      atomsfile,
                      update_tree):
     """Write folder tree to disk."""
-    from os import makedirs, link
+    from os import makedirs  # , link
     from ase.io import write
-    from asr.core import write_json
-    import importlib
-    from fnmatch import fnmatch
+    # import importlib
+    # from fnmatch import fnmatch
 
     nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):

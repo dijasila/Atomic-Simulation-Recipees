@@ -1,7 +1,6 @@
 """Tests of asr.database.from_tree."""
 
 from asr.core import chdir
-from ase.io import read
 import pytest
 import os
 from pathlib import Path
