@@ -734,6 +734,55 @@ def fromtree(
 
 
 @database.command()
+@click.argument('database', nargs=1, type=str)
+@click.option('--run/--dry-run', is_flag=True)
+@click.option('-s', '--selection', help='ASE-DB selection', type=str,
+              default='')
+@click.option('-t', '--tree-structure', type=str,
+              default='tree/{stoi}/{reduced_formula:abc}/{row.uid}')
+@click.option('--sort', help='Sort the generated materials '
+              '(only useful when dividing chunking tree)', type=str)
+@click.option(
+    '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
+@click.option('--atomsfile',
+              help="Filename to unpack atomic structure to. "
+              "By default, don't write atoms file.",
+              type=str)
+@click.option(
+    '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
+    type=int, default=1)
+@click.option(
+    '--patterns',
+    help="Comma separated patterns. Only unpack files matching patterns",
+    type=str,
+    default='*')
+@click.option('--update-tree', is_flag=True,
+              help='Update results files in existing folder tree.')
+def main(database: str, run: bool, selection: str,
+         tree_structure: str,
+         sort: str,
+         atomsfile: str,
+         chunks: int,
+         copy: bool,
+         patterns: str,
+         update_tree: bool):
+    from asr.database.totree import main
+
+    main(
+        database=database,
+        run=run,
+        selection=selection,
+        tree_structure=tree_structure,
+        sort=sort,
+        atomsfile=atomsfile,
+        chunks=chunks,
+        copy=copy,
+        patterns=patterns,
+        update_tree=update_tree,
+    )
+
+
+@database.command()
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
 @click.option("--test", is_flag=True, help="Test the app.")

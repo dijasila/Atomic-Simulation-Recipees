@@ -270,6 +270,8 @@ class FileCacheBackend():  # noqa
         return uid_table
 
     def has(self, selection: 'Selection'):  # noqa
+        if not self.initialized:
+            return False
         records = self.select()
         for record in records:
             if selection.matches(record):
@@ -283,6 +285,8 @@ class FileCacheBackend():  # noqa
         return obj
 
     def select(self, selection: 'Selection' = None):
+        if not self.initialized:
+            return []
         all_records = [self.get_record_from_uid(run_uid)
                        for run_uid in self.uid_table]
         if selection is None:
