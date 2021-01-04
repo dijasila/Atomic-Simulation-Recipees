@@ -3,43 +3,7 @@ import numpy as np
 from numpy.linalg import norm
 
 
-def AngleBetween(v1, v2):
-    v1u = v1 / norm(v1)
-    v2u = v2 / norm(v2)
-    if v2u[1] >= 0 and v1u[1] >= 0:
-        return np.arccos(v2u[0]) - np.arccos(v1u[0])
-    if v2u[1] <= 0 and v1u[1] <= 0:
-        return np.arccos(v1u[0]) - np.arccos(v2u[0])
-    if v2u[1] >= 0 and v1u[1] <= 0:
-        return np.arccos(v1u[0]) + np.arccos(v2u[0])
-    if v2u[1] <= 0 and v1u[1] >= 0:
-        return - np.arccos(v1u[0]) - np.arccos(v2u[0])
-
-
-# Obtain symmetry and BZ path for the monolayer
-def GetBandpath2D(atoms):
-    tol_ang = np.pi / 180
-    tol_norm = 1e-4
-    cell = atoms.get_cell()
-    angle = AngleBetween(cell[0], cell[1])
-    norm0 = norm(cell[0])
-    norm1 = norm(cell[1])
-    # Hexagonal lattice
-    if abs(angle - np.pi/3) < tol_ang or abs(angle - 2/3*np.pi) < tol_ang:
-        if abs(norm0 - norm1) < tol_norm:
-            return 'GMKG'
-    # Square lattice
-    elif abs(angle - np.pi/2) < tol_ang and abs(norm0 - norm1) < tol_norm:
-        return 'MGXM'
-    # Rectangular lattice
-    elif abs(angle - np.pi/2) < tol_ang and abs(norm0 - norm1) > tol_norm:
-        return 'GXSYGS'
-    # Monoclinic lattice
-    elif abs(angle - np.pi/2) > tol_ang and abs(angle - np.pi/3) > tol_ang and abs(angle - 2/3*np.pi) > tol_ang:
-        return 'GYHCH1XG'
-
-
-def SinglePoint(atoms, kpoints, eta, layer_nr): 
+def gs(atoms, kpoints, eta, layer_nr): 
     from gpaw import GPAW, FermiDirac
 
     calc = GPAW(mode='lcao',
@@ -47,26 +11,30 @@ def SinglePoint(atoms, kpoints, eta, layer_nr):
             basis='dzp',
             kpts=(kpoints, kpoints, 1),
             occupations=FermiDirac(eta),
-            txt=f'asr.bilayers_scs_layer{layer_nr}.txt')
+            txt=f'layer{layer_nr}.gpw')
+
     atoms.calc = calc
     atoms.get_potential_energy()
     calc.write(f'layer{layer_nr}.gpw', 'all')
  
 
-def BandStructure(atoms, layer_nr, inputfile, bandpathpoints):
+def bs(atoms, layer_nr, inputfile, bandpathpoints):
     from gpaw import GPAW
-    from ase.io import read
     from ase.dft.kpoints import bandpath
 
-    kptpath = atoms.cell.bandpath(path=GetBandpath2D(atoms), npoints=bandpathpoints, pbc=atoms.pbc)
+    kptpath = atoms.cell.bandpath(npoints=bandpathpoints, 
+                                  pbc=atoms.pbc, 
+                                  eps = 1e-2)
+
     calc = GPAW(inputfile,
                 fixdensity=True,
                 symmetry='off',
                 kpts=kptpath,
-                txt=f'layer{layer_nr}_bandstructure.txt')
+                txt=f'layer{layer_nr}_bs.txt')
+
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(f'layer{layer_nr}_bandstructure.gpw', 'all')
+    calc.write(f'layer{layer_nr}_bs.gpw', 'all')
 
 
 @command('asr.SCS_1ls')
@@ -95,14 +63,14 @@ def main(structure: str = None,
 
     # Loading the structure
     atoms = read(structure)
-    spfile = f'layer{layer_nr}.gpw'
-    bsfile = f'layer{layer_nr}_bandstructure.gpw'
+    gsfile = f'layer{layer_nr}_gs.gpw'
+    bsfile = f'layer{layer_nr}_bs.gpw'
 
-    if Path(spfile).exists() == False:
-        SinglePoint(atoms, kpoints, eta, layer_nr)
+    if Path(gsfile).exists() == False:
+        GroundState(atoms, kpoints, eta, layer_nr)
 
     if Path(bsfile).exists() == False:
-        BandStructure(atoms, layer_nr, spfile, bandpathpoints) 
+        BandStructure(atoms, layer_nr, gsfile, bandpathpoints) 
 
 
 if __name__ == "__main__":
