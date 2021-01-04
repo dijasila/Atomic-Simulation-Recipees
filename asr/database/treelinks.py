@@ -47,9 +47,21 @@ def main(include: str = '',
 
 
 def write_links(path, link_uids):
-    """NEEDS TO BE PROPERLY IMPLEMENTED!"""
-    from asr.core import write_json
+    from asr.core import read_json, write_json
 
+    newlinks = []
+    linkspath = Path(path / 'links.json')
+    if linkspath.is_file():
+        oldlinks = read_json(linkspath)['uids']
+    else:
+        oldlinks = []
+
+    for link_uid in link_uids:
+        if link_uid not in oldlinks:
+            newlinks.append(link_uid)
+
+    newlinks.append(oldlinks['uids'])
+    link_uids = {'uids': newlinks}
     write_json(path / 'links.json', link_uids)
 
 
@@ -97,7 +109,10 @@ def create_tree_links(folders):
     """
     print('INFO: Create links for the following folders:')
 
-    uids = []
+    parent_uid = read_json(folder
+                           / 'results-asr.database.material_fingerprint.json')['uid']
+    uids = [parent_uid]
+
     for folder in folders:
         fingerprint_res = read_json(folder
                                     / 'results-asr.database.material_fingerprint.json')
@@ -108,6 +123,7 @@ def create_tree_links(folders):
 
     links = {'uids': uids}
 
-    write_links(folder, links)
+    for folder in folders:
+        :x
 
     return uids
