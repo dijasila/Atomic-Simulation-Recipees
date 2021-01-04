@@ -81,15 +81,24 @@ def link_section(row, key_descriptions, exclude):
 
     Create table with all keys except those in exclude.
     """
-    links = row.data['links']
-    linknames = []
-    linkhtml = []
-    for link in links:
-        linknames.append(f"{link[0]} ({link[2]})")
-        linkhtml.append(f'a href="https://google.com">{link[0]}</a>')
+    try:
+        links = row.data['links']
+    except KeyError:
+        return ('Links', [[]])
 
-    link = create_table(row, ['Material (Database name)', 'Link'], linknames, linkhtml)
-    return ('Links', [[link]])
+    link_table = create_link_table(row, links)
+    return ('Links', [[link_table]])
+
+
+def create_link_table(row, links):
+    """Helper function to create links table in the links panel."""
+    link_table = table(row, 'Material', 'Link')
+    for link in links:
+        linkname = f'<a href="{link[1]}">{link[0]}</a>'
+        linktype = link[2]
+        link_table['rows'].extend([[linkname, linktype]])
+
+    return link_table
 
 
 class ExplainedStr(str):

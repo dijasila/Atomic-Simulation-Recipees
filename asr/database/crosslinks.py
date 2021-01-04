@@ -58,7 +58,7 @@ def main(target: str,
         if linkfilename in data:
             formatted_links = []
             uids_to_link_to = refrow.data[linkfilename]['uids']
-            for uid in uids_to_link_to['uids']:
+            for uid in uids_to_link_to: #uids_to_link_to['uids']:
                 for dbfilename, uids_to_row in uids_for_each_db.items():
                     metadata = db_connections[dbfilename].metadata
                     row = uids_to_row.get(uid, None)
