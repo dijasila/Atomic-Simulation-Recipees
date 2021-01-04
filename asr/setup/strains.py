@@ -20,10 +20,10 @@ def get_relevant_strains(pbc):
 @option('-i', '--i', type=int, help='Strain component=i of cell.')
 @option('-j', '--j', type=int, help='Strain component=j of cell.')
 def main(
-        atoms,
-        strain_percent=1,
-        i=0,
-        j=0,
+        atoms: Atoms,
+        strain_percent: float = 1,
+        i: int = 0,
+        j: int = 0,
 ) -> Atoms:
     import numpy as np
 

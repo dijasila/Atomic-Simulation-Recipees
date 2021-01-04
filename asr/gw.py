@@ -202,7 +202,7 @@ def gw(atoms: Atoms,
        calculator: dict = gs.defaults.calculator,
        kptdensity: float = gs.defaults.kptdensity,
        ecut: float = gs.defaults.ecut,
-       mode: str = 'G0W0'):
+       mode: str = 'G0W0') -> dict:
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw.response.g0w0 import G0W0
@@ -285,7 +285,7 @@ def empirical_mean_z(
         mode: str = gw.defaults.mode,
         correctgw: bool = True,
         empz: float = 0.75,
-):
+) -> dict:
     """Apply the empirical-Z method.
 
     Implements the method described in https://arxiv.org/abs/2009.00314.

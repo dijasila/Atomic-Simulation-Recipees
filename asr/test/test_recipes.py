@@ -9,7 +9,7 @@ all_recipes = get_recipes()
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("recipe", all_recipes)
+@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_cli_help_calls(asr_tmpdir, capsys, recipe):
     """Test that all help calls actually works."""
     recipe.cli(['-h'])
@@ -67,11 +67,3 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
 
     assert set(type_hints) == type_hints_that_should_exist, \
         f'Missing type hints: {recipe.name}'
-
-    assert type_hints['return'] == recipe.returns
-
-
-@pytest.mark.ci
-@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
-def test_recipe_use_new_webpanel_implementation(recipe):
-    assert recipe.webpanel is None

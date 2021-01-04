@@ -115,7 +115,7 @@ class Result(ASRResult):
          returns=Result)
 @atomsopt
 @calcopt
-@argument('databases', nargs=-1, type=ASEDatabase)
+@argument('databases', nargs=-1, type=ASEDatabase())
 def main(
         atoms: Atoms,
         calculator: dict = groundstate.defaults.calculator,

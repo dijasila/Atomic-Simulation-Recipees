@@ -1,4 +1,6 @@
 """Structural information."""
+from ase import Atoms
+
 from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
@@ -191,7 +193,7 @@ class Result(ASRResult):
          returns=Result)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-def main(atoms) -> Result:
+def main(atoms: Atoms) -> Result:
     """Get structural information of atomic structure.
 
     This recipe produces information such as the space group and magnetic

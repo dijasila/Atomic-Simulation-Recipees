@@ -1,5 +1,8 @@
 """Stiffness tensor."""
 import typing
+
+from ase import Atoms
+
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile, DictStr)
 from asr.database.browser import (matrixtable, describe_entry, dl,
@@ -198,7 +201,7 @@ class Result(ASRResult):
 @option('-c', '--calculator', help='Calculator and its parameters.',
         type=DictStr())
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
-def main(atoms,
+def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',

@@ -5,8 +5,8 @@ from datetime import datetime
 @command(module='asr.database.duplicates',
          resources='1:20m',
          save_results_file=False)
-@argument('databaseout', type=ASEDatabase, required=False)
-@argument('database', type=ASEDatabase)
+@argument('databaseout', type=ASEDatabase(), required=False)
+@argument('database', type=ASEDatabase())
 @option('-f', '--filterstring',
         help='List of keys denoting the priority of picking'
         ' candidates among possible duplicates.',
