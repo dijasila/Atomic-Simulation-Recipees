@@ -1,10 +1,15 @@
 """Orbital projected band structure."""
 import numpy as np
+from ase import Atoms
 
-from asr.core import command, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    DictStr,
+)
 import typing
 
 from asr.database.browser import make_panel_description
+from asr.bandstructure import calculate as bscalculate
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
@@ -82,11 +87,33 @@ class Result(ASRResult):
                    'results-asr.bandstructure.json'],
          dependencies=['asr.gs', 'asr.bandstructure'],
          returns=Result)
-def main() -> Result:
-    from gpaw import GPAW
-
+@atomsopt
+@calcopt
+@option('-b', '--bscalculator',
+        help='Bandstructure Calculator params.',
+        type=DictStr())
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def main(
+        atoms: Atoms,
+        calculator: dict = bscalculate.defaults.calculator,
+        bscalculator: dict = bscalculate.defaults.bscalculator,
+        kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
+        npoints: int = bscalculate.defaults.npoints,
+) -> Result:
     # Get bandstructure calculation
-    calc = GPAW('bs.gpw', txt=None)
+    rec = bscalculate(
+        atoms=atoms,
+        calculator=calculator,
+        bscalculator=bscalculator,
+        kptpath=kptpath,
+        npoints=npoints,
+    )
+
+    calc = rec.result.calculation.load()
+    # calc = GPAW('bs.gpw', txt=None)
 
     results = {}
 
