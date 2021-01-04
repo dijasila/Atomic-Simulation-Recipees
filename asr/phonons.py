@@ -14,6 +14,7 @@ from asr.core import (
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
+from asr.magstate import main as magstate
 from asr.core import ExternalFile
 
 panel_description = make_panel_description(
@@ -41,6 +42,8 @@ class CalculateResult(ASRResult):
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@option('--magstatecalculator',
+        help='Magstate calculator params.', type=DictStr())
 @option('-n', help='Supercell size', type=int, nargs=3)
 def calculate(
         atoms: Atoms,
@@ -58,6 +61,7 @@ def calculate(
             'txt': 'phonons.txt',
             'charge': 0
         },
+        magstatecalculator: dict = magstate.defaults.calculator,
         n: int = 2,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
@@ -70,9 +74,8 @@ def calculate(
     world.barrier()
 
     # Set initial magnetic moments
-    from asr.magstate import main as magstate
-    magstate = magstate(atoms=atoms)
-    if magstate.result.is_magnetic:
+    magstaterec = magstate(atoms=atoms, calculator=magstatecalculator)
+    if magstaterec.result.is_magnetic:
         magmoms_m = magstate.result.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
