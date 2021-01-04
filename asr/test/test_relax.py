@@ -119,12 +119,10 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(asr_tmpdir):
-    from pathlib import Path
-    from asr.setup.materials import main as setupmaterial
     from asr.setup.params import main as setupparams
     from asr.relax import main as relax
-    setupmaterial.cli(["-s", "Si2"])
-    Path("materials.json").rename("unrelaxed.json")
+    from .materials import Si
+    Si.write('unrelaxed.json')
     relaxargs = (
         "{'mode':{'ecut':200,'dedecut':'estimate',...},"
         "'kpts':{'density':1,'gamma':True},...}"
