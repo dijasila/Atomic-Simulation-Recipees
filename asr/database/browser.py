@@ -76,6 +76,22 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+def link_section(row, key_descriptions, exclude):
+    """Make help function for adding a "links" section.
+
+    Create table with all keys except those in exclude.
+    """
+    links = row.data['links']
+    linknames = []
+    linkhtml = []
+    for link in links:
+        linknames.append(f"{link[0]} ({link[2]})")
+        linkhtml.append(f'a href="https://google.com">{link[0]}</a>')
+
+    link = create_table(row, ['Material (Database name)', 'Link'], linknames, linkhtml)
+    return ('Links', [[link]])
+
+
 class ExplainedStr(str):
     """A mutable string class that support explanations."""
 
@@ -514,11 +530,19 @@ def layout(row: AtomsRow,
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
+    # add miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
     misc_panel = {'title': misc_title,
                   'columns': misc_columns}
     page.append(misc_panel)
+
+    # add links section
+    link_title, link_columns = link_section(row, key_descriptions,
+                                             exclude)
+    link_panel = {'title': link_title,
+                  'columns': link_columns}
+    page.append(link_panel)
 
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
