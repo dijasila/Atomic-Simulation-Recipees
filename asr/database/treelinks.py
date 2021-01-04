@@ -56,11 +56,13 @@ def write_links(path, link_uids):
     else:
         oldlinks = []
 
-    for link_uid in link_uids:
+    for link_uid in link_uids['uids']:
         if link_uid not in oldlinks:
             newlinks.append(link_uid)
 
-    newlinks.append(oldlinks['uids'])
+    if oldlinks != []:
+        for link in oldlinks:
+            newlinks.append(link)
     link_uids = {'uids': newlinks}
     write_json(path / 'links.json', link_uids)
 
@@ -109,8 +111,7 @@ def create_tree_links(folders):
     """
     print('INFO: Create links for the following folders:')
 
-    parent_uid = read_json(folder
-                           / 'results-asr.database.material_fingerprint.json')['uid']
+    parent_uid = read_json('results-asr.database.material_fingerprint.json')['uid']
     uids = [parent_uid]
 
     for folder in folders:
@@ -124,6 +125,6 @@ def create_tree_links(folders):
     links = {'uids': uids}
 
     for folder in folders:
-        :x
+        write_links(folder, links)
 
     return uids
