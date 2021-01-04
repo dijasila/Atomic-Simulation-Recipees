@@ -86,13 +86,13 @@ def link_section(row, key_descriptions, exclude):
     except KeyError:
         return ('Links', [[]])
 
-    link_table = create_link_table(row, links)
+    link_table = create_link_table(row, links, key_descriptions)
     return ('Links', [[link_table]])
 
 
-def create_link_table(row, links):
+def create_link_table(row, links, key_descriptions):
     """Helper function to create links table in the links panel."""
-    link_table = table(row, 'Material', 'Link')
+    link_table = table(row, 'Links', [])
     for link in links:
         linkname = f'<a href="{link[1]}">{link[0]}</a>'
         linktype = link[2]
