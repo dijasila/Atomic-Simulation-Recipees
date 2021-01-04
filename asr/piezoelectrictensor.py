@@ -9,6 +9,18 @@ tensor. The central recipe of this module is
 import itertools
 import typing
 from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.database.browser import matrixtable, make_panel_description, describe_entry
+
+
+panel_description = make_panel_description("""
+The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
+polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
+matrix relating the (x,y,z) components of the polarizability to the N
+independent components of the strain tensor. The polarization in a periodic
+direction is calculated as an integral over Berry phases. The polarization in a
+non-periodic direction is obtained by direct evaluation of the first moment of
+the electron density.
+""")
 
 
 all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
@@ -37,7 +49,7 @@ def get_voigt_labels(pbc: typing.List[bool]):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import matrixtable
+
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
@@ -55,16 +67,18 @@ def webpanel(result, row, key_descriptions):
     etable = matrixtable(e_ij,
                          columnlabels=voigt_labels,
                          rowlabels=['x', 'y', 'z'],
-                         title='Piezoelectric tensor (e/Å<sup>dim-1</sup>)')
+                         title='c<sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
-    e0table = matrixtable(e0_ij,
-                          columnlabels=voigt_labels,
-                          rowlabels=['x', 'y', 'z'],
-                          title='Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)')
+    e0table = matrixtable(
+        e0_ij,
+        columnlabels=voigt_labels,
+        rowlabels=['x', 'y', 'z'],
+        title='c<sup>clamped</sup><sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
     columns = [[etable], [e0table]]
 
-    panel = {'title': 'Piezoelectric tensor',
+    panel = {'title': describe_entry('Piezoelectric tensor',
+                                     panel_description),
              'columns': columns}
 
     return [panel]

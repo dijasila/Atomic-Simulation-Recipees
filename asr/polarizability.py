@@ -1,13 +1,24 @@
 """Optical polarizability."""
 import typing
-from asr.core import command, option, ASRResult, prepare_result
 from click import Choice
+from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (
+    table,
+    fig,
+    describe_entry,
+    make_panel_description)
+
+panel_description = make_panel_description(
+    """The frequency-dependent polarisability in the long wave length limit (q=0)
+calculated in the random phase approximation (RPA) without spin-orbit
+interactions. For metals a Drude term accounts for intraband transitions. The
+contribution from polar lattice vibrations is added (see IR polarisability) and
+may be visible at low frequencies.""",
+    articles=['C2DB'],
+)
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table,
-                                      fig,
-                                      describe_entry)
     explanation = 'Static interband polarizability along the'
     alphax_el = describe_entry('alphax_el', description=explanation + " x-direction")
     alphay_el = describe_entry('alphay_el', description=explanation + " y-direction")
@@ -29,7 +40,8 @@ def webpanel(result, row, key_descriptions):
         alphax, alphay, alphaz,
     ], key_descriptions)
 
-    panel = {'title': 'Optical polarizability (RPA)',
+    panel = {'title': describe_entry('Optical polarizability (RPA)',
+                                     panel_description),
              'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
                          [fig('rpa-pol-y.png'), opt]],
              'plot_descriptions':

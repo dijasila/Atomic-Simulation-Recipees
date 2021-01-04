@@ -453,17 +453,9 @@ class RowWrapper:
         return self._row.__contains__(key)
 
 
-def layout(row: AtomsRow,
-           key_descriptions: Dict[str, Tuple[str, str, str]],
-           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
-    """Page layout."""
-    page = {}
-    exclude = set()
-
-    row = RowWrapper(row)
-
-    result_objects = []
-    for key, value in row.data.items():
+def parse_row_data(data: dict):
+    newdata = {}
+    for key, value in data.items():
         if is_results_file(key):
             obj = decode_object(value)
 
@@ -473,12 +465,46 @@ def layout(row: AtomsRow,
                 recipename = extract_recipe_from_filename(key)
                 value['__asr_hacked__'] = recipename
                 obj = decode_object(value)
-            result_objects.append(obj)
         else:
             obj = value
-        row.data[key] = obj
-        assert row.data[key] == obj
+        newdata[key] = obj
+    return newdata
 
+
+def layout(row: AtomsRow,
+           key_descriptions: Dict[str, Tuple[str, str, str]],
+           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
+    """Page layout."""
+    page = {}
+    exclude = set()
+
+    row = RowWrapper(row)
+
+    newdata = parse_row_data(row.data)
+    row.data = newdata
+    result_objects = []
+
+    for key, value in row.data.items():
+# <<<<<<< HEAD
+#         if is_results_file(key):
+#             obj = decode_object(value)
+# 
+#             # Below is to support old C2DB databases that contain
+#             # hacked result files with no asr_name
+#             if not isinstance(obj, ASRResult):
+#                 recipename = extract_recipe_from_filename(key)
+#                 value['__asr_hacked__'] = recipename
+#                 obj = decode_object(value)
+#             result_objects.append(obj)
+#         else:
+#             obj = value
+#         row.data[key] = obj
+#         assert row.data[key] == obj
+# =======
+        if isinstance(value, ASRResult):
+            result_objects.append(value)
+# >>>>>>> origin/master
+# 
     panel_data_sources = {}
     # Locate all webpanels
     for result in result_objects:

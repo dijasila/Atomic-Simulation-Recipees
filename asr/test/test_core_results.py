@@ -1,6 +1,9 @@
 from typing import Dict
 from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
-                      dct_to_object, obj_to_id, write_json, read_file, decode_json)
+                      decode_object, encode_object,
+                      obj_to_id, write_json,
+                      read_file, decode_json,
+                      decode_result, UnknownDataFormat)
 from asr.utils.fix_object_ids import fix_object_id, _fix_folders
 import pytest
 from asr.gs import Result as GSResult
@@ -813,7 +816,7 @@ def test_read_old_format():
         }
     }
 
-    result = dct_to_object(dct)
+    result = decode_object(dct)
     assert result.formats['ase_webpanel'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
@@ -858,7 +861,7 @@ def test_obj_to_id(obj, result):
 
 
 @pytest.mark.ci
-def test_fix_folders(asr_tmpdir):
+def test_fix_folders_corrupt_object_id(asr_tmpdir):
     folders = ['.']
     write_json('results-asr.gs@calculate.json',
                {'object_id': '__main__::Result',
@@ -878,3 +881,35 @@ def test_fix_folders(asr_tmpdir):
     assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
             and dct['kwargs']['data']['gaps_nosoc']['constructor']
             == 'asr.gs::GapsResult')
+
+
+@pytest.mark.ci
+def test_decode_result_raises_unknown_data_format(asr_tmpdir):
+    data = {'etot': 0}
+    with pytest.raises(UnknownDataFormat):
+        decode_result(data)
+
+
+@pytest.mark.ci
+def test_fix_folders_missing_object_id(asr_tmpdir):
+    folders = ['.']
+    write_json('results-asr.gs.json',
+               {'etot': 0})
+    _fix_folders(folders)
+    text = read_file('results-asr.gs.json')
+    dct = decode_json(text)
+    result = decode_result(dct)
+    assert result.etot == 0
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('obj', [
+    (MyResult.fromdata(a=1), MyResult.fromdata(a=2)),
+    [MyResult.fromdata(a=1), MyResult.fromdata(a=2)],
+    MyResult.fromdata(a=MyResult.fromdata(a=2)),
+])
+def test_encode_decode_result_objects(obj):
+    encoded_obj = encode_object(obj)
+    assert not encoded_obj == obj
+    decoded_obj = decode_object(encoded_obj)
+    assert obj == decoded_obj

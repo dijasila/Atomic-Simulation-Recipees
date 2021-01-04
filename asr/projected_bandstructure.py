@@ -4,16 +4,52 @@ import numpy as np
 from asr.core import command, ASRResult, prepare_result
 import typing
 
+from asr.database.browser import make_panel_description
+
+panel_description = make_panel_description(
+    """The single-particle band structure and density of states projected onto
+atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+plots.""",
+    articles=[
+        'C2DB',
+    ],
+)
+
 
 # ---------- Webpanel ---------- #
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, WebPanel
+    from asr.database.browser import (fig,
+                                      entry_parameter_description,
+                                      describe_entry, WebPanel)
+
+    # Projected band structure figure
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.bandstructure@calculate')
+    dependencies_parameter_descriptions = ''
+    for dependency, exclude_keys in zip(
+            ['asr.gs@calculate'],
+            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                  'idiotproof', 'maxiter', 'hund', 'random',
+                  'experimental', 'basis', 'setups'])]
+    ):
+        epd = entry_parameter_description(
+            row.data,
+            dependency,
+            exclude_keys=exclude_keys)
+        dependencies_parameter_descriptions += f'\n{epd}'
+    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+                   + parameter_description
+                   + dependencies_parameter_descriptions)
 
     panel = WebPanel(
-        title='Projected band structure and DOS (PBE)',
-        columns=[[fig('pbe-projected-bs.png', link='empty')],
+        title=describe_entry(
+            'Projected band structure and DOS (PBE)',
+            panel_description),
+        columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
+                                 description=explanation)],
                  [fig('bz-with-gaps.png')]],
         plot_descriptions=[{'function': projected_bs_pbe,
                             'filenames': ['pbe-projected-bs.png']}],
