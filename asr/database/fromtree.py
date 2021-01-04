@@ -114,9 +114,15 @@ def get_key_value_pairs(resultsdct: dict):
     """
     kvp = {}
     for key, desc in tmpkd.items():
-        if (key in resultsdct and desc['iskvp']
-           and resultsdct[key] is not None):
-            kvp[key] = resultsdct[key]
+        try:
+            if (
+                    key in resultsdct and desc['iskvp']
+                    and resultsdct[key] is not None
+            ):
+                kvp[key] = resultsdct[key]
+        except TypeError:
+            # Not iterable
+            pass
 
     return kvp
 

@@ -6,8 +6,8 @@ def test_pdos(asr_tmpdir_w_params, mockgpaw,
               test_material, get_webcontent):
     from asr.pdos import main
 
+    main(atoms=test_material)
     test_material.write('structure.json')
-    main()
     get_webcontent()
 
 

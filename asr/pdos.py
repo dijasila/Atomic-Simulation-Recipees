@@ -1,5 +1,9 @@
 """Projected density of states."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult,
+    prepare_result, ExternalFile, atomsopt, calcopt)
+from asr.gs import calculate as gscalculate
+from asr.gs import main as gsmain
 from collections import defaultdict
 import typing
 
@@ -100,19 +104,28 @@ def webpanel(result, row, key_descriptions):
 # ----- Slow steps ----- #
 
 
-@command(module='asr.pdos',
-         creates=['pdos.gpw'],
-         tests=ctests,
-         requires=['gs.gpw'],
-         dependencies=['asr.gs'])
+@command(module='asr.pdos')
+@atomsopt
+@calcopt
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        emptybands: int = 20,
+) -> ASRResult:
     from asr.utils.refinegs import refinegs
-    refinegs(selfc=False,
-             kptdensity=kptdensity, emptybands=emptybands,
-             gpw='pdos.gpw', txt='pdos.txt')
+    calc, gpw = refinegs(
+        atoms=atoms,
+        calculator=calculator,
+        selfc=False,
+        kptdensity=kptdensity, emptybands=emptybands,
+        gpw='pdos.gpw',
+        txt='pdos.txt',
+    )
 
+    return ExternalFile.fromstr('pdos.gpw')
 
 # ----- Fast steps ----- #
 
@@ -154,20 +167,33 @@ class Result(ASRResult):
 
 
 @command(module='asr.pdos',
-         requires=['results-asr.gs.json', 'pdos.gpw'],
-         tests=tests,
-         dependencies=['asr.gs', 'asr.pdos@calculate'],
          returns=Result)
-def main() -> Result:
+@atomsopt
+@calcopt
+@option('-k', '--kptdensity', type=float, help='K-point density')
+@option('--emptybands', type=int, help='number of empty bands to include')
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        emptybands: int = 20,
+) -> Result:
     from gpaw import GPAW
     from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
-    calc = GPAW('pdos.gpw')
+    rec = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        emptybands=emptybands,
+    )
+
+    calc = GPAW(rec.result)
 
     dos1 = calc.dos(shift_fermi_level=False)
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
     dos2 = calc.dos(soc=True, theta=theta, phi=phi, shift_fermi_level=False)
 
     results = {}
@@ -182,11 +208,11 @@ def main() -> Result:
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = pdos(dos1, calc)
+    results['pdos_nosoc'] = pdos(atoms, calculator, dos1, calc)
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = pdos(dos2, calc)
+    results['pdos_soc'] = pdos(atoms, calculator, dos2, calc)
 
-    return results
+    return Result(results)
 
 
 # ---------- Recipe methodology ---------- #
@@ -195,7 +221,7 @@ def main() -> Result:
 # ----- PDOS ----- #
 
 
-def pdos(dos, calc):
+def pdos(atoms, calculator, dos, calc):
     """Do a single pdos calculation.
 
     Main functionality to do a single pdos calculation.
@@ -203,7 +229,7 @@ def pdos(dos, calc):
     from asr.core import singleprec_dict
 
     # Do calculation
-    e_e, pdos_syl, symbols, ef = calculate_pdos(dos, calc)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(atoms, calculator, dos, calc)
 
     return PdosResult.fromdata(
         efermi=ef,
@@ -212,7 +238,7 @@ def pdos(dos, calc):
         pdos_syl=singleprec_dict(pdos_syl))
 
 
-def calculate_pdos(dos, calc):
+def calculate_pdos(atoms, calculator, dos, calc):
     """Calculate the projected density of states.
 
     Returns
@@ -237,7 +263,7 @@ def calculate_pdos(dos, calc):
     l_a = get_l_a(zs)
 
     ns = calc.get_number_of_spins()
-    gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
+    gaps = gsmain(atoms=atoms, calculator=calculator).result.gaps_nosoc
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = np.linspace(e1 - 3, e2 + 3, 500)
