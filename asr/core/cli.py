@@ -1,7 +1,8 @@
 """ASR command line interface."""
 import sys
 import os
-from typing import Union, Dict, Any, List
+from ast import literal_eval
+from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import read_json, chdir, ASRCommand, DictStr, set_defaults
 import click
@@ -789,6 +790,50 @@ def main(database: str, run: bool, selection: str,
 def app(databases, host, test):
     from asr.database.app import main
     main(databases=databases, host=host, test=test)
+
+
+class KeyValuePair(click.ParamType):
+    """Read atoms object from filename and return Atoms object."""
+
+    def convert(self, value, param, ctx):
+        """Convert string to a (key, value) tuple."""
+        assert ':' in value
+        key, value = value.split(':')
+        if not value == '':
+            value = literal_eval(value)
+        return key, value
+
+
+@database.command()
+@click.argument('key_value_pairs', metavar='key:value', nargs=-1,
+                type=KeyValuePair())
+def setinfo(key_value_pairs: List[Tuple[str, str]]):
+    """Set additional key value pairs.
+
+    These extra key value pairs are stored in info.json.  To set a key
+    value pair simply do::
+
+        asr database setinfo key1:'mystr' key2:1 key3:True
+
+    The values supplied values will be interpred and the result will
+    be {'key1': 'mystr', 'key2': 1, 'key3': True}
+
+    Some key value pairs are protected and can assume a limited set of
+    values::
+
+        - `first_class_material`: True, False
+
+    To delete an existing key-value-pair in info.json supply an empty
+    string as a value, i.e.:
+
+    asr database setinfo mykey:
+
+    would delete "mykey".
+
+    """
+    from asr.setinfo import main
+
+    main(key_value_pairs)
 
 
 @cli.command()
