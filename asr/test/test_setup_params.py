@@ -1,5 +1,4 @@
 import pytest
-from asr.core import get_recipes
 from click.testing import CliRunner
 
 
