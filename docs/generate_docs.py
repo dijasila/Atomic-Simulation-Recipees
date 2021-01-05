@@ -79,7 +79,7 @@ def make_recipe_documentation(module):
     mod = importlib.import_module(module)
     members = inspect.getmembers(mod)
     steps = [value for (name, value) in members
-             if isinstance(value, ASRCommand)]
+             if (isinstance(value, ASRCommand) and value.__module__ == module)]
 
     title = f'{module}'
     rst = [
@@ -184,7 +184,9 @@ def get_recipe_modules():
         paths.extend(get_modules_from_path(package))
 
     names = get_names_from_paths(paths)
-    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr'),
+    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr')
+                          and (not x == 'asr.setinfo')
+                          and (not x == 'asr.setup.materials'),
                           names))
     return names
 
