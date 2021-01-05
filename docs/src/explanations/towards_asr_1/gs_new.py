@@ -1,12 +1,21 @@
 """Electronic ground state properties."""
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+import pathlib
+from ase import Atoms
+from ase.io import read
+from asr.core import (
+    command, option, DictStr, ASRResult, prepare_result, AtomsFile,
+)
+from asr.core.command import ASRControl
+from asr.calculators import (
+    set_calculator_hook, Calculation, get_calculator_class, Calculation)
+
 from asr.database.browser import (
     table, fig,
     entry_parameter_description,
     describe_entry, WebPanel,
-    make_panel_description
+    make_panel_description,
+    cache_webpanel,
 )
-
 
 import numpy as np
 import typing
@@ -20,23 +29,78 @@ calculation.
 )
 
 
+@prepare_result
+class GroundStateCalculationResult(ASRResult):
+
+    calculation: Calculation
+
+    key_descriptions = dict(calculation='Calculation object')
+
+
+def migrate_calculate_record(cache, selection):
+    """Migrate old ground state records."""
+    orig_records = cache.select(**selection)
+
+    assert len(orig_records) == 1, [
+        orig_record.migration_id for orig_record in orig_records]
+
+    orig_record = orig_records[0]
+    migrated_record = orig_record.copy()
+    run_spec = migrated_record.run_specification
+    calculation = migrated_record.result.calculation
+    calc = calculation.load()
+    calc_parameters = {'name': calculation.cls_name, **calc.parameters}
+    run_spec.parameters.atoms = calc.atoms
+    run_spec.parameters.calculator = calc_parameters
+    migrated_record.run_specification = run_spec
+    return orig_record, migrated_record
+
+
+def get_gs_calculate_migrations(cache):
+    from asr.core.migrate import Migration
+    selection = {
+        'run_specification.name': 'asr.gs::calculate',
+        'migration_id': 'Migrate resultsfile results-asr.gs@calculate.json',
+    }
+
+    if cache.select(**selection):
+        return [
+            Migration(
+                migrate_calculate_record,
+                name='Add calculator parameter to gs.calculate record.',
+                args=(cache, selection)
+            ),
+        ]
+    else:
+        return []
+
+
 @command(module='asr.gs',
-         creates=['gs.gpw'],
-         requires=['structure.json'],
-         resources='8:10h')
+         argument_hooks=[set_calculator_hook],
+         pass_control=True,
+         returns=GroundStateCalculationResult,
+         migrations=get_gs_calculate_migrations)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gs.txt',
-        'charge': 0}) -> ASRResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'basis': 'dzp',
+            'kpts': {'density': 12.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'bands': 'CBM+3.0'},
+            'nbands': '200%',
+            'txt': 'gs.txt',
+            'charge': 0
+        },
+        *,
+        asrcontrol: ASRControl,
+) -> GroundStateCalculationResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -44,10 +108,8 @@ def calculate(calculator: dict = {
     for storing any derived quantities. See asr.gs@postprocessing for more
     information.
     """
-    from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
     from asr.relax import set_initial_magnetic_moments
-    atoms = read('structure.json')
 
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
@@ -57,10 +119,7 @@ def calculate(calculator: dict = {
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         calculator['poissonsolver'] = {'dipolelayer': 'xy'}
-    elif nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
 
-    from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
@@ -71,11 +130,18 @@ def calculate(calculator: dict = {
     except PropertyNotImplementedError:
         pass
     atoms.get_potential_energy()
-    atoms.calc.write('gs.gpw')
+    calculation = calc.save(id='gs')
+    for i, filename in enumerate(calculation.paths):
+        side_effect = asrcontrol.register_side_effect(filename)
+        calculation.paths[i] = side_effect.path
+    return GroundStateCalculationResult.fromdata(calculation=calculation)
 
-    return ASRResult()
 
-
+@cache_webpanel(
+    'asr.gs@main',
+    '+,calculator.mode.ecut',
+    '+,calculator.kpts.density',
+)
 def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
@@ -155,17 +221,18 @@ def webpanel(result, row, key_descriptions):
 def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.structureinfo import main as structinfo
     import numpy as np
     ndim = sum(row.pbc)
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = row.data.get('results-asr.gs.json')
+    gsresults = main.select(cache=row.cache)[0].result
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-    op_scc = row.data[
-        'results-asr.structureinfo.json']['spglib_dataset']['rotations']
+    structresult = structinfo.get(cache=row.cache).result
+    op_scc = structresult['spglib_dataset']['rotations']
     if cbm_c is not None:
         if not row.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
@@ -236,7 +303,7 @@ class GapsResult(ASRResult):
     )
 
 
-def gaps(calc, soc=True) -> GapsResult:
+def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -249,11 +316,15 @@ def gaps(calc, soc=True) -> GapsResult:
         ibzkpts = calc.get_ibz_k_points()
 
     (evbm_ecbm_gap,
-     skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
-                                      calc=calc)
+     skn_vbm, skn_cbm) = get_gap_info(atoms,
+                                      soc=soc, direct=False,
+                                      calc=calc, calculator=calculator)
     (evbm_ecbm_direct_gap,
-     direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True,
-                                                    calc=calc)
+     direct_skn_vbm, direct_skn_cbm) = get_gap_info(atoms,
+                                                    soc=soc,
+                                                    direct=True,
+                                                    calc=calc,
+                                                    calculator=calculator)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -266,7 +337,7 @@ def gaps(calc, soc=True) -> GapsResult:
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        theta, phi = get_spin_axis()
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         _, efermi = calc2eigs(calc, soc=True,
                               theta=theta, phi=phi)
     else:
@@ -299,13 +370,13 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(soc, direct, calc):
+def get_gap_info(atoms, soc, direct, calc, calculator):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
-        theta, phi = get_spin_axis()
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
@@ -373,7 +444,6 @@ def vacuumlevels(atoms, calc, n=8):
         number of gridpoints away from the edge to evaluate the vac levels
     """
     import numpy as np
- 
 
     if not np.sum(atoms.get_pbc()) == 2:
         return VacuumLevelResults.fromdata(
@@ -394,8 +464,8 @@ def vacuumlevels(atoms, calc, n=8):
     return VacuumLevelResults.fromdata(
         z_z=z_z,
         v_z=v_z,
-        dipz=atoms.get_dipole_moment()[2],
-        evacdiff=evacdiff(atoms),
+        dipz=calc.atoms.get_dipole_moment()[2],
+        evacdiff=evacdiff(calc.atoms),
         evac1=v_z[n],
         evac2=v_z[-n],
         evacmean=(v_z[n] + v_z[-n]) / 2,
@@ -493,48 +563,72 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
-         returns=Result)
-def main() -> Result:
+def migrate_main_record(cache, calculateselection, mainselection):
+    """Migrate asr.gs::main records to have parameters."""
+    calculaterecord = cache.get(**calculateselection)
+    original_record = cache.get(**mainselection)
+    migrated_record = original_record.copy()
+    parameters = calculaterecord.run_specification.parameters
+    migrated_record.run_specification.parameters = parameters
+    return original_record, migrated_record
+
+
+def get_gs_main_migrations(cache):
+    """Migrate ground state records."""
+    from asr.core.migrate import Migration, get_resultfile_migration
+
+    migrations = get_gs_calculate_migrations(cache)
+
+    if migrations:
+        calculateselection = {
+            'run_specification.name': 'asr.gs::calculate',
+            'migration_id': migrations[0].id,
+        }
+        migration = get_resultfile_migration('results-asr.gs.json')
+        mainselection = {
+            'run_specification.name': 'asr.gs::main',
+            'migration_id': migration.id,
+        }
+        migrations.append(Migration(
+            migrate_main_record,
+            name="Add atoms and calculator to gs.main record.",
+            args=(cache, calculateselection, mainselection)),
+        )
+    else:
+        print('Found no matches!')
+    return migrations
+
+
+@command(module='asr.gs')
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'basis': 'dzp',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    from ase.io import read
-    from asr.calculators import get_calculator
-    from gpaw.mpi import serial_comm
-
-    # Just some quality control before we start
-    atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
-                            communicator=serial_comm)
-    pbc = atoms.pbc
-    ndim = np.sum(pbc)
-
-    if ndim == 2:
-        assert not pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        # For 2D materials we check that the calculater used a dipole
-        # correction if the material has an out-of-plane dipole
-
-        # Small hack
-        atoms = calc.atoms
-        atoms.calc = calc
-        evacdiffmin = 10e-3
-        if evacdiff(calc.atoms) > evacdiffmin:
-            assert calc.todict().get('poissonsolver', {}) == \
-                {'dipolelayer': 'xy'}, \
-                ('The ground state has a finite dipole moment along aperiodic '
-                 'axis but calculation was without dipole correction.')
+    calculaterecord = calculate(atoms=atoms, calculator=calculator)
+    calc = calculaterecord.result.calculation.load(parallel=False)
+    calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    gaps_nosoc = gaps(calc, soc=False)
-    gaps_soc = gaps(calc, soc=True)
+    gaps_nosoc = gaps(atoms, calc, soc=False, calculator=calculator)
+    gaps_soc = gaps(atoms, calc, soc=True, calculator=calculator)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
     return Result.fromdata(

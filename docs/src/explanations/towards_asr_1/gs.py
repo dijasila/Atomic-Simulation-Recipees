@@ -57,8 +57,6 @@ def calculate(calculator: dict = {
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         calculator['poissonsolver'] = {'dipolelayer': 'xy'}
-    elif nd == 1:
-        assert not atoms.pbc[0] and not atoms.pbc[1]
 
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
@@ -373,7 +371,6 @@ def vacuumlevels(atoms, calc, n=8):
         number of gridpoints away from the edge to evaluate the vac levels
     """
     import numpy as np
- 
 
     if not np.sum(atoms.get_pbc()) == 2:
         return VacuumLevelResults.fromdata(
