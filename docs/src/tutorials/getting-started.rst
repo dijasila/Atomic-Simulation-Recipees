@@ -18,10 +18,13 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
+     cache     Inspect results.
+     database  ASR material project database.
+     find      Find result files.
+     list      List and search for recipes.
+     params    Compile a params.json file with all options and defaults.
+     results   Show results for a specific recipe.
+     run       Run recipe or python function in multiple folders.
    ...
 
 .. code-block:: console
@@ -33,10 +36,13 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
 
    Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
+     cache     Inspect results.
+     database  ASR material project database.
+     find      Find result files.
+     list      List and search for recipes.
+     params    Compile a params.json file with all options and defaults.
+     results   Show results for a specific recipe.
+     run       Run recipe or python function in multiple folders.
 
 From this output it is clear that the ``asr`` command has multiple
 sub-commands, but let's highlight a couple: ``list`` and ``run``. The

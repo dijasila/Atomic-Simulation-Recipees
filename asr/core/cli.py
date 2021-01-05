@@ -288,7 +288,10 @@ def asrlist(search):
         if search and (search not in longhelp
                        and search not in recipe.name):
             continue
-        status = [recipe.name[4:], shorthelp]
+        name = recipe.name[4:]
+        if name.endswith('@main'):
+            name = name[:-5]
+        status = [name, shorthelp]
         panel += [status]
     panel += ['\n']
 

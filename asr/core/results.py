@@ -429,17 +429,13 @@ class MetaData:
     --------
     >>> metadata = MetaData(asr_name='asr.gs')
     >>> metadata
-    asr_name=asr.gs
+    Metadata(asr_name=asr.gs)
     >>> metadata.code_versions = {'asr': '0.1.2'}
     >>> metadata
-    asr_name=asr.gs
-    code_versions={'asr': '0.1.2'}
+    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'})
     >>> metadata.set(resources={'time': 10}, params={'a': 1})
     >>> metadata
-    asr_name=asr.gs
-    code_versions={'asr': '0.1.2'}
-    resources={'time': 10}
-    params={'a': 1}
+    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
     >>> metadata.todict()
     {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
@@ -682,9 +678,9 @@ class ASRResult(object):
     >>> result['a']
     1
     >>> result.metadata
-    resources={'time': 'a good time.'}
+    Metadata(resources={'time': 'a good time.'})
     >>> str(result)
-    'a=1'
+    'Result(a=1)'
     >>> 'a' in result
     True
     >>> other_result = Result.fromdata(a=1)
