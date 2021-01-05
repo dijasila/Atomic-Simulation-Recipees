@@ -107,9 +107,14 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {'show_related': True,
-                      'description': 'Recipes for materials research',
-                      'logo_name': True}
+html_theme_options = {
+    'show_related': True,
+    'description': 'Recipes for materials research',
+    'logo_name': True,
+    'show_relbar_top': True,
+    'show_relbar_bottom': True,
+    'navigation_with_keys': True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -213,11 +213,20 @@ def generate_recipe_summary():
     rst.extend(
         ['.. toctree::',
          '   :maxdepth: 1',
+         '   :hidden:',
          '']
-        + [f'    {module}: {modname} <recipe_{module}>'
-           if modname else f'    {module} <recipe_{module}.rst>'
-           for modname, module in zip(modnames, modules)]
+        + [f'   recipe_{module}'
+           for module in modules]
     )
+
+    rst.extend(['',
+                '.. csv-table::',
+                '   :header: "Recipe", "Description"',
+                '   :widths: 1, 2',
+                ''] +
+               [f'   :ref:`{module} <recipe_{module}>`, {modname}'
+                if modname else f'   :ref:`{module} <recipe_{module}>`, '
+                for modname, module in zip(modnames, modules)])
     rst = '\n'.join(rst)
     write_file('recipes.rst', rst)
 
