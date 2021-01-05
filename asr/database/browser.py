@@ -476,7 +476,10 @@ class RowWrapper:
     def __init__(self, row):
         from asr.database.fromtree import serializer
         cache = Cache(backend=MemoryCache())
-        records = serializer.deserialize(row.data['records'])
+        if 'records' in row.data:
+            records = serializer.deserialize(row.data['records'])
+        else:
+            records = []
         self.records = records
         for record in records:
             cache.add(record)
