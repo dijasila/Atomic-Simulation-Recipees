@@ -137,7 +137,8 @@ class GPAWLikeAdapter(ASRAdapter):
 
         parallel = kwargs.pop('parallel', True)
         if parallel:
-            self.calculator = self.cls(calculation.paths[0], **kwargs)
+            self.calculator = self.cls(pathlib.Path(
+                calculation.paths[0]), **kwargs)
             return self
         from gpaw.mpi import serial_comm
         self.calculator = self.cls(

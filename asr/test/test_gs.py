@@ -96,43 +96,32 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-@pytest.mark.parametrize('atoms,parameters,results', [
+@pytest.mark.parametrize('atoms,calculator,results', [
     (Si,
      {
-         'asr.gs@calculate': {
-             'calculator': {
-                 "name": "gpaw",
-                 "kpts": {"density": 2, "gamma": True},
-                 "xc": "PBE",
-                 "mode": {"ecut": 300, "name": "pw"}
-             },
-         }
+         "name": "gpaw",
+         "kpts": {"density": 2, "gamma": True},
+         "xc": "PBE",
+         "mode": {"ecut": 300, "name": "pw"}
      },
      {'magstate': 'NM',
       'gap': pytest.approx(0.55, abs=0.01)}),
     (Fe,
      {
-         'asr.gs@calculate': {
-             'calculator': {
-                 "name": "gpaw",
-                 "kpts": {"density": 2, "gamma": True},
-                 "xc": "PBE",
-                 "mode": {"ecut": 300, "name": "pw"}
-             },
-         }
+         "name": "gpaw",
+         "kpts": {"density": 2, "gamma": True},
+         "xc": "PBE",
+         "mode": {"ecut": 300, "name": "pw"}
      },
      {'magstate': 'FM', 'gap': 0.0})
 ])
-def test_gs_integration_gpaw(asr_tmpdir, atoms, parameters, results):
+def test_gs_integration_gpaw(asr_tmpdir, atoms, calculator, results):
     """Check that the groundstates produced by GPAW are correct."""
-    from asr.core import read_json
     from asr.gs import main as groundstate
-    from asr.setup.params import main as setupparams
-    atoms.write('structure.json')
-    setupparams(parameters)
-    gsresults = groundstate()
+    from asr.magstate import main as magstate
+    gsresults = groundstate(atoms=atoms, calculator=calculator).result
 
     assert gsresults['gap'] == results['gap']
 
-    magstateresults = read_json('results-asr.magstate.json')
+    magstateresults = magstate(atoms=atoms, calculator=calculator).result
     assert magstateresults["magstate"] == results['magstate']

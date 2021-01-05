@@ -119,34 +119,37 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(asr_tmpdir):
-    from asr.setup.params import main as setupparams
     from asr.relax import main as relax
     from .materials import Si
-    Si.write('unrelaxed.json')
-    relaxargs = (
-        "{'mode':{'ecut':200,'dedecut':'estimate',...},"
-        "'kpts':{'density':1,'gamma':True},...}"
-    )
-    setupparams(['asr.relax:calculator', relaxargs])
-    results = relax.cli([])
-    assert abs(results["c"] - 3.978) < 0.001
+    calculator = {}
+    calculator.update(relax.defaults.calculator)
+    calculator['mode'] = {
+        'ecut': 200,
+        'dedecut': 'estimate',
+        'name': 'pw',
+    }
+    calculator['kpts'] = {'density': 1, 'gamma': True}
+    results = relax(
+        atoms=Si.copy(),
+        calculator=calculator,
+    ).result
+    assert abs(results["c"] - 3.978) < 0.1
 
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 def test_relax_bn_gpaw(asr_tmpdir):
-    from asr.setup.params import main as setupparams
     from .materials import BN
     from asr.relax import main as relax
-    from asr.core import read_json
 
-    BN.write('unrelaxed.json')
-    relaxargs = (
-        "{'mode':{'ecut':300,'dedecut':'estimate',...},"
-        "'kpts':{'density':2,'gamma':True},...}"
-    )
-    setupparams(['asr.relax:calculator', relaxargs])
-    relax.cli([])
+    calculator = {}
+    calculator.update(relax.defaults.calculator)
+    calculator['mode'] = {
+        'ecut': 300,
+        'dedecut': 'estimate',
+        'name': 'pw',
+    }
+    calculator['kpts'] = {'density': 2, 'gamma': True}
+    results = relax(atoms=BN.copy(), calculator=calculator).result
 
-    results = read_json("results-asr.relax.json")
     assert results["c"] > 5
