@@ -2,7 +2,8 @@ import pytest
 
 
 @pytest.mark.ci
-def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
+def test_gw(asr_tmpdir_w_params, test_material,
+            mockgpaw, mocker, get_webcontent, fast_calc):
     import numpy as np
     import gpaw
     from asr.structureinfo import main as structinfo
@@ -24,11 +25,22 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
 
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
-        results = main(atoms=test_material).result
+        results = main(
+            atoms=test_material,
+            calculator=fast_calc,
+            npoints=10,
+            kptdensity=2,
+        ).result
         assert results['gap_gw'] == pytest.approx(1)
         structinfo(atoms=test_material)
         test_material.write("structure.json")
+
         get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main(atoms=test_material)
+            main(
+                atoms=test_material,
+                calculator=fast_calc,
+                npoints=10,
+                kptdensity=2,
+            )

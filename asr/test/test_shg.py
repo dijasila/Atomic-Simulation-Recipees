@@ -4,7 +4,9 @@ import pytest
 
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Si, BN, GaAs])
-def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
+def test_shg(
+        asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent,
+        fast_calc):
     from asr.shg import get_chi_symmetry, main, CentroSymmetric
     import numpy as np
     import gpaw
@@ -31,10 +33,16 @@ def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
     # Check the main function and webpanel
     if inputatoms.get_chemical_symbols()[0] == 'Si':
         with pytest.raises(CentroSymmetric):
-            assert main(atoms=inputatoms, maxomega=3, nromega=4)
+            assert main(
+                atoms=inputatoms,
+                maxomega=3,
+                nromega=4,
+                calculator=fast_calc,
+            )
     else:
         main(
             atoms=inputatoms,
+            calculator=fast_calc,
             maxomega=3,
             nromega=4,
         )

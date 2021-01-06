@@ -7,6 +7,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile, DictStr)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
+from asr.relax import main as relax
 
 panel_description = make_panel_description(
     """
@@ -202,22 +203,11 @@ class Result(ASRResult):
         type=DictStr())
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 def main(atoms: Atoms,
-         calculator: dict = {'name': 'gpaw',
-                             'mode': {'name': 'pw', 'ecut': 800},
-                             'xc': 'PBE',
-                             'kpts': {'density': 6.0, 'gamma': True},
-                             'basis': 'dzp',
-                             'symmetry': {'symmorphic': False},
-                             'convergence': {'forces': 1e-4},
-                             'txt': 'relax.txt',
-                             'occupations': {'name': 'fermi-dirac',
-                                             'width': 0.05},
-                             'charge': 0},
+         calculator: dict = relax.defaults.calculator,
          strain_percent: float = 1.0) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
-    from asr.relax import main as relax
     from ase.units import J
     import numpy as np
 

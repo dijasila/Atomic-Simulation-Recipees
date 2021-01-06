@@ -10,7 +10,8 @@ metal_alloys = ['Ag', 'Au', 'Ag,Au', 'Ag,Au,Al']
 @pytest.mark.parametrize('metals', metal_alloys)
 @pytest.mark.parametrize('energy_key', [None, 'etot'])
 def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
-                     metals, energy_key):
+                     metals, energy_key,
+                     fast_calc):
     from ase.calculators.emt import EMT
     from asr.convex_hull import main
     elemental_metals = ['Al', 'Cu', 'Ag', 'Au', 'Ni',
@@ -41,7 +42,11 @@ def test_convex_hull(asr_tmpdir_w_params, mockgpaw, get_webcontent,
     atoms = atoms.repeat((1, 1, nmetalatoms))
     atoms.set_chemical_symbols(metal_atoms)
 
-    results = main(atoms=atoms, databases=[connect('references.db')]).result
+    results = main(
+        atoms=atoms,
+        databases=[connect('references.db')],
+        calculator=fast_calc,
+    ).result
     assert results['hform'] == -sum(energies[element]
                                     for element in metal_atoms) / nmetalatoms
 

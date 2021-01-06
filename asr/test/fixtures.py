@@ -100,20 +100,36 @@ def get_webcontent():
 
 
 @pytest.fixture()
+def fast_calc():
+    fast_calc = {
+        "name": "gpaw",
+        "kpts": {"density": 1, "gamma": True},
+        "xc": "PBE",
+    }
+    return fast_calc
+
+
+@pytest.fixture()
 def asr_tmpdir_w_params(asr_tmpdir):
     """Make temp dir and create a params.json with settings for fast evaluation."""
+    fast_calc = {
+        "name": "gpaw",
+        "kpts": {"density": 1, "gamma": True},
+        "xc": "PBE",
+    }
     params = {
         'asr.gs@calculate': {
-            'calculator': {
-                "name": "gpaw",
-                "kpts": {"density": 2, "gamma": True},
-                "xc": "PBE",
-            },
+            'calculator': fast_calc,
         },
-        'asr.bandstructure@calculate': {
+        'asr.gs@main': {
+            'calculator': fast_calc,
+        },
+        'asr.bandstructure@main': {
             'npoints': 10,
+            'calculator': fast_calc,
         },
-        'asr.hse@calculate': {
+        'asr.hse@main': {
+            'calculator': fast_calc,
             'kptdensity': 2,
         },
         'asr.gw@gs': {
@@ -126,13 +142,11 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor': {
-            'calculator': {
-                "name": "gpaw",
-                "kpts": {"density": 2},
-            },
+        'asr.piezoelectrictensor@main': {
+            'calculator': fast_calc,
+            'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization': {
+        'asr.formalpolarization@main': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},

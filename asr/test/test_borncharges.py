@@ -4,7 +4,8 @@ import numpy as np
 
 
 @pytest.mark.ci
-def test_borncharges(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
+def test_borncharges(
+        asr_tmpdir_w_params, mockgpaw, mocker, test_material, fast_calc):
     from gpaw import GPAW
     from asr.borncharges import main
 
@@ -31,7 +32,10 @@ def test_borncharges(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
     mocker.patch.object(GPAW, '_get_dipole_moment', new=_get_dipole_moment)
     mocker.patch.object(GPAW, '_get_berry_phases', new=_get_berry_phases)
 
-    results = main(atoms=test_material).result
+    results = main(
+        atoms=test_material,
+        calculator=fast_calc,
+    ).result
 
     Z_analytical_avv = np.array([
         (Z + positive_charge) * np.eye(3) for Z in Z_a])

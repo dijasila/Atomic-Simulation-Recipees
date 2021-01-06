@@ -3,7 +3,7 @@ import pytest
 
 @pytest.mark.ci
 def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
-             get_webcontent):
+             get_webcontent, fast_calc):
     import gpaw
     from pathlib import Path
     import numpy as np
@@ -39,7 +39,12 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         return calc.eigenvalues[np.newaxis]
 
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
-    results = main(atoms=test_material).result
+    results = main(
+        atoms=test_material,
+        calculator=fast_calc,
+        npoints=10,
+        kptdensity=2,
+    ).result
     assert results['gap_hse_nosoc'] == pytest.approx(2.0)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2.0)
 

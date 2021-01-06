@@ -5,7 +5,7 @@ from pytest import approx
 @pytest.mark.ci
 @pytest.mark.parametrize('topology', ['Not checked', 'Z2=1,C_M=1'])
 def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
-               get_webcontent, topology):
+               get_webcontent, fast_calc, topology):
     import numpy as np
     from asr.berry import calculate
 
@@ -37,7 +37,11 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
     from asr.berry import main
-    results = main(atoms=test_material, topology=topology).result
+    results = main(
+        atoms=test_material,
+        topology=topology,
+        calculator=fast_calc,
+    ).result
     assert results['Topology'] == topology
     test_material.write('structure.json')
     get_webcontent()

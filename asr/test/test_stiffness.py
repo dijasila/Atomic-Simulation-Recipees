@@ -5,13 +5,15 @@ import numpy as np
 
 @pytest.mark.ci
 def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                        fast_calc,
                         get_webcontent):
     from asr.stiffness import main as stiffness
 
     strain_percent = 1
     results = stiffness(
         atoms=test_material,
-        strain_percent=strain_percent
+        strain_percent=strain_percent,
+        calculator=fast_calc,
     ).result
     nd = np.sum(test_material.pbc)
 

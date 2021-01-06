@@ -6,7 +6,7 @@ from .materials import BN
 
 @pytest.mark.ci
 def test_fermisurface(
-        asr_tmpdir, mockgpaw, mocker, get_webcontent,
+        asr_tmpdir, mockgpaw, mocker, get_webcontent, fast_calc,
 ):
     from asr.fermisurface import main
     import gpaw
@@ -16,12 +16,13 @@ def test_fermisurface(
 
     result = main(
         atoms=BN,
+        calculator=fast_calc,
     ).result
 
     fermi_wave_vector = (2 * fermi_level / Hartree)**0.5 / Bohr
 
     moduli = np.sqrt(np.sum(result.contours[:, :2]**2, axis=1))
-    assert moduli == pytest.approx(fermi_wave_vector, rel=0.01)
+    assert moduli == pytest.approx(fermi_wave_vector, rel=0.1)
     BN.write('structure.json')
     content = get_webcontent()
     assert 'fermi' in content

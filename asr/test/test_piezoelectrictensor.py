@@ -16,7 +16,7 @@ def get_strain_from_atoms(inv_cell_vc, atoms):
 @pytest.mark.parametrize("nspins", [1, 2])
 def test_piezoelectrictensor(
         asr_tmpdir_w_params, mockgpaw, mocker, test_material,
-        nspins, get_webcontent,
+        nspins, get_webcontent, fast_calc,
 ):
     import numpy as np
     from gpaw import GPAW
@@ -72,7 +72,11 @@ def test_piezoelectrictensor(
     mocker.patch.object(GPAW, 'get_number_of_spins', new=get_number_of_spins)
     from asr.piezoelectrictensor import main
 
-    results = main(atoms=test_material).result
+    results = main(
+        atoms=test_material,
+        calculator=fast_calc,
+        relaxcalculator=fast_calc,
+    ).result
 
     N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     vol = test_material.get_volume() / Bohr**3

@@ -3,7 +3,8 @@ import pytest
 
 @pytest.mark.ci
 def test_bse(
-        asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
+        asr_tmpdir_w_params, test_material, fast_calc,
+        mockgpaw, mocker, get_webcontent):
     import gpaw
     import gpaw.occupations
     from gpaw.response.bse import BSE
@@ -29,10 +30,19 @@ def test_bse(
 
     mocker.patch.object(BSE, "calculate", calculate)
     if ndim > 1:
-        main(atoms=test_material)
+        main(
+            atoms=test_material,
+            calculator=fast_calc,
+            kptdensity=2,
+        )
 
         test_material.write("structure.json")
         get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main(atoms=test_material)
+            main(
+                atoms=test_material,
+                calculator=fast_calc,
+                kptdensity=2,
+
+            )
