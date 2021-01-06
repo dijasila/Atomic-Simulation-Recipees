@@ -106,7 +106,7 @@ def main(hubbardu: float = 3, mixer=None):
                   kpts={"density": 12.0, "gamma": True},
                   occupations=FermiDirac(0.05),
                   setups=U_corrections_dct,
-                  convergence={"bands": "CBM+3.0"},
+                  convergence={"bands": "CBM+3.0", "energy": "0.000001"},
                   nbands="200%")
 
     if mixer is not None:
