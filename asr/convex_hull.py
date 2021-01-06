@@ -32,7 +32,8 @@ def webpanel(result, row, key_descriptions):
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': describe_entry('Thermodynamic stability', panel_description),
+    panel = {'title': describe_entry(
+        'Thermodynamic stability', panel_description),
              'columns': [[fig('convex-hull.png')],
                          [hulltable1] + hulltables],
              'plot_descriptions': [{'function':
@@ -43,8 +44,8 @@ def webpanel(result, row, key_descriptions):
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'Heat of formation < 0.2 eV/atom'
-    low = 'Heat of formation > 0.2 eV/atom'
+    medium = 'convex hull + 0.2 eV/atom < Heat of formation < 0 eV/atom'
+    low = '0.0 eV/atom < Heat of formation'
     thermodynamic = describe_entry(
         'Thermodynamic',
         'Classifier for the thermodynamic stability of a material.'
@@ -255,7 +256,7 @@ def main(databases: List[str]) -> Result:
 
     results['ehull'] = ehull
 
-    if hform >= 0.2:
+    if hform > 0:
         thermodynamic_stability = 1
     elif hform is None or ehull is None:
         thermodynamic_stability = None
