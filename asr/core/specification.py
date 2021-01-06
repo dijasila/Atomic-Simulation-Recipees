@@ -4,8 +4,10 @@ import uuid
 from .params import Parameters
 from .codes import Codes, Code
 from .results import get_object_matching_obj_id
+from .utils import only_master
 
 
+@only_master
 def get_new_uuid():
     return uuid.uuid4().hex
 

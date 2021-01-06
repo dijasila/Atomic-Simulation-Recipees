@@ -8,6 +8,7 @@ import os
 from .config import config
 from .results import obj_to_id
 from .filetype import ExternalFile
+from .utils import only_master
 
 
 class Serializer(abc.ABC):  # noqa
@@ -34,8 +35,8 @@ class ASRJSONEncoder(json.JSONEncoder):  # noqa
             )
             directory = newpath.parent
             if not directory.is_dir():
-                os.makedirs(directory)
-            path.rename(newpath)
+                only_master(os.makedirs)(directory)
+            only_master(path.rename)(newpath)
             obj.path = str(newpath)
 
         if hasattr(obj, '__dict__'):

@@ -103,7 +103,7 @@ def chdir(folder, create=False, empty=False):
         import shutil
         shutil.rmtree(str(folder))
     if create and not folder.is_dir():
-        os.makedirs(folder)
+        only_master(os.makedirs)(folder)
     os.chdir(str(folder))
     yield
     os.chdir(dir)
@@ -319,3 +319,23 @@ def get_dep_tree(name, reload=True):
             deplist.append(dep)
 
     return deplist
+
+
+def only_master(func, broadcast=True):
+    from ase.parallel import world, broadcast
+
+    def wrapped(*args, **kwargs):
+        world.barrier()
+
+        if world.rank == 0:
+            result = func(*args, **kwargs)
+        else:
+            result = None
+
+        if broadcast:
+            result = broadcast(result)
+
+        world.barrier()
+        return result
+
+    return wrapped

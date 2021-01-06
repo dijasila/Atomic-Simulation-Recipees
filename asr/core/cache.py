@@ -9,7 +9,7 @@ import uuid
 from .params import Parameters
 from .record import RunRecord
 from .specification import RunSpecification
-from .utils import write_file
+from .utils import write_file, only_master
 from .serialize import Serializer, JSONSerializer
 from ase import Atoms
 
@@ -299,7 +299,7 @@ class FileCacheBackend():  # noqa
 
     def _write_file(self, filename: str, text: str):
         if not self.cache_dir.is_dir():
-            os.makedirs(self.cache_dir)
+            only_master(os.makedirs)(self.cache_dir)
         write_file(self.cache_dir / filename, text)
 
     def _read_file(self, filename: str) -> str:

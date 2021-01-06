@@ -61,8 +61,9 @@ class RegisterSideEffects():  # noqa
 
     def get_workdir_name(self, root_dir,  # noqa
                          run_specification: RunSpecification) -> pathlib.Path:
-        hsh = self.get_hash_of_run_spec(run_specification)
-        workdir = root_dir / f'.asr/{run_specification.name}{hsh[:8]}'
+        name = run_specification.name
+        uid = run_specification.uid
+        workdir = root_dir / f'.asr/{name}-{uid[:10]}'
         return workdir
 
     def chdir_to_root_dir(self):  # noqa
