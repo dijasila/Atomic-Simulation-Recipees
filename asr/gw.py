@@ -3,6 +3,34 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
+from asr.database.browser import (
+    href, fig, table, describe_entry, make_panel_description)
+
+
+panel_description = make_panel_description(
+    """The quasiparticle (QP) band structure calculated within the G0W0
+approximation from a GGA starting point. Spin-orbit interactions are included
+in postprocess. The frequency dependence is treated numerically exact. For
+low-dimensional materials, a truncated Coulomb interaction is used to decouple
+periodic images. The QP energies are extrapolated as 1/N to the infinite plane
+wave basis set limit. Spin-orbit interactions are included
+non-self-consistently.""",
+    articles=[
+        'C2DB',
+        href(
+            """F. Rasmussen et al. Efficient many-body calculations for two-dimensional
+            materials using exact limits for the screened potential: Band gaps
+            of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
+            'https://doi.org/10.1103/PhysRevB.94.155406',
+        ),
+        href(
+            """A. Rasmussen et al. Towards fully automatized GW band structure
+calculations: What we can learn from 60.000 self-energy evaluations,
+arXiv:2009.00314""",
+            'https://arxiv.org/abs/2009.00314v1'
+        ),
+    ]
+)
 
 
 # This function is basically doing the exact same as HSE and could
@@ -210,8 +238,7 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 
 
 @command(requires=['results-asr.gw@gw.json'],
-         dependencies=['asr.gw@gw',
-                       'asr.gw@gs'])
+         dependencies=['asr.gw@gw'])
 @option('-c', '--correctgw', is_flag=True, default=False)
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
@@ -261,7 +288,6 @@ def empirical_mean_z(correctgw: bool = True,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
 
     prop = table(row, 'Property', [
         'gap_gw', 'gap_dir_gw',
@@ -280,14 +306,24 @@ def webpanel(result, row, key_descriptions):
              ['Conduction band minimum wrt. Fermi level (G0W0)',
               f'{row.cbm_gw - row.efermi:.2f} eV']])
 
-    panel = {'title': 'Electronic band structure (G0W0)',
+    panel = {'title': describe_entry('Electronic band structure (G0W0)',
+                                     panel_description),
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
              'plot_descriptions': [{'function': bs_gw,
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
 
     if row.get('gap_gw'):
-        rows = [['Band gap (G0W0)', f'{row.gap_gw:0.2f} eV']]
+        description = (
+            'The electronic band gap calculated with '
+            'G0W0 including spin-orbit effects. \n\n'
+        )
+        rows = [
+            [
+                describe_entry('Band gap (G0W0)', description),
+                f'{row.gap_gw:0.2f} eV'
+            ]
+        ]
 
         summary = {'title': 'Summary',
                    'columns': [[{'type': 'table',
@@ -338,10 +374,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(requires=['results-asr.gw@gw.json', 'gs_gw_nowfs.gpw',
+@command(requires=['gs_gw_nowfs.gpw',
+                   'results-asr.gw@empirical_mean_z.json',
                    'results-asr.bandstructure.json'],
-         dependencies=['asr.gw@gw', 'asr.gw@gs', 'asr.bandstructure',
-                       'asr.gw@empirical_mean_z'],
+         dependencies=['asr.bandstructure', 'asr.gw@empirical_mean_z'],
          returns=Result)
 def main() -> Result:
     import numpy as np
@@ -384,8 +420,14 @@ def main() -> Result:
                       'gap_gw_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-
-        results.update(subresults)
+    else:
+        subresults = {'vbm_gw_nosoc': None,
+                      'cbm_gw_nosoc': None,
+                      'gap_dir_gw_nosoc': None,
+                      'gap_gw_nosoc': None,
+                      'kvbm_nosoc': None,
+                      'kcbm_nosoc': None}
+    results.update(subresults)
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
@@ -416,8 +458,14 @@ def main() -> Result:
                       'gap_gw': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        results.update(subresults)
-
+    else:
+        subresults = {'vbm_gw': None,
+                      'cbm_gw': None,
+                      'gap_dir_gw': None,
+                      'gap_gw': None,
+                      'kvbm': None,
+                      'kcbm': None}
+    results.update(subresults)
     results.update({'efermi_gw_nosoc': efermi_nosoc,
                     'efermi_gw_soc': efermi_soc})
 

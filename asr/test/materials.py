@@ -39,6 +39,10 @@ Agchain = Atoms(
     ],
     pbc=[False, False, True],
 )
+GaAs = Atoms(
+    'GaAs',
+    cell=bulk('Ga', 'fcc', a=5.68).cell, pbc=True,
+    scaled_positions=((0, 0, 0), (0.25, 0.25, 0.25)))
 
 std_test_materials = [Si, BN, Agchain, Fe]
 all_test_materials = [Si, BN, Agchain, Fe]
