@@ -344,7 +344,14 @@ def main() -> Result:
                       'gap_hse_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-        results.update(subresults)
+    else:
+        subresults = {'vbm_hse_nosoc': None,
+                      'cbm_hse_nosoc': None,
+                      'gap_dir_hse_nosoc': gapd,
+                      'gap_hse_nosoc': gap,
+                      'kvbm_nosoc': None,
+                      'kcbm_nosoc': None}
+    results.update(subresults)
 
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
@@ -365,7 +372,14 @@ def main() -> Result:
                       'gap_hse': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        results.update(subresults)
+    else:
+        subresults = {'vbm_hse': None,
+                      'cbm_hse': None,
+                      'gap_dir_hse': gapd,
+                      'gap_hse': gap,
+                      'kvbm': None,
+                      'kcbm': None}
+    results.update(subresults)
 
     subresults = {'efermi_hse_nosoc': efermi_nosoc,
                   'efermi_hse_soc': efermi_soc}
