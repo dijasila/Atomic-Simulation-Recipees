@@ -1,5 +1,5 @@
 """Effective masses."""
-from asr.core import command, option, DictStr, ASRResult
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 from asr.database.browser import make_panel_description, describe_entry
 
 panel_description = make_panel_description(
@@ -1408,6 +1408,7 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+@prepare_result
 class ValidateResult(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
@@ -1453,7 +1454,7 @@ def validate() -> ValidateResult:
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
-    return myresults
+    return ValidateResult(results, strict=False)
 
 
 if __name__ == '__main__':
