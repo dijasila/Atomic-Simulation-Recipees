@@ -32,14 +32,16 @@ def webpanel(result, row, key_descriptions):
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': describe_entry(
-        'Thermodynamic stability', panel_description),
-             'columns': [[fig('convex-hull.png')],
-                         [hulltable1] + hulltables],
-             'plot_descriptions': [{'function':
-                                    functools.partial(plot, thisrow=row),
-                                    'filenames': ['convex-hull.png']}],
-             'sort': 1}
+    panel = {
+        'title': describe_entry(
+            'Thermodynamic stability', panel_description),
+        'columns': [[fig('convex-hull.png')],
+                    [hulltable1] + hulltables],
+        'plot_descriptions': [{'function':
+                               functools.partial(plot, thisrow=row),
+                               'filenames': ['convex-hull.png']}],
+        'sort': 1,
+    }
 
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
