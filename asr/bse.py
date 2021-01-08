@@ -46,7 +46,7 @@ def get_kpts_size(atoms, kptdensity):
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
               mode: str = 'BSE', bandfactor: int = 6,
               nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
     """Calculate BSE polarizability."""
