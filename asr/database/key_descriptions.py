@@ -204,6 +204,14 @@ key_descriptions = {
     },
     "database.fromtree": {
         "folder": "KVP: Path to collection folder",
+    },
+    "bilayerdescriptor": {
+        'descriptor': 'KVP: Shorthand bilayer descriptor',
+        'full_descriptor': 'KVP: Bilayer descriptor'
+    },
+    "bilayer_binding": {
+        'binding_energy': 'KVP: Binding energy per area [`eV/Ang^2`]',
+        'interlayer_distance': 'KVP: Interlayer distance [Ang]'
     }
 }
 
