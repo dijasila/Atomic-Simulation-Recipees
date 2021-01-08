@@ -1,7 +1,9 @@
 """Effective masses."""
 from ase import Atoms
 
-from asr.core import command, option, DictStr, ASRResult, calcopt, atomsopt
+from asr.core import (
+    command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result
+)
 from asr.database.browser import make_panel_description, describe_entry
 from asr.gs import calculate as gscalculate
 
@@ -1468,6 +1470,7 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+@prepare_result
 class ValidateResult(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
@@ -1524,7 +1527,7 @@ def validate(
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
-    return ValidateResult(myresults)
+    return ValidateResult(myresults, strict=False)
 
 
 if __name__ == '__main__':
