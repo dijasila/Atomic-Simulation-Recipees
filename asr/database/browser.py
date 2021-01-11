@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 
-from asr.core.cache import Cache, MemoryCache
+from asr.core.cache import Cache, MemoryBackend
 
 assert sys.version_info >= (3, 4)
 
@@ -475,7 +475,7 @@ class RowWrapper:
 
     def __init__(self, row):
         from asr.database.fromtree import serializer
-        cache = Cache(backend=MemoryCache())
+        cache = Cache(backend=MemoryBackend())
         if 'records' in row.data:
             records = serializer.deserialize(row.data['records'])
         else:

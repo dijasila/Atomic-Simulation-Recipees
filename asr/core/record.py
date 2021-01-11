@@ -7,6 +7,11 @@ from .utils import make_property
 from .results import get_object_matching_obj_id
 
 
+# XXX: Change RunRecord name to Record
+# XXX: Make MigrationLog object to store migration related info.
+# XXX: Remove side_effects object.
+# XXX: Make Tags object.
+
 class RunRecord:
 
     record_version: int = 0
@@ -22,21 +27,18 @@ class RunRecord:
 
     def __init__(  # noqa
             self,
-            result: typing.Any,
-            run_specification: RunSpecification = None,
-            resources: Resources = None,
-            side_effects: dict = None,
-            dependencies: typing.List[str] = None,
-            migration_id: str = None,
-            migrated_from: str = None,
-            migrated_to: str = None,
-            tags: typing.List[str] = None,
+            result: typing.Optional[typing.Any] = None,
+            run_specification: typing.Optional[RunSpecification] = None,
+            resources: typing.Optional[Resources] = None,
+            side_effects: typing.Optional[dict] = None,
+            dependencies: typing.Optional[typing.List[str]] = None,
+            migration_id: typing.Optional[str] = None,
+            migrated_from: typing.Optional[str] = None,
+            migrated_to: typing.Optional[str] = None,
+            tags: typing.Optional[typing.List[str]] = None,
     ):
-        if resources is None:
-            resources = Resources()
-
-        assert type(run_specification) == RunSpecification
-        assert type(resources) == Resources
+        assert type(run_specification) in [RunSpecification, type(None)]
+        assert type(resources) in [Resources, type(None)]
         # XXX strictly enforce rest of types.
         self.data = dict(
             run_specification=run_specification,
@@ -80,8 +82,9 @@ class RunRecord:
                 if len(txt) > 30:
                     strings.append('result=' + str(value)[:30] + '...')
                     continue
-            strings.append(f'{name}={value}')
-        return 'RunRecord(' + ', '.join(strings) + ')'
+            if value is not None:
+                strings.append('='.join([str(name), str(value)]))
+        return 'Record(' + ', '.join(strings) + ')'
 
     def __repr__(self):  # noqa
         return self.__str__()
@@ -103,4 +106,10 @@ class RunRecord:
     def __eq__(self, other):  # noqa
         if not isinstance(other, RunRecord):
             return False
-        return hash(self) == hash(other)
+        return self.__dict__ == other.__dict__  # hash(self) == hash(other)
+
+    # def keys(self):
+    #     return self.__dict__.keys()
+
+    # def __getitem__(self, name):
+    #     return self.__dict__[name]

@@ -61,6 +61,9 @@ class RunSpecification:  # noqa
         if is_migrated:
             return RunSpecification(**migrated)
 
+    def __format__(self, fmt):
+        if fmt == '':
+            return str(self)
 
     def __str__(self):  # noqa
         return (f'RunSpec(name={self.name}, params={self.parameters}, '
