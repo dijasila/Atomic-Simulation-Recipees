@@ -161,13 +161,10 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-    calc = GPAW(
-        'gs.gpw',
+    calc = GPAW('gs.gpw').fixed_density(
         txt='gs_gw.txt',
-        fixdensity=True,
         kpts=kpts,
         parallel={'domain': 1})
-    calc.get_potential_energy()
     calc.diagonalize_full_hamiltonian(ecut=ecut)
     calc.write('gs_gw_nowfs.gpw')
     calc.write('gs_gw.gpw', mode='all')
