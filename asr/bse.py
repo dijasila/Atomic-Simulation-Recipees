@@ -1,7 +1,22 @@
 """Bethe Salpeter absorption spectrum."""
-from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
 import typing
+
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, make_panel_description, describe_entry)
+
+
+panel_description = make_panel_description(
+    """The optical absorption calculated from the Bethe-Salpeter Equation
+(BSE). The BSE 2-particle Hamiltonian is constructed using the wave functions
+from a DFT calculation with the direct band gap adjusted to match the direct
+band gap from a G0W0 calculation. Spin orbit interactions are included.  The
+result of the random phase approximation (RPA) with the same direct band gap
+adjustment as used for BSE but without spin-orbit interactions, is also shown.
+""",
+    articles=['C2DB'],
+)
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -94,16 +109,13 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
 
     nv_s = [np.max(nv_s), np.max(nv_s)]
     nc_s = [np.max(nc_s), np.max(nc_s)]
-    print('nv_s, nc_s', nv_s, nc_s)
+
     valence_bands = []
     conduction_bands = []
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-
-    print(valence_bands)
-    print(conduction_bands)
 
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
@@ -198,7 +210,7 @@ def absorption(row, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
+    data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
     absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
@@ -239,7 +251,6 @@ def absorption(row, filename, direction='x'):
 def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
-    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
@@ -251,7 +262,8 @@ def webpanel(result, row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE and RPA)',
+        panel = {'title': describe_entry('Optical absorption (BSE and RPA)',
+                                         panel_description),
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,

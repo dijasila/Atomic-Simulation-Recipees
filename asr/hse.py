@@ -2,6 +2,16 @@
 from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
+from asr.database.browser import (
+    fig, table, describe_entry, make_panel_description)
+
+panel_description = make_panel_description(
+    """The single-particle band structure calculated with the HSE06
+xc-functional. The calculations are performed non-self-consistently with the
+wave functions from a GGA calculation. Spin-orbit interactions are included
+non-self-consistently.""",
+    articles=['C2DB'],
+)
 
 
 @command(module='asr.hse',
@@ -203,7 +213,6 @@ def bs_hse(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
 
     if row.get('gap_hse', 0) > 0.0:
         hse = table(row, 'Property',
@@ -227,7 +236,8 @@ def webpanel(result, row, key_descriptions):
                     [],
                     kd=key_descriptions)
 
-    panel = {'title': 'Electronic band structure (HSE)',
+    panel = {'title': describe_entry('Electronic band structure (HSE)',
+                                     panel_description),
              'columns': [[fig('hse-bs.png')],
                          [fig('bz-with-gaps.png'), hse]],
              'plot_descriptions': [{'function': bs_hse,
@@ -235,11 +245,17 @@ def webpanel(result, row, key_descriptions):
              'sort': 15}
 
     if row.get('gap_hse'):
-        hse_table = table(row, 'Electronic properties', ['gap_hse'],
-                          key_descriptions)
-        # rows = [['Band gap (HSE)', f'{row.gap_hse:0.2f} eV']]
+
+        bandgaphse = describe_entry(
+            'Band gap (HSE)',
+            'The electronic band gap calculated with '
+            'HSE including spin-orbit effects. \n\n',
+        )
+        rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
-                   'columns': [[hse_table]],
+                   'columns': [[{'type': 'table',
+                                 'header': ['Electronic properties', ''],
+                                 'rows': rows}]],
                    'sort': 11}
         return [panel, summary]
 
@@ -328,7 +344,14 @@ def main() -> Result:
                       'gap_hse_nosoc': gap,
                       'kvbm_nosoc': kvbm_nosoc,
                       'kcbm_nosoc': kcbm_nosoc}
-        results.update(subresults)
+    else:
+        subresults = {'vbm_hse_nosoc': None,
+                      'cbm_hse_nosoc': None,
+                      'gap_dir_hse_nosoc': gapd,
+                      'gap_hse_nosoc': gap,
+                      'kvbm_nosoc': None,
+                      'kcbm_nosoc': None}
+    results.update(subresults)
 
     eps = results_calc['hse_eigenvalues_soc']['e_hse_mk']
     eps = eps.transpose()[np.newaxis]  # e_skm, dummy spin index
@@ -349,7 +372,14 @@ def main() -> Result:
                       'gap_hse': gap,
                       'kvbm': kvbm,
                       'kcbm': kcbm}
-        results.update(subresults)
+    else:
+        subresults = {'vbm_hse': None,
+                      'cbm_hse': None,
+                      'gap_dir_hse': gapd,
+                      'gap_hse': gap,
+                      'kvbm': None,
+                      'kcbm': None}
+    results.update(subresults)
 
     subresults = {'efermi_hse_nosoc': efermi_nosoc,
                   'efermi_hse_soc': efermi_soc}
