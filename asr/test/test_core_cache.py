@@ -79,6 +79,7 @@ def test_cache_update(cache, record):
     fetched_record = cache.get(uid=uid)
 
     assert updated_record == fetched_record
+    assert updated_record != record
 
 
 @pytest.mark.ci
