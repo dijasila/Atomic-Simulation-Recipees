@@ -10,6 +10,9 @@ from .specification import RunSpecification
 from .utils import chdir
 
 
+# XXX: This module should probably be called something like work_dir
+# or IsolatedDir or WorkingEnv.
+
 class SideEffect:  # noqa
 
     def __init__(self, filename, path):  # noqa
@@ -124,7 +127,7 @@ class RegisterSideEffects():  # noqa
                         )
 
                     # shutil.rmtree(workdir)
-                    run_record.side_effects = frame['side_effects']
+                    # run_record.side_effects = frame['side_effects']
 
                 if not self.side_effects_stack:
                     self._root_dir = None

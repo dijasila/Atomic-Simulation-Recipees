@@ -76,7 +76,7 @@ class RunSpecification:  # noqa
 def construct_run_spec(
         name: str,
         parameters: typing.Union[dict, Parameters],
-        version: int,
+        version: int = 0,
         codes: typing.Union[typing.List[str], Codes] = [],
         uid: str = None
 ) -> RunSpecification:

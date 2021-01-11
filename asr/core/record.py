@@ -40,6 +40,7 @@ class RunRecord:
         assert type(run_specification) in [RunSpecification, type(None)]
         assert type(resources) in [Resources, type(None)]
         # XXX strictly enforce rest of types.
+
         self.data = dict(
             run_specification=run_specification,
             result=result,
@@ -89,15 +90,6 @@ class RunRecord:
     def __repr__(self):  # noqa
         return self.__str__()
 
-    def __getstate__(self):  # noqa
-        return self.__dict__
-
-    def __setstate__(self, state):  # noqa
-        self.__dict__.update(state)
-
-    def __hash__(self):  # noqa
-        return hash(str(self.run_specification))
-
     def __getattr__(self, attr):  # noqa
         if attr in self.data:
             return self.data[attr]
@@ -106,10 +98,4 @@ class RunRecord:
     def __eq__(self, other):  # noqa
         if not isinstance(other, RunRecord):
             return False
-        return self.__dict__ == other.__dict__  # hash(self) == hash(other)
-
-    # def keys(self):
-    #     return self.__dict__.keys()
-
-    # def __getitem__(self, name):
-    #     return self.__dict__[name]
+        return self.__dict__ == other.__dict__
