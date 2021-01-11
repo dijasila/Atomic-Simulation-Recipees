@@ -5,7 +5,6 @@ import typing
 import copy
 from .specification import RunSpecification
 from .resources import Resources
-from .utils import make_property
 from .results import get_object_matching_obj_id
 
 
@@ -17,15 +16,6 @@ from .results import get_object_matching_obj_id
 class RunRecord:
 
     record_version: int = 0
-    result = make_property('result')
-    side_effects = make_property('side_effects')
-    dependencies = make_property('dependencies')
-    run_specification = make_property('run_specification')
-    resources = make_property('resources')
-    migrated_from = make_property('migrated_from')
-    migrated_to = make_property('migrated_to')
-    migration_id = make_property('migration_id')
-    tags = make_property('tags')
 
     def __init__(  # noqa
             self,
@@ -43,7 +33,7 @@ class RunRecord:
         assert type(resources) in [Resources, type(None)]
         # XXX strictly enforce rest of types.
 
-        self.data = dict(
+        data = dict(
             run_specification=run_specification,
             result=result,
             resources=resources,
@@ -54,18 +44,19 @@ class RunRecord:
             migrated_to=migrated_to,
             tags=tags,
         )
+        self.__dict__.update(data)
 
     @property
     def parameters(self):  # noqa
-        return self.data['run_specification'].parameters
+        return self.run_specification.parameters
 
     @property
     def uid(self):  # noqa
-        return self.data['run_specification'].uid
+        return self.run_specification.uid
 
     @property
     def name(self):  # noqa
-        return self.data['run_specification'].name
+        return self.run_specification.name
 
     def get_migrations(self, cache):
         """Delegate migration to function objects."""
@@ -74,12 +65,12 @@ class RunRecord:
             return obj.migrations(cache)
 
     def copy(self):
-        data = copy.deepcopy(self.data)
+        data = copy.deepcopy(self.__dict__)
         return RunRecord(**data)
 
     def __str__(self):  # noqa
         strings = []
-        for name, value in self.data.items():
+        for name, value in self.__dict__.items():
             if name == 'result':
                 txt = str(value)
                 if len(txt) > 30:
@@ -92,16 +83,11 @@ class RunRecord:
     def __repr__(self):  # noqa
         return self.__str__()
 
-    def __getattr__(self, attr):  # noqa
-        if attr in self.data:
-            return self.data[attr]
-        raise AttributeError
-
     def __eq__(self, other):  # noqa
         if not isinstance(other, RunRecord):
             return False
 
-        return compare_dct_with_numpy_arrays(self.data, other.data)
+        return compare_dct_with_numpy_arrays(self.__dict__, other.__dict__)
 
     def keys(self):
         return self.__dict__.keys()

@@ -70,6 +70,18 @@ def test_cache_add(cache, record):
 
 
 @pytest.mark.ci
+def test_cache_update(cache, record):
+    cache.add(record)
+    uid = record.uid
+    updated_record = record.copy()
+    updated_record.result = 'Updated result'
+    cache.update(updated_record)
+    fetched_record = cache.get(uid=uid)
+
+    assert updated_record == fetched_record
+
+
+@pytest.mark.ci
 @pytest.mark.parametrize('backend', ['filesystem', 'memory'])
 def test_get_cache(backend):
     cache = get_cache(backend=backend)

@@ -77,7 +77,7 @@ def test_results_object(capsys):
 
 
 @pytest.mark.ci
-def test_reading_result():
+def test_reading_result(asr_tmpdir):
     result = recipe().result
     jsonresult = result.format_as('json')
     new_result = recipe.returns.from_format(jsonresult, format='json')
