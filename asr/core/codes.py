@@ -31,9 +31,15 @@ class Code:  # noqa
                     f'git={self.git_hash[:8]})')
         return f'version={self.version}'
 
-class Codes:  # noqa
+    def __eq__(self, other):
+        if not isinstance(other, Code):
+            return False
+        return self.__dict__ == other.__dict__
 
-    def __init__(self, codes: typing.List[Code]):  # noqa
+
+class Codes:
+
+    def __init__(self, codes: typing.List[Code]):
         self.codes = codes
 
     def __str__(self):
@@ -41,3 +47,8 @@ class Codes:  # noqa
         for code in self.codes:
             codes.append(str(code))
         return '[' + ', '.join(codes) + ']'
+
+    def __eq__(self, other):
+        if not isinstance(other, Codes):
+            return False
+        return self.codes == other.codes

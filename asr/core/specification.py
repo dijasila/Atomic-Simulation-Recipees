@@ -61,6 +61,11 @@ class RunSpecification:  # noqa
         if is_migrated:
             return RunSpecification(**migrated)
 
+    def __eq__(self, other):
+        if not isinstance(other, RunSpecification):
+            return False
+        return self.__dict__ == other.__dict__
+
     def __format__(self, fmt):
         if fmt == '':
             return str(self)

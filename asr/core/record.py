@@ -1,4 +1,6 @@
 """Implement RunSpec and RunRecord."""
+import numpy as np
+
 import typing
 import copy
 from .specification import RunSpecification
@@ -98,4 +100,37 @@ class RunRecord:
     def __eq__(self, other):  # noqa
         if not isinstance(other, RunRecord):
             return False
-        return self.__dict__ == other.__dict__
+
+        return compare_dct_with_numpy_arrays(self.data, other.data)
+
+    def keys(self):
+        return self.__dict__.keys()
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+
+def compare_dct_with_numpy_arrays(dct1, dct2):
+    """Compare dictionaries that might containt a numpy array.
+
+    Numpy array are special since their equality test can return an
+    array and meaning that we cannot just evaluate dct1 == dct2 since
+    that would raise an error.
+
+    """
+
+    dct1keys = dct1.keys()
+    dct2keys = dct2.keys()
+    for key in dct1keys:
+        if key not in dct2keys:
+            return False
+        value1 = dct1[key]
+        value2 = dct2[key]
+
+        if isinstance(value1, np.ndarray):
+            if not np.array_equal(value1, value2):
+                return False
+        else:
+            if not value1 == value2:
+                return False
+    return True

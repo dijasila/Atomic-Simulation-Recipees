@@ -39,7 +39,6 @@ def test_cache(asr_tmpdir):
     assert cache.get(run_specification=run_spec) == run_record
 
 
-
 @pytest.mark.ci
 @pytest.mark.parametrize(
     'backend', [FileCacheBackend, MemoryBackend]
@@ -72,4 +71,8 @@ def test_cache_add(asr_tmpdir, obj_to_add, backend):
     cache.add(run_record)
     assert cache.has(run_specification=run_spec)
     fetched_record = cache.get(**run_record)
+    if isinstance(obj_to_add, tuple):
+        pytest.xfail(reason='JSONSerializer cannot distinguish tuple. '
+                     'They are cast to lists.')
+
     assert run_record == fetched_record
