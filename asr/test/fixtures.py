@@ -1,8 +1,8 @@
 """Module containing the implementations of all ASR pytest fixtures."""
-
+import numpy as np
 from ase.parallel import world, broadcast
 from asr.core import write_json
-from .materials import std_test_materials
+from .materials import std_test_materials, BN
 import os
 import pytest
 from _pytest.tmpdir import _mk_tmp
@@ -29,6 +29,24 @@ def mockgpaw(monkeypatch):
 def test_material(request):
     """Fixture that returns an ase.Atoms object representing a std test material."""
     return request.param.copy()
+
+
+VARIOUS_OBJECT_TYPES = [
+    1,
+    1.02,
+    1 + 1j,
+    'a',
+    (1, 'a'),
+    [1, 'a'],
+    np.array([1.1, 2.0], float),
+    BN,
+]
+
+
+@pytest.fixture(params=VARIOUS_OBJECT_TYPES)
+def various_object_types(request):
+    """Fixture that yield object of different relevant types."""
+    return request.param
 
 
 @pytest.fixture()

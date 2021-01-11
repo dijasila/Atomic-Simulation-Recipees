@@ -1,16 +1,12 @@
 import pytest
 
-import numpy as np
-
-from asr.core.cache import Cache, FileCacheBackend, MemoryBackend
+from asr.core.cache import Cache, get_cache
 from asr.core.specification import construct_run_spec
 from asr.core.record import RunRecord
 
-from .materials import BN
-
 
 @pytest.mark.ci
-def test_cache(asr_tmpdir):
+def test_cache(cache):
     run_spec = construct_run_spec(
         name='asr.test',
         parameters={'a': 1},
@@ -18,8 +14,6 @@ def test_cache(asr_tmpdir):
     )
     run_record = RunRecord(run_specification=run_spec,
                            result={'b': 1})
-
-    cache = Cache(backend=FileCacheBackend())
 
     assert not cache.has(run_specification=run_spec)
     cache.add(run_record)
@@ -39,23 +33,13 @@ def test_cache(asr_tmpdir):
     assert cache.get(run_specification=run_spec) == run_record
 
 
-@pytest.mark.ci
-@pytest.mark.parametrize(
-    'backend', [FileCacheBackend, MemoryBackend]
-)
-@pytest.mark.parametrize(
-    'obj_to_add',
-    [
-        1,
-        1.02,
-        'a',
-        (1, 'a'),
-        [1, 'a'],
-        np.array([1.1, 2.0], float),
-        BN,
-    ],
-)
-def test_cache_add(asr_tmpdir, obj_to_add, backend):
+@pytest.fixture(params=['filesystem', 'memory'])
+def cache(request, asr_tmpdir):
+    return get_cache(request.param)
+
+
+@pytest.fixture
+def record(various_object_types):
     run_spec = construct_run_spec(
         name='asr.test',
         parameters={'a': 1},
@@ -63,16 +47,30 @@ def test_cache_add(asr_tmpdir, obj_to_add, backend):
     )
     run_record = RunRecord(
         run_specification=run_spec,
-        result=obj_to_add,
+        result=various_object_types,
     )
-    cache = Cache(backend=backend())
+    return run_record
 
+
+@pytest.mark.ci
+def test_cache_add(cache, record):
+    run_spec = record.run_specification
     assert not cache.has(run_specification=run_spec)
-    cache.add(run_record)
-    assert cache.has(run_specification=run_spec)
-    fetched_record = cache.get(**run_record)
-    if isinstance(obj_to_add, tuple):
-        pytest.xfail(reason='JSONSerializer cannot distinguish tuple. '
-                     'They are cast to lists.')
 
-    assert run_record == fetched_record
+    cache.add(record)
+
+    assert cache.has(run_specification=run_spec)
+    fetched_record = cache.get(**record)
+
+    if isinstance(record.result, tuple):
+        pytest.xfail(reason='JSONSerializer cannot distinguish tuple. '
+                     'They are always cast to lists.')
+
+    assert record == fetched_record
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('backend', ['filesystem', 'memory'])
+def test_get_cache(backend):
+    cache = get_cache(backend=backend)
+    assert isinstance(cache, Cache)

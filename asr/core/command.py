@@ -7,6 +7,7 @@ import functools
 import click
 import copy
 import inspect
+from .cache import get_cache
 from .params import get_default_parameters, Parameters
 from .record import RunRecord
 from .specification import construct_run_spec
@@ -168,8 +169,7 @@ class ASRCommand:
             'The wrapped object should be callable'
 
         if cache is None:
-            from .cache import file_system_cache
-            cache = file_system_cache
+            cache = get_cache(backend='filesystem')
         self.cache = cache
         self._migrations = migrations
         self.version = version

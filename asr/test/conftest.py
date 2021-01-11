@@ -12,7 +12,8 @@ from .fixtures import (mockgpaw, test_material, asr_tmpdir,  # noqa
                        asr_tmpdir_w_params, get_webcontent,  # noqa
                        set_asr_test_environ_variable,  # noqa
                        fast_calc,  # noqa
-                       duplicates_test_db)  # noqa
+                       duplicates_test_db,
+                       various_object_types)  # noqa
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

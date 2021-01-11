@@ -118,7 +118,6 @@ def compare_dct_with_numpy_arrays(dct1, dct2):
     that would raise an error.
 
     """
-
     dct1keys = dct1.keys()
     dct2keys = dct2.keys()
     for key in dct1keys:

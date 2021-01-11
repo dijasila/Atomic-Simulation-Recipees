@@ -2,12 +2,12 @@ import pathlib
 from asr.core import read_json
 
 
-backends = {'legacyfscache', 'fscache'}
+backends = {'memory', 'filesystem'}
 
 
 class Config:
     defaults = {
-        'backend': 'fscache',
+        'backend': 'filesystem',
         'root': '.asr'
     }
 

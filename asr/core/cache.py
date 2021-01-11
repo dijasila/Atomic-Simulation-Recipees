@@ -1,10 +1,8 @@
 """Implement cache functionality."""
 import os
 import pathlib
-import fnmatch
-import uuid
+import typing
 from .record import RunRecord
-from .specification import RunSpecification
 from .utils import write_file, only_master
 from .serialize import Serializer, JSONSerializer
 from .selection import Selection
@@ -12,81 +10,6 @@ from .selection import Selection
 
 class RunSpecificationAlreadyExists(Exception):
     pass
-
-
-class LegacyFileSystemBackend:
-
-    def migrate(self):
-        pass
-
-    def add(self, run_record: RunRecord):
-        raise NotImplementedError
-
-    @property
-    def uid_table(self):
-        table = {}
-        for pattern in self.relevant_patterns:
-            for path in pathlib.Path().glob(pattern):
-                filepath = str(path)
-                if any(fnmatch.fnmatch(filepath, skip_pattern)
-                       for skip_pattern in self.skip_patterns):
-                    continue
-                table[str(path)] = str(path)
-        return table
-
-    def has(self, selection: 'Selection'):
-        records = self.select()
-        for record in records:
-            if selection.matches(record):
-                return True
-        return False
-
-    def get_result_from_uid(self, uid):
-        from asr.core import read_json
-        filename = self.uid_table[uid]
-        result = read_json(filename)
-        return result
-
-    def get_record_from_uid(self, uid):
-        from asr.core.results import MetaDataNotSetError
-        result = self.get_result_from_uid(uid)
-        try:
-            parameters = result.metadata.params
-        except MetaDataNotSetError:
-            parameters = {}
-        try:
-            code_versions = result.metadata.code_versions
-        except MetaDataNotSetError:
-            code_versions = {}
-
-        name = result.metadata.asr_name
-
-        if '@' not in name:
-            name += '::main'
-        else:
-            name = name.replace('@', '::')
-
-        return RunRecord(
-            run_specification=RunSpecification(
-                name=name,
-                parameters=parameters,
-                version=-1,
-                codes=code_versions,
-                uid=uuid.uuid4().hex,
-            ),
-            result=result,
-        )
-
-    def select(self, selection: 'Selection' = None):
-        all_records = [self.get_record_from_uid(uid)
-                       for uid in self.uid_table]
-        if selection is None:
-            return all_records
-        selected = []
-        for record in all_records:
-            if selection.matches(record):
-                selected.append(record)
-        return selected
 
 
 class FileCacheBackend():
@@ -301,14 +224,19 @@ class MemoryBackend:
         return selected
 
 
-def get_cache():
-    from .config import config
+def get_cache(backend: typing.Optional[str] = None) -> Cache:
+    """Get ASR Cache object.
 
-    if config.backend == 'fscache':
-        return file_system_cache
-    elif config.backend == 'legacyfscache':
-        return legacy_file_system_cache
+    Parameters
+    ----------
+    backend
+        The chosen backend. Allowed values 'filesystem', 'memory'.
+    """
+    if backend is None:
+        from .config import config
+        backend = config.backend
 
-
-file_system_cache = Cache(backend=FileCacheBackend())
-legacy_file_system_cache = Cache(backend=LegacyFileSystemBackend())
+    if backend == 'filesystem':
+        return Cache(backend=FileCacheBackend())
+    elif backend == 'memory':
+        return Cache(backend=MemoryBackend())
