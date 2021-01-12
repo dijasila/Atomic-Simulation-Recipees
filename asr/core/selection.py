@@ -67,72 +67,13 @@ def allways_match(value):
 class Selection:
 
     def __init__(self, **selection):
-        self.selection = self.normalize_selection(selection)
-
-    def do_not_compare(self, x):
-        return True
-
-    def normalize_selection(self, selection: dict):
-        normalized = {}
-
-        for key, value in selection.items():
-            comparator = None
-            if isinstance(value, dict):
-                norm = self.normalize_selection(value)
-                for keynorm, valuenorm in norm.items():
-                    normalized['.'.join([key, keynorm])] = valuenorm
-            elif value is None:
-                pass
-            elif isinstance(value, Atoms):
-                comparator = functools.partial(compare_atoms, value)
-            elif isinstance(value, np.ndarray):
-                comparator = functools.partial(
-                    compare_ndarrays,
-                    value,
-                )
-            elif isinstance(value, (list, tuple)):
-                comparator = functools.partial(
-                    compare_lists,
-                    value,
-                )
-            elif type(value) in {str, bool, int}:
-                comparator = value.__eq__
-            elif type(value) is float:
-                comparator = approx(value)
-            elif ((hasattr(value, '__dict__') and value.__dict__)
-                  or isinstance(value, Parameters)):
-                norm = self.normalize_selection(value.__dict__)
-                for keynorm, valuenorm in norm.items():
-                    normalized['.'.join([key, keynorm])] = valuenorm
-            elif callable(value):
-                comparator = value
-            # else: XXX Make special comparator type.
-            #     raise AssertionError(f'Unknown type {type(value)}')
-
-            if comparator is not None:
-                normalized[key] = comparator
-        return normalized
-
-    def get_attribute(self, obj, attrs):
-
-        if not attrs:
-            return obj
-
-        for attr in attrs:
-            if hasattr(obj, attr):
-                obj = getattr(obj, attr)
-            elif attr in obj:
-                obj = obj[attr]
-            else:
-                raise NoSuchAttribute
-
-        return obj
+        self.selection = normalize_selection(selection)
 
     def matches(self, obj):
 
         for attr, comparator in self.selection.items():
             try:
-                objvalue = self.get_attribute(obj, attr.split('.'))
+                objvalue = get_attribute(obj, attr.split('.'))
             except NoSuchAttribute:
                 return False
             if not comparator(objvalue):
@@ -144,3 +85,73 @@ class Selection:
 
     def __repr__(self):
         return self.__str__()
+
+
+def compare_equal(obj1, obj2):
+
+    try:
+        return bool(obj1 == obj2)
+    except ValueError:
+        if not type(obj1) == type(obj2):
+            return False
+        if type(obj1) is np.ndarray:
+            return compare_ndarrays(obj1, obj2)
+        raise
+
+
+def normalize_selection(selection: dict):
+    normalized = {}
+
+    for key, value in selection.items():
+        comparator = None
+        if isinstance(value, dict):
+            norm = normalize_selection(value)
+            for keynorm, valuenorm in norm.items():
+                normalized['.'.join([key, keynorm])] = valuenorm
+        elif value is None:
+            pass
+        elif isinstance(value, Atoms):
+            comparator = functools.partial(compare_atoms, value)
+        elif isinstance(value, np.ndarray):
+            comparator = functools.partial(
+                compare_ndarrays,
+                value,
+            )
+        elif isinstance(value, (list, tuple)):
+            comparator = functools.partial(
+                compare_lists,
+                value,
+            )
+        elif type(value) in {str, bool, int}:
+            comparator = functools.partial(compare_equal, value)
+        elif type(value) is float:
+            comparator = approx(value)
+        elif ((hasattr(value, '__dict__') and value.__dict__)
+              or isinstance(value, Parameters)):
+            norm = normalize_selection(value.__dict__)
+            for keynorm, valuenorm in norm.items():
+                normalized['.'.join([key, keynorm])] = valuenorm
+        elif callable(value):
+            comparator = value
+        # else: XXX Make special comparator type.
+        #     raise AssertionError(f'Unknown type {type(value)}')
+
+        if comparator is not None:
+            normalized[key] = comparator
+    return normalized
+
+
+def get_attribute(obj, attrs):
+
+    if not attrs:
+        return obj
+
+    for attr in attrs:
+        if hasattr(obj, attr):
+            obj = getattr(obj, attr)
+        elif attr in obj:
+            obj = obj[attr]
+        else:
+            raise NoSuchAttribute
+
+    return obj

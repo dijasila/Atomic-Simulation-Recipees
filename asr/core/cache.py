@@ -8,7 +8,7 @@ from .serialize import Serializer, JSONSerializer
 from .selection import Selection
 
 
-class RunSpecificationAlreadyExists(Exception):
+class DuplicateRecord(Exception):
     pass
 
 
@@ -34,8 +34,8 @@ class FileCacheBackend():
         filename = self._name_to_results_filename(name)
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
-        self.add_uid_to_table(run_uid, filename)
         return run_uid
+        self.add_uid_to_table(run_uid, filename)
 
     @property
     def initialized(self):

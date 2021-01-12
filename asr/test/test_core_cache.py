@@ -53,6 +53,18 @@ def record(various_object_types):
 
 
 @pytest.mark.ci
+def test_cache_has(cache, record):
+    cache.add(record)
+    assert cache.has(**record)
+
+
+@pytest.mark.ci
+def test_cache_has_dont_have(cache, record):
+    cache.add(record)
+    assert not cache.has(**{'run_specification.uid': 0})
+
+
+@pytest.mark.ci
 def test_cache_add(cache, record):
     run_spec = record.run_specification
     assert not cache.has(run_specification=run_spec)
@@ -70,6 +82,14 @@ def test_cache_add(cache, record):
 
 
 @pytest.mark.ci
+def test_cache_add_raises_when_adding_duplicate_records(cache, record):
+    cache.add(record)
+
+    with pytest.raises(AssertionError):
+        cache.add(record)
+
+
+@pytest.mark.ci
 def test_cache_update(cache, record):
     cache.add(record)
     uid = record.uid
@@ -80,6 +100,36 @@ def test_cache_update(cache, record):
 
     assert updated_record == fetched_record
     assert updated_record != record
+
+
+@pytest.mark.ci
+def test_cache_get(cache, record):
+    cache.add(record)
+    fetched_record = cache.get(**record)
+
+    if isinstance(record.result, tuple):
+        pytest.xfail(reason='JSONSerializer cannot distinguish tuple. '
+                     'They are always cast to lists.')
+    assert fetched_record == record
+
+
+@pytest.mark.ci
+def test_cache_get_raises_when_getting_multiple_records(cache, record):
+    other = record.copy()
+    other.run_specification.uid = 0
+    cache.add(record)
+    cache.add(other)
+
+    with pytest.raises(AssertionError):
+        cache.get()
+
+
+@pytest.mark.ci
+def test_cache_select(cache, record):
+    cache.add(record)
+    fetched_records = cache.select(**record)
+
+    assert len(fetched_records) == 1
 
 
 @pytest.mark.ci

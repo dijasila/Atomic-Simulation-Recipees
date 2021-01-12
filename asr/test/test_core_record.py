@@ -50,8 +50,16 @@ def test_record_equality(record1, record2, is_equal):
 
 @pytest.fixture()
 def record():
-    rec = RunRecord(result=5)
-    return rec
+    run_spec = construct_run_spec(
+        name='asr.test',
+        parameters={'a': 1},
+        version=0,
+    )
+    run_record = RunRecord(
+        run_specification=run_spec,
+        result=5,
+    )
+    return run_record
 
 
 @pytest.fixture()
@@ -70,6 +78,20 @@ def test_record_copy_is_equal(copied_record):
 def test_record_copy_is_not_same_object(copied_record):
     rec, rec2 = copied_record
     assert rec is not rec2
+
+
+@pytest.mark.ci
+def test_record_copy_setting_result(copied_record):
+    rec, rec2 = copied_record
+    rec2.result = 'Some random result'
+    assert rec.result != rec2.result
+
+
+@pytest.mark.ci
+def test_record_copy_setting_uid(copied_record):
+    rec, rec2 = copied_record
+    rec2.run_specification.uid = 'RandomUID'
+    assert rec.run_specification.uid != rec2.run_specification.uid
 
 
 @pytest.mark.ci
