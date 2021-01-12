@@ -47,9 +47,10 @@ def calculate(calculator: dict = {
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
     from asr.relax import set_initial_magnetic_moments
+    from gpaw import MixerDif
     atoms = read('structure.json')
 
-    if not atoms.has('initial_magmoms'):
+    if not atoms.has('initial_magmoms') or calculator.get('spinpol') == True:
         set_initial_magnetic_moments(atoms)
 
     nd = np.sum(atoms.pbc)
@@ -60,7 +61,7 @@ def calculate(calculator: dict = {
 
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
-    calc = get_calculator_class(name)(**calculator)
+    calc = get_calculator_class(name)(**calculator, mixer=MixerDif())
 
     atoms.calc = calc
     atoms.get_forces()
