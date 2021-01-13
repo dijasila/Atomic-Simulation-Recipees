@@ -14,9 +14,12 @@ class Result(ASRResult):
                             full_descriptor='A full descriptor of a stacking')
 
 
-def get_descriptor():
-    p = Path('.')
-    folder = [x for x in str(p.absolute()).split("/") if x != ""][-1]
+def get_descriptor(folder=None):
+    if folder is None:
+        p = Path('.')
+        folder = str(p.absolute())
+
+    folder = [x for x in folder.split("/") if x != ""][-1]
     desc = "-".join(folder.split("-")[1:])
     return desc
 
@@ -34,8 +37,8 @@ def main() -> Result:
     
     t_c = transform['translation'][:2] + translation
 
-    p = "'" if not np.allclose(t_c, 0.0) else ""
-    B = 'B' if not np.allclose(rotation, np.eye(3)) else 'A'
+    p = "'" if not np.allclose(rotation, np.eye(3)) else "'"
+    B = 'B' if not np.allclose(t_c, 0.0) else 'A'
 
     descriptor = 'A' + B + p
 
