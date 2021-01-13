@@ -212,10 +212,12 @@ def absorption(row, filename, direction='x'):
 
     data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
-    sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
     if dim == 2:
+        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
         sigma_w *= wbse_w * alpha / Ha / Bohr
-    absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    else:
+        absbse_w = 4 * np.pi * data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
