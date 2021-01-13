@@ -54,18 +54,11 @@ def webpanel(result, row, key_descriptions):
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
 
-    magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
-                    for a, (symbol, magmom)
-                    in enumerate(zip(row.get('symbols'), row.get('magmoms')))]
-    magmoms_table = {'type': 'table',
-                     'header': ['Atom index', 'Atom type', 'Magnetic moment (au)'],
-                     'rows': magmoms_rows}
-
     panel = {'title':
              describe_entry(
                  'Basic magnetic properties (PBE)',
                  panel_description),
-             'columns': [[magtable], [magmoms_table]],
+             'columns': [[magtable], []],
              'sort': 11}
     return [panel]
 
