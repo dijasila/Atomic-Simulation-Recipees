@@ -27,7 +27,7 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import describe_entry, dl, code
+    from asr.database.browser import describe_entry, dl, code, WebPanel
 
     is_magnetic = describe_entry(
         'Magnetic',
@@ -53,7 +53,23 @@ def webpanel(result, row, key_descriptions):
                              'header': ['Electronic properties', ''],
                              'rows': rows}]],
                'sort': 0}
-    return [summary]
+
+    if result.magstate == 'NM':
+        return [summary]
+    else:
+        magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
+                        for a, (symbol, magmom)
+                        in enumerate(zip(row.get('symbols'), result.magmoms))]
+        magmoms_table = {'type': 'table',
+                         'header': ['Atom index', 'Atom type',
+                                    'Local magnetic moment (au)'],
+                         'rows': magmoms_rows}
+
+        panel = WebPanel(title='Basic magnetic properties (PBE)',
+                         columns=[[], [magmoms_table]],
+                         sort=11)
+
+        return [summary, panel]
 
 
 @prepare_result
