@@ -476,7 +476,7 @@ def plot_pdos(row, filename, soc=True,
         path_effects.Normal()
     ])
 
-    ax.set_xlabel('projected dos [states / eV]')
+    ax.set_xlabel('Projected DOS [states / eV]')
     if row.get('evac') is not None:
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
