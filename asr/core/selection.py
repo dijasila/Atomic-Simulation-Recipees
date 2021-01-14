@@ -20,7 +20,7 @@ def flatten_list(lst):
     return flatlist
 
 
-def compare_lists(lst1, lst2):
+def compare_lists(lst1, lst2) -> bool:
     flatlst1 = flatten_list(lst1)
     flatlst2 = flatten_list(lst2)
     if not len(flatlst1) == len(flatlst2):
@@ -31,18 +31,59 @@ def compare_lists(lst1, lst2):
     return True
 
 
-def compare_ndarrays(array1, array2):
+def compare_ndarrays(array1, array2) -> bool:
     lst1 = array1.tolist()
     lst2 = array2.tolist()
     return compare_lists(lst1, lst2)
 
 
-def approx(value1, rtol=1e-3):
+def approx(value1, rtol=1e-3) -> callable:
 
-    def wrapped_approx(value2):
+    def wrapped_approx(value2) -> bool:
         return np.isclose(value1, value2, rtol=rtol)
 
     return wrapped_approx
+
+
+def equal(value1) -> callable:
+    """Make comparison function that compares value with equality."""
+
+    def wrapped_equal(value2) -> bool:
+        return compare_equal(value1, value2)
+
+    return wrapped_equal
+
+
+def less_than(value1) -> callable:
+
+    def wrapped_less_than(value2) -> bool:
+        return value1 < value2
+
+    return wrapped_less_than
+
+
+def less_than_equals(value1) -> callable:
+
+    def wrapped_less_than_equals(value2) -> bool:
+        return value1 <= value2
+
+    return wrapped_less_than_equals
+
+
+def greater_than(value1) -> callable:
+
+    def wrapped_greater_than(value2) -> bool:
+        return value1 > value2
+
+    return wrapped_greater_than
+
+
+def greater_than_equals(value1) -> callable:
+
+    def wrapped_greater_than_equals(value2) -> bool:
+        return value1 >= value2
+
+    return wrapped_greater_than_equals
 
 
 def compare_atoms(atoms1, atoms2):
@@ -60,16 +101,60 @@ def compare_atoms(atoms1, atoms2):
     return True
 
 
+def atoms_equal_to(atoms1):
+
+    def wrapped_atoms_equal_to(atoms1, atoms2):
+        return compare_atoms(atoms1, atoms2)
+
+    return wrapped_atoms_equal_to
+
+
+def check_is(obj1):
+
+    def wrapped_is(obj1, obj2):
+        return obj1 is obj2
+
+    return wrapped_is
+
+
 def allways_match(value):
     return True
 
 
-class Selection:
+class SelectorSetter:
+
+    def __init__(self, selection: 'Selector', attr):
+        self.__dict__['selection'] = selection
+        self.__dict__['attrs'] = [attr]
+
+    def __getattr__(self, attr):
+        self.attrs.append(attr)
+        return self
+
+    def __setattr__(self, attr, value):
+        setattr(
+            self.selection,
+            '.'.join(self.attrs + [attr]),
+            value,
+        )
+
+
+class Selector:
+
+    # Shortcut comparison functions
+    EQ = EQUAL = equal
+    IS = check_is
+    LT = LESS_THAN = less_than
+    GT = GREATER_THAN = greater_than
+    LTE = LESS_THAN_EQUALS = less_than_equals
+    GTE = GREATER_THAN_EQUALS = greater_than_equals
+    APPROX = approx
+    ATOMS_EQUAL_TO = atoms_equal_to
 
     def __init__(self, **selection):
-        self.selection = normalize_selection(selection)
+        self.__dict__['selection'] = selection
 
-    def matches(self, obj):
+    def matches(self, obj) -> bool:
 
         for attr, comparator in self.selection.items():
             try:
@@ -79,6 +164,12 @@ class Selection:
             if not comparator(objvalue):
                 return False
         return True
+
+    def __setattr__(self, attr, value):
+        self.selection[attr] = value
+
+    def __getattr__(self, attr):
+        return SelectorSetter(self, attr)
 
     def __str__(self):
         return str(self.selection)
@@ -108,31 +199,16 @@ def normalize_selection(selection: dict):
             norm = normalize_selection(value)
             for keynorm, valuenorm in norm.items():
                 normalized['.'.join([key, keynorm])] = valuenorm
-        elif value is None:
-            pass
-        elif isinstance(value, Atoms):
-            comparator = functools.partial(compare_atoms, value)
-        elif isinstance(value, np.ndarray):
-            comparator = functools.partial(
-                compare_ndarrays,
-                value,
-            )
-        elif isinstance(value, (list, tuple)):
-            comparator = functools.partial(
-                compare_lists,
-                value,
-            )
-        elif type(value) in {str, bool, int}:
+        elif isinstance(value, (list, tuple, str, bool, int, complex,
+                                float, Atoms, np.ndarray)):
             comparator = functools.partial(compare_equal, value)
-        elif type(value) is float:
-            comparator = approx(value)
-        elif ((hasattr(value, '__dict__') and value.__dict__)
-              or isinstance(value, Parameters)):
-            norm = normalize_selection(value.__dict__)
-            for keynorm, valuenorm in norm.items():
-                normalized['.'.join([key, keynorm])] = valuenorm
-        elif callable(value):
-            comparator = value
+        # elif ((hasattr(value, '__dict__') and value.__dict__)
+        #       or isinstance(value, Parameters)):
+        #     norm = normalize_selection(value.__dict__)
+        #     for keynorm, valuenorm in norm.items():
+        #         normalized['.'.join([key, keynorm])] = valuenorm
+        # elif isinstance(value, Comparator):  # callable(value):
+        #     comparator = value
         # else: XXX Make special comparator type.
         #     raise AssertionError(f'Unknown type {type(value)}')
 

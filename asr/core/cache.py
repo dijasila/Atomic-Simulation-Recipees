@@ -5,7 +5,7 @@ import typing
 from .record import RunRecord
 from .utils import write_file, only_master
 from .serialize import Serializer, JSONSerializer
-from .selection import Selection
+from .selection import Selector
 
 
 class DuplicateRecord(Exception):
@@ -62,12 +62,12 @@ class FileCacheBackend():
         uid_table = self.serializer.deserialize(text)
         return uid_table
 
-    def has(self, selection: 'Selection'):
+    def has(self, selector: 'Selector'):
         if not self.initialized:
             return False
         records = self.select()
         for record in records:
-            if selection.matches(record):
+            if selector.matches(record):
                 return True
         return False
 
@@ -77,16 +77,16 @@ class FileCacheBackend():
         obj = self.serializer.deserialize(serialized_object)
         return obj
 
-    def select(self, selection: 'Selection' = None):
+    def select(self, selector: Selector = None):
         if not self.initialized:
             return []
         all_records = [self.get_record_from_uid(run_uid)
                        for run_uid in self.uid_table]
-        if selection is None:
+        if selector is None:
             return all_records
         selected = []
         for record in all_records:
-            if selection.matches(record):
+            if selector.matches(record):
                 selected.append(record)
         return selected
 
@@ -121,9 +121,17 @@ class Cache:
     def __init__(self, backend):
         self.backend = backend
 
+    @staticmethod
+    def make_selector():
+        return Selector()
+
     def add(self, run_record: RunRecord):
-        selection = {'run_specification.uid': run_record.run_specification.uid}
-        has_uid = self.has(**selection)
+        selector = self.make_selector()
+        selector.run_specification.uid = (
+            selector.EQUAL(run_record.run_specification.uid)
+        )
+
+        has_uid = self.has(selector)
         assert not has_uid, (
             'This uid already exists in the cache. Cannot overwrite.'
         )
@@ -131,8 +139,9 @@ class Cache:
 
     def update(self, record: RunRecord):
         """Update existing record with record.uid."""
-        selection = {'run_specification.uid': record.uid}
-        has_uid = self.has(**selection)
+        selector = self.make_selector()
+        selector.run_specification.uid = record.uid
+        has_uid = self.has(selector)
         assert has_uid, 'Unknown run UID to update.'
         self.backend.add(record)
 
@@ -150,42 +159,41 @@ class Cache:
         self.update(original_record)
         self.add(migrated_record)
 
-    def has(self, **selection):
-        selection = Selection(
-            **selection,
-        )
-        return self.backend.has(selection)
+    def has(self, selector: Selector):
+        return self.backend.has(selector)
 
-    def get(self, **selection):
-        assert self.has(**selection), \
-            'No matching run_specification.'
-        records = self.select(**selection)
+    def get(self, selector: Selector):
+        records = self.select(selector)
+        assert records, 'No matching run_specification.'
         assert len(records) == 1, \
             f'More than one record matched! records={records}'
         return records[0]
 
-    def select(self, **selection):
+    def select(self, selector: Selector):
         """Select records.
 
-        Selection can be in the style of
+        Selector can be in the style of
 
         cache.select(uid=uid)
         cache.select(name='asr.gs::main')
         """
-        selection = Selection(
-            **selection
-        )
-        return self.backend.select(selection)
+        return self.backend.select(selector)
 
     def wrapper(self, func):
         def wrapped(asrcontrol, run_specification):
-            selection = {
-                'run_specification.name': run_specification.name,
-                'run_specification.parameters': run_specification.parameters,
-                'migrated_to': lambda migrated_to: migrated_to is None,
-            }
-            if self.has(**selection):
-                run_record = self.get(**selection)
+
+            sel = self.make_selector()
+            sel.run_specification.name = sel.EQUAL(
+                run_specification.name
+            )
+            sel.run_specification.parameters = sel.EQUAL(
+                run_specification.parameters,
+            )
+
+            sel.migrated_to = sel.IS(None)
+
+            if self.has(sel):
+                run_record = self.get(sel)
                 print(f'{run_specification.name}: '
                       f'Found cached record.uid={run_record.uid}')
             else:
@@ -210,16 +218,16 @@ class MemoryBackend:
     def add(self, record):
         self.records[record.uid] = record
 
-    def has(self, selection: Selection):
+    def has(self, selector: Selector):
         for value in self.records.values():
-            if selection.matches(value):
+            if selector.matches(value):
                 return True
         return False
 
-    def select(self, selection: Selection):
+    def select(self, selector: Selector):
         selected = []
         for record in self.records.values():
-            if selection.matches(record):
+            if selector.matches(record):
                 selected.append(record)
         return selected
 
@@ -240,3 +248,4 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
         return Cache(backend=FileCacheBackend())
     elif backend == 'memory':
         return Cache(backend=MemoryBackend())
+
