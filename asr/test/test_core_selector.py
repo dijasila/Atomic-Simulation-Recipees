@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from .fixtures import various_object_types
-from asr.core.selection import Selector
+from asr.core.selector import Selector
 
 
 @pytest.mark.ci
