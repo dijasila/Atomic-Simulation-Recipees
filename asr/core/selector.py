@@ -2,8 +2,6 @@ import functools
 import numpy as np
 from ase import Atoms
 
-from .params import Parameters
-
 
 class NoSuchAttribute(Exception):
 

@@ -259,4 +259,3 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
         return Cache(backend=FileCacheBackend())
     elif backend == 'memory':
         return Cache(backend=MemoryBackend())
-
