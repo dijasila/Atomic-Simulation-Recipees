@@ -4,7 +4,9 @@ import pathlib
 import typing
 import contextlib
 import copy
+
 from asr.core import read_json, get_recipe_from_name
+from .utils import compare_equal
 
 
 def fill_in_defaults(dct, defaultdct):
@@ -98,9 +100,9 @@ class Parameters:  # noqa
         return self.__dict__.get(key, default)
 
     def __eq__(self, other):
-        if not type(self) == type(other):
+        if not isinstance(other, Parameters):
             return False
-        return self.__dict__ == other.__dict__
+        return compare_equal(self.__dict__, other.__dict__)
 
     def __contains__(self, key):
         return key in self.__dict__

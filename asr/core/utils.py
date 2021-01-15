@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Union, List
 import warnings
 
+import typing
+
 import numpy as np
 from ase.io import jsonio
 import ase.parallel as parallel
@@ -339,3 +341,21 @@ def only_master(func, broadcast=True):
         return result
 
     return wrapped
+
+
+def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
+    """Test equality with support for nested np.ndarrays."""
+
+    try:
+        return bool(value1 == value2)
+    except ValueError:
+        if isinstance(value1, np.ndarray) or isinstance(value2, np.ndarray):
+            return (value1 == value2).all()
+
+        if isinstance(value1, dict) and isinstance(value2, dict):
+            for key in value1:
+                if key not in value2:
+                    return False
+                elif not compare_equal(value1[key], value2[key]):
+                    return False
+        return True

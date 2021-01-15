@@ -477,7 +477,7 @@ def ls(selection, formatting, sort, width, include_migrated):
                 pass
             setattr(selector, key, selector.EQ(value))
 
-    records = cache.select(selector)
+    records = cache.select(selector=selector)
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []

@@ -1,6 +1,9 @@
 import functools
 import numpy as np
+
 from ase import Atoms
+
+from .utils import compare_equal
 
 
 class NoSuchAttribute(Exception):
@@ -177,18 +180,6 @@ class Selector:
 
     def __repr__(self):
         return self.__str__()
-
-
-def compare_equal(obj1, obj2):
-
-    try:
-        return bool(obj1 == obj2)
-    except ValueError:
-        if not type(obj1) == type(obj2):
-            return False
-        if type(obj1) is np.ndarray:
-            return compare_ndarrays(obj1, obj2)
-        raise
 
 
 def normalize_selection(selection: dict):

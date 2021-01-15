@@ -299,21 +299,11 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
     """
     recipe = get_recipe_from_name(name)
     link_name = get_recipe_href(name)
-    if (f'results-{name}.json' in data
-       and 'params' in data[f'results-{name}.json'].metadata):
-        metadata = data[f'results-{name}.json'].metadata
-        params = metadata.params
-        # header = ''
-        # asr_name = (metadata.asr_name if 'asr_name' in metadata
-        #             else name)  # Fall back to name as best guess for asr_name
-        # link_name = get_recipe_href(asr_name, name=name)
+    if f'results-{name}.json' in data:
+        record = data.get_record(f'results-{name}.json')
+        params = record.parameters
     else:
         params = recipe.defaults
-        # header = ('No parameters can be found, meaning that '
-        #           'the recipe was probably run with the '
-        #           'default parameter shown below\n'
-        #           '<b>Default:</b>')
-        # link_name = get_recipe_href(name)
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     string = pre(code('\n'.join(lst)))
@@ -449,6 +439,7 @@ class DataCache:
     def __getitem__(self, item):
         selector = self.filename_to_selector(item)
         records = self.cache.select(selector=selector)
+        assert len(records) == 1
         record = records[0]
         return record.result
 
@@ -466,6 +457,12 @@ class DataCache:
         if item in self:
             return self[item]
         return default
+
+    def get_record(self, filename):
+        selector = self.filename_to_selector(filename)
+        records = self.cache.select(selector=selector)
+        record = records[0]
+        return record
 
     def __contains__(self, item):
         selector = self.filename_to_selector(item)
