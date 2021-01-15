@@ -34,9 +34,9 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
-def migrate_calculate_record(cache, selection):
+def migrate_calculate_record(cache, selector):
     """Migrate old ground state records."""
-    orig_records = cache.select(**selection)
+    orig_records = cache.select(selector)
 
     assert len(orig_records) == 1, [
         orig_record.migration_id for orig_record in orig_records]
@@ -55,17 +55,18 @@ def migrate_calculate_record(cache, selection):
 
 def get_gs_calculate_migrations(cache):
     from asr.core.migrate import Migration
-    selection = {
-        'run_specification.name': 'asr.gs::calculate',
-        'migration_id': 'Migrate resultsfile results-asr.gs@calculate.json',
-    }
+    sel = cache.make_selector()
+    sel.run_specification.name = sel.EQ('asr.gs::calculate')
+    sel.migration_id = sel.EQ(
+        'Migrate resultsfile results-asr.gs@calculate.json'
+    )
 
-    if cache.select(**selection):
+    if cache.select(sel):
         return [
             Migration(
                 migrate_calculate_record,
                 name='Add calculator parameter to gs.calculate record.',
-                args=(cache, selection)
+                args=(cache, sel),
             ),
         ]
     else:
@@ -557,10 +558,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def migrate_main_record(cache, calculateselection, mainselection):
+def migrate_main_record(cache, calculateselector, mainselector):
     """Migrate asr.gs::main records to have parameters."""
-    calculaterecord = cache.get(**calculateselection)
-    original_record = cache.get(**mainselection)
+    calculaterecord = cache.get(calculateselector)
+    original_record = cache.get(mainselector)
     migrated_record = original_record.copy()
     parameters = calculaterecord.run_specification.parameters
     migrated_record.run_specification.parameters = parameters
@@ -574,19 +575,20 @@ def get_gs_main_migrations(cache):
     migrations = get_gs_calculate_migrations(cache)
 
     if migrations:
-        calculateselection = {
-            'run_specification.name': 'asr.gs::calculate',
-            'migration_id': migrations[0].id,
-        }
+        calculatesel = cache.make_selector()
+        calculatesel.run_specification.name = calculatesel.EQ(
+            'asr.gs::calculate')
+        calculatesel.migration_id = calculatesel.EQ(
+            migrations[0].id)
+
         migration = get_resultfile_migration('results-asr.gs.json')
-        mainselection = {
-            'run_specification.name': 'asr.gs::main',
-            'migration_id': migration.id,
-        }
+        mainsel = cache.make_selector()
+        mainsel.run_specification.name = mainsel.EQ('asr.gs::main')
+        mainsel.migration_id = mainsel.EQ(migration.id)
         migrations.append(Migration(
             migrate_main_record,
             name="Add atoms and calculator to gs.main record.",
-            args=(cache, calculateselection, mainselection)),
+            args=(cache, calculatesel, mainsel)),
         )
     else:
         print('Found no matches!')

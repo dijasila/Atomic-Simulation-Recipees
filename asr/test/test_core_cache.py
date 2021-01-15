@@ -116,7 +116,7 @@ def test_cache_get(cache, record):
 @pytest.mark.ci
 def test_cache_get_raises_when_getting_multiple_records(cache, record):
     other = record.copy()
-    other.run_specification.uid = 0
+    other.run_specification.uid = 'someotheruid'
     cache.add(record)
     cache.add(other)
 

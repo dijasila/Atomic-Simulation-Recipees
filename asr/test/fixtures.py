@@ -34,10 +34,14 @@ def test_material(request):
 VARIOUS_OBJECT_TYPES = [
     1,
     1.02,
+    1 + 1e-15,
     1 + 1j,
+    1e20,
+    1e-17,
     'a',
     (1, 'a'),
     [1, 'a'],
+    [1, (1, 'abc', [1.0, ('a', )])],
     np.array([1.1, 2.0], float),
     BN,
 ]

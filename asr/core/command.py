@@ -7,6 +7,7 @@ import functools
 import click
 import copy
 import inspect
+import typing
 from .cache import get_cache
 from .params import get_default_parameters, Parameters
 from .record import RunRecord
@@ -15,7 +16,8 @@ from .sideeffects import register_side_effects
 from .results import obj_to_id
 from .dependencies import register_dependencies
 from .resources import register_resources
-
+from .cache import Cache
+from .selector import Selector
 
 class ASRControl:  # noqa
 
@@ -276,25 +278,59 @@ class ASRCommand:
         """Delegate to self.main."""
         return self.main(*args, **kwargs)
 
-    def get(self, cache=None, **selection):
+    def make_selector(
+            self,
+            cache: Cache = None,
+            selector: Selector = None,
+            equals={},
+    ) -> Selector:
+
         if cache is None:
             cache = self.cache
 
-        selection['run_specification'] = dict(
-            name=obj_to_id(self.get_wrapped_function())
+        selector = cache.make_selector(
+            selector=selector,
+            equals=equals,
         )
 
-        return cache.get(**selection)
+        selector.run_specification.name = selector.EQ(
+            obj_to_id(self.get_wrapped_function())
+        )
+        return selector
 
-    def select(self, cache=None, **selection):
+    def get(self,
+            cache: typing.Optional[Cache] = None,
+            selector: typing.Optional[Selector] = None,
+            **equals):
+
         if cache is None:
             cache = self.cache
 
-        selection['run_specification'] = dict(
-            name=obj_to_id(self.get_wrapped_function())
+        selector = self.make_selector(
+            cache=cache,
+            selector=selector,
+            equals=equals,
         )
 
-        return cache.select(**selection)
+        return cache.get(selector=selector)
+
+    def select(
+            self,
+            selector: typing.Optional[Selector] = None,
+            cache: typing.Optional[Cache] = None,
+            **equals,
+
+    ):
+        if cache is None:
+            cache = self.cache
+
+        selector = self.make_selector(
+            cache=cache,
+            selector=selector,
+            equals=equals,
+        )
+
+        return cache.select(selector=selector)
 
     def main(self, *args, **kwargs):
         """Return results from wrapped function.

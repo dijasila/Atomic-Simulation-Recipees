@@ -16,7 +16,8 @@ obj2 = various_object_types
 
 @pytest.mark.ci
 def test_selector_matches_equality_comparison(obj1, obj2):
-    sel = Selector(obj=Selector.EQUAL(obj1))
+    sel = Selector()
+    sel.obj = sel.EQUAL(obj1)
     obj = dict(obj=obj2)
     is_match = sel.matches(obj)
 
@@ -32,7 +33,7 @@ def test_selector_matches_equality_comparison(obj1, obj2):
 @pytest.mark.ci
 def test_selector_specification_via_attributes():
     sel = Selector()
-    sel.a.b = Selector.EQUAL(2)
+    sel.a.b = sel.EQUAL(2)
 
     assert sel.matches(dict(a=dict(b=2)))
 
@@ -45,7 +46,8 @@ def test_selector_specification_via_attributes():
 
 @pytest.mark.ci
 def test_int_does_not_match_str():
-    sel = Selector(id=Selector.EQUAL(0))
+    sel = Selector()
+    sel.id = sel.EQUAL(0)
     obj = dict(id="abc")
 
     assert not sel.matches(obj)

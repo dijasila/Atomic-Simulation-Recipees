@@ -141,18 +141,21 @@ class SelectorSetter:
 
 class Selector:
 
-    # Shortcut comparison functions
-    EQ = EQUAL = equal
-    IS = check_is
-    LT = LESS_THAN = less_than
-    GT = GREATER_THAN = greater_than
-    LTE = LESS_THAN_EQUALS = less_than_equals
-    GTE = GREATER_THAN_EQUALS = greater_than_equals
-    APPROX = approx
-    ATOMS_EQUAL_TO = atoms_equal_to
+    # Shortcuts for comparison functions
+    EQ = EQUAL = staticmethod(equal)
+    IS = staticmethod(check_is)
+    LT = LESS_THAN = staticmethod(less_than)
+    GT = GREATER_THAN = staticmethod(greater_than)
+    LTE = LESS_THAN_EQUALS = staticmethod(less_than_equals)
+    GTE = GREATER_THAN_EQUALS = staticmethod(greater_than_equals)
+    APPROX = staticmethod(approx)
+    ATOMS_EQUAL_TO = staticmethod(atoms_equal_to)
 
     def __init__(self, **selection):
-        self.__dict__['selection'] = selection
+        self.__dict__['selection'] = {}
+
+        for key, value in selection.items():
+            setattr(self, key, value)
 
     def matches(self, obj) -> bool:
 

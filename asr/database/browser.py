@@ -447,19 +447,20 @@ class DataCache:
         self.cache = cache
 
     def __getitem__(self, item):
-        selection = self.filename_to_selection(item)
-        records = self.cache.select(**selection)
+        selector = self.filename_to_selector(item)
+        records = self.cache.select(selector)
         record = records[0]
         return record.result
 
-    def filename_to_selection(self, filename):
-
+    def filename_to_selector(self, filename):
+        sel = self.cache.make_selector()
         funcname = filename[8:-5]
         if '@' not in funcname:
             funcname += '::main'
         else:
             funcname = funcname.replace('@', '::')
-        return {'run_specification.name': funcname}
+        sel.run_specification.name = sel.EQ(funcname)
+        return sel
 
     def get(self, item, default=None):
         if item in self:
@@ -467,8 +468,8 @@ class DataCache:
         return default
 
     def __contains__(self, item):
-        selection = self.filename_to_selection(item)
-        return self.cache.has(**selection)
+        selector = self.filename_to_selector(item)
+        return self.cache.has(selector)
 
 
 class RowWrapper:

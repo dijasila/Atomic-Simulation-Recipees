@@ -5,7 +5,7 @@ import typing
 from .record import RunRecord
 from .utils import write_file, only_master
 from .serialize import Serializer, JSONSerializer
-from .selection import Selector
+from .selector import Selector
 
 
 class DuplicateRecord(Exception):
@@ -28,14 +28,16 @@ class FileCacheBackend():
         return f'results-{name}.json'
 
     def add(self, run_record: RunRecord):
+        if not self.initialized:
+            self.initialize()
         run_specification = run_record.run_specification
         run_uid = run_specification.uid
         name = run_record.run_specification.name + '-' + run_uid[:10]
         filename = self._name_to_results_filename(name)
         serialized_object = self.serializer.serialize(run_record)
         self._write_file(filename, serialized_object)
-        return run_uid
         self.add_uid_to_table(run_uid, filename)
+        return run_uid
 
     @property
     def initialized(self):
@@ -43,10 +45,15 @@ class FileCacheBackend():
 
     def initialize(self):
         assert not self.initialized
+
+        if not self.cache_dir.is_dir():
+            only_master(os.makedirs)(self.cache_dir)
         serialized_object = self.serializer.serialize({})
         self._write_file(self.filename, serialized_object)
 
     def add_uid_to_table(self, run_uid, filename):
+        if not self.initialized:
+            self.initialize()
         uid_table = self.uid_table
         uid_table[run_uid] = filename
         self._write_file(
@@ -91,8 +98,6 @@ class FileCacheBackend():
         return selected
 
     def _write_file(self, filename: str, text: str):
-        if not self.cache_dir.is_dir():
-            only_master(os.makedirs)(self.cache_dir)
         write_file(self.cache_dir / filename, text)
 
     def _read_file(self, filename: str) -> str:
@@ -122,8 +127,14 @@ class Cache:
         self.backend = backend
 
     @staticmethod
-    def make_selector():
-        return Selector()
+    def make_selector(selector: Selector = None, equals={}):
+        if selector is None:
+            selector = Selector()
+
+        for key, value in equals.items():
+            setattr(selector, key, selector.EQUAL(value))
+
+        return selector
 
     def add(self, run_record: RunRecord):
         selector = self.make_selector()
@@ -131,7 +142,7 @@ class Cache:
             selector.EQUAL(run_record.run_specification.uid)
         )
 
-        has_uid = self.has(selector)
+        has_uid = self.has(selector=selector)
         assert not has_uid, (
             'This uid already exists in the cache. Cannot overwrite.'
         )
@@ -140,8 +151,8 @@ class Cache:
     def update(self, record: RunRecord):
         """Update existing record with record.uid."""
         selector = self.make_selector()
-        selector.run_specification.uid = record.uid
-        has_uid = self.has(selector)
+        selector.run_specification.uid = selector.EQUAL(record.uid)
+        has_uid = self.has(selector=selector)
         assert has_uid, 'Unknown run UID to update.'
         self.backend.add(record)
 
@@ -159,17 +170,19 @@ class Cache:
         self.update(original_record)
         self.add(migrated_record)
 
-    def has(self, selector: Selector):
+    def has(self, *, selector: Selector = None, **equals):
+        selector = self.make_selector(selector, equals)
         return self.backend.has(selector)
 
-    def get(self, selector: Selector):
-        records = self.select(selector)
+    def get(self, *, selector: Selector = None, **equals):
+        selector = self.make_selector(selector, equals)
+        records = self.select(selector=selector)
         assert records, 'No matching run_specification.'
         assert len(records) == 1, \
             f'More than one record matched! records={records}'
         return records[0]
 
-    def select(self, selector: Selector):
+    def select(self, *, selector: Selector = None, **equals):
         """Select records.
 
         Selector can be in the style of
@@ -177,23 +190,21 @@ class Cache:
         cache.select(uid=uid)
         cache.select(name='asr.gs::main')
         """
+        selector = self.make_selector(selector=selector, equals=equals)
         return self.backend.select(selector)
 
     def wrapper(self, func):
         def wrapped(asrcontrol, run_specification):
 
-            sel = self.make_selector()
-            sel.run_specification.name = sel.EQUAL(
-                run_specification.name
-            )
-            sel.run_specification.parameters = sel.EQUAL(
-                run_specification.parameters,
-            )
-
+            equals = {
+                'run_specification.name': run_specification.name,
+                'run_specification.parameters': run_specification.parameters,
+            }
+            sel = self.make_selector(equals=equals)
             sel.migrated_to = sel.IS(None)
 
-            if self.has(sel):
-                run_record = self.get(sel)
+            if self.has(selector=sel):
+                run_record = self.get(selector=sel)
                 print(f'{run_specification.name}: '
                       f'Found cached record.uid={run_record.uid}')
             else:
