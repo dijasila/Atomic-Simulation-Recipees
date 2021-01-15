@@ -59,6 +59,12 @@ def test_cache_has(cache, record):
 
 
 @pytest.mark.ci
+def test_cache_contains(cache, record):
+    cache.add(record)
+    assert record in cache
+
+
+@pytest.mark.ci
 def test_cache_has_dont_have(cache, record):
     cache.add(record)
     assert not cache.has(**{'run_specification.uid': 0})

@@ -448,7 +448,7 @@ class DataCache:
 
     def __getitem__(self, item):
         selector = self.filename_to_selector(item)
-        records = self.cache.select(selector)
+        records = self.cache.select(selector=selector)
         record = records[0]
         return record.result
 
@@ -469,7 +469,7 @@ class DataCache:
 
     def __contains__(self, item):
         selector = self.filename_to_selector(item)
-        return self.cache.has(selector)
+        return self.cache.has(selector=selector)
 
 
 class RowWrapper:
@@ -543,11 +543,8 @@ def layout(row: AtomsRow,
             continue
 
         recipes_treated.add(record.run_specification.name)
-        try:
-            panels = result.format_as('ase_webpanel', row, key_descriptions)
-        except Exception:
-            panels = []
-            traceback.print_exc()
+
+        panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
 

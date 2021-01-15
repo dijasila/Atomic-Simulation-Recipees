@@ -109,7 +109,7 @@ def atoms_equal_to(atoms1):
 
 def check_is(obj1):
 
-    def wrapped_is(obj1, obj2):
+    def wrapped_is(obj2):
         return obj1 is obj2
 
     return wrapped_is

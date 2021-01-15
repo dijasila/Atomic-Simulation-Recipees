@@ -217,7 +217,7 @@ class Cache:
     def __call__(self):
         return self.wrapper
 
-    def __contains__(self, record):
+    def __contains__(self, record: RunRecord):
         return self.has(uid=record.uid)
 
 

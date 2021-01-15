@@ -29,8 +29,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     calculaterecord = calculate(test_material, calculator)
     record = main(
         atoms=test_material,
-        calculator={'name': 'gpaw', 'kpts': {'density': 2, 'gamma': True},
-                    'xc': 'PBE'})
+        calculator=calculator)
     results = record.result
     dependencies = record.dependencies
     cache = get_cache()
