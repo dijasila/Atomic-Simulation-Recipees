@@ -1,7 +1,7 @@
 import abc
 import copy
 import ase
-import json
+import simplejson as json
 import typing
 import pathlib
 import os
@@ -47,7 +47,12 @@ class ASRJSONEncoder(json.JSONEncoder):  # noqa
 
         if isinstance(obj, set):
             return {
-                'asr_type': 'set',
+                '__asr_type__': 'set',
+                'value': list(obj),
+            }
+        elif isinstance(obj, tuple):
+            return {
+                '__asr_type__': 'tuple',
                 'value': list(obj),
             }
         try:
@@ -68,18 +73,21 @@ def json_hook(json_object: dict):  # noqa
         obj.__dict__.update(json_object['__dict__'])
         return obj
 
-    asr_type = json_object.get('asr_type')
+    asr_type = json_object.get('__asr_type__')
 
     if asr_type is not None:
+        value = json_object['value']
         if asr_type == 'set':
-            return set(json_object['value'])
+            return set(value)
+        elif asr_type == 'tuple':
+            return tuple(value)
 
     return object_hook(json_object)
 
 
 class JSONSerializer(Serializer):  # noqa
 
-    encoder = ASRJSONEncoder().encode
+    encoder = ASRJSONEncoder(tuple_as_array=False).encode
     decoder = json.JSONDecoder(object_hook=json_hook).decode
     accepted_types = {dict, list, str, int, float, bool, type(None)}
 
