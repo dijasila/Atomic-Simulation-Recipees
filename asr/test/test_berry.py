@@ -23,7 +23,8 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
 
     mocker.patch('gpaw.berryphase.parallel_transport', create=True,
                  new=parallel_transport)
-    results = calculate(atoms=test_material).result
+    results = calculate(atoms=test_material,
+                        calculator=fast_calc).result
 
     # check that all phi_km and s_km are returned by asr.berry@calculate
     # note that asr.berry@calculate does not return any phi_km, s_km for 1D materials
