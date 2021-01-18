@@ -2,48 +2,159 @@ from asr.core import command, ASRResult, prepare_result  # , option
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
+import typing
 
 
-# TODO: clean up
-# TODO: add chemical potential considerations
-# TODO: add second y-axis
-# TODO: implement reduced effective charge transition levels
+# TODO: - redo plot_formation_energies() based on new results structure
+
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import (fig, WebPanel, entry_parameter_description,
+                                      describe_entry, table, matrixtable)
+    import numpy as np
 
-    panel = {'title': 'Charge transition levels and pristine band edges',
-             'columns': [fig('sj_transitions.png'), fig('formation.png')],
-             'plot_descriptions': [{'function': plot_charge_transitions,
-                                    'filenames': ['sj_transitions.png']},
-                                   {'function': plot_formation_energies,
-                                    'filenames': ['formation.png']}],
-             'sort': 12}
+    explained_keys = []
+    for key in ['eform']:
+        if key in result.key_descriptions:
+            key_description = result.key_descriptions[key]
+            explanation = key_description
+            explained_key = describe_entry(key, description=explanation)
+        else:
+            explained_key = key
+        explained_keys.append(explained_key)
 
-    return [panel]
+    formation_table_sum = table(result, 'Defect properties', [])
+    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+        f'{result.eform[0][0]:.2f} eV']])
+
+    formation_table = table(result, 'Defect formation', [])
+    for element in result.eform:
+        formation_table['rows'].extend([[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)', description=result.key_descriptions['eform']),
+            f'{element[0]:.2f} eV']])
+    pristine_table_sum = table(result, 'Pristine summary', [])
+    pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
+        f"{result.hof:.2f} eV/atom"]])
+    gap = result.pristine.cbm - result.pristine.vbm
+    pristine_table_sum['rows'].extend([[describe_entry("Band gap (PBE)", description="Pristine band gap [eV]."),
+        f"{gap:.2f} eV"]])
+
+    trans_results = result.transitions
+    transition_labels = []
+    transition_array = np.zeros((len(trans_results), 2))
+    for i, element in enumerate(trans_results):
+        transition_labels.append(element['transition_name'])
+        transition_array[i, 0] = element['transition_values']['transition'] - element['transition_values']['evac']
+        transition_array[i, 1] = element['transition_values']['erelax']
+
+    transitions_table = matrixtable(transition_array,
+                                    title='Transition',
+                                    columnlabels=[describe_entry('Transition Energy [eV]', description='SJ calculated transition level'),
+                                                  describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
+                                    rowlabels=transition_labels)
+
+    panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
+                     description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
+                     columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
+                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.')]],
+                     plot_descriptions=[{'function': plot_charge_transitions,
+                                         'filenames': ['sj_transitions.png']},
+                                        {'function': plot_formation_energies,
+                                         'filenames': ['formation.png']}
+                                         ],
+                     sort=11)
+
+    summary = {'title': 'Summary',
+               'columns': [[formation_table_sum, 
+                   pristine_table_sum], []],
+               'sort':1}
+
+    return [panel, summary]
+
+
+@prepare_result
+class PristineResults(ASRResult):
+    """Container for pristine band gap results."""
+    vbm: float
+    cbm: float
+    evac: float
+
+    key_descriptions = dict(
+        vbm='Pristine valence band maximum [eV].',
+        cbm='Pristien conduction band minimum [eV]',
+        evac='Pristine vacuum level [eV]')
+
+
+@prepare_result
+class TransitionValues(ASRResult):
+    """Container for values of a specific charge transition level."""
+    transition: float
+    erelax: float
+    evac: float
+
+    key_descriptions = dict(
+        transition='Charge transition level [eV]',
+        erelax='Reorganization contribution  to the transition level [eV]',
+        evac='Vacuum level for halfinteger calculation [eV]')
+
+
+@prepare_result
+class TransitionResults(ASRResult):
+    """Container for charge transition level results."""
+    transition_name: str
+    transition_values: TransitionValues
+
+    key_descriptions = dict(
+        transition_name='Name of the charge transition (Initial State/Final State)',
+        transition_values='Container for values of a specific charge transition level.')
+
+
+@prepare_result
+class TransitionListResults(ASRResult):
+    """Container for all charge transition level results."""
+    transition_list: typing.List[TransitionResults]
+
+    key_descriptions = dict(
+        transition_list='List of TransitionResults objects.')
+
+
+@prepare_result
+class StandardStateResult(ASRResult):
+    """Container for results related to the standard state of the present defect."""
+    element: str
+    eref: float
+
+    key_descriptions = dict(
+        element='Atomic species.',
+        eref='Reference energy extracted from OQMD [eV].')
 
 
 @prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
-
-    transitions: dict
-    pristine: dict
-    eform: float
+    transitions: typing.List[TransitionResults]
+    pristine: PristineResults
+    eform: typing.List[typing.Tuple[float, int]]
+    standard_states: typing.List[StandardStateResult]
+    hof: float
 
     key_descriptions = dict(
-        transitions='Charge transition levels with [transition energy, relax correction, reference energy] eV',
-        pristine='Pristine band edges and vacuum level [eV]',
-        eform='Neutral formation energy without chemical potentials applied [eV]')
+        transitions='Charge transition levels with [transition energy, '
+                        'relax correction, reference energy] eV',
+        pristine='Container for pristine band gap results.',
+        eform='List of formation energy tuples (eform wrt. standard states [eV], charge state)',
+        standard_states='List of StandardStateResult objects for each species.',
+        hof='Heat of formation for the pristine monolayer [eV]')
 
     formats = {"ase_webpanel": webpanel}
-
-
 
 
 @command(module='asr.sj_analyze',
          webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
+                   '../../unrelaxed.json',
+                   '../../defects.pristine_sc/results-asr.gs.json',
+                   '../../defects.pristine_sc/gs.gpw',
+                   'gs.gpw',
                    'results-asr.setup.defects.json'],
          resources='24:2h',
          returns=Result)
@@ -56,51 +167,140 @@ def main() -> Result:
     """
     p = Path('.')
     defectsystem = str(p.absolute()).split('/')[-2]
-    print('INFO: calculate charge transition levels for defect {}.'.format(
+    print('INFO: calculate formation energy and charge transition levels for defect {}.'.format(
         defectsystem))
 
-    # Initialize results dictionary
-    results = {'transitions': {}, 'pristine': {}, 'eform': {}}
+    # get heat of formation
+    hof = get_heat_of_formation()
 
+    # Obtain a list of all transitions with the respective ASRResults object
+    transition_list = calculate_transitions()
+
+    # get pristine band edges for correct referencing and plotting
+    pris = get_pristine_band_edges()
+
+    # get neutral formation energy without chemical potentials applied
+    eform, standard_states = calculate_neutral_formation_energy()
+
+    # get formation energies for all charge states based on neutral
+    # formation energy, as well as charge transition levels, and pristine results
+    eform = calculate_formation_energies(eform, transition_list, pris)
+
+    return Result.fromdata(eform=eform,
+                           transitions=transition_list,
+                           pristine=pris,
+                           standard_states=standard_states,
+                           hof=hof)
+
+
+def calculate_formation_energies(eform, transitions, pristine):
+    """Calculate formation energies for all charge states at the VB band edge."""
+    from asr.core import read_json
+    vbm = pristine['vbm'] - pristine['evac']
+    cbm = pristine['cbm'] - pristine['evac']
+
+    # CALCULATION OF FORMATION ENERGIES
+    transitions = order_transitions(transitions)
+    enlist = []
+    for element in transitions:
+        print(element['transition_name'])
+        enlist.append(element['transition_values']['transition'] -
+                      element['transition_values']['erelax'] -
+                      element['transition_values']['evac'])
+
+    eform_list = [(eform, 0)]
+    for i, element in enumerate(transitions):
+        enlist.append(element['transition_values']['transition'] -
+                      element['transition_values']['erelax'] -
+                      element['transition_values']['evac'])
+        name = element['transition_name']
+        if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
+            y1 = eform
+            y2 = eform
+        elif name.split('/')[0].startswith('0'):
+            y1 = eform
+            y2 = eform
+        elif not name.split('/')[1].startswith('-'):
+            y2 = None
+        else:
+            y1 = None
+        if name.split('/')[1].startswith('-'):
+            a = float(name.split('/')[1])
+            b = get_b(enlist[i], y2, a)
+            if y1 is None:
+                y1 = f(enlist[i], a, b)
+            y2 = f(enlist[i + 1], a, b)
+            eform_list.append((f(vbm, a, b), int(a)))
+        elif not name.split('/')[0].startswith('-') or name.split('/').startswith('-'):
+            a = float(name.split('/')[1])
+            b = get_b(enlist[i], y1, a)
+            if y2 is None:
+                y2 = f(enlist[i], a, b)
+            y1 = f(enlist[i + 1], a, b)
+            eform_list.append((f(vbm, a, b), int(a)))
+
+    return eform_list
+
+
+def get_heat_of_formation():
+    """To be implemented."""
+    from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
+    from ase.db import connect
+    from ase.io import read
+
+    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+    atoms = read('../../unrelaxed.json')
+    hash = get_hash_of_atoms(atoms)
+    uid = get_uid_of_atoms(atoms, hash)
+
+    for row in db.select(uid=uid):
+        hof = row.hform
+
+    return hof
+
+
+def get_kindlist():
+    """Return list of elements present in the structure."""
+    from ase.io import read
+
+    atoms = read('structure.json')
+    kindlist = []
+
+    for symbol in atoms.get_chemical_symbols():
+        if symbol not in kindlist:
+            kindlist.append(symbol)
+
+    return kindlist
+
+
+def calculate_transitions():
+    """Calculate all of the present transitions and return an
+    ASRResults object (TransitionResults)."""
+
+    transition_list = []
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
         transition = [0, +1]
-        e_trans, e_cor, e_ref = get_transition_level(transition)
-        results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-            e_trans, e_cor, e_ref]
+        transition_results = get_transition_level(transition, 0)
+        transition_list.append(transition_results)
         transition = [0, -1]
-        e_trans, e_cor, e_ref = get_transition_level(transition)
-        results['transitions']['{}/{}'.format(transition[1], transition[0])] = [
-            e_trans, e_cor, e_ref]
+        transition_results = get_transition_level(transition, 0)
+        transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition)
-            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-                e_trans, e_cor, e_ref]
+            transition_results = get_transition_level(transition, q)
+            transition_list.append(transition_results)
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
-            e_trans, e_cor, e_ref = get_transition_level(transition)
-            results['transitions']['{}/{}'.format(transition[0], transition[1])] = [
-                e_trans, e_cor, e_ref]
+            transition_results = get_transition_level(transition, q)
+            transition_list.append(transition_results)
 
-    vbm, cbm, evac = get_pristine_band_edges()
-    results['pristine'] = {'vbm': vbm, 'cbm': cbm, 'evac': evac}
-
-    # get neutral formation energy without chemical potentials applied
-    eform = calculate_neutral_formation_energy()
-    results['eform'] = eform
-
-    return Result.fromdata(
-            transitions=results['transitions'],
-            pristine=results['pristine'],
-            eform=eform)
-
-    #return results
+    return transition_list
 
 
-def get_pristine_band_edges():
+def get_pristine_band_edges() -> PristineResults:
     """
     Returns band edges and vaccum level for the host system.
     """
@@ -112,24 +312,46 @@ def get_pristine_band_edges():
         _, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        # evac = results_pris['evac']
-        evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        evac = (evac_z[0] + evac_z[-1])/2.
+        evac = results_pris['evac']
+        # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
         vbm = None
         cbm = None
         evac = None
 
-    return vbm, cbm, evac
+    return PristineResults.fromdata(
+        vbm=vbm,
+        cbm=cbm,
+        evac=evac)
 
 
-def obtain_chemical_potential():
+def obtain_chemical_potential(symbol, db):
     """
-    Function to evaluate the chemical potential limits for a given defect.
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TBD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Function to extract the standard state of a given element.
     """
-    return None
+    energies_ss = []
+    if symbol == 'v':
+        eref = 0.
+    else:
+        for row in db.select(symbol, ns=1):
+            energies_ss.append(row.energy/row.natoms)
+        eref = min(energies_ss)
+
+    return StandardStateResult.fromdata(
+        element=symbol,
+        eref=eref)
+
+
+def get_defect_info():
+    """Return defect_type, and defect_position of present defect."""
+    from pathlib import Path
+
+    p = Path('.')
+    d_type = str(p.absolute()).split('/')[-2].split('_')[-2].split('.')[-1]
+    d_pos = str(p.absolute()).split('/')[-2].split('_')[-1]
+
+    return d_type, d_pos
 
 
 def calculate_neutral_formation_energy():
@@ -140,15 +362,27 @@ def calculate_neutral_formation_energy():
     plot.
     """
     from asr.core import read_json
+    from ase.db import connect
+
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
 
-    eform = results_def['etot'] - results_def['etot']
+    eform = results_def['etot'] - results_pris['etot']
 
-    return eform
+    # next, extract standard state energies for particular defect
+    def_add, def_remove = get_defect_info()
+    # extract standard states of defect atoms from OQMD
+    db = connect('/home/niflheim/fafb/db/oqmd12.db')
+    standard_states = []
+    standard_states.append(obtain_chemical_potential(def_add, db))
+    standard_states.append(obtain_chemical_potential(def_remove, db))
+
+    eform = eform - standard_states[0].eref + standard_states[1].eref
+
+    return eform, standard_states
 
 
-def get_transition_level(transition):
+def get_transition_level(transition, charge) -> TransitionResults:
     """
     Calculates the charge transition level for a given charge transition.
 
@@ -157,31 +391,28 @@ def get_transition_level(transition):
     """
     # extrac HOMO or LUMO
     # HOMO
+    charge = str(charge)
     if transition[0] > transition[1]:
-        chargename = f'charge_{transition[0]}'
-        print(f'INFO: go into charge folder ./../{chargename}/sj_-0.5/gs.gpw')
-        _, calc = restart(f'./../{chargename}/sj_-0.5/gs.gpw', txt=None)
+        _, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
-        ev = calc.get_eigenvalues()
-        e_fermi = calc.get_fermi_level()
-        occ = []
-        [occ.append(v) for v in ev if v < e_fermi]
-        e_trans = max(occ)
-        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
-            transition[0], transition[1]))
-    # LUMO
-    elif transition[1] > transition[0]:
-        chargename = f'charge_{transition[0]}'
-        print(f'INFO: go into charge folder ./../{chargename}/sj_+0.5/gs.gpw')
-        _, calc = restart(f'./../{chargename}/sj_+0.5/gs.gpw', txt=None)
-        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1])/2.
+        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
         [unocc.append(v) for v in ev if v > e_fermi]
         e_trans = min(unocc)
+        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
+            transition[0], transition[1]))
+    # LUMO
+    elif transition[1] > transition[0]:
+        _, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
+        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        ev = calc.get_eigenvalues()
+        e_fermi = calc.get_fermi_level()
+        occ = []
+        [occ.append(v) for v in ev if v < e_fermi]
+        e_trans = max(occ)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
@@ -196,144 +427,51 @@ def get_transition_level(transition):
               'relaxation contribution to transition level.')
         e_cor = 0
 
-    return e_trans, e_cor, e_ref
+    transition_name = f'{transition[0]}/{transition[1]}'
+
+    transition_values = return_transition_values(e_trans, e_cor, e_ref)
+
+    return TransitionResults.fromdata(
+        transition_name=transition_name,
+        transition_values=transition_values)
 
 
-def plot_formation_energies_old(row, fname):
-    """
-    Using the calculated charge transition levels, plot the formation energy curve
-    for a given defect as a function of the fermi energy.
-    """
-    import matplotlib.pyplot as plt
-
-    data = row.data.get('results-asr.sj_analyze.json')
-    eform = data['eform']
-
-    vbm = data['pristine']['vbm'] - data['pristine']['evac']
-    cbm = data['pristine']['cbm'] - data['pristine']['evac']
-
-    transitions = data['transitions']
-
-    fig, ax1 = plt.subplots()
-
-    ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-    ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
-    ax1.axhline(0, color='black', linestyle='dotted')
-
-    plt.xlim(vbm - (0.1*(cbm - vbm)), cbm + (0.1*(cbm - vbm)))
-    plt.ylim(-1, eform + 0.1*eform)
-    energy_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
-    energy_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
-    ax1.plot([max(energy_p, vbm), min(energy_m, cbm)], [eform, eform], color='black', marker='s')
-
-    translist_m = []
-    translist_p = []
-    for i, element in enumerate(sorted(transitions)):
-        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-        name = element
-        if name.split('/')[0].startswith('-'):
-            translist_m.append(energy)
-        else:
-            translist_p.append(energy)
-    translist_m.append(cbm)
-    translist_p.append(vbm)
-
-    ax2 = ax1.twiny()
-
-    i = 0
-    j = 0
-    enlist = []
-    tickslist = []
-    # print(transitions, sorted(transitions))
-    # for element in sorted(transitions):
-    for element in transitions:
-        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-        name = element
-        print(name)
-        if energy > vbm and energy < cbm:
-            if name.split('/')[1].startswith('0') and name.split('/')[0].startswith('-'):
-                y_1 = eform
-                y_2 = eform
-            else:
-                y_1 = None
-            if name.split('/')[0].startswith('-'):
-                enlist.append(energy)
-                tickslist.append(name)
-                a = float(name.split('/')[0])
-                b = y_2 - a * translist_m[i]
-                if y_1 is None:
-                    y_1 = a * translist_m[i] + b
-                y_2 = a * translist_m[i + 1] + b
-                # ax1.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black')
-                ax1.plot([energy, translist_m[i + 1]], [y_1, y_2], color='black', marker='s')
-                i += 1
-            ax1.axvline(energy, color='grey', linestyle='-.')
-        elif name.split('/')[0].startswith('-'):
-            i += 1
-    for element in transitions:
-    # for element in sorted(transitions):
-        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-        name = element
-        if energy > vbm and energy < cbm:
-            if name.split('/')[0].startswith('0') and not name.split('/')[0].startswith('-'):
-                y_1 = eform
-                y_2 = eform
-            else:
-                y_2 = None
-            if not name.split('/')[0].startswith('-'):
-                enlist.append(energy)
-                tickslist.append(name)
-                a = float(name.split('/')[1])
-                print(a)
-                b = y_1 - a * translist_p[j]
-                diff = abs(translist_p[j] - translist_p[j + 1])
-                if y_2 is None:
-                    y_2 = a * translist_p[j] + b
-                y_1 = a * (translist_p[j] - diff) + b
-                print(y_1, y_2, translist_p[j], translist_p[j + 1])
-                ax1.plot([translist_p[j + 1], energy], [y_1, y_2], color='black', marker='s')
-                j += 1
-            ax1.axvline(energy, color='grey', linestyle='-.')
-        elif not name.split('/')[0].startswith('-'):
-            j += 1
-
-    ax1.set_ylabel('$E_{form}$ (eV)')
-    ax1.set_xlabel('$E_F$ (eV)')
-    ax2.set_xlim(ax1.get_xlim())
-    ax2.set_xticks(enlist)
-    ax2.set_xticklabels(tickslist)
-
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
+def return_transition_values(e_trans, e_cor, e_ref) -> TransitionValues:
+    return TransitionValues.fromdata(
+        transition=e_trans,
+        erelax=e_cor,
+        evac=e_ref)
 
 
-def f(x, a, b):
-    return a * x + b
-
-
-def order_transitions(trans_dict):
+def order_transitions(transitions):
     translist = []
-    reflist = ['0/1', '1/2', '2/3', '-1/0', '-2/-1', '-3/-2']
-    for element in trans_dict:
-        if element in reflist:
+    nameslist = []
+    reflist = ['0/1', '1/2', '2/3', '0/-1', '-1/-2', '-2/-3']
+
+    for element in transitions:
+        if element['transition_name'] in reflist:
             translist.append(element)
+            nameslist.append(element['transition_name'])
 
-    ordered_dict = {}
+    ordered_list = []
     for element in reflist:
-        if element in trans_dict:
-            ordered_dict[element] = trans_dict[element]
+        for oelement in transitions:
+            if element == oelement['transition_name']:
+                ordered_list.append(oelement)
 
-    print(f'Ordered dictionary: {ordered_dict}')
-
-    return ordered_dict
+    return ordered_list
 
 
 def get_b(x, y, a):
     return y - a * x
 
 
+def f(x, a, b):
+    return a * x + b
+
+
 def plot_formation_energies(row, fname):
+    """Plot formation energies and transition levels within the gap."""
     import matplotlib.pyplot as plt
 
     data = row.data.get('results-asr.sj_analyze.json')
@@ -342,80 +480,77 @@ def plot_formation_energies(row, fname):
     cbm = data['pristine']['cbm'] - data['pristine']['evac']
     gap = cbm - vbm
     eform = data['eform']
-
     transitions = data['transitions']
 
     fig, ax1 = plt.subplots()
 
-    ax1.fill_betweenx([-10, 30], vbm - 10, vbm, color='C0', alpha=0.5)
-    ax1.fill_betweenx([-10, 30], cbm + 10, cbm, color='C1', alpha=0.5)
+    ax1.fill_betweenx([-10, 30], -10, 0, color='C0', alpha=0.5)
+    ax1.fill_betweenx([-10, 30], gap + 10, gap, color='C1', alpha=0.5)
+    ax1.axvline(0, color='C0')
+    ax1.axvline(gap, color='C1')
     ax1.axhline(0, color='black', linestyle='dotted')
+    for element in eform:
+        ax1.plot([0, gap], [f(0, element[1], element[0]),
+                            f(gap, element[1], element[0])],
+                            color='grey',
+                            linestyle='dotted')
 
-    plt.xlim(vbm - 0.1 * gap, cbm + 0.1 * gap)
-    plt.ylim(-0.5, eform + 0.1 * eform)
-    e_m = transitions["-1/0"][0] - transitions["-1/0"][1] - transitions["-1/0"][2]
-    e_p = transitions["0/1"][0] - transitions["0/1"][1] - transitions["0/1"][2]
-    ax1.plot([vbm, cbm], [eform, eform], color='black')
-    if e_m < cbm and e_m > vbm:
-        ax1.axvline(e_m, color='black', linestyle='-.')
-    if e_p < cbm and e_p > vbm:
-        ax1.axvline(e_p, color='black', linestyle='-.')
-
-    transitions = order_transitions(transitions)
-
-    enlist = []
-    for element in transitions:
-        enlist.append(transitions[element][0] - transitions[element][1] - transitions[element][2])
-
-    ax2 = ax1.twiny()
+    ax1.set_xlim(- 0.2 * gap, gap + 0.2 * gap)
+    ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
+    yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
+    ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
+             va='center', rotation=90, weight='bold', color='white')
+    ax1.text(gap + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center',
+             va='center', rotation=90, weight='bold', color='white')
 
     tickslist = []
     labellist = []
+    energies = []
     for i, element in enumerate(transitions):
-        energy = transitions[element][0] - transitions[element][1] - transitions[element][2]
-        enlist.append(energy)
-        name = element
-        if energy > vbm and energy < cbm:
-            ax1.axvline(energy, color='grey', linestyle='-.')
-            if name.split('/')[1].startswith('0') and name.split('/')[0].startswith('-'):
-                y1 = eform
-                y2 = eform
-            elif name.split('/')[0].startswith('0'):
-                y1 = eform
-                y2 = eform
-            elif not name.split('/')[0].startswith('-'):
-                y2 = None
-            else:
-                y1 = None
-            if name.split('/')[0].startswith('-'):
-                tickslist.append(energy)
-                labellist.append(name)
-                a = float(name.split('/')[0])
-                b = get_b(enlist[i], y2, a)
-                if y1 is None:
-                    y1 = f(enlist[i], a, b)
-                y2 = f(enlist[i + 1], a, b)
-                print(enlist[i], enlist[i+1], y1, y2, a)
-                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-                ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
-            elif not name.split('/')[0].startswith('-'):
-                tickslist.append(energy)
-                labellist.append(name)
-                a = float(name.split('/')[0])
-                b = get_b(enlist[i], y1, a)
-                if y2 is None:
-                    y2 = f(enlist[i], a, b)
-                y1 = f(enlist[i + 1], a, b)
-                print(enlist[i], enlist[i+1], y1, y2, a)
-                ax1.plot([vbm, cbm], [f(vbm, a, b), f(cbm, a, b)], color='black')
-                ax1.plot([enlist[i], enlist[i + 1]], [y1, y2], color='black', marker='s')
+        energy = (element['transition_values']['transition']
+                  - element['transition_values']['erelax']
+                  - element['transition_values']['evac'] - vbm)
+        name = element['transition_name']
+        if name == '0/-1':
+            special = energy
+            negative = energy
+        elif name == '0/1':
+            positive = energy
+        energies.append(energy)
+        if energy > -0.2 * gap and energy < (gap + 0.2 * gap):
+            tickslist.append(energy)
+            labellist.append(name)
+            ax1.axvline(energy, color='grey', linestyle='dotted')
+    energies.append(100)
 
-    ax1.set_ylabel('$E^{f}$ (eV)')
-    ax1.set_xlabel('$E_F$ (eV)')
+    for i, element in enumerate(transitions):
+        energy = energies[i]
+        charge = int(element['transition_name'].split('/')[1])
+        if energy > 0 and energy < gap:
+            for en in eform:
+                if en[1] == charge:
+                    if charge < 0:
+                        xmin = energy
+                        xmax = min(gap, energies[i + 1])
+                    else:
+                        xmin = max(0, min(special, energies[i + 1]))
+                        xmax = energy
+                    print(xmin, xmax, en[0], en[1])
+                    ax1.plot([xmin, xmax],
+                             [f(xmin, en[1], en[0]),
+                              f(xmax, en[1], en[0])],
+                             color='black', linestyle='solid')
+    ax1.plot([max(0, positive), min(gap, negative)], [eform[0][0], eform[0][0]],
+             color='black', linestyle='solid')
+
+    ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(tickslist)
     ax2.set_xticklabels(labellist)
-    plt.tight_layout()
+    ax1.set_xlabel('$E_{\mathrm{F}}$ [eV]')
+    ax1.set_ylabel('Formation energy [eV]')
+
+
     plt.savefig(fname)
     plt.close()
 
@@ -430,39 +565,42 @@ def plot_charge_transitions(row, fname):
 
     vbm = data['pristine']['vbm'] - data['pristine']['evac']
     cbm = data['pristine']['cbm'] - data['pristine']['evac']
+    gap = cbm - vbm
 
     transitions = data['transitions']
 
     plt.plot([-2, 2], [vbm, vbm])
     plt.plot([-2, 2], [cbm, cbm])
 
-    gap = cbm - vbm
-
     plt.xlim(-1, 1)
-    plt.ylim(vbm - 0.2*gap, cbm + 0.2*gap)
+    plt.ylim(vbm - 0.2 * gap, cbm + 0.2 * gap)
     plt.xticks([], [])
 
+    plt.axhline(vbm, color='C0')
+    plt.axhline(cbm, color='C1')
     plt.fill_between([-2, 2], [vbm, vbm], [vbm - 2, vbm - 2], color='C0', alpha=0.5)
     plt.fill_between([-2, 2], [cbm, cbm], [0, 0], color='C1', alpha=0.5)
+    plt.text(0, vbm - 0.1 * gap, 'VBM', color='white', ha='center', va='center', weight='bold')
+    plt.text(0, cbm + 0.1 * gap, 'CBM', color='white', ha='center', va='center', weight='bold')
 
     i = 1
-    for t in transitions:
-        y = transitions[t][0] - transitions[t][2]
-        if y < cbm and y > vbm:
+    for trans in transitions:
+        y = (trans['transition_values']['transition'] -
+             trans['transition_values']['erelax'] -
+             trans['transition_values']['evac'])
+        if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
             plt.plot([-0.5, 0.5], [y, y], color='black')
             if i % 2 == 0:
-                plt.text(0.6, y, t, fontsize=14)
+                plt.text(0.6, y, trans['transition_name'], ha='left', va='center')
             else:
-                plt.text(-0.7, y, t, fontsize=14)
+                plt.text(-0.6, y, trans['transition_name'], ha='right', va='center')
             i += 1
 
-    plt.ylabel('$E - E_{vac}$ in eV', fontsize=16)
-    plt.yticks(fontsize=16)
+    plt.ylabel('$E - E_{vac}$ [eV]')
+    plt.yticks()
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
-
 
 
 if __name__ == '__main__':

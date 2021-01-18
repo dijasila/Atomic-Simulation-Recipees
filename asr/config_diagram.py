@@ -1,6 +1,6 @@
 from typing import Tuple
 from ase.parallel import parprint
-from asr.core import command, option, read_json
+from asr.core import command, option, read_json, ASRResult, prepare_result
 import ase.units as units
 from math import sqrt, pi, factorial
 import numpy as np
@@ -29,16 +29,37 @@ def get_wfs_overlap(i, f, calc_0, calc_q):
     return overlap, eigenvalues
 
 
-@command("asr.config_diagram")
+@prepare_result
+class DisplacementResults(ASRResult):
+    """Container for results related to the displaced geometries."""
+    delta_Q: float
+    Q_n: np.ndarray
+    energies_n: np.ndarray
+    ZPL: float
+    overlap: np.ndarray
+    eigenvalues: np.ndarray
+
+    key_descriptions = dict(
+        delta_Q='1D displacement coordinate along main phonon mode [Å].',
+        Q_n='Displacements array along 1D coordinate [Å].',
+        energies_n='Energies along displaced coordinates [eV].',
+        ZPL='Zero phonon line energy [eV].',
+        overlap='Overlap between state i and state f of the displaced geometry.',
+        eigenvalues='Eigenvalues for state i and f of the displaced geometry [eV].')
+
+
+@command("asr.config_diagram",
+         returns=DisplacementResults)
 @option('--folder', help='Folder of the displaced geometry', type=str)
 @option('--npoints', help='How many displacement points.', type=int)
 @option('--wfs', nargs=2, type=int,
         help='Calculate the overlap of wfs between states i and f')
-def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
-    """Interpolate the geometry of the structure in the current folder with the 
+def calculate(folder: str, npoints: int = 5,
+              wfs: Tuple[int, int] = None) -> DisplacementResults:
+    """Interpolate the geometry of the structure in the current folder with the
        displaced geometry in the 'folder' given as input of the recipe.
-       The number of displacements between the two geometries is set with the 
-       'npoints' input, and the energy, the modulus of the displacement and 
+       The number of displacements between the two geometries is set with the
+       'npoints' input, and the energy, the modulus of the displacement and
        the overlap between the wavefunctions is saved (if wfs is set)."""
 
     from gpaw import GPAW, restart
@@ -59,7 +80,7 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
     delta_Q = sqrt(((delta_R**2).sum(axis=-1) * m_a).sum())
 
     # check if there is difference in the two geometries
-    assert delta_Q >= 0.005, 'No displacement between the two geometries!' 
+    assert delta_Q >= 0.005, 'No displacement between the two geometries!'
     parprint('delta_Q', delta_Q, zpl)
 
     # if overlap is calculated do a fixed density calculation first
@@ -72,7 +93,6 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
     calc_q.set(txt='cc-diagram.txt')
     calc_q.set(symmetry='off')
 
-
     # quantities saved along the displacement
     Q_n = []
     energies_n = []
@@ -84,8 +104,8 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
         Q_n.append(sqrt(Q2) * np.sign(displ))
         atoms.positions += displ * delta_R
         atoms.set_calculator(calc_q)
-        #energy = atoms.get_potential_energy()
-        #parprint(displ, energy)
+        # energy = atoms.get_potential_energy()
+        # parprint(displ, energy)
 
         atoms.positions = pos_ai
         energy = 0.06155**2 / 2 * 15.4669**2 * Q2
@@ -94,22 +114,21 @@ def calculate(folder: str, npoints: int = 5, wfs: Tuple[int,int] = None):
         # if the indices of the wfs are set the overlap is calculated
         if wfs:
             i, f = wfs
-            overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q) 
-            overlap_n.append(overlap)
-            eigenvalues_n.append(eigenvalues)
+            overlap, eigenvalues = get_wfs_overlap(i, f, calc_0, calc_q)
             parprint(overlap, eigenvalues)
-            
+        else:
+            overlap = None
+            eigenvalues = None
+        overlap_n.append(overlap)
+        eigenvalues_n.append(eigenvalues)
 
-    results = {'delta_Q': delta_Q,
-               'Q_n': Q_n,
-               'energies_n': energies_n,
-               'ZPL': zpl}
-
-    if wfs is not None:
-        results['overlap'] = overlap_n
-        results['eigenvalues'] = eigenvalues_n
-
-    return results
+    return DisplacementResults.fromdata(
+        delta_Q=delta_Q,
+        Q_n=Q_n,
+        energies_n=energies_n,
+        ZPL=zpl,
+        overlap=overlap_n,
+        eigenvalues=eigenvalues_n)
 
 
 def webpanel(row, key_descriptions):
@@ -127,6 +146,44 @@ def webpanel(row, key_descriptions):
     return [panel]
 
 
+@prepare_result
+class ParabolaResults(ASRResult):
+    """Container for frequencies, energies, and Huang-Rhys factor of
+    excited state or ground state."""
+    energies_n: np.ndarray
+    omega: float
+    S: float
+
+    key_descriptions = dict(
+        energies_n='Energies along displacement path [eV].',
+        omega='Effective frequency [eV].',
+        S='Huang-Rhys factor.')
+
+
+@prepare_result
+class Result(ASRResult):
+    """Container for configuration diagram results."""
+    Q_n: np.ndarray
+    ZPL: float
+    delta_Q: float
+    ground: ParabolaResults
+    excited: ParabolaResults
+
+    key_descriptions = dict(
+        Q_n='Displacements array along 1D coordinate [Å].',
+        ZPL='Zero phonon line energy [eV].',
+        delta_Q='1D displacement coordinate along main phonon mode [Å].',
+        ground='Ground state ParabolaResults.',
+        excited='Excited state ParabolaResults.')
+
+
+def return_parabola_results(energies_n, omega, S):
+    return ParabolaResults.fromdata(
+        energies_n=energies_n,
+        omega=omega,
+        S=S)
+
+
 @command("asr.config_diagram",
          webpanel=webpanel,
          dependencies=["asr.config_diagram@calculate"])
@@ -137,7 +194,7 @@ def main(folder1: str = '.', folder2: str = 'excited'):
        excited one-dimensional mode and their relative
        Huang-Rhys factors"""
 
-    result_file = 'results-asr.config_diagram@calculate.json' 
+    result_file = 'results-asr.config_diagram@calculate.json'
 
     data_g = read_json(folder1 + '/' + result_file)
     data_e = read_json(folder2 + '/' + result_file)
@@ -168,21 +225,16 @@ def main(folder1: str = '.', folder2: str = 'excited'):
     S_g = s**2 * delta_Q**2 * omega_g / 2
     S_e = s**2 * delta_Q**2 * omega_e / 2
 
-    ground = {'energies_n': energies_gn,
-              'omega': omega_g,
-              'S': S_g}
+    # return ParabolaResults for gs and excited state, respectively
+    parabola_ground = return_parabola_results(energies_gn, omega_g, S_g)
+    parabola_excited = return_parabola_results(energies_en, omega_e, S_e)
 
-    excited = {'energies_n': energies_en,
-               'omega': omega_e,
-               'S': S_e}
-
-    results = {'Q_n': Q_n,
-               'ZPL': zpl,
-               'delta_Q': delta_Q,
-               'ground': ground,
-               'excited': excited}
-
-    return results
+    return Result.fromdata(
+        Q_n=Q_n,
+        ZPL=zpl,
+        delta_Q=delta_Q,
+        ground=parabola_ground,
+        excited=parabola_excited)
 
 
 def plot_cc_diagram(row, fname):
@@ -232,7 +284,7 @@ def plot_luminescence(row, fname):
     def gauss_delta(x, sigma):
         return 1 / (sigma * sqrt(2 * pi)) * np.exp(-x**2 / (2 * sigma**2))
 
-    def overlap(n, S): 
+    def overlap(n, S):
         return np.exp(-S) * S**n / factorial(n)
 
     data = row.data.get('results-asr.config_diagram.json')
@@ -242,24 +294,24 @@ def plot_luminescence(row, fname):
     ZPL = data['ZPL']
     S_g = data['ground']['S']
 
-    w_i = np.linspace(0, ZPL*1.3, 1000)
+    w_i = np.linspace(0, ZPL * 1.3, 1000)
 
     nmax = 20
     sigma = 0.02
-    L_i = 0 
+    L_i = 0
 
-    for n in range(1,nmax):
-        arg_delta = ZPL + omega_e - n * omega_g - w_i 
+    for n in range(1, nmax):
+        arg_delta = ZPL + omega_e - n * omega_g - w_i
         L_i += overlap(n, S_g) * gauss_delta(arg_delta, sigma)
 
-    fig = plt.figure(figsize=(7, 6)) 
+    fig = plt.figure(figsize=(7, 6))
     ax = fig.gca()
 
     ax.plot(w_i, L_i)
-    #ax.plot([ZPL]*2,[0,max(L_i)],'--k')
+    # ax.plot([ZPL]*2,[0,max(L_i)],'--k')
 
-    ax.set_xlim(ZPL/2, ZPL*1.2)
-    ax.set_ylim(0, max(L_i)*1.1)
+    ax.set_xlim(ZPL / 2, ZPL * 1.2)
+    ax.set_ylim(0, max(L_i) * 1.1)
     ax.set_xlabel(r'Energy (eV)', size=16)
     ax.set_ylabel('PL (a.u.)', size=18)
 
