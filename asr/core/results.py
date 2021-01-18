@@ -746,11 +746,6 @@ class ASRResult(object):
         if strict:
             assert not missing_keys, msg_miss
             assert not unknown_keys, msg_ukwn
-        else:
-            if unknown_keys:
-                warnings.warn(msg_ukwn)
-            if missing_keys:
-                warnings.warn(msg_miss)
 
     def get_missing_keys(self):
         data_keys = set(self.data)
