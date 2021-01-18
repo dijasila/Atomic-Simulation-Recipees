@@ -5,6 +5,7 @@ from asr.database import material_fingerprint as mfp
 from asr.structureinfo import get_reduced_formula
 from ase.io import read
 from pathlib import Path
+from asr.bilayerdescriptor import get_descriptor
 import os
 import numpy as np
 
@@ -37,13 +38,11 @@ def webpanel(result, row, key_descriptions):
 
 def make_row_title(desc, result):
     """Make a row title with descriptor and link."""
-    from asr.bilayerdescriptor import get_descriptor
-    descp = get_descriptor(desc)
     link = result['links'].get(desc, '')
     if link == '':
-        return descp
+        return desc
     else:
-        return f'<a href="{link}">{descp}</a>'
+        return f'<a href="{link}">{desc}</a>'
     
 
 
@@ -174,13 +173,14 @@ def make_numbering(binding_data, monolayerpath):
         
     notnumbered = []
     for sp in [x for x in p.iterdir() if x.is_dir()]:
-        if str(sp) in binding_data:
-            numberings[str(sp)] = numbers[str(sp)]
+        desc = get_descriptor(str(sp))
+        if desc in binding_data:
+            numberings[desc] = numbers[desc]
         else:
-            notnumbered.append(str(sp))
+            notnumbered.append(desc)
     for desc in notnumbered:
         maxn = maxn + 1
-        numberings[str(sp)] = maxn
+        numberings[desc] = maxn
     return numberings
 
 
@@ -203,17 +203,19 @@ def main(monolayerfolder: str = "./") -> Result:
 
     p = Path(monolayerfolder)
     for sp in [x for x in p.iterdir() if x.is_dir()]:
+        desc = get_descriptor(str(sp))
+
         # Get binding data
         binding_path = f"{sp}/results-asr.bilayer_binding.json"
         if os.path.exists(binding_path):
             data = read_json(binding_path)
-            binding_data[str(sp)] = (data["binding_energy"], data['interlayer_distance'])
+            binding_data[desc] = (data["binding_energy"], data['interlayer_distance'])
                 
         # Get gap data
         gs_path = f"{sp}/results-asr.gs.json"
         if os.path.exists(gs_path):
             data = read_json(gs_path)
-            gaps[str(sp)] = data["gap"]
+            gaps[desc] = data["gap"]
 
         # Get link info
         struct_path = f'{sp}/structure.json'
@@ -221,7 +223,7 @@ def main(monolayerfolder: str = "./") -> Result:
             atoms = read(struct_path)
             hsh = mfp.get_hash_of_atoms(atoms)
             uid = mfp.get_uid_of_atoms(atoms, hsh)
-            links[str(sp)] = uid
+            links[desc] = uid
 
     numberings = make_numbering(binding_data, monolayerfolder)
             
