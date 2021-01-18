@@ -116,7 +116,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
                                 intrinsic=intrinsic, vacancies=vacancies,
                                 sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
-    return None
+    return ASRResult()
 
 
 def setup_supercell(structure, max_lattice, is_2D):
@@ -290,7 +290,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         'txt': 'relax.txt',
         'occupations': {
             'name': 'fermi-dirac',
-            'width': 0.02},
+            'width': 0.2},
         'spinpol': True}
     calculator_gs = {'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
@@ -298,7 +298,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                      'basis': 'dzp',
                      'kpts': {'density': 12.0, 'gamma': True},
                      'occupations': {'name': 'fermi-dirac',
-                                     'width': 0.02},
+                                     'width': 0.2},
                      'convergence': {'bands': -3},
                      'nbands': -10,
                      'txt': 'gs.txt',
@@ -344,7 +344,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         'txt': 'relax.txt',
                         'occupations': {
                             'name': 'fermi-dirac',
-                            'width': 0.2},
+                            'width': 0.02},
                         'spinpol': True}
                     calculator_gs = {'name': 'gpaw',
                                      'mode': {'name': 'pw', 'ecut': 800},
@@ -352,7 +352,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                      'basis': 'dzp',
                                      'kpts': {'density': 12.0, 'gamma': True},
                                      'occupations': {'name': 'fermi-dirac',
-                                                     'width': 0.2},
+                                                     'width': 0.02},
                                      'convergence': {'bands': -3},
                                      'nbands': -10,
                                      'txt': 'gs.txt',
@@ -410,7 +410,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'txt': 'relax.txt',
                                 'occupations': {
                                     'name': 'fermi-dirac',
-                                    'width': 0.2},
+                                    'width': 0.02},
                                 'spinpol': True}
                             calculator_gs = {
                                 'name': 'gpaw',
@@ -424,7 +424,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                     'gamma': True},
                                 'occupations': {
                                     'name': 'fermi-dirac',
-                                    'width': 0.2},
+                                    'width': 0.02},
                                 'convergence': {
                                     'bands': -3},
                                 'nbands': -10,
