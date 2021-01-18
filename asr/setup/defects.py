@@ -300,7 +300,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                      'occupations': {'name': 'fermi-dirac',
                                      'width': 0.02},
                      'convergence': {'bands': 'CBM+3.0'},
-                     'nbands': -10,
+                     'nbands': '200%',
                      'txt': 'gs.txt',
                      'spinpol': True}
     parameters['asr.gs@calculate'] = {
@@ -354,7 +354,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                      'occupations': {'name': 'fermi-dirac',
                                                      'width': 0.02},
                                      'convergence': {'bands': 'CBM+3.0'},
-                                     'nbands': -10,
+                                     'nbands': '200%',
                                      'txt': 'gs.txt',
                                      'spinpol': True}
                     parameters['asr.gs@calculate'] = {
@@ -427,7 +427,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                     'width': 0.02},
                                 'convergence': {
                                     'bands': 'CBM+3.0'},
-                                'nbands': -10,
+                                'nbands': '200%',
                                 'txt': 'gs.txt',
                                 'spinpol': True}
                             parameters['asr.gs@calculate'] = {
