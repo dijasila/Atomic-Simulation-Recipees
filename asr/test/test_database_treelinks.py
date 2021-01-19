@@ -7,12 +7,10 @@ def test_database_treelinks(asr_tmpdir, test_material):
     """Test asr.database.treelinks on a example defect tree."""
     import os
     from pathlib import Path
-    from ase.io import write, read
+    from ase.io import write
     from asr.core import read_json
     from asr.setup.defects import main as setup_defects
     from asr.database.treelinks import main as treelinks
-    from asr.database.material_fingerprint import (get_hash_of_atoms,
-                                                   get_uid_of_atoms)
 
     write('unrelaxed.json', std_test_materials[1])
     p = Path('.')
@@ -21,12 +19,14 @@ def test_database_treelinks(asr_tmpdir, test_material):
     # get material fingerprint for defect systems
     pathlist = list(p.glob('defects.*/charge_0'))
     for path in pathlist:
-        os.system(f'cp {path.absolute()}/unrelaxed.json {path.absolute()}/structure.json')
+        os.system(f'cp {path.absolute()}/unrelaxed.json '
+                  f'{path.absolute()}/structure.json')
         os.system(f'asr run asr.database.material_fingerprint {path.absolute()}')
     # get material fingerprint for pristine system
     pathlist = list(p.glob('defects.pristine_sc*'))
     for path in pathlist:
-        os.system(f'cp {path.absolute()}/unrelaxed.json {path.absolute()}/structure.json')
+        os.system(f'cp {path.absolute()}/unrelaxed.json '
+                  f'{path.absolute()}/structure.json')
         os.system(f'asr run asr.database.material_fingerprint {path.absolute()}')
     # get material fingerprint for host structure
     os.system('cp unrelaxed.json structure.json')
