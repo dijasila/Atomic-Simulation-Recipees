@@ -261,7 +261,10 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
 
 
 def set_initial_magnetic_moments(atoms):
-    atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
+    array = np.ones(len(atoms), float)
+    for i in range(len(atoms)):
+        array[i] = 0.9
+    atoms.set_initial_magnetic_moments(array)
 
 
 @prepare_result
