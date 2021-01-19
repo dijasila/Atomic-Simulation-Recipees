@@ -3,9 +3,6 @@ from ase.db import connect
 import typing
 
 
-# TODO: - standardisation of links.json (names, write and read processes)
-
-
 @prepare_result
 class Result(ASRResult):
     """Container for crosslinks results."""

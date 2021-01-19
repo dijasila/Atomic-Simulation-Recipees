@@ -6,9 +6,6 @@ from asr.core import (command, option, ASRResult, prepare_result,
                       read_json, CommaStr)
 
 
-# TODO: implement write_links() function properly
-
-
 @prepare_result
 class Result(ASRResult):
     """Container for treelinks result."""
