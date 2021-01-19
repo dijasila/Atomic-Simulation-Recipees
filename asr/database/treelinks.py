@@ -94,7 +94,7 @@ def recursive_through_folders(path, include, exclude):
                         folder = Path(root + '/' + dir)
                         if Path(folder / atomfile).is_file():
                             folders.append(folder)
-    elif include != [''] and exclude != ['']:
+    elif include != '' and exclude != '':
         raise AssertionError('It is not possible to give both an include and exclude '
                              'list as input to asr.database.treelinks!')
 
