@@ -37,7 +37,7 @@ def relative_to_root(path):
     parts = path.absolute().parts
     root = str(config.root)
     count = parts.count(root)
-    assert count == 1, f'Path must contain {root} exactly once!'
+    assert count == 1, f'path={path} must contain {root} exactly once!'
     ind = parts.index(root)
     return pathlib.Path().joinpath(*parts[ind:])
 

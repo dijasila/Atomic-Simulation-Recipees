@@ -1,4 +1,3 @@
-import abc
 import copy
 import ase
 import simplejson as json
@@ -7,37 +6,26 @@ import pathlib
 import os
 from .config import config
 from .results import obj_to_id
-from .filetype import ExternalFile
+from .filetype import ExternalFile, ASRFile
 from .utils import only_master
 
 
-class Serializer(abc.ABC):  # noqa
+class ASRJSONEncoder(json.JSONEncoder):
 
-    @abc.abstractmethod
-    def serialize(obj: typing.Any) -> str:  # noqa
-        pass
-
-    @abc.abstractmethod
-    def deserialize(serialized: str) -> typing.Any:  # noqa
-        pass
-
-
-class ASRJSONEncoder(json.JSONEncoder):  # noqa
-
-    def default(self, obj) -> dict:  # noqa
+    def default(self, obj) -> dict:
 
         if isinstance(obj, ExternalFile):
-            path = pathlib.Path(obj.path)
+            path = pathlib.Path(obj)
             newpath = (
                 config.root
                 / 'external_files'
-                / (obj.checksum()[:12] + path.name)
+                / (','.join([path.name, obj.sha256[:12]]))
             )
             directory = newpath.parent
             if not directory.is_dir():
                 only_master(os.makedirs)(directory)
             only_master(path.rename)(newpath)
-            obj.path = str(newpath)
+            obj = ASRFile(newpath)
 
         if hasattr(obj, '__dict__'):
             cls_id = obj_to_id(obj.__class__)
@@ -55,14 +43,10 @@ class ASRJSONEncoder(json.JSONEncoder):  # noqa
                 '__asr_type__': 'tuple',
                 'value': list(obj),
             }
-        try:
-            return ase.io.jsonio.MyEncoder.default(self, obj)
-        except TypeError:
-            pass
-        return json.JSONEncoder.default(self, obj)
+        return ase.io.jsonio.MyEncoder.default(self, obj)
 
 
-def json_hook(json_object: dict):  # noqa
+def json_hook(json_object: dict):
     from asr.core.results import get_object_matching_obj_id
     from ase.io.jsonio import object_hook
 
@@ -85,11 +69,10 @@ def json_hook(json_object: dict):  # noqa
     return object_hook(json_object)
 
 
-class JSONSerializer(Serializer):  # noqa
+class JSONSerializer:
 
     encoder = ASRJSONEncoder(tuple_as_array=False).encode
     decoder = json.JSONDecoder(object_hook=json_hook).decode
-    accepted_types = {dict, list, str, int, float, bool, type(None)}
 
     def serialize(self, obj) -> str:
         """Serialize object to JSON."""

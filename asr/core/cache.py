@@ -4,7 +4,7 @@ import pathlib
 import typing
 from .record import RunRecord
 from .utils import write_file, only_master
-from .serialize import Serializer, JSONSerializer
+from .serialize import JSONSerializer
 from .selector import Selector
 
 
@@ -17,7 +17,7 @@ class FileCacheBackend():
     def __init__(
             self,
             cache_dir: str = '.asr/records',
-            serializer: Serializer = JSONSerializer(),
+            serializer: JSONSerializer = JSONSerializer(),
     ):
         self.serializer = serializer
         self.cache_dir = pathlib.Path(cache_dir)

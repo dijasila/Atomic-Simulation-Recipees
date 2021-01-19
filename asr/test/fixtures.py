@@ -44,7 +44,16 @@ VARIOUS_OBJECT_TYPES = [
     [1, (1, 'abc', [1.0, ('a', )])],
     np.array([1.1, 2.0], float),
     BN,
+    set(['a', 1, '2']),
 ]
+
+
+@pytest.fixture
+def external_file(asr_tmpdir):
+    from asr.core import ExternalFile
+    filename = 'somefile.txt'
+    Path(filename).write_text('sometext')
+    return ExternalFile.fromstr(filename)
 
 
 @pytest.fixture(params=VARIOUS_OBJECT_TYPES)
