@@ -239,7 +239,7 @@ key_descriptions['extra'] = extras
 
 @command()
 @argument('database', type=str)
-@option('--extra_kvp_descriptions',
+@option('--extra_kvp_descriptions', type=str,
         help='File containing extra kvp descriptions for info.json')
 def main(database: str,
          extra_kvp_descriptions: str = None) -> ASRResult:

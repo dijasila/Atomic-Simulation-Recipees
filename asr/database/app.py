@@ -250,7 +250,7 @@ def initialize_project(database, extra_kvp_descriptions=None):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-@option("--extra_kvp_descriptions",
+@option("--extra_kvp_descriptions", type=str,
         help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False,
