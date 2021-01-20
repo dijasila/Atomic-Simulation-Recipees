@@ -1,7 +1,4 @@
-import functools
 import numpy as np
-
-from ase import Atoms
 
 from .utils import compare_equal
 
@@ -9,33 +6,6 @@ from .utils import compare_equal
 class NoSuchAttribute(Exception):
 
     pass
-
-
-def flatten_list(lst):
-    flatlist = []
-    for value in lst:
-        if isinstance(value, list):
-            flatlist.extend(flatten_list(value))
-        else:
-            flatlist.append(value)
-    return flatlist
-
-
-def compare_lists(lst1, lst2) -> bool:
-    flatlst1 = flatten_list(lst1)
-    flatlst2 = flatten_list(lst2)
-    if not len(flatlst1) == len(flatlst2):
-        return False
-    for value1, value2 in zip(flatlst1, flatlst2):
-        if not value1 == value2:
-            return False
-    return True
-
-
-def compare_ndarrays(array1, array2) -> bool:
-    lst1 = array1.tolist()
-    lst2 = array2.tolist()
-    return compare_lists(lst1, lst2)
 
 
 def approx(value1, rtol=1e-3) -> callable:
@@ -46,45 +16,85 @@ def approx(value1, rtol=1e-3) -> callable:
     return wrapped_approx
 
 
+class Comparator:
+
+    def __init__(self, name, function, value, *args, **kwargs):
+        self.name = name
+        self.function = function
+        self.value = value
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, othervalue):
+        return self.function(self.value, othervalue, *self.args, **self.kwargs)
+
+    def __str__(self):
+        return f'{self.name}({self.value})'
+
+    def __repr__(self):
+        return str(self)
+
+
+
 def equal(value1) -> callable:
     """Make comparison function that compares value with equality."""
 
-    def wrapped_equal(value2) -> bool:
-        return compare_equal(value1, value2)
+    return Comparator(
+        name='equal',
+        function=compare_equal,
+        value=value1,
+    )
 
-    return wrapped_equal
+
+def compare_less_than(value1, value2) -> bool:
+    return value1 < value2
 
 
 def less_than(value1) -> callable:
 
-    def wrapped_less_than(value2) -> bool:
-        return value1 < value2
+    return Comparator(
+        name='lessthan',
+        function=compare_less_than,
+        value=value1,
+    )
 
-    return wrapped_less_than
+
+def compare_less_than_equals(value1, value2) -> bool:
+    return value1 <= value2
 
 
 def less_than_equals(value1) -> callable:
 
-    def wrapped_less_than_equals(value2) -> bool:
-        return value1 <= value2
+    return Comparator(
+        name='lessthanequals',
+        function=compare_less_than_equals,
+        value=value1,
+    )
 
-    return wrapped_less_than_equals
+
+def compare_greater_than(value1, value2) -> bool:
+    return value1 > value2
 
 
 def greater_than(value1) -> callable:
 
-    def wrapped_greater_than(value2) -> bool:
-        return value1 > value2
+    return Comparator(
+        name='greaterthan',
+        function=compare_greater_than,
+        value=value1,
+    )
 
-    return wrapped_greater_than
+
+def compare_greater_than_equals(value1, value2) -> bool:
+    return value1 >= value2
 
 
 def greater_than_equals(value1) -> callable:
-
-    def wrapped_greater_than_equals(value2) -> bool:
-        return value1 >= value2
-
-    return wrapped_greater_than_equals
+    return Comparator(
+        name='greaterthanequals',
+        function=compare_greater_than_equals,
+        value=value1,
+    )
 
 
 def compare_atoms(atoms1, atoms2):
@@ -104,22 +114,24 @@ def compare_atoms(atoms1, atoms2):
 
 def atoms_equal_to(atoms1):
 
-    def wrapped_atoms_equal_to(atoms1, atoms2):
-        return compare_atoms(atoms1, atoms2)
+    return Comparator(
+        name='atomsequalto',
+        function=compare_atoms,
+        value=atoms1,
+    )
 
-    return wrapped_atoms_equal_to
+
+def compare_is(obj1, obj2):
+    return obj1 is obj2
 
 
 def check_is(obj1):
 
-    def wrapped_is(obj2):
-        return obj1 is obj2
-
-    return wrapped_is
-
-
-def allways_match(value):
-    return True
+    return Comparator(
+        name='atomsequalto',
+        function=compare_is,
+        value=obj1,
+    )
 
 
 class SelectorSetter:
@@ -176,43 +188,19 @@ class Selector:
         return SelectorSetter(self, attr)
 
     def __str__(self):
+        parts = [
+            f'{key}={str(value)}'
+            for key, value in
+            self.selection.items()
+        ]
+        return 'Selector(' + ', '.join(parts) + ')'
         return str(self.selection)
 
     def __repr__(self):
         return self.__str__()
 
 
-def normalize_selection(selection: dict):
-    normalized = {}
-
-    for key, value in selection.items():
-        comparator = None
-        if isinstance(value, dict):
-            norm = normalize_selection(value)
-            for keynorm, valuenorm in norm.items():
-                normalized['.'.join([key, keynorm])] = valuenorm
-        elif isinstance(value, (list, tuple, str, bool, int, complex,
-                                float, Atoms, np.ndarray)):
-            comparator = functools.partial(compare_equal, value)
-        # elif ((hasattr(value, '__dict__') and value.__dict__)
-        #       or isinstance(value, Parameters)):
-        #     norm = normalize_selection(value.__dict__)
-        #     for keynorm, valuenorm in norm.items():
-        #         normalized['.'.join([key, keynorm])] = valuenorm
-        # elif isinstance(value, Comparator):  # callable(value):
-        #     comparator = value
-        # else: XXX Make special comparator type.
-        #     raise AssertionError(f'Unknown type {type(value)}')
-
-        if comparator is not None:
-            normalized[key] = comparator
-    return normalized
-
-
 def get_attribute(obj, attrs):
-
-    if not attrs:
-        return obj
 
     for attr in attrs:
         if hasattr(obj, attr):
