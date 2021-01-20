@@ -189,7 +189,7 @@ class Selector:
 
     def __str__(self):
         parts = [
-            f'{key}={str(value)}'
+            f'{key}={repr(value)}'
             for key, value in
             self.selection.items()
         ]
