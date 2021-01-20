@@ -123,7 +123,6 @@ def set_first_class_info():
         # Get binding data
         desc = get_descriptor(str(sp))
         binding_path = f"{sp}/results-asr.bilayer_binding.json"
-        print(f"binding_path = {binding_path}")
         if os.path.exists(binding_path):
             data = read_json(binding_path)
             binding_data.append((desc, data["binding_energy"]))
