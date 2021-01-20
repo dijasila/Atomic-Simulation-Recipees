@@ -8,14 +8,6 @@ class NoSuchAttribute(Exception):
     pass
 
 
-def approx(value1, rtol=1e-3) -> callable:
-
-    def wrapped_approx(value2) -> bool:
-        return np.isclose(value1, value2, rtol=rtol)
-
-    return wrapped_approx
-
-
 class Comparator:
 
     def __init__(self, name, function, value, *args, **kwargs):
@@ -33,6 +25,16 @@ class Comparator:
 
     def __repr__(self):
         return str(self)
+
+
+def approx(value1, rtol=1e-3) -> callable:
+
+    return Comparator(
+        name='approx',
+        function=np.isclose,
+        value=value1,
+        rtol=rtol,
+    )
 
 
 def equal(value1) -> callable:
