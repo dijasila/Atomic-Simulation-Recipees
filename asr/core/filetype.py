@@ -67,6 +67,12 @@ class ExternalFile:
     def __fspath__(self):
         return str(self.path)
 
+    def restore(self):
+        path = self.path
+        tofile = pathlib.Path(self.name)
+        assert not tofile.is_file()
+        only_master(link_file)(path, tofile)
+
     def __eq__(self, other):
         if not isinstance(other, ExternalFile):
             return NotImplemented

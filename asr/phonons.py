@@ -96,7 +96,7 @@ def calculate(
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    forcefiles = [ExternalFile(filename)
+    forcefiles = [ExternalFile.fromstr(str(filename))
                   for filename in Path().glob('phonon.*.pckl')]
     return CalculateResult.fromdata(forcefiles=forcefiles)
 
