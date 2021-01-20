@@ -35,10 +35,8 @@ class Comparator:
         return str(self)
 
 
-
 def equal(value1) -> callable:
     """Make comparison function that compares value with equality."""
-
     return Comparator(
         name='equal',
         function=compare_equal,
