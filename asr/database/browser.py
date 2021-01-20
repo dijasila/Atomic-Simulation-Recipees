@@ -91,7 +91,7 @@ def link_section(row, key_descriptions, exclude):
 
 
 def create_link_table(row, links, key_descriptions):
-    """Helper function to create links table in the links panel."""
+    """Create links table in the links panel."""
     link_table = table(row, 'Links', [])
     for link in links:
         linkname = f'<a href="{link[1]}">{link[0]}</a>'
