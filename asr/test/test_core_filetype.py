@@ -1,7 +1,7 @@
 import pytest
 import pathlib
 
-from asr.core.filetype import ExternalFile
+from asr.core.filetype import ExternalFile, ASRPath
 
 
 @pytest.fixture
@@ -29,3 +29,54 @@ def test_external_file_type_hash(afile):
         'cb8379ac2098aa165029e3938a51da'
         '0bcecfc008fd6795f401178647f96c5b34'
     )
+
+
+@pytest.fixture
+def asr_file_path(asr_tmpdir):
+    directory = pathlib.Path('.asr')
+    directory.mkdir()
+    filename = 'filename.txt'
+    path = pathlib.Path(filename)
+    return path, filename
+
+
+@pytest.mark.ci
+def test_asr_file_type(asr_file_path):
+    path, filename = asr_file_path
+
+    asr_path = ASRPath(path)
+
+    assert str(asr_path) == str(pathlib.Path('.asr').absolute() / filename)
+
+
+@pytest.mark.ci
+def test_asr_file_type_repr(asr_file_path):
+    path, filename = asr_file_path
+    asr_path = ASRPath(path)
+    assert str(asr_path) == repr(asr_path)
+
+
+@pytest.fixture
+def another_asr_file_path(asr_tmpdir):
+    filename = 'filename2.txt'
+    path = pathlib.Path(filename)
+    return path, filename
+
+
+@pytest.mark.ci
+def test_asr_file_type_eq_not_true(asr_file_path, another_asr_file_path):
+    path, _ = asr_file_path
+    path2, _ = another_asr_file_path
+
+    asr_path = ASRPath(path)
+    another_asr_path = ASRPath(path2)
+    assert not asr_path == another_asr_path
+
+
+@pytest.mark.ci
+def test_asr_file_type_eq_is_true(asr_file_path):
+    path, _ = asr_file_path
+
+    asr_path = ASRPath(path)
+    another_asr_path = ASRPath(path)
+    assert asr_path == another_asr_path

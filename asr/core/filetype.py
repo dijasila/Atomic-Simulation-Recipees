@@ -58,9 +58,6 @@ class ExternalFile:
     def path(self, value):
         self._path = value
 
-    def link_to(self, newpath: PathLike):
-        self.path = newpath
-
     def __str__(self):
         return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
 
@@ -69,12 +66,6 @@ class ExternalFile:
 
     def __fspath__(self):
         return str(self.path)
-
-    def restore(self):
-        path = self.path
-        tofile = pathlib.Path(self.name)
-        assert not tofile.is_file()
-        only_master(link_file)(path, tofile)
 
     def __eq__(self, other):
         if not isinstance(other, ExternalFile):
