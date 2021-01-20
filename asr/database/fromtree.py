@@ -179,6 +179,15 @@ def collect_file(filename: Path):
     return kvp, data
 
 
+def collect_info(filename: Path):
+    """Special handling of info.json"""
+    from asr.core import read_json
+    kvp = read_json(filename)
+    data = {str(filename): kvp}
+
+    return kvp, data
+
+
 def collect_links_to_child_folders(folder: Path, atomsname):
     """Collect links to all subfolders.
 
@@ -261,6 +270,10 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
+            elif name.is_file() and fnmatch(name, "info.json"):
+                tmpkvp, tmpdata = collect_info(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
             elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
                 tmpkvp, tmpdata = collect_file(name)
                 kvp.update(tmpkvp)
@@ -425,6 +438,8 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 @option('--children-patterns', type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
+@option('--extra_kvp_descriptions',
+        help='File containing extra kvp descriptions for info.json', type=str)
 @option('--njobs', type=int,
         help='Delegate collection of database to NJOBS subprocesses. '
         'Can significantly speed up database collection.')
@@ -433,6 +448,7 @@ def main(folders: Union[str, None] = None,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
+         extra_kvp_descriptions: str = 'key_descriptions.json',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
@@ -477,7 +493,7 @@ def main(folders: Union[str, None] = None,
                          patterns=patterns,
                          children_patterns=children_patterns)
 
-    set_key_descriptions(dbname)
+    set_key_descriptions(dbname, extra_kvp_descriptions)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']

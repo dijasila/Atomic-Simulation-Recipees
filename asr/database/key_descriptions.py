@@ -1,4 +1,4 @@
-from asr.core import command, argument, get_recipes, ASRResult
+from asr.core import command, argument, option, get_recipes, ASRResult, read_json
 from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
@@ -239,7 +239,10 @@ key_descriptions['extra'] = extras
 
 @command()
 @argument('database', type=str)
-def main(database: str) -> ASRResult:
+@option('--extra_kvp_descriptions',
+        help='File containing extra kvp descriptions for info.json')
+def main(database: str,
+         extra_kvp_descriptions: str = None) -> ASRResult:
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys
@@ -248,6 +251,7 @@ def main(database: str) -> ASRResult:
     database metadata under {"keys": ["etot", "gap", ...]}
     """
     from ase.db import connect
+    from pathlib import Path
 
     db = connect(database)
 
@@ -257,6 +261,10 @@ def main(database: str) -> ASRResult:
         if ir % 100 == 0:
             print(ir)
         keys.update(set(row.key_value_pairs.keys()))
+
+    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
+        kvps = read_json(extra_kvp_descriptions)
+        keys.update(set(kvps.keys()))
 
     metadata = db.metadata
     metadata.update({'keys': sorted(list(keys))})
