@@ -180,7 +180,7 @@ def collect_file(filename: Path):
 
 
 def collect_info(filename: Path):
-    """Special handling of info.json"""
+    """Collect info.json."""
     from asr.core import read_json
     kvp = read_json(filename)
     data = {str(filename): kvp}
