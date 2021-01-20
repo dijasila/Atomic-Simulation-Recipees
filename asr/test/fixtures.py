@@ -45,6 +45,7 @@ VARIOUS_OBJECT_TYPES = [
     np.array([1.1, 2.0], float),
     BN,
     set(['a', 1, '2']),
+    Path('directory1/directory2/file.txt'),
 ]
 
 

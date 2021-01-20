@@ -86,8 +86,10 @@ class Calculation:
         from asr.core import ExternalFile
         self.id = id
         self.cls_name = cls_name
-        self.paths = [ExternalFile(pathlib.Path(path))
-                      for path in paths]
+        self.paths = []
+        for path in paths:
+            path = pathlib.Path(path).absolute()
+            self.paths.append(ExternalFile(path, path.name))
         self.state = state
 
     def load(self, *args, **kwargs) -> Calculator:

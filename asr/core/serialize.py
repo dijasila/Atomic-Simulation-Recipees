@@ -3,29 +3,12 @@ import ase
 import simplejson as json
 import typing
 import pathlib
-import os
-from .config import config
 from .results import obj_to_id
-from .filetype import ExternalFile, ASRFile
-from .utils import only_master
 
 
 class ASRJSONEncoder(json.JSONEncoder):
 
     def default(self, obj) -> dict:
-
-        if isinstance(obj, ExternalFile):
-            path = pathlib.Path(obj)
-            newpath = (
-                config.root
-                / 'external_files'
-                / (','.join([path.name, obj.sha256[:12]]))
-            )
-            directory = newpath.parent
-            if not directory.is_dir():
-                only_master(os.makedirs)(directory)
-            only_master(path.rename)(newpath)
-            obj = ASRFile(newpath)
 
         if hasattr(obj, '__dict__'):
             cls_id = obj_to_id(obj.__class__)
@@ -42,6 +25,11 @@ class ASRJSONEncoder(json.JSONEncoder):
             return {
                 '__asr_type__': 'tuple',
                 'value': list(obj),
+            }
+        elif isinstance(obj, pathlib.Path):
+            return {
+                '__asr_type__': 'pathlib.Path',
+                'value': str(obj),
             }
         return ase.io.jsonio.MyEncoder.default(self, obj)
 
@@ -65,6 +53,8 @@ def json_hook(json_object: dict):
             return set(value)
         elif asr_type == 'tuple':
             return tuple(value)
+        elif asr_type == 'pathlib.Path':
+            return pathlib.Path(value)
 
     return object_hook(json_object)
 

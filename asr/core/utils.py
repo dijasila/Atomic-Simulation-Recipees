@@ -358,3 +358,7 @@ def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
                 elif not compare_equal(value1[key], value2[key]):
                     return False
         return True
+
+
+def link_file(path1, path2):
+    os.link(path1, path2)

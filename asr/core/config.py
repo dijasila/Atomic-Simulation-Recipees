@@ -44,9 +44,9 @@ def relative_to_root(path):
 
 def find_root(path: str = '.'):
     path = pathlib.Path(path).absolute()
-    if (path / config.root).is_dir():
-        return path
-    abspath = str(path)
     strroot = str(config.root)
+    if (path / config.root).is_dir():
+        return path / strroot
+    abspath = str(path)
     assert strroot in abspath
-    return pathlib.Path(abspath.split(strroot)[0])
+    return pathlib.Path(abspath.split(strroot)[0]) / strroot
