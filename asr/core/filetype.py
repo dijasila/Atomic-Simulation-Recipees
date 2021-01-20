@@ -43,7 +43,7 @@ class ExternalFile:
 
     @classmethod
     def fromstr(cls, string):
-        path = pathlib.Path(string)
+        path = pathlib.Path(string).absolute()
         return cls(path, path.name)
 
     @property
