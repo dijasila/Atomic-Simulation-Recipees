@@ -194,7 +194,6 @@ class Selector:
             self.selection.items()
         ]
         return 'Selector(' + ', '.join(parts) + ')'
-        return str(self.selection)
 
     def __repr__(self):
         return self.__str__()
