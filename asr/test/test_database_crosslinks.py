@@ -4,4 +4,5 @@ import pytest
 
 @pytest.mark.ci
 def test_database_crosslinks(asr_tmpdir, crosslinks_test_dbs):
-
+    """Test asr.database.crosslinks recipe."""
+    assert 1 == 1
