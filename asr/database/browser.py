@@ -494,26 +494,8 @@ def layout(row: AtomsRow,
     result_objects = []
 
     for key, value in row.data.items():
-# <<<<<<< HEAD
-#         if is_results_file(key):
-#             obj = decode_object(value)
-# 
-#             # Below is to support old C2DB databases that contain
-#             # hacked result files with no asr_name
-#             if not isinstance(obj, ASRResult):
-#                 recipename = extract_recipe_from_filename(key)
-#                 value['__asr_hacked__'] = recipename
-#                 obj = decode_object(value)
-#             result_objects.append(obj)
-#         else:
-#             obj = value
-#         row.data[key] = obj
-#         assert row.data[key] == obj
-# =======
         if isinstance(value, ASRResult):
             result_objects.append(value)
-# >>>>>>> origin/master
-# 
     panel_data_sources = {}
     # Locate all webpanels
     for result in result_objects:
@@ -574,7 +556,7 @@ def layout(row: AtomsRow,
 
     # add links section
     link_title, link_columns = link_section(row, key_descriptions,
-                                             exclude)
+                                            exclude)
     link_panel = {'title': link_title,
                   'columns': link_columns}
     page.append(link_panel)

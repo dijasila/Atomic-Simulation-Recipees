@@ -190,7 +190,6 @@ def crosslinks_test_dbs(asr_tmpdir):
     from pathlib import Path
     from ase.io import write
     from ase.db import connect
-    from asr.core import read_json
     from asr.database.treelinks import main as treelinks
     from asr.database.fromtree import main as fromtree
 

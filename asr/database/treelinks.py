@@ -26,8 +26,12 @@ def main(include: str = '',
          exclude: str = '') -> Result:
     """Create links.json based on the tree-structure.
 
-    Choose the respective option to choose, which kind of tree is
-    currently present. !Change that description!
+    Recipe to create links.json files based on the tree structure of
+    your current directory. Goes through the directories recursively
+    and adds repective uids if a 'structure.json' is present. Give
+    '--include' option for folders to specifically include, and
+    '--exclude' option for folders to exclude. Note, that you can't
+    use both '--include' and '--exclude' at the same time!
     """
     p = Path('.')
 
@@ -104,7 +108,7 @@ def recursive_through_folders(path, include, exclude):
 def create_tree_links(folders):
     """Return a list of structure uids to link to.
 
-    Based on the tree structure created from setup.defects.
+    Creates uids for structures within the given folder list.
     """
     print('INFO: Create links for the following folders:')
 

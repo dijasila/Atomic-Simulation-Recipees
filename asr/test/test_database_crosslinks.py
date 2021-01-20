@@ -1,4 +1,3 @@
-from .materials import std_test_materials
 import pytest
 
 
@@ -15,7 +14,8 @@ def test_database_crosslinks(crosslinks_test_dbs):
     db = connect('db.db')
 
     reflinks = [
-        ('Si2-9552f5fb34d3-Si2', 'testref/testref/Si2-9552f5fb34d3', 'Example Reference DB'),
+        ('Si2-9552f5fb34d3-Si2', 'testref/testref/Si2-9552f5fb34d3',
+            'Example Reference DB'),
         ('BN-BN-d07bd84d0331', 'test/test/BN-d07bd84d0331', 'Example DB'),
         ('Ag-Ag-38f9b4cf2331', 'test/test/Ag-38f9b4cf2331', 'Example DB'),
         ('Fe-Fe-551991cb0ca5', 'test/test/Fe-551991cb0ca5', 'Example DB')]

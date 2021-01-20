@@ -19,8 +19,9 @@ class Result(ASRResult):
 @command('asr.database.crosslinks',
          returns=Result)
 @option('--target', type=str,
-        help='DB that links get created for.')
-@argument('dbs', nargs=-1, type=str)
+        help='Target DB you want to create the links in.')
+@argument('dbs', nargs=-1, type=str,
+          help='Reference DB for target DB to link to.')
 def main(target: str,
          dbs: typing.Union[str, None] = None) -> Result:
     """Create links between entries in given ASE databases."""
@@ -55,7 +56,7 @@ def main(target: str,
         if linkfilename in data:
             formatted_links = []
             uids_to_link_to = refrow.data[linkfilename]['uids']
-            for uid in uids_to_link_to: #uids_to_link_to['uids']:
+            for uid in uids_to_link_to:
                 for dbfilename, uids_to_row in uids_for_each_db.items():
                     metadata = db_connections[dbfilename].metadata
                     row = uids_to_row.get(uid, None)
