@@ -261,7 +261,6 @@ def main(
         calculator: dict = gscalculate.defaults.calculator,
 ) -> Result:
     """Extract Heisenberg parameters."""
-
     calculate(
         atoms=atoms,
         calculator=calculator,
