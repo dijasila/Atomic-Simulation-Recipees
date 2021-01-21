@@ -44,7 +44,7 @@ class Result(ASRResult):
         type=float)
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.default.calculator,
+        calculator: dict = groundstate.defaults.calculator,
         strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
     """Calculate deformation potentials.
 
