@@ -28,8 +28,8 @@ class FileCacheBackend():
             serializer: JSONSerializer = JSONSerializer(),
     ):
         self.serializer = serializer
-        self.cache_dir = ASRPath(pathlib.Path(cache_dir))
-        self.ext_file_dir = ASRPath(pathlib.Path(ext_file_dir))
+        self.cache_dir = ASRPath(cache_dir)
+        self.ext_file_dir = ASRPath(ext_file_dir)
         self.filename = 'run-data.json'
 
     @staticmethod

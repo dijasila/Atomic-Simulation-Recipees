@@ -8,7 +8,9 @@ from .config import find_root
 class ASRPath:
     """Pathlike object relative to ASR root."""
 
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, path: typing.Union[str, pathlib.Path]):
+        if isinstance(path, str):
+            path = pathlib.Path(path)
         assert not path.is_absolute()
         self.path = path
 
