@@ -1,5 +1,4 @@
-from asr.core import (command, option, decode_object,
-                      ASRResult, get_recipe_from_name)
+from asr.core import (decode_object, ASRResult, get_recipe_from_name)
 import sys
 import re
 from pathlib import Path
@@ -761,30 +760,3 @@ def cache_webpanel(recipename, *selectors):
             return representative_panels
         return wrapper
     return decorator
-
-
-@command('asr.database.browser')
-@option('--database', type=str)
-@option('--only-figures', is_flag=True,
-        help='Dont show browser, just save figures')
-def main(database: str = 'database.db',
-         only_figures: bool = False) -> ASRResult:
-    """Open results in web browser."""
-    import subprocess
-    from pathlib import Path
-
-    custom = Path(__file__)
-
-    cmd = f'python3 -m ase db {database} -w -M {custom}'
-    if only_figures:
-        cmd += ' -l'
-    print(cmd)
-    try:
-        subprocess.check_output(cmd.split())
-    except subprocess.CalledProcessError as e:
-        print(e.output)
-        exit(1)
-
-
-if __name__ == '__main__':
-    main.cli()
