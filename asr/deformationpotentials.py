@@ -4,7 +4,9 @@ import numpy as np
 
 from ase import Atoms
 
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt
+)
 
 from asr.setup.strains import main as make_strained_atoms
 from asr.setup.strains import get_relevant_strains
@@ -34,6 +36,8 @@ class Result(ASRResult):
 
 
 @command(returns=Result)
+@atomsopt
+@calcopt
 @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',
