@@ -439,7 +439,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
 @option('--extra_kvp_descriptions', type=str,
-        help='File containing extra kvp descriptions for info.json', type=str)
+        help='File containing extra kvp descriptions for info.json')
 @option('--njobs', type=int,
         help='Delegate collection of database to NJOBS subprocesses. '
         'Can significantly speed up database collection.')
