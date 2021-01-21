@@ -12,7 +12,7 @@ from .cache import get_cache
 from .params import get_default_parameters, Parameters
 from .record import RunRecord
 from .specification import construct_run_spec
-from .sideeffects import isolated_work_dir
+from .workdir import isolated_work_dir
 from .results import obj_to_id
 from .dependencies import register_dependencies
 from .resources import register_resources
