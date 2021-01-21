@@ -2,8 +2,6 @@
 
 import os
 import pathlib
-from .serialize import JSONSerializer
-from hashlib import sha256
 from .specification import RunSpecification
 from .utils import chdir
 
@@ -14,33 +12,11 @@ from .utils import chdir
 side_effects_stack = []
 
 
-# def move_files(mapping: typing.Dict[str, SideEffect]):
-
-#     for filename, side_effect in mapping.items():
-
-#         path = pathlib.Path(filename)
-#         final_filename = side_effect.path
-#         directory = pathlib.Path(final_filename).parent
-#         if not directory.is_dir():
-#             os.makedirs(directory)
-#         path.rename(final_filename)
-
-
 class RegisterSideEffects():
 
-    def __init__(self, side_effects_stack=side_effects_stack,
-                 serializer=JSONSerializer(), hash_func=sha256):
+    def __init__(self, side_effects_stack=side_effects_stack):
         self.side_effects_stack = side_effects_stack
         self._root_dir = None
-        self.serializer = serializer
-        self.hash_func = hash_func
-
-    def get_hash_of_run_spec(self, run_spec):
-        return self.hash_func(
-            self.serializer.serialize(
-                run_spec
-            ).encode()
-        ).hexdigest()
 
     def get_workdir_name(self, root_dir,
                          run_specification: RunSpecification) -> pathlib.Path:
