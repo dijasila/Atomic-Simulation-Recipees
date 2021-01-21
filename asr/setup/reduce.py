@@ -1,7 +1,7 @@
-from asr.core import command, option, ASRResult
+from asr.core import command, atomsopt
 import numpy as np
 from ase.build import cut, niggli_reduce
-from ase.io import read
+from ase import Atoms
 
 
 def check_one_symmetry(spos_ac, ft_c, a_ij, tol=1.e-7):
@@ -46,11 +46,9 @@ def check_if_supercell(spos_ac, Z_a):
 
 
 @command('asr.setup.reduce')
-@option('--initial', help='Initial atomic structure file', type=str)
-@option('--final', help='Final atomic structure file', type=str)
-def main(initial: str = 'original.json', final: str = 'unrelaxed.json') -> ASRResult:
+@atomsopt
+def main(atoms: Atoms) -> Atoms:
     """Reduce supercell and perform niggli reduction if possible."""
-    atoms = read(initial)
     Z_a = atoms.get_atomic_numbers()
     spos_ac = atoms.get_scaled_positions() % 1.0
     ft_c = check_if_supercell(spos_ac, Z_a)
@@ -64,7 +62,7 @@ def main(initial: str = 'original.json', final: str = 'unrelaxed.json') -> ASRRe
     niggli_reduce(atoms)
     atoms.set_pbc(pbc)
 
-    atoms.write(final)
+    return atoms
 
 
 if __name__ == '__main__':
