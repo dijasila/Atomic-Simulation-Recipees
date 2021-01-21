@@ -1,53 +1,51 @@
 """Implement side effect handling."""
 
-import os
 import pathlib
+from .selector import Selector
+from .serialize import JSONSerializer
 from .specification import RunSpecification
-from .utils import chdir
+from .utils import chdir, write_file, read_file
 from .config import find_root, initialize_root
+from .filetype import ASRPath
 
+
+serializer = JSONSerializer()
 
 # XXX: This module should probably be called something like work_dir
 # or IsolatedDir or WorkingEnv.
 
-side_effects_stack = []
+# XXX: Make jobs restartable
 
 
-def get_workdir_name(run_specification: RunSpecification) -> pathlib.Path:
+def get_workdir_name(
+        run_specification: RunSpecification) -> pathlib.Path:
     name = run_specification.name
     uid = run_specification.uid
     initialize_root()
-    workdir = find_root() / f'{name}-{uid[:10]}'
+    data_file = ASRPath('work_dirs.json')
+    if not data_file.is_file():
+        work_dirs = {}
+        write_file(data_file, serializer.serialize(work_dirs))
+    else:
+        work_dirs = serializer.deserialize(read_file(data_file))
+
+    sel = Selector()
+    sel.parameters = sel.EQ(run_specification.parameters)
+    sel.name = sel.EQ(run_specification.name)
+
+    for foldername, other_run_spec in work_dirs.items():
+        if sel.matches(other_run_spec):
+            break
+    else:
+        foldername = f'{name}-{uid[:10]}'
+        work_dirs[foldername] = run_specification
+        write_file(data_file, serializer.serialize(work_dirs))
+
+    workdir = find_root() / foldername
     return workdir
 
 
 class RegisterSideEffects():
-
-    def __init__(self, side_effects_stack=side_effects_stack):
-        self.side_effects_stack = side_effects_stack
-        self._root_dir = None
-
-    def chdir_to_root_dir(self):
-        if self._root_dir:
-            os.chdir(self._root_dir)
-
-    def restore_to_previous_workdir(self):
-        if self.side_effects_stack:
-            os.chdir(self.side_effects_stack[-1]['workdir'])
-
-    def __enter__(self):
-        """Append empty side effect object to stack."""
-        frame = {
-            'workdir': None,
-        }
-
-        self.side_effects_stack.append(frame)
-        return frame
-
-    def __exit__(self, type, value, traceback):
-        """Register side effects and pop side effects from stack."""
-        self.side_effects_stack.pop()
-        # self.restore_to_previous_workdir()
 
     def make_decorator(
             self,
@@ -55,24 +53,13 @@ class RegisterSideEffects():
 
         def decorator(func):
             def wrapped(run_specification):
-                current_dir = pathlib.Path().absolute()
-                if self._root_dir is None:
-                    self._root_dir = current_dir
-
                 workdir = get_workdir_name(
                     run_specification,
                 )
-                with self as frame:
 
-                    with chdir(workdir, create=True):
-                        frame['workdir'] = workdir
-                        run_record = func(run_specification)
+                with chdir(workdir, create=True):
+                    run_record = func(run_specification)
 
-                    # shutil.rmtree(workdir)
-                    # run_record.side_effects = frame['side_effects']
-
-                if not self.side_effects_stack:
-                    self._root_dir = None
                 return run_record
             return wrapped
 

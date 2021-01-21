@@ -390,9 +390,8 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        register_side_effects.chdir_to_root_dir()
-
-        parameters = apply_defaults(self.get_signature(), *args, **kwargs)
+        parameters = apply_defaults(
+            self.get_signature(), *args, **kwargs)
         parameters = Parameters(parameters=parameters)
         for hook in self.argument_hooks:
             parameters = hook(parameters)
@@ -425,7 +424,6 @@ class ASRCommand:
             return run_record
 
         run_record = execute_run_spec(run_specification)
-        register_side_effects.restore_to_previous_workdir()
         return run_record
 
 
