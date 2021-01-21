@@ -67,3 +67,9 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
 
     assert set(type_hints) == type_hints_that_should_exist, \
         f'Missing type hints: {recipe.name}'
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize("recipe", all_recipes[1:], ids=lambda x: x.name)
+def test_recipe_takes_atoms_as_argument(recipe):
+    assert 'atoms' in recipe.get_parameters()
