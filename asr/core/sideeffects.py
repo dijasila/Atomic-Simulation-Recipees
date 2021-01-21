@@ -4,6 +4,7 @@ import os
 import pathlib
 from .specification import RunSpecification
 from .utils import chdir
+from .config import find_root, initialize_root
 
 
 # XXX: This module should probably be called something like work_dir
@@ -12,18 +13,19 @@ from .utils import chdir
 side_effects_stack = []
 
 
+def get_workdir_name(run_specification: RunSpecification) -> pathlib.Path:
+    name = run_specification.name
+    uid = run_specification.uid
+    initialize_root()
+    workdir = find_root() / f'{name}-{uid[:10]}'
+    return workdir
+
+
 class RegisterSideEffects():
 
     def __init__(self, side_effects_stack=side_effects_stack):
         self.side_effects_stack = side_effects_stack
         self._root_dir = None
-
-    def get_workdir_name(self, root_dir,
-                         run_specification: RunSpecification) -> pathlib.Path:
-        name = run_specification.name
-        uid = run_specification.uid
-        workdir = root_dir / f'.asr/{name}-{uid[:10]}'
-        return workdir
 
     def chdir_to_root_dir(self):
         if self._root_dir:
@@ -36,8 +38,6 @@ class RegisterSideEffects():
     def __enter__(self):
         """Append empty side effect object to stack."""
         frame = {
-            'side_effects': {},
-            'clean_files': [],
             'workdir': None,
         }
 
@@ -46,10 +46,8 @@ class RegisterSideEffects():
 
     def __exit__(self, type, value, traceback):
         """Register side effects and pop side effects from stack."""
-        frame = self.side_effects_stack[-1]
-        for filename in frame['clean_files']:
-            pathlib.Path(filename).unlink()
         self.side_effects_stack.pop()
+        # self.restore_to_previous_workdir()
 
     def make_decorator(
             self,
@@ -61,8 +59,7 @@ class RegisterSideEffects():
                 if self._root_dir is None:
                     self._root_dir = current_dir
 
-                workdir = self.get_workdir_name(
-                    self._root_dir,
+                workdir = get_workdir_name(
                     run_specification,
                 )
                 with self as frame:

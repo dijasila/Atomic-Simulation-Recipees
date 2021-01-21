@@ -7,6 +7,7 @@ from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
 from .filetype import find_external_files, ASRPath
+from .config import initialize_root, root_is_initialized
 
 
 class DuplicateRecord(Exception):
@@ -14,7 +15,7 @@ class DuplicateRecord(Exception):
 
 
 def get_external_file_path(dir, uid, name):
-    newpath = pathlib.Path(dir) / ('-'.join([uid[:10], name]))
+    newpath = dir / ('-'.join([uid[:10], name]))
     return newpath
 
 
@@ -22,13 +23,13 @@ class FileCacheBackend():
 
     def __init__(
             self,
-            cache_dir: str = '.asr/records',
-            ext_file_dir: str = '.asr/external_files',
+            cache_dir: str = 'records',
+            ext_file_dir: str = 'external_files',
             serializer: JSONSerializer = JSONSerializer(),
     ):
         self.serializer = serializer
-        self.cache_dir = pathlib.Path(cache_dir)
-        self.ext_file_dir = pathlib.Path(ext_file_dir)
+        self.cache_dir = ASRPath(pathlib.Path(cache_dir))
+        self.ext_file_dir = ASRPath(pathlib.Path(ext_file_dir))
         self.filename = 'run-data.json'
 
     @staticmethod
@@ -45,12 +46,11 @@ class FileCacheBackend():
 
         external_files = find_external_files(run_record.result)
         for external_file in external_files:
-            newpath = get_external_file_path(
-                dir=self.ext_file_dir.relative_to('.asr'),
+            asr_path = get_external_file_path(
+                dir=self.ext_file_dir,
                 uid=run_uid,
                 name=external_file.name,
             )
-            asr_path = ASRPath(newpath)
             only_master(link_file)(external_file.path, asr_path)
             external_file.path = asr_path
 
@@ -62,10 +62,16 @@ class FileCacheBackend():
 
     @property
     def initialized(self):
-        return (self.cache_dir / pathlib.Path(self.filename)).is_file()
+        if not root_is_initialized():
+            return False
+        pth = (
+            self.cache_dir / self.filename
+        )
+        return pth.is_file()
 
     def initialize(self):
         assert not self.initialized
+        initialize_root()
 
         if not self.cache_dir.is_dir():
             only_master(os.makedirs)(self.cache_dir)

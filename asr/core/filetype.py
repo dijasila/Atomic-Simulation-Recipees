@@ -15,6 +15,15 @@ class ASRPath:
     def __fspath__(self):
         return str(find_root() / self.path)
 
+    def unlink(self):
+        return pathlib.Path(self).unlink()
+
+    def is_dir(self):
+        return pathlib.Path(self).is_dir()
+
+    def is_file(self):
+        return pathlib.Path(self).is_file()
+
     def __str__(self):
         return self.__fspath__()
 
@@ -22,6 +31,24 @@ class ASRPath:
         if not isinstance(other, ASRPath):
             return False
         return self.path == other.path
+
+    def __truediv__(self, other):
+        if isinstance(other, (str, pathlib.Path)):
+            return ASRPath(self.path / other)
+        elif isinstance(other, ASRPath):
+            return ASRPath(self.path / other.path)
+        else:
+            return NotImplemented
+
+    def __rtruediv__(self, other):
+        if isinstance(other, (str, pathlib.Path)):
+            return ASRPath(other / self.path)
+        elif isinstance(other, ASRPath):
+            return ASRPath(other.path / self.path)
+        else:
+            return NotImplemented
+
+        return self.__truediv__(other)
 
     def __repr__(self):
         return str(self)

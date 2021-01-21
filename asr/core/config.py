@@ -42,11 +42,29 @@ def relative_to_root(path):
     return pathlib.Path().joinpath(*parts[ind:])
 
 
+class ASRRootNotFound(Exception):
+    pass
+
+
+def root_is_initialized():
+    try:
+        find_root()
+        return True
+    except ASRRootNotFound:
+        return False
+
+
+def initialize_root():
+    if not root_is_initialized():
+        config.root.mkdir()
+
+
 def find_root(path: str = '.'):
     path = pathlib.Path(path).absolute()
     strroot = str(config.root)
     if (path / config.root).is_dir():
         return path / strroot
     abspath = str(path)
-    assert strroot in abspath
+    if strroot not in abspath:
+        raise ASRRootNotFound
     return pathlib.Path(abspath.split(strroot)[0]) / strroot
