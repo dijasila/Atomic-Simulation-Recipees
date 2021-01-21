@@ -313,7 +313,7 @@ def main(
         "alphaz": alphaz_lat + alphaz_el,
     }
 
-    return results
+    return Result(data=results)
 
 
 def get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta):
