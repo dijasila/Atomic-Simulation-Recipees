@@ -14,8 +14,6 @@ serializer = JSONSerializer()
 # XXX: This module should probably be called something like work_dir
 # or IsolatedDir or WorkingEnv.
 
-# XXX: Make jobs restartable
-
 
 def get_workdir_name(
         run_specification: RunSpecification) -> pathlib.Path:
@@ -45,7 +43,7 @@ def get_workdir_name(
     return workdir
 
 
-class RegisterSideEffects():
+class IsolatedWorkDir():
 
     def make_decorator(
             self,
@@ -69,4 +67,4 @@ class RegisterSideEffects():
         return self.make_decorator()
 
 
-register_side_effects = RegisterSideEffects()
+isolated_work_dir = IsolatedWorkDir()

@@ -10,7 +10,6 @@ from .results import get_object_matching_obj_id
 
 # XXX: Change RunRecord name to Record
 # XXX: Make MigrationLog object to store migration related info.
-# XXX: Remove side_effects object.
 # XXX: Make Tags object.
 
 class RunRecord:
@@ -22,7 +21,6 @@ class RunRecord:
             result: typing.Optional[typing.Any] = None,
             run_specification: typing.Optional[RunSpecification] = None,
             resources: typing.Optional[Resources] = None,
-            side_effects: typing.Optional[dict] = None,
             dependencies: typing.Optional[typing.List[str]] = None,
             migration_id: typing.Optional[str] = None,
             migrated_from: typing.Optional[str] = None,
@@ -37,7 +35,6 @@ class RunRecord:
             run_specification=run_specification,
             result=result,
             resources=resources,
-            side_effects=side_effects,
             dependencies=dependencies,
             migration_id=migration_id,
             migrated_from=migrated_from,

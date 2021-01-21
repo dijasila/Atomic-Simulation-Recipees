@@ -12,7 +12,7 @@ from .cache import get_cache
 from .params import get_default_parameters, Parameters
 from .record import RunRecord
 from .specification import construct_run_spec
-from .sideeffects import register_side_effects
+from .sideeffects import isolated_work_dir
 from .results import obj_to_id
 from .dependencies import register_dependencies
 from .resources import register_resources
@@ -408,7 +408,7 @@ class ASRCommand:
         @register_dependencies.register
         @cache()
         @register_dependencies()
-        @register_side_effects()
+        @isolated_work_dir()
         @register_resources()
         def execute_run_spec(run_spec):
             name = run_spec.name
