@@ -70,6 +70,6 @@ def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
 
 
 @pytest.mark.ci
-@pytest.mark.parametrize("recipe", all_recipes[1:], ids=lambda x: x.name)
+@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_takes_atoms_as_argument(recipe):
     assert 'atoms' in recipe.get_parameters()

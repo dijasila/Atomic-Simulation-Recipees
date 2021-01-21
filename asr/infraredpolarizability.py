@@ -7,6 +7,8 @@ from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
 
 import numpy as np
+from click import Choice
+
 from ase import Atoms
 from asr.phonons import main as phonons
 from asr.borncharges import main as borncharges
@@ -205,12 +207,22 @@ class Result(ASRResult):
 @calcopt
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
+@option('-n', help='Supercell size', type=int)
+@option('--mingo/--no-mingo', is_flag=True,
+        help='Perform Mingo correction of force constant matrix')
 @option('--displacement', help='Atomic displacement (Å)', type=float)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
+@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+@option('--bandfactor', type=int,
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(
         atoms: Atoms,
-        calculator: phonons.defaults.calculator,
         nfreq: int = 300,
         eta: float = 1e-2,
+        calculator: dict = phonons.defaults.calculator,
         n: int = phonons.defaults.calculator,
         mingo: bool = phonons.defaults.mingo,
         displacement: float = borncharges.defaults.displacement,
