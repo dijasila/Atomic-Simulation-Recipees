@@ -219,7 +219,7 @@ class Cache:
         return self.backend.select(selector)
 
     def wrapper(self, func):
-        def wrapped(asrcontrol, run_specification):
+        def wrapped(run_specification):
 
             equals = {
                 'run_specification.name': run_specification.name,
@@ -233,7 +233,7 @@ class Cache:
                 print(f'{run_specification.name}: '
                       f'Found cached record.uid={run_record.uid}')
             else:
-                run_record = func(asrcontrol, run_specification)
+                run_record = func(run_specification)
                 self.add(run_record)
 
             return run_record

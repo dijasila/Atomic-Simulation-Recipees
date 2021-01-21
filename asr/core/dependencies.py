@@ -123,13 +123,13 @@ class RegisterDependencies:
 
         def wrapper(func):
 
-            def wrapped(asrcontrol, run_specification):
+            def wrapped(run_specification):
                 with self as dependencies:
                     parameters = self.parse_argument_dependencies(
                         run_specification.parameters
                     )
                     run_specification.parameters = parameters
-                    run_record = func(asrcontrol, run_specification)
+                    run_record = func(run_specification)
                 mark_dependencies(run_record.result, run_record.uid)
                 for uid in dependencies:
                     mark_dependencies(run_record.result, uid)

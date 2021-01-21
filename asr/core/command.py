@@ -19,30 +19,6 @@ from .resources import register_resources
 from .cache import Cache
 from .selector import Selector
 
-class ASRControl:  # noqa
-
-    pass
-
-
-# def to_json(obj):
-#     """Write an object to a json file."""
-#     json_string = obj.format_as('json')
-#     return json_string
-
-
-# def get_md5_checksums(filenames: typing.List[str]) -> typing.Dict[str, str]:
-#     """Get md5 checksums of a list of files."""
-#     checksums = {}
-#     for filename in filenames:
-#         hexdigest = md5sum(filename)
-#         checksums[filename] = hexdigest
-#     return checksums
-
-
-# def does_files_exist(filenames: typing.List[str]) -> typing.List[bool]:
-#     """Check whether files exist."""
-#     return [Path(filename).is_file() for filename in filenames]
-
 
 def format_param_string(params: dict):
     """Represent params as comma separated string."""
@@ -215,8 +191,6 @@ class ASRCommand:
         """Return signature with updated defaults based on params.json."""
         myparams = []
         for key, value in self.__signature__.parameters.items():
-            if key == 'asrcontrol':
-                continue
             assert key in self.myparams, \
                 f'Missing description for param={key},value={value}.'
             myparams.append(key)
@@ -437,24 +411,20 @@ class ASRCommand:
         @register_dependencies()
         @register_side_effects()
         @register_resources()
-        def execute_run_spec(asrcontrol, run_spec):
+        def execute_run_spec(run_spec):
             name = run_spec.name
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
             print(f'Running {name}({paramstring})')
-            if self.pass_control:
-                result = run_spec(asrcontrol=asrcontrol)
-            else:
-                result = run_spec()
+            result = run_spec()
             run_record = RunRecord(
                 result=result,
                 run_specification=run_spec,
             )
             return run_record
 
-        asrcontrol = ASRControl()
-        run_record = execute_run_spec(asrcontrol, run_specification)
+        run_record = execute_run_spec(run_specification)
         register_side_effects.restore_to_previous_workdir()
         return run_record
 

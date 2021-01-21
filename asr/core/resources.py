@@ -44,9 +44,9 @@ def _register_resources(run_specification: RunSpecification):
 
 def register_resources():  # noqa
     def wrapper(func):
-        def wrapped(asrcontrol, run_specification):
+        def wrapped(run_specification):
             with _register_resources(run_specification) as resources:
-                run_record = func(asrcontrol, run_specification)
+                run_record = func(run_specification)
             run_record.resources = resources
             return run_record
         return wrapped
