@@ -1,4 +1,4 @@
-from asr.core import command, argument, option, get_recipes, ASRResult, read_json
+from asr.core import command, argument, get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
@@ -248,7 +248,6 @@ def main(database: str) -> ASRResult:
     database metadata under {"keys": ["etot", "gap", ...]}
     """
     from ase.db import connect
-    from pathlib import Path
 
     db = connect(database)
 
