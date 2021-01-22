@@ -239,10 +239,7 @@ key_descriptions['extra'] = extras
 
 @command()
 @argument('database', type=str)
-@option('--extra_kvp_descriptions', type=str,
-        help='File containing extra kvp descriptions for info.json')
-def main(database: str,
-         extra_kvp_descriptions: str = None) -> ASRResult:
+def main(database: str) -> ASRResult:
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys
@@ -261,10 +258,6 @@ def main(database: str,
         if ir % 100 == 0:
             print(ir)
         keys.update(set(row.key_value_pairs.keys()))
-
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        kvps = read_json(extra_kvp_descriptions)
-        keys.update(set(kvps.keys()))
 
     metadata = db.metadata
     metadata.update({'keys': sorted(list(keys))})

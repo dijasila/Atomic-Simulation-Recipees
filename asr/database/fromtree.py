@@ -438,8 +438,6 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 @option('--children-patterns', type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
 @option('--dbname', help='Database name.', type=str)
-@option('--extra_kvp_descriptions', type=str,
-        help='File containing extra kvp descriptions for info.json')
 @option('--njobs', type=int,
         help='Delegate collection of database to NJOBS subprocesses. '
         'Can significantly speed up database collection.')
@@ -448,7 +446,6 @@ def main(folders: Union[str, None] = None,
          children_patterns: str = '*',
          patterns: str = 'info.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
-         extra_kvp_descriptions: str = 'key_descriptions.json',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
@@ -493,7 +490,7 @@ def main(folders: Union[str, None] = None,
                          patterns=patterns,
                          children_patterns=children_patterns)
 
-    set_key_descriptions(dbname, extra_kvp_descriptions)
+    set_key_descriptions(dbname)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
