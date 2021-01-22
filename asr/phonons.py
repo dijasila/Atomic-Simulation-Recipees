@@ -1,4 +1,9 @@
-"""Phonon band structure and dynamical stability."""
+"""Phonon band structure and dynamical stability.
+
+Deprecated: Please use the more efficient and optimized asr.phonopy
+recipe for calculating phonon properties instead.
+
+"""
 from pathlib import Path
 import typing
 
