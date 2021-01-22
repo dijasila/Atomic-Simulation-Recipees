@@ -19,7 +19,7 @@ import click
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
 def main(
-        atoms: Atoms,
+        atomfile: str = 'unrelaxed.json',
         chargestates: int = 3,
         supercell: List[int] = [0, 0, 0],
         maxsize: float = 8,
@@ -97,9 +97,9 @@ def main(
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
-    # create_folder_structure(structure, structure_dict, chargestates,
-    #                         intrinsic=intrinsic, vacancies=vacancies,
-    #                         sc=supercell, max_lattice=maxsize, is_2D=is2d)
+    create_folder_structure(structure, structure_dict, chargestates,
+                            intrinsic=intrinsic, vacancies=vacancies,
+                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return None
 

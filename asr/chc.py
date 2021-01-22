@@ -562,10 +562,7 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command('asr.chc',
-         requires=['structure.json',
-                   'results-asr.convex_hull.json'],
-         returns=Result)
+@command('asr.chc', returns=Result)
 @argument('dbs', nargs=-1, type=str)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='structure.json')

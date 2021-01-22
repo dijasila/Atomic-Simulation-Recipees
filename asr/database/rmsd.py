@@ -74,8 +74,7 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
         rmsd_by_id[rowid][otherrowid] = rmsd
 
 
-@command(module='asr.database.rmsd',
-         resources='1:20m')
+@command(module='asr.database.rmsd')
 @argument('databaseout', required=False, type=str)
 @argument('database', type=str)
 @option('-c', '--comparison-keys',

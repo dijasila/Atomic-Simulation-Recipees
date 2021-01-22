@@ -2,9 +2,7 @@ from asr.core import command, argument, option, ASRResult, ASEDatabase
 from datetime import datetime
 
 
-@command(module='asr.database.duplicates',
-         resources='1:20m',
-         save_results_file=False)
+@command(module='asr.database.duplicates')
 @argument('databaseout', type=ASEDatabase(), required=False)
 @argument('database', type=ASEDatabase())
 @option('-f', '--filterstring',
