@@ -162,8 +162,7 @@ class Result(ASRResult):
 
 
 @command('asr.phonons',
-         returns=Result,
-         dependencies=['asr.phonons@calculate'])
+         returns=Result)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

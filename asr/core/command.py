@@ -125,14 +125,7 @@ class ASRCommand:
             returns=None,
             version=0,
             cache=None,
-            dependencies=None,
-            creates=None,
-            requires=None,
-            resources=None,
-            tests=None,
-            save_results_file=None,
             argument_hooks=None,
-            pass_control=False,
             migrations=None,
     ):
         """Construct an instance of an ASRCommand.
@@ -155,7 +148,6 @@ class ASRCommand:
             self.argument_hooks = []
         else:
             self.argument_hooks = argument_hooks
-        self.pass_control = pass_control
         import inspect
         mod = inspect.getmodule(wrapped_function)
         module = mod.__name__

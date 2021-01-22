@@ -111,10 +111,6 @@ class Result(ASRResult):
 
 
 @command('asr.convex_hull',
-         requires=['results-asr.structureinfo.json',
-                   'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.structureinfo',
-                       'asr.database.material_fingerprint'],
          returns=Result)
 @atomsopt
 @calcopt

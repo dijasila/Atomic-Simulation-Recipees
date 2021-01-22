@@ -7,8 +7,7 @@ from asr.phonons import main as phonons
 from ase import Atoms
 
 
-@command('asr.push',
-         dependencies=['asr.structureinfo', 'asr.phonons'])
+@command('asr.push')
 @atomsopt
 @calcopt
 @option('-q', '--momentum', nargs=3, type=float,

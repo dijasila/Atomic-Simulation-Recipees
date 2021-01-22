@@ -83,9 +83,6 @@ class Result(ASRResult):
 
 
 @command(module='asr.projected_bandstructure',
-         requires=['results-asr.gs.json', 'bs.gpw',
-                   'results-asr.bandstructure.json'],
-         dependencies=['asr.gs', 'asr.bandstructure'],
          returns=Result)
 @atomsopt
 @calcopt

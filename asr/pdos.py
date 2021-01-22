@@ -13,54 +13,6 @@ from ase import Atoms
 from asr.utils import magnetic_atoms
 
 
-# Recipe tests:
-
-params = "{'mode':{'ecut':200,...},'kpts':{'density':2.0},...}"
-ctests = []
-ctests.append({'description': 'Test the refined ground state of Si',
-               'name': 'test_asr.pdos_Si_gpw',
-               'tags': ['gitlab-ci'],
-               'cli': ['asr run "setup.materials -s Si2"',
-                       'ase convert materials.json structure.json',
-                       'asr run "setup.params '
-                       f'asr.gs@calculate:calculator {params} '
-                       'asr.pdos@calculate:kptdensity 3.0 '
-                       'asr.pdos@calculate:emptybands 5"',
-                       'asr run gs',
-                       'asr run pdos@calculate',
-                       'asr run database.fromtree',
-                       'asr run "database.browser --only-figures"']})
-
-tests = []
-tests.append({'description': 'Test the pdos of Si (cores=1)',
-              'name': 'test_asr.pdos_Si_serial',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params} '
-                      'asr.pdos@calculate:kptdensity 3.0 '
-                      'asr.pdos@calculate:emptybands 5"',
-                      'asr run gs',
-                      'asr run pdos',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-tests.append({'description': 'Test the pdos of Si (cores=2)',
-              'name': 'test_asr.pdos_Si_parallel',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params} '
-                      'asr.pdos@calculate:kptdensity 3.0 '
-                      'asr.pdos@calculate:emptybands 5"',
-                      'asr run gs',
-                      'asr run -p 2 pdos',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-
-
-# ---------- Webpanel ---------- #
-
-
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,

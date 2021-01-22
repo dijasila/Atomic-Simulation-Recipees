@@ -77,10 +77,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.shift',
-         dependencies=['asr.gs@calculate'],
-         requires=['structure.json', 'gs.gpw'],
-         returns=Result)
+@command('asr.shift', returns=Result)
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K-point density', type=float)

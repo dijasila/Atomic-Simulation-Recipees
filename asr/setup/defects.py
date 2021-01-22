@@ -5,8 +5,7 @@ from asr.core import command, option, ASRResult
 import click
 
 
-@command('asr.setup.defects',
-         creates=['general_parameters.json'])
+@command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
 @option('-q', '--chargestates', type=int,
@@ -19,10 +18,14 @@ import click
         help='Specify whether you want to incorporate anti-site defects.')
 @option('--vacancies', type=bool,
         help='Specify whether you want to incorporate vacancies.')
-def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
-         supercell: List[int] = [0, 0, 0],
-         maxsize: float = 8, intrinsic: bool = True,
-         vacancies: bool = True) -> ASRResult:
+def main(
+        atoms: Atoms,
+        chargestates: int = 3,
+        supercell: List[int] = [0, 0, 0],
+        maxsize: float = 8,
+        intrinsic: bool = True,
+        vacancies: bool = True,
+) -> ASRResult:
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as
@@ -70,11 +73,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
       different defect structures.
 
     """
-    from ase.io import read
     import numpy as np
 
     # first, read input atomic structure and store it in ase's atoms object
-    structure = read(atomfile)
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
 
@@ -96,9 +97,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
 
     # based on this dictionary, create a folder structure for all defects
     # and respective charge states
-    create_folder_structure(structure, structure_dict, chargestates,
-                            intrinsic=intrinsic, vacancies=vacancies,
-                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
+    # create_folder_structure(structure, structure_dict, chargestates,
+    #                         intrinsic=intrinsic, vacancies=vacancies,
+    #                         sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return None
 

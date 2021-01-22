@@ -119,9 +119,7 @@ class Result(ASRResult):
 
 
 @command('asr.fermisurface',
-         returns=Result,
-         requires=['gs.gpw', 'results-asr.structureinfo.json'],
-         dependencies=['asr.gs', 'asr.structureinfo'])
+         returns=Result)
 @atomsopt
 @calcopt
 def main(

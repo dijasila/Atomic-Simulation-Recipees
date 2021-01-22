@@ -67,11 +67,6 @@ def webpanel(result, row, key_descriptions):
 
 
 params = '''asr.gs@calculate:calculator +{'mode':'lcao','kpts':(2,2,2)}'''
-tests = [{'cli': ['ase build -x hcp Co structure.json',
-                  f'asr run "setup.params {params}"',
-                  'asr run asr.magnetic_anisotropy',
-                  'asr run database.fromtree',
-                  'asr run "database.browser --only-figures"']}]
 
 
 @prepare_result
@@ -103,9 +98,7 @@ class Result(ASRResult):
 
 
 @command('asr.magnetic_anisotropy',
-         tests=tests,
          returns=Result,
-         dependencies=['asr.gs@calculate', 'asr.magstate'],
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')

@@ -7,10 +7,7 @@ group = 'property'
 creates = []  # what files are created
 
 
-@command('asr.defectformation',
-         resources='1:2h',
-         dependencies=['asr.setup.defects', 'asr.gs'],
-         creates=None)
+@command('asr.defectformation')
 # later include 'asr.dielectricconstant' and 'asr.relax')
 # and also the files that this recipe creates
 @option('--pristine', type=str,

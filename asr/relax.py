@@ -305,7 +305,6 @@ class Result(ASRResult):
 
 
 @command('asr.relax',
-         creates=['structure.json'],
          returns=Result,
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atoms to be relaxed.',
