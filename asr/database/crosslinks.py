@@ -20,8 +20,7 @@ class Result(ASRResult):
          returns=Result)
 @option('--target', type=str,
         help='Target DB you want to create the links in.')
-@argument('dbs', nargs=-1, type=str,
-          help='Reference DB for target DB to link to.')
+@argument('dbs', nargs=-1, type=str)
 def main(target: str,
          dbs: typing.Union[str, None] = None) -> Result:
     """Create links between entries in given ASE databases."""
