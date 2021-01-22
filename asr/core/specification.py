@@ -1,7 +1,7 @@
 import copy
 import typing
 import uuid
-from .params import Parameters
+from .parameters import Parameters
 from .codes import Codes, Code
 from .results import get_object_matching_obj_id
 from .utils import only_master

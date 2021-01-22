@@ -1,7 +1,7 @@
 import uuid
 import fnmatch
 import pathlib
-from .params import Parameters
+from .parameters import Parameters
 from .specification import RunSpecification
 
 

@@ -11,7 +11,7 @@ from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,
                       encode_object, decode_result)  # noqa
 from .command import (command, option, argument, get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa
-from .params import set_defaults, Parameters  # noqa
+from .parameters import set_defaults, Parameters  # noqa
 from .cache import get_cache  # noqa
 from .shortcuts import atomsopt, calcopt  # noqa
 from .selector import Selector  # noqa

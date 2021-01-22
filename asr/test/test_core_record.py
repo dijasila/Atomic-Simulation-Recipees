@@ -1,7 +1,7 @@
 import pytest
 from asr.core.record import RunRecord
 from asr.core.specification import construct_run_spec
-from asr.core.params import Parameters
+from asr.core.parameters import Parameters
 
 
 @pytest.mark.ci

@@ -9,7 +9,7 @@ import copy
 import inspect
 import typing
 from .cache import get_cache
-from .params import get_default_parameters, Parameters
+from .parameters import get_default_parameters, Parameters
 from .record import RunRecord
 from .specification import construct_run_spec
 from .workdir import isolated_work_dir

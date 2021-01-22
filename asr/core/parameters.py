@@ -62,15 +62,6 @@ def get_default_parameters(name, list_of_defaults=None):  # noqa
     return {}
 
 
-# class Parameter:
-
-#     def __init__(self, name, value, hash_func):
-
-#         self.name = name
-#         self.value = value
-#         self.hash_func = hash_func
-
-
 class Parameters:  # noqa
 
     def __init__(self, parameters: typing.Dict[str, typing.Any]):  # noqa

@@ -1,5 +1,5 @@
 """Module for registering dependencies between recipes."""
-from .params import Parameters
+from .parameters import Parameters
 
 
 # class Dependant:
