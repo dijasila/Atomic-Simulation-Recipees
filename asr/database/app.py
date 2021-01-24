@@ -24,14 +24,19 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db=None):
+def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_key_descriptions
+    from asr.core import read_json
     from ase.db.web import create_key_descriptions
 
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
+
+    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
+        extras = read_json(extra_kvp_descriptions)
+        flatten.update(extras)
 
     if db is not None:
         metadata = db.metadata
@@ -201,7 +206,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
     return s
 
 
-def initialize_project(database):
+def initialize_project(database, extra_kvp_descriptions=None):
     from asr.database import browser
     from functools import partial
 
@@ -216,7 +221,8 @@ def initialize_project(database):
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(db),
+        "key_descriptions": create_key_descriptions(db,
+                                                    extra_kvp_descriptions),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
@@ -244,10 +250,13 @@ def initialize_project(database):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
+@option("--extra_kvp_descriptions", type=str,
+        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
-         test: bool = False) -> ASRResult:
+         test: bool = False,
+         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
     for database in databases:
-        initialize_project(database)
+        initialize_project(database, extra_kvp_descriptions)
 
     setup_app()
 
