@@ -20,8 +20,13 @@ def test_database_crosslinks(crosslinks_test_dbs):
         ('Ag-Ag-38f9b4cf2331', 'test/test/Ag-38f9b4cf2331', 'Example DB'),
         ('Fe-Fe-551991cb0ca5', 'test/test/Fe-551991cb0ca5', 'Example DB')]
 
+    reflinks.sort(key=lambda tup: tup[0])
+
     for row in db.select():
-        for i, element in enumerate(row.data.links):
-            assert row.data.links[i][0] == reflinks[i][0]
-            assert row.data.links[i][1] == reflinks[i][1]
-            assert row.data.links[i][2] == reflinks[i][2]
+        print(row.data.links)
+        links = row.data.links
+        links.sort(key=lambda tup: tup[0])
+        for i, element in enumerate(links):
+            assert element[0] == reflinks[i][0]
+            assert element[1] == reflinks[i][1]
+            assert element[2] == reflinks[i][2]
