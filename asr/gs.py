@@ -46,7 +46,7 @@ def calculate(calculator: dict = {
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator, mixer=MixerDif(),
-            maxiter=500)
+            maxiter=1000)
 
     atoms.calc = calc
     atoms.get_forces()
