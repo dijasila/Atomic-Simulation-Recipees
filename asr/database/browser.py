@@ -502,7 +502,7 @@ def parse_row_data(data: dict):
     for key, value in data.items():
         if is_results_file(key):
             obj = decode_object(value)
-
+ 
             # Below is to support old C2DB databases that contain
             # hacked result files with no asr_name
             if not isinstance(obj, ASRResult):

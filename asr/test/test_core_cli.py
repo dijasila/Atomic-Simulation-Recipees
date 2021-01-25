@@ -72,7 +72,7 @@ def test_asr_results_help():
     runner = CliRunner()
     result = runner.invoke(cli, ['results', '-h'])
     assert result.exit_code == 0
-    assert 'Usage: cli results [OPTIONS] NAME' in result.output
+    assert 'Usage: cli results [OPTIONS] [SELECTION]' in result.output
 
 
 @pytest.mark.xfail

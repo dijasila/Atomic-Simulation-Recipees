@@ -4,7 +4,8 @@ import os
 from ast import literal_eval
 from typing import Union, Dict, Any, List, Tuple
 import asr
-from asr.core import read_json, chdir, ASRCommand, DictStr, set_defaults
+from asr.core import (
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache)
 import click
 from pathlib import Path
 import subprocess
@@ -13,6 +14,8 @@ from functools import partial
 import importlib
 from contextlib import contextmanager
 import pickle
+
+
 
 
 prt = partial(parprint, flush=True)
@@ -424,7 +427,6 @@ def get_item(attrs: List[str], obj):
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 def migrate(apply=False):
     """Look for cache migrations."""
-    from asr.core.cache import get_cache
     cache = get_cache()
     migrations = cache.get_migrations()
 
@@ -454,6 +456,19 @@ def migrate(apply=False):
             print('All records up to date. No migrations to apply.')
 
 
+def make_selector_from_selection(cache, selection):
+    selector = cache.make_selector()
+    if selection:
+        for keyvalue in selection:
+            key, value = keyvalue.split('=')
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+            setattr(selector, key, selector.EQ(value))
+    return selector
+
+
 @cache.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('-f', '--formatting',
@@ -466,17 +481,8 @@ def migrate(apply=False):
 @click.option('-i', '--include-migrated', is_flag=True,
               help='Also include migrated records.')
 def ls(selection, formatting, sort, width, include_migrated):
-    from asr.core.cache import get_cache
     cache = get_cache()
-    selector = cache.make_selector()
-    if selection:
-        for keyvalue in selection:
-            key, value = keyvalue.split('=')
-            try:
-                value = float(value)
-            except ValueError:
-                pass
-            setattr(selector, key, selector.EQ(value))
+    selector = make_selector_from_selection(cache, selection)
 
     records = cache.select(selector=selector)
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
@@ -522,17 +528,8 @@ def ls(selection, formatting, sort, width, include_migrated):
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
 def rm(selection, include_migrated, dry_run):
-    from asr.core.cache import get_cache
     cache = get_cache()
-    selector = cache.make_selector()
-    if selection:
-        for keyvalue in selection:
-            key, value = keyvalue.split('=')
-            try:
-                value = float(value)
-            except ValueError:
-                pass
-            setattr(selector, key, selector.EQ(value))
+    selector = make_selector_from_selection(cache, selection)
 
     if dry_run:
         records = cache.select(selector=selector)
@@ -660,8 +657,6 @@ def draw_networkx_graph(G, labels=False, saveto=None):
 @click.option('--labels', is_flag=True)
 @click.option('--saveto', help='Save to filename')
 def graph(draw=False, labels=False, saveto=None):
-    from asr.core import get_cache
-
     cache = get_cache()
     records = cache.select()
 
@@ -704,37 +699,39 @@ def graph(draw=False, labels=False, saveto=None):
 
 
 @cli.command()
-@click.argument('name')
+@click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
               help='Show generated figures')
-def results(name, show):
-    """Show results for a specific recipe.
+def results(selection, show):
+    """Show results from records.
 
     Generate and save figures relating to recipe with NAME. Examples
     of valid names are asr.bandstructure, asr.gs etc.
 
     """
     from matplotlib import pyplot as plt
-    from asr.core import get_recipe_from_name
-    from asr.core.material import (get_material_from_folder,
+    from asr.core.material import (get_row_from_folder,
                                    make_panel_figures)
-    recipe = get_recipe_from_name(name)
+    cache = get_cache()
+    selector = make_selector_from_selection(cache, selection)
+    records = cache.select(selector=selector)
 
-    filename = f"results-{recipe.name}.json"
-    assert Path(filename).is_file(), \
-        f'No results file for {recipe.name}, so I cannot show the results!'
+    assert records, 'No matching records!'
 
-    material = get_material_from_folder('.')
-    result = material.data[filename]
-
-    if 'ase_webpanel' not in result.get_formats():
-        print(f'{recipe.name} does not have any results to present!')
-        return
     from asr.database.app import create_key_descriptions
     kd = create_key_descriptions()
-    panels = result.format_as('ase_webpanel', material, kd)
-    print('panels', panels)
-    make_panel_figures(material, panels)
+
+    for record in records:
+        result = record.result
+        if 'ase_webpanel' not in result.get_formats():
+            print(f'{result} does not have any results to present!')
+            continue
+        row = get_row_from_folder('.')
+        panels = result.format_as('ase_webpanel', row, kd)
+        make_panel_figures(row, panels, uid=record.uid[:10])
+
+        print('panels', panels)
+
     if show:
         plt.show()
 
