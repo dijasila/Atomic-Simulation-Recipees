@@ -51,9 +51,9 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 
     assert len(list(
         Path('.asr/records').glob(
-            'results-asr.magnetic_anisotropy*.json'))) == 1
+            'asr.magnetic_anisotropy*.json'))) == 1
     assert len(list(
-        Path('.asr/records').glob('results-asr.gs::calculate*.json'))) == 1
+        Path('.asr/records').glob('asr.gs::calculate*.json'))) == 1
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:

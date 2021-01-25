@@ -15,6 +15,9 @@ from ase import Atoms
 @option('-m', '--mode', type=int, help='Mode index')
 @option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
+@option('-n', help='Supercell size', type=int)
+@option('--mingo/--no-mingo', is_flag=True,
+        help='Perform Mingo correction of force constant matrix')
 def main(
         atoms: Atoms,
         momentum: List[float] = [0, 0, 0],

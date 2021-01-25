@@ -93,8 +93,9 @@ def cli():
               help='COMMAND is not a recipe.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Show what would happen without doing anything.')
-@click.option('-j', '--njobs', type=int, default=1,
-              help='Run COMMAND in serial on JOBS processes.')
+@click.option(
+    '-j', '--njobs', type=int, default=1,
+    help='Run COMMAND in parallel on JOBS processes distributed over FOLDERS.')
 @click.option('-S', '--skip-if-done', is_flag=True,
               help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
