@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_database_treelinks(asr_tmpdir, test_material):
+def test_database_treelinks(asr_tmpdir):
     """Test asr.database.treelinks on a example defect tree."""
     import os
     from pathlib import Path
@@ -25,8 +25,6 @@ def test_database_treelinks(asr_tmpdir, test_material):
     # get material fingerprint for pristine system
     pathlist = list(p.glob('defects.pristine_sc*'))
     for path in pathlist:
-        os.system(f'cp {path.absolute()}/unrelaxed.json '
-                  f'{path.absolute()}/structure.json')
         os.system(f'asr run asr.database.material_fingerprint {path.absolute()}')
     # get material fingerprint for host structure
     os.system('cp unrelaxed.json structure.json')
@@ -42,15 +40,22 @@ def test_database_treelinks(asr_tmpdir, test_material):
                 "N8B9-3dbde4188cff",
                 "B8N10-e3886951a993",
                 "N8B10-e12d7c1775d2"]
+    ref_uids.sort()
 
     # test defect links
     pathlist = list(p.glob('defects.*/charge_0'))
     for path in pathlist:
         links = read_json(path / 'links.json')
-        assert links['uids'] == ref_uids
+        uids = links['uids']
+        uids.sort()
+        for i, element in enumerate(links['uids']):
+            assert element == ref_uids[i]
 
     # test pristine links
-    pathlist = list(p.glob('defects.*/charge_0'))
+    pathlist = list(p.glob('defects.pristine*'))
     for path in pathlist:
         links = read_json(path / 'links.json')
-        assert links['uids'] == ref_uids
+        uids = links['uids']
+        uids.sort()
+        for i, element in enumerate(uids):
+            assert element == ref_uids[i]
