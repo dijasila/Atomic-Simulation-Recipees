@@ -67,6 +67,8 @@ def write_links(path, link_uids):
     link_uids = {'uids': newlinks}
     write_json(path / 'links.json', link_uids)
 
+    return None
+
 
 def recursive_through_folders(path, include, exclude):
     """Go through folders recursively to find folders.
