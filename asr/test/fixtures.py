@@ -7,6 +7,9 @@ import os
 import pytest
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
+from asr.core import get_cache
+from asr.core.specification import construct_run_spec
+from asr.core.record import RunRecord
 
 
 @pytest.fixture()
@@ -226,3 +229,23 @@ def duplicates_test_db(request, asr_tmpdir):
     db.write(stretch_nonpbc_atoms)
 
     return (atoms, db)
+
+
+@pytest.fixture
+def record(various_object_types):
+    run_spec = construct_run_spec(
+        name='asr.test',
+        parameters={'a': 1},
+        version=0,
+    )
+    run_record = RunRecord(
+        run_specification=run_spec,
+        result=various_object_types,
+    )
+    return run_record
+
+
+@pytest.fixture
+def fscache(asr_tmpdir):
+    cache = get_cache('filesystem')
+    return cache

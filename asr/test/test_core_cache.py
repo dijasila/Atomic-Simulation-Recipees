@@ -38,20 +38,6 @@ def cache(request, asr_tmpdir):
     return get_cache(request.param)
 
 
-@pytest.fixture
-def record(various_object_types):
-    run_spec = construct_run_spec(
-        name='asr.test',
-        parameters={'a': 1},
-        version=0,
-    )
-    run_record = RunRecord(
-        run_specification=run_spec,
-        result=various_object_types,
-    )
-    return run_record
-
-
 @pytest.mark.ci
 def test_cache_has(cache, record):
     cache.add(record)
@@ -143,3 +129,23 @@ def test_cache_select(cache, record):
 def test_get_cache(backend):
     cache = get_cache(backend=backend)
     assert isinstance(cache, Cache)
+
+
+@pytest.mark.ci
+def test_cache_remove(cache, record):
+    other = record.copy()
+    other.run_specification.uid = 'someotheruid'
+
+    cache.add(record)
+    cache.add(other)
+
+    assert len(cache.select()) == 2
+
+    removed_records = cache.remove(uid='someotheruid')
+
+    records = cache.select()
+
+    assert len(records) == 1
+    assert records[0] == record
+    assert len(removed_records) == 1
+    assert removed_records[0] == other

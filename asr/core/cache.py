@@ -30,19 +30,19 @@ class FileCacheBackend():
         self.serializer = serializer
         self.cache_dir = ASRPath(cache_dir)
         self.ext_file_dir = ASRPath(ext_file_dir)
-        self.filename = 'run-data.json'
+        self.record_table_path = self.cache_dir / 'run-data.json'
 
-    @staticmethod
-    def _name_to_results_filename(name: str):
-        return f'results-{name}.json'
+    def _record_to_path(self, run_record: RunRecord):
+        run_specification = run_record.run_specification
+        run_uid = run_specification.uid
+        name = run_record.run_specification.name + '-' + run_uid[:10]
+        return self.cache_dir / f'{name}.json'
 
     def add(self, run_record: RunRecord):
         if not self.initialized:
             self.initialize()
         run_specification = run_record.run_specification
         run_uid = run_specification.uid
-        name = run_record.run_specification.name + '-' + run_uid[:10]
-        filename = self._name_to_results_filename(name)
 
         external_files = find_external_files(run_record.result)
         for external_file in external_files:
@@ -54,20 +54,18 @@ class FileCacheBackend():
             only_master(link_file)(external_file.path, asr_path)
             external_file.path = asr_path
 
+        pth = self._record_to_path(run_record)
         serialized_object = self.serializer.serialize(run_record)
 
-        self._write_file(filename, serialized_object)
-        self.add_uid_to_table(run_uid, filename)
+        self._write_file(pth, serialized_object)
+        self.add_uid_to_table(run_uid, pth)
         return run_uid
 
     @property
     def initialized(self):
         if not root_is_initialized():
             return False
-        pth = (
-            self.cache_dir / self.filename
-        )
-        return pth.is_file()
+        return self.record_table_path.is_file()
 
     def initialize(self):
         assert not self.initialized
@@ -80,23 +78,32 @@ class FileCacheBackend():
             only_master(os.makedirs)(self.ext_file_dir)
 
         serialized_object = self.serializer.serialize({})
-        self._write_file(self.filename, serialized_object)
+        self._write_file(self.record_table_path, serialized_object)
 
-    def add_uid_to_table(self, run_uid, filename):
+    def add_uid_to_table(self, run_uid, path: ASRPath):
         if not self.initialized:
             self.initialize()
         uid_table = self.uid_table
-        uid_table[run_uid] = filename
+        uid_table[run_uid] = path
         self._write_file(
-            self.filename,
-            self.serializer.serialize(uid_table)
+            self.record_table_path,
+            self.serializer.serialize(uid_table),
+        )
+
+    def remove_uid_from_table(self, run_uid):
+        assert self.initialized
+        uid_table = self.uid_table
+        del uid_table[run_uid]
+        self._write_file(
+            self.record_table_path,
+            self.serializer.serialize(uid_table),
         )
 
     @property
     def uid_table(self):
         if not self.initialized:
             self.initialize()
-        text = self._read_file(self.filename)
+        text = self._read_file(self.record_table_path)
         uid_table = self.serializer.deserialize(text)
         return uid_table
 
@@ -110,8 +117,8 @@ class FileCacheBackend():
         return False
 
     def get_record_from_uid(self, run_uid):
-        filename = self.uid_table[run_uid]
-        serialized_object = self._read_file(filename)
+        path = self.uid_table[run_uid]
+        serialized_object = self._read_file(path)
         obj = self.serializer.deserialize(serialized_object)
         return obj
 
@@ -128,11 +135,29 @@ class FileCacheBackend():
                 selected.append(record)
         return selected
 
-    def _write_file(self, filename: str, text: str):
-        write_file(self.cache_dir / filename, text)
+    def remove(self, selector: Selector = None):
+        assert self.initialized, 'No cache here!'
+        all_records = [self.get_record_from_uid(run_uid)
+                       for run_uid in self.uid_table]
+        if selector is None:
+            return []
 
-    def _read_file(self, filename: str) -> str:
-        serialized_object = pathlib.Path(self.cache_dir / filename).read_text()
+        selected = []
+        for record in all_records:
+            if selector.matches(record):
+                selected.append(record)
+
+        for record in selected:
+            self.remove_uid_from_table(record.uid)
+            pth = self._record_to_path(record)
+            pth.unlink()
+        return selected
+
+    def _write_file(self, path: ASRPath, text: str):
+        write_file(path, text)
+
+    def _read_file(self, path: ASRPath) -> str:
+        serialized_object = pathlib.Path(path).read_text()
         return serialized_object
 
 
@@ -224,6 +249,11 @@ class Cache:
         selector = self.make_selector(selector=selector, equals=equals)
         return self.backend.select(selector)
 
+    def remove(self, *, selector: Selector = None, **equals):
+        """Remove records."""
+        selector = self.make_selector(selector=selector, equals=equals)
+        return self.backend.remove(selector)
+
     def wrapper(self, func):
         def wrapped(run_specification):
 
@@ -271,6 +301,16 @@ class MemoryBackend:
         for record in self.records.values():
             if selector.matches(record):
                 selected.append(record)
+        return selected
+
+    def remove(self, selector: Selector):
+        selected = []
+        for record in self.records.values():
+            if selector.matches(record):
+                selected.append(record)
+
+        for record in selected:
+            del self.records[record.uid]
         return selected
 
 

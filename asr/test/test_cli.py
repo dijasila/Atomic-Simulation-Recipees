@@ -161,3 +161,33 @@ def test_asr_cache_ls(asr_tmpdir_w_params):
 
     assert result.exit_code == 0
     assert result.output == 'name parameters\n'
+
+
+@pytest.fixture()
+def cache_with_record(fscache, record):
+    fscache.add(record)
+    return record, fscache
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize(
+    'args,output,final_record_count',
+    [
+        ([], 'Deleted 1 record(s)', 0),
+        (['--dry-run'], 'Would delete 1 record(s).', 1),
+        (['-z'], 'Would delete 1 record(s).', 1),
+    ])
+def test_asr_cache_rm(
+        cache_with_record,
+        args, output, final_record_count,
+):
+    record, cache = cache_with_record
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ['cache', 'rm', f'uid={record.uid}'] + args)
+
+    assert result.exit_code == 0
+    assert output in result.output
+
+    assert len(cache.select()) == final_record_count

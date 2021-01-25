@@ -16,6 +16,8 @@ from .fixtures import (  # noqa
     duplicates_test_db,
     external_file,
     various_object_types,
+    record,
+    fscache,
 )
 
 

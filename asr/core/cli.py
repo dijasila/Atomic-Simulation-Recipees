@@ -514,6 +514,39 @@ def ls(selection, formatting, sort, width, include_migrated):
         print(' '.join(row))
 
 
+@cache.command()
+@click.argument('selection', required=False, nargs=-1)
+@click.option('-i', '--include-migrated', is_flag=True,
+              help='Also include migrated records.')
+@click.option('-z', '--dry-run', is_flag=True,
+              help='Print what will happen without doing anything.')
+def rm(selection, include_migrated, dry_run):
+    from asr.core.cache import get_cache
+    cache = get_cache()
+    selector = cache.make_selector()
+    if selection:
+        for keyvalue in selection:
+            key, value = keyvalue.split('=')
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+            setattr(selector, key, selector.EQ(value))
+
+    if dry_run:
+        records = cache.select(selector=selector)
+    else:
+        records = cache.remove(selector=selector)
+
+    for i, record in enumerate(records):
+        print(f'#{i} {record.run_specification.name}')
+
+    if dry_run:
+        print(f'Would delete {len(records)} record(s).')
+    else:
+        print(f'Deleted {len(records)} record(s).')
+
+
 def draw_plotly_graph(G):
     import networkx as nx
     import plotly.graph_objects as go
