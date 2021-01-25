@@ -1,6 +1,7 @@
 import typing
 from asr.core import command, ASRResult, prepare_result, option, read_json
 from ase.calculators.calculator import get_calculator_class
+from asr.bilayerdescriptor import get_descriptor
 import numpy as np
 from ase.io import read
 from pathlib import Path
@@ -30,9 +31,9 @@ def cell_area(atoms):
     
     return np.linalg.norm(np.cross(a1, a2))
 
-def get_descriptor():
-    p = Path('.')
-    return [x for x in str(p.absolute()).split("/") if x != ""][-1]
+# def get_descriptor():
+#     p = Path('.')
+#     return [x for x in str(p.absolute()).split("/") if x != ""][-1]
 
 
 @prepare_result
@@ -55,15 +56,21 @@ def get_IL_distance(atoms, h):
     layer_width = np.max(atoms.positions[:, 2]) - np.min(atoms.positions[:, 2])
 
     dist = h - layer_width
-    assert dist > 0, f'The distance was not postive: {dist}'
+    # assert dist > 0, f'The distance was not postive: {dist}'
     return dist
 
 
 @command(module='asr.bilayer_binding',
-         dependencies=['asr.relax_bilayer'],
          returns=Result)
 def main() -> Result:
     """Calculate the bilayer binding energy."""
+
+    desc = get_descriptor()
+    if not Path('results-asr.relax_bilayer.json').is_file():
+        return Result.fromdata(binding_energy=None,
+                               interlayer_distance=None,
+                               bilayer_id=desc)
+
 
     d = read_json('results-asr.relax_bilayer.json')
     bilayer_energy = d['energy']
@@ -78,7 +85,7 @@ def main() -> Result:
 
     return Result.fromdata(binding_energy=binding,
                            interlayer_distance=get_IL_distance(monolayer, height),
-                           bilayer_id=get_descriptor())
+                           bilayer_id=desc)
                            
 
 

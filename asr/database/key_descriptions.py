@@ -181,6 +181,7 @@ key_descriptions = {
         'first_class_material': (
             'KVP: A first class material marks a physical material. '
             '!First class material! [bool]'),
+        'numberoflayers': 'KVP: Number of stacking layers !Number of layers!'
     },
     "info.json": {
         'class': 'KVP: Material class',
@@ -206,11 +207,11 @@ key_descriptions = {
         "folder": "KVP: Path to collection folder",
     },
     "bilayerdescriptor": {
-        'descriptor': 'KVP: Shorthand bilayer descriptor',
-        'full_descriptor': 'KVP: Bilayer descriptor'
+        'descriptor': 'KVP: Stacking type',
+        'full_descriptor': 'KVP: Layer transformation'
     },
     "bilayer_binding": {
-        'binding_energy': 'KVP: Binding energy per area [`eV/Ang^2`]',
+        'binding_energy': 'KVP: Binding energy [`eV/Ang^2`]',
         'interlayer_distance': 'KVP: Interlayer distance [Ang]'
     }
 }
@@ -266,6 +267,7 @@ def main(database: str) -> ASRResult:
             print(ir)
         keys.update(set(row.key_value_pairs.keys()))
 
+    print(keys)
     metadata = db.metadata
     metadata.update({'keys': sorted(list(keys))})
     db.metadata = metadata

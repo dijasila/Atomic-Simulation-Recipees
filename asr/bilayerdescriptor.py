@@ -31,6 +31,8 @@ def convert_to_cartesian(matrix, cell):
 
     N = np.array([a1, a2]).T
     B = np.array([b1, b2])
+    assert np.allclose(B.dot(N), np.eye(2))
+    assert np.allclose(N.dot(B), np.eye(2)), N.dot(B)
     
     return N.dot(matrix.dot(B))
 
@@ -46,22 +48,28 @@ def get_matrix_descriptor(atoms, matrix):
     symmetries = spglib.get_symmetry(cell)
     ## Find a basis operation that is not the identity and not a reflection
     ## Find an inversion
-    inversion_basis = next(convert_to_cartesian(y, atoms.cell)
-                           for y in (x[:2, :2] for x in symmetries['rotations'])
-                           if np.allclose(np.linalg.det(y), -1))
-    
+    c2c = convert_to_cartesian
     isreflected = np.allclose(np.linalg.det(cmatrix), -1.0)
-    
-    bm = cmatrix.dot(np.linalg.inv(inversion_basis)) if isreflected else cmatrix
+    if isreflected:
+        inversion_basis, invb = next((c2c(y, atoms.cell), y)
+                                     for y in (x[:2, :2] for x in symmetries['rotations'])
+                                     if np.allclose(np.linalg.det(c2c(y, atoms.cell)), -1))
+        
 
-    
+    bm = cmatrix.dot(np.linalg.inv(inversion_basis)) if isreflected else cmatrix
+        
     # bm is a pure rotation.
     # It should have entries [[cos(theta), -sin(theta)], [sin(theta), cos(theta)]]
     # where theta = 2pi / n for some n.
-    a1 = np.arctan2(-bm[0, 1], bm[0, 0])
-    a2 = np.arctan2(bm[1, 0], bm[1, 1])
-
-    assert np.allclose(abs(a1), abs(a2)), f"a1: {a1}, a2: {a2}\n\ncbm:{cbm}, isrefl:{isreflected}"
+    if np.allclose(bm, np.eye(2)):
+        a1 = 0.0
+        a2 = 0.0
+    else:
+        a1 = np.arctan2(-bm[0, 1], bm[0, 0])
+        a2 = np.arctan2(bm[1, 0], bm[1, 1])
+    
+    
+    assert np.allclose(abs(a1), abs(a2)), f"a1: {a1}, a2: {a2}\n\nbm:{bm}, isrefl:{isreflected}"
     
     if np.allclose(a1, 0.0):
         descriptor = 'I'
@@ -80,10 +88,15 @@ def get_descriptor(folder=None, atoms=None):
         p = Path('.')
         folder = str(p.absolute())
     if atoms is None:
-        p = Path(f'{folder}/structure.json').absolute()
-        atoms = read(str(p))
+        if not Path(f"{folder}/structure.json").is_file():
+            p = Path(folder).resolve().parents[0]
+            atoms = read(f"{p}/structure.json")
+        else:
+            p = Path(f'{folder}/structure.json').absolute()
+            atoms = read(str(p))
 
     folder = [x for x in folder.split("/") if x != ""][-1]
+    folder = folder.replace("--", "-M").replace("_-", "_M")
     desc = "-".join(folder.split("-")[2:])
     
     # Extract matrix
@@ -93,7 +106,6 @@ def get_descriptor(folder=None, atoms=None):
         else:
             return float(x)
 
-    desc = desc.replace("--", "-M").replace("_-", "_M")
     parts = [p for p in desc.split("-") if p != ""]
     (a, b, c, d) = parts[0].split("_")
     matrix = np.array([[tofloat(a), tofloat(b)], [tofloat(c), tofloat(d)]])
@@ -119,13 +131,20 @@ def set_first_class_info():
     p = Path(monolayerfolder).absolute()
     binding_data = []
     my_desc = get_descriptor()
+    atoms = read(f"{p}/structure.json")
     for sp in [x for x in p.iterdir() if x.is_dir()]:
         # Get binding data
-        desc = get_descriptor(str(sp))
+        desc = get_descriptor(str(sp), atoms=atoms)
         binding_path = f"{sp}/results-asr.bilayer_binding.json"
         if os.path.exists(binding_path):
             data = read_json(binding_path)
-            binding_data.append((desc, data["binding_energy"]))
+            energy = data["binding_energy"]
+            if energy is not None:
+                binding_data.append((desc, energy))
+
+    if len(binding_data) == 0:
+        setinfo([('first_class_material', False)])
+        return False
 
     nmats = 5
     deltaE = 0.002
@@ -139,6 +158,11 @@ def set_first_class_info():
     is_fst_class = my_desc in selected
     setinfo([('first_class_material', is_fst_class)])        
     return is_fst_class
+
+
+def set_number_of_layers():
+    from asr.setinfo import main as setinfo
+    setinfo([('numberoflayers', 2)])
 
 
 @command(module='asr.bilayerdescriptor',
@@ -162,6 +186,7 @@ def main() -> Result:
     full_descriptor = get_descriptor()
 
     set_first_class_info()
+    set_number_of_layers()
 
     return Result.fromdata(descriptor=descriptor,
                            full_descriptor=full_descriptor)
