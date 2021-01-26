@@ -17,7 +17,8 @@ class Result(ASRResult):
     )
 
 
-@command('asr.database.treelinks')
+@command('asr.database.treelinks',
+         returns=Result)
 @option('--include', help='Comma-separated string of folders to include.',
         type=CommaStr())
 @option('--exclude', help='Comma-separated string of folders to exclude.',

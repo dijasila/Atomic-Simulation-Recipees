@@ -31,7 +31,7 @@ import os
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm',
+@option('--general_algorithm', type=float,
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
