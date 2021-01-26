@@ -5,6 +5,8 @@ from asr.core import command, option, ASRResult, atomsopt
 import click
 import os
 
+from ase import Atoms
+
 
 @command('asr.setup.defects')
 @atomsopt
@@ -30,12 +32,12 @@ import os
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm',
+@option('--general_algorithm', type=float,
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.')
 def main(
-        atoms,
+        atoms: Atoms,
         chargestates: int = 3,
         supercell: List[int] = [0, 0, 0],
         maxsize: float = 8,
