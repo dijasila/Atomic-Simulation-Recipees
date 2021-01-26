@@ -1,8 +1,5 @@
 """Implement ASRCommand class and related decorators."""
-from . import (
-    clickify_docstring,
-    ASRResult,
-)
+from . import clickify_docstring
 import functools
 import click
 import copy
@@ -11,9 +8,8 @@ import typing
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import RunRecord
-from .specification import construct_run_spec
+from .specification import construct_run_spec, obj_to_id
 from .workdir import isolated_work_dir
-from .results import obj_to_id
 from .dependencies import register_dependencies
 from .resources import register_resources
 from .cache import Cache
@@ -122,7 +118,6 @@ class ASRCommand:
             self,
             wrapped_function,
             module=None,
-            returns=None,
             version=0,
             cache=None,
             argument_hooks=None,
@@ -156,10 +151,12 @@ class ASRCommand:
         self._wrapped_function = wrapped_function
         self.name = f'{module}@{wrapped_function.__name__}'
 
-        # Return type
-        if returns is None:
-            returns = ASRResult
-        self.returns = returns
+        hints = typing.get_type_hints(wrapped_function)
+
+        if 'return' in hints:
+            self.returns = hints['return']
+        else:
+            self.returns = None
 
         # Figure out the parameters for this function
         if not hasattr(self._wrapped_function, '__asr_params__'):

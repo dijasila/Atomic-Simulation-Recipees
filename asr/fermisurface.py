@@ -118,8 +118,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.fermisurface',
-         returns=Result)
+@command('asr.fermisurface')
 @atomsopt
 @calcopt
 def main(

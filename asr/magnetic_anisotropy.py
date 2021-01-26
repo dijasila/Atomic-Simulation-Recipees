@@ -98,7 +98,6 @@ class Result(ASRResult):
 
 
 @command('asr.magnetic_anisotropy',
-         returns=Result,
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')

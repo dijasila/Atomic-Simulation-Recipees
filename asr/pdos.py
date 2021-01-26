@@ -118,8 +118,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.pdos',
-         returns=Result)
+@command(module='asr.pdos')
 @atomsopt
 @calcopt
 @option('-k', '--kptdensity', type=float, help='K-point density')

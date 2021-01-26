@@ -77,7 +77,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.shift', returns=Result)
+@command('asr.shift')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K-point density', type=float)

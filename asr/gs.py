@@ -34,49 +34,13 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
-def migrate_calculate_record(cache, selector):
-    """Migrate old ground state records."""
-    orig_records = cache.select(selector)
-
-    assert len(orig_records) == 1, [
-        orig_record.migration_id for orig_record in orig_records]
-
-    orig_record = orig_records[0]
-    migrated_record = orig_record.copy()
-    run_spec = migrated_record.run_specification
-    calculation = migrated_record.result.calculation
-    calc = calculation.load()
-    calc_parameters = {'name': calculation.cls_name, **calc.parameters}
-    run_spec.parameters.atoms = calc.atoms
-    run_spec.parameters.calculator = calc_parameters
-    migrated_record.run_specification = run_spec
-    return orig_record, migrated_record
-
-
-def get_gs_calculate_migrations(cache):
-    from asr.core.migrate import Migration
-    sel = cache.make_selector()
-    sel.run_specification.name = sel.EQ('asr.gs::calculate')
-    sel.migration_id = sel.EQ(
-        'Migrate resultsfile results-asr.gs@calculate.json'
-    )
-
-    if cache.select(sel):
-        return [
-            Migration(
-                migrate_calculate_record,
-                name='Add calculator parameter to gs.calculate record.',
-                args=(cache, sel),
-            ),
-        ]
-    else:
-        return []
+def do_nothing(record):
+    return record
 
 
 @command(module='asr.gs',
          argument_hooks=[set_calculator_hook],
-         returns=GroundStateCalculationResult,
-         migrations=get_gs_calculate_migrations)
+         migrations={-1: (0, do_nothing)})
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
@@ -558,47 +522,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def migrate_main_record(cache, calculateselector, mainselector):
-    """Migrate asr.gs::main records to have parameters."""
-    calculaterecord = cache.get(calculateselector)
-    original_record = cache.get(mainselector)
-    migrated_record = original_record.copy()
-    parameters = calculaterecord.run_specification.parameters
-    migrated_record.run_specification.parameters = parameters
-    return original_record, migrated_record
-
-
-def get_gs_main_migrations(cache):
-    """Migrate ground state records."""
-    from asr.core.migrate import Migration, get_resultfile_migration
-
-    migrations = get_gs_calculate_migrations(cache)
-
-    if migrations:
-        calculatesel = cache.make_selector()
-        calculatesel.run_specification.name = calculatesel.EQ(
-            'asr.gs::calculate')
-        calculatesel.migration_id = calculatesel.EQ(
-            migrations[0].id)
-
-        migration = get_resultfile_migration('results-asr.gs.json')
-        mainsel = cache.make_selector()
-        mainsel.run_specification.name = mainsel.EQ('asr.gs::main')
-        mainsel.migration_id = mainsel.EQ(migration.id)
-        migrations.append(Migration(
-            migrate_main_record,
-            name="Add atoms and calculator to gs.main record.",
-            args=(cache, calculatesel, mainsel)),
-        )
-    else:
-        print('Found no matches!')
-    return migrations
-
-
 @command(module='asr.gs',
-         returns=Result,
          argument_hooks=[set_calculator_hook],
-         migrations=get_gs_main_migrations)
+         version=0,
+         migrations={-1: (0, do_nothing)})
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

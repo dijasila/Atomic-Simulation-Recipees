@@ -177,8 +177,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.structureinfo',
-         returns=Result)
+@command('asr.structureinfo')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 def main(atoms: Atoms) -> Result:

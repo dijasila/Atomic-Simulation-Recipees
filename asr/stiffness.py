@@ -195,8 +195,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.stiffness',
-         returns=Result)
+@command(module='asr.stiffness')
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
 @option('-c', '--calculator', help='Calculator and its parameters.',

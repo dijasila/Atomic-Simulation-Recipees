@@ -82,8 +82,7 @@ class Result(ASRResult):
 # ---------- Main functionality ---------- #
 
 
-@command(module='asr.projected_bandstructure',
-         returns=Result)
+@command(module='asr.projected_bandstructure')
 @atomsopt
 @calcopt
 @option('-b', '--bscalculator',

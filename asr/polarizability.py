@@ -103,10 +103,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(
-    'asr.polarizability',
-    returns=Result,
-)
+@command('asr.polarizability')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K-point density',

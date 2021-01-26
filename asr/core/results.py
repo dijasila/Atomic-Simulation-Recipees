@@ -39,7 +39,11 @@ def read_hacked_data(dct) -> 'ObjectDescription':
         else:
             data[key] = value
     recipe = get_recipe_from_name(dct['__asr_hacked__'])
-    object_id = obj_to_id(recipe.returns)
+    if issubclass(recipe.returns, ASRResult):
+        returns = recipe.returns
+    else:
+        returns = ASRResult
+    object_id = obj_to_id(returns)
     obj_desc = ObjectDescription(
         object_id=object_id,
         args=(),
@@ -63,8 +67,12 @@ def read_old_data(dct) -> 'ObjectDescription':
             data[key] = value
     asr_name = metadata['asr_name']
     recipe = get_recipe_from_name(asr_name)
+    if issubclass(recipe.returns, ASRResult):
+        returns = recipe.returns
+    else:
+        returns = ASRResult
     object_description = ObjectDescription(
-        object_id=obj_to_id(recipe.returns),
+        object_id=obj_to_id(returns),
         args=(),
         kwargs=dict(
             data=data,
@@ -405,7 +413,7 @@ def prepare_result(cls: object) -> str:
 
     cls.__init__ = __init__
     cls.__init__.__signature__ = sig
-    cls.strict = True
+    cls.strict = False
     cls._known_data_keys = data_keys
     return cls
 

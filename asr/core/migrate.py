@@ -3,6 +3,7 @@ import fnmatch
 import pathlib
 from .parameters import Parameters
 from .specification import RunSpecification
+from .record import RunRecord
 
 
 def is_migratable(obj):
@@ -19,9 +20,8 @@ class NoMigrationError(Exception):
 
 class Migrations:
 
-    def __init__(self, generators, cache):
-
-        self.generators = generators
+    def __init__(self, generator, cache):
+        self.generator = generator
         self.cache = cache
         self.done = {record.migration_id
                      for record in cache.select()
@@ -35,28 +35,27 @@ class Migrations:
             return False
 
     def generate_migrations(self):
-        for generator in self.generators:
-            migrations = generator(self.cache)
-            for migration in migrations:
-                if migration.id not in self.done:
-                    yield migration
+        migrations = self.generator(self.cache)
+        for migration in migrations:
+            if migration.id not in self.done:
+                yield migration
 
     def apply(self):
         from asr.core.specification import get_new_uuid
         for migration in self.generate_migrations():
             print(migration)
-            original_record, migrated_record = migration.apply()
-            self.done.add(migration.id)
-            migrated_uid = get_new_uuid()
-            migrated_record.run_specification.uid = migrated_uid
-            migrated_record.migration_id = migration.id
+            records = migration.apply()
 
-            if original_record:
+            for original_record, migrated_record in zip(
+                    records[:-1], records[1:]):
+                migrated_uid = get_new_uuid()
+                migrated_record.run_specification.uid = migrated_uid
+
                 original_uid = original_record.uid
                 migrated_record.migrated_from = original_uid
                 original_record.migrated_to = migrated_uid
                 self.cache.update(original_record)
-            self.cache.add(migrated_record)
+                self.cache.add(migrated_record)
 
     def __str__(self):
         lines = []
@@ -67,25 +66,32 @@ class Migrations:
 
 class Migration:
 
-    def __init__(self, func, name=None, args=None, kwargs=None):
+    def __init__(
+            self, func, from_version, to_version, name=None,
+            dep: 'Migration' = None, record=None):
 
         self.func = func
-        if args is None:
-            args = ()
-        self.args = args
-        if kwargs is None:
-            kwargs = {}
-        self.kwargs = kwargs
         if name is None:
-            name = func.__name__ + f' args={self.args} kwargs={self.kwargs}'
+            name = func.__name__
         self.name = name
-        self.id = name
+        if dep:
+            assert not record
+        self.dep = dep
+        self.record = record
 
-    def apply(self):
-        return self.func(*self.args, **self.kwargs)
+    def apply(self) -> RunRecord:
+        if self.dep:
+            migrated_records = self.dep.apply()
+            migrated_record = self.func(migrated_records[-1])
+            return [*migrated_records, migrated_record]
+        else:
+            return [self.record, self.func(self.record)]
 
     def __str__(self):
-        return self.name
+        text = f'{self.from_version} -> {self.from_version}'
+        if self.dep:
+            return ' '.join([str(self.dep), text])
+        return text
 
 
 def find_results_files():
@@ -101,6 +107,7 @@ def find_results_files():
         'results-asr.database.key_descriptions.json',
         'displacements*/*/results-asr.database.material_fingerprint.json',
         'strains*/results-asr.database.material_fingerprint.json',
+        '*asr.setinfo*',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
     ]
@@ -144,7 +151,11 @@ def construct_record_from_resultsfile(path):
             raise AssertionError(f'Unparsable old results file: path={path}')
 
     recipe = get_recipe_from_name(recipename)
-    result = recipe.returns(
+    if not issubclass(recipe.returns, ASRResult):
+        returns = ASRResult
+    else:
+        returns = recipe.returns
+    result = returns(
         data=data,
         metadata=metadata,
         strict=False)
@@ -209,17 +220,12 @@ def add_resultsfile_record(resultsfile):
     return None, record
 
 
-def get_resultfile_migration(path):
-    return Migration(
-        add_resultsfile_record,
-        name='Migrate resultsfile ' + str(path),
-        args=(path, ),
-    )
-
-
-def generate_resultsfile_migrations(cache):
+def get_resultsfile_records():
+    records = []
     for resultsfile in find_results_files():
-        yield get_resultfile_migration(resultsfile)
+        record = construct_record_from_resultsfile(resultsfile)
+        records.append(record)
+    return records
 
 
 def generate_record_migrations(cache):

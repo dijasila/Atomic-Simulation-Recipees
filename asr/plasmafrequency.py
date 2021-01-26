@@ -85,8 +85,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.plasmafrequency',
-         returns=Result)
+@command('asr.plasmafrequency')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='k-point density', type=float)

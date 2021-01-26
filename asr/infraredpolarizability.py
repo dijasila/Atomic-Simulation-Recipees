@@ -201,7 +201,6 @@ class Result(ASRResult):
 
 @command(
     "asr.infraredpolarizability",
-    returns=Result,
 )
 @atomsopt
 @calcopt

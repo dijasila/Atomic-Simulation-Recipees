@@ -1476,7 +1476,7 @@ class ValidateResult(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.emasses', returns=ValidateResult)
+@command(module='asr.emasses')
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',

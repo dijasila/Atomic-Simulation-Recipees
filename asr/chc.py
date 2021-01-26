@@ -564,7 +564,7 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command('asr.chc', returns=Result)
+@command('asr.chc')
 @argument('dbs', nargs=-1, type=str)
 @atomsopt
 @option('-r', '--reactant', type=str,

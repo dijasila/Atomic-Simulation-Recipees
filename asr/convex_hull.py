@@ -110,8 +110,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.convex_hull',
-         returns=Result)
+@command('asr.convex_hull')
 @atomsopt
 @calcopt
 @argument('databases', nargs=-1, type=ASEDatabase())

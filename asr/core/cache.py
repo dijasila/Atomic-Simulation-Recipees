@@ -165,18 +165,7 @@ class Cache:
 
     def get_migrations(self):
         """Migrate cache data."""
-        from asr.core.migrate import (
-            Migrations,
-            generate_resultsfile_migrations,
-            generate_record_migrations,
-        )
-        migrations = Migrations(
-            generators=[
-                generate_resultsfile_migrations,
-                generate_record_migrations,
-            ],
-            cache=self,
-        )
+
         return migrations
 
     def __init__(self, backend):

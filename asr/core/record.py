@@ -14,8 +14,6 @@ from .results import get_object_matching_obj_id
 
 class RunRecord:
 
-    record_version: int = 0
-
     def __init__(  # noqa
             self,
             result: typing.Optional[typing.Any] = None,
@@ -26,6 +24,7 @@ class RunRecord:
             migrated_from: typing.Optional[str] = None,
             migrated_to: typing.Optional[str] = None,
             tags: typing.Optional[typing.List[str]] = None,
+            version: int = 0,
     ):
         assert type(run_specification) in [RunSpecification, type(None)]
         assert type(resources) in [Resources, type(None)]
@@ -34,6 +33,7 @@ class RunRecord:
         data = dict(
             run_specification=run_specification,
             result=result,
+            version=version,
             resources=resources,
             dependencies=dependencies,
             migration_id=migration_id,
@@ -55,11 +55,51 @@ class RunRecord:
     def name(self):  # noqa
         return self.run_specification.name
 
-    def get_migrations(self, cache):
+    def get_migrations(self):
         """Delegate migration to function objects."""
+        from .migrate import Migration
         obj = get_object_matching_obj_id(self.run_specification.name)
-        if obj.migrations:
-            return obj.migrations(cache)
+        version = self.version
+        if version != obj.version:
+            migration = None
+            visited_versions = set()
+            while True:
+                if version == obj.version:
+                    break
+                if version not in obj.migrations:
+                    raise AssertionError(
+                        'Record cannot be migrated to newest version. '
+                        'Cannot migrate past version={version}'
+                    )
+                to_version, migration_func = obj.migrations[version]
+                assert to_version not in visited_versions, \
+                    'Circular migration detected.'
+                visited_versions.add(to_version)
+                if not migration:
+                    migration = Migration(
+                        migration_func,
+                        from_version=version,
+                        to_version=to_version,
+                        record=self,
+                        name=self.name + self.uid[:10],
+                    )
+                else:
+                    migration = Migration(
+                        migration_func,
+                        from_version=self.version,
+                        to_version=to_version,
+                        dep=migration,
+                        name=self.name + self.uid[:10],
+                    )
+                version = to_version
+
+            return [
+                Migration(
+                    self.migrate,
+                    from_version=self.version,
+                    to_version=to_version,
+                )
+            ]
 
     def copy(self):
         data = copy.deepcopy(self.__dict__)

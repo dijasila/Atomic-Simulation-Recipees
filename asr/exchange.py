@@ -252,7 +252,6 @@ class Result(ASRResult):
 
 @command(
     module='asr.exchange',
-    returns=Result,
 )
 @atomsopt
 @calcopt

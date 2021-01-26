@@ -425,8 +425,37 @@ def get_item(attrs: List[str], obj):
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 def migrate(apply=False):
     """Look for cache migrations."""
+    from asr.core.migrate import (
+        Migrations,
+        generate_record_migrations,
+        get_resultsfile_records,
+    )
     cache = get_cache()
-    migrations = cache.get_migrations()
+
+    resultfile_records = get_resultsfile_records()
+
+    records_to_add = []
+    for record in resultfile_records:
+        if not cache.has(name=record.name, version=record.version):
+            records_to_add.append(record)
+
+    if records_to_add and not apply:
+        print(
+            'The are unapplied result file migrations. '
+            'As such we cannot say anything about the total '
+            'number of migrations. --apply to apply migrations.'
+        )
+        return
+
+    if apply:
+        for record in records_to_add:
+            print(f'Adding {record} to cache.')
+            cache.add(record)
+
+    migrations = Migrations(
+        generator=generate_record_migrations,
+        cache=cache,
+    )
 
     if apply:
         migrations.apply()
