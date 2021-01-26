@@ -88,7 +88,6 @@ def main(
       'params.json' file which contains specific parameters as well as the charge states
       of the different defect structures.
     """
-    from ase.io import read
     import numpy as np
 
     # only run SJ setup if halfinteger is True
