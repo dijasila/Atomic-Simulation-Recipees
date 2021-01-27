@@ -144,10 +144,10 @@ def get_object_matching_obj_id(asr_obj_id):
 
 
 def obj_to_id(cls):
-    f"""Get a string representation of path to object.
+    """Get a string representation of path to object.
 
     Ie. if obj is the ASRResult class living in the module, asr.core.results,
-    the correspinding string would be 'asr.core.results{SEPARATOR}ASRResult'.
+    the correspinding string would be 'asr.core.results::ASRResult'.
 
     """
     module = inspect.getmodule(cls)
