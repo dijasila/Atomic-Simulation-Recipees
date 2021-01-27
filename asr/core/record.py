@@ -14,17 +14,15 @@ from .results import get_object_matching_obj_id
 
 class RunRecord:
 
-    def __init__(  # noqa
+    def __init__(
             self,
             result: typing.Optional[typing.Any] = None,
             run_specification: typing.Optional[RunSpecification] = None,
             resources: typing.Optional[Resources] = None,
             dependencies: typing.Optional[typing.List[str]] = None,
-            migration_id: typing.Optional[str] = None,
             migrated_from: typing.Optional[str] = None,
             migrated_to: typing.Optional[str] = None,
             tags: typing.Optional[typing.List[str]] = None,
-            version: int = 0,
     ):
         assert type(run_specification) in [RunSpecification, type(None)]
         assert type(resources) in [Resources, type(None)]
@@ -33,10 +31,8 @@ class RunRecord:
         data = dict(
             run_specification=run_specification,
             result=result,
-            version=version,
             resources=resources,
             dependencies=dependencies,
-            migration_id=migration_id,
             migrated_from=migrated_from,
             migrated_to=migrated_to,
             tags=tags,
@@ -44,22 +40,33 @@ class RunRecord:
         self.__dict__.update(data)
 
     @property
-    def parameters(self):  # noqa
+    def parameters(self):
         return self.run_specification.parameters
 
     @property
-    def uid(self):  # noqa
+    def uid(self):
         return self.run_specification.uid
 
     @property
-    def name(self):  # noqa
+    def version(self):
+        return self.run_specification.version
+
+    @version.setter
+    def version(self, value):
+        self.run_specification.version = value
+
+    @property
+    def name(self):
         return self.run_specification.name
 
-    def get_migrations(self):
+    def get_migration(self):
         """Delegate migration to function objects."""
         from .migrate import Migration
         obj = get_object_matching_obj_id(self.run_specification.name)
         version = self.version
+        if self.migrated_to:
+            return None
+
         if version != obj.version:
             migration = None
             visited_versions = set()
@@ -67,10 +74,12 @@ class RunRecord:
                 if version == obj.version:
                     break
                 if version not in obj.migrations:
-                    raise AssertionError(
+                    print(
+                        f'{self} '
                         'Record cannot be migrated to newest version. '
-                        'Cannot migrate past version={version}'
+                        f'Cannot migrate from version={version}'
                     )
+                    return None
                 to_version, migration_func = obj.migrations[version]
                 assert to_version not in visited_versions, \
                     'Circular migration detected.'
@@ -86,26 +95,20 @@ class RunRecord:
                 else:
                     migration = Migration(
                         migration_func,
-                        from_version=self.version,
+                        from_version=version,
                         to_version=to_version,
                         dep=migration,
                         name=self.name + self.uid[:10],
                     )
                 version = to_version
 
-            return [
-                Migration(
-                    self.migrate,
-                    from_version=self.version,
-                    to_version=to_version,
-                )
-            ]
+            return migration
 
     def copy(self):
         data = copy.deepcopy(self.__dict__)
         return RunRecord(**data)
 
-    def __str__(self):  # noqa
+    def __str__(self):
         strings = []
         for name, value in self.__dict__.items():
             if name == 'result':
@@ -117,10 +120,10 @@ class RunRecord:
                 strings.append('='.join([str(name), str(value)]))
         return 'Record(' + ', '.join(strings) + ')'
 
-    def __repr__(self):  # noqa
+    def __repr__(self):
         return self.__str__()
 
-    def __eq__(self, other):  # noqa
+    def __eq__(self, other):
         if not isinstance(other, RunRecord):
             return False
 

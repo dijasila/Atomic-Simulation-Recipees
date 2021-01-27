@@ -1,5 +1,6 @@
 from .specification import RunSpecification
 from .utils import make_property
+import typing
 import time
 import contextlib
 
@@ -8,10 +9,10 @@ class Resources:  # noqa
 
     def __init__(  # noqa
             self,
-            execution_start: float = None,
-            execution_end: float = None,
-            execution_duration: float = None,
-            ncores: int = None
+            execution_start: typing.Optional[float] = None,
+            execution_end: typing.Optional[float] = None,
+            execution_duration: typing.Optional[float] = None,
+            ncores: typing.Optional[int] = None
     ):
         self.data = dict(
             execution_start=execution_start,
@@ -25,7 +26,12 @@ class Resources:  # noqa
     ncores = make_property('ncores')
 
     def __str__(self):
-        return (f'Resources(time={self.execution_duration:.1f}s, '
+
+        if self.execution_duration:
+            text = f'time={self.execution_duration:.1f}s'
+        else:
+            text = f'time={self.execution_duration}'
+        return (f'Resources({text}, '
                 f'ncores={self.ncores})')
 
 

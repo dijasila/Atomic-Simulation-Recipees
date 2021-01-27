@@ -61,6 +61,20 @@ class FileCacheBackend():
         self.add_uid_to_table(run_uid, pth)
         return run_uid
 
+    def update(self, run_record: RunRecord):
+        if not self.initialized:
+            self.initialize()
+
+        # Basically the same as add but without touching side effects.
+        run_specification = run_record.run_specification
+        run_uid = run_specification.uid
+        pth = self._record_to_path(run_record)
+        serialized_object = self.serializer.serialize(run_record)
+
+        self._write_file(pth, serialized_object)
+        self.add_uid_to_table(run_uid, pth)
+        return run_uid
+
     @property
     def initialized(self):
         if not root_is_initialized():
@@ -163,11 +177,6 @@ class FileCacheBackend():
 
 class Cache:
 
-    def get_migrations(self):
-        """Migrate cache data."""
-
-        return migrations
-
     def __init__(self, backend):
         self.backend = backend
 
@@ -199,7 +208,10 @@ class Cache:
         selector.run_specification.uid = selector.EQUAL(record.uid)
         has_uid = self.has(selector=selector)
         assert has_uid, 'Unknown run UID to update.'
-        self.backend.add(record)
+        if hasattr(self.backend, 'update'):
+            self.backend.update(record)
+        else:
+            self.backend.add(record)
 
     def migrate_record(
             self, original_record, migrated_record, migration_label):

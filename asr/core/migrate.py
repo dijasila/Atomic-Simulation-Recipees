@@ -23,9 +23,6 @@ class Migrations:
     def __init__(self, generator, cache):
         self.generator = generator
         self.cache = cache
-        self.done = {record.migration_id
-                     for record in cache.select()
-                     if record.migration_id}
 
     def __bool__(self):
         try:
@@ -37,12 +34,12 @@ class Migrations:
     def generate_migrations(self):
         migrations = self.generator(self.cache)
         for migration in migrations:
-            if migration.id not in self.done:
-                yield migration
+            yield migration
 
     def apply(self):
         from asr.core.specification import get_new_uuid
         for migration in self.generate_migrations():
+            print('printing migration')
             print(migration)
             records = migration.apply()
 
@@ -54,7 +51,10 @@ class Migrations:
                 original_uid = original_record.uid
                 migrated_record.migrated_from = original_uid
                 original_record.migrated_to = migrated_uid
-                self.cache.update(original_record)
+
+            original_record, *migrated_records = records
+            self.cache.update(original_record)
+            for migrated_record in migrated_records:
                 self.cache.add(migrated_record)
 
     def __str__(self):
@@ -78,17 +78,22 @@ class Migration:
             assert not record
         self.dep = dep
         self.record = record
+        self.from_version = from_version
+        self.to_version = to_version
 
     def apply(self) -> RunRecord:
         if self.dep:
             migrated_records = self.dep.apply()
-            migrated_record = self.func(migrated_records[-1])
+            migrated_record = self.func(migrated_records[-1].copy())
+            migrated_record.version = self.to_version
             return [*migrated_records, migrated_record]
         else:
-            return [self.record, self.func(self.record)]
+            migrated_record = self.func(self.record.copy())
+            migrated_record.version = self.to_version
+            return [self.record, migrated_record]
 
     def __str__(self):
-        text = f'{self.from_version} -> {self.from_version}'
+        text = f'{self.name} {self.from_version} -> {self.to_version}'
         if self.dep:
             return ' '.join([str(self.dep), text])
         return text
@@ -230,7 +235,6 @@ def get_resultsfile_records():
 
 def generate_record_migrations(cache):
     for record in cache.select():
-        record_migrations = record.get_migrations(cache)
-        if record_migrations:
-            for migration in record_migrations:
-                yield migration
+        record_migration = record.get_migration()
+        if record_migration:
+            yield record_migration

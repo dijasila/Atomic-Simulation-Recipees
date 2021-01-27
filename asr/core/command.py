@@ -172,9 +172,12 @@ class ASRCommand:
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
 
-    def migrations(self, cache):
+    @property
+    def migrations(self):
         if self._migrations:
-            return self._migrations(cache)
+            return self._migrations
+        else:
+            return {}
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
