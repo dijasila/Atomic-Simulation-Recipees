@@ -261,6 +261,7 @@ class Cache:
             equals = {
                 'run_specification.name': run_specification.name,
                 'run_specification.parameters': run_specification.parameters,
+                'run_specification.version': run_specification.version,
             }
             sel = self.make_selector(equals=equals)
             sel.migrated_to = sel.IS(None)

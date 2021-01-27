@@ -208,7 +208,6 @@ def construct_record_from_resultsfile(path):
         ),
         resources=resources,
         result=result,
-        tags=['C2DB'],
     )
 
 
