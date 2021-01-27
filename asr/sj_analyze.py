@@ -24,12 +24,12 @@ def webpanel(result, row, key_descriptions):
         explained_keys.append(explained_key)
 
     formation_table_sum = table(result, 'Defect properties', [])
-    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
+    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description='Defect formation energy for the neutral defect wrt. standard states'),
         f'{result.eform[0][0]:.2f} eV']])
 
-    formation_table = table(result, 'Defect formation', [])
+    formation_table = table(result, 'Defect formation energy at VBM', [])
     for element in result.eform:
-        formation_table['rows'].extend([[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)', description=result.key_descriptions['eform']),
+        formation_table['rows'].extend([[describe_entry(f'Charge state q={element[1]:1d}', description=result.key_descriptions['eform']),
             f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
@@ -48,14 +48,14 @@ def webpanel(result, row, key_descriptions):
 
     transitions_table = matrixtable(transition_array,
                                     title='Transition',
-                                    columnlabels=[describe_entry('Transition Energy [eV]', description='SJ calculated transition level'),
-                                                  describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
+                                    columnlabels=[describe_entry('Charge transition level [eV]', description='SJ calculated transition level'),
+                                                  describe_entry('Relaxation correction [eV]', description='Correction due to ion relaxation')],
                                     rowlabels=transition_labels)
 
     panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
                      description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
                      columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.')]],
+                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.'), formation_table]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']},
                                         {'function': plot_formation_energies,
