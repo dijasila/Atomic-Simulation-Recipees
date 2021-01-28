@@ -11,11 +11,11 @@ def gs(atoms, kpoints, eta, layer_nr):
             basis='dzp',
             kpts=(kpoints, kpoints, 1),
             occupations=FermiDirac(eta),
-            txt=f'layer{layer_nr}.gpw')
+            txt=f'layer{layer_nr}_gs.txt')
 
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(f'layer{layer_nr}.gpw', 'all')
+    calc.write(f'layer{layer_nr}_gs.gpw', 'all')
  
 
 def bs(atoms, layer_nr, inputfile, bandpathpoints):
@@ -66,11 +66,8 @@ def main(structure: str = None,
     gsfile = f'layer{layer_nr}_gs.gpw'
     bsfile = f'layer{layer_nr}_bs.gpw'
 
-    if Path(gsfile).exists() == False:
-        GroundState(atoms, kpoints, eta, layer_nr)
-
-    if Path(bsfile).exists() == False:
-        BandStructure(atoms, layer_nr, gsfile, bandpathpoints) 
+    gs(atoms, kpoints, eta, layer_nr)
+    bs(atoms, layer_nr, gsfile, bandpathpoints) 
 
 
 if __name__ == "__main__":

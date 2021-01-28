@@ -51,8 +51,7 @@ def main(kpoints: int = 18,
                 txt='asr.scs_gs.txt')
     atoms.calc = calc_gs
     atoms.get_potential_energy()
-    calc.write("scs_gs.gpw", 'all')
-
+    calc_gs.write("scs_gs.gpw", 'all')
 
     path = atoms.cell.bandpath(npoints=bandpathpoints, 
                                pbc=atoms.pbc, 
@@ -64,8 +63,8 @@ def main(kpoints: int = 18,
                 eigensolver=SO_bs,
                 kpts=path,
                 txt='scs_bs.txt')
-    atoms.calc = calc_bs
-    calc.write('scs_bs.gpw', 'all')
+    calc_bs.get_potential_energy()
+    calc_bs.write('scs_bs.gpw', 'all')
 
 
 if __name__ == "__main__":
