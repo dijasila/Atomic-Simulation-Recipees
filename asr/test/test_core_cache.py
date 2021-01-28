@@ -13,7 +13,7 @@ def test_cache(cache):
         version=0,
     )
     run_record = Record(run_specification=run_spec,
-                           result={'b': 1})
+                        result={'b': 1})
 
     assert not cache.has(run_specification=run_spec)
     cache.add(run_record)
@@ -25,7 +25,7 @@ def test_cache(cache):
         version=0,
     )
     run_record = Record(run_specification=run_spec,
-                           result={'b': 1})
+                        result={'b': 1})
 
     assert not cache.has(run_specification=run_spec)
     cache.add(run_record)
@@ -149,3 +149,45 @@ def test_cache_remove(cache, record):
     assert records[0] == record
     assert len(removed_records) == 1
     assert removed_records[0] == other
+
+
+def add_record(cache, record):
+    cache.add(record)
+
+
+@pytest.mark.ci
+def test_cache_add_concurrent_processes(asr_tmpdir):
+    import multiprocessing
+    from asr.core.specification import get_new_uuid
+    cache = get_cache('filesystem')
+    run_spec = construct_run_spec(
+        name='asr.test',
+        parameters={'a': 1},
+        version=0,
+    )
+    record = Record(
+        run_specification=run_spec,
+        result=1,
+    )
+
+    nprocs = 10
+
+    processes = []
+    records = []
+    for jobid in range(nprocs):
+        record = record.copy()
+        uid = get_new_uuid()
+        record.run_specification.uid = uid
+        records.append(record)
+        proc = multiprocessing.Process(
+            target=add_record,
+            args=(cache, record))
+        processes.append(proc)
+        proc.start()
+
+    for procid, proc in enumerate(processes):
+        proc.join()
+        assert proc.exitcode == 0, f'Error in Job #{procid}.'
+
+    for record in records:
+        assert cache.has(uid=record.uid)

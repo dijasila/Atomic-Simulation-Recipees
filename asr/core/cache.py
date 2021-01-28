@@ -8,6 +8,7 @@ from .serialize import JSONSerializer
 from .selector import Selector
 from .filetype import find_external_files, ASRPath
 from .config import initialize_root, root_is_initialized
+from .lock import Lock, lock
 
 
 class DuplicateRecord(Exception):
@@ -27,10 +28,15 @@ class FileCacheBackend():
             ext_file_dir: str = 'external_files',
             serializer: JSONSerializer = JSONSerializer(),
     ):
+        try:
+            initialize_root()
+        except FileExistsError:
+            pass
         self.serializer = serializer
         self.cache_dir = ASRPath(cache_dir)
         self.ext_file_dir = ASRPath(ext_file_dir)
-        self.record_table_path = self.cache_dir / 'run-data.json'
+        self.record_table_path = ASRPath('record-table.json')
+        self.lock = Lock(ASRPath('lock'), timeout=10)
 
     def _record_to_path(self, run_record: Record):
         run_specification = run_record.run_specification
@@ -38,9 +44,9 @@ class FileCacheBackend():
         name = run_record.run_specification.name + '-' + run_uid[:10]
         return self.cache_dir / f'{name}.json'
 
+    @lock
     def add(self, run_record: Record):
-        if not self.initialized:
-            self.initialize()
+        self.initialize()
         run_specification = run_record.run_specification
         run_uid = run_specification.uid
 
@@ -62,8 +68,7 @@ class FileCacheBackend():
         return run_uid
 
     def update(self, run_record: Record):
-        if not self.initialized:
-            self.initialize()
+        self.initialize()
 
         # Basically the same as add but without touching side effects.
         run_specification = run_record.run_specification
@@ -81,8 +86,10 @@ class FileCacheBackend():
             return False
         return self.record_table_path.is_file()
 
+    @lock
     def initialize(self):
-        assert not self.initialized
+        if self.initialized:
+            return
         initialize_root()
 
         if not self.cache_dir.is_dir():
@@ -94,9 +101,9 @@ class FileCacheBackend():
         serialized_object = self.serializer.serialize({})
         self._write_file(self.record_table_path, serialized_object)
 
+    @lock
     def add_uid_to_table(self, run_uid, path: ASRPath):
-        if not self.initialized:
-            self.initialize()
+        self.initialize()
         uid_table = self.uid_table
         uid_table[run_uid] = path
         self._write_file(
@@ -104,6 +111,7 @@ class FileCacheBackend():
             self.serializer.serialize(uid_table),
         )
 
+    @lock
     def remove_uid_from_table(self, run_uid):
         assert self.initialized
         uid_table = self.uid_table
@@ -114,9 +122,9 @@ class FileCacheBackend():
         )
 
     @property
+    @lock
     def uid_table(self):
-        if not self.initialized:
-            self.initialize()
+        self.initialize()
         text = self._read_file(self.record_table_path)
         uid_table = self.serializer.deserialize(text)
         return uid_table
@@ -130,12 +138,14 @@ class FileCacheBackend():
                 return True
         return False
 
+    @lock
     def get_record_from_uid(self, run_uid):
         path = self.uid_table[run_uid]
         serialized_object = self._read_file(path)
         obj = self.serializer.deserialize(serialized_object)
         return obj
 
+    @lock
     def select(self, selector: Selector = None):
         if not self.initialized:
             return []
@@ -149,6 +159,7 @@ class FileCacheBackend():
                 selected.append(record)
         return selected
 
+    @lock
     def remove(self, selector: Selector = None):
         assert self.initialized, 'No cache here!'
         all_records = [self.get_record_from_uid(run_uid)
