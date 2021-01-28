@@ -5,57 +5,38 @@ import pytest
 @pytest.mark.ci
 def test_database_treelinks(asr_tmpdir):
     """Test asr.database.treelinks on a example defect tree."""
-    import os
     from pathlib import Path
     from ase.io import write
-    from asr.core import read_json
-    from asr.setup.defects import main as setup_defects
+    from asr.core import read_json, chdir
     from asr.database.treelinks import main as treelinks
+    from asr.database.material_fingerprint import main as material_fingerprint
 
-    write('unrelaxed.json', std_test_materials[1])
-    p = Path('.')
-    setup_defects(supercell=[3, 3, 1])
-
-    # get material fingerprint for defect systems
-    pathlist = list(p.glob('defects.*/charge_0'))
-    for path in pathlist:
-        os.system(f'cp {path.absolute()}/unrelaxed.json '
-                  f'{path.absolute()}/structure.json')
-        os.system(f'asr run asr.database.material_fingerprint {path.absolute()}')
-    # get material fingerprint for pristine system
-    pathlist = list(p.glob('defects.pristine_sc*'))
-    for path in pathlist:
-        os.system(f'asr run asr.database.material_fingerprint {path.absolute()}')
-    # get material fingerprint for host structure
-    os.system('cp unrelaxed.json structure.json')
-    os.system('asr run asr.database.material_fingerprint')
+    # set up general folder structure to run treelinks recipe on
+    for i, material in enumerate(std_test_materials):
+        folderpath = Path(f'folder_{i}')
+        folderpath.mkdir()
+        write(folderpath / 'structure.json', material)
+        with chdir(folderpath):
+            material_fingerprint()
+    write('structure.json', std_test_materials[0])
+    material_fingerprint()
 
     # run asr.database.treelinks to create results and links.json files
-    treelinks(include=['charge_0', 'defects.pristine_sc*'],
-              exclude=[''])
+    treelinks(include=['folder_*'], exclude=[''])
 
-    ref_uids = ["BN-d07bd84d0331",
-                "B9N9-868d71d797c9",
-                "B8N9-993df3e59cfb",
-                "N8B9-3dbde4188cff",
-                "B8N10-e3886951a993",
-                "N8B10-e12d7c1775d2"]
+    # define reference uids to compare to
+    ref_uids = ["Si2-9552f5fb34d3",
+                "BN-d07bd84d0331",
+                "Ag-38f9b4cf2331",
+                "Fe-551991cb0ca5"]
     ref_uids.sort()
 
-    # test defect links
-    pathlist = list(p.glob('defects.*/charge_0'))
+    # test links and compare the created links to the reference links
+    p = Path('.')
+    pathlist = list(p.glob('folder_*'))
     for path in pathlist:
         links = read_json(path / 'links.json')
         uids = links['uids']
         uids.sort()
         for i, element in enumerate(links['uids']):
-            assert element == ref_uids[i]
-
-    # test pristine links
-    pathlist = list(p.glob('defects.pristine*'))
-    for path in pathlist:
-        links = read_json(path / 'links.json')
-        uids = links['uids']
-        uids.sort()
-        for i, element in enumerate(uids):
             assert element == ref_uids[i]
