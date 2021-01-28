@@ -3,7 +3,7 @@ import fnmatch
 import pathlib
 from .parameters import Parameters
 from .specification import RunSpecification
-from .record import RunRecord
+from .record import Record
 
 
 def is_migratable(obj):
@@ -81,7 +81,7 @@ class Migration:
         self.from_version = from_version
         self.to_version = to_version
 
-    def apply(self) -> RunRecord:
+    def apply(self) -> Record:
         if self.dep:
             migrated_records = self.dep.apply()
             migrated_record = self.func(migrated_records[-1].copy())
@@ -127,7 +127,7 @@ def find_results_files():
 
 
 def construct_record_from_resultsfile(path):
-    from .record import RunRecord
+    from .record import Record
     from asr.core.results import MetaDataNotSetError
     from asr.core import read_json, get_recipe_from_name, ASRResult
     from ase.io import read
@@ -198,7 +198,7 @@ def construct_record_from_resultsfile(path):
     else:
         name = name.replace('@', '::')
 
-    return RunRecord(
+    return Record(
         run_specification=RunSpecification(
             name=name,
             parameters=parameters,

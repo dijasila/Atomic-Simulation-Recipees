@@ -2,7 +2,7 @@
 import os
 import pathlib
 import typing
-from .record import RunRecord
+from .record import Record
 from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
@@ -32,13 +32,13 @@ class FileCacheBackend():
         self.ext_file_dir = ASRPath(ext_file_dir)
         self.record_table_path = self.cache_dir / 'run-data.json'
 
-    def _record_to_path(self, run_record: RunRecord):
+    def _record_to_path(self, run_record: Record):
         run_specification = run_record.run_specification
         run_uid = run_specification.uid
         name = run_record.run_specification.name + '-' + run_uid[:10]
         return self.cache_dir / f'{name}.json'
 
-    def add(self, run_record: RunRecord):
+    def add(self, run_record: Record):
         if not self.initialized:
             self.initialize()
         run_specification = run_record.run_specification
@@ -61,7 +61,7 @@ class FileCacheBackend():
         self.add_uid_to_table(run_uid, pth)
         return run_uid
 
-    def update(self, run_record: RunRecord):
+    def update(self, run_record: Record):
         if not self.initialized:
             self.initialize()
 
@@ -190,7 +190,7 @@ class Cache:
 
         return selector
 
-    def add(self, run_record: RunRecord):
+    def add(self, run_record: Record):
         selector = self.make_selector()
         selector.run_specification.uid = (
             selector.EQUAL(run_record.run_specification.uid)
@@ -202,7 +202,7 @@ class Cache:
         )
         self.backend.add(run_record)
 
-    def update(self, record: RunRecord):
+    def update(self, record: Record):
         """Update existing record with record.uid."""
         selector = self.make_selector()
         selector.run_specification.uid = selector.EQUAL(record.uid)
@@ -280,7 +280,7 @@ class Cache:
     def __call__(self):
         return self.wrapper
 
-    def __contains__(self, record: RunRecord):
+    def __contains__(self, record: Record):
         return self.has(uid=record.uid)
 
 

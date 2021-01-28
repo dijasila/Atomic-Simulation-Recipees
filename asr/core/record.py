@@ -1,4 +1,4 @@
-"""Implement RunSpec and RunRecord."""
+"""Implement RunSpec and Record."""
 import numpy as np
 
 import typing
@@ -8,11 +8,11 @@ from .resources import Resources
 from .results import get_object_matching_obj_id
 
 
-# XXX: Change RunRecord name to Record
+# XXX: Change Record name to Record
 # XXX: Make MigrationLog object to store migration related info.
 # XXX: Make Tags object.
 
-class RunRecord:
+class Record:
 
     def __init__(
             self,
@@ -106,7 +106,7 @@ class RunRecord:
 
     def copy(self):
         data = copy.deepcopy(self.__dict__)
-        return RunRecord(**data)
+        return Record(**data)
 
     def __str__(self):
         strings = []
@@ -124,7 +124,7 @@ class RunRecord:
         return self.__str__()
 
     def __eq__(self, other):
-        if not isinstance(other, RunRecord):
+        if not isinstance(other, Record):
             return False
 
         return compare_dct_with_numpy_arrays(self.__dict__, other.__dict__)

@@ -7,7 +7,7 @@ import inspect
 import typing
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
-from .record import RunRecord
+from .record import Record
 from .specification import construct_run_spec, obj_to_id
 from .workdir import isolated_work_dir
 from .dependencies import register_dependencies
@@ -409,7 +409,7 @@ class ASRCommand:
                                      parameters.items()])
             print(f'Running {name}({paramstring})')
             result = run_spec()
-            run_record = RunRecord(
+            run_record = Record(
                 result=result,
                 run_specification=run_spec,
             )

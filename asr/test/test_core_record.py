@@ -1,5 +1,5 @@
 import pytest
-from asr.core.record import RunRecord
+from asr.core.record import Record
 from asr.core.specification import construct_run_spec
 from asr.core.parameters import Parameters
 
@@ -16,7 +16,7 @@ from asr.core.parameters import Parameters
     ]
 )
 def test_record_to_string(data, result):
-    rec = RunRecord(**data)
+    rec = Record(**data)
     string = str(rec)
 
     assert string == result
@@ -27,18 +27,18 @@ def test_record_to_string(data, result):
     'record1,record2,is_equal',
     [
         (
-            RunRecord(result=5),
-            RunRecord(result=5),
+            Record(result=5),
+            Record(result=5),
             True,
         ),
         (
-            RunRecord(result=4),
-            RunRecord(result=5),
+            Record(result=4),
+            Record(result=5),
             False,
         ),
         (
-            RunRecord(result=5.0),
-            RunRecord(result=5),
+            Record(result=5.0),
+            Record(result=5),
             True,
         )
     ]
@@ -55,7 +55,7 @@ def record():
         parameters={'a': 1},
         version=0,
     )
-    run_record = RunRecord(
+    run_record = Record(
         run_specification=run_spec,
         result=5,
     )
@@ -103,5 +103,5 @@ def test_record_get_property(attr):
         uid='myveryspecialuid',
     )
     spec = construct_run_spec(**data)
-    rec = RunRecord(run_specification=spec)
+    rec = Record(run_specification=spec)
     assert getattr(rec, attr) == data[attr]

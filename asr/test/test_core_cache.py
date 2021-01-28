@@ -2,7 +2,7 @@ import pytest
 
 from asr.core.cache import Cache, get_cache
 from asr.core.specification import construct_run_spec
-from asr.core.record import RunRecord
+from asr.core.record import Record
 
 
 @pytest.mark.ci
@@ -12,7 +12,7 @@ def test_cache(cache):
         parameters={'a': 1},
         version=0,
     )
-    run_record = RunRecord(run_specification=run_spec,
+    run_record = Record(run_specification=run_spec,
                            result={'b': 1})
 
     assert not cache.has(run_specification=run_spec)
@@ -24,7 +24,7 @@ def test_cache(cache):
         parameters={'a': 2},
         version=0,
     )
-    run_record = RunRecord(run_specification=run_spec,
+    run_record = Record(run_specification=run_spec,
                            result={'b': 1})
 
     assert not cache.has(run_specification=run_spec)

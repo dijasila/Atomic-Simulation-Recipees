@@ -9,7 +9,7 @@ from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
 from asr.core import get_cache
 from asr.core.specification import construct_run_spec
-from asr.core.record import RunRecord
+from asr.core.record import Record
 
 
 @pytest.fixture()
@@ -238,7 +238,7 @@ def record(various_object_types):
         parameters={'a': 1},
         version=0,
     )
-    run_record = RunRecord(
+    run_record = Record(
         run_specification=run_spec,
         result=various_object_types,
     )
