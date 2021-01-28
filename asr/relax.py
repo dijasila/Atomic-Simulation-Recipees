@@ -430,12 +430,6 @@ def main(atoms: Atoms,
 
     cellpar = atoms.cell.cellpar()
 
-    # XXX
-    # metadata = calc.get_metadata()
-
-    # Save atomic structure
-    # write('structure.json', atoms)
-
     trajectory = Trajectory(tmp_atoms_file, 'r')
     images = []
     for image in trajectory:

@@ -20,6 +20,7 @@ def get_kpts_size(atoms, density):
 
 # XXX The plasmafrequency recipe should not be two steps. We don't
 # want to keep the large gpw since it can potentially be really large.
+# Therefore I have degraded the calculate step to a simple function.
 
 def calculate(
         atoms: Atoms,

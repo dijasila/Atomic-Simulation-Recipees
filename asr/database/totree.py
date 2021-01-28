@@ -59,7 +59,7 @@ def make_folder_tree(*, folders, chunks,
             for record in records:
                 cache.add(record)
 
-        # XXX Maybe this should be deleded.
+        # XXX Maybe this should be deleted.
         # for filename, results in row.data.items():
         #     for pattern in patterns:
         #         if fnmatch(filename, pattern):

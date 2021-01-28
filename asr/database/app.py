@@ -111,7 +111,7 @@ def setup_app():
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
+        path = tmpdir / f"{project}/{uid}-{name}"
         return send_file(str(path))
 
     setup_data_endpoints()

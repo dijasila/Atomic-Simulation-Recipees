@@ -147,7 +147,6 @@ def calculate(
                     cell=scell.get_cell(),
                     pbc=atoms.pbc)
 
-    # XXX Restart support is no longer working
     results = {}
     for n, cell in enumerate(displaced_sc):
         # Displacement number
