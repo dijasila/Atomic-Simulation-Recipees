@@ -5,6 +5,7 @@ from asr.core import write_json
 from .materials import std_test_materials, BN
 import os
 import pytest
+import datetime
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
 from asr.core import get_cache
@@ -49,6 +50,7 @@ VARIOUS_OBJECT_TYPES = [
     BN,
     set(['a', 1, '2']),
     Path('directory1/directory2/file.txt'),
+    datetime.datetime.now(),
 ]
 
 

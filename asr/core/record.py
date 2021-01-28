@@ -6,11 +6,11 @@ import copy
 from .specification import RunSpecification
 from .resources import Resources
 from .results import get_object_matching_obj_id
+from .metadata import Metadata
 
-
-# XXX: Change Record name to Record
 # XXX: Make MigrationLog object to store migration related info.
 # XXX: Make Tags object.
+
 
 class Record:
 
@@ -23,6 +23,7 @@ class Record:
             migrated_from: typing.Optional[str] = None,
             migrated_to: typing.Optional[str] = None,
             tags: typing.Optional[typing.List[str]] = None,
+            metadata: typing.Optional[Metadata] = None,
     ):
         assert type(run_specification) in [RunSpecification, type(None)]
         assert type(resources) in [Resources, type(None)]
@@ -36,6 +37,7 @@ class Record:
             migrated_from=migrated_from,
             migrated_to=migrated_to,
             tags=tags,
+            metadata=metadata,
         )
         self.__dict__.update(data)
 

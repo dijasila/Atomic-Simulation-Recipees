@@ -4,6 +4,7 @@ import simplejson as json
 import typing
 import pathlib
 from .results import obj_to_id
+import datetime
 
 
 class ASRJSONEncoder(json.JSONEncoder):
@@ -20,6 +21,11 @@ class ASRJSONEncoder(json.JSONEncoder):
             return {
                 '__asr_type__': 'set',
                 'value': list(obj),
+            }
+        elif isinstance(obj, datetime.datetime):
+            return {
+                '__asr_type__': 'datetime.datetime',
+                'value': obj.isoformat(),
             }
         elif isinstance(obj, tuple):
             return {
@@ -51,6 +57,8 @@ def json_hook(json_object: dict):
         value = json_object['value']
         if asr_type == 'set':
             return set(value)
+        if asr_type == 'datetime.datetime':
+            return datetime.datetime.fromisoformat(value)
         elif asr_type == 'tuple':
             return tuple(value)
         elif asr_type == 'pathlib.Path':
