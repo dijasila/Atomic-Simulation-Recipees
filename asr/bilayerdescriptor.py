@@ -72,7 +72,7 @@ def get_matrix_descriptor(atoms, matrix):
     assert np.allclose(abs(a1), abs(a2)), f"a1: {a1}, a2: {a2}\n\nbm:{bm}, isrefl:{isreflected}"
     
     if np.allclose(a1, 0.0):
-        descriptor = 'I'
+        descriptor = 'Id'
     else:
         n = 2 * np.pi / a1
         n = abs(round(n))
@@ -117,9 +117,13 @@ def get_descriptor(folder=None, atoms=None):
     descriptor = get_matrix_descriptor(atoms, matrix)
     
     if iz:
-        descriptor += '_Iz'
-    descriptor += f'_{tx:0.1f}_{ty:0.1f}'
+        descriptor = f'({descriptor}, Iz)'
+    else:
+        descriptor = f'({descriptor})'
 
+    descriptor += f'_({tx:0.2f}, {ty:0.2f})'
+
+    descriptor = descriptor.replace("_", "  ")
     return descriptor
 
 

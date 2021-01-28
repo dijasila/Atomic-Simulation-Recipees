@@ -16,13 +16,13 @@ Shows a binding energy vs. binding length scatter plot
 and the estimated monolayer exfoliation energy.""")
 
 def webpanel(result, row, key_descriptions):
-    title = describe_entry('Stacking Configurations: Overview',
+    title = describe_entry('Stacking configurations: Overview',
                            panel_description)
     column1 = [fig('bilayer_scatter.png'),
                fig('bl_gaps.png')]
     table = make_summary_table(result)
     column2 = [{'type': 'table',
-                'header': ['Bilayer', 'Binding Energy'],
+                'header': ['Bilayer', 'Binding energy'],
                 'rows': table}]        
     
     panel = {'title': title,
@@ -40,7 +40,7 @@ def make_row_title(desc, result):
     """Make a row title with descriptor and link."""
     link = result['links'].get(desc, None)
     number = result['numberings'].get(desc, 'Failed')
-    rowtitle = f'{number} ({desc})'
+    rowtitle = f'{number}: {desc}'
     if link is None:
         return rowtitle
     else:
@@ -152,6 +152,12 @@ def plot_gaps(row, fname):
     deltax = xmax - xmin
     ax.annotate('Monolayer gap', (xmax - 0.2 * deltax, d['monolayer_gap']),
                 va='bottom', ha='center', fontsize=fs)
+    
+    ymin, ymax = plt.ylim()
+    deltay = ymax - ymin
+    space_fraction = 0.2
+    if abs(d['monolayer_gap'] - ymax) < space_fraction * deltay:
+        plt.ylim((ymin, ymax + space_fraction * deltay))
     ax.set_xticks(range(1, int(max(data[:, 0])) + 1))
     ax.set_xlabel("Stacking configuration", fontsize=fs)
     ax.set_ylabel("Band gap (PBE) [eV]", fontsize=fs)
