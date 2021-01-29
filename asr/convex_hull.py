@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import functools
 
+import numpy as np
+
 from asr.core import command, argument, ASRResult, prepare_result
 from asr.database.browser import (
     fig, table, describe_entry, dl, br, make_panel_description
@@ -13,8 +15,27 @@ from ase.db import connect
 from ase.io import read
 from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
+from ase.formula import Formula
+
+# from matplotlib.legend_handler import HandlerPatch
+from matplotlib import patches
+# from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
+
 
 known_methods = ['DFT', 'DFT+D3']
+
+
+def get_hull_energies(pd: PhaseDiagram):
+    hull_energies = []
+    for ref in pd.references:
+        count = ref[0]
+        refenergy = ref[1]
+        natoms = ref[3]
+        decomp_energy, indices, coefs = pd.decompose(**count)
+        ehull = (refenergy - decomp_energy) / natoms
+        hull_energies.append(ehull)
+
+    return hull_energies
 
 
 panel_description = make_panel_description(
@@ -308,6 +329,35 @@ def select_references(db, symbols):
     return list(refs.values())
 
 
+class ObjectHandler:
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        width, height = handlebox.width, handlebox.height
+        patch = patches.Polygon(
+            [
+                [x0, y0],
+                [x0, y0 + height],
+                [x0 + 3 / 4 * width, y0 + height],
+                [x0 + 1 / 4 * width, y0],
+            ],
+            closed=True, facecolor='C2',
+            edgecolor='none', lw=3,
+            transform=handlebox.get_transform())
+        handlebox.add_artist(patch)
+        patch = patches.Polygon(
+            [
+                [x0 + width, y0],
+                [x0 + 1 / 4 * width, y0],
+                [x0 + 3 / 4 * width, y0 + height],
+                [x0 + width, y0 + height],
+            ],
+            closed=True, facecolor='C3',
+            edgecolor='none', lw=3,
+            transform=handlebox.get_transform())
+        handlebox.add_artist(patch)
+        return patch
+
+
 def plot(row, fname, thisrow):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
@@ -319,28 +369,61 @@ def plot(row, fname, thisrow):
         return
 
     references = data['references']
+    thisreference = {
+        'hform': thisrow.hform,
+        'formula': thisrow.formula,
+        'uid': thisrow.uid,
+        'natoms': thisrow.natoms,
+        'legend': None,
+        'label': thisrow.formula,
+        'size': 1,
+    }
     pdrefs = []
     legends = []
     colors = []
+    sizes = []
+    references = [thisreference] + references
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
-        if reference['legend'] not in legends:
-            legends.append(reference['legend'])
-        idlegend = legends.index(reference['legend'])
-        colors.append(f'C{idlegend + 2}')
+        legend = reference.get('legend')
+        if legend and legend not in legends:
+            legends.append(legend)
+        if legend in legends:
+            idlegend = legends.index(reference['legend'])
+            color = f'C{idlegend + 2}'
+            size = (3 * idlegend + 3)**2
+        else:
+            color = 'k'
+            size = 2
+        colors.append(color)
+        sizes.append(size)
 
-    pd = PhaseDiagram(pdrefs, verbose=False)
+    pd = PhaseDiagram(pdrefs,
+                      verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
 
+    legendhandles = []
+
+    for it, label in enumerate(['On hull', 'off hull']):
+        handle = ax.fill_between([], [],
+                                 color=f'C{it + 2}', label=label)
+        legendhandles.append(handle)
+
     for it, legend in enumerate(legends):
-        ax.scatter([], [], facecolor='none', marker='o',
-                   edgecolor=f'C{it + 2}', label=legend)
+        handle = ax.scatter([], [], facecolor='none', marker='o',
+                            edgecolor='k', label=legend, s=(3 + it * 3)**2)
+        legendhandles.append(handle)
+
+    hull_energies = get_hull_energies(pd)
 
     if len(count) == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        hull = np.array(hull_energies) < 0.05
+        edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
+                               for hull_energy in hull_energies])
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
@@ -348,9 +431,25 @@ def plot(row, fname, thisrow):
             mask = e < 0.05
             e = e[mask]
             x = x[mask]
+            edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
-        ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+
+        ax.scatter(
+            x[~hull], e[~hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
+            zorder=9,
+        )
+
+        ax.scatter(
+            x[hull], e[hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
+            zorder=10,
+        )
+
+        # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
         delta = e.ptp() / 30
         for a, b, name, on_hull in zip(x, e, names, hull):
@@ -365,30 +464,69 @@ def plot(row, fname, thisrow):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
 
         # Circle this material
-        xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'o', color='C1', label=f'{thisrow.formula}')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
-        plt.legend(loc='lower left')
+        newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                            *legendhandles[2:]]
+
+        plt.legend(
+            newlegendhandles,
+            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+             *legends], loc='lower left', handletextpad=0.5,
+            handler_map={tuple: ObjectHandler()},
+        )
     else:
         x, y, _, hull, simplices = pd.plot2d3()
+
+        hull = np.array(hull)
+        hull = np.array(hull_energies) < 0.05
         names = [ref['label'] for ref in references]
+        latexnames = [
+            format(
+                Formula(name.split(' ')[0]).reduce()[0],
+                'latex'
+            )
+            for name in names
+        ]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        ax.scatter(x, y, facecolor='none', marker='o', edgecolor=colors)
+        edgecolors = ['C2' if hull_energy < 0.05 else 'C3'
+                      for hull_energy in hull_energies]
+        ax.scatter(
+            x[~hull], y[~hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
+            zorder=9,
+        )
 
-        for a, b, name, on_hull in zip(x, y, names, hull):
-            if on_hull:
+        ax.scatter(
+            x[hull], y[hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
+            zorder=10,
+        )
+
+        printed_names = set()
+        thisformula = Formula(thisrow.formula)
+        thisname = format(thisformula, 'latex')
+        comps = thisformula.count().keys()
+        for a, b, name, on_hull, hull_energy in zip(
+                x, y, latexnames, hull, hull_energies):
+            if name in [
+                    thisname, *comps,
+            ] and name not in printed_names:
+                printed_names.add(name)
                 ax.text(a - 0.02, b, name, ha='right', va='top')
-        A, B, C = pd.symbols
-        bfrac = count.get(B, 0) / sum(count.values())
-        cfrac = count.get(C, 0) / sum(count.values())
 
-        ax.plot([bfrac + cfrac / 2],
-                [cfrac * 3**0.5 / 2],
-                'o', color='C1', label=f'{thisrow.formula}')
-        plt.legend(loc='upper left')
+        newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                            *legendhandles[2:]]
+        plt.legend(
+            newlegendhandles,
+            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+             *legends], loc='upper right', handletextpad=0.5,
+            handler_map={tuple: ObjectHandler()},
+        )
         plt.axis('off')
 
     plt.tight_layout()
