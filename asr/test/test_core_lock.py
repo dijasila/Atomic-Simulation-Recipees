@@ -14,13 +14,12 @@ def lockfile(request, asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_cannot_acquire_lock_twice(lockfile):
+def test_same_process_can_acquire_lock_twice(lockfile):
     """Test timeout on Lock.acquire()."""
     lock = Lock(lockfile, timeout=0.3)
     with lock:
-        with pytest.raises(TimeoutError):
-            with lock:
-                ...
+        with lock:
+            ...
 
 
 @pytest.mark.ci
