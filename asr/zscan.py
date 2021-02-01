@@ -4,6 +4,7 @@ from ase.io.jsonio import write_json
 from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
 from scipy.interpolate import CubicSpline
+from asr.core import command, option
 
 def get_distance(upper, lower):
     return min(upper.positions[:, 2]) - max(lower.positions[:, 2])
@@ -140,6 +141,8 @@ def plot(results="asr-results.scan-z.json", mode="dist"):
     plt.show()
 
 
+
+@command('asr.zscan')
 def main(structure: str="initial.json",
          start: float=-0.2,
          stop: float=1.2,
@@ -166,4 +169,4 @@ def main(structure: str="initial.json",
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()
