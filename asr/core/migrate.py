@@ -1,8 +1,8 @@
-import uuid
 import fnmatch
 import pathlib
+import typing
 from .parameters import Parameters
-from .specification import RunSpecification
+from .specification import RunSpecification, get_new_uuid
 from .record import Record
 
 
@@ -37,10 +37,7 @@ class Migrations:
             yield migration
 
     def apply(self):
-        from asr.core.specification import get_new_uuid
         for migration in self.generate_migrations():
-            print('printing migration')
-            print(migration)
             records = migration.apply()
 
             for original_record, migrated_record in zip(
@@ -99,12 +96,25 @@ class Migration:
         return text
 
 
-def find_results_files():
-    relevant_patterns = [
-        'results-asr.*.json',
-        'displacements*/*/results-*.json',
-        'strains*/results-*.json',
-    ]
+def find_directories() -> typing.List[pathlib.Path]:
+    directories = []
+    for path in pathlib.Path().rglob('*'):
+        if path.is_dir():
+            directories.append(path)
+
+    return directories
+
+
+def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
+    return {path: get_new_uuid() for path in resultfiles}
+
+
+def find_results_files() -> typing.List[pathlib.Path]:
+    # relevant_patterns = [
+    #     'results-asr.*.json',
+    #     'displacements*/*/results-*.json',
+    #     'strains*/results-*.json',
+    # ]
 
     skip_patterns = [
         'results-asr.database.fromtree.json',
@@ -117,21 +127,35 @@ def find_results_files():
         '*asr.setup.params.json',
     ]
 
-    for pattern in relevant_patterns:
-        for path in pathlib.Path().glob(pattern):
-            filepath = str(path)
-            if any(fnmatch.fnmatch(filepath, skip_pattern)
-                   for skip_pattern in skip_patterns):
-                continue
-            yield path
+    paths = []
+    for path in pathlib.Path().rglob('results-asr.*.json'):
+        filepath = str(path)
+        if any(fnmatch.fnmatch(filepath, skip_pattern)
+               for skip_pattern in skip_patterns):
+            continue
+        paths.append(path)
+
+    # for pattern in relevant_patterns:
+    #     for path in pathlib.Path().glob(pattern):
+    #         filepath = str(path)
+    #         if any(fnmatch.fnmatch(filepath, skip_pattern)
+    #                for skip_pattern in skip_patterns):
+    #             continue
+    #         paths.append(path)
+    return paths
 
 
-def construct_record_from_resultsfile(path):
+def construct_record_from_resultsfile(
+        path: pathlib.Path,
+        uids: typing.Dict[pathlib.Path, str],
+):
     from .record import Record
     from asr.core.results import MetaDataNotSetError
     from asr.core import read_json, get_recipe_from_name, ASRResult
     from ase.io import read
-    path = pathlib.Path(path)
+    folder = path.parent
+    atoms = read(folder / 'structure.json')
+
     result = read_json(path)
     recipename = path.with_suffix('').name.split('-')[1]
 
@@ -146,7 +170,7 @@ def construct_record_from_resultsfile(path):
             calculation = Calculation(
                 id='gs',
                 cls_name='gpaw',
-                paths=['gs.gpw'],
+                paths=[folder / 'gs.gpw'],
             )
             result = GroundStateCalculationResult.fromdata(
                 calculation=calculation)
@@ -165,7 +189,6 @@ def construct_record_from_resultsfile(path):
         metadata=metadata,
         strict=False)
 
-    atoms = read(path.parent / 'structure.json')
     try:
         parameters = result.metadata.params
     except MetaDataNotSetError:
@@ -198,37 +221,49 @@ def construct_record_from_resultsfile(path):
     else:
         name = name.replace('@', '::')
 
-    return Record(
+    uid = uids[path]
+    record = Record(
         run_specification=RunSpecification(
             name=name,
             parameters=parameters,
             version=-1,
             codes=code_versions,
-            uid=uuid.uuid4().hex,
+            uid=uid,
         ),
         resources=resources,
         result=result,
+        tags=['Generated from result file.']
     )
 
+    return record
 
-def get_old_records():
+
+def set_dependencies(record, uids):
+    pass
+
+
+# def get_old_records():
+#     records = []
+#     for resultsfile in find_results_files():
+#         record = construct_record_from_resultsfile(resultsfile)
+#         records.append(record)
+#     return records
+
+
+# def add_resultsfile_record(resultsfile):
+#     record = construct_record_from_resultsfile(resultsfile)
+#     return None, record
+
+
+def get_resultsfile_records() -> typing.List[Record]:
+    resultsfiles = find_results_files()
     records = []
-    for resultsfile in find_results_files():
-        record = construct_record_from_resultsfile(resultsfile)
+    uids = generate_uids(resultsfiles)
+    for path in resultsfiles:
+        record = construct_record_from_resultsfile(path, uids)
         records.append(record)
-    return records
 
-
-def add_resultsfile_record(resultsfile):
-    record = construct_record_from_resultsfile(resultsfile)
-    return None, record
-
-
-def get_resultsfile_records():
-    records = []
-    for resultsfile in find_results_files():
-        record = construct_record_from_resultsfile(resultsfile)
-        records.append(record)
+    set_dependencies(records, uids)
     return records
 
 

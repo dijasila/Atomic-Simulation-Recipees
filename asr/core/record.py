@@ -76,11 +76,6 @@ class Record:
                 if version == obj.version:
                     break
                 if version not in obj.migrations:
-                    print(
-                        f'{self} '
-                        'Record cannot be migrated to newest version. '
-                        f'Cannot migrate from version={version}'
-                    )
                     return None
                 to_version, migration_func = obj.migrations[version]
                 assert to_version not in visited_versions, \

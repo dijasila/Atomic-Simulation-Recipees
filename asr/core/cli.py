@@ -449,7 +449,7 @@ def migrate(apply=False):
 
     if apply:
         for record in records_to_add:
-            print(f'Adding {record} to cache.')
+            print(f'Adding resultfile {record.name} to cache.')
             cache.add(record)
 
     migrations = Migrations(
