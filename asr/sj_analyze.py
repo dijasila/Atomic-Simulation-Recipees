@@ -369,7 +369,10 @@ def calculate_neutral_formation_energy():
     from ase.db import connect
 
     results_def = read_json('./results-asr.gs.json')
-    results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+    p = Path('.')
+    pristinelist = list(p.glob('./../../defects.pristine_sc*/'))
+    pris = pristinelist[0]
+    results_pris = read_json(pris / 'results-asr.gs.json')
 
     eform = results_def['etot'] - results_pris['etot']
 
