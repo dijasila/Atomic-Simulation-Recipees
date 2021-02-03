@@ -308,8 +308,11 @@ def get_pristine_band_edges() -> PristineResults:
     from asr.core import read_json
 
     print('INFO: extract pristine band edges.')
-    if Path('./../../defects.pristine_sc/results-asr.gs.json').is_file():
-        results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+    p = Path('.')
+    pristinelist = list(p.glob('./../../defects.pristine_sc*/'))
+    pris = pristinelist[0]
+    if Path(pris / 'results-asr.gs.json').is_file():
+        results_pris = read_json(pris / 'results-asr.gs.json')
         _, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
