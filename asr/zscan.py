@@ -156,6 +156,7 @@ def main(structure: str="initial.json",
          nsteps: int=10,
          npoints: int=700):
 
+    print(f'nsteps = {nsteps}')
     dft = GPAW(mode='lcao',
                xc='PBE',
     	   kpts={'density': 6.0, 'gamma': True},
