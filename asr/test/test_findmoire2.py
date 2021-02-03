@@ -59,22 +59,19 @@ class Supercell:
         return (self.pair1.angle + self.pair2.angle) / 2
     @property
     def ang_int(self):
-        ang_a = AngleBetween(self.pair1.lca.comps, self.pair2.lca.comps)
-        ang_b = AngleBetween(self.pair1.lcb.comps, self.pair2.lcb.comps)
+        ang_a = abs(AngleBetween(self.pair1.lca.comps, self.pair2.lca.comps))
+        ang_b = abs(AngleBetween(self.pair1.lcb.comps, self.pair2.lcb.comps))
         return (ang_a + ang_b) / 2
     @property
     def area(self):
         area_a = area(self.pair1.lca.comps, self.pair2.lca.comps)
         area_b = area(self.pair1.lcb.comps, self.pair2.lcb.comps)
         return (area_a + area_b) / 2
-
     @property
     def strain(self):
         return max(self.pair1.strain, self.pair2.strain)
-
     def normdiff(self):
         return abs(self.pair1.lca.norm - self.pair2.lca.norm)
-
     def todict(self):
         rad2deg = 180 / np.pi
         dct = {}
@@ -153,49 +150,29 @@ def MatchLCs(lcs_a, lcs_b, max_strain):
 
 # Select less strained/smallest/most symmetrical cell if twist angle is the same
 def best_duplicate(cell, supercells):
-    i = 0
-    while i < len(supercells) - 1:
-        if abs(cell.ang_twist - supercells[i].ang_twist) < 1.0e-6:
-            print("\nangles")
-            print(cell.ang_twist)
-            print(supercells[i].ang_twist)
-            print("strains")
-            print(cell.strain)
-            print(supercells[i].strain)
-            if cell.strain < supercells[i].strain - 0.05:
-                print("substituting")
-                return i
-            elif (cell.strain >= supercells[i].strain - 0.05 and
-                  cell.strain <= supercells[i].strain + 0.05):
-                print("natoms")
-                print(cell.natoms)
-                print(supercells[i].natoms)
-                if cell.natoms < supercells[i].natoms:
-                    print("substituting")
-                    return i
-                elif cell.natoms == supercells[i].natoms:
-                    print("same natoms. checking diffs")
-                    print(cell.normdiff())
-                    print(supercells[i].normdiff())
-                    if cell.normdiff() < supercells[i].normdiff():
-                        print("substituting")
-                        return i
+    for sc in supercells:
+        if abs(cell.ang_twist - sc.ang_twist) < 1.0e-6:
+            if cell.strain < sc.strain - 0.05:
+                return supercells.index(sc)
+            elif (cell.strain >= sc.strain - 0.05 and
+                  cell.strain <= sc.strain + 0.05):
+                if cell.natoms < sc.natoms:
+                    return supercells.index(sc)
+                elif cell.natoms == sc.natoms:
+                    if cell.normdiff() < sc.normdiff():
+                        return supercells.index(sc)
                     else:
-                        print("discarding")
                         return -1
                 else:
-                    print("discarding")
                     return -1
             else:
-                print("discarding")
                 return -1
-        else: 
-            i += 1
     return -2
 
 
 # Look for supercells, i.e. LC pairs with matching rotation angle
 def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_internal_angle, max_number_of_atoms, store_all): 
+    rad2deg = 180 / np.pi
     supercells = []
     a1, a2 = layer_a.cell[0], layer_a.cell[1]
     b1, b2 = layer_b.cell[0], layer_b.cell[1]
@@ -205,6 +182,7 @@ def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_inte
 
     print("\nLooking for supercells...")
     
+    angles = []
     for i in tqdm(range(nmatches)):
         for j in range(i + 1, nmatches):
 
@@ -214,6 +192,7 @@ def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_inte
                 ratio_b = test_cell.area / starting_area_b
                 natoms = ratio_a * layer_a.natoms + ratio_b * layer_b.natoms
                 test_cell.natoms = round(natoms)
+                angles.append(matches[i].angle*rad2deg)
                 
                 if (test_cell.ang_int >= min_internal_angle and
                     test_cell.ang_int <= max_internal_angle and
@@ -245,14 +224,14 @@ def SortResults(supercells, crit):
 
 
 def SaveJson(supercells, workdir):
-    from ase.io.jsonio import write_json
+    import json
     results = {}
     for i in range(len(supercells)):
         results[f"{i}"] = supercells[i].todict()
 
     file_json = f"{workdir}/moirecells.json"
-    write_json(file_json, results)
-
+    with open(file_json, 'w') as f:
+        json.dump(results, f, indent=4)
 
 @command('asr.test_findmoire2')
 
@@ -283,7 +262,7 @@ def SaveJson(supercells, workdir):
 @option('--uid-a', type=str)
 @option('--uid-b', type=str)
 
-def main(max_coef: int = 4, 
+def main(max_coef: int = 10, 
          tol_theta: float = 0.05, 
          store_all: bool = False, 
          scan_all: bool = False, 
@@ -298,13 +277,17 @@ def main(max_coef: int = 4,
          database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db", 
          uids: str = "/home/niflheim/steame/venvs/het-bil/asr/asr/test/moire/tree/uids"):
 
-    if uid_a is not None and uid_b is not None:
+    if uid_a and uid_b:
         uids = [uid_a, uid_b]
         range_i = [0]
         range_j = [1]
+    elif uid_a and not uid_b:
+        raise ValueError('Please specify UID for layer B')
+    elif uid_b and not uid_a:
+        raise ValueError('Please specify UID for layer A')
     else: 
         with open(uids, "r") as f:
-            uids = [ i.split()[0] for i in f.readlines() ]
+            monos = [ i.split()[0] for i in f.readlines() ]
             range_i = range(len(monos))
             range_j = range(i, len(monos))
 
@@ -344,12 +327,9 @@ def main(max_coef: int = 4,
 
                 matches = MatchLCs(lcs_a, lcs_b, max_strain)
                 print(f"Obtained {len(matches)} LCs matches")
-                print("ok")
 
                 cells = FindCells(matches, layer_a, layer_b, tol_theta, min_intern, max_intern, max_number_of_atoms, store_all)
                 print(f"\nFound {len(cells)} supercells!!!\n")
-                for c in cells:
-                    print(c.ang_twist)
 
                 cells_sorted = SortResults(cells, sort)
                 SaveJson(cells_sorted, workdir)

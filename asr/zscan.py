@@ -4,6 +4,7 @@ from ase.io.jsonio import write_json
 from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
 from scipy.interpolate import CubicSpline
+from asr.core import command, option
 
 def get_distance(upper, lower):
     return min(upper.positions[:, 2]) - max(lower.positions[:, 2])
@@ -29,11 +30,13 @@ def initialize(structure):
         return upper, lower
 
 
-def calculate(upper, lower, start, stop, step, calc):
+def calculate(upper, lower, start, stop, nsteps, calc):
+    from ase.io.trajectory import TrajectoryWriter
+
     shifts = []
     dists = []
     energies = []
-    for shift in np.arange(start, stop, step): 
+    for shift in np.linspace(start, stop, nsteps): 
         shifted = upper.copy()
         shifted.translate([0, 0, shift])
         bilayer = shifted + lower
@@ -43,6 +46,8 @@ def calculate(upper, lower, start, stop, step, calc):
         dists.append(dst)
         shifts.append(shift)
         energies.append(en)
+        writer = TrajectoryWriter('zscan.traj', mode='a', atoms=bilayer)
+        writer.write()
     return np.array(shifts), np.array(dists), np.array(energies)
 
 
@@ -74,7 +79,7 @@ def interpolate(shifts, dists, energies, npoints):
 
 
 # Post-processing plot step
-def plot(results="asr-results.scan-z.json", mode="dist"):
+def plot(results="plot-zscan.json", mode="dist"):
     import matplotlib.pyplot as plt
     from ase.io.jsonio import read_json
 
@@ -128,7 +133,6 @@ def plot(results="asr-results.scan-z.json", mode="dist"):
             **style_min,
             label='Optimal value')
 
-
     plt.yticks(fontsize=20)
     plt.xticks(fontsize=20)
     ax.set_xlabel(xlabel, fontsize=20)
@@ -140,10 +144,16 @@ def plot(results="asr-results.scan-z.json", mode="dist"):
     plt.show()
 
 
+@command('asr.zscan')
+@option('--structure', type=str) 
+@option('--start', type=float) 
+@option('--stop', type=float) 
+@option('--nsteps', type=int) 
+@option('--npoints', type=int) 
 def main(structure: str="initial.json",
-         start: float=-0.2,
-         stop: float=1.2,
-         step: float=0.1,
+         start: float=-1.0,
+         stop: float=1.0,
+         nsteps: int=10,
          npoints: int=700):
 
     dft = GPAW(mode='lcao',
@@ -155,10 +165,10 @@ def main(structure: str="initial.json",
     vdw = DFTD3(dft=dft)
 
     upper, lower = initialize(structure)
-    shifts, distances, energies = calculate(upper, lower, start, stop, step, vdw)
+    shifts, distances, energies = calculate(upper, lower, start, stop, nsteps, vdw)
 
     results = interpolate(shifts, distances, energies, npoints)
-    write_json("asr-results.scan-z.json", results)
+    write_json("plot-zscan.json", results)
     
     upper.translate([0, 0, results["shift_min"]])
     newatoms = upper + lower
