@@ -38,6 +38,7 @@ class Migrations:
 
     def apply(self):
         for migration in self.generate_migrations():
+            print(migration)
             records = migration.apply()
 
             for original_record, migrated_record in zip(
@@ -120,6 +121,7 @@ def find_results_files() -> typing.List[pathlib.Path]:
         'results-asr.database.fromtree.json',
         'results-asr.database.app.json',
         'results-asr.database.key_descriptions.json',
+        'results-asr.setup.strains*.json',
         'displacements*/*/results-asr.database.material_fingerprint.json',
         'strains*/results-asr.database.material_fingerprint.json',
         '*asr.setinfo*',
@@ -153,6 +155,7 @@ def construct_record_from_resultsfile(
     from asr.core.results import MetaDataNotSetError
     from asr.core import read_json, get_recipe_from_name, ASRResult
     from ase.io import read
+    from asr.core.codes import Codes, Code
     folder = path.parent
     atoms = read(folder / 'structure.json')
 
@@ -200,8 +203,14 @@ def construct_record_from_resultsfile(
 
     try:
         code_versions = result.metadata.code_versions
+        lst_codes = []
+        for package, codestr in code_versions.items():
+            version, githash = codestr.split('-')
+            code = Code(package, version, githash)
+            lst_codes.append(code)
+        codes = Codes(lst_codes)
     except MetaDataNotSetError:
-        code_versions = {}
+        codes = Codes([])
 
     from asr.core.resources import Resources
     try:
@@ -222,24 +231,106 @@ def construct_record_from_resultsfile(
         name = name.replace('@', '::')
 
     uid = uids[path]
+    dependencies = get_dependencies(path, uids)
     record = Record(
         run_specification=RunSpecification(
             name=name,
             parameters=parameters,
             version=-1,
-            codes=code_versions,
+            codes=codes,
             uid=uid,
         ),
         resources=resources,
         result=result,
-        tags=['Generated from result file.']
+        tags=['Generated from result file.'],
+        dependencies=dependencies,
     )
 
     return record
 
 
-def set_dependencies(record, uids):
-    pass
+def get_dependencies(path, uids):
+    folder = path.parent
+
+    deps = {
+        'asr.infraredpolarizability': [
+            'asr.phonons', 'asr.borncharges', 'asr.polarizability'],
+        'asr.emasses@refine': [
+            'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
+        'asr.emasses': [
+            'asr.emasses@refine', 'asr.gs@calculate',
+            'asr.gs', 'asr.structureinfo', 'asr.magnetic_anisotropy'],
+        'asr.emasses@validate': ['asr.emasses'],
+        'asr.berry@calculate': ['asr.gs'],
+        'asr.berry': ['asr.berry@calculate'],
+        'asr.gw@gs': ['asr.gs@calculate'],
+        'asr.gw@gw': ['asr.gw@gs'],
+        'asr.gw@empirical_mean_z': ['asr.gw@gw'],
+        'asr.gw': ['asr.bandstructure', 'asr.gw@empirical_mean_z'],
+        'asr.pdos@calculate': ['asr.gs'],
+        'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
+        'asr.phonons@calculate': ['asr.gs@calculate'],
+        'asr.phonons': ['asr.phonons@calculate'],
+        'asr.push': ['asr.structureinfo', 'asr.phonons'],
+        'asr.phonopy@calculate': ['asr.gs@calculate'],
+        'asr.phonopy': ['asr.phonopy@calculate'],
+        'asr.hse@calculate': [
+            'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
+        'asr.hse': ['asr.hse@calculate', 'asr.bandstructure'],
+        'asr.exchange@calculate': ['asr.gs@calculate'],
+        'asr.exchange': ['asr.exchange@calculate'],
+        'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
+        'asr.plasmafrequency': ['asr.plasmafrequency@calculate'],
+        'asr.shg': ['asr.gs@calculate'],
+        'asr.magstate': ['asr.gs@calculate'],
+        'asr.fermisurface': ['asr.gs', 'asr.structureinfo'],
+        'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
+        'asr.convex_hull': [
+            'asr.structureinfo', 'asr.database.material_fingerprint'],
+        'asr.borncharges': ['asr.gs@calculate'],
+        'asr.gs': [
+            'asr.gs@calculate',
+            'asr.magnetic_anisotropy', 'asr.structureinfo'],
+        'asr.bandstructure@calculate': ['asr.gs@calculate'],
+        'asr.bandstructure': [
+            'asr.bandstructure@calculate', 'asr.gs',
+            'asr.structureinfo', 'asr.magnetic_anisotropy'],
+        'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
+        'asr.bader': ['asr.gs'],
+        'asr.bse@calculate': ['asr.gs@calculate'],
+        'asr.bse': ['asr.bse@calculate', 'asr.gs'],
+        'asr.projected_bandstructure': ['asr.gs', 'asr.bandstructure'],
+        'asr.shift': ['asr.gs@calculate'],
+        'asr.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
+    }
+
+    name = path.with_suffix('').name.split('-')[1]
+
+    # Some manually implemented dependencies
+    if name == 'asr.piezoelectrictensor':
+        dependencies = []
+        dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
+        dependencies += list(
+            folder.rglob('strains*/results-asr.formalpolarization.json')
+        )
+    elif name == 'asr.stiffness':
+        dependencies = []
+        dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
+    else:
+        depnames = deps.get(name, [])
+        dependencies = []
+        for depname in depnames:
+            deppath = folder / f'results-{depname}.json'
+            dependencies.append(deppath)
+
+    if dependencies:
+        dep_list = []
+        for dependency in dependencies:
+            if dependency in uids:
+                dep_list.append(uids[dependency])
+        return dep_list
+
+    return None
 
 
 # def get_old_records():
@@ -263,7 +354,6 @@ def get_resultsfile_records() -> typing.List[Record]:
         record = construct_record_from_resultsfile(path, uids)
         records.append(record)
 
-    set_dependencies(records, uids)
     return records
 
 

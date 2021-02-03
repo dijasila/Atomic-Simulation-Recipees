@@ -81,13 +81,14 @@ class Record:
                 assert to_version not in visited_versions, \
                     'Circular migration detected.'
                 visited_versions.add(to_version)
+                name = f'{self.name} uid={self.uid}'
                 if not migration:
                     migration = Migration(
                         migration_func,
                         from_version=version,
                         to_version=to_version,
                         record=self,
-                        name=self.name + self.uid[:10],
+                        name=name,
                     )
                 else:
                     migration = Migration(
@@ -95,7 +96,7 @@ class Record:
                         from_version=version,
                         to_version=to_version,
                         dep=migration,
-                        name=self.name + self.uid[:10],
+                        name=name,
                     )
                 version = to_version
 
