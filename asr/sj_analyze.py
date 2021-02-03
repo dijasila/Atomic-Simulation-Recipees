@@ -171,7 +171,8 @@ def main() -> Result:
         defectsystem))
 
     # get heat of formation
-    hof = get_heat_of_formation()
+    # hof = get_heat_of_formation()
+    hof = 1.
 
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions()
