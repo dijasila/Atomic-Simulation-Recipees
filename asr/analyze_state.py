@@ -629,7 +629,7 @@ def main(mapping: bool = True,
     labels_down = []
 
     # read in calc once
-    _, calc = restart('gs.gpw', txt=None)
+    atoms, calc = restart('gs.gpw', txt=None)
 
     # get vacuum level to reference energies
     res_def = read_json('results-asr.gs.json')
@@ -671,8 +671,11 @@ def main(mapping: bool = True,
 
     if hf:
         print('INFO: calculate hyperfine properties.')
-        atoms, calc = restart('gs.gpw', txt=None)
         hf_results, gfactor_results = calculate_hyperfine(atoms, calc)
+
+    if zfs:
+        print('INFO: calculate zero field splitting.')
+        atoms, calc = restart('gs.gpw', txt=None)
 
     pristine_results = get_pristine_band_edges()
 
