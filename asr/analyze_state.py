@@ -511,7 +511,6 @@ class SymmetryResult(ASRResult):
 
 
 @prepare_result
-class HyperfineResult(ASRResult):
     """Container for hyperfine coupling results."""
     index: int
     kind: str
@@ -585,9 +584,11 @@ class Result(ASRResult):
 @option('--mapping/--no-mapping', is_flag=True)
 @option('--radius', type=float)
 @option('--hf/--no-hf', is_flag=True)
+@option('--zfs/--no-zfs', is_flag=True)
 def main(mapping: bool = True,
          radius: float = 2.0,
-         hf: bool = True) -> Result:
+         hf: bool = True,
+         zfs: bool = True) -> Result:
     """Analyze wavefunctions and analyze symmetry."""
 
     from ase.io.cube import read_cube_data
@@ -676,6 +677,7 @@ def main(mapping: bool = True,
     if zfs:
         print('INFO: calculate zero field splitting.')
         atoms, calc = restart('gs.gpw', txt=None)
+        zfs_results = calculate_zero_field_splitting(atoms, calc)
 
     pristine_results = get_pristine_band_edges()
 
@@ -702,8 +704,6 @@ def get_pristine_band_edges() -> PristineResults:
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
         evac = results_pris['evac']
-        # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
         vbm = None
         cbm = None
@@ -734,6 +734,29 @@ def return_irrep_result(sym_name, sym_score) -> IrrepResult:
     return IrrepResult.fromdata(
         sym_name=sym_name,
         sym_score=sym_score)
+
+
+def calculate_zero_field_splitting(atoms, calc):
+    """Calculate zero field splitting."""
+    from gpaw.zero_field_splitting import convert_tensor, zfs
+    from ase.units import Bohr, Ha, _c, _e, _hplanck
+
+    D_vv = zfs(calc)
+    unit='MHz'
+    scale = _e / _hplanck * 1e-6
+    D, E, axis, D_vv = convert_tensor(D_vv*scale)
+
+    print('D_ij = (' +
+                  ',\n        '.join('(' + ', '.join(f'{d:10.3f}' for d in D_v) + ')'
+                                                   for D_v in D_vv) +
+                            ') ', unit)
+    print('i, j = x, y, z')
+    print(f'D = {D:.3f} {unit}')
+    print(f'E = {E:.3f} {unit}')
+    x, y, z = axis
+    print(f'axis = ({x:.3f}, {y:.3f}, {z:.3f})')
+
+    return D_vv
 
 
 def calculate_hyperfine(atoms, calc):
