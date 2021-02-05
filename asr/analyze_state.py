@@ -589,7 +589,7 @@ class Result(ASRResult):
 def main(mapping: bool = True,
          radius: float = 2.0,
          hf: bool = True,
-         zfs: bool = True) -> Result:
+         zfs: bool = False) -> Result:
     """Analyze wavefunctions and analyze symmetry."""
 
     from ase.io.cube import read_cube_data
