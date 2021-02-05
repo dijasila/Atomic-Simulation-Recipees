@@ -309,7 +309,8 @@ def get_pristine_band_edges() -> PristineResults:
 
     print('INFO: extract pristine band edges.')
     p = Path('.')
-    pristinelist = list(p.glob('./../../defects.pristine_sc*/'))
+    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
     pris = pristinelist[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
@@ -370,7 +371,8 @@ def calculate_neutral_formation_energy():
 
     results_def = read_json('./results-asr.gs.json')
     p = Path('.')
-    pristinelist = list(p.glob('./../../defects.pristine_sc*/'))
+    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
     pris = pristinelist[0]
     results_pris = read_json(pris / 'results-asr.gs.json')
 
