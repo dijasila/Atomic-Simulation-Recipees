@@ -511,6 +511,7 @@ class SymmetryResult(ASRResult):
 
 
 @prepare_result
+class HyperfineResult(ASRResult):
     """Container for hyperfine coupling results."""
     index: int
     kind: str
