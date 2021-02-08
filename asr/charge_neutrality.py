@@ -1,9 +1,15 @@
 """Self-consistent EF calculation for defect systems.."""
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.core import command, option, ASRResult
 from ase.dft.bandgap import bandgap
 from gpaw import restart
 import numpy as np
-import typing
+
+
+# TODO: add plotting routines for formation energies and SC EF
+# TODO: implement extraction for sj_analyze to get defectdict
+# TODO: implement Results
+# TODO: implement Webpanel
+# TODO: implement test
 
 
 @command(module='asr.charge_neutrality',
@@ -23,12 +29,160 @@ def main(temp: float = 300) -> ASRResult:
     dos, EF, gap = get_dos(calc)
     dos = renormalize_dos(calc, dos, EF)
 
+    # Calculate initial electron and hole carrier concentration
     n0, p0 = integrate_electron_hole_concentration(dos,
                                                    EF,
                                                    gap,
                                                    temp)
 
+    # Read in defect dictionary from asr.sj_analyze results
+    # FIX #
+    defectdict = return_defectlist_dummy()
+    # FIX #
+
+    # Initialize self-consistent loop for finding Fermi energy
+    E = 0
+    d = 1  # directional parameter
+    i = 0  # loop index
+    maxsteps = 1000  # maximum number of steps for SCF loop
+    E_step = gap / 10.  # initial step sizew
+    epsilon = 1e-12  # threshold for minimum step length
+    converged = False  # boolean to see whether calculation is converged
+
+    # Start the self-consistent loop
+    while (i < maxsteps):
+        E = E + E_step * d
+        n0, p0 = integrate_electron_hole_concentration(dos,
+                                                       E,
+                                                       gap,
+                                                       temp)
+        # initialise lists for concentrations and charges
+        conc_list = []
+        charge_list = []
+        # loop over all defects
+        # FIX #
+        sites = 1
+        degeneracy = 1
+        # FIX #
+        for defecttype in defectdict:
+            for defect in defectdict[defecttype]:
+                eform = get_formation_energy(defect, E)
+                conc_def = calculate_defect_concentration(eform,
+                                                          defect[1],
+                                                          sites,
+                                                          degeneracy,
+                                                          temp)
+                conc_list.append(conc_def)
+                charge_list.append(defect[1])
+        # calculate delta
+        delta_new = calculate_delta(conc_list, charge_list, n0, p0)
+        if check_delta_zero(delta_new, conc_list, n0, p0):
+            print('INFO: charge balance approximately zero! Solution found!')
+            converged = True
+            break
+        if E_step < epsilon:
+            print(f'INFO: steps smaller than threshold! Solution found!')
+            converged = True
+            break
+        if i == 0:
+            delta_old = delta_new
+        elif i > 0:
+            if abs(delta_new) > abs(delta_old):
+                E_step = E_step / 10.
+                d = -1 * d
+            delta_old = delta_new
+        i += 1
+
+    # if calculation is converged, show final results
+    if converged:
+        n0, p0 = integrate_electron_hole_concentration(dos,
+                                                       E,
+                                                       gap,
+                                                       temp)
+        print('INFO: final results:')
+        for defecttype in defectdict[defecttype]:
+            print(f'      - defecttype: {defecttype}')
+            print(f'      --------------------------------')
+            eform = get_formation_energy(defect, E)
+            conc_def = calculate_defect_concentration(eform,
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      temp)
+            print(f'      defect concentration for ({defect[1]}): {conc_def}')
+
     return ASRResult()
+
+
+def fermi_dirac_electrons(E, EF, T):
+    _k = 8.617333262145e-5  # in eV/K
+
+    return 1. / (np.exp((EF - E) / (_k * T)) + 1.)
+
+
+def fermi_dirac_holes(E, EF, T):
+    return 1 - fermi_dirac_electrons(E, EF, T)
+
+
+def calculate_delta(conc_list, chargelist, n0, p0):
+    """Calculate charge balance for current energy.
+
+    delta = n_0 - p_0 - \sum_X(\sum_q C_{X^q})."""
+
+    delta = n0 - p0
+    for i, c in enumerate(conc_list):
+        delta = delta - c * chargelist[i]
+
+    return delta
+
+
+def check_delta_zero(delta_new, conc_list, n0, p0):
+    argument = n0 + p0
+    for c in conc_list:
+        argument = argument - c
+    if abs(delta_new) < abs(argument * 1e-12):
+        return True
+    else:
+        return False
+
+
+def calculate_defect_concentration(e_form, charge, sites, degeneracy, T):
+    """Calculates and returns the defect concentration for a specific defect in
+    a particular charge state with the formation energy for a particular energy.
+
+    Use C_X^q = N_X * g_{X^q} * exp(-E_f(X^q) / (k * T))
+
+    Note, that e_form is the formation energy at the desired Fermi energy
+    already! In general, it is not the one at the VBM.
+    """
+    _k = 8.617333262145e-5  # in eV/K
+    return (sites * degeneracy * np.exp((-1) * e_form / (_k * T)))
+
+
+def get_formation_energy(defect, energy):
+    """Returns the formation energy of a given defect in a charge state at
+    an specific energy."""
+    E_form_0, charge = get_zero_formation_energy(defect)
+
+    return E_form_0 + charge * energy
+
+
+def get_zero_formation_energy(defect):
+    """Returns the formation energy of a given defect at the VBM.
+
+    Note, that the VBM corresponds to energy zero."""
+    eform = defect[0]
+    charge = defect[1]
+
+    return eform, charge
+
+
+def return_defectlist_dummy():
+    defectdict = {'V_S': [(1.5, 0, 1.3, 1.63), (1.9, 1, 0.55, 1.3), (0.55, -1, 0.4, 0.55)],
+                  'V_Mo': [(7, 0, 0, 0), (7, 1, 0, 0), (8.5, -1, 0, 0), (11, -2, 0, 0)],
+                  'Re_Mo': [(3.3, 1, 0, 0), (2.9, 0, 0, 0)]}
+
+    return defectdict
 
 
 def integrate_electron_hole_concentration(dos, ef, gap, T):
@@ -45,8 +199,6 @@ def integrate_electron_hole_concentration(dos, ef, gap, T):
     dx = abs(dos[0][-1] - dos[0][0]) / len(dos[0])
 
     # electron carrier concentration integration
-    # emin = gap
-    # emax = dos[0][-1]
     int_el = []
     for i in range(len(dos[0])):
         energy = dos[0][i]
@@ -57,8 +209,6 @@ def integrate_electron_hole_concentration(dos, ef, gap, T):
     print('INFO: calculated electron carrier concentration: {}'.format(n0))
 
     # hole carrier concentration integration
-    # emin = dos[0][0]
-    # emax = 0
     int_hole = []
     for i in range(len(dos[0])):
         energy = dos[0][i]
@@ -80,10 +230,7 @@ def renormalize_dos(calc, dos, ef):
 
     Ne = calc.get_number_of_electrons()
 
-    ### integrate number of electrons
-    # emin = dos[0][0]
-    # emax = 0
-
+    # integrate number of electrons
     dx = abs(dos[0][-1] - dos[0][0]) / len(dos[0])
     int_el = []
     for i in range(len(dos[0])):
@@ -114,7 +261,6 @@ def renormalize_dos(calc, dos, ef):
           f'{calc.get_number_of_electrons()} (Reference).')
 
     return dos
-
 
 
 def get_band_edges(calc):
@@ -149,27 +295,3 @@ def get_dos(calc, npts=4001, width=0.01):
     EF = EF - evbm
 
     return dos, EF, gap
-
-
-def fermi_dirac_electrons(E, EF, T):
-    _k = 8.617333262145e-5  # in eV/K
-
-    return 1. / (np.exp((EF - E)/(_k * T)) + 1.)
-
-
-def fermi_dirac_holes(E, EF, T):
-    return 1 - fermi_dirac_electrons(E, EF, T)
-
-
-# @prepare_result
-# class Result(ASRResult):
-#     """Container for charge neutrality results."""
-# 
-#     EF: float
-#     defect_conc: typing.List[ConcResult]
-# 
-#     key_descriptions = dict(
-#         EF='Self-consistent Fermi energy [eV].',
-#         defect_conc='List of ConcResult containers.')
-# 
-#     formats = {"ase_webpanel": webpanel}
