@@ -57,21 +57,26 @@ class Supercell:
     @property
     def ang_twist(self):
         return (self.pair1.angle + self.pair2.angle) / 2
+
     @property
     def ang_int(self):
         ang_a = abs(AngleBetween(self.pair1.lca.comps, self.pair2.lca.comps))
         ang_b = abs(AngleBetween(self.pair1.lcb.comps, self.pair2.lcb.comps))
         return (ang_a + ang_b) / 2
+
     @property
     def area(self):
         area_a = area(self.pair1.lca.comps, self.pair2.lca.comps)
         area_b = area(self.pair1.lcb.comps, self.pair2.lcb.comps)
         return (area_a + area_b) / 2
+
     @property
     def strain(self):
         return max(self.pair1.strain, self.pair2.strain)
+
     def normdiff(self):
         return abs(self.pair1.lca.norm - self.pair2.lca.norm)
+
     def todict(self):
         rad2deg = 180 / np.pi
         dct = {}
@@ -93,7 +98,6 @@ class Supercell:
 # Returns an iterable range without 0
 def modrange(lower, upper):
     fullrange = list(range(lower, upper + 1))
-    #fullrange.remove(0)
     return fullrange
 
 
@@ -132,7 +136,7 @@ def MakeLCs(cell_a, cell_b, scan_all, max_coeff):
         else:
             lcs_b = []
             n_max += 1
-            if scan_all == True:
+            if scan_all:
                 n_lower = - n_max
     return lcs_a, lcs_b
 
@@ -192,21 +196,21 @@ def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_inte
                 ratio_b = test_cell.area / starting_area_b
                 natoms = ratio_a * layer_a.natoms + ratio_b * layer_b.natoms
                 test_cell.natoms = round(natoms)
-                angles.append(matches[i].angle*rad2deg)
+                angles.append(matches[i].angle * rad2deg)
                 
                 if (test_cell.ang_int >= min_internal_angle and
                     test_cell.ang_int <= max_internal_angle and
-                    test_cell.natoms  <= max_number_of_atoms):
+                    test_cell.natoms <= max_number_of_atoms):
 
                     check = best_duplicate(test_cell, supercells)
     
                     if check == -1:
                         pass
 
-                    elif check == -2 or store_all == True:
+                    elif check == -2 or store_all:
                         supercells.append(test_cell)
 
-                    elif check >= 0 and store_all == False:
+                    elif check >= 0 and not store_all:
                         supercells[check] = test_cell
     return supercells
 
@@ -228,10 +232,10 @@ def SaveJson(supercells, workdir):
     results = {}
     for i in range(len(supercells)):
         results[f"{i}"] = supercells[i].todict()
-
     file_json = f"{workdir}/moirecells.json"
     with open(file_json, 'w') as f:
         json.dump(results, f, indent=4)
+
 
 @command('asr.test_findmoire2')
 
@@ -287,7 +291,7 @@ def main(max_coef: int = 10,
         raise ValueError('Please specify UID for layer A')
     else: 
         with open(uids, "r") as f:
-            monos = [ i.split()[0] for i in f.readlines() ]
+            monos = [i.split()[0] for i in f.readlines()]
             range_i = range(len(monos))
             range_j = range(i, len(monos))
 

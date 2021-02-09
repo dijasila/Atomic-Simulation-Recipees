@@ -1,18 +1,20 @@
 import numpy as np
 from ase.io import read, write
-from ase.io.jsonio import write_json
+from ase.io.jsonio import read_json, write_json
 from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
 from scipy.interpolate import CubicSpline
 from asr.core import command, option
 
+
 def get_distance(upper, lower):
     return min(upper.positions[:, 2]) - max(lower.positions[:, 2])
+
 
 def initialize(structure):
     atoms = read(structure)
     tags = atoms.get_tags()
-    natoms_l1 = np.extract(tags==1, tags).shape[0]
+    natoms_l1 = np.extract(tags == 1, tags).shape[0]
     l1 = atoms[:natoms_l1].copy()
     l2 = atoms[natoms_l1:].copy()
     l1_z = l1.positions[:, 2]
@@ -36,7 +38,7 @@ def calculate(upper, lower, start, stop, nsteps, calc):
     shifts = []
     dists = []
     energies = []
-    for shift in np.linspace(start, stop, nsteps): 
+    for shift in np.linspace(start, stop, nsteps):
         shifted = upper.copy()
         shifted.translate([0, 0, shift])
         bilayer = shifted + lower
@@ -62,20 +64,20 @@ def interpolate(shifts, dists, energies, npoints):
     shift_min = s_grid[index_min]
     dist_min = d_grid[index_min]
     return {
-            "scan": {
-                     "shifts": shifts,
-                     "dists": dists,
-                     "energies": energies
-                     },
-            "interpolation": {
-                              "shifts": s_grid,
-                              "dists": d_grid,
-                              "energies": energies_int
-                              },
-            "emin": emin,
-            "shift_min": shift_min,
-            "dist_min": dist_min
-            }
+        "scan": {
+            "shifts": shifts,
+            "dists": dists,
+            "energies": energies
+        },
+        "interpolation": {
+            "shifts": s_grid,
+            "dists": d_grid,
+            "energies": energies_int
+        },
+        "emin": emin,
+        "shift_min": shift_min,
+        "dist_min": dist_min
+    }
 
 
 # Post-processing plot step
@@ -128,10 +130,10 @@ def plot(results="plot-zscan.json", mode="dist"):
         **style_int,
         label='Interpolation')
     ax.scatter(
-            xmin,
-            dct["emin"],
-            **style_min,
-            label='Optimal value')
+        xmin,
+        dct["emin"],
+        **style_min,
+        label='Optimal value')
 
     plt.yticks(fontsize=20)
     plt.xticks(fontsize=20)
@@ -144,22 +146,30 @@ def plot(results="plot-zscan.json", mode="dist"):
     plt.show()
 
 
+def shift(structure, results):
+    upper, lower = initialize(structure)
+    dct = read_json(results)
+    upper.translate([0, 0, dct["shift_min"]])
+    newatoms = upper + lower
+    write("unrelaxed.json", newatoms)
+
+
 @command('asr.zscan')
-@option('--structure', type=str) 
-@option('--start', type=float) 
-@option('--stop', type=float) 
-@option('--nsteps', type=int) 
-@option('--npoints', type=int) 
-def main(structure: str="initial.json",
-         start: float=-1.0,
-         stop: float=1.0,
-         nsteps: int=10,
-         npoints: int=700):
+@option('--structure', type=str)
+@option('--start', type=float)
+@option('--stop', type=float)
+@option('--nsteps', type=int)
+@option('--npoints', type=int)
+def main(structure: str = "initial.json",
+         start: float = -1.0,
+         stop: float = 1.0,
+         nsteps: int = 10,
+         npoints: int = 700):
 
     print(f'nsteps = {nsteps}')
     dft = GPAW(mode='lcao',
                xc='PBE',
-    	   kpts={'density': 6.0, 'gamma': True},
+               kpts={'density': 6.0, 'gamma': True},
                occupations={'name': 'fermi-dirac',
                             'width': 0.05},
                basis='dzp')
@@ -170,7 +180,7 @@ def main(structure: str="initial.json",
 
     results = interpolate(shifts, distances, energies, npoints)
     write_json("plot-zscan.json", results)
-    
+
     upper.translate([0, 0, results["shift_min"]])
     newatoms = upper + lower
     write("unrelaxed.json", newatoms)

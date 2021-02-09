@@ -17,10 +17,20 @@ def bs_from_json(fname):
     return bs
 
 
-def compare(*files,
-            reference='ef',
-            colors=None):
+def multiplot(*files,
+              reference=None,
+              ylim=None,
+              title=None,
+              xtitle=None,
+              ytitle=None,
+              labels=None,
+              hlines=None,
+              styles=None,
+              show=True,
+              fontsize1=24,
+              fontsize2=20):
     import matplotlib.pyplot as plt
+    import numpy as np
     import warnings
     warnings.filterwarnings('ignore')
 
@@ -33,41 +43,58 @@ def compare(*files,
     kpts, specpts, labels = items[0].get_kpts_and_labels()
     for spec in specpts[1:-1]:
         ax.axvline(spec, color='#bbbbbb')
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$')
-                        for lab in labels], fontsize=fontsize2)
+    ticks = [lab.replace('G', r'$\Gamma$') for lab in labels]
+    ax.set_xticklabels(ticks, fontsize=fontsize2)
+    ax.set_xticks(specpts)
+    ax.set_xlim([kpts[0], kpts[-1]])
 
-    for item in items:
+    allfermi = []
+
+    for index, item in enumerate(items):
+        if reference == "evac":
+            ref = item.calculate_evac()
+            if not ytitle:
+                ytitle = r'$\mathrm{E-E_{vac}}$'
+        elif reference == "ef":
+            '''Useful only for plotting single bandstructure'''
+            item.get_efermi()
+        elif isinstance(reference, float):
+            ref = reference
+        else:
+            ref = 0.0
         energies = item.get_energies() - ref
         efermi = item.get_efermi() - ref
-
-        if not ylim:
-            ylim = [efermi - 4, efermi + 4]
-        if not style:
-            style = dict(
-                color='C1',
-                ls='-',
-                lw=1.5)
-
-        ax = plt.figure(figsize=(12, 9)).add_subplot(111)
-        kpts, specpts, labels = self.get_kpts_and_labels()
-        if label:
-            lbl = label
-        else:
-            lbl = self._basename
-
+        allfermi.append(efermi)
+        try:
+            lbl = labels[index]
+            style = styles[index]
+        except (TypeError, IndexError) as errors:
+            lbl = item._basename
+            style = dict(ls='-', lw=1.5)
         ax.plot(kpts, energies[0], **style, label=lbl)
         for band in energies[1:]:
             ax.plot(kpts, band, **style)
-        for spec in specpts[1:-1]:
-            ax.axvline(spec, color='#bbbbbb')
-        ax.set_xticklabels([lab.replace('G', r'$\Gamma$')
-                            for lab in labels], fontsize=fontsize2)
 
-        if not hlines:
-            ax.axhline(efermi, color='#bbbbbb', ls='--', lw=1.5)
-        else:
-            for val in hlines:
-                ax.axhline(val, color='#bbbbbb', ls='--', lw=1.5)
+    if hlines:
+        for val in hlines:
+            ax.axhline(val, color='#bbbbbb', ls='--', lw=1.5)
+
+    if title:
+        plt.title(title, pad=10)
+    if not ylim:
+        ylim = [min(allfermi) - 4, max(allfermi) + 4]
+    ax.set_ylim(ylim)
+    ax.set_xlabel(xtitle, fontsize=fontsize1, labelpad=8)
+    ax.set_ylabel(ytitle, fontsize=fontsize1, labelpad=8)
+    plt.yticks(fontsize=fontsize2)
+    ax.xaxis.set_tick_params(width=3, length=10)
+    ax.yaxis.set_tick_params(width=3, length=10)
+    plt.setp(ax.spines.values(), linewidth=3)
+
+    plt.legend(loc="upper left", fontsize=fontsize2)
+
+    if show:
+        plt.show()
 
 
 class Bands:
@@ -241,7 +268,7 @@ class Bands:
         from ase.io.jsonio import write_json
         if not filename:
             filename = f'{self._basename}.json'
-            write_json(filename, self.bandstructure)
+            write_json(filename, self.bandstructure.__dict__)
 
     def get_gap_and_edges(self, reference=0.0):
         en = self.get_energies()
