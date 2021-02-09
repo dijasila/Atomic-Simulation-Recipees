@@ -81,7 +81,7 @@ def interpolate(shifts, dists, energies, npoints):
 
 
 # Post-processing plot step
-def plot(results="plot-zscan.json", mode="dist"):
+def plot(results="plot-zscan.json", mode="dist", title = None):
     import matplotlib.pyplot as plt
     from ase.io.jsonio import read_json
 
@@ -135,6 +135,8 @@ def plot(results="plot-zscan.json", mode="dist"):
         **style_min,
         label='Optimal value')
 
+
+    ax.set_title(title, fontsize = 20)
     plt.yticks(fontsize=20)
     plt.xticks(fontsize=20)
     ax.set_xlabel(xlabel, fontsize=20)
