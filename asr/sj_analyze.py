@@ -305,6 +305,7 @@ def get_pristine_band_edges() -> PristineResults:
     """
     Returns band edges and vaccum level for the host system.
     """
+    import numpy as np
     from asr.core import read_json
 
     print('INFO: extract pristine band edges.')
@@ -314,10 +315,14 @@ def get_pristine_band_edges() -> PristineResults:
     pris = pristinelist[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
-        _, calc = restart('gs.gpw', txt=None)
+        atoms, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        evac = results_pris['evac']
+        if not np.sum(atoms.get_pbc()) == 2:
+            _, calc_pris = restart(pris / 'gs.gpw', txt=None)
+            evac = calc_pris.get_eigenvalues()[0]
+        else:
+            evac = results_pris['evac']
         # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
         # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
@@ -398,13 +403,17 @@ def get_transition_level(transition, charge) -> TransitionResults:
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
+    import numpy as np
     # extrac HOMO or LUMO
     # HOMO
     charge = str(charge)
     if transition[0] > transition[1]:
-        _, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
+        if not np.sum(atoms.get_pbc()) == 2:
+            e_ref = calc.get_eigenvalues()[0]
+        else:
+            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
@@ -414,9 +423,12 @@ def get_transition_level(transition, charge) -> TransitionResults:
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
-        _, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
+        if not np.sum(atoms.get_pbc()) == 2:
+            e_ref = calc.get_eigenvalues()[0]
+        else:
+            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
