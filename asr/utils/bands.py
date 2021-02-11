@@ -17,57 +17,105 @@ def bs_from_json(fname):
     return bs
 
 
-def compare(*files,
-            reference='ef',
-            colors=None):
+def multiplot(*toplot,
+              reference=None,
+              ylim=None,
+              title=None,
+              xtitle=None,
+              ytitle=None,
+              labels=None,
+              hlines=None,
+              styles=None,
+              show=True,
+              fermiline=True,
+              fontsize1=24,
+              fontsize2=20):
     import matplotlib.pyplot as plt
+    import numpy as np
     import warnings
     warnings.filterwarnings('ignore')
+
+    colors = ['r',
+              'b',
+              'C1',
+              'C2',
+              'C3',
+              'C4',
+              'C5',
+              'C6',
+              'C7',
+              'C8']
 
     ax = plt.figure(figsize=(12, 9)).add_subplot(111)
 
     items = []
-    for f in files:
-        items.append(Bands(f))
+    for tp in toplot:
+        if isinstance(tp, str):
+            items.append(Bands(tp))
+        elif isinstance(tp, Bands):
+            items.append(tp)
+        else:
+            msg = 'Please provide either Bands objects or filenames'
+            raise ValueError(msg)
 
-    kpts, specpts, labels = items[0].get_kpts_and_labels()
+    kpts, specpts, lbls = items[0].get_kpts_and_labels()
     for spec in specpts[1:-1]:
         ax.axvline(spec, color='#bbbbbb')
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$')
-                        for lab in labels], fontsize=fontsize2)
+    ticks = [lab.replace('G', r'$\Gamma$') for lab in lbls]
+    ax.set_xticklabels(ticks, fontsize=fontsize2)
+    ax.set_xticks(specpts)
+    ax.set_xlim([kpts[0], kpts[-1]])
 
-    for item in items:
+    allfermi = []
+
+    for (index, item), color in zip(enumerate(items), colors):
+        if reference == "evac":
+            ref = item.calculate_evac()
+            if not ytitle:
+                ytitle = r'$\mathrm{E-E_{vac}}$'
+        elif reference == "ef":
+            '''Useful only for plotting single bandstructure'''
+            ref = item.get_efermi()
+        elif isinstance(reference, float):
+            ref = reference
+        else:
+            ref = 0.0
         energies = item.get_energies() - ref
         efermi = item.get_efermi() - ref
-
-        if not ylim:
-            ylim = [efermi - 4, efermi + 4]
-        if not style:
-            style = dict(
-                color='C1',
-                ls='-',
-                lw=1.5)
-
-        ax = plt.figure(figsize=(12, 9)).add_subplot(111)
-        kpts, specpts, labels = self.get_kpts_and_labels()
-        if label:
-            lbl = label
-        else:
-            lbl = self._basename
-
+        allfermi.append(efermi)
+        try:
+            lbl = labels[index]
+            style = styles[index]
+        except (TypeError, IndexError):
+            color = colors[index]
+            lbl = item._basename
+            style = dict(ls='-', color=color, lw=1.5)
         ax.plot(kpts, energies[0], **style, label=lbl)
         for band in energies[1:]:
             ax.plot(kpts, band, **style)
-        for spec in specpts[1:-1]:
-            ax.axvline(spec, color='#bbbbbb')
-        ax.set_xticklabels([lab.replace('G', r'$\Gamma$')
-                            for lab in labels], fontsize=fontsize2)
-
-        if not hlines:
+        if fermiline:
             ax.axhline(efermi, color='#bbbbbb', ls='--', lw=1.5)
-        else:
-            for val in hlines:
-                ax.axhline(val, color='#bbbbbb', ls='--', lw=1.5)
+
+    if hlines:
+        for val in hlines:
+            ax.axhline(val, color='#bbbbbb', ls='--', lw=1.5)
+
+    if title:
+        plt.title(title, pad=10, fontsize=fontsize1)
+    if not ylim:
+        ylim = [min(allfermi) - 4, max(allfermi) + 4]
+    ax.set_ylim(ylim)
+    ax.set_xlabel(xtitle, fontsize=fontsize1, labelpad=8)
+    ax.set_ylabel(ytitle, fontsize=fontsize1, labelpad=8)
+    plt.yticks(fontsize=fontsize2)
+    ax.xaxis.set_tick_params(width=3, length=10)
+    ax.yaxis.set_tick_params(width=3, length=10)
+    plt.setp(ax.spines.values(), linewidth=3)
+
+    plt.legend(loc="upper left", fontsize=fontsize2)
+
+    if show:
+        plt.show()
 
 
 class Bands:
@@ -88,6 +136,7 @@ class Bands:
         if self._ext == '.json' and not gw:
             self.bandstructure = bs_from_json(self.filename)
 
+        '''
         if gw:
             gsdct = read_json(gs)
             gsdata = gsdct["kwargs"]["data"]
@@ -101,6 +150,7 @@ class Bands:
             cbm1 = data1["cbm_gw"] - evac1
             edg1 = get_edges(e1, ef1)
             x1, X1, labels1 = path1.get_linear_kpoint_axis()
+        '''
 
         print("Done")
 
@@ -110,30 +160,20 @@ class Bands:
     def get_efermi(self):
         return self.bandstructure.reference
 
-    def get_kpts_and_labels(self):
-        return self.bandstructure.get_labels()
-
-    def get_ref_for_plot(self, label):
-        if label == "evac":
-            try:
-                ref = self.bandstructure.evac
-            except AttributeError:
-                ref = self.calculate_evac()
-            if not ytitle:
-                ytitle = r'$\mathrm{E-E_{vac}}$'
-        elif label == "ef":
-            ref = self.get_efermi()
-            if not ytitle:
-                ytitle = r'$\mathrm{E-E_{F}}$'
-        elif isinstance(label, float):
-            ref = label
+    def get_kpts_and_labels(self, normalize=False):
+        x, X, lbls = self.bandstructure.get_labels()
+        if normalize:
+            delta = x[-1] - x[0]
+            return (x / delta, X / delta, lbls)
+        else:
+            return (x, X, lbls)
 
     def calculate_evac(self):
         from gpaw import GPAW
         import numpy as np
         errmsg = 'A .gpw file is required!'
         assert (self._ext == '.gpw'), errmsg
-        calc = GPAW(self.filename, txt=None)
+        calc = GPAW(self.filename, txt='-')
         evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
         self.bandstructure.evac = evac
         return evac
@@ -143,7 +183,7 @@ class Bands:
         from gpaw import GPAW
         errmsg = 'A .gpw file is required!'
         assert (self._ext == '.gpw'), errmsg
-        calc = GPAW(self.filename, txt=None)
+        calc = GPAW(self.filename, txt='-')
         spin = soc_eigenstates(calc)
         esoc = spin.eigenvalues().T
         efsoc = spin.fermi_level
@@ -151,97 +191,21 @@ class Bands:
         self.bandstructure.reference_soc = efsoc
         return esoc, efsoc
 
-    def plot(self,
-             reference=0.0,
-             style=None,
-             ylim=None,
-             xtitle=None,
-             ytitle=None,
-             title=None,
-             label=None,
-             show=True,
-             fontsize1=24,
-             fontsize2=20,
-             vlines=[],
-             hlines=[]):
-
-        import matplotlib.pyplot as plt
-        import warnings
-        warnings.filterwarnings('ignore')
-
-        print('Preparing plot...')
-
-        if reference == "evac":
-            try:
-                ref = self.bandstructure.evac
-            except AttributeError:
-                ref = self.calculate_evac()
-            if not ytitle:
-                ytitle = r'$\mathrm{E-E_{vac}}$'
-        elif reference == "ef":
-            ref = self.bandstructure.reference
-            if not ytitle:
-                ytitle = r'$\mathrm{E-E_{F}}$'
-        elif isinstance(reference, float):
-            ref = reference
-
-        energies = self.get_energies() - ref
-        efermi = self.get_efermi() - ref
-
-        if not ylim:
-            ylim = [efermi - 4, efermi + 4]
-        if not style:
-            style = dict(
-                color='C1',
-                ls='-',
-                lw=1.5)
-
-        ax = plt.figure(figsize=(12, 9)).add_subplot(111)
-        kpts, specpts, labels = self.get_kpts_and_labels()
-        if label:
-            lbl = label
-        else:
-            lbl = self._basename
-
-        ax.plot(kpts, energies[0], **style, label=lbl)
-        for band in energies[1:]:
-            ax.plot(kpts, band, **style)
-        for spec in specpts[1:-1]:
-            ax.axvline(spec, color='#bbbbbb')
-        ax.set_xticklabels([lab.replace('G', r'$\Gamma$')
-                            for lab in labels], fontsize=fontsize2)
-
-        if not hlines:
-            ax.axhline(efermi, color='#bbbbbb', ls='--', lw=1.5)
-        else:
-            for val in hlines:
-                ax.axhline(val, color='#bbbbbb', ls='--', lw=1.5)
-
-        if title:
-            ax.set_title(title, fontsize=fontsize1)
-
-        ax.set_xlim([kpts[0], kpts[-1]])
-        ax.set_ylim(ylim)
-        ax.set_xlabel(xtitle, fontsize=fontsize1, labelpad=8)
-        ax.set_ylabel(ytitle, fontsize=fontsize1, labelpad=8)
-        ax.set_xticks(specpts)
-        plt.yticks(fontsize=fontsize2)
-        ax.xaxis.set_tick_params(width=3, length=10)
-        ax.yaxis.set_tick_params(width=3, length=10)
-        plt.setp(ax.spines.values(), linewidth=3)
-
-        if label:
-            plt.legend(loc="upper left", fontsize=fontsize2)
-        print('Done')
-
-        if show:
-            plt.show()
+    def plot(self, *args, **kwargs):
+        multiplot(self, *args, **kwargs)
 
     def dump_to_json(self, filename=None):
         from ase.io.jsonio import write_json
         if not filename:
             filename = f'{self._basename}.json'
-            write_json(filename, self.bandstructure)
+        dct = self.bandstructure.__dict__.copy()
+        try:
+            dct['path'] = dct.pop('_path')
+            dct['energies'] = dct.pop('_energies')
+            dct['reference'] = dct.pop('_reference')
+        except KeyError:
+            pass
+        write_json(filename, self.bandstructure.__dict__)
 
     def get_gap_and_edges(self, reference=0.0):
         en = self.get_energies()
@@ -260,3 +224,15 @@ class Bands:
         elif isinstance(reference, float):
             ref = reference
         return cbm - ref, vbm - ref, cbm - vbm
+
+    def get_lowest_transition(self):
+        import numpy as np
+        en_T = self.get_energies().T[0] - self.get_efermi()
+        dyn_gap = np.zeros(en_T.shape[0])
+        for i, en in enumerate(en_T):
+            lumo = en[en > 0].min()
+            homo = en[en < 0].max()
+            dyn_gap[i] = lumo - homo
+        return dyn_gap.min()
+
+
