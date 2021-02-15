@@ -290,7 +290,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         'txt': 'relax.txt',
         'occupations': {
             'name': 'fermi-dirac',
-            'width': 0.2},
+            'width': 0.02},
         'spinpol': True}
     calculator_gs = {'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
@@ -298,9 +298,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                      'basis': 'dzp',
                      'kpts': {'density': 12.0, 'gamma': True},
                      'occupations': {'name': 'fermi-dirac',
-                                     'width': 0.2},
-                     'convergence': {'bands': -3},
-                     'nbands': -10,
+                                     'width': 0.02},
+                     'convergence': {'bands': 'CBM+3.0'},
+                     'nbands': '200%',
                      'txt': 'gs.txt',
                      'spinpol': True}
     parameters['asr.gs@calculate'] = {
@@ -344,7 +344,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         'txt': 'relax.txt',
                         'occupations': {
                             'name': 'fermi-dirac',
-                            'width': 0.2},
+                            'width': 0.02},
                         'spinpol': True}
                     calculator_gs = {'name': 'gpaw',
                                      'mode': {'name': 'pw', 'ecut': 800},
@@ -352,9 +352,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                      'basis': 'dzp',
                                      'kpts': {'density': 12.0, 'gamma': True},
                                      'occupations': {'name': 'fermi-dirac',
-                                                     'width': 0.2},
-                                     'convergence': {'bands': -3},
-                                     'nbands': -10,
+                                                     'width': 0.02},
+                                     'convergence': {'bands': 'CBM+3.0'},
+                                     'nbands': '200%',
                                      'txt': 'gs.txt',
                                      'spinpol': True}
                     parameters['asr.gs@calculate'] = {
@@ -410,7 +410,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'txt': 'relax.txt',
                                 'occupations': {
                                     'name': 'fermi-dirac',
-                                    'width': 0.2},
+                                    'width': 0.02},
                                 'spinpol': True}
                             calculator_gs = {
                                 'name': 'gpaw',
@@ -424,10 +424,10 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                     'gamma': True},
                                 'occupations': {
                                     'name': 'fermi-dirac',
-                                    'width': 0.2},
+                                    'width': 0.02},
                                 'convergence': {
-                                    'bands': -3},
-                                'nbands': -10,
+                                    'bands': 'CBM+3.0'},
+                                'nbands': '200%',
                                 'txt': 'gs.txt',
                                 'spinpol': True}
                             parameters['asr.gs@calculate'] = {

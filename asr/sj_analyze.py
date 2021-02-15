@@ -24,12 +24,12 @@ def webpanel(result, row, key_descriptions):
         explained_keys.append(explained_key)
 
     formation_table_sum = table(result, 'Defect properties', [])
-    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description='Defect formation energy for the neutral defect wrt. standard states'),
+    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
         f'{result.eform[0][0]:.2f} eV']])
 
-    formation_table = table(result, 'Defect formation energy at VBM', [])
+    formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
-        formation_table['rows'].extend([[describe_entry(f'Charge state q = {element[1]:1d}', description=result.key_descriptions['eform']),
+        formation_table['rows'].extend([[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)', description=result.key_descriptions['eform']),
             f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
@@ -48,14 +48,14 @@ def webpanel(result, row, key_descriptions):
 
     transitions_table = matrixtable(transition_array,
                                     title='Transition',
-                                    columnlabels=[describe_entry('Charge transition level [eV]', description='SJ calculated transition level'),
-                                                  describe_entry('Relaxation correction [eV]', description='Correction due to ion relaxation')],
+                                    columnlabels=[describe_entry('Transition Energy [eV]', description='SJ calculated transition level'),
+                                                  describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
                                     rowlabels=transition_labels)
 
     panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
                      description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
                      columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.'), formation_table]],
+                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.')]],
                      plot_descriptions=[{'function': plot_charge_transitions,
                                          'filenames': ['sj_transitions.png']},
                                         {'function': plot_formation_energies,
@@ -152,8 +152,8 @@ class Result(ASRResult):
          webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    '../../unrelaxed.json',
-                   '../../defects.pristine_sc/results-asr.gs.json',
-                   '../../defects.pristine_sc/gs.gpw',
+                   # '../../defects.pristine_sc/results-asr.gs.json',
+                   # '../../defects.pristine_sc/gs.gpw',
                    'gs.gpw',
                    'results-asr.setup.defects.json'],
          resources='24:2h',
@@ -171,7 +171,8 @@ def main() -> Result:
         defectsystem))
 
     # get heat of formation
-    hof = get_heat_of_formation()
+    # hof = get_heat_of_formation()
+    hof = 1.
 
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions()
@@ -304,15 +305,24 @@ def get_pristine_band_edges() -> PristineResults:
     """
     Returns band edges and vaccum level for the host system.
     """
+    import numpy as np
     from asr.core import read_json
 
     print('INFO: extract pristine band edges.')
-    if Path('./../../defects.pristine_sc/results-asr.gs.json').is_file():
-        results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
-        _, calc = restart('gs.gpw', txt=None)
+    p = Path('.')
+    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+    pris = pristinelist[0]
+    if Path(pris / 'results-asr.gs.json').is_file():
+        results_pris = read_json(pris / 'results-asr.gs.json')
+        atoms, calc = restart('gs.gpw', txt=None)
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
-        evac = results_pris['evac']
+        if not np.sum(atoms.get_pbc()) == 2:
+            _, calc_pris = restart(pris / 'gs.gpw', txt=None)
+            evac = calc_pris.get_eigenvalues()[0]
+        else:
+            evac = results_pris['evac']
         # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
         # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
@@ -365,7 +375,11 @@ def calculate_neutral_formation_energy():
     from ase.db import connect
 
     results_def = read_json('./results-asr.gs.json')
-    results_pris = read_json('./../../defects.pristine_sc/results-asr.gs.json')
+    p = Path('.')
+    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+    pris = pristinelist[0]
+    results_pris = read_json(pris / 'results-asr.gs.json')
 
     eform = results_def['etot'] - results_pris['etot']
 
@@ -389,13 +403,17 @@ def get_transition_level(transition, charge) -> TransitionResults:
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
+    import numpy as np
     # extrac HOMO or LUMO
     # HOMO
     charge = str(charge)
     if transition[0] > transition[1]:
-        _, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
+        if not np.sum(atoms.get_pbc()) == 2:
+            e_ref = calc.get_eigenvalues()[0]
+        else:
+            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
@@ -405,9 +423,12 @@ def get_transition_level(transition, charge) -> TransitionResults:
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
-        _, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
+        if not np.sum(atoms.get_pbc()) == 2:
+            e_ref = calc.get_eigenvalues()[0]
+        else:
+            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
