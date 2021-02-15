@@ -130,10 +130,10 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
     from ase.io import read
     atoms = read('structure.json')
     if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc, eps=1e-2)
     else:
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc)
+                                   pbc=atoms.pbc, eps=1e-2)
     parms = {
         'basis': 'dzp',
         'txt': 'bs.txt',

@@ -661,7 +661,7 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
         help="Path to the database file")
 @option('--overwrite', type=bool) 
 
-def main(cells_file: str="moirecells.json", solution: int=-1, tol: float=1.0e-10, stress_opt_method: str="exact", database : str='/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db', overwrite: bool = False):
+def main(cells_file: str="moirecells.json", solution: int=-1, tol: float=1.0e-10, stress_opt_method: str="approx", database : str='/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db', overwrite: bool = False):
 
     with open(cells_file, "r") as f:
         dct = read_json(cells_file) 

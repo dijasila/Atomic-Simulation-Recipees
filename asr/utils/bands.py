@@ -85,11 +85,14 @@ def multiplot(*toplot,
         allfermi.append(efermi)
         try:
             lbl = labels[index]
+        except (TypeError, IndexError):
+            lbl = item._basename
+        try:
             style = styles[index]
         except (TypeError, IndexError):
             color = colors[index]
-            lbl = item._basename
             style = dict(ls='-', color=color, lw=1.5)
+
         ax.plot(kpts, energies[0], **style, label=lbl)
         for band in energies[1:]:
             ax.plot(kpts, band, **style)
@@ -112,7 +115,7 @@ def multiplot(*toplot,
     ax.yaxis.set_tick_params(width=3, length=10)
     plt.setp(ax.spines.values(), linewidth=3)
 
-    plt.legend(loc="upper left", fontsize=fontsize2)
+    plt.legend(loc="best", fontsize=fontsize2)
 
     if show:
         plt.show()
@@ -205,7 +208,7 @@ class Bands:
             dct['reference'] = dct.pop('_reference')
         except KeyError:
             pass
-        write_json(filename, self.bandstructure.__dict__)
+        write_json(filename, dct)
 
     def get_gap_and_edges(self, reference=0.0):
         en = self.get_energies()
