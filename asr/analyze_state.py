@@ -202,7 +202,7 @@ def calculate(state: int = 0,
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     if get_gapstates:
         print('INFO: evaluate gapstates ...')
-        states, states_above, states_below, eref = return_gapstates(calc, spin=0)
+        states, states_above, states_below, eref = return_gapstates_fix(calc, spin=0)
     elif not get_gapstates:
         eref = read_json('results-asr.gs.json')['evac']
         states = [state]
@@ -632,8 +632,9 @@ def main(mapping: bool = True,
     _, calc = restart('gs.gpw', txt=None)
 
     # get vacuum level to reference energies
-    res_def = read_json('results-asr.gs.json')
-    evac = res_def.evac
+    # res_def = read_json('results-asr.gs.json')
+    # evac = res_def.evac
+    evac = calc.get_electrostatic_potential()[0, 0, 0]
 
     symmetry_results = []
     for wf_file in cubefiles:

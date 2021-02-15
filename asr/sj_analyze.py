@@ -29,7 +29,7 @@ def webpanel(result, row, key_descriptions):
 
     formation_table = table(result, 'Defect formation energy at VBM', [])
     for element in result.eform:
-        formation_table['rows'].extend([[describe_entry(f'Charge state q={element[1]:1d}', description=result.key_descriptions['eform']),
+        formation_table['rows'].extend([[describe_entry(f'Charge state q = {element[1]:1d}', description=result.key_descriptions['eform']),
             f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
     pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),

@@ -261,7 +261,10 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
 
 
 def set_initial_magnetic_moments(atoms):
-    atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
+    array = np.ones(len(atoms), float)
+    for i in range(len(array)):
+        array[i] = 0.8
+    atoms.set_initial_magnetic_moments(array)
 
 
 @prepare_result
@@ -366,13 +369,14 @@ def main(atoms: Atoms,
 
     """
     from ase.calculators.calculator import get_calculator_class
+    from gpaw import MixerDif
 
     if tmp_atoms is not None:
         atoms = tmp_atoms
 
     # Make our own copy
     atoms = atoms.copy()
-    if not atoms.has('initial_magmoms'):
+    if not atoms.has('initial_magmoms') or calculator.get('spinpol') == True:
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
@@ -392,7 +396,7 @@ def main(atoms: Atoms,
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = Calculator(**calculator)
+    calc = Calculator(**calculator, mixer=MixerDif())
     # Relax the structure
     atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                   fixcell=fixcell,
