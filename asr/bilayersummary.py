@@ -68,32 +68,33 @@ def scatter_energies(row, fname):
     ns = row.data.get('results-asr.bilayersummary.json')['numberings']
     import matplotlib.pyplot as plt
     data = np.array(list(d.values()))
+    fig, ax = plt.subplots(figsize=(6,4))
 
     fs = 12
-    plt.scatter(data[:, 1], data[:, 0])
+    ax.scatter(data[:, 1], data[:, 0])
     for desc, dat in d.items():
-        plt.gca().annotate(ns[desc], (dat[1], dat[0] + 0.75e-4), va="bottom", ha="center",
+        ax.annotate(ns[desc], (dat[1], dat[0] + 0.75e-4), va="bottom", ha="center",
                            fontsize=fs)
-    (y1, y2) = plt.ylim()
-    plt.ylim((y1, y2 + 3e-4))
+    (y1, y2) = ax.get_ylim()
+    ax.set_ylim((y1, y2 + 3e-4))
 
     maxe = np.max(data[:, 0])
     cutoff = maxe - 2e-3
-    plt.gca().axhline(cutoff, color="black",
+    ax.axhline(cutoff, color="black",
                       linestyle="dashed", linewidth=2)
     xmin, xmax = plt.xlim()
     deltax = xmax - xmin
-    plt.gca().annotate('Stability threshold', (xmax - 0.2 * deltax, cutoff),
+    ax.annotate('Stability threshold', (xmax - 0.2 * deltax, cutoff),
                        va='bottom', ha='center', fontsize=fs)
     if y2 > 0.15:
         cutoff2 = 0.15
-        plt.gca().axhline(cutoff2)
-        plt.gca().annotate('Exfoliability threshold', (xmax - 0.4 * deltax, cutoff2),
+        ax.axhline(cutoff2)
+        ax.annotate('Exfoliability threshold', (xmax - 0.4 * deltax, cutoff2),
                            va='bottom', ha='center', fontsize=fs)
     
 
-    plt.xlabel(r'Interlayer distance [Å]', fontsize=fs)
-    plt.ylabel(r'Binding energy [eV/Å$^2$]', fontsize=fs)
+    ax.set_xlabel(r'Interlayer distance [Å]', fontsize=fs)
+    ax.set_ylabel(r'Binding energy [eV/Å$^2$]', fontsize=fs)
     # plt.legend()
     plt.tight_layout()
     plt.savefig(fname)
@@ -135,7 +136,7 @@ def plot_gaps(row, fname):
     d = row.data.get('results-asr.bilayersummary.json')
 
     fs = 12
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6,4))
     numbers = d['numberings']
     data = []
     for desc, numb in d['numberings'].items():
@@ -162,6 +163,7 @@ def plot_gaps(row, fname):
     ax.set_xlabel("Stacking configuration", fontsize=fs)
     ax.set_ylabel("Band gap (PBE) [eV]", fontsize=fs)
     # ax.legend()
+    plt.tight_layout()
     plt.savefig(fname)
 
 
