@@ -28,6 +28,7 @@ def plot_scs_bs(title: str = ""):
     assert Path("bs_scs.gpw").is_file()
 
     calc = GPAW('bs_scs.gpw', txt=None)
+    ef = calc.get_fermi_level()
     bs = calc.band_structure()
 
     ax = plt.figure(figsize=(14,10)).add_subplot(111)
@@ -46,6 +47,7 @@ def plot_scs_bs(title: str = ""):
     ax.axis(xmin=0, xmax=xcoords[-1], ymin=-8, ymax=-1.5)
 
     evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
+    ef = ef - evac
     for e in bs.energies[0].T:
         things = ax.plot(xcoords, e - evac, c='b')
     ax.set_title(title, fontsize = 32)
@@ -55,7 +57,9 @@ def plot_scs_bs(title: str = ""):
     plt.setp(ax.spines.values(), linewidth=3)
     plt.xticks(size=32)
     plt.yticks(size=32)
-    plt.ylim([-7, -2.2])
+
+
+    plt.ylim([ef - 5 , ef + 5])
     plt.tight_layout()
     plt.show()
 
