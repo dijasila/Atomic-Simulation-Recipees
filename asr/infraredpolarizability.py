@@ -1,19 +1,37 @@
 """Infrared polarizability."""
 import typing
 from asr.core import command, option, read_json, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, href, make_panel_description, describe_entry)
 
 import numpy as np
 
+panel_description = make_panel_description(
+    """The frequency-dependent polarisability in the infrared (IR) frequency regime
+calculated from a Lorentz oscillator equation involving the optical Gamma-point
+phonons and atomic Born charges. The contribution from electronic interband
+transitions is added, but is essentially constant for frequencies much smaller
+than the direct band gap.
+""",
+    articles=[
+        href("""M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
+        in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
+        J. Phys. Chem. C 124 11609 (2020)""",
+             'https://doi.org/10.1021/acs.jpcc.0c01635'),
+    ]
+
+)
+
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
 
     opt = table(
         row, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"], key_descriptions
     )
 
     panel = {
-        "title": "Infrared polarizability (RPA)",
+        "title": describe_entry("Infrared polarizability (RPA)",
+                                panel_description),
         "columns": [[fig("infrax.png"), fig("infraz.png")], [fig("infray.png"), opt]],
         "plot_descriptions": [
             {

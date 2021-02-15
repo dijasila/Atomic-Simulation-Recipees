@@ -1,0 +1,25 @@
+{% extends 'asr/database/templates/layout.html' %}
+
+{% block content %}
+
+<div class="container">
+  <h1>Summary of raw data for {{ filename }}</h1>
+
+  <a href="/{{ project_name }}/row/{{ uid }}/data/{{ filename }}/json">Link to raw JSON data.</a><br />
+
+  {% for key, description in result.key_descriptions.items() %}
+  {% if key in result %}
+  <b>{{ description }}</b> (key={{ key }}):<pre>{{ result[key] }}</pre>
+  <br>
+  {% endif %}
+  {% endfor %}
+
+  {% for key, description in result.key_descriptions.items()|sort %}
+  {% if key not in result %}
+  <b>{{ description }}</b> (key={{ key }}):<pre>{{ None }}</pre>
+  <br>
+  {% endif %}
+  {% endfor %}
+
+</div>
+{% endblock content %}

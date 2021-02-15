@@ -2,8 +2,12 @@
 from collections import Counter
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+import functools
 
 from asr.core import command, argument, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, describe_entry, dl, br, make_panel_description
+)
 
 from ase.db import connect
 from ase.io import read
@@ -13,33 +17,51 @@ from ase.db.row import AtomsRow
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+panel_description = make_panel_description(
+    """The heat of formation (ΔH) is the internal energy of a compound relative to
+the standard states of the constituent elements at T=0 K.  The energy above the
+convex hull is the internal energy relative to the most stable (possibly mixed)
+phase of the constituent elements at T=0 K.""",
+    articles=['C2DB'],
+)
 
-    caption = """
-    The convex hull describes stability
-    with respect to other phases."""
+
+def webpanel(result, row, key_descriptions):
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png', caption=caption)],
-                         [hulltable1] + hulltables],
-             'plot_descriptions': [{'function': plot,
-                                    'filenames': ['convex-hull.png']}],
-             'sort': 1}
+    panel = {
+        'title': describe_entry(
+            'Thermodynamic stability', panel_description),
+        'columns': [[fig('convex-hull.png')],
+                    [hulltable1] + hulltables],
+        'plot_descriptions': [{'function':
+                               functools.partial(plot, thisrow=row),
+                               'filenames': ['convex-hull.png']}],
+        'sort': 1,
+    }
 
     thermostab = row.get('thermodynamic_stability_level')
     stabilities = {1: 'low', 2: 'medium', 3: 'high'}
     high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'Heat of formation < 0.2 eV/atom'
-    low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[thermostab].upper())]
+    medium = 'convex hull + 0.2 eV/atom < Heat of formation < 0 eV/atom'
+    low = '0.0 eV/atom < Heat of formation'
+    thermodynamic = describe_entry(
+        'Thermodynamic',
+        'Classifier for the thermodynamic stability of a material.'
+        + br
+        + dl(
+            [
+                ['LOW', low],
+                ['MEDIUM', medium],
+                ['HIGH', high],
+            ]
+        )
+    )
+    row = [thermodynamic,
+           stabilities[thermostab].upper()]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -236,7 +258,7 @@ def main(databases: List[str]) -> Result:
 
     results['ehull'] = ehull
 
-    if hform >= 0.2:
+    if hform > 0:
         thermodynamic_stability = 1
     elif hform is None or ehull is None:
         thermodynamic_stability = None
@@ -286,7 +308,7 @@ def select_references(db, symbols):
     return list(refs.values())
 
 
-def plot(row, fname):
+def plot(row, fname, thisrow):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
 
@@ -344,7 +366,7 @@ def plot(row, fname):
 
         # Circle this material
         xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
+        ax.plot([xt], [row.hform], 'o', color='C1', label=f'{thisrow.formula}')
         ymin = e.min()
 
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
@@ -365,7 +387,7 @@ def plot(row, fname):
 
         ax.plot([bfrac + cfrac / 2],
                 [cfrac * 3**0.5 / 2],
-                'o', color='C1', label='This material')
+                'o', color='C1', label=f'{thisrow.formula}')
         plt.legend(loc='upper left')
         plt.axis('off')
 

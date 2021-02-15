@@ -266,7 +266,7 @@ class ASRCalculator(Calculator):
 
     def _get_magmoms(self):
         """Get atomic magnetic moments."""
-        return np.zeros((len(self.atoms), 3), float)
+        return np.ones(len(self.atoms), float)
 
     def _get_potential_energy(self):
         """Get potential energy."""

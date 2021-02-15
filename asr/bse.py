@@ -1,7 +1,22 @@
 """Bethe Salpeter absorption spectrum."""
-from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from click import Choice
 import typing
+
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, make_panel_description, describe_entry)
+
+
+panel_description = make_panel_description(
+    """The optical absorption calculated from the Bethe-Salpeter Equation
+(BSE). The BSE 2-particle Hamiltonian is constructed using the wave functions
+from a DFT calculation with the direct band gap adjusted to match the direct
+band gap from a G0W0 calculation. Spin orbit interactions are included.  The
+result of the random phase approximation (RPA) with the same direct band gap
+adjustment as used for BSE but without spin-orbit interactions, is also shown.
+""",
+    articles=['C2DB'],
+)
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -31,7 +46,7 @@ def get_kpts_size(atoms, kptdensity):
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
               mode: str = 'BSE', bandfactor: int = 6,
               nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
     """Calculate BSE polarizability."""
@@ -54,7 +69,7 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
         truncation = None
     elif ND == 2:
         eta = 0.05
-        kpts = get_kpts_size(atoms=atoms, kptdensity=20)
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
         truncation = '2D'
 
     else:
@@ -94,16 +109,13 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
 
     nv_s = [np.max(nv_s), np.max(nv_s)]
     nc_s = [np.max(nc_s), np.max(nc_s)]
-    print('nv_s, nc_s', nv_s, nc_s)
+
     valence_bands = []
     conduction_bands = []
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-
-    print(valence_bands)
-    print(conduction_bands)
 
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
@@ -198,11 +210,14 @@ def absorption(row, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
+    data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
-    absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
-        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
+        sigma_w *= wbse_w * alpha / Ha / Bohr
+        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    else:
+        absbse_w = 4 * np.pi * data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
@@ -210,9 +225,10 @@ def absorption(row, filename, direction='x'):
     data = row.data.get('results-asr.polarizability.json')
     if data:
         wrpa_w = data['frequencies'] + delta_rpa
-        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+        sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
         if dim == 2:
-            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+            sigma_w *= wrpa_w * alpha / Ha / Bohr
+        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
         ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
         ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                    absrpa_w[wrpa_w < xmax]])) * 1.05
@@ -239,7 +255,6 @@ def absorption(row, filename, direction='x'):
 def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
-    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
@@ -251,7 +266,8 @@ def webpanel(result, row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE and RPA)',
+        panel = {'title': describe_entry('Optical absorption (BSE and RPA)',
+                                         panel_description),
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,

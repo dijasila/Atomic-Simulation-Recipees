@@ -1,5 +1,5 @@
 from pathlib import Path
-from asr.core import read_file, decode_json, dct_to_result, write_file
+from asr.core import read_file, decode_json, decode_result, write_file
 from asr.core.results import ModuleNameIsCorrupt, UnknownDataFormat
 import copy
 from typing import List
@@ -49,10 +49,10 @@ def _fix_folders(folders):
             dct = decode_json(text)
             filename = path.name
             try:
-                dct_to_result(dct)
+                decode_result(dct)
             except ModuleNameIsCorrupt:
                 dct = fix_object_id(filename, dct)
-                result = dct_to_result(dct)
+                result = decode_result(dct)
                 print(f'Fixing bad file: {filename}')
                 json_string = result.format_as('json')
                 write_file(path, json_string)
@@ -62,7 +62,7 @@ def _fix_folders(folders):
                 recipename = extract_recipe_from_filename(filename)
                 dct['__asr_name__'] = recipename
                 try:
-                    result = dct_to_result(dct)
+                    result = decode_result(dct)
                     print(f'Fixing missing __asr_name__ in file: {filename}')
                     json_string = result.format_as('json')
                     write_file(path, json_string)

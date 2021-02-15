@@ -1,6 +1,14 @@
 """Electronic band structures."""
 from typing import Union
 from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
+from asr.database.browser import fig, make_panel_description, describe_entry
+
+panel_description = make_panel_description(
+    """The band structure with spin-orbit interactions is shown with the
+expectation value of S_i (where i=z for non-magnetic materials and otherwise is
+the magnetic easy axis) indicated by the color code.""",
+    articles=['C2DB'],
+)
 
 
 @command('asr.bandstructure',
@@ -365,7 +373,6 @@ def bs_pbe(row,
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
-    ax.set_xlabel('$k$-points')
     plt.legend(loc='upper right')
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
@@ -386,7 +393,6 @@ def bs_pbe(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -398,9 +404,13 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         [fig('bz-with-gaps.png')]],
+    panel = {'title': describe_entry('Electronic band structure (PBE)',
+                                     panel_description),
+             'columns': [
+                 [
+                     fig('pbe-bs.png', link='pbe-bs.html'),
+                 ],
+                 [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': bs_pbe,
                                     'filenames': ['pbe-bs.png']},
                                    {'function': bs_pbe_html,
