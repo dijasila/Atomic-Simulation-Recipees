@@ -221,7 +221,8 @@ def main(strain_percent: float = 1.0) -> Result:
             folder = get_strained_folder_name(sign * strain_percent, i, j)
             with chdir(folder):
                 if not relax.done:
-                    relax()
+                    unrelaxed = read('unrelaxed.json')
+                    relax(atoms=unrelaxed)
 
                 if not computemf.done:
                     computemf()
