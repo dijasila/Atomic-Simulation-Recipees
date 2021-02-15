@@ -26,13 +26,14 @@ def plot_scs_bs(title: str = ""):
     from gpaw import GPAW
     from pathlib import Path
     assert Path("bs_scs.gpw").is_file()
-    
-    
+
     calc = GPAW('bs_scs.gpw', txt=None)
     bs = calc.band_structure()
+
+    ax = plt.figure(figsize=(14,10)).add_subplot(111)
+
     xcoords, label_xcoords, orig_labels = bs.get_labels()
     labels = [r'$\Gamma$' if name == 'G' else name for name in orig_labels]
-    labels[1] = 'M'
     ax.set_xticks(label_xcoords)
     ax.set_xticklabels(labels, fontsize=40)
     ax.set_ylabel('$E - E_\mathrm{vac}$ [eV]', fontsize=34)
@@ -62,13 +63,14 @@ def plot_scs_bs(title: str = ""):
 
 
 
-
-@command("asr.scs@calculate_gs")
+@command(module='asr.scs',
+        creates=['gs_scs.gpw'],
+        requires=['structure.json'])
 @option("--structure", type = str)
 @option("--kpts", type = float, help = "In-plane kpoint density")
 @option("--calculator", type = DictStr(), help = "Calculator params.")
 def calculate_gs(structure: str = "structure.json",
-        kpts = 10,
+        kpts = 12,
         calculator: dict = {
         'mode': 'lcao',
         'xc': 'PBE',
@@ -111,13 +113,13 @@ def calculate_gs(structure: str = "structure.json",
     atoms.calc.write('gs_scs.gpw', "all")
 
 
-@command('asr.scs@calculate_bs',
+@command(module='asr.scs',
          requires=['gs_scs.gpw'],
          creates=['bs_scs.gpw'],
          dependencies=['asr.scs@calculate_gs'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
-def calculate_bs(kptpath: Union[str, None], npoints: int = 400):
+def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
     "Calculate electronic band structure with the self-consistent scissors corrections"
     from gpaw import GPAW
     from gpaw.lcao.scissors import Scissors
