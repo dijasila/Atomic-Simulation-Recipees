@@ -1,5 +1,6 @@
-import numpy as np
 import json
+import numpy as np
+from typing import Union
 from ase.io import read, write
 from asr.core import command, option, DictStr, ASRResult, prepare_result
 
@@ -16,16 +17,57 @@ def get_kpts_size(atoms, density):
     return kpts
 
 
+@command("asr.plot_scs_bs")
+@option("--title", type = str, help = "Title for the band structure plot")
+def plot_scs_bs(title: str = ""):
+    """ Temporary bs visualization tool until we settle on result format """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from gpaw import GPAW
+    from pathlib import Path
+    assert Path("bs_scs.gpw").is_file()
+    
+    
+    calc = GPAW('bs_scs.gpw', txt=None)
+    bs = calc.band_structure()
+    xcoords, label_xcoords, orig_labels = bs.get_labels()
+    labels = [r'$\Gamma$' if name == 'G' else name for name in orig_labels]
+    labels[1] = 'M'
+    ax.set_xticks(label_xcoords)
+    ax.set_xticklabels(labels, fontsize=40)
+    ax.set_ylabel('$E - E_\mathrm{vac}$ [eV]', fontsize=34)
+    ax.axis(xmin=0, xmax=xcoords[-1], ymin=-8, ymax=-2)
+    for x in label_xcoords[1:-1]:
+        ax.axvline(x, color='0.5')
+    ax.set_xticks(label_xcoords)
+    ax.set_xticklabels(labels, fontsize=40)
+    ax.set_ylabel('$E - E_\mathrm{vac}$ [eV]', fontsize=34)
+    ax.axis(xmin=0, xmax=xcoords[-1], ymin=-8, ymax=-1.5)
+
+    evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
+    for e in bs.energies[0].T:
+        things = ax.plot(xcoords, e - evac, c='b')
+    ax.set_title(title, fontsize = 32)
+    ax.legend(fontsize = 20)
+    ax.xaxis.set_tick_params(width=3, length=15)
+    ax.yaxis.set_tick_params(width=3, length=15)
+    plt.setp(ax.spines.values(), linewidth=3)
+    plt.xticks(size=32)
+    plt.yticks(size=32)
+    plt.ylim([-7, -2.2])
+    plt.tight_layout()
+    plt.show()
+
+
+
 
 
 
 @command("asr.scs@calculate_gs")
 @option("--structure", type = str)
-@option("--shifts_file", type = str)
 @option("--kpts", type = float, help = "In-plane kpoint density")
 @option("--calculator", type = DictStr(), help = "Calculator params.")
 def calculate_gs(structure: str = "structure.json",
-        shifts_file: str = "shifts.json",
         kpts = 10,
         calculator: dict = {
         'mode': 'lcao',
@@ -48,7 +90,7 @@ def calculate_gs(structure: str = "structure.json",
     atoms = read(structure)
     kpts = get_kpts_size(atoms, kpts)
 
-    shifts = json.load(open(shifts_file, 'r'))
+    shifts = json.load(open("shifts.json", 'r'))
     shift_v1 = shifts['shift_v1']
     shift_c1 = shifts['shift_c1']
     shift_v2 = shifts['shift_v2']
@@ -66,5 +108,47 @@ def calculate_gs(structure: str = "structure.json",
     calc = GPAW(**calculator)
     atoms.calc = calc
     atoms.get_potential_energy()
-    atoms.calc.write('gs.gpw')
+    atoms.calc.write('gs_scs.gpw', "all")
+
+
+@command('asr.scs@calculate_bs',
+         requires=['gs_scs.gpw'],
+         creates=['bs_scs.gpw'],
+         dependencies=['asr.scs@calculate_gs'])
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints', type=int)
+def calculate_bs(kptpath: Union[str, None], npoints: int = 400):
+    "Calculate electronic band structure with the self-consistent scissors corrections"
+    from gpaw import GPAW
+    from gpaw.lcao.scissors import Scissors
+    from ase.io import read
+    atoms = read('structure.json')
+    if kptpath is None:
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
+    else:
+        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                                   pbc=atoms.pbc)
+    parms = {
+        'basis': 'dzp',
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'kpts': path,
+        'symmetry': 'off'}
+    shifts = json.load(open("shifts.json", 'r'))
+    shift_v1 = shifts['shift_v1']
+    shift_c1 = shifts['shift_c1']
+    shift_v2 = shifts['shift_v2']
+    shift_c2 = shifts['shift_c2']
+
+    tags = atoms.get_tags()
+    natoms = len(atoms)
+    natoms_l1 = np.extract(tags == 1, tags).shape[0]
+    scs = Scissors([(shift_v1, shift_c1, natoms_l1),
+                    (shift_v2, shift_c2, natoms - natoms_l1)])
+    parms.update({'eigensolver': scs})
+
+    calc = GPAW('gs_scs.gpw', **parms)
+    calc.get_potential_energy()
+    calc.write('bs_scs.gpw', 'all')
+
 
