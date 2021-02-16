@@ -61,7 +61,7 @@ def main(state: int = 0,
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     if get_gapstates:
         print('INFO: evaluate gapstates.')
-        pass
+        states, above_below, eref = return_gapstates(calc)
     elif not get_gapstates:
         if np.sum(atoms.get_pbc()) == 2:
             eref = read_json('results-asr.gs.json')['evac']
@@ -93,6 +93,65 @@ def main(state: int = 0,
     return Result.fromdata(
         wfs=wfs_results,
         above_below=above_below)
+
+
+def return_gapstates(calc):
+    """Evaluate states within the pristine bandgap and return bandindices.
+
+    This function compares a defect calculation to a pristine one and
+    evaluates the gap states by aligning semi-core states of pristine and
+    defect system and afterwards comparing their eigenvalues. Note, that this
+    function only works for defect systems where the folder structure has
+    been created with asr.setup.defects!"""
+    import numpy as np
+    from asr.core import read_json
+
+    try:
+        pris_folder = list(Path('.').glob('../../defects.pristine_sc*'))[0]
+        _, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
+        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        res_def = read_json('results-asr.gs.json')
+    except FileNotFoundError:
+        print('ERROR: does not find pristine gs, pristine results, or defect'
+              ' results. Did you run setup.defects and calculate the ground'
+              ' state for defect and pristine system?')
+
+    # for 2D systems, get pristine vacuum level
+    if np.sum(calc.get_atoms().get_pbc()) == 2:
+        eref_pris = res_pris['evac']
+    # for 3D systems, set reference to zero (vacuum level doesn't make sense)
+    else:
+        eref_pris = 0
+
+    # evaluate pristine VBM and CBM
+    vbm = res_pris['vbm'] - eref_pris
+    cmb = res_pris['cbm'] - eref_pris
+
+    # reference pristine eigenvalues, get defect eigenvalues, align lowest
+    # lying state of defect and pristine system
+    es_pris = calc_pris.get_eigenvalues() - eref_pris
+    es_def = calc.get_eigenvalues()
+    dif = es_pris[0] - es_def[0]
+    es_def = es_def + dif
+    ef_def = calc.get_fermi_level() + dif
+
+    # evaluate whether there are states above or below the fermi level
+    # and within the bandgap
+    above = False
+    below = False
+    for state in es_def:
+        if state < cbm and state > vbm and state > ef_def:
+            above = True
+        elif state < cbm and state > vbm and state < ef_def:
+            below = True
+    above_below = (above, below)
+
+    # evaluate states within the gap
+    statelist = []
+    [statelist.append(i) for i, state in enumerate(es_def) if (
+        state < cbm and state > vbm)]
+
+    return statelist, above_below, dif
 
 
 if __name__ == '__main__':
