@@ -56,12 +56,15 @@ def main(state: int = 0,
     from ase.io import write
     from asr.core import read_json
 
+    # read in converged gs.gpw file and run fixed density calculation
     print('INFO: run fixed density calculation.')
     atoms, calc = restart('gs.gpw', txt='get_wfs.txt')
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
+    # evaluate states in the gap (if '--get-gapstates' is active)
     if get_gapstates:
         print('INFO: evaluate gapstates.')
         states, above_below, eref = return_gapstates(calc)
+    # get energy reference and convert given input state to correct format
     elif not get_gapstates:
         if np.sum(atoms.get_pbc()) == 2:
             eref = read_json('results-asr.gs.json')['evac']
@@ -70,6 +73,8 @@ def main(state: int = 0,
         states = [state]
         above_below = (None, None)
 
+    # loop over all states and write the wavefunctions to file,
+    # set up WaveFunctionResults
     wfs_results = []
     for state in states:
         wf = calc.get_pseudo_wave_function(band=state, spin=0)
