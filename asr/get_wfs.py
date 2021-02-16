@@ -1,25 +1,21 @@
-from ase.io import read, write
 from asr.core import command, option, ASRResult, prepare_result
-from gpaw import GPAW, restart
-from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
 import typing
 import numpy as np
-from pathlib import Path
-from ase import Atoms
 
 
 @prepare_result
 class WaveFunctionResult(ASRResult):
     """Container for results of specific wavefunction for one spin
     channel."""
-    state = int
-    spin = int
-    energy = float
+    state: int
+    spin: int
+    energy: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         state='State index.',
         spin='Spin index (0 or 1).',
         energy='Energy of the state (ref. to the vacuum level in 2D) [eV].')
+
 
 @prepare_result
 class Result(ASRResult):
@@ -56,8 +52,9 @@ def main(state: int = 0,
     be evaluated with the option "--get-gapstates". Note, that when
     "--get-gapstates" is given, "--state" will be ignored.
     """
-    import numpy as np
     from gpaw import restart
+    from ase.io import write
+    from asr.core import read_json
 
     print('INFO: run fixed density calculation.')
     atoms, calc = restart('gs.gpw', txt='get_wfs.txt')
@@ -73,13 +70,10 @@ def main(state: int = 0,
         states = [state]
         above_below = (None, None)
 
-    energies_0 = []
-    energies_1 = []
     wfs_results = []
     for state in states:
-        wf = calc.get_pseudo_wave_function(band=band, spin=0)
+        wf = calc.get_pseudo_wave_function(band=state, spin=0)
         energy = calc.get_potential_energy() + eref
-        energies_0.append(energy)
         fname = f'wf.{state}_0.cube'
         write(fname, atoms, data=wf)
         wfs_results.append(WaveFunctionResult.fromdata(
@@ -87,9 +81,8 @@ def main(state: int = 0,
             spin=0,
             energy=energy))
         if calc.get_number_of_spins() == 2:
-            wf = calc.get_pseudo_wave_function(band=band, spin=1)
+            wf = calc.get_pseudo_wave_function(band=state, spin=1)
             energy = calc.get_potential_energy() + eref
-            energies_1.append(energy)
             fname = f'wf.{state}_1.cube'
             write(fname, atoms, data=wf)
             wfs_results.append(WaveFunctionResult.fromdata(
@@ -100,3 +93,7 @@ def main(state: int = 0,
     return Result.fromdata(
         wfs=wfs_results,
         above_below=above_below)
+
+
+if __name__ == '__main__':
+    main.cli()
