@@ -454,7 +454,7 @@ def get_mapped_structure():
         indexlist = compare_structures(artificial, ref_struc)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
-        indexlist = indexlist_cut_atoms(ref_struc, threshold)
+        indexlist = indexlist_cut_atoms(ref_strue, threshold)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
         # if is_vacancy(defect):
@@ -625,7 +625,8 @@ def main(mapping: bool = True,
     cubefiles = Path('.').glob('*.cube')
 
     print('spin  band     norm    normcut     best    ' +
-          ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
+          ''.join(f'{x:8.3s, pris_struc}' for x in checker.group.symmetries) + 'error')
+    irint(reference)
 
     labels_up = []
     labels_down = []

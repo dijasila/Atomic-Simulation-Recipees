@@ -52,10 +52,7 @@ class Result(ASRResult):
         pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
         defect_name='Name of the defect ({type}_{position})',
-        symmetries='List of SymmetryResult objects for all states.',
-        hyperfine='List of HyperfineResult objects for all atoms.',
-        gfactors='List of GyromagneticResult objects for each atom species.',
-        pristine='Container for pristine band gap results.'
+        symmetries='List of SymmetryResult objects for all states.'
     )
 
     # formats = {'ase_webpanel': webpanel}
@@ -114,7 +111,7 @@ def main(mapping: bool = False,
 
     # symmetry analysis
     checker = SymmetryChecker(point_group, center, radius=radius)
-    cubefiles = defect.glob('*.cube')
+    cubefiles = list(defect.glob('*.cube'))
     if len(cubefiles) == 0:
         raise FileNotFoundError('WARNING: no cube files available in this '
                                 'folder!')
@@ -193,7 +190,7 @@ def find_wf_result(state, spin):
     res = read_json('results-asr.get_wfs.json')
     wfs = res['wfs']
     for wf in wfs:
-        if wf['state'] == state and wf['spin'] == spin:
+        if int(wf['state']) == int(state) and int(wf['spin']) == int(spin):
             return wf
 
     print('ERROR: wf result to given wavefunction file not found! Make sure that '
@@ -207,6 +204,7 @@ def find_wf_result(state, spin):
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
     threshold = 0.99
+    print(primitive)
     translation = return_defect_coordinates(structure, unrelaxed, primitive,
                                             pristine, defect)
     rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
@@ -309,6 +307,7 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     of atoms is not correct here. It is done in the mapping functions.
     """
     reference = primitive.copy()
+    print(reference)
     N = get_supercell_shape(primitive, pristine)
     reference = reference.repeat((N, N, 1))
     cell = reference.get_cell()
@@ -430,4 +429,6 @@ def check_and_return_input():
     except FileNotFoundError:
         print('ERROR: primitive unrelaxed structure not available!')
 
-    return struc, unrel, pris_struc, prim_unrel
+    print(pris_struc, struc, unrel, prim_unrel)
+
+    return struc, unrel, prim_unrel, pris_struc
