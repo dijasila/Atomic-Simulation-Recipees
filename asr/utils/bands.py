@@ -28,6 +28,7 @@ def multiplot(*toplot,
               styles=None,
               show=True,
               fermiline=True,
+              customticks=None,
               fontsize1=24,
               fontsize2=20):
     import matplotlib.pyplot as plt
@@ -61,6 +62,8 @@ def multiplot(*toplot,
     kpts, specpts, lbls = items[0].get_kpts_and_labels()
     for spec in specpts[1:-1]:
         ax.axvline(spec, color='#bbbbbb')
+    if customticks:
+        lbls=list(customticks)
     ticks = [lab.replace('G', r'$\Gamma$') for lab in lbls]
     ax.set_xticklabels(ticks, fontsize=fontsize2)
     ax.set_xticks(specpts)
@@ -221,7 +224,8 @@ class Bands:
             try:
                 ref = self.bandstructure.evac
             except AttributeError:
-                ref = self.calculate_evac()
+                print('you have to calculate the vacuum level first!')
+                return 0
         elif reference == 'ef':
             ref = self.bandstructure.reference
         elif isinstance(reference, float):
