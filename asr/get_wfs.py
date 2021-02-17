@@ -1,6 +1,8 @@
-from asr.core import command, option, ASRResult, prepare_result
 import typing
 import numpy as np
+from pathlib import Path
+from gpaw import restart
+from asr.core import command, option, ASRResult, prepare_result
 
 
 @prepare_result
@@ -78,7 +80,7 @@ def main(state: int = 0,
     wfs_results = []
     for state in states:
         wf = calc.get_pseudo_wave_function(band=state, spin=0)
-        energy = calc.get_potential_energy() + eref
+        energy = calc.get_eigenvalues(spin=0)[state] + eref
         fname = f'wf.{state}_0.cube'
         write(fname, atoms, data=wf)
         wfs_results.append(WaveFunctionResult.fromdata(
@@ -87,12 +89,12 @@ def main(state: int = 0,
             energy=energy))
         if calc.get_number_of_spins() == 2:
             wf = calc.get_pseudo_wave_function(band=state, spin=1)
-            energy = calc.get_potential_energy() + eref
+            energy = calc.get_eigenvalues(spin=1)[state] + eref
             fname = f'wf.{state}_1.cube'
             write(fname, atoms, data=wf)
             wfs_results.append(WaveFunctionResult.fromdata(
                 state=state,
-                spin=0,
+                spin=1,
                 energy=energy))
 
     return Result.fromdata(
@@ -115,7 +117,7 @@ def return_gapstates(calc):
         pris_folder = list(Path('.').glob('../../defects.pristine_sc*'))[0]
         _, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
-        res_def = read_json('results-asr.gs.json')
+        # res_def = read_json('results-asr.gs.json')
     except FileNotFoundError:
         print('ERROR: does not find pristine gs, pristine results, or defect'
               ' results. Did you run setup.defects and calculate the ground'
@@ -130,7 +132,7 @@ def return_gapstates(calc):
 
     # evaluate pristine VBM and CBM
     vbm = res_pris['vbm'] - eref_pris
-    cmb = res_pris['cbm'] - eref_pris
+    cbm = res_pris['cbm'] - eref_pris
 
     # reference pristine eigenvalues, get defect eigenvalues, align lowest
     # lying state of defect and pristine system
