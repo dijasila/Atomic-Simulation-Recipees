@@ -7,6 +7,54 @@ from pathlib import Path
 from ase import Atoms
 
 
+def get_symmetry_array(sym_results):
+    import numpy as np
+
+    Nrows = len(sym_results)
+    symmetry_array = np.empty((Nrows, 5), dtype='<U21')
+    symmetry_array = np.zeros((Nrows, 5))
+    sym_rowlabels = []
+    for i, row in enumerate(symmetry_array):
+        rowname = sym_results[i]['best']
+        sym_rowlabels.append(rowname)
+        symmetry_array[i, 0] = sym_results[i]['state']
+        symmetry_array[i, 1] = sym_results[i]['spin']
+        symmetry_array[i, 2] = sym_results[i]['energy']
+        symmetry_array[i, 3] = sym_results[i]['error']
+        symmetry_array[i, 4] = sym_results[i]['loc_ratio']
+
+    return symmetry_array, sym_rowlabels
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (WebPanel,
+                                      describe_entry,
+                                      table,
+                                      matrixtable)
+
+    basictable = table(row, 'Defect properties', [
+        describe_entry('pointgroup',
+                       description=result.key_descriptions['pointgroup'])],
+                       key_descriptions, 2)
+
+    symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
+    symmetry_table = matrixtable(symmetry_array,
+        title='Symmetry label',
+        columnlabels=['State', 'Spin', 'Energy [eV]', 'Accuracy', 'Localization ratio'],
+        rowlabels=symmetry_rownames)
+
+    summary = {'title': 'Summary',
+               'columns': [[basictable], []],
+               'sort': 1}
+
+    panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
+                     description='Structural and electronic symmetry analysis'),
+                     columns=[[basictable], [symmetry_table]],
+                     sort=3)
+
+    return [panel, summary]
+
+
 @prepare_result
 class IrrepResult(ASRResult):
     """Container for results of an individual irreproducible representation."""
@@ -55,7 +103,7 @@ class Result(ASRResult):
         symmetries='List of SymmetryResult objects for all states.'
     )
 
-    # formats = {'ase_webpanel': webpanel}
+    formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.defect_symmetry',
