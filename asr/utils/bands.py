@@ -26,26 +26,19 @@ def multiplot(*toplot,
               labels=None,
               hlines=None,
               styles=None,
-              show=True,
+              colors=None,
               fermiline=True,
               customticks=None,
-              fontsize1=24,
-              fontsize2=20):
+              show=True,
+              fontsize1=28,
+              fontsize2=24):
     import matplotlib.pyplot as plt
-    import numpy as np
+    import matplotlib.cm as cm
     import warnings
     warnings.filterwarnings('ignore')
 
-    colors = ['r',
-              'b',
-              'C1',
-              'C2',
-              'C3',
-              'C4',
-              'C5',
-              'C6',
-              'C7',
-              'C8']
+    if not colors:
+        colors = [cm.Set2(i) for i in range(len(toplot))]
 
     ax = plt.figure(figsize=(12, 9)).add_subplot(111)
 
@@ -63,7 +56,7 @@ def multiplot(*toplot,
     for spec in specpts[1:-1]:
         ax.axvline(spec, color='#bbbbbb')
     if customticks:
-        lbls=list(customticks)
+        lbls = list(customticks)
     ticks = [lab.replace('G', r'$\Gamma$') for lab in lbls]
     ax.set_xticklabels(ticks, fontsize=fontsize2)
     ax.set_xticks(specpts)
@@ -83,9 +76,11 @@ def multiplot(*toplot,
             ref = reference
         else:
             ref = 0.0
+
         energies = item.get_energies() - ref
         efermi = item.get_efermi() - ref
         allfermi.append(efermi)
+
         try:
             lbl = labels[index]
         except (TypeError, IndexError):
@@ -110,6 +105,7 @@ def multiplot(*toplot,
         plt.title(title, pad=10, fontsize=fontsize1)
     if not ylim:
         ylim = [min(allfermi) - 4, max(allfermi) + 4]
+
     ax.set_ylim(ylim)
     ax.set_xlabel(xtitle, fontsize=fontsize1, labelpad=8)
     ax.set_ylabel(ytitle, fontsize=fontsize1, labelpad=8)
@@ -118,7 +114,7 @@ def multiplot(*toplot,
     ax.yaxis.set_tick_params(width=3, length=10)
     plt.setp(ax.spines.values(), linewidth=3)
 
-    plt.legend(loc="best", fontsize=fontsize2)
+    plt.legend(loc="upper left", fontsize=fontsize2)
 
     if show:
         plt.show()
@@ -241,5 +237,3 @@ class Bands:
             homo = en[en < 0].max()
             dyn_gap[i] = lumo - homo
         return dyn_gap.min()
-
-
