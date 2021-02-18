@@ -9,6 +9,7 @@ from tqdm import tqdm
 from datetime import datetime
 from asr.core import command, option
 from spglib import get_spacegroup
+from typing import Union
 
 
 
@@ -250,10 +251,10 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
                 "symbols"         : comp_a.symbols,         
                 "numbers"         : comp_a.numbers,         
                 "N-atoms-start"   : comp_a.natoms,         
-                "c1-1"            : sc_info["indexes_a"][0],         
-                "c2-1"            : sc_info["indexes_a"][1],
-                "c1-2"            : sc_info["indexes_a"][2],         
-                "c2-2"            : sc_info["indexes_a"][3] }
+                "c1-1"            : sc_info["m11"],         
+                "c2-1"            : sc_info["m12"],
+                "c1-2"            : sc_info["m21"],         
+                "c2-2"            : sc_info["m22"] }
     
     layer_b = { "name"            : comp_b.formula,
                 "v1"              : comp_b.cell[0],         
@@ -263,13 +264,13 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
                 "symbols"         : comp_b.symbols,         
                 "numbers"         : comp_b.numbers,         
                 "N-atoms-start"   : comp_b.natoms,
-                "c1-1"            : sc_info["indexes_b"][0],         
-                "c2-1"            : sc_info["indexes_b"][1],
-                "c1-2"            : sc_info["indexes_b"][2],         
-                "c2-2"            : sc_info["indexes_b"][3] }
+                "c1-1"            : sc_info["n11"],         
+                "c2-1"            : sc_info["n12"],
+                "c1-2"            : sc_info["n21"],         
+                "c2-2"            : sc_info["n22"] }
     
     rot_angle = sc_info["twist_angle"]
-    strain = sc_info["max_strain"]
+    strain = sc_info["strain"]
     
     
     
@@ -277,12 +278,12 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
     
     
     # Assign the interlayer distances in the bulk phase starting from database (if available)
-    if comp_a.has_bulk_dist == True:
+    try:
         bulkdist_a = comp_a.bulk_dist
         bulkdist_b = comp_b.bulk_dist
         exp_avg_dist = (bulkdist_a + bulkdist_b) / 2
-    else:
-        exp_avg_dist = 3.0
+    except AttributeError:
+        exp_avg_dist = 3.2
     
     # Do stuff with the starting coordinates to setup vacuum thickness
     zvals_a = [i[2] for i in layer_a["positions"]]
@@ -291,7 +292,6 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
     thickness_b = max(zvals_b) - min(zvals_b)
     starting_offset = min(zvals_b) - min(zvals_a)
     
-    exp_avg_dist = (bulkdist_a + bulkdist_b) / 2
     vert_shift_a = starting_offset + thickness_b + exp_avg_dist
     
     pos_a = layer_a["positions"]
@@ -630,8 +630,8 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
     if Path(dirname).exists() == False: 
         Path(dirname).mkdir()
     
-    file_json = f"{dirname}/unrelaxed.json"
-    file_xyz = f"{dirname}/unrelaxed.xyz"
+    file_json = f"{dirname}/initial.json"
+    file_xyz = f"{dirname}/initial.xyz"
 
     atoms = Atoms.fromdict(supercell)
     atoms.set_tags(layerlevels)
@@ -661,15 +661,14 @@ def MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite):
         help="Path to the database file")
 @option('--overwrite', type=bool) 
 
-def main(cells_file: str="moirecells.json", solution: int=-1, tol: float=1.0e-10, stress_opt_method: str="approx", database : str='/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db', overwrite: bool = False):
+def main(cells_file: str="moirecells.json", solution: Union[int, None]=None, tol: float=1.0e-10, stress_opt_method: str="approx", database : str='/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db', overwrite: bool = False):
 
-    with open(cells_file, "r") as f:
-        dct = read_json(cells_file) 
-    nsol = dct["number_of_solutions"]
+    dct = read_json(cells_file) 
 
-    if solution >= 0:
+    if solution:
         MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite) 
     else:   
+        nsol = dct["number_of_solutions"]
         for sol in tqdm(range(nsol)):
             MakeCell(cells_file, sol, tol, stress_opt_method, database, overwrite)
 

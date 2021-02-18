@@ -32,13 +32,13 @@ def initialize(structure):
         return upper, lower
 
 
-def calculate(upper, lower, start, stop, nsteps, calc):
+def calculate(upper, lower, rng, calc):
     from ase.io.trajectory import TrajectoryWriter
 
     shifts = []
     dists = []
     energies = []
-    for shift in np.linspace(start, stop, nsteps):
+    for shift in rng:
         shifted = upper.copy()
         shifted.translate([0, 0, shift])
         bilayer = shifted + lower
@@ -53,8 +53,8 @@ def calculate(upper, lower, start, stop, nsteps, calc):
     return np.array(shifts), np.array(dists), np.array(energies)
 
 
-# Get optimal shift and energy through spline interpolation
 def interpolate(shifts, dists, energies, npoints):
+    '''Get optimal shift and energy through spline interpolation'''
     spline = CubicSpline(shifts, energies)
     s_grid = np.linspace(shifts[0], shifts[-1], npoints)
     d_grid = np.linspace(dists[0], dists[-1], npoints)
@@ -156,18 +156,22 @@ def shift(structure, results):
 
 
 @command('asr.zscan')
-@option('--structure', type=str)
-@option('--start', type=float)
-@option('--stop', type=float)
-@option('--nsteps', type=int)
-@option('--npoints', type=int)
+@option('--structure', type=str, help='Starting structure file')
+@option('--start', type=float, help='Starting shift')
+@option('--stop', type=float, help='Final shift')
+@option('--nsteps', type=int, help='Number of energy evaluations')
+@option('--npoints', type=int, help='Number of points for interpolation')
 def main(structure: str = "initial.json",
          start: float = -1.0,
          stop: float = 1.0,
-         nsteps: int = 10,
+         nsteps: int = 5,
          npoints: int = 700):
 
-    print(f'nsteps = {nsteps}')
+    rng = np.linspace(start, stop, nsteps)
+    with open('log.txt', 'w') as f:
+        print(nsteps, file=f)
+        print(rng, file=f)
+
     dft = GPAW(mode='lcao',
                xc='PBE',
                kpts={'density': 6.0, 'gamma': True},
@@ -177,7 +181,7 @@ def main(structure: str = "initial.json",
     vdw = DFTD3(dft=dft)
 
     upper, lower = initialize(structure)
-    shifts, distances, energies = calculate(upper, lower, start, stop, nsteps, vdw)
+    shifts, distances, energies = calculate(upper, lower, rng, vdw)
 
     results = interpolate(shifts, distances, energies, npoints)
     write_json("plot-zscan.json", results)
