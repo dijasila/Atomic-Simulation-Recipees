@@ -34,7 +34,7 @@ def calculate(calculator: dict = {
     from gpaw import MixerDif
     atoms = read('structure.json')
 
-    if not atoms.has('initial_magmoms') or calculator.get('spinpol') == True:
+    if not atoms.has('initial_magmoms') or calculator.get('spinpol'):
         set_initial_magnetic_moments(atoms)
 
     nd = np.sum(atoms.pbc)
@@ -46,7 +46,7 @@ def calculate(calculator: dict = {
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator, mixer=MixerDif(),
-            maxiter=1000)
+                                      maxiter=1000)
 
     atoms.calc = calc
     atoms.get_forces()

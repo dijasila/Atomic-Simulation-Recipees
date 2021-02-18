@@ -1,12 +1,8 @@
 import pytest
-from pytest import approx
-from .materials import Si, BN
 
 
 @pytest.mark.ci
 def test_get_wfs(asr_tmpdir, test_material):
-    import gpaw
-    import numpy as np
     from pathlib import Path
     from ase.io import write
     from asr.gs import calculate, main
@@ -20,7 +16,7 @@ def test_get_wfs(asr_tmpdir, test_material):
         },
     )
 
-    gsresults = main()
+    main()
     results = get_wfs()
 
     assert Path('wf.0_0.cube').is_file()

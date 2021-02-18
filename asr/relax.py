@@ -376,7 +376,7 @@ def main(atoms: Atoms,
 
     # Make our own copy
     atoms = atoms.copy()
-    if not atoms.has('initial_magmoms') or calculator.get('spinpol') == True:
+    if not atoms.has('initial_magmoms') or calculator.get('spinpol'):
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')

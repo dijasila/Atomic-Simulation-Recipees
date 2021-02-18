@@ -34,7 +34,7 @@ import os
 @option('--general_algorithm',
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
-        'configuration with least atoms in the supercell.')
+        'configuration with least atoms in the supercell.', type=float)
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: List[int] = [0, 0, 0],
          maxsize: float = 8, intrinsic: bool = True,

@@ -40,9 +40,13 @@ def webpanel(result, row, key_descriptions):
 
     symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
     symmetry_table = matrixtable(symmetry_array,
-        title='Symmetry label',
-        columnlabels=['State', 'Spin', 'Energy [eV]', 'Accuracy', 'Localization ratio'],
-        rowlabels=symmetry_rownames)
+                                 title='Symmetry label',
+                                 columnlabels=['State',
+                                               'Spin',
+                                               'Energy [eV]',
+                                               'Accuracy',
+                                               'Localization ratio'],
+                                 rowlabels=symmetry_rownames)
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
@@ -253,7 +257,7 @@ def get_pristine_result():
               'and calculate the ground state for the pristine system?')
 
     try:
-        res_wfs = read_json('results-asr.get_wfs.json')
+        read_json('results-asr.get_wfs.json')
     except FileNotFoundError:
         print('ERROR: does not find get_wfs results. Did you run asr.get_wfs? ')
 
@@ -511,13 +515,13 @@ def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
 def draw_band_edge(energy, edge, color, offset=2, ax=None):
     if edge == 'vbm':
         eoffset = energy - offset
-        elabel = energy - offset/2
+        elabel = energy - offset / 2
     elif edge == 'cbm':
         eoffset = energy + offset
-        elabel = energy + offset/2
+        elabel = energy + offset / 2
 
-    ax.plot([0,1],[energy]*2, color=color, lw=2,zorder=1)
-    ax.fill_between([0,1],[energy]*2,[eoffset]*2, color=color, alpha=0.7)
+    ax.plot([0, 1], [energy] * 2, color=color, lw=2, zorder=1)
+    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.7)
     ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
 
 
@@ -572,13 +576,29 @@ class Level:
 
         shift = self.size / 5
         if (self.off == 0 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift, self.energy, label.lower(), va='center', ha='right')
+            self.ax.text(self.relpos - self.size - shift,
+                         self.energy,
+                         label.lower(),
+                         va='center',
+                         ha='right')
         if (self.off == 0 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift, self.energy, label.lower(), va='center', ha='left')
+            self.ax.text(self.relpos + self.size + shift,
+                         self.energy,
+                         label.lower(),
+                         va='center',
+                         ha='left')
         if (self.off == 1 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift, self.energy, label.lower(), va='center', ha='right')
+            self.ax.text(self.relpos - self.size - shift,
+                         self.energy,
+                         label.lower(),
+                         va='center',
+                         ha='right')
         if (self.off == 1 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift, self.energy, label.lower(), va='center', ha='left')
+            self.ax.text(self.relpos + self.size + shift,
+                         self.energy,
+                         label.lower(),
+                         va='center',
+                         ha='left')
 
 
 def plot_gapstates(row, fname):

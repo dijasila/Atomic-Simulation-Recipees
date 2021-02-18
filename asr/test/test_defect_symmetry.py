@@ -1,5 +1,4 @@
 import pytest
-from pytest import approx
 from .materials import BN
 
 
@@ -27,7 +26,7 @@ def test_defect_symmetry(asr_tmpdir):
                 "kpts": {"density": 1, "gamma": True},
             },
         )
-        gsresults = main()
+        main()
 
     for path in pathlist:
         with chdir(path):
@@ -39,12 +38,12 @@ def test_defect_symmetry(asr_tmpdir):
                     "kpts": {"density": 1, "gamma": True},
                 },
             )
-            gsresults = main()
-            wfresults = get_wfs()
+            main()
+            get_wfs()
             symresults = defect_symmetry()
 
             defectname = str(path.absolute()).split(
-                    'BN_331.')[-1].split('/charge_0')[0]
+                'BN_331.')[-1].split('/charge_0')[0]
             assert symresults['defect_name'] == defectname
             assert symresults['pointgroup'] == 'D3h'
             for element in symresults['symmetries']:
@@ -56,18 +55,9 @@ def test_defect_mapping(asr_tmpdir):
     from pathlib import Path
     from ase.io import write, read
     from asr.core import chdir
-    from asr.get_wfs import main as get_wfs
     from asr.defect_symmetry import (check_and_return_input,
                                      get_mapped_structure,
-                                     return_defect_coordinates,
-                                     recreate_symmetric_cell,
-                                     compare_structures,
-                                     remove_atoms,
-                                     indexlist_cut_atoms,
-                                     conserved_atoms,
                                      get_spg_symmetry,
-                                     get_supercell_shape,
-                                     is_vacancy,
                                      get_defect_info,
                                      return_defect_coordinates)
     from asr.setup.defects import main as setup_defects

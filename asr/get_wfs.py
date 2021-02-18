@@ -105,8 +105,6 @@ def main(state: int = 0,
         eref=eref)
 
 
-
-
 def return_gapstates(calc):
     """Evaluate states within the pristine bandgap and return bandindices.
 

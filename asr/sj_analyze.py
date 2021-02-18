@@ -9,7 +9,7 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel, entry_parameter_description,
+    from asr.database.browser import (fig, WebPanel,
                                       describe_entry, table, matrixtable)
     import numpy as np
 
@@ -24,49 +24,67 @@ def webpanel(result, row, key_descriptions):
         explained_keys.append(explained_key)
 
     formation_table_sum = table(result, 'Defect properties', [])
-    formation_table_sum['rows'].extend([[describe_entry('Formation energy', description=result.key_descriptions['eform']),
-        f'{result.eform[0][0]:.2f} eV']])
+    formation_table_sum['rows'].extend(
+        [[describe_entry('Formation energy',
+                         description=result.key_descriptions['eform']),
+          f'{result.eform[0][0]:.2f} eV']])
 
     formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
-        formation_table['rows'].extend([[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)', description=result.key_descriptions['eform']),
-            f'{element[0]:.2f} eV']])
+        formation_table['rows'].extend(
+            [[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)',
+                             description=result.key_descriptions['eform']),
+              f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
-    pristine_table_sum['rows'].extend([[describe_entry(f"Heat of formation", description=result.key_descriptions['hof']),
-        f"{result.hof:.2f} eV/atom"]])
+    pristine_table_sum['rows'].extend(
+        [[describe_entry(f"Heat of formation",
+                         description=result.key_descriptions['hof']),
+          f"{result.hof:.2f} eV/atom"]])
     gap = result.pristine.cbm - result.pristine.vbm
-    pristine_table_sum['rows'].extend([[describe_entry("Band gap (PBE)", description="Pristine band gap [eV]."),
-        f"{gap:.2f} eV"]])
+    pristine_table_sum['rows'].extend(
+        [[describe_entry("Band gap (PBE)",
+                         description="Pristine band gap [eV]."),
+          f"{gap:.2f} eV"]])
 
     trans_results = result.transitions
     transition_labels = []
     transition_array = np.zeros((len(trans_results), 2))
     for i, element in enumerate(trans_results):
         transition_labels.append(element['transition_name'])
-        transition_array[i, 0] = element['transition_values']['transition'] - element['transition_values']['evac']
+        transition_array[i, 0] = (element['transition_values']['transition']
+                                  - element['transition_values']['evac'])
         transition_array[i, 1] = element['transition_values']['erelax']
 
-    transitions_table = matrixtable(transition_array,
-                                    title='Transition',
-                                    columnlabels=[describe_entry('Transition Energy [eV]', description='SJ calculated transition level'),
-                                                  describe_entry('Relaxation Correction [eV]', description='Correction due to ion relaxation')],
-                                    rowlabels=transition_labels)
+    transitions_table = matrixtable(
+        transition_array,
+        title='Transition',
+        columnlabels=[describe_entry('Transition Energy [eV]',
+                                     description='SJ calculated transition level'),
+                      describe_entry('Relaxation Correction [eV]',
+                                     description='Correction due to ion relaxation')],
+        rowlabels=transition_labels)
 
-    panel = WebPanel(describe_entry('Charge Transition Levels (Slater-Janak)',
-                     description='Defect stability analyzis using Slater-Janak theory to calculate charge transition levels and formation energies.'),
-                     columns=[[describe_entry(fig('sj_transitions.png'), 'Slater-Janak calculated charge transition levels.'), transitions_table],
-                              [describe_entry(fig('formation.png'), 'Reconstructed formation energy curve.')]],
-                     plot_descriptions=[{'function': plot_charge_transitions,
-                                         'filenames': ['sj_transitions.png']},
-                                        {'function': plot_formation_energies,
-                                         'filenames': ['formation.png']}
-                                         ],
-                     sort=11)
+    panel = WebPanel(
+        describe_entry('Charge Transition Levels (Slater-Janak)',
+                       description='Defect stability analyzis using Slater-Janak theory'
+                                   'to calculate charge transition levels and formation'
+                                   'energies.'),
+        columns=[[describe_entry(fig('sj_transitions.png'),
+                                 'Slater-Janak calculated charge transition levels.'),
+                  transitions_table],
+                 [describe_entry(fig('formation.png'),
+                                 'Reconstructed formation energy curve.')]],
+        plot_descriptions=[{'function': plot_charge_transitions,
+                            'filenames': ['sj_transitions.png']},
+                           {'function': plot_formation_energies,
+                            'filenames': ['formation.png']}],
+        sort=11)
 
     summary = {'title': 'Summary',
-               'columns': [[formation_table_sum, 
-                   pristine_table_sum], []],
-               'sort':1}
+               'columns': [[formation_table_sum,
+                            pristine_table_sum],
+                           []],
+               'sort': 1}
 
     return [panel, summary]
 
@@ -139,9 +157,10 @@ class Result(ASRResult):
 
     key_descriptions = dict(
         transitions='Charge transition levels with [transition energy, '
-                        'relax correction, reference energy] eV',
+                    'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
-        eform='List of formation energy tuples (eform wrt. standard states [eV], charge state)',
+        eform='List of formation energy tuples (eform wrt. standard states [eV], '
+              'charge state)',
         standard_states='List of StandardStateResult objects for each species.',
         hof='Heat of formation for the pristine monolayer [eV]')
 
@@ -167,8 +186,8 @@ def main() -> Result:
     """
     p = Path('.')
     defectsystem = str(p.absolute()).split('/')[-2]
-    print('INFO: calculate formation energy and charge transition levels for defect {}.'.format(
-        defectsystem))
+    print('INFO: calculate formation energy and charge transition levels '
+          'for defect {}.'.format(defectsystem))
 
     # get heat of formation
     # hof = get_heat_of_formation()
@@ -196,24 +215,24 @@ def main() -> Result:
 
 def calculate_formation_energies(eform, transitions, pristine):
     """Calculate formation energies for all charge states at the VB band edge."""
-    from asr.core import read_json
+    # from asr.core import read_json
     vbm = pristine['vbm'] - pristine['evac']
-    cbm = pristine['cbm'] - pristine['evac']
+    # cbm = pristine['cbm'] - pristine['evac']
 
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
     enlist = []
     for element in transitions:
         print(element['transition_name'])
-        enlist.append(element['transition_values']['transition'] -
-                      element['transition_values']['erelax'] -
-                      element['transition_values']['evac'])
+        enlist.append(element['transition_values']['transition']
+                      - element['transition_values']['erelax']
+                      - element['transition_values']['evac'])
 
     eform_list = [(eform, 0)]
     for i, element in enumerate(transitions):
-        enlist.append(element['transition_values']['transition'] -
-                      element['transition_values']['erelax'] -
-                      element['transition_values']['evac'])
+        enlist.append(element['transition_values']['transition']
+                      - element['transition_values']['erelax']
+                      - element['transition_values']['evac'])
         name = element['transition_name']
         if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
             y1 = eform
@@ -345,7 +364,7 @@ def obtain_chemical_potential(symbol, db):
         eref = 0.
     else:
         for row in db.select(symbol, ns=1):
-            energies_ss.append(row.energy/row.natoms)
+            energies_ss.append(row.energy / row.natoms)
         eref = min(energies_ss)
 
     return StandardStateResult.fromdata(
@@ -513,8 +532,8 @@ def plot_formation_energies(row, fname):
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
-                            color='grey',
-                            linestyle='dotted')
+                 color='grey',
+                 linestyle='dotted')
 
     ax1.set_xlim(- 0.2 * gap, gap + 0.2 * gap)
     ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
@@ -568,9 +587,8 @@ def plot_formation_energies(row, fname):
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(tickslist)
     ax2.set_xticklabels(labellist)
-    ax1.set_xlabel('$E_{\mathrm{F}}$ [eV]')
+    ax1.set_xlabel(r'$E_{\mathrm{F}}$ [eV]')
     ax1.set_ylabel('Formation energy [eV]')
-
 
     plt.savefig(fname)
     plt.close()
@@ -601,14 +619,16 @@ def plot_charge_transitions(row, fname):
     plt.axhline(cbm, color='C1')
     plt.fill_between([-2, 2], [vbm, vbm], [vbm - 2, vbm - 2], color='C0', alpha=0.5)
     plt.fill_between([-2, 2], [cbm, cbm], [0, 0], color='C1', alpha=0.5)
-    plt.text(0, vbm - 0.1 * gap, 'VBM', color='white', ha='center', va='center', weight='bold')
-    plt.text(0, cbm + 0.1 * gap, 'CBM', color='white', ha='center', va='center', weight='bold')
+    plt.text(0, vbm - 0.1 * gap, 'VBM', color='white',
+             ha='center', va='center', weight='bold')
+    plt.text(0, cbm + 0.1 * gap, 'CBM', color='white',
+             ha='center', va='center', weight='bold')
 
     i = 1
     for trans in transitions:
-        y = (trans['transition_values']['transition'] -
-             trans['transition_values']['erelax'] -
-             trans['transition_values']['evac'])
+        y = (trans['transition_values']['transition']
+             - trans['transition_values']['erelax']
+             - trans['transition_values']['evac'])
         if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
             plt.plot([-0.5, 0.5], [y, y], color='black')
             if i % 2 == 0:
