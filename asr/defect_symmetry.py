@@ -30,7 +30,8 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (WebPanel,
                                       describe_entry,
                                       table,
-                                      matrixtable)
+                                      matrixtable,
+                                      fig)
 
     basictable = table(row, 'Defect properties', [
         describe_entry('pointgroup',
@@ -49,7 +50,9 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
                      description='Structural and electronic symmetry analysis'),
-                     columns=[[basictable], [symmetry_table]],
+                     columns=[[fig('ks_gap.png'), basictable], [symmetry_table]],
+                     plot_descriptions=[{'function': plot_gapstates,
+                                         'filenames': ['ks_gap.png']}],
                      sort=3)
 
     return [panel, summary]
@@ -89,18 +92,33 @@ class SymmetryResult(ASRResult):
 
 
 @prepare_result
+class PristineResult(ASRResult):
+    """Container for pristine band edge results."""
+    vbm: float
+    cbm: float
+    gap: float
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        vbm='Energy of the VBM (ref. to the vacuum level in 2D) [eV].',
+        cbm='Energy of the CBM (ref. to the vacuum level in 2D) [eV].',
+        gap='Energy of the bandgap [eV].')
+
+
+@prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
     pointgroup: str
     defect_center: typing.Tuple[float, float, float]
     defect_name: str
     symmetries: typing.List[SymmetryResult]
+    pristine: PristineResult
 
     key_descriptions: typing.Dict[str, str] = dict(
         pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
         defect_name='Name of the defect ({type}_{position})',
-        symmetries='List of SymmetryResult objects for all states.'
+        symmetries='List of SymmetryResult objects for all states.',
+        pristine='PristineResult container.'
     )
 
     formats = {'ase_webpanel': webpanel}
@@ -210,11 +228,43 @@ def main(mapping: bool = False,
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
 
+    pris_result = get_pristine_result()
+
     return Result.fromdata(
         pointgroup=point_group,
         defect_center=center,
         defect_name=defectname,
-        symmetries=symmetry_results)
+        symmetries=symmetry_results,
+        pristine=pris_result)
+
+
+def get_pristine_result():
+    """Returns PristineResult object.
+
+    In 2D, the reference will be the vacuum level of the pristine calculation.
+    In 3D, the reference will be None (vacuum level doesn't make sense here)."""
+    from asr.core import read_json
+
+    try:
+        pris_folder = list(Path('.').glob('../../defects.pristine_sc*'))[0]
+        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+    except FileNotFoundError:
+        print('ERROR: does not find pristine results. Did you run setup.defects '
+              'and calculate the ground state for the pristine system?')
+
+    try:
+        res_wfs = read_json('results-asr.get_wfs.json')
+    except FileNotFoundError:
+        print('ERROR: does not find get_wfs results. Did you run asr.get_wfs? ')
+
+    ref_pris = res_pris['evac']
+    if ref_pris is None:
+        ref_pris = 0
+
+    return PristineResult.fromdata(
+        vbm=res_pris['vbm'] - ref_pris,
+        cbm=res_pris['cbm'] - ref_pris,
+        gap=res_pris['gap'])
 
 
 def get_localization_ratio(atoms, wf):
@@ -456,6 +506,122 @@ def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
     pos = pristine.get_positions()[label]
 
     return pos
+
+
+def draw_band_edge(energy, edge, color, offset=2, ax=None):
+    if edge == 'vbm':
+        eoffset = energy - offset
+        elabel = energy - offset/2
+    elif edge == 'cbm':
+        eoffset = energy + offset
+        elabel = energy + offset/2
+
+    ax.plot([0,1],[energy]*2, color=color, lw=2,zorder=1)
+    ax.fill_between([0,1],[energy]*2,[eoffset]*2, color=color, alpha=0.7)
+    ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
+
+
+class Level:
+    " Class to draw a single defect state level in the gap"
+
+    def __init__(self, energy, size=0.05, ax=None):
+        self.size = size
+        self.energy = energy
+        self.ax = ax
+
+    def draw(self, spin, deg, off):
+        """ Method to draw the defect state according to the
+          spin and degeneracy"""
+
+        if deg - 1:
+            relpos = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]][off][spin]
+            print(relpos, deg)
+        else:
+            relpos = [[1 / 4, [1 / 8, 3 / 8]],
+                      [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
+            print(relpos, deg)
+        pos = [relpos - self.size, relpos + self.size]
+        self.relpos = relpos
+        self.spin = spin
+        self.deg = deg
+        self.off = off
+
+        if deg == 1:
+            self.ax.plot(pos, [self.energy] * 2, '-k')
+
+        if deg == 2:
+            self.ax.plot(pos, [self.energy] * 2, '-k')
+
+    def add_occupation(self, length):
+        " Draw an arrow if the defect state if occupied"
+
+        updown = [1, -1][self.spin]
+        self.ax.arrow(self.relpos,
+                      self.energy - updown * length / 2,
+                      0,
+                      updown * length,
+                      head_width=0.01,
+                      head_length=length / 5, fc='k', ec='k')
+
+    def add_label(self, label):
+        " Add symmetry label of the irrep of the point group"
+
+        shift = self.size / 5
+        if (self.off == 0 and self.spin == 0):
+            self.ax.text(self.relpos - self.size - shift, self.energy, label.lower(), va='center', ha='right')
+        if (self.off == 0 and self.spin == 1):
+            self.ax.text(self.relpos + self.size + shift, self.energy, label.lower(), va='center', ha='left')
+        if (self.off == 1 and self.spin == 0):
+            self.ax.text(self.relpos - self.size - shift, self.energy, label.lower(), va='center', ha='right')
+        if (self.off == 1 and self.spin == 1):
+            self.ax.text(self.relpos + self.size + shift, self.energy, label.lower(), va='center', ha='left')
+
+
+def plot_gapstates(row, fname):
+    from matplotlib import pyplot as plt
+
+    data = row.data.get('results-asr.defect_symmetry.json')
+    gsdata = row.data.get('results-asr.gs.json')
+
+    fig = plt.figure()
+    ax = fig.gca()
+
+    # extract pristine data
+    evbm = data.pristine.vbm
+    ecbm = data.pristine.cbm
+    gap = data.pristine.gap
+
+    # Draw band edges
+    draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
+    draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
+    # Loop over eigenvalues to draw the level
+
+    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    ef = gsdata['efermi'] - eref
+    degoffset = 0
+    # sold = 0
+    for sym in data.data['symmetries']:
+        ene = sym.energy
+        spin = int(sym.spin)
+        irrep = sym.best
+        deg = [1, 2]['E' in irrep]
+        lev = Level(ene, ax=ax)
+        lev.draw(spin=spin, deg=deg, off=degoffset % 2)
+        if ene <= ef:
+            lev.add_occupation(length=gap / 10)
+        lev.add_label(irrep)
+        if deg == 2 and spin == 0:
+            degoffset += 1
+
+    ax.plot([0, 1], [ef] * 2, '--k')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
+    ax.set_xticks([])
+    ax.set_ylabel('Energy [eV]', size=15)
+
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.close()
 
 
 def check_and_return_input():

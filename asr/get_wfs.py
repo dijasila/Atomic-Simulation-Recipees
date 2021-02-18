@@ -24,11 +24,13 @@ class Result(ASRResult):
     """Container for asr.get_wfs results."""
     wfs: typing.List[WaveFunctionResult]
     above_below: typing.Tuple[bool, bool]
+    eref: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         wfs='List of WaveFunctionResult objects for all states.',
         above_below='States within the gap above and below EF? '
-                    '(ONLY for defect systems).')
+                    '(ONLY for defect systems).',
+        eref='Energy reference (vacuum level in 2D, 0 otherwise) [eV].')
 
 
 @command(module='asr.get_wfs',
@@ -80,7 +82,7 @@ def main(state: int = 0,
     wfs_results = []
     for state in states:
         wf = calc.get_pseudo_wave_function(band=state, spin=0)
-        energy = calc.get_eigenvalues(spin=0)[state] + eref
+        energy = calc.get_eigenvalues(spin=0)[state] - eref
         fname = f'wf.{state}_0.cube'
         write(fname, atoms, data=wf)
         wfs_results.append(WaveFunctionResult.fromdata(
@@ -89,7 +91,7 @@ def main(state: int = 0,
             energy=energy))
         if calc.get_number_of_spins() == 2:
             wf = calc.get_pseudo_wave_function(band=state, spin=1)
-            energy = calc.get_eigenvalues(spin=1)[state] + eref
+            energy = calc.get_eigenvalues(spin=1)[state] - eref
             fname = f'wf.{state}_1.cube'
             write(fname, atoms, data=wf)
             wfs_results.append(WaveFunctionResult.fromdata(
@@ -99,7 +101,10 @@ def main(state: int = 0,
 
     return Result.fromdata(
         wfs=wfs_results,
-        above_below=above_below)
+        above_below=above_below,
+        eref=eref)
+
+
 
 
 def return_gapstates(calc):
@@ -138,9 +143,9 @@ def return_gapstates(calc):
     # lying state of defect and pristine system
     es_pris = calc_pris.get_eigenvalues() - eref_pris
     es_def = calc.get_eigenvalues()
-    dif = es_pris[0] - es_def[0]
-    es_def = es_def + dif
-    ef_def = calc.get_fermi_level() + dif
+    dif = es_def[0] - es_pris[0]
+    es_def = es_def - dif
+    ef_def = calc.get_fermi_level() - dif
 
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
