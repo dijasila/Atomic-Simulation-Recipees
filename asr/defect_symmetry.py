@@ -532,14 +532,18 @@ class Level:
     def draw(self, spin, deg, off):
         """ Method to draw the defect state according to the
           spin and degeneracy"""
-
-        if deg - 1:
-            relpos = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]][off][spin]
-            print(relpos, deg)
-        else:
-            relpos = [[1 / 4, [1 / 8, 3 / 8]],
-                      [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
-            print(relpos, deg)
+        xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
+        xpos_nor = [1 / 4, 3 / 4]
+        if deg == 2:
+            relpos = xpos_deg[spin][off]
+        elif deg == 1:
+            relpos = xpos_nor[spin]
+        # if deg - 1:
+        #     relpos = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]][off][spin]
+        # else:
+        #     relpos = [[1 / 4, [1 / 8, 3 / 8]],
+        #                [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
+        print(relpos, deg, spin, off)
         pos = [relpos - self.size, relpos + self.size]
         self.relpos = relpos
         self.spin = spin
@@ -600,18 +604,45 @@ def plot_gapstates(row, fname):
     ef = gsdata['efermi'] - eref
     degoffset = 0
     # sold = 0
+
+    # start with first spin channel
+    i = 0
     for sym in data.data['symmetries']:
-        ene = sym.energy
-        spin = int(sym.spin)
-        irrep = sym.best
-        deg = [1, 2]['E' in irrep]
-        lev = Level(ene, ax=ax)
-        lev.draw(spin=spin, deg=deg, off=degoffset % 2)
-        if ene <= ef:
-            lev.add_occupation(length=gap / 10)
-        lev.add_label(irrep)
-        if deg == 2 and spin == 0:
-            degoffset += 1
+        if int(sym.spin) == 0:
+            ene = sym.energy
+            spin = int(sym.spin)
+            irrep = sym.best
+            deg = [1, 2]['E' in irrep]
+            if deg == 2 and i == 0:
+                degoffset = 0
+                i = 1
+            elif deg == 2 and i == 1:
+                degoffset = 1
+                i = 0
+            lev = Level(ene, ax=ax)
+            lev.draw(spin=spin, deg=deg, off=degoffset)
+            if ene <= ef:
+                lev.add_occupation(length=gap / 10)
+            lev.add_label(irrep)
+    # start with first spin channel
+    i = 0
+    for sym in data.data['symmetries']:
+        if int(sym.spin) == 1:
+            ene = sym.energy
+            spin = int(sym.spin)
+            irrep = sym.best
+            deg = [1, 2]['E' in irrep]
+            if deg == 2 and i == 0:
+                degoffset = 0
+                i = 1
+            elif deg == 2 and i == 1:
+                degoffset = 1
+                i = 0
+            lev = Level(ene, ax=ax)
+            lev.draw(spin=spin, deg=deg, off=degoffset)
+            if ene <= ef:
+                lev.add_occupation(length=gap / 10)
+            lev.add_label(irrep)
 
     ax.plot([0, 1], [ef] * 2, '--k')
     ax.set_xlim(0, 1)
@@ -646,3 +677,7 @@ def check_and_return_input():
     print(pris_struc, struc, unrel, prim_unrel)
 
     return struc, unrel, prim_unrel, pris_struc
+
+
+if __name__ == '__main__':
+    main.cli()
