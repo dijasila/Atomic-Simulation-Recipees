@@ -131,6 +131,7 @@ class Result(ASRResult):
 @command(module='asr.defect_symmetry',
          requires=['structure.json', 'unrelaxed.json',
                    '../../unrelaxed.json'],
+         dependencies=['asr.get_wfs'],
          resources='1:1h',
          returns=Result)
 @option('--mapping/--no-mapping', help='Choose mapping if defect '
