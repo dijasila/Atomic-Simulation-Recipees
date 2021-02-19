@@ -67,7 +67,9 @@ def webpanel(result, row, key_descriptions):
                                   rowlabels=state_rownames)
         panel = WebPanel(describe_entry('Defect states (structure and defect states)',
                          description='Structural symmetry analysis and gap states'),
-                         columns=[[basictable], [state_table]],
+                         columns=[[fig('ks_gap.png'), basictable], [state_table]],
+                         plot_descriptions=[{'function': plot_gapstates,
+                                             'filenames': ['ks_gap.png']}],
                          sort=3)
     else:
         symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
@@ -223,8 +225,7 @@ def main(mapping: bool = False,
     # check whether point group is implemented in GPAW, return results
     # without symmetry analysis if it is not implmented
     symmetry_results = []
-    # if point_group not in point_group_names:
-    if point_group in ['C3v']:
+    if point_group not in point_group_names:
         print(f'WARNING: point group {point_group} not implemented in GPAW. '
               'Return results without symmetry analysis of the wavefunctions.')
         for wf_file in cubefiles:
@@ -687,7 +688,11 @@ def plot_gapstates(row, fname):
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
     degoffset = 0
-    # sold = 0
+
+    if data.symmetries[0].best is None:
+        levelflag = False
+    else:
+        levelflag = True
 
     # start with first spin channel
     i = 0
@@ -696,7 +701,11 @@ def plot_gapstates(row, fname):
             ene = sym.energy
             spin = int(sym.spin)
             irrep = sym.best
-            deg = [1, 2]['E' in irrep]
+            if levelflag:
+                deg = [1, 2]['E' in irrep]
+            else:
+                deg = 1
+                degoffset = 1
             if deg == 2 and i == 0:
                 degoffset = 0
                 i = 1
@@ -706,8 +715,9 @@ def plot_gapstates(row, fname):
             lev = Level(ene, ax=ax)
             lev.draw(spin=spin, deg=deg, off=degoffset)
             if ene <= ef:
-                lev.add_occupation(length=gap / 10)
-            lev.add_label(irrep)
+                lev.add_occupation(length=gap / 15.)
+            if levelflag:
+                lev.add_label(irrep)
     # start with first spin channel
     i = 0
     for sym in data.data['symmetries']:
@@ -715,7 +725,11 @@ def plot_gapstates(row, fname):
             ene = sym.energy
             spin = int(sym.spin)
             irrep = sym.best
-            deg = [1, 2]['E' in irrep]
+            if levelflag:
+                deg = [1, 2]['E' in irrep]
+            else:
+                deg = 1
+                degoffset = 1
             if deg == 2 and i == 0:
                 degoffset = 0
                 i = 1
@@ -725,8 +739,9 @@ def plot_gapstates(row, fname):
             lev = Level(ene, ax=ax)
             lev.draw(spin=spin, deg=deg, off=degoffset)
             if ene <= ef:
-                lev.add_occupation(length=gap / 10)
-            lev.add_label(irrep)
+                lev.add_occupation(length=gap / 15)
+            if levelflag:
+                lev.add_label(irrep)
 
     ax.plot([0, 1], [ef] * 2, '--k')
     ax.set_xlim(0, 1)
