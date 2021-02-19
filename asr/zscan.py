@@ -164,7 +164,7 @@ def shift(structure, results):
 def main(structure: str = "initial.json",
          start: float = -1.0,
          stop: float = 1.0,
-         nsteps: int = 5,
+         nsteps: int = 10,
          npoints: int = 700):
 
     rng = np.linspace(start, stop, nsteps)
@@ -192,4 +192,4 @@ def main(structure: str = "initial.json",
 
 
 if __name__ == '__main__':
-    main()
+    main.cli()
