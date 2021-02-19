@@ -26,6 +26,23 @@ def get_symmetry_array(sym_results):
     return symmetry_array, sym_rowlabels
 
 
+def get_state_array(state_results):
+    import numpy as np
+
+    Nrows = len(state_results)
+    state_array = np.empty((Nrows, 3), dtype='<U21')
+    state_array = np.zeros((Nrows, 3))
+    state_rowlabels = []
+    for i, row in enumerate(state_array):
+        rowname = state_results[i]['state']
+        state_rowlabels.append(rowname)
+        state_array[i, 0] = state_results[i]['spin']
+        state_array[i, 1] = state_results[i]['energy']
+        state_array[i, 2] = state_results[i]['loc_ratio']
+
+    return state_array, state_rowlabels
+
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (WebPanel,
                                       describe_entry,
@@ -38,26 +55,40 @@ def webpanel(result, row, key_descriptions):
                        description=result.key_descriptions['pointgroup'])],
                        key_descriptions, 2)
 
-    symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
-    symmetry_table = matrixtable(symmetry_array,
-                                 title='Symmetry label',
-                                 columnlabels=['State',
-                                               'Spin',
-                                               'Energy [eV]',
-                                               'Accuracy',
-                                               'Localization ratio'],
-                                 rowlabels=symmetry_rownames)
+    if result.symmetries[0]['best'] is None:
+        print('WARNING: no symmetry analysis for this defect present. Only plot '
+              'gapstates!')
+        state_array, state_rownames = get_state_array(result.symmetries)
+        state_table = matrixtable(state_array,
+                                  title='State',
+                                  columnlabels=['Spin',
+                                                'Energy [eV]',
+                                                'Localization ratio'],
+                                  rowlabels=state_rownames)
+        panel = WebPanel(describe_entry('Defect states (structure and defect states)',
+                         description='Structural symmetry analysis and gap states'),
+                         columns=[[basictable], [state_table]],
+                         sort=3)
+    else:
+        symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
+        symmetry_table = matrixtable(symmetry_array,
+                                     title='Symmetry label',
+                                     columnlabels=['State',
+                                                   'Spin',
+                                                   'Energy [eV]',
+                                                   'Accuracy',
+                                                   'Localization ratio'],
+                                     rowlabels=symmetry_rownames)
+        panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
+                         description='Structural and electronic symmetry analysis'),
+                         columns=[[fig('ks_gap.png'), basictable], [symmetry_table]],
+                         plot_descriptions=[{'function': plot_gapstates,
+                                             'filenames': ['ks_gap.png']}],
+                         sort=3)
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
                'sort': 1}
-
-    panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
-                     description='Structural and electronic symmetry analysis'),
-                     columns=[[fig('ks_gap.png'), basictable], [symmetry_table]],
-                     plot_descriptions=[{'function': plot_gapstates,
-                                         'filenames': ['ks_gap.png']}],
-                     sort=3)
 
     return [panel, summary]
 
@@ -148,7 +179,7 @@ def main(mapping: bool = False,
     asr.setup.defects in order to correctly run this recipe. Furthermore,
     run asr.get_wfs beforehand to write out the needed wavefunctions."""
     from ase.io.cube import read_cube_data
-    from gpaw.point_groups import SymmetryChecker
+    from gpaw.point_groups import SymmetryChecker, point_group_names
 
     # define path of the current directory
     defect = Path('.')
@@ -180,12 +211,49 @@ def main(mapping: bool = False,
                                        defect)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
-    # symmetry analysis
-    checker = SymmetryChecker(point_group, center, radius=radius)
+    # return pristine results to visualise wavefunctions within the gap
+    pris_result = get_pristine_result()
+
+    # read in cubefiles of the wavefunctions
     cubefiles = list(defect.glob('*.cube'))
     if len(cubefiles) == 0:
         raise FileNotFoundError('WARNING: no cube files available in this '
                                 'folder!')
+
+    # check whether point group is implemented in GPAW, return results
+    # without symmetry analysis if it is not implmented
+    symmetry_results = []
+    # if point_group not in point_group_names:
+    if point_group in ['C3v']:
+        print(f'WARNING: point group {point_group} not implemented in GPAW. '
+              'Return results without symmetry analysis of the wavefunctions.')
+        for wf_file in cubefiles:
+            spin = str(wf_file)[str(wf_file).find('_') + 1]
+            band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+            res_wf = find_wf_result(band, spin)
+            energy = res_wf['energy']
+            wf, atoms = read_cube_data(str(wf_file))
+            localization = get_localization_ratio(atoms, wf)
+            irrep_results = [IrrepResult.fromdata(
+                sym_name=None,
+                sym_score=None)]
+            symmetry_result = SymmetryResult.fromdata(irreps=irrep_results,
+                                                      best=None,
+                                                      error=None,
+                                                      loc_ratio=localization,
+                                                      state=band,
+                                                      spin=spin,
+                                                      energy=energy)
+            symmetry_results.append(symmetry_result)
+        return Result.fromdata(
+            pointgroup=point_group,
+            defect_center=center,
+            defect_name=defectname,
+            symmetries=symmetry_results,
+            pristine=pris_result)
+
+    # symmetry analysis
+    checker = SymmetryChecker(point_group, center, radius=radius)
 
     print('spin  band     norm    normcut     best    '
           + ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
@@ -232,8 +300,6 @@ def main(mapping: bool = False,
                                                   spin=spin,
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
-
-    pris_result = get_pristine_result()
 
     return Result.fromdata(
         pointgroup=point_group,
@@ -307,7 +373,6 @@ def find_wf_result(state, spin):
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
     threshold = 0.99
-    print(primitive)
     translation = return_defect_coordinates(structure, unrelaxed, primitive,
                                             pristine, defect)
     rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
@@ -410,7 +475,6 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     of atoms is not correct here. It is done in the mapping functions.
     """
     reference = primitive.copy()
-    print(reference)
     N = get_supercell_shape(primitive, pristine)
     reference = reference.repeat((N, N, 1))
     cell = reference.get_cell()
@@ -548,7 +612,6 @@ class Level:
         # else:
         #     relpos = [[1 / 4, [1 / 8, 3 / 8]],
         #                [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
-        print(relpos, deg, spin, off)
         pos = [relpos - self.size, relpos + self.size]
         self.relpos = relpos
         self.spin = spin
@@ -694,8 +757,6 @@ def check_and_return_input():
         prim_unrel = read('../../unrelaxed.json')
     except FileNotFoundError:
         print('ERROR: primitive unrelaxed structure not available!')
-
-    print(pris_struc, struc, unrel, prim_unrel)
 
     return struc, unrel, prim_unrel, pris_struc
 
