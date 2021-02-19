@@ -6,6 +6,45 @@ from asr.core import (command, ASRResult, prepare_result,
 from gpaw import restart
 
 
+def get_atoms_close_to_center(center):
+    """Returns list of the ten atoms closest to the defect (only if
+    a previous defect calculation is present). Return list of atoms closest to
+    the origin otherwise."""
+    from ase.io import read
+    atoms = read('structure.json')
+
+    if center == [None, None, None]:
+        center = [0., 0., 0.]
+
+    distancelist = []
+    indexlist = []
+    ghost_atoms = atoms.copy()
+    ghost_atoms.append(Atoms('H', cell=atoms.get_cell(), positions=[center])[0])
+    for i, atom in enumerate(ghost_atoms[:-1]):
+        meancell = np.mean(atoms.get_cell_lengths_and_angles()[:2])
+        distance = ghost_atoms.get_distance(-1, i, mic=True)
+        distancelist.append(distance)
+        indexlist.append(i)
+
+    orderarray = np.zeros((len(indexlist), 2))
+    for i, element in enumerate(indexlist):
+        orderarray[i, 0] = element
+        orderarray[i, 1] = distancelist[i]
+    orderarray = orderarray[orderarray[:, 1].argsort()]
+
+    return orderarray
+
+
+def get_gyro_array(gfactors_results):
+    array = np.zeros((len(gfactors_results), 1))
+    symbollist = []
+    for i, g in enumerate(gfactors_results):
+        array[i, 0] = g['g']
+        symbollist.append(g['symbol'])
+
+    return array, symbollist
+
+
 def webpanel(result, row, key_description):
     from asr.database.browser import (WebPanel,
                                       describe_entry,
@@ -13,6 +52,34 @@ def webpanel(result, row, key_description):
                                       matrixtable)
     hf_results = result.hyperfine
     center = result.center
+
+    orderarray = get_atoms_close_to_center(center)
+
+    hf_array = np.zeros((10, 4))
+    hf_atoms = []
+    for i, element in enumerate(orderarray[:10, 0]):
+        hf_atoms.append(hf_results[int(element)]['kind'] + str(hf_results[int(element)]['index']))
+        hf_array[i, 0] = f"{int(hf_results[int(element)]['magmom']):2d}"
+        hf_array[i, 1] = f"{hf_results[int(element)]['eigenvalues'][0]:.2f}"
+        hf_array[i, 2] = f"{hf_results[int(element)]['eigenvalues'][1]:.2f}"
+        hf_array[i, 3] = f"{hf_results[int(element)]['eigenvalues'][2]:.2f}"
+
+    hf_table = matrixtable(hf_array,
+        title='Atom',
+        columnlabels=['Magn. moment', 'Axx (MHz)', 'Ayy (MHz)', 'Azz (MHz)'],
+        rowlabels=hf_atoms)
+
+    gyro_array, gyro_rownames = get_gyro_array(result.gfactors)
+    gyro_table = matrixtable(gyro_array,
+        title='Symbol',
+        columnlabels=['g-factor'],
+        rowlabels=gyro_rownames)
+
+    hyperfine = {'title': describe_entry('Hyperfine structure', description='Hyperfine calculations'),
+            'columns': [[hf_table, gyro_table], [{'type': 'atoms'}]],
+                 'sort': 2}
+
+    return [hyperfine]
 
 
 @prepare_result
