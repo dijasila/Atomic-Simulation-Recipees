@@ -675,4 +675,4 @@ def main(cells_file: str="moirecells.json", solution: Union[int, None]=None, tol
 
 
 if __name__ == '__main__':
-    main()
+    main().cli()

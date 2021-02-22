@@ -3,7 +3,7 @@ from ase.io import read, write
 from ase.io.jsonio import read_json, write_json
 from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import CubicSpline, Akima1DInterpolator
 from asr.core import command, option
 
 
@@ -34,7 +34,6 @@ def initialize(structure):
 
 def calculate(upper, lower, rng, calc):
     from ase.io.trajectory import TrajectoryWriter
-
     shifts = []
     dists = []
     energies = []
@@ -55,7 +54,8 @@ def calculate(upper, lower, rng, calc):
 
 def interpolate(shifts, dists, energies, npoints):
     '''Get optimal shift and energy through spline interpolation'''
-    spline = CubicSpline(shifts, energies)
+    #spline = CubicSpline(shifts, energies)
+    spline = Akima1DInterpolator(shifts, energies)
     s_grid = np.linspace(shifts[0], shifts[-1], npoints)
     d_grid = np.linspace(dists[0], dists[-1], npoints)
     energies_int = spline(s_grid)
