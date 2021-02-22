@@ -81,6 +81,7 @@ def make_migration_strategy(
     mutations: typing.List[RecordMutation],
     record: Record,
 ) -> typing.List[RecordMutation]:
+    """Given mutations and record construct a migration strategy."""
     relevant_mutations = {}
     for mutation in mutations:
         if mutation.applies_to(record):
@@ -99,10 +100,12 @@ def make_migration_strategy(
 
 @dataclass
 class RecordMigration:
+    """A class that represents a record migration."""
     migrations: typing.List[RecordMutation]
     record: Record
 
     def apply(self, cache):
+        """Apply migration to a cache."""
         records = [self.record]
         for migration in self.migrations:
             migrated_record = migration(records[-1])
