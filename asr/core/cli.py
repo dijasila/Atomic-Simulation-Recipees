@@ -422,65 +422,63 @@ def get_item(attrs: List[str], obj):
 
 
 @cache.command()
-@click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
-def migrate(apply=False):
-    """Look for cache migrations."""
-    from asr.core.migrate import (
-        Migrations,
-        generate_record_migrations,
-        get_resultsfile_records,
-    )
+def add_resultfile_records():
+    from asr.core.migrate import get_resultsfile_records
     cache = get_cache()
 
     resultfile_records = get_resultsfile_records()
 
     records_to_add = []
     for record in resultfile_records:
-        if not cache.has(name=record.name, version=record.version):
+        if not cache.has(name=record.name,
+                         version=record.version,
+                         parameters=record.parameters):
             records_to_add.append(record)
 
-    if records_to_add and not apply:
-        print(
-            'The are unapplied result file migrations. '
-            'As such we cannot say anything about the total '
-            'number of migrations. --apply to apply migrations.'
-        )
-        return
+    for record in records_to_add:
+        print(f'Adding resultfile {record.name} to cache.')
+        cache.add(record)
 
-    if apply:
-        for record in records_to_add:
-            print(f'Adding resultfile {record.name} to cache.')
-            cache.add(record)
 
-    migrations = Migrations(
-        generator=generate_record_migrations,
-        cache=cache,
+@cache.command()
+@click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
+def migrate(apply=False):
+    """Look for cache migrations."""
+    from asr.core.migrate import (
+        collect_record_mutations,
+        get_resultsfile_records,
+        make_migration_factory,
     )
 
+    mutations = collect_record_mutations()
+    make_migration = make_migration_factory(mutations)
+    migrations = []
+
+    for record in cache.select():
+        record_migration = make_migration(record)
+        if record_migration:
+            migrations.append(record_migration)
+            if apply:
+                record_migration.apply(cache)
+
     if apply:
-        migrations.apply()
-    else:
-        if migrations:
-            migr_text = str(migrations).split('\n')
+        return
 
-            if len(migr_text) > 5:
-                migr_text = migr_text[:3] + ['...'] + migr_text[-2:]
-            text = '\n'.join(migr_text)
-
-            print(
-                '\n'.join(
-                    [
-                        'You have unapplied migrations:',
-                        text,
-                        '',
-                        'Run',
-                        '    $ asr cache migrate --apply',
-                        'to apply these migrations.',
-                    ]
-                )
+    if migrations:
+        nmigrations = len(migrations)
+        print(
+            '\n'.join(
+                [
+                    f'You have {nmigrations} unapplied migrations.',
+                    '',
+                    'Run',
+                    '    $ asr cache migrate --apply',
+                    'to apply these migrations.',
+                ]
             )
-        else:
-            print('All records up to date. No migrations to apply.')
+        )
+    else:
+        print('All records up to date. No migrations to apply.')
 
 
 def make_selector_from_selection(cache, selection):

@@ -1,16 +1,11 @@
 import fnmatch
 import pathlib
 import typing
+from dataclasses import dataclass
+from .selector import Selector
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
 from .record import Record
-
-
-def is_migratable(obj):
-    if hasattr(obj, 'migrate'):
-        if obj.migrate is not None:
-            return True
-    return False
 
 
 class NoMigrationError(Exception):
@@ -18,83 +13,86 @@ class NoMigrationError(Exception):
     pass
 
 
-class Migrations:
+RecordUID = str
 
-    def __init__(self, generator, cache):
-        self.generator = generator
-        self.cache = cache
 
-    def __bool__(self):
-        try:
-            next(self.generate_migrations())
-            return True
-        except StopIteration:
-            return False
+@dataclass
+class MigrationLog:
 
-    def generate_migrations(self):
-        migrations = self.generator(self.cache)
-        for migration in migrations:
-            yield migration
+    migrated_from: typing.Optional[RecordUID]
+    migrated_to: typing.Optional[RecordUID]
 
-    def apply(self):
-        for migration in self.generate_migrations():
-            print(migration)
-            records = migration.apply()
 
-            for original_record, migrated_record in zip(
-                    records[:-1], records[1:]):
-                migrated_uid = get_new_uuid()
-                migrated_record.run_specification.uid = migrated_uid
 
-                original_uid = original_record.uid
-                migrated_record.migrated_from = original_uid
-                original_record.migrated_to = migrated_uid
+@dataclass
+class RecordMutation:
 
-            original_record, *migrated_records = records
-            self.cache.update(original_record)
-            for migrated_record in migrated_records:
-                self.cache.add(migrated_record)
+    function = typing.Callable
+    from_version: int
+    to_version: int
+    selector: Selector
+    description: str
+
+    def apply(self, record: Record) -> Record:
+        assert self.applies(record)
+        migrated_record = self.function(record.copy())
+        migrated_record.version = self.to_version
+        migration_log = MigrationLog(migrated_from=record.uid)
+        migrated_record.migration_log = migration_log
+
+    def applies(self, record: Record) -> bool:
+        return self.selector.matches(record)
 
     def __str__(self):
-        lines = []
-        for migration in self.generate_migrations():
-            lines.append(str(migration))
-        return '\n'.join(lines)
+        return f'{self.description} {self.from_version} -> {self.to_version}'
 
 
-class Migration:
+class RecordMigrationFactory:
+    """Construct record migrations.
 
-    def __init__(
-            self, func, from_version, to_version, name=None,
-            dep: 'Migration' = None, record=None):
+    Manages a collection of RecordMutations and can be told to create
+    RecordMigration.
+    """
 
-        self.func = func
-        if name is None:
-            name = func.__name__
-        self.name = name
-        if dep:
-            assert not record
-        self.dep = dep
-        self.record = record
-        self.from_version = from_version
-        self.to_version = to_version
+    def __init__(self, mutations):
+        self.mutations = []
+        for mutation in mutations:
+            self.mutations.append(mutation)
 
-    def apply(self) -> Record:
-        if self.dep:
-            migrated_records = self.dep.apply()
-            migrated_record = self.func(migrated_records[-1].copy())
-            migrated_record.version = self.to_version
-            return [*migrated_records, migrated_record]
-        else:
-            migrated_record = self.func(self.record.copy())
-            migrated_record.version = self.to_version
-            return [self.record, migrated_record]
+    def add(self, mutation: RecordMutation):
+        self.mutations.append(mutation)
 
-    def __str__(self):
-        text = f'{self.name} {self.from_version} -> {self.to_version}'
-        if self.dep:
-            return ' '.join([str(self.dep), text])
-        return text
+    def __call__(self, record: Record) -> RecordMigration:
+        sequence_of_mutations = make_migration_strategy(
+            self.mutations, record)
+        record_migration = RecordMigration(sequence_of_mutations, record)
+        return record_migration
+
+
+def make_migration_strategy(
+    mutations: typing.List[RecordMutation],
+    record: Record,
+):
+    for mutation in mutations:
+        if mutation.applies_to(record):
+            pass:
+
+
+@dataclass
+class RecordMigration:
+    migrations: typing.List[RecordMutation]
+    record: Record
+
+    def apply(self, cache):
+        records = [self.record]
+        for migration in self.migrations:
+            migrated_record = migration(records[-1])
+            records.append(migrated_record)
+
+        original_record, *migrated_records = records
+        cache.update(original_record)
+        for migrated_record in migrated_records:
+            cache.add(migrated_record)
 
 
 def find_directories() -> typing.List[pathlib.Path]:

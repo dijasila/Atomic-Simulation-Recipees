@@ -27,6 +27,22 @@ class Comparator:
         return str(self)
 
 
+def compare_any(selectors, value2):
+    for comparator in selectors:
+        if comparator(value2):
+            return True
+    else:
+        return False
+
+
+def any(*selectors):
+
+    return Comparator(
+        name='any',
+        function=compare_any,
+        value=selectors,
+    )
+
 def approx(value1, rtol=1e-3) -> callable:
 
     return Comparator(
