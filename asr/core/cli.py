@@ -423,7 +423,7 @@ def get_item(attrs: List[str], obj):
 
 @cache.command()
 def add_resultfile_records():
-    from asr.core.migrate import get_resultsfile_records
+    from asr.core.resultfile import get_resultsfile_records
     cache = get_cache()
 
     resultfile_records = get_resultsfile_records()
