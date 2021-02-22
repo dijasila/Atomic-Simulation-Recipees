@@ -446,7 +446,6 @@ def migrate(apply=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
         collect_record_mutations,
-        get_resultsfile_records,
         RecordMigrationFactory,
     )
 
