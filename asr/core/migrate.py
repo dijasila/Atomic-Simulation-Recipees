@@ -3,6 +3,7 @@ import fnmatch
 import pathlib
 import typing
 from dataclasses import dataclass
+from .command import get_recipes
 from .selector import Selector
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
@@ -116,6 +117,17 @@ class RecordMigration:
         for migrated_record in migrated_records:
             cache.add(migrated_record)
 
+
+def collect_record_mutations():
+    """Collect record mutations from all recipes."""
+
+    recipes = get_recipes()
+    mutations = []
+    for recipe in recipes:
+        if recipe.mutations:
+            mutations.extend(recipe.mutations)
+
+    return mutations
 
 def find_directories() -> typing.List[pathlib.Path]:
     directories = []

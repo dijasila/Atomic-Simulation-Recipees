@@ -447,11 +447,11 @@ def migrate(apply=False):
     from asr.core.migrate import (
         collect_record_mutations,
         get_resultsfile_records,
-        make_migration_factory,
+        RecordMigrationFactory,
     )
 
     mutations = collect_record_mutations()
-    make_migration = make_migration_factory(mutations)
+    make_migration = RecordMigrationFactory(mutations)
     migrations = []
 
     for record in cache.select():
