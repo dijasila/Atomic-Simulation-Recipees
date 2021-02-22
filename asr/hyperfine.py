@@ -80,7 +80,7 @@ def webpanel(result, row, key_description):
                              rowlabels=gyro_rownames)
 
     hyperfine = WebPanel('Hyperfine structure',
-                         columns=[[hf_table, gyro_table], []],
+                         columns=[[hf_table], [gyro_table]],
                          sort=1)
 
     return [hyperfine]
