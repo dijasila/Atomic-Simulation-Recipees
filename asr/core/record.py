@@ -1,4 +1,5 @@
 """Implement RunSpec and Record."""
+from __future__ import annotations
 import numpy as np
 
 import typing
@@ -8,7 +9,9 @@ from .resources import Resources
 from .results import get_object_matching_obj_id
 from .metadata import Metadata
 
-# XXX: Make MigrationLog object to store migration related info.
+if typing.TYPE_CHECKING:
+    from .migrate import MigrationLog
+
 # XXX: Make Tags object.
 
 
@@ -20,8 +23,7 @@ class Record:
             run_specification: typing.Optional[RunSpecification] = None,
             resources: typing.Optional[Resources] = None,
             dependencies: typing.Optional[typing.List[str]] = None,
-            migrated_from: typing.Optional[str] = None,
-            migrated_to: typing.Optional[str] = None,
+            migration_log: typing.Optional[MigrationLog] = None,
             tags: typing.Optional[typing.List[str]] = None,
             metadata: typing.Optional[Metadata] = None,
     ):
@@ -34,8 +36,7 @@ class Record:
             result=result,
             resources=resources,
             dependencies=dependencies,
-            migrated_from=migrated_from,
-            migrated_to=migrated_to,
+            migration_log=migration_log,
             tags=tags,
             metadata=metadata,
         )
@@ -60,47 +61,6 @@ class Record:
     @property
     def name(self):
         return self.run_specification.name
-
-    def get_migration(self):
-        """Delegate migration to function objects."""
-        from .migrate import Migration
-        obj = get_object_matching_obj_id(self.run_specification.name)
-        version = self.version
-        if self.migrated_to:
-            return None
-
-        if version != obj.version:
-            migration = None
-            visited_versions = set()
-            while True:
-                if version == obj.version:
-                    break
-                if version not in obj.migrations:
-                    return None
-                to_version, migration_func = obj.migrations[version]
-                assert to_version not in visited_versions, \
-                    'Circular migration detected.'
-                visited_versions.add(to_version)
-                name = f'{self.name} uid={self.uid}'
-                if not migration:
-                    migration = Migration(
-                        migration_func,
-                        from_version=version,
-                        to_version=to_version,
-                        record=self,
-                        name=name,
-                    )
-                else:
-                    migration = Migration(
-                        migration_func,
-                        from_version=version,
-                        to_version=to_version,
-                        dep=migration,
-                        name=name,
-                    )
-                version = to_version
-
-            return migration
 
     def copy(self):
         data = copy.deepcopy(self.__dict__)
