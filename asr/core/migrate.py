@@ -1,3 +1,4 @@
+"""Implements record migration functionality."""
 import fnmatch
 import pathlib
 import typing
@@ -9,8 +10,7 @@ from .record import Record
 
 
 class NoMigrationError(Exception):
-
-    pass
+    """Raise when no migration are needed."""
 
 
 RecordUID = str
@@ -18,14 +18,15 @@ RecordUID = str
 
 @dataclass
 class MigrationLog:
+    """Container for logging migration information."""
 
     migrated_from: typing.Optional[RecordUID]
     migrated_to: typing.Optional[RecordUID]
 
 
-
 @dataclass
 class RecordMutation:
+    """A class to update a record to a greater version."""
 
     function = typing.Callable
     from_version: int
@@ -34,13 +35,16 @@ class RecordMutation:
     description: str
 
     def apply(self, record: Record) -> Record:
-        assert self.applies(record)
+        """Apply mutation to record and return mutated record."""
+        assert self.applies_to(record)
         migrated_record = self.function(record.copy())
         migrated_record.version = self.to_version
         migration_log = MigrationLog(migrated_from=record.uid)
         migrated_record.migration_log = migration_log
+        return migrated_record
 
-    def applies(self, record: Record) -> bool:
+    def applies_to(self, record: Record) -> bool:
+        """Check if mutation applies to record."""
         return self.selector.matches(record)
 
     def __str__(self):
@@ -60,11 +64,15 @@ class RecordMigrationFactory:
             self.mutations.append(mutation)
 
     def add(self, mutation: RecordMutation):
+        """Add mutation."""
         self.mutations.append(mutation)
 
-    def __call__(self, record: Record) -> RecordMigration:
-        sequence_of_mutations = make_migration_strategy(
-            self.mutations, record)
+    def __call__(self, record: Record) -> typing.Optional['RecordMigration']:
+        try:
+            sequence_of_mutations = make_migration_strategy(
+                self.mutations, record)
+        except NoMigrationError:
+            return None
         record_migration = RecordMigration(sequence_of_mutations, record)
         return record_migration
 
@@ -72,10 +80,21 @@ class RecordMigrationFactory:
 def make_migration_strategy(
     mutations: typing.List[RecordMutation],
     record: Record,
-):
+) -> typing.List[RecordMutation]:
+    relevant_mutations = {}
     for mutation in mutations:
         if mutation.applies_to(record):
-            pass:
+            relevant_mutations[mutation.from_version] = mutation
+
+    strategy = []
+    version = record.version
+    if version not in relevant_mutations:
+        raise NoMigrationError
+    while version in relevant_mutations:
+        mutation = relevant_mutations[version]
+        strategy.append(mutation)
+        version = mutation.to_version
+    return strategy
 
 
 @dataclass
