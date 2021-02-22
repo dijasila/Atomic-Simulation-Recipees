@@ -7,15 +7,14 @@ def get_layers(atoms):
     top = copy[copy.get_tags() == 1]
     bottom = copy[copy.get_tags() == 0]
     if len(top) == 0:
-        raise ValueError('Tags have not been set for the current structure. Aborting')
+        raise ValueError('Tags have not been set for the current structure!')
     return top, bottom
 
 
 class Bilayer(Atoms):
     def __init__(self, atoms):
         super().__init__(atoms)
-        self.top_layer = get_layers(atoms)[0]
-        self.bottom_layer = get_layers(atoms)[1]
+        self.top_layer, self.bottom_layer = get_layers(atoms)
         self._atoms = atoms
 
     def copy(self):
@@ -57,7 +56,7 @@ class Bilayer(Atoms):
         import numpy as np
 
         sorter = np.argsort(self.positions[:, 2])
-        old = self._atoms.copy()
+        old = self.copy()
         new = old[sorter]
         new = old[sorter]
         if order == 'descending':
