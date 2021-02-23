@@ -29,12 +29,12 @@ def find_results_files() -> typing.List[pathlib.Path]:
     # ]
 
     skip_patterns = [
-        'results-asr.database.fromtree.json',
-        'results-asr.database.app.json',
-        'results-asr.database.key_descriptions.json',
-        'results-asr.setup.strains*.json',
-        'displacements*/*/results-asr.database.material_fingerprint.json',
-        'strains*/results-asr.database.material_fingerprint.json',
+        '*results-asr.database.fromtree.json',
+        '*results-asr.database.app.json',
+        '*results-asr.database.key_descriptions.json',
+        '*results-asr.setup.strains*.json',
+        '*displacements*/*/results-asr.database.material_fingerprint.json',
+        '*strains*/results-asr.database.material_fingerprint.json',
         '*asr.setinfo*',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
