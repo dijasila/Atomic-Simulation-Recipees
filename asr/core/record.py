@@ -6,7 +6,6 @@ import typing
 import copy
 from .specification import RunSpecification
 from .resources import Resources
-from .results import get_object_matching_obj_id
 from .metadata import Metadata
 
 if typing.TYPE_CHECKING:

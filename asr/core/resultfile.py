@@ -5,6 +5,7 @@ import fnmatch
 import pathlib
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
+from .record import Record
 
 
 def find_directories() -> typing.List[pathlib.Path]:

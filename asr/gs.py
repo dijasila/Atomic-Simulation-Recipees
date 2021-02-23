@@ -2,7 +2,7 @@
 from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
-    Mutations, Selector,
+    RecordMutation, Selector,
 )
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
@@ -47,9 +47,15 @@ sel = Selector()
 sel.name = sel.ANY(sel.EQ('asr.gs'), sel.EQ('asr.groundstate'))
 
 mutations = [
-    Mutation(migrate_result_record, from_version=-1, to_version=0, selector=sel),
-    Mutation(do_nothing, from_version=0, to_version=1, selector=sel),
+    RecordMutation(
+        function=migrate_result_record, from_version=-1, to_version=0,
+        selector=sel,
+        description='Migrate resultfile record and set correct defaults.',
+    ),
+    RecordMutation(function=do_nothing, from_version=0, to_version=1, selector=sel,
+                   description='Do nothing.'),
 ]
+
 
 @command(module='asr.gs',
          argument_hooks=[set_calculator_hook],
@@ -535,10 +541,11 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.gs',
-         argument_hooks=[set_calculator_hook],
-         version=0,
-         migrations={-1: (0, do_nothing)})
+@command(
+    module='asr.gs',
+    argument_hooks=[set_calculator_hook],
+    version=0,
+)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())

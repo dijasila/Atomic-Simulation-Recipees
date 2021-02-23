@@ -35,13 +35,14 @@ def compare_any(selectors, value2):
         return False
 
 
-def any(*selectors):
+def match_any(*selectors):
 
     return Comparator(
         name='any',
         function=compare_any,
         value=selectors,
     )
+
 
 def approx(value1, rtol=1e-3) -> callable:
 
@@ -179,6 +180,7 @@ class Selector:
     GTE = GREATER_THAN_EQUALS = staticmethod(greater_than_equals)
     APPROX = staticmethod(approx)
     ATOMS_EQUAL_TO = staticmethod(atoms_equal_to)
+    ANY = staticmethod(match_any)
 
     def __init__(self, **selection):
         self.__dict__['selection'] = {}

@@ -122,7 +122,7 @@ class ASRCommand:
             version=0,
             cache=None,
             argument_hooks=None,
-            migrations=None,
+            mutations=None,
     ):
         """Construct an instance of an ASRCommand.
 
@@ -138,7 +138,7 @@ class ASRCommand:
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
-        self._migrations = migrations
+        self._mutations = mutations
         self.version = version
         if argument_hooks is None:
             self.argument_hooks = []
@@ -174,11 +174,11 @@ class ASRCommand:
         functools.update_wrapper(self, self._wrapped_function)
 
     @property
-    def migrations(self):
-        if self._migrations:
-            return self._migrations
+    def mutations(self):
+        if self._mutations:
+            return self._mutations
         else:
-            return {}
+            return []
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""

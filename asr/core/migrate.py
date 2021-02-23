@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from .command import get_recipes
 from .selector import Selector
 from .record import Record
+from .specification import get_new_uuid
 
 
 class NoMigrationError(Exception):
@@ -25,7 +26,7 @@ class MigrationLog:
 class RecordMutation:
     """A class to update a record to a greater version."""
 
-    function = typing.Callable
+    function: typing.Callable
     from_version: int
     to_version: int
     selector: Selector
@@ -35,9 +36,17 @@ class RecordMutation:
         """Apply mutation to record and return mutated record."""
         assert self.applies_to(record)
         migrated_record = self.function(record.copy())
+        migrated_record.uid = get_new_uuid()
         migrated_record.version = self.to_version
         migration_log = MigrationLog(migrated_from=record.uid)
         migrated_record.migration_log = migration_log
+        if record.migration_log:
+            record.migration_log.migrated_to = migrated_record.uid
+        else:
+            record.migration_log = MigrationLog(
+                migrated_to=migrated_record.uid,
+                migrated_from=None,
+            )
         return migrated_record
 
     def applies_to(self, record: Record) -> bool:
@@ -98,6 +107,7 @@ def make_migration_strategy(
 @dataclass
 class RecordMigration:
     """A class that represents a record migration."""
+
     migrations: typing.List[RecordMutation]
     record: Record
 
@@ -116,7 +126,6 @@ class RecordMigration:
 
 def collect_record_mutations():
     """Collect record mutations from all recipes."""
-
     recipes = get_recipes()
     mutations = []
     for recipe in recipes:
