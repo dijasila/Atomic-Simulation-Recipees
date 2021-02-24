@@ -448,8 +448,11 @@ def migrate(apply=False):
         collect_record_mutations,
         RecordMigrationFactory,
     )
+    from asr.core.resultfile import get_resultfile_mutations
 
+    cache = get_cache()
     mutations = collect_record_mutations()
+    mutations.extend(get_resultfile_mutations())
     make_migration = RecordMigrationFactory(mutations)
     migrations = []
 
@@ -458,13 +461,18 @@ def migrate(apply=False):
         if record_migration:
             migrations.append(record_migration)
             if apply:
+                print(f'Apply migration: {record_migration}')
                 record_migration.apply(cache)
 
-    if apply:
-        return
-
-    if migrations:
+    if migrations and not apply:
         nmigrations = len(migrations)
+        maxmig = 10
+        for i, migration in enumerate(migrations[:maxmig]):
+            print(f'#{i} {migration}')
+        if nmigrations > maxmig:
+            print('...')
+            print()
+
         print(
             '\n'.join(
                 [

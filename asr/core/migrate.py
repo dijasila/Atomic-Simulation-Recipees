@@ -66,6 +66,9 @@ class RecordMutation:
             migrated_record.migrations = migration_history
         return migrated_record
 
+    def __call__(self, record: Record) -> Record:
+        return self.apply(record)
+
     def applies_to(self, record: Record) -> bool:
         """Check if mutation applies to record."""
         return self.selector.matches(record)
@@ -135,6 +138,20 @@ class RecordMigration:
             migrated_record = mutation(migrated_record)
 
         cache.update(migrated_record)
+
+    @property
+    def from_version(self):
+        return self.mutations[0].from_version
+
+    @property
+    def to_version(self):
+        return self.mutations[-1].to_version
+
+    def __str__(self):
+        return (
+            f'Migrate record uid={self.record.uid} '
+            f'from version={self.from_version} '
+            f'to version={self.to_version}.')
 
 
 def collect_record_mutations():

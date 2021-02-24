@@ -151,6 +151,19 @@ def check_is(obj1):
     )
 
 
+def compare_contains(obj1, obj2):
+    return obj1 in obj2
+
+
+def contains(obj1):
+
+    return Comparator(
+        name='contains',
+        function=compare_contains,
+        value=obj1,
+    )
+
+
 class SelectorSetter:
 
     def __init__(self, selection: 'Selector', attr):
@@ -181,6 +194,7 @@ class Selector:
     APPROX = staticmethod(approx)
     ATOMS_EQUAL_TO = staticmethod(atoms_equal_to)
     ANY = staticmethod(match_any)
+    CONTAINS = staticmethod(contains)
 
     def __init__(self, **selection):
         self.__dict__['selection'] = {}

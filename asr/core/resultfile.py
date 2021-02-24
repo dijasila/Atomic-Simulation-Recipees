@@ -6,6 +6,8 @@ import pathlib
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
 from .record import Record
+from .migrate import RecordMutation
+from .selector import Selector
 
 
 def find_directories() -> typing.List[pathlib.Path]:
@@ -146,7 +148,7 @@ def construct_record_from_resultsfile(
         ),
         resources=resources,
         result=result,
-        tags=['Generated from result file.'],
+        tags=['resultfile'],
         dependencies=dependencies,
     )
 
@@ -246,3 +248,21 @@ def get_resultsfile_records() -> typing.List[Record]:
         records.append(record)
 
     return records
+
+
+def get_resultfile_mutations() -> typing.List[RecordMutation]:
+    sel = Selector()
+    sel.tags = sel.CONTAINS('resultfile')
+    return [
+        RecordMutation(
+            add_default_parameters,
+            from_version=-1,
+            to_version=0,
+            selector=sel,
+            description='Add missing parameters to record from resultfile.',
+        )
+    ]
+
+
+def add_default_parameters(record):
+    return record
