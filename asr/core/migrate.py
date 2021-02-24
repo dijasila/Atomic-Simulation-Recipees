@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from .command import get_recipes
 from .selector import Selector
 from .record import Record
-from .specification import get_new_uuid
 
 
 class NoMigrationError(Exception):
@@ -15,11 +14,33 @@ RecordUID = str
 
 
 @dataclass
-class MigrationLog:
+class MutationLog:
     """Container for logging migration information."""
 
-    migrated_from: typing.Optional[RecordUID]
-    migrated_to: typing.Optional[RecordUID]
+    from_version: int
+    to_version: int
+    description: str
+    previous_record: Record
+
+    @classmethod
+    def from_mutation(
+            cls, mutation: 'RecordMutation', record: Record) -> 'MutationLog':
+        return cls(
+            from_version=mutation.from_version,
+            to_version=mutation.to_version,
+            description=mutation.description,
+            previous_record=record,
+        )
+
+
+@dataclass
+class MigrationHistory:
+    """A class the represents the migration history."""
+
+    history: typing.List[MutationLog]
+
+    def append(self, mutation_log: MutationLog):
+        self.history.extend(mutation_log)
 
 
 @dataclass
@@ -36,17 +57,13 @@ class RecordMutation:
         """Apply mutation to record and return mutated record."""
         assert self.applies_to(record)
         migrated_record = self.function(record.copy())
-        migrated_record.uid = get_new_uuid()
         migrated_record.version = self.to_version
-        migration_log = MigrationLog(migrated_from=record.uid)
-        migrated_record.migration_log = migration_log
-        if record.migration_log:
-            record.migration_log.migrated_to = migrated_record.uid
+        mutation_log = MutationLog.from_mutation(self, record)
+        if migrated_record.migrations:
+            migrated_record.migrations.append(mutation_log)
         else:
-            record.migration_log = MigrationLog(
-                migrated_to=migrated_record.uid,
-                migrated_from=None,
-            )
+            migration_history = MigrationHistory(history=[mutation_log])
+            migrated_record.migrations = migration_history
         return migrated_record
 
     def applies_to(self, record: Record) -> bool:
@@ -108,20 +125,16 @@ def make_migration_strategy(
 class RecordMigration:
     """A class that represents a record migration."""
 
-    migrations: typing.List[RecordMutation]
+    mutations: typing.List[RecordMutation]
     record: Record
 
     def apply(self, cache):
         """Apply migration to a cache."""
-        records = [self.record]
-        for migration in self.migrations:
-            migrated_record = migration(records[-1])
-            records.append(migrated_record)
+        migrated_record = self.record
+        for mutation in self.mutations:
+            migrated_record = mutation(migrated_record)
 
-        original_record, *migrated_records = records
-        cache.update(original_record)
-        for migrated_record in migrated_records:
-            cache.add(migrated_record)
+        cache.update(migrated_record)
 
 
 def collect_record_mutations():

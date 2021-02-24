@@ -9,7 +9,7 @@ from .resources import Resources
 from .metadata import Metadata
 
 if typing.TYPE_CHECKING:
-    from .migrate import MigrationLog
+    from .migrate import MigrationHistory
 
 # XXX: Make Tags object.
 
@@ -22,24 +22,17 @@ class Record:
             run_specification: typing.Optional[RunSpecification] = None,
             resources: typing.Optional[Resources] = None,
             dependencies: typing.Optional[typing.List[str]] = None,
-            migration_log: typing.Optional[MigrationLog] = None,
+            migrations: typing.Optional[MigrationHistory] = None,
             tags: typing.Optional[typing.List[str]] = None,
             metadata: typing.Optional[Metadata] = None,
     ):
-        assert type(run_specification) in [RunSpecification, type(None)]
-        assert type(resources) in [Resources, type(None)]
-        # XXX strictly enforce rest of types.
-
-        data = dict(
-            run_specification=run_specification,
-            result=result,
-            resources=resources,
-            dependencies=dependencies,
-            migration_log=migration_log,
-            tags=tags,
-            metadata=metadata,
-        )
-        self.__dict__.update(data)
+        self.run_specification = run_specification
+        self.result = result
+        self.resources = resources
+        self.dependencies = dependencies
+        self.migrations = migrations
+        self.tags = tags
+        self.metadata = metadata
 
     @property
     def parameters(self):
