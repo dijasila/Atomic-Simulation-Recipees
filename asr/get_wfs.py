@@ -88,6 +88,8 @@ def main(state: int = 0,
             states = return_erange_states(calc, erange)
         above_below = (None, None)
 
+    print(f'INFO: states to write to file: {states}.')
+
 
     # loop over all states and write the wavefunctions to file,
     # set up WaveFunctionResults
@@ -184,7 +186,7 @@ def return_erange_states(calc, erange):
 
     statelist = []
     [statelist.append(i) for i, state in enumerate(es) if (
-        state >= erange[0] and state <= erange[1])]
+        state >= (ef + erange[0]) and state <= (ef + erange[1]))]
 
     return statelist
 
