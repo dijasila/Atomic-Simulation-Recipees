@@ -2,7 +2,6 @@
 from ase import Atoms
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
-    RecordMutation, Selector,
 )
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
