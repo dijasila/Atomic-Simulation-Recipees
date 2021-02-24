@@ -242,20 +242,6 @@ class Cache:
         else:
             self.backend.add(record)
 
-    def migrate_record(
-            self, original_record, migrated_record, migration_label):
-        from asr.core.specification import get_new_uuid
-        migrated_uid = get_new_uuid()
-        original_uid = original_record.uid
-
-        migrated_record.run_specification.uid = migrated_uid
-
-        original_record.migrated_to = migrated_uid
-        migrated_record.migrated_from = original_uid
-        migrated_record.migrations.append(migration_label)
-        self.update(original_record)
-        self.add(migrated_record)
-
     def has(self, *, selector: Selector = None, **equals):
         selector = self.make_selector(selector, equals)
         return self.backend.has(selector)

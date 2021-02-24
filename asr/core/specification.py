@@ -39,29 +39,6 @@ class RunSpecification:  # noqa
         parameters = copy.deepcopy(self.parameters)
         return function(*args, **kwargs, **parameters)
 
-    def migrate(self):
-        is_migrated = False
-        migrated_data = {}
-        for attr in [
-                'name',
-                'parameters',
-                'codes',
-                'version',
-                'uid']:
-
-            attribute = getattr(self, attr)
-            if hasattr(attribute, 'migrate'):
-                migrated = attr.migrate()
-                if migrated:
-                    is_migrated = True
-                    migrated_data[attr] = migrated
-                else:
-                    migrated_data[attr] = attribute
-            else:
-                migrated_data[attr] = attribute
-        if is_migrated:
-            return RunSpecification(**migrated)
-
     def __eq__(self, other):
         if not isinstance(other, RunSpecification):
             return False
