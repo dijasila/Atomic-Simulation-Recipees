@@ -90,7 +90,6 @@ def main(state: int = 0,
 
     print(f'INFO: states to write to file: {states}.')
 
-
     # loop over all states and write the wavefunctions to file,
     # set up WaveFunctionResults
     wfs_results = []
