@@ -1,4 +1,5 @@
 import typing
+import click
 import numpy as np
 from pathlib import Path
 from gpaw import restart
@@ -41,11 +42,17 @@ class Result(ASRResult):
 @option('--state', help='Specify state index that you want to '
         'write out. This option will not be used when '
         '"--get-gapstates" is used.', type=int)
+@option('--erange', help='Specify the energy range (wrt. Fermi level) '
+        'within which you want to write out the wavefunctions (lower '
+        'threshold, upper threshold). This option will not be used when '
+        '"--get-gapstates" is used.', nargs=2,
+        type=click.Tuple([float, float]))
 @option('--get-gapstates/-dont-get-gapstates', help='Save all wfs '
         'for states present inside the gap (only use this option for '
         'defect systems, where your folder structure has been set up '
         'with asr.setup.defects).', is_flag=True)
 def main(state: int = 0,
+         erange: typing.Tuple[float, float] = (0, 0),
          get_gapstates: bool = False) -> Result:
     """Perform fixed density calculation and write out wavefunctions.
 
@@ -75,8 +82,12 @@ def main(state: int = 0,
             eref = read_json('results-asr.gs.json')['evac']
         else:
             eref = 0
-        states = [state]
+        if erange == (0, 0):
+            states = [state]
+        elif erange != (0, 0):
+            states = return_erange_states(calc, erange)
         above_below = (None, None)
+
 
     # loop over all states and write the wavefunctions to file,
     # set up WaveFunctionResults
@@ -163,6 +174,19 @@ def return_gapstates(calc):
         state < cbm and state > vbm)]
 
     return statelist, above_below, dif
+
+
+def return_erange_states(calc, erange):
+    """Evaluate states within a certain energy range wrt. the Fermi level."""
+
+    es = calc.get_eigenvalues()
+    ef = calc.get_fermi_level()
+
+    statelist = []
+    [statelist.append(i) for i, state in enumerate(es) if (
+        state >= erange[0] and state <= erange[1])]
+
+    return statelist
 
 
 if __name__ == '__main__':
