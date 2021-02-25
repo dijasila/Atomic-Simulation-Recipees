@@ -500,12 +500,10 @@ def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     from ase.io import read
     from asr.calculators import get_calculator
-    from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
     atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
-                            communicator=serial_comm)
+    calc = get_calculator()('gs.gpw')
     pbc = atoms.pbc
     ndim = np.sum(pbc)
 
