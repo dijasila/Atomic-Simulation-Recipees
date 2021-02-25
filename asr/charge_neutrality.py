@@ -6,22 +6,37 @@ from gpaw import restart
 import numpy as np
 
 
-# TODO: add plotting routines for formation energies and SC EF
-# TODO: implement Results
 # TODO: implement Webpanel
 # TODO: implement test
 # TODO: automate degeneracy counting
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (fig, WebPanel,
+                                      describe_entry, table,
+                                      matrixtable)
+
+
+    panel = WebPanel(
+        'Equilibrium defect concentrations',
+        columns=[[fig('charge_neutrality.png')], []],
+        plot_descriptions=[{'function': plot_formation_scf,
+                            'filenames': ['charge_neutrality.png']}],
+        sort=10)
+
+    return [panel]
 
 
 @prepare_result
 class ConcentrationResult(ASRResult):
     """Container for concentration results of a specific defect."""
     defect_name: str
-    concentrations: typing.List[typing.Tuple[float, int]]
+    concentrations: typing.List[typing.Tuple[float, float, int]]
 
     key_descriptions = dict(
         defect_name='Name of the defect ({position}_{type}).',
-        concentrations='List of concentration tuples containing (conc., chargestate).')
+        concentrations='List of concentration tuples containing (conc., eform, '
+                       'chargestate).')
 
 
 @prepare_result
@@ -29,6 +44,7 @@ class Result(ASRResult):
     """Container for asr.charge_neutrality results."""
     temperature: float
     efermi_sc: float
+    gap: float
     n0: float
     p0: float
     defect_concentrations: typing.List[ConcentrationResult]
@@ -37,9 +53,12 @@ class Result(ASRResult):
         temperature='Temperature [K].',
         efermi_sc='Self-consistent Fermi level at which charge '
                   'neutrality condition is fulfilled [eV].',
+        gap='Electronic band gap [eV].',
         n0='Electron carrier concentration at SC Fermi level [eV].',
         p0='Hole carrier concentration at SC Fermi level [eV].',
         defect_concentrations='List of ConcentrationResult containers.')
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.charge_neutrality',
@@ -146,7 +165,7 @@ def main(temp: float = 300) -> ASRResult:
                                                           1,
                                                           1,
                                                           temp)
-                concentration_tuples.append((conc_def, int(defect[1])))
+                concentration_tuples.append((conc_def, int(defect[1]), eform))
                 print(f'      defect concentration for ({defect[1]:2}): {conc_def:.4e}')
             concentration_result = ConcentrationResult.fromdata(
                 defect_name=defecttype,
@@ -156,6 +175,7 @@ def main(temp: float = 300) -> ASRResult:
     return Result.fromdata(
         temperature=temp,
         efermi_sc=E,
+        gap=gap,
         n0=n0,
         p0=p0,
         defect_concentrations=concentration_results)
@@ -362,3 +382,34 @@ def get_dos(calc, npts=4001, width=0.01):
     EF = EF - evbm
 
     return dos, EF, gap
+
+
+def plot_formation_scf(row, fname):
+    """Plot formation energy diagram for all defects of a given host
+    and the self consistent Fermi energy wrt. valence band maximum."""
+    import matplotlib.pyplot as plt
+
+    data = row.data.get('results-asr.charge_neutrality.json')
+
+    ef = data['efermi_sc']
+    gap = data['gap']
+    for i, defect in enumerate(data['defect_concentrations']):
+        name = defect['defect_name']
+        plt.plot([], [], linestyle='solid', color=f'C{i}', label=name)
+        for conc_tuple in defect['concentrations']:
+            q = conc_tuple[1]
+            print(q, defect)
+            eform = conc_tuple[2]
+            y0 = q * (-ef) + eform
+            y1 = q * (gap - ef) + eform
+            plt.plot([0, gap], [y0, y1], linestyle='solid', color=f'C{i}')
+
+    plt.axvline(0, color='black')
+    plt.axvline(gap, color='black')
+    plt.axvspan(-100, 0, alpha=0.5, color='grey')
+    plt.axvspan(gap, 100, alpha=0.5, color='grey')
+    plt.xlim(0 - gap / 10., gap + gap / 10.)
+    plt.xlabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
+    plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
+    plt.legend()
+    plt.savefig(fname)
