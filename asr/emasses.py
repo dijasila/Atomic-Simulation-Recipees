@@ -461,7 +461,7 @@ def make_the_plots(row, *args):
                                  gridspec_kw={'width_ratios': [1]})
 
         should_plot = True
-        for cb_key in cb_indices[0:1]:
+        for cb_key in cb_indices:
             cb_tuple = convert_key_to_tuple(cb_key)
             # Save something
             data = results[cb_key]
@@ -524,7 +524,7 @@ def make_the_plots(row, *args):
                                  sharey=True,
                                  gridspec_kw={'width_ratios': [1]})
 
-        for vb_key in vb_indices[0:1]:
+        for vb_key in vb_indices:
             # Save something
             vb_tuple = convert_key_to_tuple(vb_key)
             data = results[vb_key]
