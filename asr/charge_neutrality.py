@@ -9,11 +9,12 @@ import numpy as np
 # TODO: implement Results
 # TODO: implement Webpanel
 # TODO: implement test
+# TODO: automate degeneracy counting
 
 
 @command(module='asr.charge_neutrality',
-         requires=[],
-         dependencies=[],
+         requires=['gs.gpw'],
+         dependencies=['asr.gs'],
          resources='1:10m',
          returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
@@ -24,6 +25,11 @@ def main(temp: float = 300) -> ASRResult:
     specific host system. It needs the defect folder structure
     that gets created with asr.setup.defects.
     """
+    # test input and read in defect dictionary from asr.sj_analyze results
+    defectdict = return_defect_dict()
+
+    # read in pristine ground state calculation and evaluate,
+    # renormalize density of states
     _, calc = restart('gs.gpw', txt=None)
     dos, EF, gap = get_dos(calc)
     dos = renormalize_dos(calc, dos, EF)
@@ -33,9 +39,6 @@ def main(temp: float = 300) -> ASRResult:
                                                    EF,
                                                    gap,
                                                    temp)
-
-    # Read in defect dictionary from asr.sj_analyze results
-    defectdict = return_defect_dict()
 
     # Initialize self-consistent loop for finding Fermi energy
     E = 0
@@ -96,17 +99,20 @@ def main(temp: float = 300) -> ASRResult:
                                                        E,
                                                        gap,
                                                        temp)
-        print('INFO: final results:')
-        for defecttype in defectdict[defecttype]:
+        print(f'INFO: Calculation converged after {i} steps! Final results:')
+        print(f'      Self-consistent Fermi-energy: {E:.2f} eV.')
+        print(f'      Concentrations:')
+        for defecttype in defectdict:
             print(f'      - defecttype: {defecttype}')
             print(f'      --------------------------------')
-            eform = get_formation_energy(defect, E)
-            conc_def = calculate_defect_concentration(eform,
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      temp)
-            print(f'      defect concentration for ({defect[1]}): {conc_def}')
+            for defect in defectdict[defecttype]:
+                eform = get_formation_energy(defect, E)
+                conc_def = calculate_defect_concentration(eform,
+                                                          1,
+                                                          1,
+                                                          1,
+                                                          temp)
+                print(f'      defect concentration for ({defect[1]:2}): {conc_def:.2e}')
 
     return ASRResult()
 
@@ -181,7 +187,8 @@ def return_defect_dict():
     from pathlib import Path
 
     p = Path('.')
-    charged_folders = list(p.glob('./../../defects.*/charge_0/'))
+    charged_folders = list(p.glob('./../defects.*/charge_0/'))
+    sjflag = False
 
     defect_dict = {}
     for folder in charged_folders:
@@ -190,6 +197,13 @@ def return_defect_dict():
             res = read_json(respath)
             defect_name = str(folder.absolute()).split('/')[-2].split('.')[-1]
             defect_dict[defect_name] = res['eform']
+            sjflag = True
+
+    if not sjflag:
+        raise RuntimeError('No SJ results available for this material! Did you run '
+                           'all preliminary calculation for this system?')
+
+    print(f'INFO: read in formation energies of the defects: {defect_dict}.')
 
     return defect_dict
 
@@ -223,7 +237,7 @@ def integrate_electron_hole_concentration(dos, ef, gap, T):
         if energy >= gap:
             int_el.append(rho * fermi_dirac_holes(energy, ef, T))
     n0 = np.trapz(int_el, dx=dx)
-    print('INFO: calculated electron carrier concentration: {}'.format(n0))
+    # print('INFO: calculated electron carrier concentration: {}'.format(n0))
 
     # hole carrier concentration integration
     int_hole = []
@@ -233,7 +247,7 @@ def integrate_electron_hole_concentration(dos, ef, gap, T):
         if energy <= 0:
             int_hole.append(rho * fermi_dirac_electrons(energy, ef, T))
     p0 = np.trapz(int_hole, dx=dx)
-    print('INFO: calculated hole carrier concentration: {}'.format(p0))
+    # print('INFO: calculated hole carrier concentration: {}'.format(p0))
 
     return n0, p0
 
