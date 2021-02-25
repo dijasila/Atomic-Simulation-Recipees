@@ -1,6 +1,7 @@
 """Self-consistent EF calculation for defect systems.."""
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
 from ase.dft.bandgap import bandgap
+import typing
 from gpaw import restart
 import numpy as np
 
@@ -10,6 +11,35 @@ import numpy as np
 # TODO: implement Webpanel
 # TODO: implement test
 # TODO: automate degeneracy counting
+
+
+@prepare_result
+class ConcentrationResult(ASRResult):
+    """Container for concentration results of a specific defect."""
+    defect_name: str
+    concentrations: typing.List[typing.Tuple[float, int]]
+
+    key_descriptions = dict(
+        defect_name='Name of the defect ({position}_{type}).',
+        concentrations='List of concentration tuples containing (conc., chargestate).')
+
+
+@prepare_result
+class Result(ASRResult):
+    """Container for asr.charge_neutrality results."""
+    temperature: float
+    efermi_sc: float
+    n0: float
+    p0: float
+    defect_concentrations: typing.List[ConcentrationResult]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        temperature='Temperature [K].',
+        efermi_sc='Self-consistent Fermi level at which charge '
+                  'neutrality condition is fulfilled [eV].',
+        n0='Electron carrier concentration at SC Fermi level [eV].',
+        p0='Hole carrier concentration at SC Fermi level [eV].',
+        defect_concentrations='List of ConcentrationResult containers.')
 
 
 @command(module='asr.charge_neutrality',
@@ -100,11 +130,15 @@ def main(temp: float = 300) -> ASRResult:
                                                        gap,
                                                        temp)
         print(f'INFO: Calculation converged after {i} steps! Final results:')
-        print(f'      Self-consistent Fermi-energy: {E:.2f} eV.')
+        print(f'      Self-consistent Fermi-energy: {E:.4f} eV.')
+        print(f'      Equilibrium electron concentration: {n0:.4e}.')
+        print(f'      Equilibrium hole concentration: {p0:.4e}.')
         print(f'      Concentrations:')
+        concentration_results = []
         for defecttype in defectdict:
             print(f'      - defecttype: {defecttype}')
             print(f'      --------------------------------')
+            concentration_tuples = []
             for defect in defectdict[defecttype]:
                 eform = get_formation_energy(defect, E)
                 conc_def = calculate_defect_concentration(eform,
@@ -112,9 +146,19 @@ def main(temp: float = 300) -> ASRResult:
                                                           1,
                                                           1,
                                                           temp)
-                print(f'      defect concentration for ({defect[1]:2}): {conc_def:.2e}')
+                concentration_tuples.append((conc_def, int(defect[1])))
+                print(f'      defect concentration for ({defect[1]:2}): {conc_def:.4e}')
+            concentration_result = ConcentrationResult.fromdata(
+                defect_name=defecttype,
+                concentrations=concentration_tuples)
+            concentration_results.append(concentration_result)
 
-    return ASRResult()
+    return Result.fromdata(
+        temperature=temp,
+        efermi_sc=E,
+        n0=n0,
+        p0=p0,
+        defect_concentrations=concentration_results)
 
 
 def fermi_dirac_electrons(E, EF, T):
@@ -130,7 +174,7 @@ def fermi_dirac_holes(E, EF, T):
 def calculate_delta(conc_list, chargelist, n0, p0):
     """Calculate charge balance for current energy.
 
-    delta = n_0 - p_0 - \sum_X(\sum_q C_{X^q})."""
+    delta = n_0 - p_0 - sum_X(sum_q C_{X^q})."""
 
     delta = n0 - p0
     for i, c in enumerate(conc_list):
@@ -206,14 +250,6 @@ def return_defect_dict():
     print(f'INFO: read in formation energies of the defects: {defect_dict}.')
 
     return defect_dict
-
-
-def return_defectlist_dummy():
-    defectdict = {'V_S': [(1.5, 0, 1.3, 1.63), (1.9, 1, 0.55, 1.3), (0.55, -1, 0.4, 0.55)],
-                  'V_Mo': [(7, 0, 0, 0), (7, 1, 0, 0), (8.5, -1, 0, 0), (11, -2, 0, 0)],
-                  'Re_Mo': [(3.3, 1, 0, 0), (2.9, 0, 0, 0)]}
-
-    return defectdict
 
 
 def integrate_electron_hole_concentration(dos, ef, gap, T):
