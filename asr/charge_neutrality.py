@@ -6,7 +6,6 @@ import numpy as np
 
 
 # TODO: add plotting routines for formation energies and SC EF
-# TODO: implement extraction for sj_analyze to get defectdict
 # TODO: implement Results
 # TODO: implement Webpanel
 # TODO: implement test
@@ -36,9 +35,7 @@ def main(temp: float = 300) -> ASRResult:
                                                    temp)
 
     # Read in defect dictionary from asr.sj_analyze results
-    # FIX #
-    defectdict = return_defectlist_dummy()
-    # FIX #
+    defectdict = return_defect_dict()
 
     # Initialize self-consistent loop for finding Fermi energy
     E = 0
@@ -175,6 +172,26 @@ def get_zero_formation_energy(defect):
     charge = defect[1]
 
     return eform, charge
+
+
+def return_defect_dict():
+    """Function that reads in the results of asr.sj_analyze and stores the formation
+    energies at the VBM, together with the respective charge state."""
+    from asr.core import read_json
+    from pathlib import Path
+
+    p = Path('.')
+    charged_folders = list(p.glob('./../../defects.*/charge_0/'))
+
+    defect_dict = {}
+    for folder in charged_folders:
+        respath = Path(folder / 'results-asr.sj_analyze.json')
+        if respath.is_file():
+            res = read_json(respath)
+            defect_name = str(folder.absolute()).split('/')[-2].split('.')[-1]
+            defect_dict[defect_name] = res['eform']
+
+    return defect_dict
 
 
 def return_defectlist_dummy():
