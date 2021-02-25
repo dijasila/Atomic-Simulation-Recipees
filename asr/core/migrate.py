@@ -150,6 +150,7 @@ class RecordMigration:
     def __str__(self):
         return (
             f'Migrate record uid={self.record.uid} '
+            f'name={self.record.name} '
             f'from version={self.from_version} '
             f'to version={self.to_version}.')
 

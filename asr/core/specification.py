@@ -89,7 +89,7 @@ def construct_run_spec(
     )
 
 
-SEPARATOR = '::'
+SEPARATOR = ':'
 
 
 class ModuleNameIsCorrupt(Exception):

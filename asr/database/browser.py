@@ -167,7 +167,7 @@ def get_recipe_href(asr_name, name=None):
     if name is None:
         name = asr_name
     # ATM href only works to recipe main
-    asr_name = asr_name.split('::')[0]
+    asr_name = asr_name.split(':')[0]
     link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
                  f'src/generated/recipe_{asr_name}.html">{name}</a>')
 
@@ -446,9 +446,9 @@ class DataCache:
         sel = self.cache.make_selector()
         funcname = filename[8:-5]
         if '@' not in funcname:
-            funcname += '::main'
+            funcname += ':main'
         else:
-            funcname = funcname.replace('@', '::')
+            funcname = funcname.replace('@', ':')
         sel.run_specification.name = sel.EQ(funcname)
         return sel
 

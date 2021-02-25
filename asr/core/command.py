@@ -150,7 +150,7 @@ class ASRCommand:
 
         # Function to be executed
         self._wrapped_function = wrapped_function
-        self.name = f'{module}@{wrapped_function.__name__}'
+        self.name = f'{module}:{wrapped_function.__name__}'
 
         hints = typing.get_type_hints(wrapped_function)
 

@@ -159,7 +159,11 @@ class ModuleNameIsCorrupt(Exception):
 
 
 def get_object_matching_obj_id(asr_obj_id):
-    module, name = asr_obj_id.split('::')
+    try:
+        module, name = asr_obj_id.split('::')
+    except ValueError:
+        module, name = asr_obj_id.split(':')
+
     if module in {'None.None', '__main__'}:
         raise ModuleNameIsCorrupt(
             """
@@ -564,7 +568,7 @@ def obj_to_id(cls):
     """Get a string representation of path to object.
 
     Ie. if obj is the ASRResult class living in the module, asr.core.results,
-    the correspinding string would be 'asr.core.results::ASRResult'.
+    the correspinding string would be 'asr.core.results:ASRResult'.
 
     """
     module = inspect.getmodule(cls)
@@ -580,7 +584,7 @@ def obj_to_id(cls):
         ('Something went wrong in module name identification. '
          'Please contact developer.')
 
-    return f'{package}.{modulename}::{objname}'
+    return f'{package}.{modulename}:{objname}'
 
 
 class ObjectDescription:
@@ -593,7 +597,7 @@ class ObjectDescription:
         Parameters
         ----------
         object_id: str
-            ID of object, eg. 'asr.core.results::ASRResult' as
+            ID of object, eg. 'asr.core.results:ASRResult' as
             produced by :py:func:`obj_to_id`.
         args
             Arguments for object construction.
@@ -696,8 +700,8 @@ class ASRResult(object):
     True
     >>> print(format(result, 'json'))
     {
-     "object_id": "asr.core.results::Result",
-     "constructor": "asr.core.results::Result",
+     "object_id": "asr.core.results:Result",
+     "constructor": "asr.core.results:Result",
      "args": [],
      "kwargs": {
       "data": {
@@ -816,7 +820,6 @@ class ASRResult(object):
         """Make ObjectDescription of this instance."""
         return ObjectDescription(
             object_id=obj_to_id(type(self)),
-            # constructor='asr.core::result_factory',
             args=(),
             kwargs={
                 'data': self.data,

@@ -5,9 +5,12 @@ import fnmatch
 import pathlib
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
+from .serialize import JSONSerializer
 from .record import Record
 from .migrate import RecordMutation
 from .selector import Selector
+from .command import get_recipes
+from .utils import write_file, read_file
 
 
 def find_directories() -> typing.List[pathlib.Path]:
@@ -24,12 +27,6 @@ def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
 
 
 def find_results_files() -> typing.List[pathlib.Path]:
-    # relevant_patterns = [
-    #     'results-asr.*.json',
-    #     'displacements*/*/results-*.json',
-    #     'strains*/results-*.json',
-    # ]
-
     skip_patterns = [
         '*results-asr.database.fromtree.json',
         '*results-asr.database.app.json',
@@ -132,9 +129,9 @@ def construct_record_from_resultsfile(
 
     name = result.metadata.asr_name
     if '@' not in name:
-        name += '::main'
+        name += ':main'
     else:
-        name = name.replace('@', '::')
+        name = name.replace('@', ':')
 
     uid = uids[path]
     dependencies = get_dependencies(path, uids)
@@ -264,5 +261,33 @@ def get_resultfile_mutations() -> typing.List[RecordMutation]:
     ]
 
 
+PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
+DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
+
+
 def add_default_parameters(record):
+    parameters = DEFAULTS[record.name]
+    for key, value in record.parameters.items():
+        if key not in parameters:
+            continue
+        assert isinstance(value, type(parameters[key])), (
+            f'record.name={record.name} wrong type of value '
+            f'key={key} value={value} type={type(value)}. '
+            f'Expected type={type(parameters[key])}.'
+        )
+    record.run_specification.parameters = parameters
     return record
+
+
+def get_defaults_from_all_recipes():
+    defaults = {}
+    for recipe in get_recipes():
+        defaults[recipe.name] = recipe.defaults
+
+    return defaults
+
+
+if __name__ == '__main__':
+    defaults = get_defaults_from_all_recipes()
+    jsontxt = JSONSerializer().serialize(defaults)
+    write_file(PATH, jsontxt)

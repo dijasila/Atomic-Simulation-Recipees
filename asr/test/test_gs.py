@@ -39,7 +39,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     dep_names = [dep_record.run_specification.name
                  for dep_record in dep_records]
     assert (set(dep_names)
-            == set(['asr.gs::calculate', 'asr.magnetic_anisotropy::main']))
+            == set(['asr.gs:calculate', 'asr.magnetic_anisotropy:main']))
     gsfile = calculaterecord.result.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
@@ -53,7 +53,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
         Path('.asr/records').glob(
             'asr.magnetic_anisotropy*.json'))) == 1
     assert len(list(
-        Path('.asr/records').glob('asr.gs::calculate*.json'))) == 1
+        Path('.asr/records').glob('asr.gs:calculate*.json'))) == 1
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:
