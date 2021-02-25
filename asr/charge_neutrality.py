@@ -6,7 +6,7 @@ from gpaw import restart
 import numpy as np
 
 
-# TODO: implement Webpanel
+# TODO: optimize webpanel and make it nicer
 # TODO: implement test
 # TODO: automate degeneracy counting
 
@@ -16,10 +16,20 @@ def webpanel(result, row, key_descriptions):
                                       describe_entry, table,
                                       matrixtable)
 
+    table_list = []
+    for element in result.defect_concentrations:
+        name = element['defect_name']
+        scf_table = table(result, name, [])
+        for altel in element['concentrations']:
+            scf_table['rows'].extend(
+                [[describe_entry(f'Concentration (q={altel[1]:1d})',
+                                 description='Test'),
+                  f'{altel[0]:.4e}']])
+        table_list.append(scf_table)
 
     panel = WebPanel(
         'Equilibrium defect concentrations',
-        columns=[[fig('charge_neutrality.png')], []],
+        columns=[[fig('charge_neutrality.png')], table_list],
         plot_descriptions=[{'function': plot_formation_scf,
                             'filenames': ['charge_neutrality.png']}],
         sort=10)
