@@ -1,12 +1,11 @@
 """Self-consistent EF calculation for defect systems.."""
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
 import typing
 from gpaw import restart
 import numpy as np
 
 
-# TODO: optimize webpanel and make it nicer
 # TODO: implement test
 # TODO: automate degeneracy counting
 
@@ -14,7 +13,7 @@ import numpy as np
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel,
                                       describe_entry, table,
-                                      matrixtable, dl, code)
+                                      dl, code)
 
     table_list = []
     for element in result.defect_concentrations:
@@ -132,15 +131,25 @@ class Result(ASRResult):
          resources='1:10m',
          returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
-def main(temp: float = 300) -> ASRResult:
+@option('--defects', help='Defect dictionary.', type=DictStr())
+def main(temp: float = 300,
+         defects: dict = {}) -> ASRResult:
     """Calculate self-consistent Fermi energy for defect systems.
 
     This recipe calculates the self-consistent Fermi energy for a
     specific host system. It needs the defect folder structure
-    that gets created with asr.setup.defects.
+    that gets created with asr.setup.defects. If you do not have a
+    defect folder structure present, please use the '--defects' option.
+    It is structured the following way (at the example of MoS2):
+
+    - defect_dict = {'defect_name': [(form. en. at VBM, charge state), (.., ..)],
+                     ...}
     """
     # test input and read in defect dictionary from asr.sj_analyze results
-    defectdict = return_defect_dict()
+    if defects == {}:
+        defectdict = return_defect_dict()
+    else:
+        defectdict = defects
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
