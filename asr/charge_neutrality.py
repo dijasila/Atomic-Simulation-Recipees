@@ -14,7 +14,7 @@ import numpy as np
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel,
                                       describe_entry, table,
-                                      matrixtable)
+                                      matrixtable, dl, code)
 
     table_list = []
     for element in result.defect_concentrations:
@@ -27,6 +27,39 @@ def webpanel(result, row, key_descriptions):
                   f'{altel[0]:.4e}']])
         table_list.append(scf_table)
 
+    ef = result.efermi_sc
+    gap = result.gap
+    if ef < (gap / 4.):
+        dopability = 'p-type'
+    elif ef > (3 * gap / 4.):
+        dopability = 'n-type'
+    else:
+        dopability = 'undopable'
+
+    is_dopable = describe_entry(
+        'Intrinsically n-type/p-type',
+        'Is the material intrinsically n-type or p-type?'
+        + dl(
+            [
+                [
+                    'p-type',
+                    code('if E_F < 0.25 * E_gap')
+                ],
+                [
+                    'n-type',
+                    code('if E_F > 0.75 * E_gap')
+                ],
+                [
+                    'undopable',
+                    code('if 0.25 * E_gap < E_F < 0.75 * E_gap')
+                ],
+            ],
+        )
+    )
+
+    scf_summary = table(result, 'Dopability', [])
+    scf_summary['rows'].extend([[is_dopable, dopability]])
+
     panel = WebPanel(
         'Equilibrium defect concentrations',
         columns=[[fig('charge_neutrality.png')], table_list],
@@ -34,7 +67,11 @@ def webpanel(result, row, key_descriptions):
                             'filenames': ['charge_neutrality.png']}],
         sort=10)
 
-    return [panel]
+    summary = {'title': 'Summary',
+               'columns': [[scf_summary], []],
+               'sort': 1}
+
+    return [panel, summary]
 
 
 @prepare_result
