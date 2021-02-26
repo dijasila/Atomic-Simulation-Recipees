@@ -11,14 +11,14 @@ class NoMigrationError(Exception):
 
 
 RecordUID = str
+UID = str
 
 
 @dataclass
 class MutationLog:
     """Container for logging migration information."""
 
-    from_version: int
-    to_version: int
+    uid: UID
     description: str
     previous_record: Record
 
@@ -26,8 +26,7 @@ class MutationLog:
     def from_mutation(
             cls, mutation: 'RecordMutation', record: Record) -> 'MutationLog':
         return cls(
-            from_version=mutation.from_version,
-            to_version=mutation.to_version,
+            uid=mutation.uid,
             description=mutation.description,
             previous_record=record,
         )
@@ -42,22 +41,23 @@ class MigrationHistory:
     def append(self, mutation_log: MutationLog):
         self.history.extend(mutation_log)
 
+    def __contains__(self, mutation: 'RecordMutation'):
+        return any(mutation.uid == tmp.uid for tmp in self.history)
+
 
 @dataclass
 class RecordMutation:
     """A class to update a record to a greater version."""
 
     function: typing.Callable
-    from_version: int
-    to_version: int
     selector: Selector
+    uid: UID
     description: str
 
     def apply(self, record: Record) -> Record:
         """Apply mutation to record and return mutated record."""
-        assert self.applies_to(record)
+        assert self.applies(record)
         migrated_record = self.function(record.copy())
-        migrated_record.version = self.to_version
         mutation_log = MutationLog.from_mutation(self, record)
         if migrated_record.migrations:
             migrated_record.migrations.append(mutation_log)
@@ -69,12 +69,19 @@ class RecordMutation:
     def __call__(self, record: Record) -> Record:
         return self.apply(record)
 
-    def applies_to(self, record: Record) -> bool:
+    def applies(self, record: Record) -> bool:
         """Check if mutation applies to record."""
-        return self.selector.matches(record)
+        is_match = self.selector.matches(record)
+        if record.migrations:
+            return (
+                is_match
+                and self not in record.migrations
+            )
+        else:
+            return is_match
 
     def __str__(self):
-        return f'{self.description} {self.from_version} -> {self.to_version}'
+        return f'[uid={self.uid[:5]}...]{self.description}'
 
 
 class RecordMigrationFactory:
@@ -128,31 +135,53 @@ def make_migration_strategy(
 class RecordMigration:
     """A class that represents a record migration."""
 
-    mutations: typing.List[RecordMutation]
     record: Record
+    mutations: typing.List[RecordMutation]
+
+    def __bool__(self):
+        if not self.mutations:
+            return False
+
+        does_any_mutation_apply = any(
+            mutation.applies(self.record)
+            for mutation in self.mutations
+        )
+        return does_any_mutation_apply
+
+    def run(self):
+        assert self
+
+        migrated_record = self.record
+        applied_mutations = []
+        while True:
+            applicable_mutations = [
+                mutation
+                for mutation in self.mutations
+                if (
+                    mutation.applies(migrated_record)
+                )
+            ]
+            if not applicable_mutations:
+                break
+            mutation = applicable_mutations[0]
+            migrated_record = mutation(migrated_record)
+            applied_mutations.append(mutation)
+        return migrated_record, applied_mutations
 
     def apply(self, cache):
         """Apply migration to a cache."""
-        migrated_record = self.record
-        for mutation in self.mutations:
-            migrated_record = mutation(migrated_record)
-
+        migrated_record, applied_mutations = self.run()
         cache.update(migrated_record)
 
-    @property
-    def from_version(self):
-        return self.mutations[0].from_version
-
-    @property
-    def to_version(self):
-        return self.mutations[-1].to_version
-
     def __str__(self):
+        _, applied_mutations = self.run()
+        mutations_string = ' -> '.join([
+            str(mutation) for mutation in applied_mutations])
         return (
-            f'Migrate record uid={self.record.uid} '
+            f'Migrate record uid={self.record.uid[:8]}... '
             f'name={self.record.name} '
-            f'from version={self.from_version} '
-            f'to version={self.to_version}.')
+            f'{mutations_string}'
+        )
 
 
 def collect_record_mutations():

@@ -446,18 +446,17 @@ def migrate(apply=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
         collect_record_mutations,
-        RecordMigrationFactory,
+        RecordMigration,
     )
     from asr.core.resultfile import get_resultfile_mutations
 
     cache = get_cache()
     mutations = collect_record_mutations()
     mutations.extend(get_resultfile_mutations())
-    make_migration = RecordMigrationFactory(mutations)
     migrations = []
 
     for record in cache.select():
-        record_migration = make_migration(record)
+        record_migration = RecordMigration(record, mutations)
         if record_migration:
             migrations.append(record_migration)
             if apply:
@@ -486,6 +485,13 @@ def migrate(apply=False):
         )
     else:
         print('All records up to date. No migrations to apply.')
+
+
+@cache.command()
+def new_uid():
+    from .specification import get_new_uuid
+
+    print(get_new_uuid())
 
 
 def make_selector_from_selection(cache, selection):

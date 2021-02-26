@@ -250,11 +250,11 @@ def get_resultsfile_records() -> typing.List[Record]:
 def get_resultfile_mutations() -> typing.List[RecordMutation]:
     sel = Selector()
     sel.tags = sel.CONTAINS('resultfile')
+    sel.version = sel.EQ(-1)
     return [
         RecordMutation(
             add_default_parameters,
-            from_version=-1,
-            to_version=0,
+            uid='9269242a035a4731bcd5ac609ff0a086',
             selector=sel,
             description='Add missing parameters to record from resultfile.',
         )
@@ -276,6 +276,7 @@ def add_default_parameters(record):
             f'Expected type={type(parameters[key])}.'
         )
     record.run_specification.parameters = parameters
+    record.version = 0
     return record
 
 
