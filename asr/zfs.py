@@ -6,6 +6,7 @@ import numpy as np
 @prepare_result
 class Result(ASRResult):
     """Container for zero-field-splitting results."""
+
     D_vv: np.ndarray
 
     key_descriptions = dict(

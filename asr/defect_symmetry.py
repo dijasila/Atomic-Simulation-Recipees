@@ -98,6 +98,7 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class IrrepResult(ASRResult):
     """Container for results of an individual irreproducible representation."""
+
     sym_name: str
     sym_score: float
 
@@ -109,6 +110,7 @@ class IrrepResult(ASRResult):
 @prepare_result
 class SymmetryResult(ASRResult):
     """Container for symmetry results for a given state."""
+
     irreps: typing.List[IrrepResult]
     best: str
     error: float
@@ -131,6 +133,7 @@ class SymmetryResult(ASRResult):
 @prepare_result
 class PristineResult(ASRResult):
     """Container for pristine band edge results."""
+
     vbm: float
     cbm: float
     gap: float
@@ -144,6 +147,7 @@ class PristineResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
+
     pointgroup: str
     defect_center: typing.Tuple[float, float, float]
     defect_name: str
@@ -175,11 +179,13 @@ class Result(ASRResult):
         'gets analyzed.', type=float)
 def main(mapping: bool = False,
          radius: float = 2.0) -> Result:
-    """Analyze defect wavefunctions and their symmetries.
+    """
+    Analyze defect wavefunctions and their symmetries.
 
     Note, that you need to set up your folder structure with
     asr.setup.defects in order to correctly run this recipe. Furthermore,
-    run asr.get_wfs beforehand to write out the needed wavefunctions."""
+    run asr.get_wfs beforehand to write out the needed wavefunctions.
+    """
     from ase.io.cube import read_cube_data
     from gpaw.point_groups import SymmetryChecker, point_group_names
 
@@ -311,10 +317,12 @@ def main(mapping: bool = False,
 
 
 def get_pristine_result():
-    """Returns PristineResult object.
+    """
+    Return PristineResult object.
 
     In 2D, the reference will be the vacuum level of the pristine calculation.
-    In 3D, the reference will be None (vacuum level doesn't make sense here)."""
+    In 3D, the reference will be None (vacuum level doesn't make sense here).
+    """
     from asr.core import read_json
 
     try:
@@ -340,10 +348,12 @@ def get_pristine_result():
 
 
 def get_localization_ratio(atoms, wf):
-    """Returns the localization ratio of the wavefunction,
-       defined as the volume of the cell divided the
-       integral of the fourth power of the wavefunction."""
+    """
+    Return the localization ratio of the wavefunction.
 
+    It is defined as the volume of the cell divided the
+    integral of the fourth power of the wavefunction.
+    """
     grid_vectors = (atoms.cell.T / wf.shape).T
     dv = abs(np.linalg.det(grid_vectors))
     V = atoms.get_volume()
@@ -355,8 +365,7 @@ def get_localization_ratio(atoms, wf):
 
 
 def find_wf_result(state, spin):
-    """Reads in results of asr.get_wfs and returns WaveFunctionResult
-    object that corresponds to the input band and spin index."""
+    """Read in results of asr.get_wfs and returns WaveFunctionResult."""
     res = read_json('results-asr.get_wfs.json')
     wfs = res['wfs']
     for wf in wfs:
@@ -408,7 +417,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
 
 
 def get_spg_symmetry(structure, symprec=0.1):
-    """Returns the symmetry of a given structure evaluated with spglib."""
+    """Return the symmetry of a given structure evaluated with spglib."""
     import spglib as spg
 
     spg_sym = spg.get_spacegroup(structure, symprec=symprec, symbol_type=1)
@@ -417,10 +426,7 @@ def get_spg_symmetry(structure, symprec=0.1):
 
 
 def conserved_atoms(ref_struc, primitive, N, defectpath):
-    """
-    Returns True if number of atoms is correct after the mapping,
-    False if the number is not conserved.
-    """
+    """Return whether number of atoms is correct after the mapping or not."""
     if (is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive) - 1)):
         return False
     elif (not is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive))):
@@ -468,6 +474,8 @@ def compare_structures(artificial, unrelaxed_rattled):
 def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
                             translation):
     """
+    Recreate a symmetric supercell with atomic positions of the general supercell.
+
     Function that analyses supercell created by the general algorithm and
     creates symmetric supercell with the atomic positions of the general
     supercell.
@@ -510,8 +518,7 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
 
 def get_supercell_shape(primitive, pristine):
     """
-    Calculates which (NxNx1) supercell would be closest to the given supercell
-    created by the general algorithm with respect to number of atoms.
+    Calculate which (NxNx1) supercell would be closest to the given supercell.
 
     Returns: N
     """
@@ -527,10 +534,7 @@ def get_supercell_shape(primitive, pristine):
 
 
 def is_vacancy(defectpath):
-    """
-    Checks whether the current defect is a vacancy or substitutional defect.
-    Returns true if it is a vacancy, false if it is a substitutional defect.
-    """
+    """Check whether current defect is a vacancy."""
     try:
         defecttype = str(defectpath.absolute()).split(
             '/')[-2].split('_')[-2].split('.')[-1]
@@ -554,7 +558,7 @@ def get_defect_info(primitive, defectpath):
 
 def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
                               defectpath):
-    """Returns the coordinates of the present defect."""
+    """Return the coordinates of the present defect."""
     deftype, defpos = get_defect_info(primitive, defectpath)
     if not is_vacancy(defectpath):
         for i in range(len(primitive)):
@@ -592,7 +596,7 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
 
 
 class Level:
-    " Class to draw a single defect state level in the gap"
+    """Class to draw a single defect state level in the gap."""
 
     def __init__(self, energy, size=0.05, ax=None):
         self.size = size
@@ -600,8 +604,7 @@ class Level:
         self.ax = ax
 
     def draw(self, spin, deg, off):
-        """ Method to draw the defect state according to the
-          spin and degeneracy"""
+        """Draw the defect state according to spin and degeneracy."""
         xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
         xpos_nor = [1 / 4, 3 / 4]
         if deg == 2:
@@ -626,8 +629,7 @@ class Level:
             self.ax.plot(pos, [self.energy] * 2, '-k')
 
     def add_occupation(self, length):
-        " Draw an arrow if the defect state if occupied"
-
+        """Draw an arrow if the defect state if occupied."""
         updown = [1, -1][self.spin]
         self.ax.arrow(self.relpos,
                       self.energy - updown * length / 2,
@@ -637,8 +639,7 @@ class Level:
                       head_length=length / 5, fc='k', ec='k')
 
     def add_label(self, label):
-        " Add symmetry label of the irrep of the point group"
-
+        """Add symmetry label of the irrep of the point group."""
         shift = self.size / 5
         if (self.off == 0 and self.spin == 0):
             self.ax.text(self.relpos - self.size - shift,
@@ -755,9 +756,7 @@ def plot_gapstates(row, fname):
 
 
 def check_and_return_input():
-    """Check whether the folder structure is compatible with this recipe,
-    and whether all necessary files are present."""
-
+    """Check whether folder structure is correct and return input."""
     pristinepath = list(Path('.').glob('../../defects.pristine*'))[0]
     try:
         pris_struc = read(pristinepath / 'structure.json')

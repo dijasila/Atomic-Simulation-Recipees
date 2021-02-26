@@ -94,6 +94,7 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class ConcentrationResult(ASRResult):
     """Container for concentration results of a specific defect."""
+
     defect_name: str
     concentrations: typing.List[typing.Tuple[float, float, int]]
 
@@ -106,6 +107,7 @@ class ConcentrationResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for asr.charge_neutrality results."""
+
     temperature: float
     efermi_sc: float
     gap: float
@@ -266,10 +268,11 @@ def fermi_dirac_holes(E, EF, T):
 
 
 def calculate_delta(conc_list, chargelist, n0, p0):
-    """Calculate charge balance for current energy.
+    """
+    Calculate charge balance for current energy.
 
-    delta = n_0 - p_0 - sum_X(sum_q C_{X^q})."""
-
+    delta = n_0 - p_0 - sum_X(sum_q C_{X^q}).
+    """
     delta = n0 - p0
     for i, c in enumerate(conc_list):
         delta = delta - c * chargelist[i]
@@ -288,8 +291,9 @@ def check_delta_zero(delta_new, conc_list, n0, p0):
 
 
 def calculate_defect_concentration(e_form, charge, sites, degeneracy, T):
-    """Calculates and returns the defect concentration for a specific defect in
-    a particular charge state with the formation energy for a particular energy.
+    """Calculate and return the defect concentration for a specific defect.
+
+    For a particular charge state with the formation energy for a particular energy.
 
     Use C_X^q = N_X * g_{X^q} * exp(-E_f(X^q) / (k * T))
 
@@ -301,17 +305,18 @@ def calculate_defect_concentration(e_form, charge, sites, degeneracy, T):
 
 
 def get_formation_energy(defect, energy):
-    """Returns the formation energy of a given defect in a charge state at
-    an specific energy."""
+    """Return formation energy of defect in a charge state at an energy."""
     E_form_0, charge = get_zero_formation_energy(defect)
 
     return E_form_0 + charge * energy
 
 
 def get_zero_formation_energy(defect):
-    """Returns the formation energy of a given defect at the VBM.
+    """
+    Return the formation energy of a given defect at the VBM.
 
-    Note, that the VBM corresponds to energy zero."""
+    Note, that the VBM corresponds to energy zero.
+    """
     eform = defect[0]
     charge = defect[1]
 
@@ -319,8 +324,7 @@ def get_zero_formation_energy(defect):
 
 
 def return_defect_dict():
-    """Function that reads in the results of asr.sj_analyze and stores the formation
-    energies at the VBM, together with the respective charge state."""
+    """Read in the results of asr.sj_analyze and store the formation energies at VBM."""
     from asr.core import read_json
     from pathlib import Path
 
@@ -347,7 +351,8 @@ def return_defect_dict():
 
 
 def integrate_electron_hole_concentration(dos, ef, gap, T):
-    """Integrate electron and hole carrier concentration.
+    """
+    Integrate electron and hole carrier concentration.
 
     Use the trapezoid rule to integrate the following expressions:
 
@@ -425,7 +430,7 @@ def renormalize_dos(calc, dos, ef):
 
 
 def get_band_edges(calc):
-    """Returns energy of VBM to reference to later."""
+    """Return energy of VBM to reference to later."""
     gap, p1, p2 = bandgap(calc)
     if gap == 0:
         raise ValueError('No bandgap for the present host material!')
@@ -438,9 +443,7 @@ def get_band_edges(calc):
 
 
 def get_dos(calc, npts=4001, width=0.01):
-    """
-    Returns the density of states with energy set to zero for VBM.
-    """
+    """Return the density of states with energy set to zero for VBM."""
     dos = calc.get_dos(spin=0, npts=npts, width=width)
     if calc.get_number_of_spins() == 2:
         dos_1 = calc.get_dos(spin=1, npts=npts, width=width)
@@ -459,8 +462,7 @@ def get_dos(calc, npts=4001, width=0.01):
 
 
 def plot_formation_scf(row, fname):
-    """Plot formation energy diagram for all defects of a given host
-    and the self consistent Fermi energy wrt. valence band maximum."""
+    """Plot formation energy diagram and SC Fermi level wrt. VBM."""
     import matplotlib.pyplot as plt
 
     data = row.data.get('results-asr.charge_neutrality.json')

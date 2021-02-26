@@ -7,9 +7,12 @@ from gpaw import restart
 
 
 def get_atoms_close_to_center(center):
-    """Returns list of the ten atoms closest to the defect (only if
-    a previous defect calculation is present). Return list of atoms closest to
-    the origin otherwise."""
+    """
+    Return list of the ten atoms closest to the defect.
+
+    Note, that this is the case only if a previous defect calculation is present.
+    Return list of atoms closest to the origin otherwise.
+    """
     from ase import Atoms
     from ase.io import read
     atoms = read('structure.json')
@@ -89,6 +92,7 @@ def webpanel(result, row, key_description):
 @prepare_result
 class HyperfineResult(ASRResult):
     """Container for hyperfine coupling results."""
+
     index: int
     kind: str
     magmom: float
@@ -105,6 +109,7 @@ class HyperfineResult(ASRResult):
 @prepare_result
 class GyromagneticResult(ASRResult):
     """Container for gyromagnetic factor results."""
+
     symbol: str
     g: float
 
@@ -117,6 +122,7 @@ class GyromagneticResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for asr.hyperfine results."""
+
     hyperfine: typing.List[HyperfineResult]
     gfactors: typing.List[GyromagneticResult]
     center: typing.Tuple[float, float, float]
@@ -136,7 +142,6 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     """Calculate hyperfine splitting."""
-
     atoms, calc = restart('gs.gpw', txt=None)
     hf_results, gfactor_results = calculate_hyperfine(atoms, calc)
 

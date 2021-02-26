@@ -8,8 +8,8 @@ from asr.core import command, option, ASRResult, prepare_result
 
 @prepare_result
 class WaveFunctionResult(ASRResult):
-    """Container for results of specific wavefunction for one spin
-    channel."""
+    """Container for results of specific wavefunction for one spin channel."""
+
     state: int
     spin: int
     energy: float
@@ -23,6 +23,7 @@ class WaveFunctionResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for asr.get_wfs results."""
+
     wfs: typing.List[WaveFunctionResult]
     above_below: typing.Tuple[bool, bool]
     eref: float
@@ -54,7 +55,8 @@ class Result(ASRResult):
 def main(state: int = 0,
          erange: typing.Tuple[float, float] = (0, 0),
          get_gapstates: bool = False) -> Result:
-    """Perform fixed density calculation and write out wavefunctions.
+    """
+    Perform fixed density calculation and write out wavefunctions.
 
     This recipe reads in an existing gs.gpw file, runs a fixed density
     calculation on it, and writes out wavefunctions for a state in
@@ -119,13 +121,15 @@ def main(state: int = 0,
 
 
 def return_gapstates(calc):
-    """Evaluate states within the pristine bandgap and return bandindices.
+    """
+    Evaluate states within the pristine bandgap and return bandindices.
 
     This function compares a defect calculation to a pristine one and
     evaluates the gap states by aligning semi-core states of pristine and
     defect system and afterwards comparing their eigenvalues. Note, that this
     function only works for defect systems where the folder structure has
-    been created with asr.setup.defects!"""
+    been created with asr.setup.defects!
+    """
     import numpy as np
     from asr.core import read_json
 
@@ -179,7 +183,6 @@ def return_gapstates(calc):
 
 def return_erange_states(calc, erange):
     """Evaluate states within a certain energy range wrt. the Fermi level."""
-
     es = calc.get_eigenvalues()
     ef = calc.get_fermi_level()
 

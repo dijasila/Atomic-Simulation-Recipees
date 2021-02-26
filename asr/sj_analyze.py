@@ -92,6 +92,7 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class PristineResults(ASRResult):
     """Container for pristine band gap results."""
+
     vbm: float
     cbm: float
     evac: float
@@ -105,6 +106,7 @@ class PristineResults(ASRResult):
 @prepare_result
 class TransitionValues(ASRResult):
     """Container for values of a specific charge transition level."""
+
     transition: float
     erelax: float
     evac: float
@@ -118,6 +120,7 @@ class TransitionValues(ASRResult):
 @prepare_result
 class TransitionResults(ASRResult):
     """Container for charge transition level results."""
+
     transition_name: str
     transition_values: TransitionValues
 
@@ -129,6 +132,7 @@ class TransitionResults(ASRResult):
 @prepare_result
 class TransitionListResults(ASRResult):
     """Container for all charge transition level results."""
+
     transition_list: typing.List[TransitionResults]
 
     key_descriptions = dict(
@@ -138,6 +142,7 @@ class TransitionListResults(ASRResult):
 @prepare_result
 class StandardStateResult(ASRResult):
     """Container for results related to the standard state of the present defect."""
+
     element: str
     eref: float
 
@@ -149,6 +154,7 @@ class StandardStateResult(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for Slater Janak results."""
+
     transitions: typing.List[TransitionResults]
     pristine: PristineResults
     eform: typing.List[typing.Tuple[float, int]]
@@ -214,7 +220,6 @@ def calculate_formation_energies(eform, transitions, pristine):
     """Calculate formation energies for all charge states at the VB band edge."""
     # from asr.core import read_json
     vbm = pristine['vbm'] - pristine['evac']
-    # cbm = pristine['cbm'] - pristine['evac']
 
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
@@ -291,9 +296,7 @@ def get_kindlist():
 
 
 def calculate_transitions():
-    """Calculate all of the present transitions and return an
-    ASRResults object (TransitionResults)."""
-
+    """Calculate all of the present transitions and return TransitionResults."""
     transition_list = []
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
@@ -318,9 +321,7 @@ def calculate_transitions():
 
 
 def get_pristine_band_edges() -> PristineResults:
-    """
-    Returns band edges and vaccum level for the host system.
-    """
+    """Return band edges and vaccum level for the host system."""
     import numpy as np
     from asr.core import read_json
 
@@ -339,8 +340,6 @@ def get_pristine_band_edges() -> PristineResults:
             evac = calc_pris.get_eigenvalues()[0]
         else:
             evac = results_pris['evac']
-        # evac_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        # evac = (evac_z[0] + evac_z[-1]) / 2.
     else:
         vbm = None
         cbm = None
@@ -353,9 +352,7 @@ def get_pristine_band_edges() -> PristineResults:
 
 
 def obtain_chemical_potential(symbol, db):
-    """
-    Function to extract the standard state of a given element.
-    """
+    """Extract the standard state of a given element."""
     energies_ss = []
     if symbol == 'v':
         eref = 0.
@@ -381,11 +378,10 @@ def get_defect_info():
 
 
 def calculate_neutral_formation_energy():
-    """
-    Function to calculate the neutral formation energy without chemical
-    potential shift applied. Only the neutral one is needed as for the higher
-    charge states we will use the sj transitions for the formation energy
-    plot.
+    """Calculate the neutral formation energy without chemical potential shift applied.
+
+    Only the neutral one is needed as for the higher charge states we will use the sj
+    transitions for the formation energy plot.
     """
     from asr.core import read_json
     from ase.db import connect
@@ -413,8 +409,7 @@ def calculate_neutral_formation_energy():
 
 
 def get_transition_level(transition, charge) -> TransitionResults:
-    """
-    Calculates the charge transition level for a given charge transition.
+    """Calculate the charge transition level for a given charge transition.
 
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
@@ -592,15 +587,18 @@ def plot_formation_energies(row, fname):
 
 
 def plot_charge_transitions(row, fname):
-    """
-    Plot the calculated charge transition levels along with the pristine bandgap.
-    """
+    """Plot calculated CTL along with the pristine bandgap."""
     import matplotlib.pyplot as plt
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm'] - data['pristine']['evac']
-    cbm = data['pristine']['cbm'] - data['pristine']['evac']
+    if data['pristine']['evac'] is not None:
+        vbm = data['pristine']['vbm'] - data['pristine']['evac']
+        cbm = data['pristine']['cbm'] - data['pristine']['evac']
+    else:
+        vbm = data['pristine']['vbm']
+        cbm = data['pristine']['cbm']
+
     gap = cbm - vbm
 
     transitions = data['transitions']

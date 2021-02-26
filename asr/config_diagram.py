@@ -8,9 +8,7 @@ import numpy as np
 
 
 def get_wfs_overlap(i, f, calc_0, calc_q):
-    """ Calculate the overlap between that the state i
-        and the state f of the displaced geometry"""
-
+    """Calculate the overlap between that the states i and f."""
     from gpaw.utilities.ps2ae import PS2AE
     from ase.units import Bohr
 
@@ -33,6 +31,7 @@ def get_wfs_overlap(i, f, calc_0, calc_q):
 @prepare_result
 class DisplacementResults(ASRResult):
     """Container for results related to the displaced geometries."""
+
     delta_Q: float
     Q_n: np.ndarray
     energies_n: np.ndarray
@@ -57,12 +56,15 @@ class DisplacementResults(ASRResult):
         help='Calculate the overlap of wfs between states i and f')
 def calculate(folder: str, npoints: int = 5,
               wfs: Tuple[int, int] = None) -> DisplacementResults:
-    """Interpolate the geometry of the structure in the current folder with the
-       displaced geometry in the 'folder' given as input of the recipe.
-       The number of displacements between the two geometries is set with the
-       'npoints' input, and the energy, the modulus of the displacement and
-       the overlap between the wavefunctions is saved (if wfs is set)."""
+    """
+    Interpolate geometry of structures in one folder with geometry of another folder.
 
+    Interpolate the geometry of the structure in the current folder with the
+    displaced geometry in the 'folder' given as input of the recipe.
+    The number of displacements between the two geometries is set with the
+    'npoints' input, and the energy, the modulus of the displacement and
+    the overlap between the wavefunctions is saved (if wfs is set).
+    """
     from gpaw import GPAW, restart
 
     atoms, calc_0 = restart('gs.gpw', txt=None)
@@ -149,8 +151,8 @@ def webpanel(row, key_descriptions):
 
 @prepare_result
 class ParabolaResults(ASRResult):
-    """Container for frequencies, energies, and Huang-Rhys factor of
-    excited state or ground state."""
+    """Container for ParabolaResults for excited state or ground state."""
+
     energies_n: np.ndarray
     omega: float
     S: float
@@ -164,6 +166,7 @@ class ParabolaResults(ASRResult):
 @prepare_result
 class Result(ASRResult):
     """Container for configuration diagram results."""
+
     Q_n: np.ndarray
     ZPL: float
     delta_Q: float
@@ -191,10 +194,12 @@ def return_parabola_results(energies_n, omega, S):
 @option('--folder1', help='Folder of the first parabola', type=str)
 @option('--folder2', help='Folder of the first parabola', type=str)
 def main(folder1: str = '.', folder2: str = 'excited') -> Result:
-    """Estrapolate the frequencies of the ground and
-       excited one-dimensional mode and their relative
-       Huang-Rhys factors"""
+    """Extrapolate frequencies of ground and excited state in 1D approximation.
 
+    Extrapolate the frequencies of the ground and
+    excited one-dimensional mode and their relative
+    Huang-Rhys factors
+    """
     result_file = 'results-asr.config_diagram@calculate.json'
 
     data_g = read_json(folder1 + '/' + result_file)
