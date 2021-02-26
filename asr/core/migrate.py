@@ -131,7 +131,7 @@ class RecordMigration:
         mutations_string = ' -> '.join([
             str(mutation) for mutation in applied_mutations])
         return (
-            f'Migrate record uid={self.record.uid[:8]} '
+            f'Migrate record #{self.record.uid[:8]} '
             f'name={self.record.name}: '
             f'{mutations_string}'
         )
