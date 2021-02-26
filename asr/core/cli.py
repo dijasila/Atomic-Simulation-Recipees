@@ -463,7 +463,13 @@ def migrate(apply=False):
                 print(f'Apply migration: {record_migration}')
                 record_migration.apply(cache)
 
-    if migrations and not apply:
+    if not migrations:
+        print('All records up to date. No migrations to apply.')
+
+    if apply:
+        return
+
+    if migrations:
         nmigrations = len(migrations)
         maxmig = 10
         for i, migration in enumerate(migrations[:maxmig]):
@@ -483,8 +489,6 @@ def migrate(apply=False):
                 ]
             )
         )
-    else:
-        print('All records up to date. No migrations to apply.')
 
 
 @cache.command()
