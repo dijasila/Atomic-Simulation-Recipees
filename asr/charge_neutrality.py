@@ -23,8 +23,9 @@ def webpanel(result, row, key_descriptions):
         for altel in element['concentrations']:
             scf_table['rows'].extend(
                 [[describe_entry(f'Concentration (q={altel[1]:1d})',
-                                 description='Test'),
-                  f'{altel[0]:.4e}']])
+                                 description='Equilibrium concentration '
+                                             'in charge state q.'),
+                  f'{altel[0]:.3e}']])
         table_list.append(scf_table)
 
     ef = result.efermi_sc
@@ -57,12 +58,29 @@ def webpanel(result, row, key_descriptions):
         )
     )
 
-    scf_summary = table(result, 'Dopability', [])
+    scf_fermi = describe_entry(
+        'Fermi level pinning',
+        result.key_descriptions['efermi_sc'])
+
+    scf_summary = table(result, 'Charge neutrality', [])
     scf_summary['rows'].extend([[is_dopable, dopability]])
+    scf_summary['rows'].extend([[scf_fermi, f'{ef:.3f} eV']])
+
+    scf_overview = table(result, 'Equilibrium properties', [])
+    scf_overview['rows'].extend([[is_dopable, dopability]])
+    scf_overview['rows'].extend([[scf_fermi, f'{ef:.3f} eV']])
+    scf_overview['rows'].extend(
+        [[describe_entry('Electron carrier concentration',
+                         result.key_descriptions['n0']),
+          f'{result.n0:.3e}']])
+    scf_overview['rows'].extend(
+        [[describe_entry('Hole carrier concentration',
+                         result.key_descriptions['p0']),
+          f'{result.p0:.3e}']])
 
     panel = WebPanel(
         'Equilibrium defect concentrations',
-        columns=[[fig('charge_neutrality.png')], table_list],
+        columns=[[fig('charge_neutrality.png'), scf_overview], table_list],
         plot_descriptions=[{'function': plot_formation_scf,
                             'filenames': ['charge_neutrality.png']}],
         sort=10)
@@ -101,8 +119,8 @@ class Result(ASRResult):
         efermi_sc='Self-consistent Fermi level at which charge '
                   'neutrality condition is fulfilled [eV].',
         gap='Electronic band gap [eV].',
-        n0='Electron carrier concentration at SC Fermi level [eV].',
-        p0='Hole carrier concentration at SC Fermi level [eV].',
+        n0='Electron carrier concentration at SC Fermi level.',
+        p0='Hole carrier concentration at SC Fermi level.',
         defect_concentrations='List of ConcentrationResult containers.')
 
     formats = {"ase_webpanel": webpanel}
@@ -455,6 +473,7 @@ def plot_formation_scf(row, fname):
     plt.axvline(gap, color='black')
     plt.axvspan(-100, 0, alpha=0.5, color='grey')
     plt.axvspan(gap, 100, alpha=0.5, color='grey')
+    plt.axvline(ef, color='red', linestyle='dotted', label=r'$E_F^{\mathrm{sc}}$')
     plt.xlim(0 - gap / 10., gap + gap / 10.)
     plt.xlabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
     plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
