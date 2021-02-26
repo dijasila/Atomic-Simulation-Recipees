@@ -54,7 +54,7 @@ def main(n: int = 1,
     [occ_spin0.append(en) for en in ev_spin0 if en < E_F]
     n1 = len(occ_spin0)
     # check for threshold in excitation for first spin channel
-    if (ev_spin0[n1+1] - ev_spin0[n1]) < 0.5 and setup_smart:
+    if (ev_spin0[n1 + 1] - ev_spin0[n1]) < 0.5 and setup_smart:
         set_excitation = False
     if calc.get_number_of_spins() == 2:
         occ_spin1 = []
@@ -62,7 +62,7 @@ def main(n: int = 1,
         [occ_spin1.append(en) for en in ev_spin1 if en < E_F]
         n2 = len(occ_spin1)
         # check for threshold in excitation for second spin channel
-        if (ev_spin1[n2+1] - ev_spin1[n2]) < 0.5 and setup_smart:
+        if (ev_spin1[n2 + 1] - ev_spin1[n2]) < 0.5 and setup_smart:
             set_excitation = False
         # if occupations for both spin channels are the same, only set up the
         # first one (even though we have a spin-polarized calculation
@@ -120,13 +120,15 @@ def main(n: int = 1,
             p_spin1['asr.gs@calculate']['calculator']['nbands'] = N_tot
             p_spin1['asr.relax']['calculator']['occupations'] = {'name': 'fixed',
                                                                  'numbers':
-                                                                 [occ_n_alpha, occ_n_beta]}
+                                                                 [occ_n_alpha,
+                                                                  occ_n_beta]}
             p_spin1['asr.relax']['calculator']['nbands'] = N_tot
             create_excited_folders(1)
             write_json('excited_spin1/params.json', p_spin1)
     elif not set_excitation:
-        print("WARNING: chosen excitation is below the physically reasonable threshold. "
-              "Don't create the excitation! If wanted, try setting up another excitation.")
+        print("WARNING: chosen excitation is below the physically reasonable "
+              "threshold. Don't create the excitation! If wanted, try setting "
+              "up another excitation.")
 
     return ASRResult()
 

@@ -140,9 +140,9 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': 'Summary',
              # 'columns': [[basictable,
              'columns': [[],
-            #               {'type': 'table', 'header': ['Stability', ''],
-            #                'rows': [],
-            #                'columnwidth': 4}],
+                         # {'type': 'table', 'header': ['Stability', ''],
+                         #  'rows': [],
+                         #  'columnwidth': 4}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
