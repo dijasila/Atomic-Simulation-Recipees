@@ -81,54 +81,7 @@ class RecordMutation:
             return is_match
 
     def __str__(self):
-        return f'[uid={self.uid[:5]}...]{self.description}'
-
-
-class RecordMigrationFactory:
-    """Construct record migrations.
-
-    Manages a collection of RecordMutations and can be told to create
-    RecordMigration.
-    """
-
-    def __init__(self, mutations):
-        self.mutations = []
-        for mutation in mutations:
-            self.mutations.append(mutation)
-
-    def add(self, mutation: RecordMutation):
-        """Add mutation."""
-        self.mutations.append(mutation)
-
-    def __call__(self, record: Record) -> typing.Optional['RecordMigration']:
-        try:
-            sequence_of_mutations = make_migration_strategy(
-                self.mutations, record)
-        except NoMigrationError:
-            return None
-        record_migration = RecordMigration(sequence_of_mutations, record)
-        return record_migration
-
-
-def make_migration_strategy(
-    mutations: typing.List[RecordMutation],
-    record: Record,
-) -> typing.List[RecordMutation]:
-    """Given mutations and record construct a migration strategy."""
-    relevant_mutations = {}
-    for mutation in mutations:
-        if mutation.applies_to(record):
-            relevant_mutations[mutation.from_version] = mutation
-
-    strategy = []
-    version = record.version
-    if version not in relevant_mutations:
-        raise NoMigrationError
-    while version in relevant_mutations:
-        mutation = relevant_mutations[version]
-        strategy.append(mutation)
-        version = mutation.to_version
-    return strategy
+        return f'#{self.uid[:5]} {self.description}'
 
 
 @dataclass
@@ -178,8 +131,8 @@ class RecordMigration:
         mutations_string = ' -> '.join([
             str(mutation) for mutation in applied_mutations])
         return (
-            f'Migrate record uid={self.record.uid[:8]}... '
-            f'name={self.record.name} '
+            f'Migrate record uid={self.record.uid[:8]} '
+            f'name={self.record.name}: '
             f'{mutations_string}'
         )
 
