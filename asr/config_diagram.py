@@ -1,4 +1,5 @@
 from typing import Tuple
+import click
 from ase.parallel import parprint
 from asr.core import command, option, read_json, ASRResult, prepare_result
 import ase.units as units
@@ -52,7 +53,7 @@ class DisplacementResults(ASRResult):
          returns=DisplacementResults)
 @option('--folder', help='Folder of the displaced geometry', type=str)
 @option('--npoints', help='How many displacement points.', type=int)
-@option('--wfs', nargs=2, type=int,
+@option('--wfs', nargs=2, type=click.Tuple([int, int]),
         help='Calculate the overlap of wfs between states i and f')
 def calculate(folder: str, npoints: int = 5,
               wfs: Tuple[int, int] = None) -> DisplacementResults:
@@ -185,11 +186,11 @@ def return_parabola_results(energies_n, omega, S):
 
 
 @command("asr.config_diagram",
-         webpanel=webpanel,
-         dependencies=["asr.config_diagram@calculate"])
+         dependencies=["asr.config_diagram@calculate"],
+         returns=Result)
 @option('--folder1', help='Folder of the first parabola', type=str)
 @option('--folder2', help='Folder of the first parabola', type=str)
-def main(folder1: str = '.', folder2: str = 'excited'):
+def main(folder1: str = '.', folder2: str = 'excited') -> Result:
     """Estrapolate the frequencies of the ground and
        excited one-dimensional mode and their relative
        Huang-Rhys factors"""

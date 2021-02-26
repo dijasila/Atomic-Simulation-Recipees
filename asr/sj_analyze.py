@@ -168,11 +168,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.sj_analyze',
-         webpanel=webpanel,
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    '../../unrelaxed.json',
-                   # '../../defects.pristine_sc/results-asr.gs.json',
-                   # '../../defects.pristine_sc/gs.gpw',
                    'gs.gpw',
                    'results-asr.setup.defects.json'],
          resources='24:2h',
