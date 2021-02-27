@@ -266,15 +266,36 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 
 def add_default_parameters(record):
-    parameters = DEFAULTS[record.name]
+    from .utils import get_recipe_from_name
+    default_params = DEFAULTS[record.name]
+    name = record.name
+    new_parameters = record.parameters.copy()
+    recipe = get_recipe_from_name(name)
+    sig = recipe.get_signature()
+    parameters = record.parameters
+
+    sig_parameters = {parameter for parameter in sig.parameters}
+
+    missing_keys = set()
     for key, value in record.parameters.items():
-        if key not in parameters:
-            continue
-        assert isinstance(value, type(parameters[key])), (
-            f'record.name={record.name} wrong type of value '
-            f'key={key} value={value} type={type(value)}. '
-            f'Expected type={type(parameters[key])}.'
-        )
+        if key not in sig_parameters:
+            missing_keys.add(key)
+
+    remove_keys = set()
+    if name == 'asr.formalpolarization:main':
+        remove_keys.add('gpwname')
+    elif name == 'asr.setup.displacements:main':
+        remove_keys.add('copy_params')
+    elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
+        remove_keys.add('gpwfilename')
+    missing_keys = missing_keys - remove_keys
+
+    assert not missing_keys, f'record.name={name}: {missing_keys} not in signature.'
+
+    for key, value in default_params.items():
+        if key not in record.parameters:
+            new_parameters[key] = value
+
     record.run_specification.parameters = parameters
     record.version = 0
     return record

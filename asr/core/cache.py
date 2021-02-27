@@ -225,18 +225,12 @@ class Cache:
             selector.EQUAL(run_record.run_specification.uid)
         )
 
-        has_uid = self.has(selector=selector)
-        assert not has_uid, (
-            'This uid already exists in the cache. Cannot overwrite.'
-        )
         self.backend.add(run_record)
 
     def update(self, record: Record):
         """Update existing record with record.uid."""
         selector = self.make_selector()
         selector.run_specification.uid = selector.EQUAL(record.uid)
-        has_uid = self.has(selector=selector)
-        assert has_uid, 'Unknown run UID to update.'
         if hasattr(self.backend, 'update'):
             self.backend.update(record)
         else:

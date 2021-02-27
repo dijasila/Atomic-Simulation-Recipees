@@ -78,6 +78,9 @@ class Parameters:  # noqa
         """Get parameter."""
         return getattr(self, key)
 
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
     def items(self):  # noqa
         return self.__dict__.items()
 
@@ -89,6 +92,9 @@ class Parameters:  # noqa
 
     def get(self, key, default=None):
         return self.__dict__.get(key, default)
+
+    def copy(self):
+        return Parameters(copy.deepcopy(self.__dict__))
 
     def __eq__(self, other):
         if not isinstance(other, Parameters):
