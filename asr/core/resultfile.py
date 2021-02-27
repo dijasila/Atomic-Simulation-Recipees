@@ -288,6 +288,12 @@ def add_default_parameters(record):
         remove_keys.add('copy_params')
     elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
         remove_keys.add('gpwfilename')
+    elif name == 'asr.bandstructure:calculate':
+        remove_keys.add('emptybands')
+    elif name == 'asr.phonons:calculate':
+        remove_keys.add('ecut')
+        remove_keys.add('kptdensity')
+        remove_keys.add('fconverge')
     missing_keys = missing_keys - remove_keys
 
     assert not missing_keys, f'record.name={name}: {missing_keys} not in signature.'

@@ -464,8 +464,8 @@ def migrate(apply=False):
                     print(f'Apply migration: {record_migration}')
                     record_migration.apply(cache)
                 except Exception as err:
-                    print(f'Problem with migration of record #{record.uid[:5]}')
-                    print(err)
+                    print(f'Problem with migration of record #{record.uid[:5]}: {err}')
+
     if not migrations:
         print('All records up to date. No migrations to apply.')
 
