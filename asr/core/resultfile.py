@@ -305,16 +305,21 @@ def add_default_parameters(record):
 
     sig_parameters = {parameter for parameter in sig.parameters}
 
-    missing_keys = set()
+    unknown_keys = set()
     for key, value in record.parameters.items():
         if key not in sig_parameters:
-            missing_keys.add(key)
+            unknown_keys.add(key)
         else:
             new_parameters[key] = value
 
-    for key, value in default_params.items():
+    missing_keys = set()
+    for key in sig_parameters:
         if key not in record.parameters:
-            new_parameters[key] = value
+            missing_keys.add(key)
+
+    assert not missing_keys, (
+        f'record.name={name}: Missing values for parameters={missing_keys}.'
+    )
 
     remove_keys = set()
     if name == 'asr.formalpolarization:main':
@@ -334,9 +339,11 @@ def add_default_parameters(record):
         calc['kpts']['density'] = record.parameters.kptdensity
         calc['convergence']['forces'] = record.parameters.fconverge
 
-    missing_keys = missing_keys - remove_keys
+    unknown_keys = unknown_keys - remove_keys
 
-    assert not missing_keys, f'record.name={name}: {missing_keys} not in signature.'
+    assert not missing_keys, (
+        f'record.name={name}: Unknown parameters={missing_keys}.'
+    )
 
     record.run_specification.parameters = parameters
     record.version = 0
