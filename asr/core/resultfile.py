@@ -256,22 +256,48 @@ def get_resultsfile_records() -> typing.List[Record]:
 def inherit_dependency_parameters(records):
 
     for record in records:
-        dep_params = get_dependency_parameters(record.dependencies, records)
+        dep_uids = get_dependent_uids(record, records)
+        dep_params = get_dependency_parameters(dep_uids, records)
+        dep_params = Parameters({'dependency_parameters': dep_params})
         record.parameters.update(dep_params)
 
     return records
+
+
+def get_dependent_uids(record, records):
+
+    if record.dependencies is None:
+        return set()
+    dependent_uids = set(record.dependencies)
+
+    uid_list = []
+    for dep_uid in dependent_uids:
+        dep_record = [other for other in records if other.uid == dep_uid][0]
+        uids = get_dependent_uids(dep_record, records)
+        uid_list.append(uids)
+
+    for uids in uid_list:
+        dependent_uids.update(uids)
+
+    return dependent_uids
 
 
 def get_dependency_parameters(dependency_uids, records):
     params = Parameters({})
     if dependency_uids is None:
         return params
+
     for dependency in dependency_uids:
         dep = [other for other in records if other.uid == dependency][0]
-        depparams = Parameters({'.'.join([dep.name, key]): value
-                                for key, value in dep.parameters.items()})
+        depparams = Parameters(
+            {
+                dep.name: {
+                    key: value for key, value in dep.parameters.items()
+                    if key != 'dependency_parameters'
+                }
+            }
+        )
         params.update(depparams)
-        params.update(get_dependency_parameters(dep.dependencies, records))
 
     return params
 
@@ -296,7 +322,7 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 def add_default_parameters(record):
     from .utils import get_recipe_from_name
-    default_params = DEFAULTS[record.name]
+    # default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
