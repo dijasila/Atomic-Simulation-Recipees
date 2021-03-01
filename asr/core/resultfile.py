@@ -81,7 +81,12 @@ def construct_record_from_resultsfile(
             result = GroundStateCalculationResult.fromdata(
                 calculation=calculation)
             data = result.data
-            metadata = {'asr_name': recipename}
+            calc = calculation.load()
+            calculator = calc.parameters
+            metadata = {
+                'asr_name': recipename,
+                'params': {'calculator': calculator},
+            }
         else:
             raise AssertionError(f'Unparsable old results file: path={path}')
 
@@ -244,7 +249,31 @@ def get_resultsfile_records() -> typing.List[Record]:
         record = construct_record_from_resultsfile(path, uids)
         records.append(record)
 
+    records = inherit_dependency_parameters(records)
     return records
+
+
+def inherit_dependency_parameters(records):
+
+    for record in records:
+        dep_params = get_dependency_parameters(record.dependencies, records)
+        record.parameters.update(dep_params)
+
+    return records
+
+
+def get_dependency_parameters(dependency_uids, records):
+    params = Parameters({})
+    if dependency_uids is None:
+        return params
+    for dependency in dependency_uids:
+        dep = [other for other in records if other.uid == dependency][0]
+        depparams = Parameters({'.'.join([dep.name, key]): value
+                                for key, value in dep.parameters.items()})
+        params.update(depparams)
+        params.update(get_dependency_parameters(dep.dependencies, records))
+
+    return params
 
 
 def get_resultfile_mutations() -> typing.List[RecordMutation]:
@@ -269,7 +298,7 @@ def add_default_parameters(record):
     from .utils import get_recipe_from_name
     default_params = DEFAULTS[record.name]
     name = record.name
-    new_parameters = record.parameters.copy()
+    new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
     sig = recipe.get_signature()
     parameters = record.parameters
@@ -280,6 +309,12 @@ def add_default_parameters(record):
     for key, value in record.parameters.items():
         if key not in sig_parameters:
             missing_keys.add(key)
+        else:
+            new_parameters[key] = value
+
+    for key, value in default_params.items():
+        if key not in record.parameters:
+            new_parameters[key] = value
 
     remove_keys = set()
     if name == 'asr.formalpolarization:main':
@@ -294,13 +329,14 @@ def add_default_parameters(record):
         remove_keys.add('ecut')
         remove_keys.add('kptdensity')
         remove_keys.add('fconverge')
+        calc = new_parameters['calculator']
+        calc['mode']['ecut'] = record.parameters.ecut
+        calc['kpts']['density'] = record.parameters.kptdensity
+        calc['convergence']['forces'] = record.parameters.fconverge
+
     missing_keys = missing_keys - remove_keys
 
     assert not missing_keys, f'record.name={name}: {missing_keys} not in signature.'
-
-    for key, value in default_params.items():
-        if key not in record.parameters:
-            new_parameters[key] = value
 
     record.run_specification.parameters = parameters
     record.version = 0

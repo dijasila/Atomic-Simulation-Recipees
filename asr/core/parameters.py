@@ -81,6 +81,9 @@ class Parameters:  # noqa
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
+    def update(self, parameters: 'Parameters'):
+        self.__dict__.update(parameters.__dict__)
+
     def items(self):  # noqa
         return self.__dict__.items()
 

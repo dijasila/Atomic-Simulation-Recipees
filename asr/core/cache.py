@@ -273,7 +273,6 @@ class Cache:
                 'run_specification.version': run_specification.version,
             }
             sel = self.make_selector(equals=equals)
-            sel.migrated_to = sel.IS(None)
 
             if self.has(selector=sel):
                 run_record = self.get(selector=sel)
