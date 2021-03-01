@@ -74,14 +74,6 @@ def test_cache_add(cache, record):
 
 
 @pytest.mark.ci
-def test_cache_add_raises_when_adding_duplicate_records(cache, record):
-    cache.add(record)
-
-    with pytest.raises(AssertionError):
-        cache.add(record)
-
-
-@pytest.mark.ci
 def test_cache_update(cache, record):
     cache.add(record)
     uid = record.uid

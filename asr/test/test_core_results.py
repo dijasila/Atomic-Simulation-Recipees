@@ -824,7 +824,7 @@ def test_read_old_format():
 
 @pytest.mark.ci
 @pytest.mark.parametrize('cls,result',
-                         [(MyResult, 'asr.test.test_core_results::MyResult')])
+                         [(MyResult, 'asr.test.test_core_results:MyResult')])
 def test_object_to_id(cls, result):
     assert obj_to_id(cls) == result
 
@@ -851,8 +851,8 @@ def test_bad_object_ids(filename, dct, result_object_id):
 @pytest.mark.parametrize(
     'obj,result',
     [
-        (GSResult, 'asr.gs::Result'),
-        (MyResult, 'asr.test.test_core_results::MyResult')
+        (GSResult, 'asr.gs:Result'),
+        (MyResult, 'asr.test.test_core_results:MyResult')
     ]
 )
 def test_obj_to_id(obj, result):
@@ -874,8 +874,8 @@ def test_fix_folders_corrupt_object_id(asr_tmpdir):
     _fix_folders(folders)
     text = read_file('results-asr.gs@calculate.json')
     dct = decode_json(text)
-    assert (dct['object_id'] == 'asr.gs::Result'
-            and dct['constructor'] == 'asr.gs::Result')
+    assert (dct['object_id'] == 'asr.gs:Result'
+            and dct['constructor'] == 'asr.gs:Result')
 
     assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
             and dct['kwargs']['data']['gaps_nosoc']['constructor']
