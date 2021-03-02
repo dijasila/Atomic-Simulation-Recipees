@@ -3,6 +3,7 @@ import numpy as np
 from typing import Union
 from ase.io import read, write
 from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.utils.bands import Bands
 
 
 def get_kpts_size(atoms, density):
@@ -156,5 +157,7 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
     calc = GPAW('gs_scs.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs_scs.gpw')
+    bands = Bands('bs_scs.gpw')
+    bands.dump_to_json()
 
 
