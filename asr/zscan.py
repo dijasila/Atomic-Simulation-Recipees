@@ -5,83 +5,53 @@ from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
 from scipy.interpolate import CubicSpline, Akima1DInterpolator
 from asr.core import command, option
+from asr.utils.moireutils import Bilayer
 
 
-def get_distance(upper, lower):
-    return min(upper.positions[:, 2]) - max(lower.positions[:, 2])
-
-
-def initialize(structure):
-    atoms = read(structure)
-    tags = atoms.get_tags()
-    natoms_l1 = np.extract(tags == 1, tags).shape[0]
-    l1 = atoms[:natoms_l1].copy()
-    l2 = atoms[natoms_l1:].copy()
-    l1_z = l1.positions[:, 2]
-    l2_z = l2.positions[:, 2]
-    if min(l1_z) > min(l2_z):
-        upper = l1.copy()
-        lower = l2.copy()
-    else:
-        upper = l2.copy()
-        lower = l1.copy()
-    init_dist = get_distance(upper, lower)
-    if init_dist <= 0.5:
-        raise ValueError(f"Interlayer distance is too low ({init_dist} Ang)")
-    else:
-        return upper, lower
-
-
-def calculate(upper, lower, rng, calc):
+def calculate(atoms, rng, calc):
     from ase.io.trajectory import TrajectoryWriter
-    shifts = []
     dists = []
     energies = []
-    for shift in rng:
-        shifted = upper.copy()
-        shifted.translate([0, 0, shift])
-        bilayer = shifted + lower
-        bilayer.calc = calc
-        en = bilayer.get_potential_energy()
-        dst = get_distance(shifted, lower)
+    for dist in rng:
+        atoms.set_interlayer_distance(dist)
+        atoms.center()
+        atoms.calc = calc
+        en = atoms.get_potential_energy()
+        dst = atoms.get_interlayer_distance()
         dists.append(dst)
-        shifts.append(shift)
         energies.append(en)
-        writer = TrajectoryWriter('zscan.traj', mode='a', atoms=bilayer)
+        writer = TrajectoryWriter('zscan.traj', mode='a', atoms=atoms)
         writer.write()
-    return np.array(shifts), np.array(dists), np.array(energies)
+    return np.array(dists), np.array(energies)
 
 
-def interpolate(shifts, dists, energies, npoints):
+def interpolate(dists, energies, npoints):
     '''Get optimal shift and energy through spline interpolation'''
-    #spline = CubicSpline(shifts, energies)
-    spline = Akima1DInterpolator(shifts, energies)
-    s_grid = np.linspace(shifts[0], shifts[-1], npoints)
+    spline = CubicSpline(dists, energies)
     d_grid = np.linspace(dists[0], dists[-1], npoints)
-    energies_int = spline(s_grid)
+    energies_int = spline(d_grid)
     emin = min(energies_int)
     index_min = np.argmin(energies_int)
-    shift_min = s_grid[index_min]
     dist_min = d_grid[index_min]
     return {
         "scan": {
-            "shifts": shifts,
             "dists": dists,
             "energies": energies
         },
         "interpolation": {
-            "shifts": s_grid,
             "dists": d_grid,
             "energies": energies_int
         },
-        "emin": emin,
-        "shift_min": shift_min,
-        "dist_min": dist_min
+        "dist_min": dist_min,
+        "emin": emin
     }
 
 
 # Post-processing plot step
-def plot(results="plot-zscan.json", mode="dist", title=None):
+@command('asr.zscan@plot')
+@option('--results', type=str)
+@option('--title', type=str)
+def plot(results="plot-zscan.json", title=None):
     import matplotlib.pyplot as plt
     from ase.io.jsonio import read_json
 
@@ -106,18 +76,10 @@ def plot(results="plot-zscan.json", mode="dist", title=None):
 
     scan = dct["scan"]
     interpolated = dct["interpolation"]
-    if mode == "dist":
-        xgrid_scan = scan["dists"]
-        xgrid_int = interpolated["dists"]
-        xmin = dct["dist_min"]
-        xlabel = "Interlayer distance (Angstrom)"
-    elif mode == "shifts":
-        xgrid_scan = scan["shifts"]
-        xgrid_int = interpolated["shifts"]
-        xmin = dct["shift_min"]
-        xlabel = "Applied shift (Angstrom)"
-    else:
-        raise ValueError("mode can only be 'dists' or 'shifts'")
+    xgrid_scan = scan["dists"]
+    xgrid_int = interpolated["dists"]
+    xmin = dct["dist_min"]
+    xlabel = "Interlayer distance (Angstrom)"
 
     ax.scatter(
         xgrid_scan,
@@ -147,14 +109,6 @@ def plot(results="plot-zscan.json", mode="dist", title=None):
     plt.show()
 
 
-def shift(structure, results):
-    upper, lower = initialize(structure)
-    dct = read_json(results)
-    upper.translate([0, 0, dct["shift_min"]])
-    newatoms = upper + lower
-    write("unrelaxed.json", newatoms)
-
-
 @command('asr.zscan')
 @option('--structure', type=str, help='Starting structure file')
 @option('--start', type=float, help='Starting shift')
@@ -162,15 +116,10 @@ def shift(structure, results):
 @option('--nsteps', type=int, help='Number of energy evaluations')
 @option('--npoints', type=int, help='Number of points for interpolation')
 def main(structure: str = "initial.json",
-         start: float = -1.0,
-         stop: float = 1.0,
+         start: float = 3.0,
+         stop: float = 4.0,
          nsteps: int = 10,
          npoints: int = 700):
-
-    rng = np.linspace(start, stop, nsteps)
-    with open('log.txt', 'w') as f:
-        print(nsteps, file=f)
-        print(rng, file=f)
 
     dft = GPAW(mode='lcao',
                xc='PBE',
@@ -180,15 +129,16 @@ def main(structure: str = "initial.json",
                basis='dzp')
     vdw = DFTD3(dft=dft)
 
-    upper, lower = initialize(structure)
-    shifts, distances, energies = calculate(upper, lower, rng, vdw)
+    atoms = Bilayer(read(structure))
 
-    results = interpolate(shifts, distances, energies, npoints)
+    rng = np.linspace(start, stop, nsteps)
+    distances, energies = calculate(atoms, rng, vdw)
+
+    results = interpolate(distances, energies, npoints)
     write_json("plot-zscan.json", results)
-
-    upper.translate([0, 0, results["shift_min"]])
-    newatoms = upper + lower
-    write("unrelaxed.json", newatoms)
+    atoms.set_interlayer_distance(results["dist_min"])
+    atoms.center()
+    write("unrelaxed.json", atoms)
 
 
 if __name__ == '__main__':
