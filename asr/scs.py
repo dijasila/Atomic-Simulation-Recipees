@@ -155,6 +155,6 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
 
     calc = GPAW('gs_scs.gpw', **parms)
     calc.get_potential_energy()
-    calc.write('bs_scs.gpw', 'all')
+    calc.write('bs_scs.gpw')
 
 
