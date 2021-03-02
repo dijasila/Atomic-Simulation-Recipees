@@ -251,7 +251,7 @@ def save_human_readable(supercells, uid_a, uid_b, workdir):
         print("Number of solutions:", file=log)
         print(nsol, '\n', file=log)
         print("--------------------------------------------------- SUPERCELLS --------------------------------------------------------\n", file=log)
-        print("{:>3}{:>9}{:>16}{:>8}{:>5}{:>6}{:>5}{:>8}{:>5}{:>6}{:>5}{:>17}{:>15}{:>11}\n".format("#", "Atoms", "Surf. Ratios",
+        print("{:>3}{:>9}{:>8}{:>5}{:>6}{:>5}{:>8}{:>5}{:>6}{:>5}{:>17}{:>15}{:>11}\n".format("#", "Atoms",
                                                                                                     "m1", "m2", "m1'", "m2'", "n1", "n2", "n1'", "n2'", "Angle(intern)", "Angle(twist)", "Strain(%)"), file=log)
         for i, cell in enumerate(supercells):
             dct = supercells[i].todict()
@@ -270,7 +270,7 @@ def save_human_readable(supercells, uid_a, uid_b, workdir):
             print("{:>11.4f}\n".format(dct["strain"]), end='', file=log)
 
 
-@command('asr.test_findmoire2')
+@command('asr.findmoire')
 @option('--max-coef', type=int,
         help='Max coefficient for linear combinations of the starting vectors')
 @option('--tol-theta', type=float,
@@ -289,8 +289,8 @@ def save_human_readable(supercells, uid_a, uid_b, workdir):
         help='Lower limit for the supercell internal angle (in degrees)')
 @option('--max-internal-angle', type=float,
         help='Upper limit for the supercell internal angle (in degrees)')
-@option('--overwrite', type=bool,
-        help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
+@option('--overwrite', type=bool, is_flag=True,
+        help='Regenerate directory structure overwriting old files')
 @option('--database', type=str,
         help='Path of the .db database file for retrieving structural information')
 @option('--uids', type=str,
