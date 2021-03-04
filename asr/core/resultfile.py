@@ -322,7 +322,7 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 def add_default_parameters(record):
     from .utils import get_recipe_from_name
-    # default_params = DEFAULTS[record.name]
+    default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
@@ -338,40 +338,37 @@ def add_default_parameters(record):
         else:
             new_parameters[key] = value
 
-    missing_keys = set()
+    unused_old_params = set(parameters.keys())
     for key in sig_parameters:
-        if key not in record.parameters:
-            missing_keys.add(key)
+        if key in parameters:
+            new_parameters[key] = parameters[key]
+            unused_old_params.remove(key)
+        else:
+            dep_params = record.parameters.get('dependency_parameters', {})
+            candidate_params = []
+            for depname, recipedepparams in dep_params.items():
+                if key in recipedepparams:
+                    candidate_params.append(recipedepparams[key])
+            if candidate_params:
+                assert len(candidate_params) == 1
+                new_parameters[key] = candidate_params[0]
+            else:
+                new_parameters[key] = default_params[key]
 
-    assert not missing_keys, (
-        f'record.name={name}: Missing values for parameters={missing_keys}.'
-    )
-
-    remove_keys = set()
+    remove_keys = set(['dependency_parameters'])
     if name == 'asr.formalpolarization:main':
         remove_keys.add('gpwname')
     elif name == 'asr.setup.displacements:main':
         remove_keys.add('copy_params')
     elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
         remove_keys.add('gpwfilename')
-    elif name == 'asr.bandstructure:calculate':
-        remove_keys.add('emptybands')
-    elif name == 'asr.phonons:calculate':
-        remove_keys.add('ecut')
-        remove_keys.add('kptdensity')
-        remove_keys.add('fconverge')
-        calc = new_parameters['calculator']
-        calc['mode']['ecut'] = record.parameters.ecut
-        calc['kpts']['density'] = record.parameters.kptdensity
-        calc['convergence']['forces'] = record.parameters.fconverge
+    unused_old_params = unused_old_params - remove_keys
 
-    unknown_keys = unknown_keys - remove_keys
-
-    assert not missing_keys, (
-        f'record.name={name}: Unknown parameters={missing_keys}.'
+    assert not unused_old_params, (
+        f'record.name={name}: Unused parameters from old record={unused_old_params}.'
     )
 
-    record.run_specification.parameters = parameters
+    record.run_specification.parameters = new_parameters
     record.version = 0
     return record
 
