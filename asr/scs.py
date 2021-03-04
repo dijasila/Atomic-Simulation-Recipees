@@ -104,10 +104,10 @@ def calculate_gs(structure: str = "structure.json",
     shift_c2 = shifts['shift_c2']
 
     tags = atoms.get_tags()
-    natoms = len(atoms)
-    natoms_l1 = np.extract(tags == 1, tags).shape[0]
-    scs = Scissors([(shift_v1, shift_c1, natoms_l1),
-                    (shift_v2, shift_c2, natoms - natoms_l1)])
+    n_upper = len(tags[tags == 1])
+    n_lower = len(tags[tags == 0])
+    scs = Scissors([(shift_v1, shift_c1, n_upper),
+                    (shift_v2, shift_c2, n_lower)])
 
     calculator.update({'eigensolver': scs,
                        'kpts': kpts})
@@ -124,17 +124,17 @@ def calculate_gs(structure: str = "structure.json",
          dependencies=['asr.scs@calculate_gs'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
-def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
+def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 200):
     "Calculate electronic band structure with the self-consistent scissors corrections"
     from gpaw import GPAW
     from gpaw.lcao.scissors import Scissors
     from ase.io import read
     atoms = read('structure.json')
     if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc, eps=1e-2)
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc, eps=1e-1)
     else:
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc, eps=1e-2)
+                                   pbc=atoms.pbc, eps=1e-1)
     parms = {
         'basis': 'dzp',
         'txt': 'bs.txt',
@@ -148,10 +148,10 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 400):
     shift_c2 = shifts['shift_c2']
 
     tags = atoms.get_tags()
-    natoms = len(atoms)
-    natoms_l1 = np.extract(tags == 1, tags).shape[0]
-    scs = Scissors([(shift_v1, shift_c1, natoms_l1),
-                    (shift_v2, shift_c2, natoms - natoms_l1)])
+    n_upper = len(tags[tags == 1])
+    n_lower = len(tags[tags == 0])
+    scs = Scissors([(shift_v1, shift_c1, n_upper),
+                    (shift_v2, shift_c2, n_lower)])
     parms.update({'eigensolver': scs})
 
     calc = GPAW('gs_scs.gpw', **parms)

@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def bs_from_gpw(fname):
     from gpaw import GPAW
     calc = GPAW(fname, txt=None)
@@ -17,6 +20,14 @@ def bs_from_json(fname):
     return bs
 
 
+def calculate_evac(filename):
+    from gpaw import GPAW
+    import numpy as np
+    calc = GPAW(filename, txt='-')
+    evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
+    return evac
+
+
 def multiplot(*toplot,
               reference=None,
               ylim=None,
@@ -30,8 +41,8 @@ def multiplot(*toplot,
               fermiline=True,
               customticks=None,
               show=True,
-              fontsize1=28,
-              fontsize2=24):
+              fontsize1=24,
+              fontsize2=22):
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     import warnings
@@ -52,7 +63,7 @@ def multiplot(*toplot,
             msg = 'Please provide either Bands objects or filenames'
             raise ValueError(msg)
 
-    kpts, specpts, lbls = items[0].get_kpts_and_labels()
+    kpts, specpts, lbls = items[0].get_kpts_and_labels(normalize=True)
     for spec in specpts[1:-1]:
         ax.axvline(spec, color='#bbbbbb')
     if customticks:
@@ -91,6 +102,7 @@ def multiplot(*toplot,
             color = colors[index]
             style = dict(ls='-', color=color, lw=1.5)
 
+        kpts, _, _ = item.get_kpts_and_labels(normalize=True)
         ax.plot(kpts, energies[0], **style, label=lbl)
         for band in energies[1:]:
             ax.plot(kpts, band, **style)
@@ -170,14 +182,11 @@ class Bands:
         else:
             return (x, X, lbls)
 
-    def calculate_evac(self):
-        from gpaw import GPAW
-        import numpy as np
+    def get_evac(self):
         errmsg = 'A .gpw file is required!'
         assert (self._ext == '.gpw'), errmsg
-        calc = GPAW(self.filename, txt='-')
-        evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
-        self.bandstructure.evac = evac
+        evac = calculate_evac(self.filename)
+        self.evac = evac
         return evac
 
     def calculate_SOC(self):
@@ -209,7 +218,7 @@ class Bands:
             pass
         write_json(filename, dct)
 
-    def get_gap_and_edges(self, reference=0.0):
+    def get_band_edges(self, reference=0.0):
         en = self.get_energies()
         ef = self.get_efermi()
         allcb = en[(en - ef) > 0]
@@ -226,10 +235,25 @@ class Bands:
             ref = self.bandstructure.reference
         elif isinstance(reference, float):
             ref = reference
-        return cbm - ref, vbm - ref, cbm - vbm
+        return vbm - ref, cbm - ref
 
-    def get_lowest_transition(self):
+    def get_band_edges_at_kpt(self, kpt):
         import numpy as np
+        en_T = self.get_energies().T[0]
+        ef = self.get_efermi()
+        x, X, labels = self.get_kpts_and_labels()
+        spec = X[labels.index(kpt)]
+        indx_spec = np.where(x == spec)[0][0]
+        en_kpt = en_T[indx_spec]
+        en_vb = en_kpt[(en_kpt - ef) < 0]
+        en_cb = en_kpt[(en_kpt - ef) > 0]
+        return en_vb.max(), en_cb.min()
+
+    def get_homo_lumo_gap(self, reference=0.0):
+        vbm, cbm = self.get_band_edges(reference=reference)
+        return cbm - vbm
+
+    def get_direct_gap(self):
         en_T = self.get_energies().T[0] - self.get_efermi()
         dyn_gap = np.zeros(en_T.shape[0])
         for i, en in enumerate(en_T):
@@ -237,3 +261,8 @@ class Bands:
             homo = en[en < 0].max()
             dyn_gap[i] = lumo - homo
         return dyn_gap.min()
+
+    def get_transition(self, kpt1, kpt2):
+        edges1 = self.get_band_edges_at_kpt(kpt1)
+        edges2 = self.get_band_edges_at_kpt(kpt2)
+        return max(edges2) - min(edges1)
