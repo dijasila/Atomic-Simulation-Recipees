@@ -219,13 +219,12 @@ def main() -> Result:
 def calculate_formation_energies(eform, transitions, pristine):
     """Calculate formation energies for all charge states at the VB band edge."""
     # from asr.core import read_json
-    vbm = pristine['vbm'] - pristine['evac']
+    vbm = pristine['vbm']
 
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
     enlist = []
     for element in transitions:
-        print(element['transition_name'])
         enlist.append(element['transition_values']['transition']
                       - element['transition_values']['erelax']
                       - element['transition_values']['evac'])
@@ -414,17 +413,24 @@ def get_transition_level(transition, charge) -> TransitionResults:
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
-    import numpy as np
+    # import numpy as np
+    # extract lowest lying state for the pristine system as energy reference
+    p = Path('.')
+    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    pris = Path(f'./../../defects.pristine_sc.{sc}/')
+    _, calc_pris = restart(pris / 'gs.gpw', txt=None)
+    e_ref_pris = calc_pris.get_eigenvalues()[0]
+
     # extrac HOMO or LUMO
     # HOMO
     charge = str(charge)
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        if not np.sum(atoms.get_pbc()) == 2:
-            e_ref = calc.get_eigenvalues()[0]
-        else:
-            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        # if not np.sum(atoms.get_pbc()) == 2:
+        #     e_ref = calc.get_eigenvalues()[0]
+        # else:
+        #     e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        #     e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
@@ -435,11 +441,11 @@ def get_transition_level(transition, charge) -> TransitionResults:
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        if not np.sum(atoms.get_pbc()) == 2:
-            e_ref = calc.get_eigenvalues()[0]
-        else:
-            e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-            e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
+        # if not np.sum(atoms.get_pbc()) == 2:
+        #     e_ref = calc.get_eigenvalues()[0]
+        # else:
+        #     e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
+        #     e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
@@ -447,6 +453,8 @@ def get_transition_level(transition, charge) -> TransitionResults:
         e_trans = max(occ)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
+
+    e_ref = calc.get_eigenvalues()[0] - e_ref_pris
 
     # if possible, calculate correction due to relaxation in the charge state
     if Path('../charge_{}/results-asr.relax.json'.format(
@@ -508,18 +516,16 @@ def plot_formation_energies(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm'] - data['pristine']['evac']
-    cbm = data['pristine']['cbm'] - data['pristine']['evac']
-    gap = cbm - vbm
+    vbm = data['pristine']['vbm']
+    cbm = data['pristine']['cbm']
+    gap = abs(cbm - vbm)
     eform = data['eform']
     transitions = data['transitions']
 
     fig, ax1 = plt.subplots()
 
-    ax1.fill_betweenx([-10, 30], -10, 0, color='C0', alpha=0.5)
-    ax1.fill_betweenx([-10, 30], gap + 10, gap, color='C1', alpha=0.5)
-    ax1.axvline(0, color='C0')
-    ax1.axvline(gap, color='C1')
+    ax1.axvspan(-5, 0, color='C0', alpha=0.5)
+    ax1.axvspan(gap, 5, color='C1', alpha=0.5)
     ax1.axhline(0, color='black', linestyle='dotted')
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
@@ -527,7 +533,7 @@ def plot_formation_energies(row, fname):
                  color='grey',
                  linestyle='dotted')
 
-    ax1.set_xlim(- 0.2 * gap, gap + 0.2 * gap)
+    ax1.set_xlim(-0.2 * gap, gap + 0.2 * gap)
     ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
     yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
     ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
@@ -543,11 +549,11 @@ def plot_formation_energies(row, fname):
                   - element['transition_values']['erelax']
                   - element['transition_values']['evac'] - vbm)
         name = element['transition_name']
-        if name == '0/-1':
-            special = energy
-            negative = energy
-        elif name == '0/1':
-            positive = energy
+        # if name == '0/-1':
+        # special = energy
+        # negative = energy
+        # elif name == '0/1':
+        # positive = energy
         energies.append(energy)
         if energy > -0.2 * gap and energy < (gap + 0.2 * gap):
             tickslist.append(energy)
@@ -555,32 +561,33 @@ def plot_formation_energies(row, fname):
             ax1.axvline(energy, color='grey', linestyle='dotted')
     energies.append(100)
 
-    for i, element in enumerate(transitions):
-        energy = energies[i]
-        charge = int(element['transition_name'].split('/')[1])
-        if energy > 0 and energy < gap:
-            for en in eform:
-                if en[1] == charge:
-                    if charge < 0:
-                        xmin = energy
-                        xmax = min(gap, energies[i + 1])
-                    else:
-                        xmin = max(0, min(special, energies[i + 1]))
-                        xmax = energy
-                    print(xmin, xmax, en[0], en[1])
-                    ax1.plot([xmin, xmax],
-                             [f(xmin, en[1], en[0]),
-                              f(xmax, en[1], en[0])],
-                             color='black', linestyle='solid')
-    ax1.plot([max(0, positive), min(gap, negative)], [eform[0][0], eform[0][0]],
-             color='black', linestyle='solid')
+    # for i, element in enumerate(transitions):
+    #     energy = energies[i]
+    #     charge = int(element['transition_name'].split('/')[1])
+    #     if energy > 0 and energy < gap:
+    #         for en in eform:
+    #             if en[1] == charge:
+    #                 if charge < 0:
+    #                     xmin = energy
+    #                     xmax = min(gap, energies[i + 1])
+    #                 else:
+    #                     xmin = max(0, min(special, energies[i + 1]))
+    #                     xmax = energy
+    #                 # ax1.plot([xmin, xmax],
+    #                 #          [f(xmin, en[1], en[0]),
+    #                 #           f(xmax, en[1], en[0])],
+    #                 #          color='black', linestyle='solid')
+    # # ax1.plot([max(0, positive), min(gap, negative)], [eform[0][0], eform[0][0]],
+    # #          color='black', linestyle='solid')
 
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(tickslist)
     ax2.set_xticklabels(labellist)
-    ax1.set_xlabel(r'$E_{\mathrm{F}}$ [eV]')
-    ax1.set_ylabel('Formation energy [eV]')
+    ax1.set_xlabel(r'$E_{\mathrm{F}} - E_\mathrm{VBM}}$ [eV]')
+    ax1.set_ylabel(r'$E^f$ (wrt. standard states) [eV]')
+
+    plt.tight_layout()
 
     plt.savefig(fname)
     plt.close()
@@ -592,14 +599,10 @@ def plot_charge_transitions(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    if data['pristine']['evac'] is not None:
-        vbm = data['pristine']['vbm'] - data['pristine']['evac']
-        cbm = data['pristine']['cbm'] - data['pristine']['evac']
-    else:
-        vbm = data['pristine']['vbm']
-        cbm = data['pristine']['cbm']
+    vbm = data['pristine']['vbm']
+    cbm = data['pristine']['cbm']
 
-    gap = cbm - vbm
+    gap = abs(cbm - vbm)
 
     transitions = data['transitions']
 
@@ -607,16 +610,16 @@ def plot_charge_transitions(row, fname):
     plt.plot([-2, 2], [cbm, cbm])
 
     plt.xlim(-1, 1)
-    plt.ylim(vbm - 0.2 * gap, cbm + 0.2 * gap)
+    plt.ylim(-0.2 * gap, gap + 0.2 * gap)
     plt.xticks([], [])
 
     plt.axhline(vbm, color='C0')
     plt.axhline(cbm, color='C1')
-    plt.fill_between([-2, 2], [vbm, vbm], [vbm - 2, vbm - 2], color='C0', alpha=0.5)
-    plt.fill_between([-2, 2], [cbm, cbm], [0, 0], color='C1', alpha=0.5)
-    plt.text(0, vbm - 0.1 * gap, 'VBM', color='white',
+    plt.axhspan(-5, 0, color='C0', alpha=0.5)
+    plt.axhspan(gap, gap + 5, color='C1', alpha=0.5)
+    plt.text(0, -0.1 * gap, 'VBM', color='white',
              ha='center', va='center', weight='bold')
-    plt.text(0, cbm + 0.1 * gap, 'CBM', color='white',
+    plt.text(0, gap + 0.1 * gap, 'CBM', color='white',
              ha='center', va='center', weight='bold')
 
     i = 1
@@ -625,14 +628,15 @@ def plot_charge_transitions(row, fname):
              - trans['transition_values']['erelax']
              - trans['transition_values']['evac'])
         if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
-            plt.plot([-0.5, 0.5], [y, y], color='black')
+            plt.plot([-0.5, 0.5], [y - vbm, y - vbm], color='black')
             if i % 2 == 0:
-                plt.text(0.6, y, trans['transition_name'], ha='left', va='center')
+                plt.text(0.6, y - vbm, trans['transition_name'], ha='left', va='center')
             else:
-                plt.text(-0.6, y, trans['transition_name'], ha='right', va='center')
+                plt.text(-0.6, y - vbm,
+                         trans['transition_name'], ha='right', va='center')
             i += 1
 
-    plt.ylabel('$E - E_{vac}$ [eV]')
+    plt.ylabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
     plt.yticks()
     plt.tight_layout()
     plt.savefig(fname)
