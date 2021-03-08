@@ -204,6 +204,7 @@ def get_dependencies(path, uids):
             'asr.bandstructure@calculate', 'asr.gs',
             'asr.structureinfo', 'asr.magnetic_anisotropy'],
         'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
+        'asr.deformationpotentials': ['asr.gs'],
         'asr.bader': ['asr.gs'],
         'asr.bse@calculate': ['asr.gs@calculate'],
         'asr.bse': ['asr.bse@calculate', 'asr.gs'],
@@ -339,19 +340,24 @@ def add_default_parameters(record):
             new_parameters[key] = value
 
     unused_old_params = set(parameters.keys())
+    missing_params = set()
+    dep_params = record.parameters.get('dependency_parameters', {})
+    unused_dependency_params = {name: set(values)
+                                for name, values in dep_params.items()}
     for key in sig_parameters:
         if key in parameters:
             new_parameters[key] = parameters[key]
             unused_old_params.remove(key)
         else:
-            dep_params = record.parameters.get('dependency_parameters', {})
-            candidate_params = []
+            candidate_dependencies = []
             for depname, recipedepparams in dep_params.items():
                 if key in recipedepparams:
-                    candidate_params.append(recipedepparams[key])
-            if candidate_params:
-                assert len(candidate_params) == 1
-                new_parameters[key] = candidate_params[0]
+                    candidate_dependencies.append(depname)
+            if candidate_dependencies:
+                assert len(candidate_dependencies) == 1
+                dependency = candidate_dependencies[0]
+                new_parameters[key] = dep_params[dependency][key]
+                unused_dependency_params[dependency].remove(key)
             else:
                 new_parameters[key] = default_params[key]
 
@@ -368,6 +374,21 @@ def add_default_parameters(record):
         f'record.name={name}: Unused parameters from old record={unused_old_params}.'
     )
 
+    assert not missing_params, (
+        f'record.name={name}: Unset parameters when migrating record={missing_params}.'
+    )
+
+    unused_dependency_params = {
+        value
+        for values in unused_dependency_params.values()
+        for value in values
+        if value != 'atoms'
+    }
+
+    assert not unused_dependency_params, (
+        f'record.name={name}: Unused dependency parameters='
+        f'{unused_dependency_params}'
+    )
     record.run_specification.parameters = new_parameters
     record.version = 0
     return record
