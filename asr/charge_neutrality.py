@@ -488,5 +488,5 @@ def plot_formation_scf(row, fname):
     plt.xlim(0 - gap / 10., gap + gap / 10.)
     plt.xlabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
     plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
-    plt.legend()
+    plt.legend(ncol=2, loc=9)
     plt.savefig(fname)
