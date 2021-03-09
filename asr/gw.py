@@ -92,10 +92,10 @@ def bs_gw(row,
         path_effects.Normal()
     ])
 
-    # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
+    # add SCF band structure with soc
+    from asr.bandstructure import add_bs_scf
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
+        ax = add_bs_scf(row, ax, reference=row.get('evac', row.get('efermi')),
                         color=[0.8, 0.8, 0.8])
 
     for Xi in X:
@@ -134,10 +134,10 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
@@ -184,10 +184,10 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
