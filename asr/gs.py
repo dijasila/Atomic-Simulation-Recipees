@@ -119,7 +119,7 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(
         title=describe_entry(
-            'Basic electronic properties (PBE)',
+            'Basic electronic properties',
             panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
