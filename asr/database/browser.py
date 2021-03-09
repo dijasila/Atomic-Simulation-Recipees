@@ -270,7 +270,7 @@ def make_panel_description(text, articles=None):
 
     if articles:
         articles = (
-            bold('Relevant article(s):')
+            bold('Relevant articles:')
             + ul([
                 static_article_links.get(article, article) for article in articles]
             )
