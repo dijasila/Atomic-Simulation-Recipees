@@ -1,7 +1,7 @@
 import numpy as np
 from ase.io import read, write
-from ase.io.jsonio import read_json, write_json
-from gpaw import GPAW, PW, LCAO
+from ase.io.jsonio import write_json
+from gpaw import GPAW, PW
 from ase.calculators.dftd3 import DFTD3
 from scipy.interpolate import CubicSpline
 from asr.core import command, option
