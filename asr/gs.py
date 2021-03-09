@@ -130,9 +130,10 @@ def webpanel(result, row, key_descriptions):
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
-    description = ('The electronic band gap including spin-orbit effects. \n\n'
+    description = ('The electronic single-particle band gap '
+                   'including spin-orbit effects.\n\n'
                    + parameter_description)
-    datarow = [describe_entry('Band gap (PBE)',
+    datarow = [describe_entry('Band gap',
                               description=description),
                f'{result.gap:0.2f} eV']
     summary = WebPanel(
