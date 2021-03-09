@@ -45,8 +45,8 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     calc.write('bs.gpw')
 
 
-def bs_pbe_html(row,
-                filename='pbe-bs.html',
+def bs_scf_html(row,
+                filename='scf-bs.html',
                 figsize=(6.4, 6.4),
                 show_legend=True,
                 s=2):
@@ -88,7 +88,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
         mode='markers',
-        name='PBE no SOC',
+        name='SCF no SOC',
         showlegend=True,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
@@ -116,7 +116,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
         mode='markers',
-        name='PBE',
+        name='SCF',
         showlegend=True,
         marker=dict(
             size=4,
@@ -225,8 +225,8 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """Plot pbe with soc on ax."""
+def add_bs_scf(row, ax, reference=0, color='C1'):
+    """Plot SCF band structure with SOC on ax."""
     from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
@@ -234,7 +234,7 @@ def add_bs_pbe(row, ax, reference=0, color='C1'):
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label('PBE')
+    ax.lines[-1].set_label('SCF')
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -294,8 +294,8 @@ def plot_with_colors(bs,
     return ax, cbar
 
 
-def bs_pbe(row,
-           filename='pbe-bs.png',
+def bs_scf(row,
+           filename='scf-bs.png',
            figsize=(5.5, 5),
            show_legend=True,
            s=0.5):
@@ -331,10 +331,10 @@ def bs_pbe(row,
     else:
         emax = ef_nosoc + 3
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
-    # pbe without soc
+    # scf without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='PBE no SOC',
+        label='SCF no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -348,7 +348,7 @@ def bs_pbe(row,
         emax=emax - ref_nosoc,
         ylabel=label,
         **nosoc_style)
-    # pbe with soc
+    # scf with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
@@ -372,7 +372,7 @@ def bs_pbe(row,
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label='PBE', color=csz0)
+    ax.plot([], [], label='SCF', color=csz0)
     plt.legend(loc='upper right')
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
@@ -404,17 +404,17 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    panel = {'title': describe_entry('Electronic band structure (PBE)',
+    panel = {'title': describe_entry('Electronic band structure (SCF)',
                                      panel_description),
              'columns': [
                  [
-                     fig('pbe-bs.png', link='pbe-bs.html'),
+                     fig('scf-bs.png', link='scf-bs.html'),
                  ],
                  [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': bs_pbe,
-                                    'filenames': ['pbe-bs.png']},
-                                   {'function': bs_pbe_html,
-                                    'filenames': ['pbe-bs.html']}],
+             'plot_descriptions': [{'function': bs_scf,
+                                    'filenames': ['scf-bs.png']},
+                                   {'function': bs_scf_html,
+                                    'filenames': ['scf-bs.html']}],
              'sort': 12}
 
     return [panel]
