@@ -138,11 +138,14 @@ def webpanel(result, row, key_descriptions):
     summary = WebPanel(
         title=describe_entry(
             'Summary',
-            description='This panel contains a summary of the most '
-            'important properties of this material.'),
-        columns=[[{'type': 'table',
-                   'header': ['Electronic properties', ''],
-                   'rows': [datarow]}]],
+            description='This panel contains a summary of '
+            'basic properties of the material.'),
+        columns=[[{
+            'type': 'table',
+            'header': ['Electronic properties', ''],
+            'rows': [datarow],
+            'columnwidth': 3,
+        }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)
