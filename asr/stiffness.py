@@ -66,8 +66,8 @@ def webpanel(result, row, key_descriptions):
              'sort': 2}
 
     dynstab = row.dynamic_stability_stiffness
-    high = 'Min. Stiffness eig. > 0'
-    low = 'Min. Stiffness eig. < 0'
+    high = 'Minimum stiffness tensor eigenvalue > 0'
+    low = 'Minimum stiffness tensor eigenvalue < 0'
 
     row = [
         describe_entry(
