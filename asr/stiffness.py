@@ -10,7 +10,7 @@ The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
 material to the applied strain. In Voigt notation, C is expressed as a NxN
 matrix relating the N independent components of the stress and strain
 tensors. C is calculated as a finite difference of the stress under an applied
-stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+strain with full relaxation of atomic coordinates. A negative eigenvalue of C
 indicates a dynamical instability.
 """,
     articles=['C2DB'],
