@@ -9,8 +9,8 @@ from asr.database.browser import (
 
 panel_description = make_panel_description(
     """The quasiparticle (QP) band structure calculated within the G0W0
-approximation from a GGA starting point. Spin-orbit interactions are included
-in postprocess. The frequency dependence is treated numerically exact. For
+approximation from a GGA starting point.
+The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
 wave basis set limit. Spin-orbit interactions are included
