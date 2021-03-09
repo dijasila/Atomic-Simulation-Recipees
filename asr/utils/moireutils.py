@@ -1,17 +1,40 @@
-from ase import Atoms
 from typing import Union
+import numpy as np
+from ase import Atoms
 
 
-def get_layers(atoms):
+def get_layers(atoms, center: bool = True):
+    '''divide structure in top and bottom layer,
+       according to tags and atoms positions along z.
+
+       If the starting bilayer is a 'draft', i.e. the
+       two monolayers have not been vertically separated yet,
+       it will only divide according to the tags.
+    '''
     copy = atoms.copy()
-    top = copy[copy.get_tags() == 1]
-    bottom = copy[copy.get_tags() == 0]
-    if len(top) == 0:
-        raise ValueError('Tags have not been set for the current structure!')
-    return top, bottom
+    tags = copy.get_tags()
+    unique = np.unique(tags)
+    err = f'A bilayer can only have 2 different values for tags! You have {len(unique)}'
+    assert len(unique) == 2, err
+    if center:
+        copy.center()
+    l1 = copy[tags == unique[0]]
+    l2 = copy[tags == unique[1]]
+    l1z = l1.positions[:, 2]
+    l2z = l2.positions[:, 2]
+    if np.all(l2z > l1z.max()):
+        return l2, l1
+    else:
+        return l1, l2
 
 
 class Bilayer(Atoms):
+    '''Adds some functionality to the Atoms class in order to
+       make some operations for heterostructures easier.
+
+       It requires that tags have been set by using two different integers
+       in order to identify the atoms belonging to each layer.
+    '''
     def __init__(self, atoms):
         super().__init__(atoms)
         self.top_layer, self.bottom_layer = get_layers(atoms)
@@ -30,20 +53,25 @@ class Bilayer(Atoms):
         return zvals.max() - zvals.min()
 
     def get_interlayer_distance(self):
+        '''Returns interlayer distance,
+           defined as the thickness of the vacuum
+           region between the two layers
+        '''
         ceiling = self.top_layer.positions[:, 2].min()
         floor = self.bottom_layer.positions[:, 2].max()
         distance = ceiling - floor
-        if distance < 0:
-            raise ValueError('Your top and bottom layer are inverted!')
         return distance
 
-    def set_interlayer_distance(self, distance: float):
+    def set_interlayer_distance(self, distance: float, center: bool = True):
+        '''Sets interlayer distance according to the above definition'''
         current_distance = self.get_interlayer_distance()
         shift = distance - current_distance
         bottom = self.bottom_layer.copy()
         top = self.top_layer.copy()
         top.translate([0, 0, shift])
         new = top + bottom
+        if center:
+            new.center()
         self.__init__(new)
 
     def sort_along_z(self, order: Union[list, str] = 'descending'):
@@ -51,10 +79,8 @@ class Bilayer(Atoms):
            sorted in descending or ascending order
            with respect to the atom coordinates along z
 
-        It's also possible to specify a custom order through a list
+           It's also possible to specify a custom order through a list
         '''
-        import numpy as np
-
         sorter = np.argsort(self.positions[:, 2])
         old = self.copy()
         new = old[sorter]
@@ -63,10 +89,12 @@ class Bilayer(Atoms):
             new = new[::-1]
         elif isinstance(order, list):
             new = old[order]
-
         self.__init__(new)
 
     def set_vacuum(self, value):
+        '''Sets the total amount of vacuum between two adjacent cells
+           along the z direction
+        '''
         oldcell = self.cell
         thick = self.get_total_thickness()
         new_z = thick + value

@@ -3,7 +3,7 @@ from ase.io import read, write
 from ase.io.jsonio import read_json, write_json
 from gpaw import GPAW, PW, LCAO
 from ase.calculators.dftd3 import DFTD3
-from scipy.interpolate import CubicSpline, Akima1DInterpolator
+from scipy.interpolate import CubicSpline
 from asr.core import command, option
 from asr.utils.moireutils import Bilayer
 
