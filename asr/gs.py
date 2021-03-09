@@ -173,8 +173,11 @@ def bz_with_band_extremums(row, fname):
     from asr.structureinfo import main as structinfo
     import numpy as np
     ndim = sum(row.pbc)
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+
+    # Standardize the cell rotation via Bravais lattice roundtrip:
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    cell = lat.tocell()
+
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     gsresults = main.select(cache=row.cache)[0].result
@@ -191,7 +194,7 @@ def bz_with_band_extremums(row, fname):
         if not row.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
-        icell_cv = np.linalg.inv(row.cell).T
+        icell_cv = cell.reciprocal()
         vbm_style = {'marker': 'o', 'facecolor': 'w',
                      'edgecolors': 'C0', 's': 50, 'lw': 2,
                      'zorder': 4}
@@ -200,19 +203,23 @@ def bz_with_band_extremums(row, fname):
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
+
         if ndim < 3:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+
+            # We need to keep the limits set by ASE in 3D, else the aspect
+            # ratio goes haywire.  Hence this bit is also for ndim < 3 only.
+            xlim = np.array(ax.get_xlim()) * 1.4
+            ylim = np.array(ax.get_ylim()) * 1.4
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
         else:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]],
                        [vbm_sv[:, 2]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]],
                        [cbm_sv[:, 2]], **cbm_style, label='CBM')
 
-        xlim = np.array(ax.get_xlim()) * 1.4
-        ylim = np.array(ax.get_ylim()) * 1.4
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
         plt.legend(loc='upper center', ncol=3, prop={'size': 9})
 
     plt.tight_layout()
