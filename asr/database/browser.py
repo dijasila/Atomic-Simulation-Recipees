@@ -116,7 +116,7 @@ class ExplainedFloat(float):
 value_type_to_explained_type = {}
 
 
-def describe_entry(value, description, title='Help'):
+def describe_entry(value, description, title='Information'):
     """Describe website entry.
 
     This function sets an __explanation__ attribute on the given object
