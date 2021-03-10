@@ -627,7 +627,7 @@ def webpanel(result, row, key_descriptions):
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
-    panel = {'title': describe_entry('Effective masses (PBE)',
+    panel = {'title': describe_entry('Effective masses (SCF)',
                                      panel_description),
              'columns': columns,
              'plot_descriptions':

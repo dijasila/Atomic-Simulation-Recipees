@@ -119,7 +119,7 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(
         title=describe_entry(
-            'Basic electronic properties (PBE)',
+            'Basic electronic properties (SCF)',
             panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
@@ -132,7 +132,7 @@ def webpanel(result, row, key_descriptions):
                           'experimental', 'basis', 'setups']))
     description = ('The electronic band gap including spin-orbit effects. \n\n'
                    + parameter_description)
-    datarow = [describe_entry('Band gap (PBE)',
+    datarow = [describe_entry('Band gap (SCF)',
                               description=description),
                f'{result.gap:0.2f} eV']
     summary = WebPanel(

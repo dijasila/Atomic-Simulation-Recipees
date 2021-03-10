@@ -239,7 +239,7 @@ def webpanel(result, row, key_descriptions):
                                   'header': ['Electronic properties', ''],
                                   'rows': [datarow]}]])
 
-    basicelec = WebPanel(title='Basic electronic properties (PBE)',
+    basicelec = WebPanel(title='Basic electronic properties (SCF)',
                          columns=[[{'type': 'table',
                                     'header': ['Property', ''],
                                     'rows': [datarow]}]],

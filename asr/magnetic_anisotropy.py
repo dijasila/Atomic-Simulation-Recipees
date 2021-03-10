@@ -56,7 +56,7 @@ def webpanel(result, row, key_descriptions):
 
     panel = {'title':
              describe_entry(
-                 'Basic magnetic properties (PBE)',
+                 'Basic magnetic properties (SCF)',
                  panel_description),
              'columns': [[magtable], []],
              'sort': 11}

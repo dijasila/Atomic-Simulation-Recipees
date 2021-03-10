@@ -83,7 +83,7 @@ def webpanel(result, row, key_descriptions):
 
     # Projected band structure and DOS panel
     panel = WebPanel(
-        title='Projected band structure and DOS (PBE)',
+        title='Projected band structure and DOS (SCF)',
         columns=[[],
                  [describe_entry(fig('pbe-pdos_nosoc.png', link='empty'),
                                  description=explanation)]],

@@ -220,7 +220,7 @@ def webpanel(result, row, key_descriptions):
     heisenberg_table = table(row, 'Heisenberg model',
                              [J, lam, A, spin, N_nn],
                              kd=key_descriptions)
-    panel = WebPanel(title='Basic magnetic properties (PBE)',
+    panel = WebPanel(title='Basic magnetic properties (SCF)',
                      columns=[[heisenberg_table], []],
                      sort=11)
     return [panel]

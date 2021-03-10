@@ -46,7 +46,7 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(
         title=describe_entry(
-            'Projected band structure and DOS (PBE)',
+            'Projected band structure and DOS (SCF)',
             panel_description),
         columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
                                  description=explanation)],

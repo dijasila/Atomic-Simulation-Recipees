@@ -65,7 +65,7 @@ def webpanel(result, row, key_descriptions):
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        panel = WebPanel(title='Basic magnetic properties (PBE)',
+        panel = WebPanel(title='Basic magnetic properties (SCF)',
                          columns=[[], [magmoms_table]],
                          sort=11)
 

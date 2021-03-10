@@ -100,8 +100,8 @@ def hse_spinorbit(dct, calc):
 def MP_interpolate(calc, delta_skn, lb, ub):
     """Interpolate corrections to band patch.
 
-    Calculates band stucture along the same band path used for PBE
-    by interpolating a correction onto the PBE band structure.
+    Calculates band stucture along the same band path used for SCF
+    by interpolating a correction onto the SCF band structure.
     """
     import numpy as np
     from gpaw import GPAW
@@ -112,7 +112,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     from asr.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
-    # read PBE (without SOC)
+    # read SCF (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')
     path = results_bandstructure['bs_nosoc']['path']
     e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
@@ -195,7 +195,7 @@ def bs_hse(row,
         path_effects.Normal()
     ])
 
-    # add PBE band structure with soc
+    # add SCF band structure with soc
     from asr.bandstructure import add_bs_scf
     if 'results-asr.bandstructure.json' in row.data:
         ax = add_bs_scf(row, ax, reference=row.get('evac', row.get('efermi')),
