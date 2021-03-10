@@ -4,6 +4,7 @@ from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.database import material_fingerprint as mfp
 from asr.structureinfo import get_reduced_formula
 from ase.io import read
+from ase import Atoms
 from pathlib import Path
 from asr.bilayerdescriptor import get_descriptor
 import os
@@ -263,6 +264,8 @@ def main(monolayerfolder: str = "./") -> Result:
     # Get monolayer gap
     # Go to C2DB-ASR tree to find data
     ml_atoms = read(f'{p}/structure.json')
+    ml_atoms = sorted(ml_atoms, key=lambda atom: atom.symbol[0])
+    ml_atoms = Atoms(ml_atoms)
     formula = str(ml_atoms.symbols.formula)
     stoich = get_reduced_formula(formula, stoichiometry=True)
     reduced = get_reduced_formula(formula, stoichiometry=False)
