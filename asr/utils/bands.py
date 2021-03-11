@@ -42,7 +42,8 @@ def multiplot(*toplot,
               customticks=None,
               show=True,
               fontsize1=24,
-              fontsize2=22):
+              fontsize2=22,
+              loc='upper left'):
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     import warnings
@@ -126,7 +127,7 @@ def multiplot(*toplot,
     ax.yaxis.set_tick_params(width=3, length=10)
     plt.setp(ax.spines.values(), linewidth=3)
 
-    plt.legend(loc="upper left", fontsize=fontsize2)
+    plt.legend(loc=loc, fontsize=fontsize2 - 2)
 
     if show:
         plt.show()

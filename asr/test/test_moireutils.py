@@ -1,0 +1,86 @@
+import numpy as np
+from ase import Atoms
+from typing import Union
+
+
+def get_layers(atoms, center: bool=True):
+    copy = atoms.copy()
+    tags = copy.get_tags()
+    unique = np.unique(tags)
+    err = f'A bilayer can only have 2 different values for tags! You have {len(unique)}'
+    assert len(unique) == 2, err
+    if center:
+        copy.center()
+    l1 = copy[tags == unique[0]]
+    l2 = copy[tags == unique[1]]
+    l1z = l1.positions[:, 2]
+    l2z = l2.positions[:, 2]
+    if np.all(l2z > l1z.max()):
+        return l2, l1
+    else:
+        return l1, l2
+
+
+class Bilayer(Atoms):
+    def __init__(self, atoms):
+        super().__init__(atoms)
+        self.top_layer, self.bottom_layer = get_layers(atoms)
+        self._atoms = atoms
+
+    def copy(self):
+        '''Returns a copy of itself.
+
+        This is necessary because for some reason the copy() method
+        inherited from the Atoms class fails (unexpected keyword argument 'cell')
+        '''
+        return self._atoms.copy()
+
+    def get_total_thickness(self):
+        zvals = self.positions[:, 2]
+        return zvals.max() - zvals.min()
+
+    def get_interlayer_distance(self):
+        ceiling = self.top_layer.positions[:, 2].min()
+        floor = self.bottom_layer.positions[:, 2].max()
+        distance = ceiling - floor
+        if distance < 0:
+            raise ValueError('Your top and bottom layer are inverted or interpenetrated!')
+        return distance
+
+    def set_interlayer_distance(self, distance: float, center: bool=True):
+        current_distance = self.get_interlayer_distance()
+        shift = distance - current_distance
+        bottom = self.bottom_layer.copy()
+        top = self.top_layer.copy()
+        top.translate([0, 0, shift])
+        new = top + bottom
+        if center:
+            new.center()
+        self.__init__(new)
+
+    def sort_along_z(self, order: Union[list, str] = 'descending'):
+        '''Returns a copy of the bilayer,
+           sorted in descending or ascending order
+           with respect to the atom coordinates along z
+
+        It's also possible to specify a custom order through a list
+        '''
+        sorter = np.argsort(self.positions[:, 2])
+        old = self.copy()
+        new = old[sorter]
+        new = old[sorter]
+        if order == 'descending':
+            new = new[::-1]
+        elif isinstance(order, list):
+            new = old[order]
+        self.__init__(new)
+
+    def set_vacuum(self, value):
+        oldcell = self.cell
+        thick = self.get_total_thickness()
+        new_z = thick + value
+        newcell = [oldcell[0],
+                   oldcell[1],
+                   [oldcell[2][0], oldcell[2][1], new_z]]
+        self.set_cell(newcell)
+        self.center(axis=2)
