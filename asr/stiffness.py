@@ -4,7 +4,8 @@ import typing
 from ase import Atoms
 
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr)
+    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
+    Migration, Selector, SelectorMigrationGenerator)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 from asr.relax import main as relax
@@ -195,15 +196,44 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.stiffness')
+def transform_stiffness_resultfile_record(record):
+    dep_params = record.parameters['dependency_parameters']
+    d3 = dep_params['asr.relax:main']['d3']
+    calculator = dep_params['asr.relax:main']['calculator']
+    record.parameters.calculator = calculator
+    record.parameters.d3 = d3
+    record.version = 0
+    del record.parameters.dependency_parameters
+    return record
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.stiffness')
+sel.version = sel.EQ(-1)
+
+mig = Migration(
+    function=transform_stiffness_resultfile_record,
+    uid='e6d207028b3843faa533955477e3392a',
+    description='Set calculator and d3 parameter.',
+)
+
+make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
+
+
+@command(
+    module='asr.stiffness',
+    migrations=[make_migrations],
+)
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
 @option('-c', '--calculator', help='Calculator and its parameters.',
         type=DictStr())
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
+@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 def main(atoms: Atoms,
          calculator: dict = relax.defaults.calculator,
-         strain_percent: float = 1.0) -> Result:
+         strain_percent: float = 1.0,
+         d3: bool = False) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains

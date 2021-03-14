@@ -445,20 +445,20 @@ def add_resultfile_records():
 def migrate(apply=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
-        collect_record_mutations,
+        get_instruction_migration_generator,
         RecordMigration,
     )
-    from asr.core.resultfile import get_resultfile_mutations
+    from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
-    mutations = collect_record_mutations()
-    mutations.extend(get_resultfile_mutations())
-    migrations = []
+    migration_generators = get_instruction_migration_generator()
+    migration_generators.extend([get_resultfile_migration_generator()])
+    record_migrations = []
 
     for record in cache.select():
-        record_migration = RecordMigration(record, mutations)
+        record_migration = RecordMigration(record, migration_generators)
         if record_migration:
-            migrations.append(record_migration)
+            record_migrations.append(record_migration)
             if apply:
                 try:
                     print(f'Apply migration: {record_migration}')
@@ -466,16 +466,16 @@ def migrate(apply=False):
                 except Exception as err:
                     print(f'Problem with migration of record #{record.uid[:5]}: {err}')
 
-    if not migrations:
+    if not record_migrations:
         print('All records up to date. No migrations to apply.')
 
     if apply:
         return
 
-    if migrations:
-        nmigrations = len(migrations)
+    if record_migrations:
+        nmigrations = len(record_migrations)
         maxmig = 10
-        for i, migration in enumerate(migrations[:maxmig]):
+        for i, migration in enumerate(record_migrations[:maxmig]):
             print(f'#{i} {migration}')
         if nmigrations > maxmig:
             print('...')

@@ -7,7 +7,7 @@ from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
 from .serialize import JSONSerializer
 from .record import Record
-from .migrate import RecordMutation
+from .migrate import Migration, SelectorMigrationGenerator
 from .selector import Selector
 from .command import get_recipes
 from .utils import write_file, read_file
@@ -257,30 +257,12 @@ def get_resultsfile_records() -> typing.List[Record]:
 def inherit_dependency_parameters(records):
 
     for record in records:
-        dep_uids = get_dependent_uids(record, records)
+        dep_uids = [record.uid for record in records]
         dep_params = get_dependency_parameters(dep_uids, records)
         dep_params = Parameters({'dependency_parameters': dep_params})
         record.parameters.update(dep_params)
 
     return records
-
-
-def get_dependent_uids(record, records):
-
-    if record.dependencies is None:
-        return set()
-    dependent_uids = set(record.dependencies)
-
-    uid_list = []
-    for dep_uid in dependent_uids:
-        dep_record = [other for other in records if other.uid == dep_uid][0]
-        uids = get_dependent_uids(dep_record, records)
-        uid_list.append(uids)
-
-    for uids in uid_list:
-        dependent_uids.update(uids)
-
-    return dependent_uids
 
 
 def get_dependency_parameters(dependency_uids, records):
@@ -303,18 +285,18 @@ def get_dependency_parameters(dependency_uids, records):
     return params
 
 
-def get_resultfile_mutations() -> typing.List[RecordMutation]:
+def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
     sel = Selector()
     sel.tags = sel.CONTAINS('resultfile')
     sel.version = sel.EQ(-1)
-    return [
-        RecordMutation(
-            add_default_parameters,
-            uid='9269242a035a4731bcd5ac609ff0a086',
-            selector=sel,
-            description='Add missing parameters to record from resultfile.',
-        )
-    ]
+
+    mig = Migration(
+        add_default_parameters,
+        uid='9269242a035a4731bcd5ac609ff0a086',
+        description='Add missing parameters to record from resultfile.',
+    )
+    make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
+    return make_migrations
 
 
 PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
@@ -323,7 +305,7 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 def add_default_parameters(record):
     from .utils import get_recipe_from_name
-    default_params = DEFAULTS[record.name]
+    # default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
@@ -331,13 +313,6 @@ def add_default_parameters(record):
     parameters = record.parameters
 
     sig_parameters = {parameter for parameter in sig.parameters}
-
-    unknown_keys = set()
-    for key, value in record.parameters.items():
-        if key not in sig_parameters:
-            unknown_keys.add(key)
-        else:
-            new_parameters[key] = value
 
     unused_old_params = set(parameters.keys())
     missing_params = set()
@@ -359,7 +334,7 @@ def add_default_parameters(record):
                 new_parameters[key] = dep_params[dependency][key]
                 unused_dependency_params[dependency].remove(key)
             else:
-                new_parameters[key] = default_params[key]
+                missing_params.add(key)  # new_parameters[key] = default_params[key]
 
     remove_keys = set(['dependency_parameters'])
     if name == 'asr.formalpolarization:main':
@@ -371,11 +346,13 @@ def add_default_parameters(record):
     unused_old_params = unused_old_params - remove_keys
 
     assert not unused_old_params, (
-        f'record.name={name}: Unused parameters from old record={unused_old_params}.'
+        f'record.name={name}: Parameters from resultfile record '
+        f'unused={unused_old_params}.'
     )
 
     assert not missing_params, (
-        f'record.name={name}: Unset parameters when migrating record={missing_params}.'
+        f'record.name={name}: Missing parameters from resultfile record'
+        f'={missing_params}.'
     )
 
     unused_dependency_params = {
@@ -386,7 +363,7 @@ def add_default_parameters(record):
     }
 
     assert not unused_dependency_params, (
-        f'record.name={name}: Unused dependency parameters='
+        f'record.name={name}: Dependency parameters unused='
         f'{unused_dependency_params}'
     )
     record.run_specification.parameters = new_parameters

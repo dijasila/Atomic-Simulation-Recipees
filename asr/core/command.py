@@ -122,7 +122,7 @@ class ASRCommand:
             version=0,
             cache=None,
             argument_hooks=None,
-            mutations=None,
+            migrations=None,
     ):
         """Construct an instance of an ASRCommand.
 
@@ -138,7 +138,7 @@ class ASRCommand:
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
-        self._mutations = mutations
+        self._migrations = migrations
         self.version = version
         if argument_hooks is None:
             self.argument_hooks = []
@@ -174,9 +174,9 @@ class ASRCommand:
         functools.update_wrapper(self, self._wrapped_function)
 
     @property
-    def mutations(self):
-        if self._mutations:
-            return self._mutations
+    def migrations(self):
+        if self._migrations:
+            return self._migrations
         else:
             return []
 
@@ -467,7 +467,7 @@ def get_recipes():
     for module in modules:
         for attr in module.__dict__:
             attr = getattr(module, attr)
-            if isinstance(attr, ASRCommand) or hasattr(attr, 'is_recipe'):
+            if isinstance(attr, ASRCommand):  # or hasattr(attr, 'is_recipe'):
                 functions.append(attr)
     return functions
 
