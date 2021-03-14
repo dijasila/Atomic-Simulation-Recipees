@@ -84,7 +84,7 @@ class MigrationHistory:
         return self.history[-1].to_version
 
     def __contains__(self, migration: 'Migration'):
-        return any(migration.uid == tmp.uid for tmp in self.history)
+        return any(migration.uid == log.migration_uid for log in self.history)
 
 
 @dataclass
