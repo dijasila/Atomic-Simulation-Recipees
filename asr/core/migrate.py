@@ -63,8 +63,8 @@ class MigrationLog:
         return cls(
             migration_uid=migration.uid,
             description=migration.description,
-            changes=record,
-            version=version,
+            modification=record,
+            to_version=version,
         )
 
 
@@ -79,7 +79,9 @@ class MigrationHistory:
 
     @property
     def current_version(self):
-        return self.history[-1].version
+        if not self.history:
+            return None
+        return self.history[-1].to_version
 
     def __contains__(self, migration: 'Migration'):
         return any(migration.uid == tmp.uid for tmp in self.history)
