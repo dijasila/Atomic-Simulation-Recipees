@@ -326,7 +326,10 @@ def get_pristine_result():
     from asr.core import read_json
 
     try:
-        pris_folder = list(Path('.').glob('../../defects.pristine_sc*'))[0]
+        p = Path('.')
+        sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+        pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+        pris_folder = pristinelist[0]
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
     except FileNotFoundError:
         print('ERROR: does not find pristine results. Did you run setup.defects '
