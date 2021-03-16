@@ -451,12 +451,12 @@ def migrate(apply=False):
     from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
-    migration_generators = get_instruction_migration_generator()
-    migration_generators.extend([get_resultfile_migration_generator()])
+    make_migrations = get_instruction_migration_generator()
+    make_migrations.extend([get_resultfile_migration_generator()])
     record_migrations = []
 
     for record in cache.select():
-        record_migration = RecordMigration(record, migration_generators)
+        record_migration = RecordMigration(record, make_migrations)
         if record_migration:
             record_migrations.append(record_migration)
             if apply:

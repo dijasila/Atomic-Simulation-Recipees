@@ -10,7 +10,7 @@ from .record import Record
 from .migrate import Migration, SelectorMigrationGenerator
 from .selector import Selector
 from .command import get_recipes
-from .utils import write_file, read_file
+from .utils import write_file, read_file, get_recipe_from_name
 
 
 def find_directories() -> typing.List[pathlib.Path]:
@@ -286,16 +286,20 @@ def get_dependency_parameters(dependency_uids, records):
 
 
 def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
+
+    mig = Migration(
+        update_resultfile_record_to_version_0,
+        uid='9269242a035a4731bcd5ac609ff0a086',
+        description='Fix parameters in record from resultfile.',
+        eagerness=-1,
+    )
+
     sel = Selector()
     sel.tags = sel.CONTAINS('resultfile')
     sel.version = sel.EQ(-1)
 
-    mig = Migration(
-        add_default_parameters,
-        uid='9269242a035a4731bcd5ac609ff0a086',
-        description='Add missing parameters to record from resultfile.',
-    )
-    make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
+    make_migrations = SelectorMigrationGenerator(
+        selector=sel, migration=mig)
     return make_migrations
 
 
@@ -303,8 +307,7 @@ PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
 DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 
-def add_default_parameters(record):
-    from .utils import get_recipe_from_name
+def update_resultfile_record_to_version_0(record):
     # default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
@@ -336,23 +339,23 @@ def add_default_parameters(record):
             else:
                 missing_params.add(key)  # new_parameters[key] = default_params[key]
 
-    remove_keys = set(['dependency_parameters'])
-    if name == 'asr.formalpolarization:main':
-        remove_keys.add('gpwname')
-    elif name == 'asr.setup.displacements:main':
-        remove_keys.add('copy_params')
-    elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
-        remove_keys.add('gpwfilename')
-    unused_old_params = unused_old_params - remove_keys
+    # remove_keys = set(['dependency_parameters'])
+    # if name == 'asr.formalpolarization:main':
+    #     remove_keys.add('gpwname')
+    # elif name == 'asr.setup.displacements:main':
+    #     remove_keys.add('copy_params')
+    # elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
+    #     remove_keys.add('gpwfilename')
+    # unused_old_params = unused_old_params - remove_keys
+
+    unused_old_params -= set(['dependency_parameters'])
 
     assert not unused_old_params, (
-        f'record.name={name}: Parameters from resultfile record '
-        f'unused={unused_old_params}.'
+        f'Parameters from resultfile record unused={unused_old_params}.'
     )
 
     assert not missing_params, (
-        f'record.name={name}: Missing parameters from resultfile record'
-        f'={missing_params}.'
+        f'Missing parameters from resultfile record={missing_params}.'
     )
 
     unused_dependency_params = {
@@ -363,8 +366,7 @@ def add_default_parameters(record):
     }
 
     assert not unused_dependency_params, (
-        f'record.name={name}: Dependency parameters unused='
-        f'{unused_dependency_params}'
+        f'Dependency parameters unused={unused_dependency_params}'
     )
     record.run_specification.parameters = new_parameters
     record.version = 0

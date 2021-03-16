@@ -14,7 +14,8 @@ import numpy as np
 from ase import Atoms
 
 from asr.core import (
-    command, ASRResult, atomsopt, calcopt)
+    command, ASRResult, atomsopt, calcopt,
+    Selector, Migration, SelectorMigrationGenerator)
 
 
 class AtomsTooCloseToBoundary(Exception):
@@ -88,7 +89,29 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
     return dist_to_cell_edge_a
 
 
-@command('asr.formalpolarization')
+def remove_gpwname_from_parameters(record):
+    del record.parameters.gpwname
+    return record
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.formalpolarization:main')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.CONTAINS('gpwname')
+
+mig = Migration(
+    function=remove_gpwname_from_parameters,
+    uid='f4525d8398b44441821e496195081b86',
+    description="Remove 'gpwname' from parameters."
+)
+
+make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
+
+
+@command(
+    'asr.formalpolarization',
+    migrations=[make_migrations],
+)
 @atomsopt
 @calcopt
 def main(
