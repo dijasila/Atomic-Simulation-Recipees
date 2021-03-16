@@ -360,8 +360,8 @@ def params(params: Union[str, None] = None):
 
             # XXX We have change such that names now contain @main
             # This will invalidate old params files.
-            if '@' not in recipe:
-                recipe += '@main'
+            if ':' not in recipe:
+                recipe += ':main'
 
             assert option, 'You have to provide an option'
             assert recipe, 'You have to provide a recipe'
