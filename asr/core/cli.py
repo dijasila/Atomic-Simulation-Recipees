@@ -342,8 +342,8 @@ def params(params: Union[str, None] = None):
         options = []
         args = []
         for tmpoption, tmparg in zip(tmpoptions, tmpargs):
-            assert ':' in tmpoption, 'You have to use the recipe:option syntax'
-            recipe, option = tmpoption.split(':')
+            assert '::' in tmpoption, 'You have to use the recipe:option syntax'
+            recipe, option = tmpoption.split('::')
             if '*' in recipe:
                 for tmprecipe in defparamdict:
                     if not fnmatch(tmprecipe, recipe):
@@ -356,7 +356,7 @@ def params(params: Union[str, None] = None):
                 args.append(tmparg)
 
         for option, value in zip(options, args):
-            recipe, option = option.split(':')
+            recipe, option = option.split('::')
 
             # XXX We have change such that names now contain @main
             # This will invalidate old params files.
