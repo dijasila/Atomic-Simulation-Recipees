@@ -18,6 +18,8 @@ class DummyRow:
     pass
 
 
+@pytest.mark.xfail
+# row.data cannot be a dict since we want to call data.get_record() somewhere.
 def test_bader_webpanel():
     result = Result(data=dict(bader_charges=[-0.5, 0.5], sym_a=['O', 'H']))
     row = DummyRow()
