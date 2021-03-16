@@ -35,6 +35,8 @@ def test_setup_params(asr_tmpdir):
 
 @pytest.mark.xfail
 def test_asterisk_syntax():
+    from asr.core.cli import params as paramsfunc
+    from asr.core import read_json
     runner = CliRunner()
     result = runner.invoke(paramsfunc, ['*:kptdensity', '12'])
     assert result.exit_code == 0
