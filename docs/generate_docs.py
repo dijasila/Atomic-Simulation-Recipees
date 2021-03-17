@@ -94,7 +94,7 @@ def make_recipe_documentation(module):
         '',
     ]
 
-    stepnames = [f'{module}@{step.__name__}'
+    stepnames = [f'{module}:{step.__name__}'
                  if step.__name__ != 'main' else module
                  for step in steps]
     nsteps = len(steps)
