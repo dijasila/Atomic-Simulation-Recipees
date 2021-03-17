@@ -465,10 +465,12 @@ def get_recipes():
 
     functions = []
     for module in modules:
-        for attr in module.__dict__:
-            attr = getattr(module, attr)
-            if isinstance(attr, ASRCommand):  # or hasattr(attr, 'is_recipe'):
-                functions.append(attr)
+        for obj in module.__dict__.values():
+            # Commands may exist in multiple module namespaces.
+            # We only include commands as defined in their own module.
+            if isinstance(obj, ASRCommand) and (obj.__module__
+                                                == module.__name__):
+                functions.append(obj)
     return functions
 
 

@@ -73,10 +73,10 @@ def format_list(content, indent=0, title=None, pad=2):
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
-        output += out
+        output += out.rstrip()
         output += '\n'
 
-    return output
+    return output.rstrip()
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -296,7 +296,6 @@ def asrlist(search):
             name = name[:-5]
         status = [name, shorthelp]
         panel += [status]
-    panel += ['\n']
 
     print(format_list(panel))
 
@@ -343,8 +342,8 @@ def params(params: Union[str, None] = None):
         options = []
         args = []
         for tmpoption, tmparg in zip(tmpoptions, tmpargs):
-            assert ':' in tmpoption, 'You have to use the recipe:option syntax'
-            recipe, option = tmpoption.split(':')
+            assert '::' in tmpoption, 'You have to use the recipe:option syntax'
+            recipe, option = tmpoption.split('::')
             if '*' in recipe:
                 for tmprecipe in defparamdict:
                     if not fnmatch(tmprecipe, recipe):
@@ -357,12 +356,12 @@ def params(params: Union[str, None] = None):
                 args.append(tmparg)
 
         for option, value in zip(options, args):
-            recipe, option = option.split(':')
+            recipe, option = option.split('::')
 
             # XXX We have change such that names now contain @main
             # This will invalidate old params files.
-            if '@' not in recipe:
-                recipe += '@main'
+            if ':' not in recipe:
+                recipe += ':main'
 
             assert option, 'You have to provide an option'
             assert recipe, 'You have to provide a recipe'

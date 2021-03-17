@@ -2,9 +2,10 @@ import pytest
 import numpy as np
 
 
+@pytest.mark.xfail
 @pytest.mark.acceptance_test
 def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
-    from .materials import BN
+    from ..materials import BN
     from asr.borncharges import main
     from asr.setup.params import main as setupparams
 
