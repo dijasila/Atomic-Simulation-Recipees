@@ -1,20 +1,22 @@
 """ASR command line interface."""
-import sys
-import os
 from ast import literal_eval
+from contextlib import contextmanager
+from functools import partial
+import importlib
+import os
+from pathlib import Path
+import pickle
+import subprocess
+import sys
 from typing import Union, Dict, Any, List, Tuple
+
+import click
+from ase.parallel import parprint
+
 import asr
 from asr.core import (
     read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache,
     get_recipes)
-import click
-from pathlib import Path
-import subprocess
-from ase.parallel import parprint
-from functools import partial
-import importlib
-from contextlib import contextmanager
-import pickle
 
 
 prt = partial(parprint, flush=True)
@@ -275,7 +277,6 @@ def asrlist(search):
     If SEARCH is specified: list only recipes containing SEARCH in their
     description.
     """
-    from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
@@ -330,9 +331,10 @@ def _params(name: str, params: str):
         name += ':main'
 
     all_recipes = recipes_as_dict()
-    recipe = all_recipes[name]
     defparamdict = {recipe.name: recipe.defaults
                     for recipe in all_recipes.values()}
+
+    recipe = all_recipes[name]
 
     params_path = Path('params.json')
     if params_path.is_file():
