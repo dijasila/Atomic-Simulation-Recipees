@@ -113,11 +113,11 @@ class Migration:
             to_version=to_version,
         )
 
-        if migrated_record.migrations:
-            migrated_record.migrations.append(migration_log)
+        if migrated_record.history:
+            migrated_record.history.append(migration_log)
         else:
             migration_history = MigrationHistory(history=[migration_log])
-            migrated_record.migrations = migration_history
+            migrated_record.history = migration_history
         return migrated_record
 
     def __call__(self, record: Record) -> Record:
