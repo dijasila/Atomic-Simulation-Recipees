@@ -712,7 +712,7 @@ class ASRResult(object):
         "time": "a good time."
        }
       },
-      "strict": true
+      "strict": null
      }
     }
     """ # noqa

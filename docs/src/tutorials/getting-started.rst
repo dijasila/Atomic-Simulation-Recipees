@@ -23,7 +23,7 @@ ASR comes with a simple command-line interface which can be invoked using
      find      Find result files.
      list      List and search for recipes.
      params    Compile a params.json file with all options and defaults.
-     results   Show results for a specific recipe.
+     results   Show results from records.
      run       Run recipe or python function in multiple folders.
    ...
 
@@ -41,7 +41,7 @@ ASR comes with a simple command-line interface which can be invoked using
      find      Find result files.
      list      List and search for recipes.
      params    Compile a params.json file with all options and defaults.
-     results   Show results for a specific recipe.
+     results   Show results from records.
      run       Run recipe or python function in multiple folders.
 
 From this output it is clear that the ``asr`` command has multiple
@@ -85,9 +85,9 @@ So we can see a list of all recipes using
 
    >>> from asr.core.cli import cli
    >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
-   Name ... Description ...
+   Name ... Description...
    ...
-   relax ... Relax atomic positions and unit cell...
+   relax:main ... Relax atomic positions and unit cell...
    ...
 
 
@@ -97,7 +97,7 @@ So we can see a list of all recipes using
    Name                           Description
    ----                           -----------
    ...
-   relax                          Relax atomic positions and unit cell.
+   relax:main                     Relax atomic positions and unit cell.
    ...
 
 
