@@ -75,7 +75,7 @@ def format_list(content, indent=0, title=None, pad=2):
         output += out.rstrip()
         output += '\n'
 
-    return output
+    return output.rstrip()
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -295,7 +295,6 @@ def asrlist(search):
             name = name[:-5]
         status = [name, shorthelp]
         panel += [status]
-    panel += ['\n']
 
     print(format_list(panel))
 
