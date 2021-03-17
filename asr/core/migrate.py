@@ -6,6 +6,7 @@ from .command import get_recipes
 from .selector import Selector
 from .record import Record
 from .specification import get_new_uuid
+from .history import History
 
 
 class UnapplicableMigration(Exception):
@@ -70,7 +71,7 @@ class MigrationLog:
 
 
 @dataclass
-class MigrationHistory:
+class MigrationHistory(History):
     """A class the represents the migration history."""
 
     history: typing.List[MigrationLog]

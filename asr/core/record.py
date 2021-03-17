@@ -4,35 +4,25 @@ import numpy as np
 
 import typing
 import copy
+from dataclasses import dataclass
 from .specification import RunSpecification
 from .resources import Resources
 from .metadata import Metadata
-
-if typing.TYPE_CHECKING:
-    from .migrate import MigrationHistory
+from .history import History
 
 # XXX: Make Tags object.
 
 
+@dataclass
 class Record:
 
-    def __init__(
-            self,
-            result: typing.Optional[typing.Any] = None,
-            run_specification: typing.Optional[RunSpecification] = None,
-            resources: typing.Optional[Resources] = None,
-            dependencies: typing.Optional[typing.List[str]] = None,
-            migrations: typing.Optional[MigrationHistory] = None,
-            tags: typing.Optional[typing.List[str]] = None,
-            metadata: typing.Optional[Metadata] = None,
-    ):
-        self.run_specification = run_specification
-        self.result = result
-        self.resources = resources
-        self.dependencies = dependencies
-        self.migrations = migrations
-        self.tags = tags
-        self.metadata = metadata
+    result: typing.Optional[typing.Any] = None
+    run_specification: typing.Optional[RunSpecification] = None
+    resources: typing.Optional[Resources] = None
+    dependencies: typing.Optional[typing.List[str]] = None
+    history: typing.Optional[History] = None
+    tags: typing.Optional[typing.List[str]] = None
+    metadata: typing.Optional[Metadata] = None
 
     @property
     def parameters(self):
