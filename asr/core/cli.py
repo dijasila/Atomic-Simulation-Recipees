@@ -72,7 +72,7 @@ def format_list(content, indent=0, title=None, pad=2):
             continue
         for colw, desc in zip(colwidth_c, row):
             out += f'{desc: <{colw}}' + ' ' * pad
-        output += out
+        output += out.rstrip()
         output += '\n'
 
     return output
