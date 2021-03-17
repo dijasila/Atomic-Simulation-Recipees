@@ -1,7 +1,6 @@
 """Implements record migration functionality."""
 import abc
 import typing
-import traceback
 from dataclasses import dataclass
 from .command import get_recipes
 from .selector import Selector
@@ -186,67 +185,75 @@ class CollectionMigrationGenerator(MakeMigrations):
 
 @dataclass
 class RecordMigration:
-    """A class that represents a record migration.
+    """A class that represents a record migration."""
 
-    Prioritizes eager migrations.
-    """
+    initial_record: Record
+    migrated_record: Record
+    applied_migrations: typing.List[Migration]
+    errors: typing.List[typing.Tuple[Migration, Exception]]
 
-    record: Record
-    migration_generator: MakeMigrations
+    def has_migrations(self):
+        """Has migrations to apply."""
+        return bool(self.applied_migrations)
 
-    def __bool__(self):
-        does_any_migrations_exist = bool(self.migration_generator(self.record))
-        return does_any_migrations_exist
-
-    def run(self):
-        assert self
-
-        migrated_record = self.record
-        applied_migrations = []
-        problematic_migrations = []
-        errors = []
-        while True:
-            applicable_migrations = self.migration_generator(migrated_record)
-            candidate_migrations = [
-                mig for mig in applicable_migrations
-                if mig not in problematic_migrations
-            ]
-            if not candidate_migrations:
-                break
-
-            migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
-            try:
-                migrated_record = migration(migrated_record)
-            except Exception as err:
-                problematic_migrations.append(migration)
-                errors.append((migration, err))
-                traceback.print_exc()
-                continue
-            applied_migrations.append(migration)
-        return migrated_record, applied_migrations, errors
+    def has_errors(self):
+        """Has failed migrations."""
+        return bool(self.errors)
 
     def apply(self, cache):
-        """Apply migration to a cache."""
-        migrated_record, _, _ = self.run()
-        cache.update(migrated_record)
+        """Apply record migration to a cache."""
+        cache.update(self.migrated_record)
 
     def __str__(self):
-        _, applied_migrations, errors = self.run()
-        nmig = len(applied_migrations)
-        nerr = len(errors)
+        nmig = len(self.applied_migrations)
+        nerr = len(self.errors)
         migrations_string = ' -> '.join([
-            str(migration) for migration in applied_migrations])
+            str(migration) for migration in self.applied_migrations])
         problem_string = (
-            ', '.join(f'{mig} err="{err}"' for mig, err in errors)
+            ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
         )
         return (
-            f'UID=#{self.record.uid[:8]} '
-            + (f'name={self.record.name}. ')
+            f'UID=#{self.initial_record.uid[:8]} '
+            + (f'name={self.initial_record.name}. ')
             + (f'{nmig} migration(s). ' if nmig > 0 else '')
-            + (f'{nerr} migration error(s)! ' if errors else '')
+            + (f'{nerr} migration error(s)! ' if self.errors else '')
             + (f'{migrations_string}. ' if nmig > 0 else '')
-            + (f'{problem_string}.' if errors else '')
+            + (f'{problem_string}.' if self.errors else '')
         )
+
+
+def make_record_migration(
+    record: Record,
+    migration_generator: MakeMigrations,
+) -> RecordMigration:
+    """Construct a record migration."""
+    migrated_record = record.copy()
+    applied_migrations = []
+    problematic_migrations = []
+    errors = []
+    while True:
+        applicable_migrations = migration_generator(migrated_record)
+        candidate_migrations = [
+            mig for mig in applicable_migrations
+            if mig not in problematic_migrations
+        ]
+        if not candidate_migrations:
+            break
+
+        migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
+        try:
+            migrated_record = migration(migrated_record)
+        except Exception as err:
+            problematic_migrations.append(migration)
+            errors.append((migration, err))
+            continue
+        applied_migrations.append(migration)
+    return RecordMigration(
+        initial_record=record,
+        migrated_record=migrated_record,
+        applied_migrations=applied_migrations,
+        errors=errors,
+    )
 
 
 def get_instruction_migration_generator() -> CollectionMigrationGenerator:
