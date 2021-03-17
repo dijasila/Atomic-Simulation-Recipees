@@ -300,75 +300,75 @@ def asrlist(search):
 
 
 @cli.command()
+@click.argument('recipe', nargs=1)
 @click.argument(
-    'params', nargs=-1, type=str,
-    metavar='recipe:option arg recipe:option arg'
+    'params', nargs=-1, type=str, required=True,
+    metavar='OPTION=VALUE...',
 )
-def params(params: Union[str, None] = None):
+def params(recipe, params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default
     values for all recipes to be used for manually changing values
     for specific options.
     """
+    return _params(recipe, params)
+
+
+from asr.core import get_recipes
+def recipes_as_dict():
+    return {recipe.name: recipe for recipe in get_recipes()}
+
+
+def get_all_recipe_defaults():
+    defparamdict = {}
+    for recipe in get_recipes():
+        defparamdict[recipe.name] = recipe.defaults
+    return defparamdict
+
+
+def _params(name: str, params: str):
     from pathlib import Path
-    from asr.core import get_recipes, read_json, write_json
+    from asr.core import read_json, write_json
     from ast import literal_eval
     from fnmatch import fnmatch
     import copy
     from asr.core import recursive_update
 
-    defparamdict = {}
-    recipes = get_recipes()
-    for recipe in recipes:
-        defparams = recipe.defaults
-        defparamdict[recipe.name] = defparams
+    if ':' not in name:
+        name += ':main'
 
-    p = Path('params.json')
-    if p.is_file():
-        paramdict = read_json('params.json')
+    all_recipes = recipes_as_dict()
+    recipe = all_recipes[name]
+    defparamdict = get_all_recipe_defaults()
+
+    params_path = Path('params.json')
+    if params_path.is_file():
+        paramdict = read_json(params_path)
         # The existing valus in paramdict set the new defaults
         recursive_update(defparamdict, paramdict)
     else:
         paramdict = {}
 
-    if isinstance(params, (list, tuple)):
-        # Find recipe:option
-        tmpoptions = params[::2]
-        tmpargs = params[1::2]
-        assert len(tmpoptions) == len(tmpargs), \
-            'You must provide a value for each option'
-        options = []
-        args = []
-        for tmpoption, tmparg in zip(tmpoptions, tmpargs):
-            assert '::' in tmpoption, 'You have to use the recipe:option syntax'
-            recipe, option = tmpoption.split('::')
-            if '*' in recipe:
-                for tmprecipe in defparamdict:
-                    if not fnmatch(tmprecipe, recipe):
-                        continue
-                    if option in defparamdict[tmprecipe]:
-                        options.append(f'{tmprecipe}:{option}')
-                        args.append(tmparg)
-            else:
-                options.append(tmpoption)
-                args.append(tmparg)
+    from collections.abc import Sequence
+    print(name, params)
 
-        for option, value in zip(options, args):
-            recipe, option = option.split('::')
+    if isinstance(params, Sequence):
+        # XXX if '*' in recipe:
+        # XXX     for tmprecipe in defparamdict:
+        # XXX         if not fnmatch(tmprecipe, recipe):
+        # XXX             continue
+        # XXX         if option in defparamdict[tmprecipe]:
+        # XXX             options.append(f'{tmprecipe}:{option}')
+        # XXX             args.append(tmparg)
 
-            # XXX We have change such that names now contain @main
-            # This will invalidate old params files.
-            if ':' not in recipe:
-                recipe += ':main'
+        paramdict.setdefault(name, {})
 
-            assert option, 'You have to provide an option'
-            assert recipe, 'You have to provide a recipe'
+        for directive in params:
+            keyword, value = directive.split('=', 1)
 
-            if recipe not in paramdict:
-                paramdict[recipe] = {}
-
-            paramtype = type(defparamdict[recipe][option])
+            mydefaults = defparamdict[recipe.name]
+            paramtype = type(mydefaults[keyword])
             if paramtype == dict:
                 value = value.replace('...', 'None:None')
                 val = literal_eval(value)
@@ -376,28 +376,30 @@ def params(params: Union[str, None] = None):
                 val = literal_eval(value)
             else:
                 val = paramtype(value)
-            paramdict[recipe][option] = val
+            paramdict[name][keyword] = val
     elif isinstance(params, dict):
+        xxxxxxx
         paramdict.update(copy.deepcopy(params))
     else:
+        xxxxxxx
         raise NotImplementedError(
             'asr.setup.params is only compatible with'
             f'input lists and dict. Input params: {params}'
         )
 
-    for recipe, options in paramdict.items():
-        assert recipe in defparamdict, \
-            f'This is an unknown recipe: {recipe}'
+    for name, options in paramdict.items():
+        assert name in defparamdict, \
+            f'This is an unknown recipe: {name}'
 
         for option, value in options.items():
-            assert option in defparamdict[recipe], \
-                f'This is an unknown option: {recipe}:{option}'
+            assert option in defparamdict[name], \
+                f'This is an unknown option: {name}:{option}'
             if isinstance(value, dict):
-                recursive_update(value, defparamdict[recipe][option])
-                paramdict[recipe][option] = value
+                recursive_update(value, defparamdict[name][option])
+                paramdict[name][option] = value
 
     if paramdict:
-        write_json(p, paramdict)
+        write_json(params_path, paramdict)
 
 
 @cli.group()
