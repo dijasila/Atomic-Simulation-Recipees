@@ -8,7 +8,7 @@ def test_setup_params(asr_tmpdir):
     from asr.core import read_json
     from pathlib import Path
     runner = CliRunner()
-    result = runner.invoke(paramsfunc, ['asr.relax::d3', 'True'])
+    result = runner.invoke(paramsfunc, ['asr.relax', 'd3=True'])
     assert result.exit_code == 0
     p = Path('params.json')
     assert p.is_file()
@@ -17,7 +17,7 @@ def test_setup_params(asr_tmpdir):
 
     result = runner.invoke(
         paramsfunc,
-        ['asr.gs:calculate::calculator', '{"name": "testname", ...}']
+        ['asr.gs:calculate', 'calculator={"name": "testname", ...}']
     )
     assert result.exit_code == 0
     params = read_json('params.json')
@@ -25,7 +25,7 @@ def test_setup_params(asr_tmpdir):
     assert params['asr.gs:calculate']['calculator']['name'] == 'testname'
     assert params['asr.gs:calculate']['calculator']['charge'] == 0
 
-    result = runner.invoke(paramsfunc, ['asr.relax::d3', 'False'])
+    result = runner.invoke(paramsfunc, ['asr.relax', 'd3=False'])
     assert result.exit_code == 0
     params = read_json('params.json')
     assert params['asr.relax:main']['d3'] is False
@@ -55,8 +55,8 @@ def test_setup_params_recurse_dict(asr_tmpdir):
     runner = CliRunner()
     result = runner.invoke(
         paramsfunc,
-        ['asr.gs:calculate::calculator',
-         '{"name": "testname", "mode": {"ecut": 400, ...}, ...}']
+        ['asr.gs:calculate',
+         'calculator={"name": "testname", "mode": {"ecut": 400, ...}, ...}']
     )
     assert result.exit_code == 0
     params = read_json('params.json')
