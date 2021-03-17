@@ -132,17 +132,19 @@ def webpanel(result, row, key_descriptions):
 
     if gap > 0:
         if result.get('evac'):
-            t['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{result.vbm - result.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{result.cbm - result.evac:.2f} eV']])
+            eref = result.evac
+            vbm_title = 'Valence band maximum wrt. vacuum level'
+            cbm_title = 'Conduction band minimum wrt. vacuum level'
         else:
-            t['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{result.vbm - result.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{result.cbm - result.efermi:.2f} eV']])
+            eref = result.efermi
+            vbm_title = 'Valence band maximum wrt. Fermi level'
+            cbm_title = 'Conduction band minimum wrt. Fermi level'
+
+        vbm_displayvalue = result.vbm - eref
+        cbm_displayvalue = result.cbm - eref
+        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
+                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+        t['rows'].extend(info)
 
     panel = WebPanel(
         title=describe_entry(
