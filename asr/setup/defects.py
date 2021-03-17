@@ -507,7 +507,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
                 Path(folder_name).mkdir()
         except FileExistsError:
             print('WARNING: folder ("{0}") already exists in this '
-                  f'directory. Skip creating it.'.format(folder_name))
+                  'directory. Skip creating it.'.format(folder_name))
         if structure_dict[element].get('structure') is not None:
             struc = structure_dict[element].get('structure')
             params = structure_dict[element].get('parameters')
@@ -528,8 +528,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
                 except FileExistsError:
                     print(
                         'WARNING: folder ("{0}") already exists in this '
-                        f'directory. Skip creating '
-                        f'it.'.format(defect_folder_name))
+                        'directory. Skip creating '
+                        'it.'.format(defect_folder_name))
                 for i in range((-1) * chargestates, chargestates + 1):
                     charge_name = 'charge_{}'.format(i)
                     charge_folder_name = defect_folder_name + '/' + charge_name
@@ -538,8 +538,8 @@ def create_folder_structure(structure, structure_dict, chargestates,
                     except FileExistsError:
                         print(
                             'WARNING: folder ("{0}") already exists in this '
-                            f'directory. Skip creating '
-                            f'it.'.format(charge_folder_name))
+                            'directory. Skip creating '
+                            'it.'.format(charge_folder_name))
                     struc = sub_dict[sub_element].get(
                         charge_name).get('structure')
                     params = sub_dict[sub_element].get(
