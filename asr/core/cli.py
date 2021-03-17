@@ -5,7 +5,8 @@ from ast import literal_eval
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache)
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache,
+    get_recipes)
 import click
 from pathlib import Path
 import subprocess
@@ -299,6 +300,10 @@ def asrlist(search):
     print(format_list(panel))
 
 
+def recipes_as_dict():
+    return {recipe.name: recipe for recipe in get_recipes()}
+
+
 @cli.command()
 @click.argument('recipe', nargs=1)
 @click.argument(
@@ -315,23 +320,9 @@ def params(recipe, params: Union[str, None] = None):
     return _params(recipe, params)
 
 
-from asr.core import get_recipes
-def recipes_as_dict():
-    return {recipe.name: recipe for recipe in get_recipes()}
-
-
-def get_all_recipe_defaults():
-    defparamdict = {}
-    for recipe in get_recipes():
-        defparamdict[recipe.name] = recipe.defaults
-    return defparamdict
-
-
 def _params(name: str, params: str):
-    from pathlib import Path
+    from collections.abc import Sequence
     from asr.core import read_json, write_json
-    from ast import literal_eval
-    from fnmatch import fnmatch
     import copy
     from asr.core import recursive_update
 
@@ -340,18 +331,15 @@ def _params(name: str, params: str):
 
     all_recipes = recipes_as_dict()
     recipe = all_recipes[name]
-    defparamdict = get_all_recipe_defaults()
+    defparamdict = {recipe.name: recipe.defaults
+                    for recipe in all_recipes.values()}
 
     params_path = Path('params.json')
     if params_path.is_file():
         paramdict = read_json(params_path)
-        # The existing valus in paramdict set the new defaults
         recursive_update(defparamdict, paramdict)
     else:
         paramdict = {}
-
-    from collections.abc import Sequence
-    print(name, params)
 
     if isinstance(params, Sequence):
         # XXX if '*' in recipe:
@@ -388,9 +376,6 @@ def _params(name: str, params: str):
         )
 
     for name, options in paramdict.items():
-        assert name in defparamdict, \
-            f'This is an unknown recipe: {name}'
-
         for option, value in options.items():
             assert option in defparamdict[name], \
                 f'This is an unknown option: {name}:{option}'
