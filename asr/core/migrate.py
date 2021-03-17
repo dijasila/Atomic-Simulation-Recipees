@@ -6,6 +6,7 @@ from .command import get_recipes
 from .selector import Selector
 from .record import Record
 from .specification import get_new_uuid
+from .history import History
 
 
 class UnapplicableMigration(Exception):
@@ -17,6 +18,7 @@ UID = str
 
 
 class Modification(abc.ABC):
+    """Class that represents a record modification."""
 
     @abc.abstractmethod
     def apply(self, record: Record) -> Record:
@@ -32,7 +34,7 @@ class Modification(abc.ABC):
 
 @dataclass
 class DumbModification(Modification):
-    """Class that represents a record modification."""
+    """A very simple implementation of a record modification."""
 
     previous_record: Record
     new_record: Record
@@ -57,34 +59,35 @@ class MigrationLog:
     def from_migration(
             cls,
             migration: 'Migration',
-            record: Record,
-            version: UID,
+            modification: Modification,
+            to_version: UID,
     ) -> 'MigrationLog':
         return cls(
             migration_uid=migration.uid,
             description=migration.description,
-            modification=record,
-            to_version=version,
+            modification=modification,
+            to_version=to_version,
         )
 
 
 @dataclass
-class MigrationHistory:
+class MigrationHistory(History):
     """A class the represents the migration history."""
 
     history: typing.List[MigrationLog]
 
     def append(self, migration_log: MigrationLog):
-        self.history.extend(migration_log)
+        self.history.append(migration_log)
 
     @property
-    def current_version(self):
+    def current_version(self) -> typing.Union[None, UID]:
+        """Get the current migration version, 'None' if no migrations."""
         if not self.history:
             return None
         return self.history[-1].to_version
 
     def __contains__(self, migration: 'Migration'):
-        return any(migration.uid == tmp.uid for tmp in self.history)
+        return any(migration.uid == log.migration_uid for log in self.history)
 
 
 @dataclass
@@ -94,26 +97,34 @@ class Migration:
     function: typing.Callable
     uid: UID
     description: str
+    eagerness: int = 0
 
     def apply(self, record: Record) -> Record:
         """Apply migration to record and return mutated record."""
         migrated_record = self.function(record.copy())
-        migrated_version = get_new_uuid()
+        to_version = get_new_uuid()
+        mod_cls = DumbModification
         migration_log = MigrationLog.from_migration(
-            self, record, version=migrated_version)
+            migration=self,
+            modification=mod_cls(
+                previous_record=record.copy(),
+                new_record=migrated_record.copy(),
+            ),
+            to_version=to_version,
+        )
 
-        if migrated_record.migrations:
-            migrated_record.migrations.append(migration_log)
+        if migrated_record.history:
+            migrated_record.history.append(migration_log)
         else:
             migration_history = MigrationHistory(history=[migration_log])
-            migrated_record.migrations = migration_history
+            migrated_record.history = migration_history
         return migrated_record
 
     def __call__(self, record: Record) -> Record:
         return self.apply(record)
 
     def __str__(self):
-        return f'#{self.uid[:5]} {self.description}'
+        return f'#{self.uid[:5]} "{self.description}"'
 
 
 class MakeMigrations(abc.ABC):
@@ -143,7 +154,20 @@ class SelectorMigrationGenerator(MakeMigrations):
 
 
 @dataclass
+class GeneralMigrationGenerator(MakeMigrations):
+
+    applies: typing.Callable
+    migration: Migration
+
+    def make_migrations(self, record: Record) -> typing.List[Migration]:
+        if self.applies(record):
+            return [self.migration]
+        return []
+
+
+@dataclass
 class CollectionMigrationGenerator(MakeMigrations):
+    """Generates migrations from a collection of migration generators."""
 
     migration_generators: typing.List[MakeMigrations]
 
@@ -164,44 +188,76 @@ class CollectionMigrationGenerator(MakeMigrations):
 class RecordMigration:
     """A class that represents a record migration."""
 
-    record: Record
-    migration_generator: MakeMigrations
+    initial_record: Record
+    migrated_record: Record
+    applied_migrations: typing.List[Migration]
+    errors: typing.List[typing.Tuple[Migration, Exception]]
 
-    def __bool__(self):
-        does_any_migrations_exist = bool(self.migration_generator(self.record))
-        return does_any_migrations_exist
+    def has_migrations(self):
+        """Has migrations to apply."""
+        return bool(self.applied_migrations)
 
-    def run(self):
-        assert self
-
-        migrated_record = self.record
-        applied_migrations = []
-        while True:
-            applicable_migrations = self.migration_generator(migrated_record)
-            if not applicable_migrations:
-                break
-            for migration in applicable_migrations:
-                try:
-                    migrated_record = migration(migrated_record)
-                except UnapplicableMigration:
-                    continue
-                applied_migrations.append(migration)
-        return migrated_record, applied_migrations
+    def has_errors(self):
+        """Has failed migrations."""
+        return bool(self.errors)
 
     def apply(self, cache):
-        """Apply migration to a cache."""
-        migrated_record, _ = self.run()
-        cache.update(migrated_record)
+        """Apply record migration to a cache."""
+        cache.update(self.migrated_record)
 
     def __str__(self):
-        _, applied_migrations = self.run()
+        nmig = len(self.applied_migrations)
+        nerr = len(self.errors)
         migrations_string = ' -> '.join([
-            str(migrations) for migrations in applied_migrations])
-        return (
-            f'Migrate record #{self.record.uid[:8]} '
-            f'name={self.record.name}: '
-            f'{migrations_string}'
+            str(migration) for migration in self.applied_migrations])
+        problem_string = (
+            ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
         )
+        return (
+            f'UID=#{self.initial_record.uid[:8]} '
+            + (f'name={self.initial_record.name}. ')
+            + (f'{nmig} migration(s). ' if nmig > 0 else '')
+            + (f'{nerr} migration error(s)! ' if self.errors else '')
+            + (f'{migrations_string}. ' if nmig > 0 else '')
+            + (f'{problem_string}.' if self.errors else '')
+        )
+
+
+def make_record_migration(
+    record: Record,
+    migration_generator: MakeMigrations,
+) -> RecordMigration:
+    """Construct a record migration."""
+    migrated_record = record.copy()
+    applied_migrations = []
+    problematic_migrations = []
+    errors = []
+    while True:
+        applicable_migrations = migration_generator(migrated_record)
+        candidate_migrations = [
+            mig for mig in applicable_migrations
+            if (
+                mig not in problematic_migrations
+                and mig not in applied_migrations
+            )
+        ]
+        if not candidate_migrations:
+            break
+
+        migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
+        try:
+            migrated_record = migration(migrated_record)
+        except Exception as err:
+            problematic_migrations.append(migration)
+            errors.append((migration, err))
+            continue
+        applied_migrations.append(migration)
+    return RecordMigration(
+        initial_record=record,
+        migrated_record=migrated_record,
+        applied_migrations=applied_migrations,
+        errors=errors,
+    )
 
 
 def get_instruction_migration_generator() -> CollectionMigrationGenerator:
@@ -213,3 +269,32 @@ def get_instruction_migration_generator() -> CollectionMigrationGenerator:
             migrations.extend(recipe.migrations)
 
     return migrations
+
+
+def make_migration_generator(
+    type='selector',
+    **kwargs,
+) -> MakeMigrations:
+    if type == 'selector':
+        return make_selector_migration_generator(**kwargs)
+    else:
+        raise NotImplementedError
+
+
+def make_selector_migration_generator(
+    *,
+    selection,
+    uid,
+    function,
+    description,
+    eagerness=0,
+):
+    sel = Selector(
+        **{key: Selector.EQ(value) for key, value in selection.items()})
+    mig = Migration(
+        function=function,
+        uid=uid,
+        description=description,
+        eagerness=eagerness,
+    )
+    return SelectorMigrationGenerator(selector=sel, migration=mig)

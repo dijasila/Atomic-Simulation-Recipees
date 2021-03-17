@@ -8,6 +8,7 @@ from pathlib import Path
 import pickle
 import subprocess
 import sys
+import traceback
 from typing import Union, Dict, Any, List, Tuple
 
 import click
@@ -430,56 +431,87 @@ def add_resultfile_records():
 
 @cache.command()
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
-def migrate(apply=False):
+@click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
+@click.option('-e', '--show-errors', is_flag=True,
+              help='Show tracebacks for migration errors.')
+def migrate(apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
         get_instruction_migration_generator,
-        RecordMigration,
+        make_record_migration,
     )
     from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
-    migration_generators = get_instruction_migration_generator()
-    migration_generators.extend([get_resultfile_migration_generator()])
+    make_migrations = get_instruction_migration_generator()
+    make_migrations.extend([get_resultfile_migration_generator()])
     record_migrations = []
+    erroneous_migrations = []
+    nup_to_date = 0
+    nmigrations = 0
+    nerrors = 0
 
     for record in cache.select():
-        record_migration = RecordMigration(record, migration_generators)
-        if record_migration:
+        record_migration = make_record_migration(record, make_migrations)
+        if record_migration.has_migrations():
+            nmigrations += 1
             record_migrations.append(record_migration)
-            if apply:
-                try:
-                    print(f'Apply migration: {record_migration}')
-                    record_migration.apply(cache)
-                except Exception as err:
-                    print(f'Problem with migration of record #{record.uid[:5]}: {err}')
 
-    if not record_migrations:
+        if record_migration.has_errors():
+            nerrors += 1
+            erroneous_migrations.append(record_migration)
+
+        if not (record_migration.has_migrations()
+                or record_migration.has_errors()):
+            nup_to_date += 1
+
+    if nmigrations == 0 and nerrors == 0:
         print('All records up to date. No migrations to apply.')
-
-    if apply:
         return
 
-    if record_migrations:
+    if verbose:
         nmigrations = len(record_migrations)
-        maxmig = 10
-        for i, migration in enumerate(record_migrations[:maxmig]):
+        for i, migration in enumerate(record_migrations):
             print(f'#{i} {migration}')
-        if nmigrations > maxmig:
-            print('...')
-            print()
+        print()
 
+    if show_errors:
+        print('Showing errors for migrations:')
+        for record_migration in erroneous_migrations:
+            print(f'Error for: {record_migration}')
+            for migration, error in record_migration.errors:
+                print(f'Error in: {migration}')
+                traceback.print_exception(
+                    type(error), error, error.__traceback__,
+                )
+                print()
+
+    print(
+        '\n'.join(
+            [
+                f'There are {nmigrations} unapplied migrations, '
+                f'{nerrors} erroneous migrations and '
+                f'{nup_to_date} records are up to date.',
+                '',
+            ]
+        )
+    )
+
+    if not apply and nmigrations > 0:
         print(
             '\n'.join(
                 [
-                    f'You have {nmigrations} unapplied migrations.',
-                    '',
                     'Run',
                     '    $ asr cache migrate --apply',
-                    'to apply these migrations.',
+                    'to apply migrations.',
                 ]
             )
         )
+
+    if apply:
+        for record_migration in record_migrations:
+            print(f'Apply migration: {record_migration}')
+            record_migration.apply(cache)
 
 
 @cache.command()

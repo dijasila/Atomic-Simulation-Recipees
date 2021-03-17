@@ -50,7 +50,10 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
-from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
+from asr.core import (
+    command, option, AtomsFile, DictStr, prepare_result, ASRResult,
+    make_migration_generator,
+)
 from asr.calculators import set_calculator_hook
 from math import sqrt
 import time
@@ -304,8 +307,38 @@ class Result(ASRResult):
          'magmoms': 'Atomic magnetic moments of relaxed structure [mu_B]'}
 
 
-@command('asr.relax',
-         argument_hooks=[set_calculator_hook])
+def add_missing_parameters(record):
+    values = dict(
+        enforce_symmetry=False,
+        fmax=0.01,
+        tmp_atoms_file='relax.traj',
+        tmp_atoms=None,
+    )
+
+    for key, value in values.items():
+        if key not in record.parameters:
+            record.parameters[key] = value
+
+    return record
+
+
+make_migrations = make_migration_generator(
+    type='selector',
+    selection=dict(
+        name='asr.relax:main',
+        version=-1,
+    ),
+    uid='5ccb3b88ec724f898434289759c7d834',
+    function=add_missing_parameters,
+    description="Add missing relax parameters."
+)
+
+
+@command(
+    'asr.relax',
+    argument_hooks=[set_calculator_hook],
+    migrations=[make_migrations]
+)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
