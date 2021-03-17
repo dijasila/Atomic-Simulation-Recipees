@@ -369,10 +369,8 @@ def _params(name: str, params: str):
                 val = paramtype(value)
             paramdict[name][keyword] = val
     elif isinstance(params, dict):
-        xxxxxxx
         paramdict.update(copy.deepcopy(params))
     else:
-        xxxxxxx
         raise NotImplementedError(
             'asr.setup.params is only compatible with'
             f'input lists and dict. Input params: {params}'
