@@ -236,7 +236,10 @@ def make_record_migration(
         applicable_migrations = migration_generator(migrated_record)
         candidate_migrations = [
             mig for mig in applicable_migrations
-            if mig not in problematic_migrations
+            if (
+                mig not in problematic_migrations
+                and mig not in applied_migrations
+            )
         ]
         if not candidate_migrations:
             break
@@ -266,3 +269,32 @@ def get_instruction_migration_generator() -> CollectionMigrationGenerator:
             migrations.extend(recipe.migrations)
 
     return migrations
+
+
+def make_migration_generator(
+    type='selector',
+    **kwargs,
+) -> MakeMigrations:
+    if type == 'selector':
+        return make_selector_migration_generator(**kwargs)
+    else:
+        raise NotImplementedError
+
+
+def make_selector_migration_generator(
+    *,
+    selection,
+    uid,
+    function,
+    description,
+    eagerness=0,
+):
+    sel = Selector(
+        **{key: Selector.EQ(value) for key, value in selection.items()})
+    mig = Migration(
+        function=function,
+        uid=uid,
+        description=description,
+        eagerness=eagerness,
+    )
+    return SelectorMigrationGenerator(selector=sel, migration=mig)
