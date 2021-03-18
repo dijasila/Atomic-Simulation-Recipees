@@ -88,7 +88,7 @@ def calculate(
 
 
 @cache_webpanel(
-    'asr.gs@main',
+    'asr.gs',
     '+,calculator.mode.ecut',
     '+,calculator.kpts.density',
 )

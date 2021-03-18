@@ -293,9 +293,9 @@ def asrlist(search):
         if search and (search not in longhelp
                        and search not in recipe.name):
             continue
+
+        assert recipe.name.startswith('asr.')
         name = recipe.name[4:]
-        if name.endswith('@main'):
-            name = name[:-5]
         status = [name, shorthelp]
         panel += [status]
 
@@ -327,9 +327,6 @@ def _params(name: str, params: str):
     from asr.core import read_json, write_json
     import copy
     from asr.core import recursive_update
-
-    if ':' not in name:
-        name += ':main'
 
     all_recipes = recipes_as_dict()
     defparamdict = {recipe.name: recipe.defaults
