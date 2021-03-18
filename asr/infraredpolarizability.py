@@ -2,6 +2,7 @@
 import typing
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    make_migration_generator,
 )
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
@@ -199,8 +200,42 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def add_missing_parameters(record):
+
+    par = record.parameters
+    par.xc = 'RPA'
+    par.calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'basis': 'dzp',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1e-4},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0
+    }
+    par.kptdensity = 20.0
+    par.n = 2
+    par.ecut = 50.0
+    par.bandfactor = 5
+    return record
+
+
+make_migrations = make_migration_generator(
+    selection=dict(version=-1, name='asr.infraredpolarizability:main'),
+    function=add_missing_parameters,
+    description='Add xc, calculator, kptdensity, n, ecut and bandfactor to parameters.',
+    uid='447ea470368542269d70e65758fef79f',
+)
+
+
 @command(
     "asr.infraredpolarizability",
+    migrations=[make_migrations],
 )
 @atomsopt
 @calcopt
