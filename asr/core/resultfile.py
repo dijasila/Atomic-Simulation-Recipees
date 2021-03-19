@@ -290,12 +290,13 @@ def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
     mig = Migration(
         update_resultfile_record_to_version_0,
         uid='9269242a035a4731bcd5ac609ff0a086',
-        description='Fix parameters in record from resultfile.',
+        description='Extract missing parameters from dependencies, '
+        'add those to parameters, '
+        'and increase version to 0.',
         eagerness=-1,
     )
 
     sel = Selector()
-    sel.tags = sel.CONTAINS('resultfile')
     sel.version = sel.EQ(-1)
 
     make_migrations = SelectorMigrationGenerator(
@@ -349,15 +350,6 @@ def update_resultfile_record_to_version_0(record):
     # unused_old_params = unused_old_params - remove_keys
 
     unused_old_params -= set(['dependency_parameters'])
-
-    assert not unused_old_params, (
-        f'Parameters from resultfile record unused={unused_old_params}.'
-    )
-
-    assert not missing_params, (
-        f'Missing parameters from resultfile record={missing_params}.'
-    )
-
     unused_dependency_params = {
         value
         for values in unused_dependency_params.values()
@@ -365,9 +357,24 @@ def update_resultfile_record_to_version_0(record):
         if value != 'atoms'
     }
 
-    assert not unused_dependency_params, (
-        f'Dependency parameters unused={unused_dependency_params}'
+    missing_params_msg = \
+        f'Could not extract following parameters from dependencies={missing_params}. '
+    unused_old_params_msg = \
+        f'Parameters from resultfile record not used={unused_old_params}. '
+    unused_dependency_params_msg = \
+        f'Dependency parameters unused={unused_dependency_params}. '
+    assert not (unused_old_params or missing_params or unused_dependency_params), (
+        ''.join(
+            [
+                missing_params_msg if missing_params else '',
+                unused_old_params_msg if unused_old_params else '',
+                unused_dependency_params_msg if unused_dependency_params else '',
+                f'Please add a migration for {name} that fixes these issues '
+                'and run migration tool again.',
+            ]
+        )
     )
+
     record.run_specification.parameters = new_parameters
     record.version = 0
     return record
