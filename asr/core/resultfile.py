@@ -309,7 +309,7 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 
 def update_resultfile_record_to_version_0(record):
-    # default_params = DEFAULTS[record.name]
+    default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
@@ -357,23 +357,29 @@ def update_resultfile_record_to_version_0(record):
         if value != 'atoms'
     }
 
-    missing_params_msg = \
-        f'Could not extract following parameters from dependencies={missing_params}. '
-    unused_old_params_msg = \
-        f'Parameters from resultfile record not used={unused_old_params}. '
-    unused_dependency_params_msg = \
-        f'Dependency parameters unused={unused_dependency_params}. '
-    assert not (unused_old_params or missing_params or unused_dependency_params), (
-        ''.join(
-            [
-                missing_params_msg if missing_params else '',
-                unused_old_params_msg if unused_old_params else '',
-                unused_dependency_params_msg if unused_dependency_params else '',
-                f'Please add a migration for {name} that fixes these issues '
-                'and run migration tool again.',
-            ]
+    if missing_params and not unused_old_params and not unused_dependency_params:
+        for key in missing_params:
+            new_parameters[key] = default_params[key]
+    else:
+        missing_params_msg = (
+            'Could not extract following parameters from '
+            f'dependencies={missing_params}. '
         )
-    )
+        unused_old_params_msg = \
+            f'Parameters from resultfile record not used={unused_old_params}. '
+        unused_dependency_params_msg = \
+            f'Dependency parameters unused={unused_dependency_params}. '
+        assert not (unused_old_params or missing_params or unused_dependency_params), (
+            ''.join(
+                [
+                    missing_params_msg if missing_params else '',
+                    unused_old_params_msg if unused_old_params else '',
+                    unused_dependency_params_msg if unused_dependency_params else '',
+                    f'Please add a migration for {name} that fixes these issues '
+                    'and run migration tool again.',
+                ]
+            )
+        )
 
     record.run_specification.parameters = new_parameters
     record.version = 0
