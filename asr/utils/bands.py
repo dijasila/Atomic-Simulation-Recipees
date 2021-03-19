@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Union
 
 
 def bs_from_gpw(fname):
@@ -20,12 +21,44 @@ def bs_from_json(fname):
     return bs
 
 
-def calculate_evac(filename):
-    from gpaw import GPAW
+def calculate_evac(calc):
+    '''Obtain vacuum level from a GPAW calculator'''
     import numpy as np
-    calc = GPAW(filename, txt='-')
     evac = np.mean(np.mean(calc.get_electrostatic_potential(), axis=0), axis=0)[0]
     return evac
+
+
+def get_cb_vb_surface(calc):
+    '''Returns the surface formed by the edge states of CB and VB
+       calculated on a 2D k-point grid
+    '''
+    ibz = calc.get_ibz_k_points()
+    ef = calc.get_fermi_level()
+    cb = []
+    vb = []
+    for i, _ in enumerate(ibz):
+        evi = calc.get_eigenvalues(kpt=i)
+        cbi = evi[evi - ef > 0]
+        vbi = evi[evi - ef < 0]
+        cb.append(cbi.min())
+        vb.append(vbi.max())
+    return np.array(cb), np.array(vb)
+
+
+def direct_gap(calc):
+    '''Obtain lowest direct transition on a 2D k-point grid'''
+    cb, vb = get_cb_vb_surface(calc)
+    dir_gaps = cb - vb
+    return dir_gaps.min()
+
+
+def is_gap_direct(calc):
+    '''Return True if the gap is direct'''
+    ibz = calc.get_ibz_k_points()
+    cb, vb = get_cb_vb_surface(calc)
+    cbm_k = ibz[np.argmin(cb)]
+    vbm_k = ibz[np.argmax(vb)]
+    return np.allclose(cbm_k, vbm_k)
 
 
 def multiplot(*toplot,

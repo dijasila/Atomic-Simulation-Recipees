@@ -64,7 +64,7 @@ def plot_scs_bs(title: str = ""):
     plt.show()
 
 
-@command(module='asr.test.test_scs',
+@command(module='asr.scs',
          creates=['gs_scs.gpw'],
          requires=['structure.json'])
 @option("--structure", type=str)
@@ -91,34 +91,18 @@ def calculate_gs(structure: str = "structure.json",
     from gpaw.lcao.scissors import Scissors
     atoms = read(structure)
 
-    with open('kpts.txt', 'w') as f:
-        print(kpts, file=f)
     kpts = get_kpts_size(atoms, kpts)
-
-    shifts = json.load(open("shifts.json", 'r'))
-    shift_v1 = shifts['shift_v1']
-    shift_c1 = shifts['shift_c1']
-    shift_v2 = shifts['shift_v2']
-    shift_c2 = shifts['shift_c2']
-
-    tags = atoms.get_tags()
-    n_upper = len(tags[tags == 1])
-    n_lower = len(tags[tags == 0])
-    scs = Scissors([(shift_v1, shift_c1, n_upper),
-                    (shift_v2, shift_c2, n_lower)])
-
-    calculator.update({'eigensolver': scs,
-                       'kpts': kpts})
+    calculator.update({'kpts': kpts})
 
     calc = GPAW(**calculator)
     atoms.calc = calc
     atoms.get_potential_energy()
-    atoms.calc.write('gs_scs.gpw', "all")
+    atoms.calc.write('gs_lcao.gpw', "all")
 
 
-@command(module='asr.test.test_scs',
-         requires=['gs_scs.gpw'],
-         creates=['bs_scs.gpw'],
+@command(module='asr.scs',
+         requires=['gs_lcao.gpw'],
+         creates=['bs_lcao.gpw'],
          dependencies=['asr.scs@calculate_gs'])
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
@@ -140,23 +124,11 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 200, eps: floa
         'fixdensity': True,
         'kpts': path,
         'symmetry': 'off'}
-    shifts = json.load(open("shifts.json", 'r'))
-    shift_v1 = shifts['shift_v1']
-    shift_c1 = shifts['shift_c1']
-    shift_v2 = shifts['shift_v2']
-    shift_c2 = shifts['shift_c2']
-
-    tags = atoms.get_tags()
-    n_upper = len(tags[tags == 1])
-    n_lower = len(tags[tags == 0])
-    scs = Scissors([(shift_v1, shift_c1, n_upper),
-                    (shift_v2, shift_c2, n_lower)])
-    parms.update({'eigensolver': scs})
 
     calc = GPAW('gs_scs.gpw', **parms)
     calc.get_potential_energy()
-    calc.write('bs_scs.gpw')
-    bands = Bands('bs_scs.gpw')
+    calc.write('bs_lcao.gpw')
+    bands = Bands('bs_lcao.gpw')
     bands.dump_to_json()
 
 

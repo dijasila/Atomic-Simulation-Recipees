@@ -187,7 +187,8 @@ def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_inte
     print("\nLooking for supercells...")
 
     angles = []
-    for i in tqdm(range(nmatches)):
+    #for i in tqdm(range(nmatches)):
+    for i in range(nmatches):
         for j in range(i + 1, nmatches):
             if abs(matches[i].angle - matches[j].angle) <= tol_theta:
                 test_cell = Supercell(matches[i], matches[j])

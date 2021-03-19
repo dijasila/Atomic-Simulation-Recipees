@@ -665,7 +665,7 @@ def main(cells_file: str="moirecells.json", solution: Union[int, None]=None, tol
 
     dct = read_json(cells_file) 
 
-    if solution:
+    if solution is not None:
         MakeCell(cells_file, solution, tol, stress_opt_method, database, overwrite) 
     else:   
         nsol = dct["number_of_solutions"]

@@ -3,6 +3,25 @@ import numpy as np
 from ase import Atoms
 
 
+def get_shifts(uid_a: Union[str, None] = None,
+               uid_b: Union[str, None] = None,
+               database: str = '/home/niflheim2/steame/moire/utils/c2db.db',
+               filename: str = 'shifts.json'):
+    from ase.db import connect
+    import json
+    db = connect(database)
+    get_a = db.get(uid=uid_a)
+    get_b = db.get(uid=uid_b)
+    dct = {
+        'shift_v1': get_a.vbm_gw - get_a.vbm,
+        'shift_c1': get_a.cbm_gw - get_a.cbm,
+        'shift_v2': get_b.vbm_gw - get_b.vbm,
+        'shift_c2': get_b.cbm_gw - get_b.cbm
+    }
+    with open(filename, 'w') as out:
+        json.dump(dct, out)
+
+
 def get_layers(atoms, center: bool = True):
     '''divide structure in top and bottom layer,
        according to tags and atoms positions along z.
