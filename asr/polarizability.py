@@ -5,7 +5,7 @@ from ase import Atoms
 
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt,
-    calcopt, make_migration_generator)
+    calcopt)
 from asr.database.browser import (
     table,
     fig,
@@ -103,26 +103,8 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def add_parameters(record):
-    new_values = dict(bandfactor=5, ecut=50.0, xc='RPA', kptdensity=20.0)
-    par = record.parameters
-    for key, value in new_values.items():
-        if key not in par:
-            par[key] = value
-    return record
-
-
-make_migrations = make_migration_generator(
-    function=add_parameters,
-    uid='8a0fad804cca4773a8c0d2b03d867949',
-    selection=dict(version=-1, name='asr.polarizability:main'),
-    description='Fix missing parameters in old polarizability record.',
-)
-
-
 @command(
     'asr.polarizability',
-    migrations=[make_migrations],
 )
 @atomsopt
 @calcopt

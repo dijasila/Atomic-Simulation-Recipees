@@ -87,6 +87,9 @@ class Parameters:  # noqa
     def items(self):  # noqa
         return self.__dict__.items()
 
+    def values(self):
+        return self.__dict__.values()
+
     def __str__(self):  # noqa
         return str(self.__dict__)
 

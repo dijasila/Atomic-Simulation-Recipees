@@ -2,7 +2,8 @@
 from ase import Atoms
 
 from asr.core import (
-    command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result
+    command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
+    make_migration_generator,
 )
 from asr.database.browser import make_panel_description, describe_entry
 from asr.gs import calculate as gscalculate
@@ -769,7 +770,32 @@ class Result(ASRResult):
     pass
 
 
-@command('asr.emasses')
+def prepare_parameters_for_version_0_migration(record):
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+
+    if 'gpwfilename' in record.parameters:
+        del record.parameters.gpwfilename
+
+    for dep_params in record.parameters.dependency_parameters.values():
+        if 'gpwfilename' in dep_params:
+            del dep_params['gpwfilename']
+    return record
+
+
+make_migrations = make_migration_generator(
+    selection=dict(version=-1, name='asr.emasses:main'),
+    uid='e1b731cd00c041ad99260b58b95a3df8',
+    function=prepare_parameters_for_version_0_migration,
+    description='Prepare record for version 0 migration.',
+)
+
+
+@command('asr.emasses', migrations=[make_migrations])
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
