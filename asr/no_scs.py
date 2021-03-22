@@ -64,7 +64,7 @@ def plot_scs_bs(title: str = ""):
     plt.show()
 
 
-@command(module='asr.scs',
+@command(module='asr.no_scs',
          creates=['gs_scs.gpw'])
 @option("--structure", type=str)
 @option("--kpts", type=float, help="In-plane kpoint density")
@@ -99,7 +99,7 @@ def calculate_gs(structure: str = "structure.json",
     atoms.calc.write('gs_lcao.gpw', "all")
 
 
-@command(module='asr.scs',
+@command(module='asr.no_scs',
          requires=['gs_lcao.gpw'],
          creates=['bs_lcao.gpw'],
          dependencies=['asr.scs@calculate_gs'])
@@ -131,7 +131,7 @@ def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 200, eps: floa
     bands.dump_to_json()
 
 
-@command('asr.scs')
+@command('asr.no_scs')
 @option('--structure', type=str)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
