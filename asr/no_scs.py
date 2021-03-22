@@ -65,8 +65,7 @@ def plot_scs_bs(title: str = ""):
 
 
 @command(module='asr.scs',
-         creates=['gs_scs.gpw'],
-         requires=['structure.json'])
+         creates=['gs_scs.gpw'])
 @option("--structure", type=str)
 @option("--kpts", type=float, help="In-plane kpoint density")
 @option("--calculator", type=DictStr(), help="Calculator params.")
