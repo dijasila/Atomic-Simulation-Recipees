@@ -112,7 +112,7 @@ def calculate_bs(structure: str = 'structure.json', kptpath: Union[str, None] = 
     from gpaw import GPAW
     from gpaw.lcao.scissors import Scissors
     from ase.io import read
-    atoms = read('structure.json')
+    atoms = read(structure)
     if kptpath is None:
         path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc, eps=eps)
     else:
