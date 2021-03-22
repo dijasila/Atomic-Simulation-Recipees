@@ -65,7 +65,7 @@ def plot_scs_bs(title: str = ""):
 
 
 @command(module='asr.no_scs',
-         creates=['gs_scs.gpw'])
+         creates=['gs_lcao.gpw'])
 @option("--structure", type=str)
 @option("--kpts", type=float, help="In-plane kpoint density")
 @option("--calculator", type=DictStr(), help="Calculator params.")
@@ -103,10 +103,11 @@ def calculate_gs(structure: str = "structure.json",
          requires=['gs_lcao.gpw'],
          creates=['bs_lcao.gpw'],
          dependencies=['asr.scs@calculate_gs'])
+@option("--structure", type=str)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
 @option('--eps', type=float, help='Tolerance over symmetry determination')
-def calculate_bs(kptpath: Union[str, None] = None, npoints: int = 200, eps: float=1e-1):
+def calculate_bs(structure: str = 'structure.json', kptpath: Union[str, None] = None, npoints: int = 200, eps: float=1e-1):
     "Calculate electronic band structure with the self-consistent scissors corrections"
     from gpaw import GPAW
     from gpaw.lcao.scissors import Scissors
