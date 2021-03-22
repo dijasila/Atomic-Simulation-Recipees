@@ -6,7 +6,7 @@ from gpaw import GPAW
 from ase.units import Ha, Bohr
 from asr.utils.gpw2eigs import gpw2eigs, calc2eigs
 from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-
+from asr.core import command, option, DictStr, ASRResult, prepare_result
 
 
 class NoGapError(Exception):
@@ -40,9 +40,20 @@ def check_pbc(gpw):
     if not good:
         raise PBCError(f'The effective mass calculation assumes PBC: {expected}') 
 
-
+@command(module='asr.newemasses',
+         requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
+         dependencies=['asr.structureinfo',
+                       'asr.magnetic_anisotropy',
+                       'asr.gs'],
+         creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
+@option('--gpwfname', type=str, help='GS fname')
+@option('--erange1', type=float, help='First erange')
+@option('--nkpts1', type=int, help='First nkpts')
+@option('--erange2', type=float, help='Final erange')
+@option('--nkpts2', type=int, help='Final nkpts')
+@option('--soc', type=bool, help='Use SOC')
 def refine(gpwfname: str = 'gs.gpw',
-           erange1: float = 250-e3,
+           erange1: float = 250e-3,
            nkpts1: int = 19,
            erange2: float = 10e-3,
            nkpts2: int = 15,
@@ -50,6 +61,7 @@ def refine(gpwfname: str = 'gs.gpw',
     # Final nonsc circle is larger than previously
     # so we can expand fit range if necessary
     # Write gpw files as before
+    assert soc
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -101,7 +113,7 @@ def preliminary_refine(gpw,
                        theta,
                        phi,
                        skn,
-                       soc, erange, nkpts):
+                       erange, nkpts):
     #OBS QUESTION: soc not used here
 
     calc = GPAW(gpw, txt=None)
@@ -188,14 +200,14 @@ def nonsc_sphere(gpw, savename, soc, bt,
     skn = skn1 if bt == BT.vb else skn2
 
     # Get kpts
-    k_kc = calc.get_bz_kpoints()
+    k_kc = calc.get_bz_k_points()
     cell_cv = atoms.get_cell()
     ndim = atoms.pbc.sum()
     nkpts = nkpts + (1 - nkpts % 2)
     assert nkpts % 2 != 0
 
-    kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
-                            erange=erange, nkpts=nkpts)
+    kcirc_kc = kptsinsphere(cell_cv, npoints=nkpts, erange=erange,
+                            m=1.0, dimensionality=ndim)
     newk_kc = k_kc[skn[1]] + kcirc_kc
 
     calc.set(kpts=newk_kc,
@@ -293,6 +305,16 @@ def get_name(soc, bt):
     return f'em_circle_{bt.value}_{socstr}.gpw'
 
 
+@command(module='asr.newemasses',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'],
+         dependencies=['asr.newemasses@refine',
+                       'asr.gs@calculate',
+                       'asr.gs',
+                       'asr.structureinfo',
+                       'asr.magnetic_anisotropy'],
+         creates=['fitdata.npy'])
+@option('--gpwfilename', type=str, help='GS fname')
+@option('--delta', type=float, help='delta')
 def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
     # Identify relevant bands and BE locations
     # Separate data out into BandFit objects
@@ -300,7 +322,7 @@ def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
     # 
 
     # Raise error if gap is zero
-    check_gap(gpwfilename)
+    # check_gap(gpwfilename)
 
     bandfits = []
     for bt in BT:
@@ -309,12 +331,12 @@ def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
         # calc = GPAW(refined_gpw_name, txt=None)
         calc = get_refined_calc(soc=True, bt=bt)
         # Then extract relevant bands and eigenvalues
-        eps_ik, kpts_kv, sn_i = get_bands(calc, delta=delta, bt=bt)
+        eps_ik, kpts_kv, band_i = get_bands(calc, delta=delta, bt=bt)
         ndim = calc.get_atoms().pbc.sum()
 
         # Put into BandFit object
         bandfits += [make_bandfit(kpts_kv, eps_k, bt, band, ndim)
-                     for (band, eps_k) in zip(band_i, e_ik)]
+                     for (band, eps_k) in zip(band_i, eps_ik)]
 
     # Then run fitting procedure    
     for bandit in bandfits:
@@ -356,7 +378,7 @@ def get_bands(calc, delta, bt):
     from ase.units import Bohr, Ha
 
     theta, phi = get_spin_axis()
-    eigenvalues, efermi = calc2eigs(calc, soc=True, theta=theta, phi=phi)
+    e_skn, efermi = calc2eigs(calc, soc=True, theta=theta, phi=phi)
     assert e_skn.ndim == 2
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
@@ -377,8 +399,10 @@ def get_bands(calc, delta, bt):
     cell_cv = calc.get_atoms().get_cell()
     kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=kpts_kc) * Bohr
     eps_ik = e_ik / Ha
+
+    assert all(x[0] == 0 for x in sn_i)
     
-    return eps_ik, kpts_kv, n_i
+    return eps_ik, kpts_kv, [x[1] for x in sn_i]
     
 
 def get_be_indices(e_skn, s, k, n, bt, delta):
@@ -503,7 +527,7 @@ def perform_fit(bandfit, fitting_fnc=polynomial_fit, eranges=[1e-3 / Ha, 5e-3 / 
         raise FittingError(f'Could not construct any good fit for band {band}. Got masses: {masses}')
 
 
-def convert_to_result(fname, bandfits):
+def convert_to_result(bandfits):
     """Convert a list of bandfits into intermediate result."""
     # Implementation should be trivial
     # Make a to_dict method on bandfits
@@ -515,6 +539,22 @@ def convert_to_result(fname, bandfits):
     return data
     
 
+@command(module='asr.newemasses',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+                   'gs.gpw', 'results-asr.structureinfo.json',
+                   'results-asr.gs.json',
+                   'results-asr.magnetic_anisotropy.json',
+                   'fitdata.npy'],
+         dependencies=['asr.newemasses@calculate_fits',
+                       'asr.newemasses@refine',
+                       'asr.gs@calculate',
+                       'asr.gs',
+                       'asr.structureinfo',
+                       'asr.magnetic_anisotropy'],
+         creates=['bsdata.npy'])
+@option('--fname', type=str, help='fname')
+@option('--bs_erange', type=float, help='Energy in Ha')
+@option('--bs_npoints', type=int, help='npts')
 def calculate_bandstructures(fname: str = 'fitdata.npy',
                              bs_erange: float = 250e-3 / Ha,
                              bs_npoints: int = 91):
@@ -544,7 +584,8 @@ def calculate_bandstructures(fname: str = 'fitdata.npy',
     # Now bandstructure is calculated and set
     # So we only have 3 logical steps here: load, read, calc?
 
-    return bandfits  # Do we need to return? Bit confused about how things will look with new ASR
+    # return bandfits  # Do we need to return? Bit confused about how things will look with new ASR
+    np.save('bsdata.npy', [bf.to_dict() for bf in bandfits])
 
     # Should be roughly equivalent to calculate_bs_along_emass_vecs
     # Should also do validation/parabolicity? Actually I would rather have it be a separate func.
@@ -564,12 +605,17 @@ def create_or_read_calc(bf, direction, calc):
     
     if not Path(fname).is_file():
         # ! Modifies calc, it probably cannot be used after
-        calc_serial = create_calc(bf, direction, fname, calc,
+        calc_serial, k_kv = create_calc(bf, direction, fname, calc,
                                   bs_erange=bf.bs_erange, bs_npoints=bf.bs_npoints)
     else:
+        from ase.dft.kpoints import kpoint_convert
         calc_serial = GPAW(fname, txt=None, communicator=serial_comm)
+        k_kc = calc_serial.get_bz_k_points()
+        cell_cv = calc_serial.get_atoms().get_cell()
+        k_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=k_kc)
+        
 
-    return serial_calc
+    return calc_serial, k_kv
 
 
 def calc_bandstructure(bf: BandFit, calc,
@@ -603,7 +649,7 @@ def calc_bandstructure(bf: BandFit, calc,
         bf.bs_data.append(bsd)
 
 
-def create_calc(bf, direction, calc, fname, bs_erange, bs_npoints):
+def create_calc(bf, direction, fname, calc, bs_erange, bs_npoints):
     from asr.core import file_barrier
     from gpaw.mpi import serial_comm
     
@@ -611,7 +657,8 @@ def create_calc(bf, direction, calc, fname, bs_erange, bs_npoints):
     cell_cv = atoms.get_cell()
 
     with file_barrier([fname]):
-        k_kc, k_kv = get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints, atoms.pbc)
+        k_kc, k_kv = get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints,
+                                                cell_cv, atoms.pbc)
 
         calc.set(kpts=k_kc, symmetry='off',
                  txt=fname.replace('gpw', 'txt'),
@@ -649,8 +696,32 @@ def get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints, cell_cv, pb
     return k_kc, k_kv
 
 
-def calculate_parabolicities(bandfits: List[BandFit],
-                             eranges=[10e-3, 15e-3, 25e-3]):
+@command(module='asr.newemasses',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+                   'gs.gpw', 'results-asr.structureinfo.json',
+                   'results-asr.gs.json',
+                   'results-asr.magnetic_anisotropy.json',
+                   'fitdata.npy',
+                   'bsdata.npy'],
+         dependencies=['asr.newemasses@calculate_bandstructures',
+                       'asr.newemasses@calculate_fits',
+                       'asr.newemasses@refine',
+                       'asr.gs@calculate',
+                       'asr.gs',
+                       'asr.structureinfo',
+                       'asr.magnetic_anisotropy'],
+         creates=['paradata.npy'])
+@option('--eranges', type=List[float], help='Eranges')
+def calculate_parabolicities(eranges=[10e-3, 15e-3, 25e-3]):
+
+    data = np.load('bsdata.npy', allow_pickle=True)
+    bandfits = [BandFit.from_dict(d) for d in data]
+    bandfits = calc_parabolicities(bandfits, eranges=eranges)
+    np.save('paradata.npy', [bf.to_dict() for bf in bandfits])
+
+
+def calc_parabolicities(bandfits: List[BandFit] = [],
+                        eranges=[10e-3, 15e-3, 25e-3]):
     """Calculate MAE and MARE over energy ranges.
 
     bandfits are a list of bandfit-objects created by
@@ -661,7 +732,7 @@ def calculate_parabolicities(bandfits: List[BandFit],
 
     ! The units are eV.
 
-    """
+    """    
     for bandfit in bandfits:
         for direction in range(bandfit.ndim):
             bsdata = bandfit.bs_data[direction]
@@ -710,16 +781,35 @@ def get_model(fit_params, kpts_kv):
     return A_kp.dot(fit_params) * Ha
 
 
+@command('asr.newemasses',
+         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+                   'gs.gpw', 'results-asr.structureinfo.json',
+                   'results-asr.gs.json',
+                   'results-asr.magnetic_anisotropy.json',
+                   'fitdata.npy',
+                   'bsdata.npy',
+                   'paradata.npy'],
+         dependencies=['asr.newemasses@calculate_parabolicities',
+                       'asr.newemasses@calculate_bandstructures',
+                       'asr.newemasses@calculate_fits',
+                       'asr.newemasses@refine',
+                       'asr.gs@calculate',
+                       'asr.gs',
+                       'asr.structureinfo',
+                       'asr.magnetic_anisotropy'],
+         creates=['finaldata.npy'])
 def main():
-    refine()
-    subresults = calculate_fits()
-    subresults = calculate_bandstructures(subresults)
-    subresults = calculate_parabolicities(subresults)
+    # refine()
+    # subresults = calculate_fits()
+    # subresults = calculate_bandstructures(subresults)
+    # subresults = calculate_parabolicities(subresults)
 
-    result = make_asrresult(subresults)
+    # result = make_asrresult(subresults)
 
-    return result
-
+    # return result
+    data = np.load('paradata.npy', allow_pickle=True)
+    bfs = [BandFit.from_dict(d) for d in data]
+    np.save('finaldata.npy', [bf.to_dict() for bf in bfs])
 
 def webpanel():
     raise NotImplementedError
@@ -742,3 +832,6 @@ Next TODO: Implement get_bands. Exactly how data is structured will cascade and 
 everything.
 
 """
+
+if __name__ == "__main__":
+    main.cli()

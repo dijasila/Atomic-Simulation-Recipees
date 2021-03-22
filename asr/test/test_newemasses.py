@@ -736,7 +736,7 @@ def test_validation_mare():
 @pytest.mark.ci
 def test_integration_cb():
     """Run a test of fitting, bandstructure calc, validation."""
-    from asr.newemasses import perform_fit, calc_bandstructure, calculate_parabolicities
+    from asr.newemasses import perform_fit, calc_bandstructure, calc_parabolicities
     from ase.dft.kpoints import kpoint_convert
 
     cell_cv = np.eye(3) * 10.0
@@ -778,7 +778,7 @@ def test_integration_cb():
     calc_bandstructure(bf, None, createcalc, eigscalc, spinaxis, spinindex)
         
         
-    calculate_parabolicities([bf])
+    calc_parabolicities(bandfits=[bf])
 
     assert np.allclose(bf.bs_data[0].maes[:, 1], 0.0)
     assert np.allclose(bf.bs_data[0].mares[:, 1], 0.0)
@@ -790,7 +790,7 @@ def test_integration_cb():
 @pytest.mark.ci
 def test_integration_vb():
     """Run a test of fitting, bandstructure calc, validation."""
-    from asr.newemasses import perform_fit, calc_bandstructure, calculate_parabolicities
+    from asr.newemasses import perform_fit, calc_bandstructure, calc_parabolicities
     from ase.dft.kpoints import kpoint_convert
 
     cell_cv = np.eye(3) * 10.0
@@ -832,7 +832,7 @@ def test_integration_vb():
     calc_bandstructure(bf, None, createcalc, eigscalc, spinaxis, spinindex)
         
         
-    calculate_parabolicities([bf])
+    calc_parabolicities([bf])
 
     assert np.allclose(bf.bs_data[0].maes[:, 1], 0.0)
     assert np.allclose(bf.bs_data[0].mares[:, 1], 0.0)
