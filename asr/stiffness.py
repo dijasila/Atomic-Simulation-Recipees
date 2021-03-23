@@ -206,7 +206,7 @@ def transform_stiffness_resultfile_record(record):
 
 
 make_migrations = make_migration_generator(
-    selection=dict(version=-1, name='asr.stiffness:main'),
+    selector=dict(version=-1, name='asr.stiffness:main'),
     function=transform_stiffness_resultfile_record,
     uid='e6d207028b3843faa533955477e3392a',
     description='Remove fixcell and allow_symmetry_breaking from dependency_parameters',

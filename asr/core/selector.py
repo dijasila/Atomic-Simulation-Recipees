@@ -1,3 +1,4 @@
+import typing
 import numpy as np
 
 from .utils import compare_equal
@@ -41,6 +42,39 @@ def match_any(*selectors):
         name='any',
         function=compare_any,
         value=selectors,
+    )
+
+
+def compare_all(comparators, value2):
+    for comparator in comparators:
+        if not comparator(value2):
+            return False
+    else:
+        return True
+
+
+def match_all(*comparators):
+    return Comparator(
+        name='all',
+        function=compare_all,
+        value=comparators,
+    )
+
+
+def match_or(selector1, selector2):
+
+    return Comparator(
+        name='or',
+        function=compare_any,
+        value=[selector1, selector2],
+    )
+
+
+def match_and(comparator1, comparator2):
+    return Comparator(
+        name='and',
+        function=compare_all,
+        value=[comparator1, comparator2],
     )
 
 
@@ -195,6 +229,9 @@ class Selector:
     ATOMS_EQUAL_TO = staticmethod(atoms_equal_to)
     ANY = staticmethod(match_any)
     CONTAINS = staticmethod(contains)
+    ALL = staticmethod(match_all)
+    OR = staticmethod(match_or)
+    AND = staticmethod(match_and)
 
     def __init__(self, **selection):
         self.__dict__['selection'] = {}
@@ -229,6 +266,9 @@ class Selector:
 
     def __repr__(self):
         return self.__str__()
+
+    def __call__(self, obj: typing.Any) -> bool:
+        return self.matches(obj)
 
 
 def get_attribute(obj, attrs):

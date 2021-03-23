@@ -283,18 +283,19 @@ def make_migration_generator(
 
 def make_selector_migration_generator(
     *,
-    selection,
+    selector,
     uid,
     function,
     description,
     eagerness=0,
 ):
-    sel = Selector(
-        **{key: Selector.EQ(value) for key, value in selection.items()})
+    if isinstance(selector, dict):
+        selector = Selector(
+            **{key: Selector.EQ(value) for key, value in selector.items()})
     mig = Migration(
         function=function,
         uid=uid,
         description=description,
         eagerness=eagerness,
     )
-    return SelectorMigrationGenerator(selector=sel, migration=mig)
+    return SelectorMigrationGenerator(selector=selector, migration=mig)

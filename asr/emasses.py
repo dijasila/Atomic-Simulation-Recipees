@@ -788,7 +788,7 @@ def prepare_parameters_for_version_0_migration(record):
 
 
 make_migrations = make_migration_generator(
-    selection=dict(version=-1, name='asr.emasses:main'),
+    selector=dict(version=-1, name='asr.emasses:main'),
     uid='e1b731cd00c041ad99260b58b95a3df8',
     function=prepare_parameters_for_version_0_migration,
     description='Prepare record for version 0 migration.',
