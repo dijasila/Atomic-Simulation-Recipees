@@ -567,6 +567,7 @@ def make_selector_from_selection(cache, selection):
 @click.option('-i', '--include-migrated', is_flag=True,
               help='Also include migrated records.')
 def ls(selection, formatting, sort, width, include_migrated):
+    """List records in cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
 
@@ -614,6 +615,7 @@ def ls(selection, formatting, sort, width, include_migrated):
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
 def rm(selection, include_migrated, dry_run):
+    """Remove records from cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
 
@@ -743,6 +745,7 @@ def draw_networkx_graph(G, labels=False, saveto=None):
 @click.option('--labels', is_flag=True)
 @click.option('--saveto', help='Save to filename')
 def graph(draw=False, labels=False, saveto=None):
+    """Show graph of cached data [unfinished]."""
     cache = get_cache()
     records = cache.select()
 
@@ -847,6 +850,7 @@ def fromtree(
         dbname: str,
         njobs: int,
 ):
+    """Generate database from directory tree."""
     from asr.database.fromtree import main
 
     main(folders=folders, recursive=recursive,
@@ -889,9 +893,10 @@ def main(database: str, run: bool, selection: str,
          copy: bool,
          patterns: str,
          update_tree: bool):
-    from asr.database.totree import main
+    """Unpack database into directory tree."""
+    from asr.database.totree import main as totree
 
-    main(
+    totree(
         database=database,
         run=run,
         selection=selection,
@@ -912,6 +917,7 @@ def main(database: str, run: bool, selection: str,
 @click.option("--extra_kvp_descriptions", type=str,
               help='File containing extra kvp descriptions for info.json')
 def app(databases, host, test, extra_kvp_descriptions):
+    """Run the database web app."""
     from asr.database.app import main
     main(databases=databases, host=host, test=test,
          extra_kvp_descriptions=extra_kvp_descriptions)
