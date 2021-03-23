@@ -534,7 +534,7 @@ def main(
     # XXX This is only compatible with GPAW
     bsfile = bsrecord.result.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        bsfile, soc=True, return_spin=True, theta=theta, phi=phi,
+        str(bsfile.path), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
