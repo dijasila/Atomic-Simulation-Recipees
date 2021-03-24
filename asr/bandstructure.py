@@ -493,6 +493,7 @@ class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
 
+
 def set_bscalculator_from_dependencies(record):
     emptybands = (
         record.parameters.dependency_parameters[
