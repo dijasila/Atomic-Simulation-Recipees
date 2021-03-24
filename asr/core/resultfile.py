@@ -177,7 +177,7 @@ def get_dependencies(path, uids):
         'asr.gw': ['asr.bandstructure', 'asr.gw@empirical_mean_z'],
         'asr.pdos@calculate': ['asr.gs'],
         'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
-        'asr.phonons@calculate': ['asr.gs@calculate'],
+        'asr.phonons@calculate': [],
         'asr.phonons': ['asr.phonons@calculate'],
         'asr.push': ['asr.structureinfo', 'asr.phonons'],
         'asr.phonopy@calculate': ['asr.gs@calculate'],
@@ -281,6 +281,7 @@ def get_dependency_parameters(dependency_uids, records):
             }
         )
         params.update(depparams)
+        params.update(get_dependency_parameters(dep.dependencies, records))
 
     return params
 

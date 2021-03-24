@@ -493,8 +493,42 @@ class Result(ASRResult):
 
     formats = {"ase_webpanel": webpanel}
 
+def set_bscalculator_from_dependencies(record):
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bscalculator = {
+        'basis': 'dzp',
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
 
-@command('asr.bandstructure')
+
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:main')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(sel.CONTAINS('bscalculator'))
+
+make_migrations = make_migration_generator(
+    uid='0eda638a2c624a45a3bafd7dca11c9ca',
+    function=set_bscalculator_from_dependencies,
+    description='Construct "bscalculator" parameters from "emptybands" parameter.',
+    selector=sel,
+)
+
+
+@command(
+    'asr.bandstructure',
+    migrations=[make_migrations],
+)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
