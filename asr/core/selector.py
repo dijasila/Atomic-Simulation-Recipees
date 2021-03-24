@@ -78,6 +78,18 @@ def match_and(comparator1, comparator2):
     )
 
 
+def compare_not(comparator, value):
+    return not comparator(value)
+
+
+def match_not(comparator):
+    return Comparator(
+        name='not',
+        function=compare_not,
+        value=comparator,
+    )
+
+
 def approx(value1, rtol=1e-3) -> callable:
 
     return Comparator(
@@ -232,6 +244,7 @@ class Selector:
     ALL = staticmethod(match_all)
     OR = staticmethod(match_or)
     AND = staticmethod(match_and)
+    NOT = staticmethod(match_not)
 
     def __init__(self, **selection):
         self.__dict__['selection'] = {}

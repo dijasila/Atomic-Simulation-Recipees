@@ -4,7 +4,7 @@ from ase import Atoms
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    DictStr, AtomsFile
+    DictStr, AtomsFile, Selector, make_migration_generator,
 )
 from asr.gs import calculate as calculategs
 from asr.gs import main as maings
@@ -27,8 +27,39 @@ class BandstructureCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
+def remove_emptybands_and_make_bs_calculator(record):
+    record.parameters.bscalculator = {
+        'basis': 'dzp',
+        'nbands': -record.parameters.emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -record.parameters.emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.emptybands
+    return record
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:calculate')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.CONTAINS('emptybands'),
+    sel.NOT(sel.CONTAINS('bscalculator')),
+)
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=remove_emptybands_and_make_bs_calculator,
+    description='Remove param="emptybands" and make param="bscalculator"',
+    uid='a0887cebb5224e1097010f1545ce766f',
+)
+
+
 @command(
     'asr.bandstructure',
+    migrations=[make_migrations],
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
