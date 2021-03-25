@@ -327,10 +327,11 @@ def get_pristine_result():
 
     try:
         p = Path('.')
-        sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-        pris_folder = pristinelist[0]
-        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+        # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+        # pris_folder = pristinelist[0]
+        pris = list(p.glob('./../../defects.pristine_sc*'))[0]
+        res_pris = read_json(pris / 'results-asr.gs.json')
     except FileNotFoundError:
         print('ERROR: does not find pristine results. Did you run setup.defects '
               'and calculate the ground state for the pristine system?')
@@ -594,7 +595,7 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
         elabel = energy + offset / 2
 
     ax.plot([0, 1], [energy] * 2, color=color, lw=2, zorder=1)
-    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.7)
+    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
 
 

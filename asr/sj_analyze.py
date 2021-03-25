@@ -322,9 +322,10 @@ def get_pristine_band_edges() -> PristineResults:
 
     print('INFO: extract pristine band edges.')
     p = Path('.')
-    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-    pris = pristinelist[0]
+    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+    # pris = pristinelist[0]
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
         atoms, calc = restart('gs.gpw', txt=None)
@@ -383,9 +384,10 @@ def calculate_neutral_formation_energy():
 
     results_def = read_json('./results-asr.gs.json')
     p = Path('.')
-    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-    pris = pristinelist[0]
+    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+    # pris = pristinelist[0]
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     results_pris = read_json(pris / 'results-asr.gs.json')
 
     eform = results_def['etot'] - results_pris['etot']
@@ -412,8 +414,9 @@ def get_transition_level(transition, charge) -> TransitionResults:
     # import numpy as np
     # extract lowest lying state for the pristine system as energy reference
     p = Path('.')
-    sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    pris = Path(f'./../../defects.pristine_sc.{sc}/')
+    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+    # pris = Path(f'./../../defects.pristine_sc.{sc}/')
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     _, calc_pris = restart(pris / 'gs.gpw', txt=None)
     e_ref_pris = calc_pris.get_eigenvalues()[0]
 
