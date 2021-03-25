@@ -5,9 +5,6 @@ from gpaw import restart
 import typing
 
 
-# TODO: - redo plot_formation_energies() based on new results structure
-
-
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel,
                                       describe_entry, table, matrixtable)
@@ -193,8 +190,7 @@ def main() -> Result:
           'for defect {}.'.format(defectsystem))
 
     # get heat of formation
-    # hof = get_heat_of_formation()
-    hof = 1.
+    hof = get_heat_of_formation()
 
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions()
@@ -264,7 +260,7 @@ def calculate_formation_energies(eform, transitions, pristine):
 
 
 def get_heat_of_formation():
-    """To be implemented."""
+    """Extract heat of formation from C2DB."""
     from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
     from ase.db import connect
     from ase.io import read
