@@ -286,12 +286,14 @@ def make_selector_migration_generator(
     selector,
     uid,
     function,
-    description,
+    description=None,
     eagerness=0,
 ):
     if isinstance(selector, dict):
         selector = Selector(
             **{key: Selector.EQ(value) for key, value in selector.items()})
+    if description is None:
+        description = function.__doc__.splitlines()[0]
     mig = Migration(
         function=function,
         uid=uid,
