@@ -167,13 +167,13 @@ def main(databases: List[str]) -> Result:
     .. code-block:: javascript
 
         {
-            'title': 'Bulk reference phases',
-            'legend': 'Bulk',
-            'name': '{row.formula}',
-            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
-            'label': '{row.formula}',
-            'method': 'DFT',
-            'energy_key': 'total_energy',
+            "title": "Bulk reference phases",
+            "legend": "Bulk",
+            "name": "{row.formula}",
+            "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
+            "label": "{row.formula}",
+            "method": "DFT",
+            "energy_key": "total_energy"
         }
 
     Parameters
