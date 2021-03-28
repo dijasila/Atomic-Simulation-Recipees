@@ -1,7 +1,7 @@
 """Implements record migration functionality."""
 import abc
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from .command import get_recipes
 from .selector import Selector
 from .record import Record
@@ -50,7 +50,7 @@ class DumbModification(Modification):
 class MigrationLog:
     """Container for logging migration information."""
 
-    migration_uid: UID
+    migration_uid: typing.Optional[UID]
     to_version: UID
     description: str
     modification: Modification
@@ -95,8 +95,8 @@ class Migration:
     """A class to update a record to a greater version."""
 
     function: typing.Callable
-    uid: UID
     description: str
+    uid: typing.Optional[None] = None
     eagerness: int = 0
 
     def apply(self, record: Record) -> Record:
@@ -124,7 +124,7 @@ class Migration:
         return self.apply(record)
 
     def __str__(self):
-        return f'#{self.uid[:5]} "{self.description}"'
+        return self.description
 
 
 class MakeMigrations(abc.ABC):
@@ -141,8 +141,8 @@ class MakeMigrations(abc.ABC):
 @dataclass
 class SelectorMigrationGenerator(MakeMigrations):
 
-    selector: Selector
     migration: Migration
+    selector: Selector = field(default_factory=Selector)
 
     def make_migrations(self, record: Record) -> typing.List[Migration]:
         """Check if migration applies to record."""
@@ -301,3 +301,34 @@ def make_selector_migration_generator(
         eagerness=eagerness,
     )
     return SelectorMigrationGenerator(selector=selector, migration=mig)
+
+
+def migration(
+    function=None,
+    *,
+    selector=None,
+    uid=None,
+    eagerness=0,
+    description=None,
+):
+    """Make migration."""
+    if selector is None:
+        selector = Selector()
+
+    def wrap(wrappedfunction):
+        if description is None:
+            assert wrappedfunction.__doc__, 'Missing function docstring!'
+            desc = wrappedfunction.__doc__.splitlines()[0]
+        else:
+            desc = description
+        migration = Migration(
+            function=wrappedfunction,
+            uid=uid,
+            description=desc,
+            eagerness=eagerness,
+        )
+        return SelectorMigrationGenerator(migration=migration, selector=selector)
+
+    if function is not None:
+        return wrap(function)
+    return wrap

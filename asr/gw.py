@@ -1,8 +1,10 @@
 """DFT GW."""
 from ase import Atoms
+import asr
 from asr.core import (
     command, option, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile, DictStr)
+    atomsopt, calcopt, ExternalFile, DictStr,
+)
 from asr.gs import calculate as calculategs
 from asr.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
@@ -424,7 +426,38 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command()
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.gw:main')
+
+
+@asr.migration(selector=sel)
+def migrate_1(record):
+    """Prepare record for resultfile migration."""
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.ecut = 200.0
+    record.parameters.kptdensity = 5.0
+    record.parameters.mode = 'G0W0'
+    record.parameters.bscalculator = {
+        'basis': 'dzp',
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+@command(
+    migrations=[migrate_1]
+)
 @atomsopt
 @calcopt
 @option('-b', '--bscalculator',

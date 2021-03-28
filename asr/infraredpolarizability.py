@@ -200,7 +200,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def add_bandfactor_xc_phononcalculator_remove_fconverge(record):
+def prepare_for_resultfile_migration(record):
     """Prepare record for resultfile migration."""
     phononpar = record.parameters.dependency_parameters['asr.phonons:calculate']
     fconverge = phononpar['fconverge']
@@ -255,7 +255,7 @@ sel.name = sel.EQ('asr.infraredpolarizability:main')
 
 make_migrations = make_migration_generator(
     selector=sel,
-    function=add_bandfactor_xc_phononcalculator_remove_fconverge,
+    function=prepare_for_resultfile_migration,
     uid='048c99cc09c641c187929ed67d9ffc39',
 )
 

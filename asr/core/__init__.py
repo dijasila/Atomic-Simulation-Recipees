@@ -16,5 +16,11 @@ from .cache import get_cache  # noqa
 from .shortcuts import atomsopt, calcopt  # noqa
 from .selector import Selector  # noqa
 from .migrate import (  # noqa
-    Migration, SelectorMigrationGenerator, make_migration_generator,  # noqa
+    migration, Migration, SelectorMigrationGenerator, make_migration_generator,  # noqa
 )  # noqa
+from .comparators import comparators  # noqa
+
+
+__all__ = [
+    'command', 'option', 'argument', 'migration', 'Selector', 'comparators',
+]
