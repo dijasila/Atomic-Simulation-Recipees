@@ -36,6 +36,9 @@ class Lincomb:
 
 
 class Vecpair:
+    '''Pair of vectors with matching moduli:
+       one from lattice A, the other from lattice B.
+    '''
     def __init__(self, lca, lcb):
         self.lca = lca
         self.lcb = lcb

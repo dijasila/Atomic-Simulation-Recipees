@@ -36,6 +36,9 @@ class Lincomb:
 
 
 class Vecpair:
+    '''Pair of vectors with matching moduli:
+       one from lattice A, the other from lattice B.
+    '''
     def __init__(self, lca, lcb):
         self.lca = lca
         self.lcb = lcb
@@ -187,9 +190,9 @@ def FindCells(matches, layer_a, layer_b, tol_theta, min_internal_angle, max_inte
     print("\nLooking for supercells...")
 
     angles = []
-    for i in tqdm(range(nmatches)):
+    #for i in tqdm(range(nmatches)):
+    for i in range(nmatches):
         for j in range(i + 1, nmatches):
-
             if abs(matches[i].angle - matches[j].angle) <= tol_theta:
                 test_cell = Supercell(matches[i], matches[j])
                 ratio_a = test_cell.area / starting_area_a
@@ -228,17 +231,51 @@ def SortResults(supercells, crit):
     return [supercells[i] for i in np.argsort(sorting_list)]
 
 
-def SaveJson(supercells, workdir):
+def SaveJson(supercells, uid_a, uid_b, workdir):
     import json
-    results = {}
+    results = {'number_of_solutions': len(supercells),
+               'uid_a': uid_a,
+               'uid_b': uid_b,
+               'solutions': {}}
     for i in range(len(supercells)):
-        results[f"{i}"] = supercells[i].todict()
+        results['solutions'][f"{i}"] = supercells[i].todict()
     file_json = f"{workdir}/moirecells.json"
     with open(file_json, 'w') as f:
         json.dump(results, f, indent=4)
 
 
-@command('asr.test_findmoire2')
+def save_human_readable(supercells, uid_a, uid_b, workdir):
+    file_cells = f"{workdir}/moirecells.cells"
+    nsol = len(supercells)
+    with open(file_cells, "w") as log:
+        print("Layer A unique identifier:", file=log)
+        print(uid_a, '\n', file=log)
+        print("Layer B unique identifier:", file=log)
+        print(uid_b, '\n', file=log)
+        print("Number of solutions:", file=log)
+        print(nsol, '\n', file=log)
+        print("--------------------------------------------------- SUPERCELLS --------------------------------------------------------\n", file=log)
+        print("{:>3}{:>9}{:>8}{:>5}{:>6}{:>5}{:>8}{:>5}{:>6}{:>5}{:>17}{:>15}{:>11}\n".format("#", "Atoms",
+                                                                                                    "m1", "m2", "m1'", "m2'", "n1", "n2", "n1'", "n2'", "Angle(intern)", "Angle(twist)", "Strain(%)"), file=log)
+        for i, cell in enumerate(supercells):
+            dct = supercells[i].todict()
+            print("{:3}".format(i), end='', file=log)
+            print("{:8.0f}".format(dct["natoms"]), end='', file=log)
+            print("{:>10}".format(dct["m11"]), end='', file=log)
+            print("{:>5}".format(dct["m12"]), end='', file=log)
+            print("{:>5}".format(dct["m21"]), end='', file=log)
+            print("{:>5}".format(dct["m22"]), end='', file=log)
+            print("{:>9}".format(dct["n11"]), end='', file=log)
+            print("{:>5}".format(dct["n12"]), end='', file=log)
+            print("{:>5}".format(dct["n21"]), end='', file=log)
+            print("{:>5}".format(dct["n22"]), end='', file=log)
+            print("{:>16.6f}".format(dct["internal_angle"]), end='', file=log)
+            print("{:>16.6f}".format(dct["twist_angle"]), end='', file=log)
+            print("{:>11.4f}\n".format(dct["strain"]), end='', file=log)
+
+
+'''
+@command('asr.findmoire')
 @option('--max-coef', type=int,
         help='Max coefficient for linear combinations of the starting vectors')
 @option('--tol-theta', type=float,
@@ -257,14 +294,15 @@ def SaveJson(supercells, workdir):
         help='Lower limit for the supercell internal angle (in degrees)')
 @option('--max-internal-angle', type=float,
         help='Upper limit for the supercell internal angle (in degrees)')
-@option('--overwrite', type=bool,
-        help='True: Regenerate directory structure overwriting old files; False: generate results only for new entries')
+@option('--overwrite', type=bool, is_flag=True,
+        help='Regenerate directory structure overwriting old files')
 @option('--database', type=str,
         help='Path of the .db database file for retrieving structural information')
 @option('--uids', type=str,
         help='Path of the file containing the unique ID list of the materials to combine')
 @option('--uid-a', type=str)
 @option('--uid-b', type=str)
+'''
 def main(max_coef: int = 10,
          tol_theta: float = 0.05,
          store_all: bool = False,
@@ -277,11 +315,11 @@ def main(max_coef: int = 10,
          overwrite: str = False,
          uid_a: str = None,
          uid_b: str = None,
-         database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/gw-bulk.db",
+         database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db",
          uids: str = "/home/niflheim/steame/venvs/het-bil/asr/asr/test/moire/tree/uids"):
 
     if uid_a and uid_b:
-        uids = [uid_a, uid_b]
+        monos = [uid_a, uid_b]
         range_i = [0]
         range_j = [1]
     elif uid_a and not uid_b:
@@ -298,8 +336,8 @@ def main(max_coef: int = 10,
 
     for i in range_i:
         for j in range_j:
-            layer_a = db.get(uid=uids[i])
-            layer_b = db.get(uid=uids[j])
+            layer_a = db.get(uid=monos[i])
+            layer_b = db.get(uid=monos[j])
             name_a = layer_a.formula
             name_b = layer_b.formula
             workdir = f"{name_a}-{name_b}"
@@ -332,14 +370,17 @@ def main(max_coef: int = 10,
                 matches = MatchLCs(lcs_a, lcs_b, max_strain)
                 print(f"Obtained {len(matches)} LCs matches")
 
-                cells = FindCells(matches, layer_a, layer_b, 
-                                  tol_theta, min_intern, max_intern, 
-                                  max_number_of_atoms, store_all)
+                cells = FindCells(matches, layer_a, layer_b, tol_theta,
+                                  min_intern, max_intern, max_number_of_atoms, store_all)
                 print(f"\nFound {len(cells)} supercells!!!\n")
 
                 cells_sorted = SortResults(cells, sort)
-                SaveJson(cells_sorted, workdir)
+                return cells_sorted[9]
+                '''
+                SaveJson(cells_sorted, monos[i], monos[j], workdir)
+                save_human_readable(cells_sorted, uid_a, uid_b, workdir)
 
 
 if __name__ == '__main__':
-    main()
+    main().cli()
+                '''

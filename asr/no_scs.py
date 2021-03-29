@@ -101,9 +101,8 @@ def calculate_gs(structure: str = "structure.json",
 
 @command(module='asr.no_scs',
          requires=['gs_lcao.gpw'],
-         creates=['bs_lcao.gpw'],
-         dependencies=['asr.scs@calculate_gs'])
-@option("--structure", type=str)
+         creates=['bs_lcao.gpw'])
+@option('--structure', type=str)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints', type=int)
 @option('--eps', type=float, help='Tolerance over symmetry determination')
@@ -125,7 +124,7 @@ def calculate_bs(structure: str = 'structure.json', kptpath: Union[str, None] = 
         'kpts': path,
         'symmetry': 'off'}
 
-    calc = GPAW('gs_scs.gpw', **parms)
+    calc = GPAW('gs_lcao.gpw', **parms)
     calc.get_potential_energy()
     calc.write('bs_lcao.gpw')
     bands = Bands('bs_lcao.gpw')
@@ -161,10 +160,10 @@ def main(structure: str = 'structure.json',
     if gs:
         calculate_gs(structure, kpts, calculator)
     if bs:
-        calculate_bs(kptpath, npoints, eps)
+        calculate_bs(structure, kptpath, npoints, eps)
     if not gs and not bs:
         calculate_gs(structure, kpts, calculator)
-        calculate_bs(kptpath, npoints, eps)
+        calculate_bs(structure, kptpath, npoints, eps)
 
 
 if __name__ == '__main__':
