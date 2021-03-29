@@ -259,7 +259,8 @@ def inherit_dependency_parameters(records):
     for record in records:
         dep_uids = record.dependencies or []  # [record.uid for record in records]
         dep_params = get_dependency_parameters(dep_uids, records)
-        dep_params = Parameters({'dependency_parameters': dep_params})
+        dep_params = Parameters({
+            'dependency_parameters': Parameters(dep_params)})
         record.parameters.update(dep_params)
 
     return records

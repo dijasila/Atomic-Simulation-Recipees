@@ -66,6 +66,12 @@ class Selector:
     def __getattr__(self, attr):
         return SelectorSetter(self, attr)
 
+    def __setitem__(self, item, value):
+        return self.__setattr__(item, value)
+
+    def __getitem__(self, item):
+        return self.__getattr__(item)
+
     def __str__(self):
         parts = [
             f'{key}={repr(value)}'

@@ -1,5 +1,6 @@
 """Effective masses."""
 from ase import Atoms
+import asr
 
 from asr.core import (
     command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
@@ -1502,7 +1503,47 @@ class ValidateResult(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.emasses')
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters = sel.NOT(sel.CONTAINS('settings'))
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter(record):
+    """Add settings parameter."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters.dependency_parameters = \
+    lambda value: bool(val for val in value.values()
+                       if 'gpwname' in val)
+
+
+@asr.migration(selector=sel)
+def remove_gpwname_from_dependency_parameters(record):
+    """Remove gpwfilename from dependency parameters."""
+    dep_params = record.parameters.dependency_parameters
+    for name, params in dep_params.items():
+        if 'gpwfilename' in params:
+            del params['gpwfilename']
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter,
+                remove_gpwname_from_dependency_parameters],
+)
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
