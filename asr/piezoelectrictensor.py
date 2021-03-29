@@ -15,6 +15,8 @@ from ase.calculators.calculator import kptdensity2monkhorstpack
 from asr.formalpolarization import main as formalpolarization
 from asr.relax import main as relax
 
+import asr
+
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result,
     calcopt, atomsopt
@@ -118,8 +120,36 @@ def convert_density_to_size(parameters):
     return parameters
 
 
-@command(module="asr.piezoelectrictensor",
-         argument_hooks=[convert_density_to_size])
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.piezoelectrictensor:main')
+sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
+
+
+@asr.migration(selector=sel)
+def add_relaxcalculator_parameter(record):
+    """Add relaxcalculator parameter and delete unused dependency parameters."""
+    dep_params = record.parameters.dependency_parameters
+    record.parameters.relaxcalculator = dep_params['asr.relax:main']['calculator']
+    del_par = {'calculator', 'd3',
+               'allow_symmetry_breaking', 'fixcell'}
+    for par in del_par:
+        del dep_params['asr.relax:main'][par]
+
+    del_par = {'gpwname'}
+    for par in del_par:
+        del dep_params['asr.formalpolarization:main'][par]
+
+    if 'calculator' in record.parameters:
+        del dep_params['asr.formalpolarization:main']['calculator']
+    return record
+
+
+@command(
+    module="asr.piezoelectrictensor",
+    argument_hooks=[convert_density_to_size],
+    migrations=[add_relaxcalculator_parameter],
+)
 @atomsopt
 @option('--strain-percent', help='Strain fraction.', type=float)
 @calcopt
@@ -178,6 +208,8 @@ def main(
                         atoms=strained_atoms,
                         calculator=relaxcalculator,
                         fixcell=True,
+                        d3=False,
+                        allow_symmetry_breaking=True,
                     )
                     atoms_for_pol = rec.result.atoms
 
