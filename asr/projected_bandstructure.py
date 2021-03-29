@@ -6,6 +6,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
     DictStr,
 )
+import asr
 import typing
 
 from asr.database.browser import make_panel_description
@@ -81,8 +82,36 @@ class Result(ASRResult):
 
 # ---------- Main functionality ---------- #
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.projected_bandstructure:main')
 
-@command(module='asr.projected_bandstructure')
+
+@asr.migration(selector=sel)
+def add_bscalculator(record):
+    """Add bscalculator parameters."""
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bscalculator = {
+        'basis': 'dzp',
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+@command(
+    module='asr.projected_bandstructure',
+    migrations=[add_bscalculator],
+)
 @atomsopt
 @calcopt
 @option('-b', '--bscalculator',
