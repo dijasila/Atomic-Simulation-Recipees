@@ -37,6 +37,7 @@ def find_results_files() -> typing.List[pathlib.Path]:
         '*asr.setinfo*',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
+        '*asr.exchange@calculate.json',
     ]
 
     paths = []
@@ -102,6 +103,8 @@ def construct_record_from_resultsfile(
 
     try:
         parameters = result.metadata.params
+        if recipename == 'asr.gs@calculate' and 'name' in parameters:
+            del parameters['name']
     except MetaDataNotSetError:
         parameters = {}
 
