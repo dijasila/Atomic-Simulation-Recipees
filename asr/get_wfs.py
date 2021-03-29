@@ -135,8 +135,8 @@ def return_gapstates(calc):
 
     try:
         p = Path('.')
-        sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
+        # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
+        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
         _, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
