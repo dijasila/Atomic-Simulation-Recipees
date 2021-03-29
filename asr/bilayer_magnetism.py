@@ -150,17 +150,15 @@ def main(calculator: dict={
 
     eAFM = bilayer_AFM.get_potential_energy()
 
-    M_AFM = calc_afm.get_magnetic_moment()
-    assert np.allclose(np.linalg.norm(M_AFM),0) 
-    
     eDIFF = eFM - eAFM
     
-    if eDIFF > 0:
+    M_AFM = calc_afm.get_magnetic_moment()
+    if eDIFF > 0 or not np.allclose(np.linalg.norm(M_AFM),0):
         calc_afm.write(f'gs_U{u}.gpw')
     else:
         calc_fm.write(f'gs_U{u}.gpw')
 
-    return dict(eFM=eFM, eAFM=eAFM, eDIFF=eDIFF)
+    return dict(eFM=eFM, eAFM=eAFM, eDIFF=eDIFF, AFMNormIsZero=np.allclose(np.linalg.norm(M_AFM),0))
 
 if __name__ == '__main__':
     main.cli()
