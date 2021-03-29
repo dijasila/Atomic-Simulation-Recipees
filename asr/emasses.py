@@ -46,7 +46,32 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-@command(module='asr.emasses')
+sel = asr.Selector()
+sel.name = sel.EQ('asr.emasses:refine')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.NOT(sel.CONTAINS('settings')),
+    sel.CONTAINS('gpwfilename')
+)
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter_remove_gpwfilename(record):
+    """Add settings parameter and remove gpwfilename."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    del record.parameters.gpwfilename
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter_remove_gpwfilename],
+)
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
