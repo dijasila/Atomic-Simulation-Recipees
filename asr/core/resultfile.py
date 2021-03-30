@@ -114,7 +114,6 @@ def construct_record_from_resultsfile(
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']
     atoms = read(folder / atomsfilename)
-    print(atomsfilename, recipename)
     parameters.atoms = atoms.copy()
 
     try:
