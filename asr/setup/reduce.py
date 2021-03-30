@@ -1,3 +1,4 @@
+import asr
 from asr.core import command, atomsopt
 import numpy as np
 from ase.build import cut, niggli_reduce
@@ -45,7 +46,29 @@ def check_if_supercell(spos_ac, Z_a):
             pass
 
 
-@command('asr.setup.reduce')
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.setup.reduce:main')
+
+
+@asr.migration(selector=sel)
+def remove_initial_and_final_parameters(record):
+    """Remove initial and final parameter. Fix result."""
+    atomic_structures = record.parameters.atomic_structures
+    atoms = atomic_structures[record.parameters.initial]
+    record.parameters.atoms = atoms
+    del record.parameters.initial
+
+    final_atoms = atomic_structures[record.parameters.final]
+    record.result = final_atoms
+    del record.parameters.final
+    return record
+
+
+@command(
+    'asr.setup.reduce',
+    migrations=[remove_initial_and_final_parameters],
+)
 @atomsopt(default='start.json')
 def main(atoms: Atoms) -> Atoms:
     """Reduce supercell and perform niggli reduction if possible."""

@@ -51,6 +51,10 @@ def find_results_files() -> typing.List[pathlib.Path]:
     return paths
 
 
+ATOMSFILES = [
+    'structure.json', 'original.json', 'start.json', 'unrelaxed.json']
+
+
 def construct_record_from_resultsfile(
         path: pathlib.Path,
         uids: typing.Dict[pathlib.Path, str],
@@ -109,12 +113,19 @@ def construct_record_from_resultsfile(
 
     parameters = Parameters(parameters)
 
+    atomic_structures = {
+        atomsfilename: read(folder / atomsfilename).copy()
+        for atomsfilename in ATOMSFILES
+        if pathlib.Path(folder / atomsfilename).is_file()
+    }
+
     params = recipe.get_parameters()
     atomsparam = [param for name, param in params.items()
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']
-    atoms = read(folder / atomsfilename)
-    parameters.atoms = atoms.copy()
+    assert atomsfilename in atomic_structures
+
+    parameters.atomic_structures = atomic_structures
 
     try:
         code_versions = result.metadata.code_versions
@@ -332,10 +343,19 @@ def update_resultfile_record_to_version_0(record):
     dep_params = record.parameters.get('dependency_parameters', {})
     unused_dependency_params = {name: set(values)
                                 for name, values in dep_params.items()}
+
+    params = recipe.get_parameters()
+    atomsparam = [param for name, param in params.items()
+                  if name == 'atoms'][0]
+    atomsfilename = atomsparam['default']
+
     for key in sig_parameters:
         if key in parameters:
             new_parameters[key] = parameters[key]
             unused_old_params.remove(key)
+        elif key == 'atoms':
+            # Atoms are treated differently
+            new_parameters[key] = parameters.atomic_structures[atomsfilename]
         else:
             candidate_dependencies = []
             for depname, recipedepparams in dep_params.items():
@@ -348,6 +368,7 @@ def update_resultfile_record_to_version_0(record):
                 unused_dependency_params[dependency].remove(key)
             else:
                 missing_params.add(key)  # new_parameters[key] = default_params[key]
+    unused_old_params.remove('atomic_structures')
 
     # remove_keys = set(['dependency_parameters'])
     # if name == 'asr.formalpolarization:main':
@@ -363,7 +384,7 @@ def update_resultfile_record_to_version_0(record):
         value
         for values in unused_dependency_params.values()
         for value in values
-        if value != 'atoms'
+        if value != 'atomic_structures'
     }
 
     if missing_params and not unused_old_params and not unused_dependency_params:
