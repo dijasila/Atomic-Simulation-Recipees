@@ -22,6 +22,8 @@ import os
 @option('--uniform_vacuum', type=bool,
         help='Pass some float value to choose vacuum for 2D case manually, '
         ' it will be chosen automatically otherwise.')
+@option('--extrinsic', type=str,
+        help='Comma separated string of extrinsic point defect elements.')
 @option('--nopbc', type=bool,
         help='Keep the periodic boundary conditions as they are. If this '
         'option is not used, pbc will be enforced for correct defect '
@@ -37,7 +39,7 @@ import os
         'configuration with least atoms in the supercell.', type=float)
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: List[int] = [0, 0, 0],
-         maxsize: float = 8, intrinsic: bool = True,
+         maxsize: float = 8, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, uniform_vacuum: bool = False, nopbc: bool = True,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
@@ -83,6 +85,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     from ase.io import read
     import numpy as np
 
+    # convert extrinsic defect string
+    extrinsic = extrinsic.split(',')
+
     # only run SJ setup if halfinteger is True
     if halfinteger:
         setup_halfinteger()
@@ -105,7 +110,8 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         # in a dictionary
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                        charge_states=chargestates,
-                                       vacancies=vacancies, sc=supercell,
+                                       vacancies=vacancies, extrinsic=extrinsic,
+                                       sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
                                        vacuum=uniform_vacuum, nopbc=nopbc,
                                        general_algorithm=general_algorithm)
@@ -114,6 +120,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         # and respective charge states
         create_folder_structure(structure, structure_dict, chargestates,
                                 intrinsic=intrinsic, vacancies=vacancies,
+                                extrinsic=extrinsic,
                                 sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
     return ASRResult()
@@ -216,7 +223,7 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     return structure_sc
 
 
-def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
+def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, sc,
                   max_lattice, is_2D, vacuum, nopbc, general_algorithm):
     """
     Set up defects for a particular input structure.
@@ -443,6 +450,77 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         temp_dict[string] = charge_dict
                 finished_list.append(eq_pos[i])
 
+    # incorporate extrinsic defects
+    finished_list = []
+    if extrinsic != ['NO']:
+        defect_list = extrinsic
+        for i in range(len(structure)):
+            if not eq_pos[i] in finished_list:
+                for element in defect_list:
+                    if not structure[i].symbol == element:
+                        defect = pristine.copy()
+                        sitename = defect.get_chemical_symbols()[i]
+                        defect[i].symbol = element
+                        defect.rattle()
+                        string = 'defects.{0}_{1}{2}{3}.{4}_{5}'.format(
+                                 formula, N_x, N_y, N_z, element,
+                                 sitename)
+                        charge_dict = {}
+                        for q in range(
+                                (-1) * charge_states,
+                                charge_states + 1):
+                            parameters = {}
+                            calculator_relax = {
+                                'name': 'gpaw',
+                                'mode': {
+                                    'name': 'pw',
+                                    'ecut': 800,
+                                    'dedecut': 'estimate'},
+                                'xc': 'PBE',
+                                'kpts': {
+                                    'density': 6.0,
+                                    'gamma': True},
+                                'basis': 'dzp',
+                                'symmetry': {
+                                    'symmorphic': False},
+                                'convergence': {
+                                    'forces': 1e-4},
+                                'txt': 'relax.txt',
+                                'occupations': {
+                                    'name': 'fermi-dirac',
+                                    'width': 0.02},
+                                'spinpol': True}
+                            calculator_gs = {
+                                'name': 'gpaw',
+                                'mode': {
+                                    'name': 'pw',
+                                    'ecut': 800},
+                                'xc': 'PBE',
+                                'basis': 'dzp',
+                                'kpts': {
+                                    'density': 12.0,
+                                    'gamma': True},
+                                'occupations': {
+                                    'name': 'fermi-dirac',
+                                    'width': 0.02},
+                                'convergence': {
+                                    'bands': 'CBM+3.0'},
+                                'nbands': '200%',
+                                'txt': 'gs.txt',
+                                'spinpol': True}
+                            parameters['asr.gs@calculate'] = {
+                                'calculator': calculator_gs}
+                            parameters['asr.gs@calculate']['calculator'
+                                                           ]['charge'] = q
+                            parameters['asr.relax'] = {
+                                'calculator': calculator_relax}
+                            parameters['asr.relax']['calculator']['charge'] = q
+                            charge_string = 'charge_{}'.format(q)
+                            charge_dict[charge_string] = {
+                                'structure': defect, 'parameters': parameters}
+                        temp_dict[string] = charge_dict
+                finished_list.append(eq_pos[i])
+
     # put together structure dict
     structure_dict['defects'] = temp_dict
 
@@ -457,7 +535,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
 
 
 def create_folder_structure(structure, structure_dict, chargestates,
-                            intrinsic, vacancies, sc, max_lattice, is_2D):
+                            intrinsic, vacancies, extrinsic,
+                            sc, max_lattice, is_2D):
     """Create folder for all configurations.
 
     Creates a folder for every configuration of the defect supercell in
@@ -473,24 +552,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
     from ase.io import write
     from asr.core import write_json
 
-    # create a json file for general parameters that are equivalent for all
-    # the different defect systems
-    if sc == [0, 0, 0]:
-        pristine, N_x, N_y, N_z = setup_supercell(
-            structure, max_lattice, is_2D)
-    else:
-        N_x = sc[0]
-        N_y = sc[1]
-        N_z = sc[2]
-    gen_params = {}
-    gen_params['chargestates'] = chargestates
-    gen_params['is_2D'] = is_2D
-    gen_params['supercell'] = [N_x, N_y, N_z]
-    gen_params['intrinsic'] = intrinsic
-    gen_params['vacancies'] = vacancies
-    write_json('general_parameters.json', gen_params)
-
-    # then, create a seperate folder for each possible defect
+    # create a seperate folder for each possible defect
     # configuration of this parent folder, as well as the pristine
     # supercell system
     for element in structure_dict:
