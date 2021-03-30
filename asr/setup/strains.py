@@ -1,6 +1,6 @@
 """Generate strained atomic structures."""
 from ase import Atoms
-from asr.core import command, option, AtomsFile
+from asr.core import command, option, atomsopt
 
 
 def get_relevant_strains(pbc):
@@ -15,7 +15,7 @@ def get_relevant_strains(pbc):
 
 
 @command('asr.setup.strains')
-@option('--atoms', type=AtomsFile(), help='Atoms to be strained')
+@atomsopt
 @option('--strain-percent', help='Strain percentage', type=float)
 @option('-i', '--i', type=int, help='Strain component=i of cell.')
 @option('-j', '--j', type=int, help='Strain component=j of cell.')

@@ -46,7 +46,7 @@ def check_if_supercell(spos_ac, Z_a):
 
 
 @command('asr.setup.reduce')
-@atomsopt
+@atomsopt(default='start.json')
 def main(atoms: Atoms) -> Atoms:
     """Reduce supercell and perform niggli reduction if possible."""
     Z_a = atoms.get_atomic_numbers()

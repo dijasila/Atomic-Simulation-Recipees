@@ -61,7 +61,6 @@ def construct_record_from_resultsfile(
     from ase.io import read
     from asr.core.codes import Codes, Code
     folder = path.parent
-    atoms = read(folder / 'structure.json')
 
     result = read_json(path)
     recipename = path.with_suffix('').name.split('-')[1]
@@ -109,8 +108,14 @@ def construct_record_from_resultsfile(
         parameters = {}
 
     parameters = Parameters(parameters)
-    if 'atoms' not in parameters:
-        parameters.atoms = atoms.copy()
+
+    params = recipe.get_parameters()
+    atomsparam = [param for name, param in params.items()
+                  if name == 'atoms'][0]
+    atomsfilename = atomsparam['default']
+    atoms = read(folder / atomsfilename)
+    print(atomsfilename, recipename)
+    parameters.atoms = atoms.copy()
 
     try:
         code_versions = result.metadata.code_versions
