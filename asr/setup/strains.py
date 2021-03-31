@@ -1,6 +1,6 @@
 """Generate strained atomic structures."""
 from ase import Atoms
-from asr.core import command, option, atomsopt
+from asr.core import command, option, atomsopt, ASRResult, prepare_result
 
 
 def get_relevant_strains(pbc):
@@ -12,6 +12,11 @@ def get_relevant_strains(pbc):
     elif np.sum(pbc) == 1:
         ij = ((2, 2), )
     return ij
+
+
+@prepare_result
+class Result(ASRResult):
+    atoms: Atoms
 
 
 @command('asr.setup.strains')
@@ -35,8 +40,7 @@ def main(
     strain_vv = (strain_vv + strain_vv.T) / 2
     strained_cell_cv = np.dot(cell_cv, strain_vv)
     atoms.set_cell(strained_cell_cv, scale_atoms=True)
-
-    return atoms
+    return Result.fromdata(atoms=atoms)
 
 
 if __name__ == '__main__':

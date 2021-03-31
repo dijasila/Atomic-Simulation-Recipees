@@ -22,8 +22,14 @@ def test_setup_strains_get_relevant_strains(asr_tmpdir_w_params, pbc):
 @pytest.mark.ci
 def test_setup_strains(asr_tmpdir_w_params, mockgpaw, test_material):
     from asr.setup.strains import main
-    main(
+
+    record = main(
         atoms=test_material,
         strain_percent=1,
         i=0,
         j=1)
+    result = record.result
+
+    ref = test_material.get_scaled_positions()
+    assert result['atoms'].get_scaled_positions() == pytest.approx(ref)
+    # Can we assert something about the cell?

@@ -246,7 +246,7 @@ def main(atoms: Atoms,
             strained_atoms = make_strained_atoms(
                 atoms,
                 strain_percent=sign * strain_percent,
-                i=i, j=j).result
+                i=i, j=j).result['atoms']
             relaxrecord = relax(
                 strained_atoms,
                 calculator=calculator,
