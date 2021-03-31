@@ -76,7 +76,7 @@ class BSECalculateResult(ASRResult):
 def calculate(
         atoms: Atoms,
         calculator: dict = gscalculate.defaults.calculator,
-        kptdensity: float = 6.0,
+        kptdensity: float = 20.0,
         ecut: float = 50.0,
         mode: str = 'BSE',
         bandfactor: int = 6,
@@ -100,10 +100,7 @@ def calculate(
         truncation = None
     elif ND == 2:
         eta = 0.05
-        kpts = get_kpts_size(
-            atoms=atoms,
-            kptdensity=kptdensity,
-        )
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
         truncation = '2D'
 
     else:
@@ -245,9 +242,12 @@ def absorption(row, filename, direction='x'):
 
     data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
-    absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
-        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
+        sigma_w *= wbse_w * alpha / Ha / Bohr
+        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    else:
+        absbse_w = 4 * np.pi * data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
@@ -255,9 +255,10 @@ def absorption(row, filename, direction='x'):
     data = row.data.get('results-asr.polarizability.json')
     if data:
         wrpa_w = data['frequencies'] + delta_rpa
-        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+        sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
         if dim == 2:
-            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+            sigma_w *= wrpa_w * alpha / Ha / Bohr
+        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
         ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
         ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                    absrpa_w[wrpa_w < xmax]])) * 1.05

@@ -173,14 +173,11 @@ def gs(
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-
-    calc = rec.result.calculation.load(
+    calc = rec.result.calculation.load()
+    calc = calc.fixed_density(
         txt='gs_gw.txt',
-        fixdensity=True,
         kpts=kpts,
-        parallel={'domain': 1},
-    )
-    calc.get_potential_energy()
+        parallel={'domain': 1})
     calc.diagonalize_full_hamiltonian(ecut=ecut)
     gs_gw_nowfs = 'gs_gw_nowfs.gpw'
     gs_gw = 'gs_gw.gpw'

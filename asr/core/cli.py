@@ -6,7 +6,7 @@ from ast import literal_eval
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache)
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr)
 import click
 from pathlib import Path
 import subprocess
@@ -899,9 +899,33 @@ def main(database: str, run: bool, selection: str,
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
 @click.option("--test", is_flag=True, help="Test the app.")
-def app(databases, host, test):
+@click.option("--extra_kvp_descriptions", type=str,
+              help='File containing extra kvp descriptions for info.json')
+def app(databases, host, test, extra_kvp_descriptions):
     from asr.database.app import main
-    main(databases=databases, host=host, test=test)
+    main(databases=databases, host=host, test=test,
+         extra_kvp_descriptions=extra_kvp_descriptions)
+
+
+@database.command()
+@click.option('--target', type=str,
+              help='Target DB you want to create the links in.')
+@click.argument('dbs', nargs=-1, type=str)
+def crosslinks(target: str,
+               dbs: Union[str, None] = None):
+    from asr.database.crosslinks import main
+    main(target=target, dbs=dbs)
+
+
+@database.command()
+@click.option('--include', help='Comma-separated string of folders to include.',
+              type=CommaStr())
+@click.option('--exclude', help='Comma-separated string of folders to exclude.',
+              type=CommaStr())
+def treelinks(include: str = '',
+              exclude: str = ''):
+    from asr.database.treelinks import main
+    main(include=include, exclude=exclude)
 
 
 class KeyValuePair(click.ParamType):

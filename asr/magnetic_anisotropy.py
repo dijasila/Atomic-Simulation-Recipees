@@ -57,6 +57,7 @@ def webpanel(result, row, key_descriptions):
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
+
     panel = {'title':
              describe_entry(
                  'Basic magnetic properties (PBE)',
