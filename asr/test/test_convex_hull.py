@@ -36,7 +36,7 @@ def refdb(asr_tmpdir_w_params):
 @pytest.mark.parametrize('metals', metal_alloys)
 @pytest.mark.parametrize('energy_key', [None, 'etot'])
 def test_convex_hull(refdb, mockgpaw, get_webcontent,
-                     metals, energy_key):
+                     metals, energy_key, fast_calc):
     from asr.convex_hull import main
 
     db, dbname, energies = refdb
@@ -55,7 +55,7 @@ def test_convex_hull(refdb, mockgpaw, get_webcontent,
     results = main(
         atoms=atoms,
         databases=[connect('references.db')],
-        calculator=dict(name='emt'),
+        calculator=fast_calc,
     ).result
     assert results['hform'] == -sum(energies[element]
                                     for element in metal_atoms) / nmetalatoms
@@ -110,7 +110,7 @@ def refdbwithalloys(refdb):
 @pytest.mark.ci
 @pytest.mark.parametrize('alloy', ['Ag,Au,Al', 'Ag,Al'])
 def test_convex_hull_with_two_reference_databases(
-        refdbwithalloys, mockgpaw, get_webcontent, alloy):
+        refdbwithalloys, mockgpaw, get_webcontent, alloy, fast_calc):
     from asr.convex_hull import main
 
     db, dbname, alloydbname, energies = refdbwithalloys
@@ -119,7 +119,7 @@ def test_convex_hull_with_two_reference_databases(
     atoms.write('structure.json')
     main(
         atoms=atoms,
-        databases=[dbname, alloydbname],
-        calculator=dict(name='emt'),
+        databases=[connect(dbname), connect(alloydbname)],
+        calculator=fast_calc,
     )
     get_webcontent()

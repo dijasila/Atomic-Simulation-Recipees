@@ -8,7 +8,7 @@ import pytest
 import datetime
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
-from asr.core import get_cache
+from asr.core import get_cache, initialize_root
 from asr.core.specification import construct_run_spec
 from asr.core.record import Record
 
@@ -82,6 +82,7 @@ def asr_tmpdir(request, tmp_path_factory):
     path = broadcast(path)
     cwd = os.getcwd()
     os.chdir(path)
+    initialize_root()
     try:
         yield path
     finally:

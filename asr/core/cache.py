@@ -2,13 +2,12 @@
 import os
 import pathlib
 import typing
-import functools
 from .record import Record
 from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
 from .filetype import find_external_files, ASRPath
-from .config import initialize_root, root_is_initialized
+from .config import root_is_initialized
 from .lock import Lock, lock
 
 
@@ -19,19 +18,6 @@ class DuplicateRecord(Exception):
 def get_external_file_path(dir, uid, name):
     newpath = dir / ('-'.join([uid[:10], name]))
     return newpath
-
-
-def init_root(method):
-    """Wrap method and initialize root if not exists."""
-    @functools.wraps(method)
-    def new_method(self, *args, **kwargs):
-        try:
-            initialize_root()
-        except FileExistsError:
-            pass
-        return method(self, *args, **kwargs)
-
-    return new_method
 
 
 class FileCacheBackend():
@@ -54,7 +40,6 @@ class FileCacheBackend():
         name = run_record.run_specification.name + '-' + run_uid[:10]
         return self.cache_dir / f'{name}.json'
 
-    @init_root
     @lock
     def add(self, run_record: Record):
         self.initialize()
@@ -78,7 +63,6 @@ class FileCacheBackend():
         self.add_uid_to_table(run_uid, pth)
         return run_uid
 
-    @init_root
     @lock
     def update(self, run_record: Record):
         self.initialize()
@@ -99,13 +83,10 @@ class FileCacheBackend():
             return False
         return self.record_table_path.is_file()
 
-    @init_root
     @lock
     def initialize(self):
         if self.initialized:
             return
-
-        # initialize_root()
 
         if not self.cache_dir.is_dir():
             only_master(os.makedirs)(self.cache_dir)
@@ -116,7 +97,6 @@ class FileCacheBackend():
         serialized_object = self.serializer.serialize({})
         self._write_file(self.record_table_path, serialized_object)
 
-    @init_root
     @lock
     def add_uid_to_table(self, run_uid, path: ASRPath):
         self.initialize()
@@ -127,7 +107,6 @@ class FileCacheBackend():
             self.serializer.serialize(uid_table),
         )
 
-    @init_root
     @lock
     def remove_uid_from_table(self, run_uid):
         assert self.initialized
@@ -139,7 +118,6 @@ class FileCacheBackend():
         )
 
     @property
-    # @lock
     def uid_table(self):
         self.initialize()
         text = self._read_file(self.record_table_path)
@@ -155,14 +133,12 @@ class FileCacheBackend():
                 return True
         return False
 
-    # @lock
     def get_record_from_uid(self, run_uid):
         path = self.uid_table[run_uid]
         serialized_object = self._read_file(path)
         obj = self.serializer.deserialize(serialized_object)
         return obj
 
-    # @lock
     def select(self, selector: Selector = None):
         if not self.initialized:
             return []
@@ -176,7 +152,6 @@ class FileCacheBackend():
                 selected.append(record)
         return selected
 
-    @init_root
     @lock
     def remove(self, selector: Selector = None):
         assert self.initialized, 'No cache here!'

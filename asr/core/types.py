@@ -47,7 +47,7 @@ class AtomsFile(click.ParamType):
             attr = get_attribute(obj, attrs)
             return attr
         try:
-            return read(value, parallel=False, format='json')
+            return read(value, parallel=False, format='json').copy()
         except (IOError, UnknownFileTypeError, StopIteration):
             if self.must_exist:
                 raise

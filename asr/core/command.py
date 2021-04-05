@@ -14,7 +14,7 @@ from .dependencies import register_dependencies
 from .resources import register_resources
 from .cache import Cache
 from .selector import Selector
-from .metadata import construct_metadata
+from .metadata import register_metadata
 
 
 def format_param_string(params: dict):
@@ -400,6 +400,7 @@ class ASRCommand:
 
         @register_dependencies.register
         @cache()
+        @register_metadata()
         @register_dependencies()
         @isolated_work_dir()
         @register_resources()
@@ -410,11 +411,9 @@ class ASRCommand:
                                      parameters.items()])
             print(f'Running {name}({paramstring})')
             result = run_spec()
-            metadata = construct_metadata()
             record = Record(
                 result=result,
                 run_specification=run_spec,
-                metadata=metadata,
             )
             return record
 

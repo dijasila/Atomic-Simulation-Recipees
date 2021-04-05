@@ -92,9 +92,10 @@ def get_attribute(obj, attrs):
     for attr in attrs:
         if hasattr(obj, attr):
             obj = getattr(obj, attr)
-        elif attr in obj:
-            obj = obj[attr]
         else:
-            raise NoSuchAttribute
+            try:
+                obj = obj[attr]
+            except TypeError:
+                raise NoSuchAttribute
 
     return obj

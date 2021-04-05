@@ -87,6 +87,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def cli():
     ...
 
+@cli.command()
+def init():
+    """Initialize ASR Repository."""
+    from .root import initialize_root
+    initialize_root()
+
 
 @cli.command()
 @click.argument('command', nargs=1)
