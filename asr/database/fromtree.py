@@ -276,7 +276,9 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
         from asr.core.cache import get_cache
         cache = get_cache()
         if cache:
-            records = cache.select()
+            sel = cache.make_selector()
+            sel.parameters.atoms = sel.EQ(atoms)
+            records = cache.select(selector=sel)
             for record in records:
                 kvp.update(get_key_value_pairs(record.result))
             if records:
