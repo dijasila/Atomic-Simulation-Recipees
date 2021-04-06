@@ -5,7 +5,7 @@ from .selector import Selector
 from .serialize import JSONSerializer
 from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
-from .root import find_root, root_is_initialized, ASR_DIR
+from .root import root_is_initialized
 from .filetype import ASRPath
 
 

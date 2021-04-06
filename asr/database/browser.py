@@ -553,11 +553,11 @@ def layout(row: AtomsRow,
     exclude = set()
 
     row = RowWrapper(row)
-# 
+#
 #     newdata = parse_row_data(row.data)
 #     row.data = newdata
 #     result_objects = []
-# 
+#
 #     for key, value in row.data.items():
 #         if isinstance(value, ASRResult):
 #             result_objects.append(value)
