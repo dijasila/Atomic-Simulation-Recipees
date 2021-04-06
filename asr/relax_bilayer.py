@@ -130,6 +130,7 @@ def main(atoms: Atoms,
     minz = np.min(atoms.positions[:, 2])
     w = maxz - minz
     atoms.cell[2, 2] += vacuum + w
+    atoms.cell[2, 0:2] = 0.0
     top_layer.cell = atoms.cell
 
     start_structure = translation(t_c[0], t_c[1], d0, top_layer,

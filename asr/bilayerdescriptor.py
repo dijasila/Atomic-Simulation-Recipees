@@ -13,9 +13,15 @@ class Result(ASRResult):
 
     descriptor: str
     full_descriptor: str
+    # monolayer_uid: str
+    translation: np.ndarray
+    pointgroup_op: np.ndarray
 
     key_descriptions = dict(descriptor='A short descriptor of a stacking',
-                            full_descriptor='A full descriptor of a stacking')
+                            full_descriptor='A full descriptor of a stacking',
+                            # monolayer_uid='UID of source monolayer',
+                            translation='Translation of top layer relative to bottom layer in scaled coordinates',
+                            pointgroup_op='Point group operator of top layer relative to bottom layer. The matrix operators on the lattice vectors')
 
 
 def convert_to_cartesian(matrix, cell):
@@ -169,6 +175,12 @@ def set_number_of_layers():
     setinfo([('numberoflayers', 2)])
 
 
+def set_monolayer_uid():
+    from asr.setinfo import main as setinfo
+    ml_uid = Path("..").resolve().name
+    setinfo([('monolayer_uid', ml_uid)])
+
+
 @command(module='asr.bilayerdescriptor',
          returns=Result)
 def main() -> Result:
@@ -191,9 +203,12 @@ def main() -> Result:
 
     set_first_class_info()
     set_number_of_layers()
+    set_monolayer_uid()
 
     return Result.fromdata(descriptor=descriptor,
-                           full_descriptor=full_descriptor)
+                           full_descriptor=full_descriptor,
+                           translation=t_c,
+                           pointgroup_op=rotation)
     
 
     
