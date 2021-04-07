@@ -5,6 +5,7 @@ import click
 import copy
 import inspect
 import typing
+from .parallel import parprint
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
@@ -409,7 +410,7 @@ class ASRCommand:
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
-            print(f'Running {name}({paramstring})')
+            parprint(f'Running {name}({paramstring})')
             result = run_spec()
             record = Record(
                 result=result,

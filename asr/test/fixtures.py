@@ -82,7 +82,8 @@ def asr_tmpdir(request, tmp_path_factory):
     path = broadcast(path)
     cwd = os.getcwd()
     os.chdir(path)
-    initialize_root()
+    if world.rank == 0:
+        initialize_root()
     try:
         yield path
     finally:
