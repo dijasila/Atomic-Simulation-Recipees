@@ -141,17 +141,25 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     return results
 
 
-def bs_hse(row,
-           filename='hse-bs.png',
-           figsize=(5.5, 5),
-           fontsize=10,
-           s=0.5):
+def plot_bs_hse(row):
+    return plot_bs(row, filename='hse-bs.png', label='HSE')
+
+
+def plot_bs(row, *,
+            filename,
+            label):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
 
+    figsize = (5.5, 5)
+    fontsize = 10
+    s = 0.5
+
     data = row.data.get('results-asr.hse.json')
     path = data['bandstructure']['path']
+    # WTF, we are hacking globals??
+    # While plotting from multiple threads which is not recommended in the first place?
     mpl.rcParams['font.size'] = fontsize
     ef = data['efermi_hse_soc']
 
@@ -167,14 +175,14 @@ def bs_hse(row,
     x, X, labels = path.get_linear_kpoint_axis()
 
     # hse with soc
-    hse_style = dict(
+    style = dict(
         color='C1',
         ls='-',
         lw=1.0,
         zorder=0)
     ax = plt.figure(figsize=figsize).add_subplot(111)
     for e_m in e_mk:
-        ax.plot(x, e_m, **hse_style)
+        ax.plot(x, e_m, **style)
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
     ax.set_ylabel(label)
@@ -195,7 +203,7 @@ def bs_hse(row,
         path_effects.Normal()
     ])
 
-    # add PBE band structure with soc
+    # add KS band structure with soc
     from asr.bandstructure import add_bs_ks
     if 'results-asr.bandstructure.json' in row.data:
         ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
@@ -204,7 +212,7 @@ def bs_hse(row,
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    ax.plot([], [], **hse_style, label='HSE')
+    ax.plot([], [], **style, label='HSE')
     legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
@@ -237,7 +245,7 @@ def webpanel(result, row, key_descriptions):
                                      panel_description),
              'columns': [[fig('hse-bs.png')],
                          [fig('bz-with-gaps.png'), hse]],
-             'plot_descriptions': [{'function': bs_hse,
+             'plot_descriptions': [{'function': plot_bs_hse,
                                     'filenames': ['hse-bs.png']}],
              'sort': 15}
 
