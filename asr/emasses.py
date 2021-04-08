@@ -8,8 +8,9 @@ The effective mass tensor represents the second derivative of the band energy
 w.r.t. wave vector at a band extremum. The effective masses of the valence
 bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
 mass tensor. The latter is determined by fitting a 2nd order polynomium to the
-band energies on a fine k-point mesh around the band extrema. Spin-orbit
-interactions are included. The “parabolicity” of the band is quantified by the
+band energies on a fine k-point mesh around the band extrema. Spin–orbit
+interactions are included. The fit curve is shown for the highest VB and
+lowest CB. The “parabolicity” of the band is quantified by the
 mean absolute relative error (MARE) of the fit to the band energy in an energy
 range of 25 meV.
 """,

@@ -142,8 +142,8 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get('dynamic_stability_phonons')
 
-    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
 
     row = [
         describe_entry(
