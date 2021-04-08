@@ -74,14 +74,24 @@ def calculate(calculator: dict = {
     return ASRResult()
 
 
-def webpanel(result, row, key_descriptions):
+def _band_gap_description(parameter_description):
+    return ('The electronic single-particle band gap '
+            'including spin–orbit effects.\n\n'
+            + parameter_description)
 
-    parameter_description = entry_parameter_description(
+
+def _get_parameter_description(row):
+    desc = entry_parameter_description(
         row.data,
         'asr.gs@calculate',
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
+    return desc
+
+
+def webpanel(result, row, key_descriptions):
+    parameter_description = _get_parameter_description(row)
 
     explained_keys = []
     for key in ['gap', 'gap_dir',
@@ -89,7 +99,7 @@ def webpanel(result, row, key_descriptions):
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
             explanation = (f'{key_description} '
-                           '(Including spin-orbit effects).\n\n'
+                           '(Including spin–orbit effects).\n\n'
                            + parameter_description)
             explained_key = describe_entry(key, description=explanation)
         else:
@@ -124,15 +134,8 @@ def webpanel(result, row, key_descriptions):
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate',
-        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                          'idiotproof', 'maxiter', 'hund', 'random',
-                          'experimental', 'basis', 'setups']))
-    description = ('The electronic single-particle band gap '
-                   'including spin-orbit effects.\n\n'
-                   + parameter_description)
+    parameter_description = _get_parameter_description(row)
+    description = _band_gap_description(parameter_description)
     datarow = [describe_entry('Band gap',
                               description=description),
                f'{result.gap:0.2f} eV']
