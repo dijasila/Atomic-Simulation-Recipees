@@ -21,6 +21,22 @@ class PBCError(Exception):
 class BT(Enum):
     vb = 'vb'
     cb = 'cb'
+
+
+class FitResult(ASRResult):
+    bandfit_dicts: List[dict]
+    cb_masses: List[List[float]]
+    vb_masses: List[List[float]]
+    cbm_masses: List[float]
+    vbm_masses: List[float]
+
+
+class BandstructureResult(ASRResult):
+    pass
+
+class MainResult(ASRResult):
+    pass
+
     
 
 def check_pbc(gpw):
@@ -318,7 +334,7 @@ def get_name(soc, bt):
          creates=['fitdata.npy'])
 @option('--gpwfilename', type=str, help='GS fname')
 @option('--delta', type=float, help='delta')
-def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
+def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1) -> FitResult:
     # Identify relevant bands and BE locations
     # Separate data out into BandFit objects
     # For each band, perform fitting procedure
@@ -345,9 +361,18 @@ def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
     for bandit in bandfits:
         perform_fit(bandit) # Adds data to BandFit object
 
-    result = convert_to_result(bandfits)
+    # result = convert_to_result(bandfits)
+    cbm_bf = min([bf for bf in bandfits if bf.bt == BT.cb], key=lambda x: x.band)
+    vbm_bf = max([bf for bf in bandfits if bf.bt == BT.vb], key=lambda x: x.band)
+    result = FitResult.fromdata(bandfit_dicts=[bf.to_dict() for bf in bandfits],
+                                cb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.cb],
+                                vb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.vb],
+                                cbm_masses=list(cbm_bf.mass_n),
+                                vbm_masses=list(vbm_bf.mass_n))
+
+    return result
     
-    np.save("fitdata.npy", result)
+    # np.save("fitdata.npy", result)
     # In new ASR we should just return the bandfits
     # return bandfits
     # or maybe result, if ASR cannot serialize arbitrary objs
@@ -821,20 +846,18 @@ def webpanel():
 
 
 """
-Are we missing anything?
+TODO Implement Results objects
 
-We are not doing 3rd order fit. Is it necessary? Make a unit test where 2nd order will fail.
-We are not doing weird checks on extremum type and BE location movement. Is this necessary?
-We are not setting a lot of stuff that we currently have in the results. A lot of it can be calculated from fit_params, so maybe we don't need it?
+Refine: Main output is .gpw files. No results objects.
 
-Go through old code and double check that we have everything.
-Go through old results and check if we have everything we want.
+calculate_fits: Return dictionalized bandfits + summary info such as the found emasses.
 
+calculate_bandstructure: Return dictionalized bandfits - now with BS info - and summary info
 
-Next TODO: Implement get_bands. Exactly how data is structured will cascade and affect
-everything.
+main: Nothing currently, I suppose.
 
 """
+
 
 if __name__ == "__main__":
     main.cli()
