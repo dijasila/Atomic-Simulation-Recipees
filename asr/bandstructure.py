@@ -4,7 +4,7 @@ from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 panel_description = make_panel_description(
-    """The band structure with spin-orbit interactions is shown with the
+    """The band structure with spin–orbit interactions is shown with the
 expectation value of S_i (where i=z for non-magnetic materials and otherwise is
 the magnetic easy axis) indicated by the color code.""",
     articles=['C2DB'],
@@ -432,8 +432,8 @@ class Result(ASRResult):
 
     key_descriptions = \
         {
-            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
-            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+            'bs_soc': 'Bandstructure data with spin–orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
     formats = {"ase_webpanel": webpanel}

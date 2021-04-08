@@ -310,7 +310,7 @@ def webpanel(result, row, key_descriptions):
     if row.get('gap_gw'):
         description = (
             'The quasi-particle band gap calculated with '
-            'G0W0 including spin-orbit effects. \n\n'
+            'G0W0 including spin–orbit effects. \n\n'
         )
         rows = [
             [

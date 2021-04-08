@@ -103,7 +103,7 @@ def webpanel(result, row, key_descriptions):
 
     explained_keys += [
         _describe_bandgap(row),
-        #_describe_dierct_bandgap(row),
+        _describe_direct_bandgap(row),
     ]
 
     for key in [# 'gap', 'gap_dir',

@@ -246,7 +246,7 @@ def webpanel(result, row, key_descriptions):
         bandgaphse = describe_entry(
             'Band gap (HSE)',
             'The electronic single-particle band gap calculated with '
-            'HSE including spin-orbit effects.\n\n',
+            'HSE including spin–orbit effects.\n\n',
         )
         rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
