@@ -6,7 +6,7 @@ from gpaw import GPAW
 from ase.units import Ha, Bohr
 from asr.utils.gpw2eigs import gpw2eigs, calc2eigs
 from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.core import command, option, DictStr, ASRResult, prepare_result, read_json
 from ase.parallel import parprint
 
 class NoGapError(Exception):
@@ -23,7 +23,7 @@ class BT(Enum):
     cb = 'cb'
 
 
-class FitResult(ASRResult):
+class EmassResult(ASRResult):
     bandfit_dicts: List[dict]
     cb_masses: List[List[float]]
     vb_masses: List[List[float]]
@@ -334,7 +334,7 @@ def get_name(soc, bt):
          creates=['fitdata.npy'])
 @option('--gpwfilename', type=str, help='GS fname')
 @option('--delta', type=float, help='delta')
-def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1) -> FitResult:
+def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1) -> EmassResult:
     # Identify relevant bands and BE locations
     # Separate data out into BandFit objects
     # For each band, perform fitting procedure
@@ -361,21 +361,8 @@ def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1) -> FitResult
     for bandit in bandfits:
         perform_fit(bandit) # Adds data to BandFit object
 
-    # result = convert_to_result(bandfits)
-    cbm_bf = min([bf for bf in bandfits if bf.bt == BT.cb], key=lambda x: x.band)
-    vbm_bf = max([bf for bf in bandfits if bf.bt == BT.vb], key=lambda x: x.band)
-    result = FitResult.fromdata(bandfit_dicts=[bf.to_dict() for bf in bandfits],
-                                cb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.cb],
-                                vb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.vb],
-                                cbm_masses=list(cbm_bf.mass_n),
-                                vbm_masses=list(vbm_bf.mass_n))
-
+    result = convert_to_result(bandfits)
     return result
-    
-    # np.save("fitdata.npy", result)
-    # In new ASR we should just return the bandfits
-    # return bandfits
-    # or maybe result, if ASR cannot serialize arbitrary objs
 
 
 def get_refined_calc(soc, bt):
@@ -557,14 +544,16 @@ def perform_fit(bandfit, fitting_fnc=polynomial_fit, eranges=[1e-3 / Ha, 5e-3 / 
 
 def convert_to_result(bandfits):
     """Convert a list of bandfits into intermediate result."""
-    # Implementation should be trivial
-    # Make a to_dict method on bandfits
-    # Define ASRResult with list of bandfits
-    # Maybe a recipe can only have one ASRResult,
-    # so in that case use an intermediate result
-    # We can easily refactor later.
-    data = [bf.to_dict() for bf in bandfits]
-    return data
+    cbm_bf = min([bf for bf in bandfits if bf.bt == BT.cb], key=lambda x: x.band)
+    vbm_bf = max([bf for bf in bandfits if bf.bt == BT.vb], key=lambda x: x.band)
+    result = EmassResult.fromdata(bandfit_dicts=[bf.to_dict() for bf in bandfits],
+                                  cb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.cb],
+                                  vb_masses=[list(bf.mass_n) for bf in bandfits if bf.bt == BT.vb],
+                                  cbm_masses=list(cbm_bf.mass_n),
+                                  vbm_masses=list(vbm_bf.mass_n))
+
+
+    return result
     
 
 @command(module='asr.newemasses',
@@ -572,7 +561,7 @@ def convert_to_result(bandfits):
                    'gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json',
-                   'fitdata.npy'],
+                   'results-asr.newemasses@calculate_fits.json'],
          dependencies=['asr.newemasses@calculate_fits',
                        'asr.newemasses@refine',
                        'asr.gs@calculate',
@@ -585,10 +574,11 @@ def convert_to_result(bandfits):
 @option('--bs_npoints', type=int, help='npts')
 def calculate_bandstructures(fname: str = 'fitdata.npy',
                              bs_erange: float = 250e-3 / Ha,
-                             bs_npoints: int = 91):
+                             bs_npoints: int = 91) -> EmassResult:
     # In new ASR this should just be a call to asr.emasses@calculate_fits
     # Or take bandfits as input?
-    data = np.load(fname, allow_pickle=True)
+    result = read_json('results-asr.newemasses@calculate_fits.json')
+    data = result.bandfit_dicts
     bandfits = [BandFit.from_dict(bf) for bf in data]
 
     # Get calc which has the density and is used to calculate
@@ -609,14 +599,8 @@ def calculate_bandstructures(fname: str = 'fitdata.npy',
         bf.bs_npoints = bs_npoints
         calc_bandstructure(bf, calc)
 
-    # Now bandstructure is calculated and set
-    # So we only have 3 logical steps here: load, read, calc?
-
-    # return bandfits  # Do we need to return? Bit confused about how things will look with new ASR
-    np.save('bsdata.npy', [bf.to_dict() for bf in bandfits])
-
-    # Should be roughly equivalent to calculate_bs_along_emass_vecs
-    # Should also do validation/parabolicity? Actually I would rather have it be a separate func.
+    result = convert_to_result(bandfits)
+    return result
 
 
 def create_or_read_calc(bf, direction, calc):
@@ -729,8 +713,8 @@ def get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints, cell_cv, pb
                    'gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json',
-                   'fitdata.npy',
-                   'bsdata.npy'],
+                   'results-asr.newemasses@calculate_fits.json',
+                   'results-asr.newemasses@calculate_bandstructures.json'],
          dependencies=['asr.newemasses@calculate_bandstructures',
                        'asr.newemasses@calculate_fits',
                        'asr.newemasses@refine',
@@ -740,12 +724,15 @@ def get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints, cell_cv, pb
                        'asr.magnetic_anisotropy'],
          creates=['paradata.npy'])
 @option('--eranges', type=List[float], help='Eranges')
-def calculate_parabolicities(eranges=[10e-3, 15e-3, 25e-3]):
+def calculate_parabolicities(eranges=[10e-3, 15e-3, 25e-3]) -> EmassResult:
 
-    data = np.load('bsdata.npy', allow_pickle=True)
+    result = read_json('results-asr.newemasses@calculate_bandstructures.json')
+    data = result.bandfit_dicts
     bandfits = [BandFit.from_dict(d) for d in data]
     bandfits = calc_parabolicities(bandfits, eranges=eranges)
-    np.save('paradata.npy', [bf.to_dict() for bf in bandfits])
+    
+    result = convert_to_result(bandfits)
+    return result
 
 
 def calc_parabolicities(bandfits: List[BandFit] = [],
