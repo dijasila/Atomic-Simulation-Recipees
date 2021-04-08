@@ -95,7 +95,6 @@ def add_bscalculator(record):
             'asr.bandstructure:calculate']['emptybands']
     )
     record.parameters.bscalculator = {
-        'basis': 'dzp',
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,

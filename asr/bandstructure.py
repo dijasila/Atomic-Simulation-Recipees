@@ -29,7 +29,6 @@ class BandstructureCalculationResult(ASRResult):
 
 def remove_emptybands_and_make_bs_calculator(record):
     record.parameters.bscalculator = {
-        'basis': 'dzp',
         'nbands': -record.parameters.emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -75,7 +74,6 @@ def calculate(
         atoms: Atoms,
         calculator: dict = calculategs.defaults.calculator,
         bscalculator: dict = {
-            'basis': 'dzp',
             'nbands': -20,
             'txt': 'bs.txt',
             'fixdensity': True,
@@ -500,7 +498,6 @@ def set_bscalculator_from_dependencies(record):
             'asr.bandstructure:calculate']['emptybands']
     )
     record.parameters.bscalculator = {
-        'basis': 'dzp',
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,

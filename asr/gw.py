@@ -442,7 +442,6 @@ def migrate_1(record):
     record.parameters.kptdensity = 5.0
     record.parameters.mode = 'G0W0'
     record.parameters.bscalculator = {
-        'basis': 'dzp',
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
