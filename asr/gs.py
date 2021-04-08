@@ -106,7 +106,6 @@ def webpanel(result, row, key_descriptions):
             explained_key = key
         explained_keys.append(explained_key)
 
-    gap = describe_entry('gap', description=explanation)
     t = table(result, 'Property',
               explained_keys,
               key_descriptions)
