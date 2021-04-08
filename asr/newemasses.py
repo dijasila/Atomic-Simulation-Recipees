@@ -7,7 +7,7 @@ from ase.units import Ha, Bohr
 from asr.utils.gpw2eigs import gpw2eigs, calc2eigs
 from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 from asr.core import command, option, DictStr, ASRResult, prepare_result
-
+from ase.parallel import parprint
 
 class NoGapError(Exception):
     pass
@@ -26,19 +26,20 @@ class BT(Enum):
 def check_pbc(gpw):
     calc = GPAW(gpw, txt=None)
     atoms = calc.get_atoms()
+    pbc = atoms.pbc
 
     ndim = atoms.pbc.sum()
     if ndim == 1:
         good = not pbc[0] and not pbc[1] and pbc[2]
         expected = '(False, False, True)'            
     elif ndim == 2:
-        good = pbc[0] and pbc[1] and pbc[2]
+        good = pbc[0] and pbc[1] and not pbc[2]
         expected = '(True, True, False)'
     else:
         good = True
 
     if not good:
-        raise PBCError(f'The effective mass calculation assumes PBC: {expected}') 
+        raise PBCError(f'The effective mass calculation assumes PBC: {expected} but got: {pbc}') 
 
 @command(module='asr.newemasses',
          requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
@@ -61,7 +62,7 @@ def refine(gpwfname: str = 'gs.gpw',
     # Final nonsc circle is larger than previously
     # so we can expand fit range if necessary
     # Write gpw files as before
-    assert soc
+    assert soc, 'No soc is not implemented'
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -88,8 +89,9 @@ def refine(gpwfname: str = 'gs.gpw',
     for bt in BT:
         refined_name = get_name(soc=soc, bt=bt)
         if os.path.exists(refined_name):
+            parprint(f"File {refined_name} exists. Skipping calculation.", flush=True)
             continue
-        
+        parprint(f"Running calculation for {refined_name}.", flush=True)
         skn = skn1 if bt == BT.vb else skn2
         prelim_refine = preliminary_refine(gpw=gpwfname,
                                            e_skn=eigenvalues,
@@ -216,6 +218,7 @@ def nonsc_sphere(gpw, savename, soc, bt,
              fixdensity=True)
 
     atoms.get_potential_energy()
+    parprint(f"Saving refined energies to {savename}", flush=True)
     calc.write(savename)
 
 
@@ -789,10 +792,10 @@ def get_model(fit_params, kpts_kv):
                    'fitdata.npy',
                    'bsdata.npy',
                    'paradata.npy'],
-         dependencies=['asr.newemasses@calculate_parabolicities',
+         dependencies=['asr.newemasses@refine',
+                       'asr.newemasses@calculate_parabolicities',
                        'asr.newemasses@calculate_bandstructures',
                        'asr.newemasses@calculate_fits',
-                       'asr.newemasses@refine',
                        'asr.gs@calculate',
                        'asr.gs',
                        'asr.structureinfo',
