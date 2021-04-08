@@ -74,12 +74,6 @@ def calculate(calculator: dict = {
     return ASRResult()
 
 
-def _band_gap_description(parameter_description):
-    return ('The electronic single-particle band gap '
-            'including spin–orbit effects.\n\n'
-            + parameter_description)
-
-
 def _get_parameter_description(row):
     desc = entry_parameter_description(
         row.data,
@@ -90,10 +84,23 @@ def _get_parameter_description(row):
     return desc
 
 
-def _describe_bandgap(row):
+def _explain_bandgap(row, gap_name):
     parameter_description = _get_parameter_description(row)
-    description = _band_gap_description(parameter_description)
-    return describe_entry('Band gap', description=description)
+
+    if gap_name == 'gap':
+        name = 'Band gap'
+        adjective = ''
+    elif gap_name == 'gap_dir':
+        name = 'Direct band gap'
+        adjective = 'direct '
+    else:
+        raise ValueError(f'Bad gapname {gap_name}')
+
+    txt = (f'The {adjective}electronic single-particle band gap '
+           'including spin–orbit effects.')
+
+    description = f'{txt}\n\n{parameter_description}'
+    return describe_entry(name, description=description)
 
 
 def webpanel(result, row, key_descriptions):
@@ -102,12 +109,11 @@ def webpanel(result, row, key_descriptions):
     explained_keys = []
 
     explained_keys += [
-        _describe_bandgap(row),
-        _describe_direct_bandgap(row),
+        _explain_bandgap(row, 'gap'),
+        _explain_bandgap(row, 'gap_dir'),
     ]
 
-    for key in [# 'gap', 'gap_dir',
-                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
+    for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
             explanation = (f'{key_description} '
@@ -145,7 +151,7 @@ def webpanel(result, row, key_descriptions):
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _describe_bandgap(row)
+    description = _explain_bandgap(row, 'gap')
     datarow = [description, f'{result.gap:0.2f} eV']
 
     summary = WebPanel(
