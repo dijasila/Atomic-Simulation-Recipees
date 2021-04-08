@@ -13,8 +13,8 @@ approximation from a GGA starting point.
 The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
-wave basis set limit. Spin-orbit interactions are included
-non-self-consistently.""",
+wave basis set limit. Spin–orbit interactions are included
+in post-process.""",
     articles=[
         'C2DB',
         href(

@@ -8,8 +8,8 @@ from asr.database.browser import (
 panel_description = make_panel_description(
     """The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
-wave functions from a GGA calculation. Spin-orbit interactions are included
-non-self-consistently.""",
+wave functions from a GGA calculation. Spin–orbit interactions are included
+in post-process.""",
     articles=['C2DB'],
 )
 
