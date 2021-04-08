@@ -2,6 +2,7 @@
 from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
+from asr.bandstructure import legend_on_top
 from asr.database.browser import (
     fig, table, describe_entry, make_panel_description)
 
@@ -144,7 +145,6 @@ def bs_hse(row,
            filename='hse-bs.png',
            figsize=(5.5, 5),
            fontsize=10,
-           show_legend=True,
            s=0.5):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -205,10 +205,7 @@ def bs_hse(row,
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
     ax.plot([], [], **hse_style, label='HSE')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 

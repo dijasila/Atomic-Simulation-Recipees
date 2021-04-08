@@ -1,6 +1,7 @@
 """DFT GW."""
 from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
+from asr.bandstructure import legend_on_top
 from click import Choice
 import typing
 from asr.database.browser import (
@@ -39,7 +40,6 @@ def bs_gw(row,
           filename='gw-bs.png',
           figsize=(5.5, 5),
           fontsize=10,
-          show_legend=True,
           s=0.5):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -102,10 +102,7 @@ def bs_gw(row,
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
     ax.plot([], [], **style, label='G0W0')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 

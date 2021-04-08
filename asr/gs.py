@@ -90,11 +90,23 @@ def _get_parameter_description(row):
     return desc
 
 
+def _describe_bandgap(row):
+    parameter_description = _get_parameter_description(row)
+    description = _band_gap_description(parameter_description)
+    return describe_entry('Band gap', description=description)
+
+
 def webpanel(result, row, key_descriptions):
     parameter_description = _get_parameter_description(row)
 
     explained_keys = []
-    for key in ['gap', 'gap_dir',
+
+    explained_keys += [
+        _describe_bandgap(row),
+        #_describe_dierct_bandgap(row),
+    ]
+
+    for key in [# 'gap', 'gap_dir',
                 'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
@@ -133,11 +145,9 @@ def webpanel(result, row, key_descriptions):
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    parameter_description = _get_parameter_description(row)
-    description = _band_gap_description(parameter_description)
-    datarow = [describe_entry('Band gap',
-                              description=description),
-               f'{result.gap:0.2f} eV']
+    description = _describe_bandgap(row)
+    datarow = [description, f'{result.gap:0.2f} eV']
+
     summary = WebPanel(
         title=describe_entry(
             'Summary',

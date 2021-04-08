@@ -48,7 +48,6 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
 def bs_pbe_html(row,
                 filename='pbe-bs.html',
                 figsize=(6.4, 6.4),
-                show_legend=True,
                 s=2):
     import plotly
     import plotly.graph_objs as go
@@ -294,10 +293,13 @@ def plot_with_colors(bs,
     return ax, cbar
 
 
+def legend_on_top(ax, **kwargs):
+    ax.legend(loc='lower left', bbox_to_anchor=(0, 1, 1, 0), mode='expand', **kwargs)
+
+
 def bs_pbe(row,
            filename='pbe-bs.png',
            figsize=(5.5, 5),
-           show_legend=True,
            s=0.5):
 
     import matplotlib.pyplot as plt
@@ -373,7 +375,8 @@ def bs_pbe(row,
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
     ax.plot([], [], label='PBE', color=csz0)
-    plt.legend(loc='upper right')
+
+    #plt.legend(loc='upper right')
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
     text = ax.annotate(
@@ -387,8 +390,7 @@ def bs_pbe(row,
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 
