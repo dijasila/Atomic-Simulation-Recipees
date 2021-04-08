@@ -196,10 +196,10 @@ def bs_hse(row,
     ])
 
     # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
+    from asr.bandstructure import add_bs_ks
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
-                        color=[0.8, 0.8, 0.8])
+        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
+                       color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
