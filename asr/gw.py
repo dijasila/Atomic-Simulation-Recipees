@@ -1,6 +1,7 @@
 """DFT GW."""
 from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
+from asr.bandstructure import legend_on_top
 from click import Choice
 import typing
 from asr.database.browser import (
@@ -9,12 +10,12 @@ from asr.database.browser import (
 
 panel_description = make_panel_description(
     """The quasiparticle (QP) band structure calculated within the G0W0
-approximation from a GGA starting point. Spin-orbit interactions are included
-in postprocess. The frequency dependence is treated numerically exact. For
+approximation from a GGA starting point.
+The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
-wave basis set limit. Spin-orbit interactions are included
-non-self-consistently.""",
+wave basis set limit. Spin–orbit interactions are included
+in post-process.""",
     articles=[
         'C2DB',
         href(
@@ -39,7 +40,6 @@ def bs_gw(row,
           filename='gw-bs.png',
           figsize=(5.5, 5),
           fontsize=10,
-          show_legend=True,
           s=0.5):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -93,19 +93,16 @@ def bs_gw(row,
     ])
 
     # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
+    from asr.bandstructure import add_bs_ks
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
-                        color=[0.8, 0.8, 0.8])
+        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
+                       color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
     ax.plot([], [], **style, label='G0W0')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 
@@ -312,8 +309,8 @@ def webpanel(result, row, key_descriptions):
 
     if row.get('gap_gw'):
         description = (
-            'The electronic band gap calculated with '
-            'G0W0 including spin-orbit effects. \n\n'
+            'The quasi-particle band gap calculated with '
+            'G0W0 including spin–orbit effects. \n\n'
         )
         rows = [
             [

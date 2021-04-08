@@ -74,29 +74,56 @@ def calculate(calculator: dict = {
     return ASRResult()
 
 
-def webpanel(result, row, key_descriptions):
-
-    parameter_description = entry_parameter_description(
+def _get_parameter_description(row):
+    desc = entry_parameter_description(
         row.data,
         'asr.gs@calculate',
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
+    return desc
+
+
+def _explain_bandgap(row, gap_name):
+    parameter_description = _get_parameter_description(row)
+
+    if gap_name == 'gap':
+        name = 'Band gap'
+        adjective = ''
+    elif gap_name == 'gap_dir':
+        name = 'Direct band gap'
+        adjective = 'direct '
+    else:
+        raise ValueError(f'Bad gapname {gap_name}')
+
+    txt = (f'The {adjective}electronic single-particle band gap '
+           'including spin–orbit effects.')
+
+    description = f'{txt}\n\n{parameter_description}'
+    return describe_entry(name, description=description)
+
+
+def webpanel(result, row, key_descriptions):
+    parameter_description = _get_parameter_description(row)
 
     explained_keys = []
-    for key in ['gap', 'gap_dir',
-                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
+
+    explained_keys += [
+        _explain_bandgap(row, 'gap'),
+        _explain_bandgap(row, 'gap_dir'),
+    ]
+
+    for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
             explanation = (f'{key_description} '
-                           '(Including spin-orbit effects).\n\n'
+                           '(Including spin–orbit effects).\n\n'
                            + parameter_description)
             explained_key = describe_entry(key, description=explanation)
         else:
             explained_key = key
         explained_keys.append(explained_key)
 
-    gap = describe_entry('gap', description=explanation)
     t = table(result, 'Property',
               explained_keys,
               key_descriptions)
@@ -105,44 +132,41 @@ def webpanel(result, row, key_descriptions):
 
     if gap > 0:
         if result.get('evac'):
-            t['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{result.vbm - result.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{result.cbm - result.evac:.2f} eV']])
+            eref = result.evac
+            vbm_title = 'Valence band maximum wrt. vacuum level'
+            cbm_title = 'Conduction band minimum wrt. vacuum level'
         else:
-            t['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{result.vbm - result.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{result.cbm - result.efermi:.2f} eV']])
+            eref = result.efermi
+            vbm_title = 'Valence band maximum wrt. Fermi level'
+            cbm_title = 'Conduction band minimum wrt. Fermi level'
+
+        vbm_displayvalue = result.vbm - eref
+        cbm_displayvalue = result.cbm - eref
+        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
+                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+        t['rows'].extend(info)
 
     panel = WebPanel(
         title=describe_entry(
-            'Basic electronic properties (PBE)',
+            'Basic electronic properties',
             panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate',
-        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                          'idiotproof', 'maxiter', 'hund', 'random',
-                          'experimental', 'basis', 'setups']))
-    description = ('The electronic band gap including spin-orbit effects. \n\n'
-                   + parameter_description)
-    datarow = [describe_entry('Band gap (PBE)',
-                              description=description),
-               f'{result.gap:0.2f} eV']
+    description = _explain_bandgap(row, 'gap')
+    datarow = [description, f'{result.gap:0.2f} eV']
+
     summary = WebPanel(
         title=describe_entry(
             'Summary',
-            description='This panel contains a summary of the most '
-            'important properties of this material.'),
-        columns=[[{'type': 'table',
-                   'header': ['Electronic properties', ''],
-                   'rows': [datarow]}]],
+            description='This panel contains a summary of '
+            'basic properties of the material.'),
+        columns=[[{
+            'type': 'table',
+            'header': ['Electronic properties', ''],
+            'rows': [datarow],
+            'columnwidth': 3,
+        }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)

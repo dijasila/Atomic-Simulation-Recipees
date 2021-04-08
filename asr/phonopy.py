@@ -190,9 +190,9 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get("dynamic_stability_level")
     stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0"
-    medium = "Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0"
-    low = "Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0"
+    high = "Minimum eigenvalue of Hessian > -0.01 meV/Ang^2 AND elastic const. > 0"
+    medium = "Minimum eigenvalue of Hessian > -2 eV/Ang^2 AND elastic const. > 0"
+    low = "Minimum eigenvalue of Hessian < -2 eV/Ang^2 OR elastic const. < 0"
     row = [
         "Phonons",
         '<a href="#" data-toggle="tooltip" data-html="true" '
