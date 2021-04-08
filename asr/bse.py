@@ -299,8 +299,10 @@ class Result(ASRResult):
     bse_alphay_w: typing.List[float]
     bse_alphaz_w: typing.List[float]
 
-    key_descriptions = {"E_B": "The exciton binding energy from the Bethe–Salpeter equation (BSE) [eV].",
-                        'bse_alphax_w': 'BSE polarizability x-direction.',
+    key_descriptions = {
+        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
+                'equation (BSE) [eV].'),
+        'bse_alphax_w': 'BSE polarizability x-direction.',
                         'bse_alphay_w': 'BSE polarizability y-direction.',
                         'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
