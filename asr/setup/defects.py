@@ -678,7 +678,7 @@ def create_general_supercell(structure, size=12.5):
     print('INFO: set up general supercell.')
     sc_structuredict = {}
     for n1 in range(1, 10):
-        for n2 in range(0, 10):
+        for n2 in range(0, 3):
             for m2 in range(1, 10):
                 # set up transformation, only for symmetry broken setup
                 if not (n1 == m2 and n2 == 0):
