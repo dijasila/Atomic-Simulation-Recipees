@@ -87,11 +87,8 @@ def calculate(
         npoints: int = 400,
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-    if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
-    else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc)
+    path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                               pbc=atoms.pbc)
 
     record = calculategs(atoms=atoms, calculator=calculator)
     calculation = record.result.calculation

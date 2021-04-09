@@ -87,7 +87,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
 
 def _get_all_eigenvalues(self):
     from ase.units import Bohr, Ha
-    icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+    icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
     n = self.parameters.gridsize
 
     offsets = np.indices((n, n, n)).T.reshape((n ** 3, 1, 3)) - n // 2
@@ -159,7 +159,7 @@ def _get_all_eigenvalues(self):
 
 # def _get_all_eigenvalues_rashba(self):
 #     from ase.units import Bohr, Ha
-#     icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+#     icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
 #     n = self.parameters.gridsize
 
 
