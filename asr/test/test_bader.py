@@ -24,4 +24,4 @@ def test_bader_webpanel():
     row = DummyRow()
     row.data = {'results-asr.bader.json': result}
     panel, = webpanel(result, row, {})
-    assert panel['columns'][0][0]['rows'][0] == ['0', 'O', '-0.500']
+    assert panel['columns'][0][0]['rows'][0] == ['0', 'O', '-0.50']

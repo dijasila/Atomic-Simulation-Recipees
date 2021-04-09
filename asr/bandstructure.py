@@ -24,11 +24,8 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     from gpaw import GPAW
     from ase.io import read
     atoms = read('structure.json')
-    if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
-    else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc)
+    path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                               pbc=atoms.pbc)
 
     convbands = emptybands // 2
     parms = {
