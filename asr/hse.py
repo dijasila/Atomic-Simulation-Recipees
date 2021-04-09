@@ -143,7 +143,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 
 def plot_bs_hse(row, filename):
     data = row.data['results-asr.hse.json']
-    return plot_bs(row, filename=filename, label='HSE',
+    return plot_bs(row, filename=filename, bs_label='HSE',
                    data=data,
                    efermi=data['efermi_hse_soc'],
                    vbm=row.get('vbm_hse'),
@@ -153,7 +153,7 @@ def plot_bs_hse(row, filename):
 def plot_bs(row,
             filename,
             *,
-            label,
+            bs_label,
             efermi,
             data,
             vbm,
@@ -222,7 +222,7 @@ def plot_bs(row,
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    ax.plot([], [], **style, label=label)
+    ax.plot([], [], **style, label=bs_label)
     legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 

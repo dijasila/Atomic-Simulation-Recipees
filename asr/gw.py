@@ -36,7 +36,7 @@ arXiv:2009.00314""",
 def plot_bs_gw(row, filename):
     from asr.hse import plot_bs
     data = row.data['results-asr.gw.json']
-    return plot_bs(row, filename=filename, label='G0W0',
+    return plot_bs(row, filename=filename, bs_label='G0W0',
                    data=data,
                    efermi=data['efermi_gw_soc'],
                    cbm=row.get('cbm_gw'),
