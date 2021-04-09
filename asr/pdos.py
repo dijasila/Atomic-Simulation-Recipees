@@ -33,7 +33,7 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected density of states without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected density of states without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 

@@ -116,7 +116,7 @@ class ExplainedFloat(float):
 value_type_to_explained_type = {}
 
 
-def describe_entry(value, description, title='Help'):
+def describe_entry(value, description, title='Information'):
     """Describe website entry.
 
     This function sets an __explanation__ attribute on the given object
@@ -290,7 +290,7 @@ def make_panel_description(text, articles=None):
 
     if articles:
         articles = (
-            bold('Relevant article(s):')
+            bold('Relevant articles:')
             + ul([
                 static_article_links.get(article, article) for article in articles]
             )

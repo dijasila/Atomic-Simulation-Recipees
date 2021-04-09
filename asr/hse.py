@@ -7,6 +7,7 @@ from asr.core import (
 )
 import typing
 from ase.spectrum.band_structure import BandStructure
+from asr.bandstructure import legend_on_top
 from asr.database.browser import (
     fig, table, describe_entry, make_panel_description)
 from asr.gs import calculate as calculategs
@@ -17,8 +18,8 @@ from asr.bandstructure import calculate as bscalculate
 panel_description = make_panel_description(
     """The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
-wave functions from a GGA calculation. Spin-orbit interactions are included
-non-self-consistently.""",
+wave functions from a GGA calculation. Spin–orbit interactions are included
+in post-process.""",
     articles=['C2DB'],
 )
 
@@ -206,7 +207,6 @@ def bs_hse(row,
            filename='hse-bs.png',
            figsize=(5.5, 5),
            fontsize=10,
-           show_legend=True,
            s=0.5):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -258,19 +258,16 @@ def bs_hse(row,
     ])
 
     # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
+    from asr.bandstructure import add_bs_ks
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
-                        color=[0.8, 0.8, 0.8])
+        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
+                       color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
     ax.plot([], [], **hse_style, label='HSE')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 
@@ -310,8 +307,8 @@ def webpanel(result, row, key_descriptions):
 
         bandgaphse = describe_entry(
             'Band gap (HSE)',
-            'The electronic band gap calculated with '
-            'HSE including spin-orbit effects. \n\n',
+            'The electronic single-particle band gap calculated with '
+            'HSE including spin–orbit effects.\n\n',
         )
         rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
         summary = {'title': 'Summary',
