@@ -34,9 +34,14 @@ arXiv:2009.00314""",
 )
 
 
-def plot_bs_gw(row):
+def plot_bs_gw(row, filename):
     from asr.hse import plot_bs
-    return plot_bs(row, filename='gw-bs.png', label='G0W0')
+    data = row.data['results-asr.gw.json']
+    return plot_bs(row, filename=filename, label='G0W0',
+                   data=data,
+                   efermi=data['efermi_gw_soc'],
+                   cbm=row.get('cbm_gw'),
+                   vbm=row.get('vbm_gw'))
 
 
 def get_kpts_size(atoms, kptdensity):

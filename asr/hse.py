@@ -120,7 +120,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
-    icell = calc.atoms.get_reciprocal_cell()
+    icell = calc.atoms.cell.reciprocal()
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset)
     delta_interp_skn = eps.transpose(1, 0, 2)
@@ -141,13 +141,23 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     return results
 
 
-def plot_bs_hse(row):
-    return plot_bs(row, filename='hse-bs.png', label='HSE')
+def plot_bs_hse(row, filename):
+    data = row.data['results-asr.hse.json']
+    return plot_bs(row, filename=filename, label='HSE',
+                   data=data,
+                   efermi=data['efermi_hse_soc'],
+                   vbm=row.get('vbm_hse'),
+                   cbm=row.get('cbm_hse'))
 
 
-def plot_bs(row, *,
+def plot_bs(row,
             filename,
-            label):
+            *,
+            label,
+            efermi,
+            data,
+            vbm,
+            cbm):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
@@ -156,25 +166,27 @@ def plot_bs(row, *,
     fontsize = 10
     s = 0.5
 
-    data = row.data.get('results-asr.hse.json')
     path = data['bandstructure']['path']
     # WTF, we are hacking globals??
     # While plotting from multiple threads which is not recommended in the first place?
-    mpl.rcParams['font.size'] = fontsize
-    ef = data['efermi_hse_soc']
+    # mpl.rcParams['font.size'] = fontsize
 
-    reference = row.get('evac', row.get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-    else:
+    reference = row.get('evac')
+    if reference is None:
+        reference = efermi
         label = r'$E - E_\mathrm{F}$ [eV]'
+    else:
+        label = r'$E - E_\mathrm{vac}$ [eV]'
 
-    emin = row.get('vbm_hse', ef) - 3 - reference
-    emax = row.get('cbm_hse', ef) + 3 - reference
+    emin_offset = efermi if vbm is None else vbm
+    emax_offset = efermi if cbm is None else cbm
+    emin = emin_offset - 3 - reference
+    emax = emax_offset + 3 - reference
+
     e_mk = data['bandstructure']['e_int_mk'] - reference
     x, X, labels = path.get_linear_kpoint_axis()
 
-    # hse with soc
+    # with soc
     style = dict(
         color='C1',
         ls='-',
@@ -191,10 +203,10 @@ def plot_bs(row, *,
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='C1', ls=':')
+    ax.axhline(efermi - reference, c='C1', ls=':')
     text = ax.annotate(
         r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
+        xy=(x0, efermi - reference),
         ha='left',
         va='bottom',
         fontsize=fontsize * 1.3)
@@ -212,7 +224,7 @@ def plot_bs(row, *,
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
 
-    ax.plot([], [], **style, label='HSE')
+    ax.plot([], [], **style, label=label)
     legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
