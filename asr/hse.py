@@ -158,13 +158,11 @@ def plot_bs(row,
             data,
             vbm,
             cbm):
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
 
     figsize = (5.5, 5)
     fontsize = 10
-    s = 0.5
 
     path = data['bandstructure']['path']
     # WTF, we are hacking globals??

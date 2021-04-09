@@ -1,7 +1,6 @@
 """DFT GW."""
 from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
-from asr.bandstructure import legend_on_top
 from click import Choice
 import typing
 from asr.database.browser import (
