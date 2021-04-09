@@ -1,7 +1,6 @@
 """DFT GW."""
 from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
-from asr.bandstructure import legend_on_top
 from click import Choice
 import typing
 from asr.database.browser import (
@@ -34,76 +33,14 @@ arXiv:2009.00314""",
 )
 
 
-# This function is basically doing the exact same as HSE and could
-# probably be refactored
-def bs_gw(row,
-          filename='gw-bs.png',
-          figsize=(5.5, 5),
-          fontsize=10,
-          s=0.5):
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import matplotlib.patheffects as path_effects
-
-    data = row.data.get('results-asr.gw.json')
-    path = data['bandstructure']['path']
-    mpl.rcParams['font.size'] = fontsize
-    ef = data['efermi_gw_soc']
-
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
-
-    emin = row.get('vbm_gw', ef) - 3 - reference
-    emax = row.get('cbm_gw', ef) + 3 - reference
-
-    e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = path.get_linear_kpoint_axis()
-
-    # hse with soc
-    style = dict(
-        color='C1',
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    for e_m in e_mk:
-        ax.plot(x, e_m, **style)
-    ax.set_ylim([emin, emax])
-    ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
-    ax.set_xticks(X)
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
-
-    xlim = ax.get_xlim()
-    x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='C1', ls=':')
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
-        ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-
-    # add PBE band structure with soc
-    from asr.bandstructure import add_bs_ks
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
-                       color=[0.8, 0.8, 0.8])
-
-    for Xi in X:
-        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
-
-    ax.plot([], [], **style, label='G0W0')
-    legend_on_top(ax, ncol=2)
-    plt.savefig(filename, bbox_inches='tight')
+def plot_bs_gw(row, filename):
+    from asr.hse import plot_bs
+    data = row.data['results-asr.gw.json']
+    return plot_bs(row, filename=filename, bs_label='G0W0',
+                   data=data,
+                   efermi=data['efermi_gw_soc'],
+                   cbm=row.get('cbm_gw'),
+                   vbm=row.get('vbm_gw'))
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -303,7 +240,7 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': describe_entry('Electronic band structure (G0W0)',
                                      panel_description),
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
-             'plot_descriptions': [{'function': bs_gw,
+             'plot_descriptions': [{'function': plot_bs_gw,
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
 
