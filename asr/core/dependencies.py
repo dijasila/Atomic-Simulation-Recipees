@@ -1,4 +1,5 @@
 """Module for registering dependencies between recipes."""
+import typing
 from .parameters import Parameters
 import dataclasses
 
