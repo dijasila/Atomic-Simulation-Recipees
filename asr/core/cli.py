@@ -448,11 +448,12 @@ def add_resultfile_records():
 
 
 @cache.command()
+@click.argument('selection', required=False, nargs=-1)
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
               help='Show tracebacks for migration errors.')
-def migrate(apply=False, verbose=False, show_errors=False):
+def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
         get_instruction_migration_generator,
@@ -461,6 +462,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
     from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
+    sel = make_selector_from_selection(cache, selection)
     make_migrations = get_instruction_migration_generator()
     make_migrations.extend([get_resultfile_migration_generator()])
     record_migrations = []
@@ -469,7 +471,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
     nmigrations = 0
     nerrors = 0
 
-    for record in cache.select():
+    for record in cache.select(selector=sel):
         record_migration = make_record_migration(record, make_migrations)
         if record_migration:
             nmigrations += 1
@@ -489,8 +491,10 @@ def migrate(apply=False, verbose=False, show_errors=False):
 
     if verbose:
         nmigrations = len(record_migrations)
+        strs = []
         for i, migration in enumerate(record_migrations):
-            print(f'#{i} {migration}')
+            strs.append(f'#{i} {migration}')
+        print('\n\n'.join(strs))
         print()
 
     if show_errors:

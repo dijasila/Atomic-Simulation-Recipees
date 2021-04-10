@@ -1,7 +1,6 @@
 """Implements record migration functionality."""
 import abc
 import typing
-import collections.abc
 from dataclasses import dataclass, field
 from .command import get_recipes
 from .selector import Selector
@@ -18,46 +17,24 @@ RecordUID = str
 UID = str
 
 
-class Modification(abc.ABC):
+@dataclass
+class Modification:
     """Class that represents a record modification."""
 
-    @abc.abstractmethod
-    def apply(self, record: Record) -> Record:
-        pass
-
-    @abc.abstractmethod
-    def revert(self, record: Record) -> Record:
-        pass
-
-    def __call__(self, record: Record) -> Record:
-        return self.apply(record)
-
-
-@dataclass
-class DumbModification(Modification):
-    """A very simple implementation of a record modification."""
-
-    previous_record: Record
-    new_record: Record
-
-    def apply(self, record):
-        return self.new_record
-
-    def revert(self, record):
-        return self.previous_record
-
-
-@dataclass
-class DiffModification(Modification):
     differences: typing.List['Difference'] = field(default_factory=list)
 
-    def apply(self, record: Record):
+    def apply(self, record: Record) -> Record:
         for difference in self.differences:
             difference.apply(record)
+        return record
 
-    def revert(self, record: Record):
+    def revert(self, record: Record) -> Record:
         for difference in self.differences:
             difference.revert(record)
+        return record
+
+    def __str__(self):
+        return '\n'.join(str(diff) for diff in self.differences)
 
 
 @dataclass
@@ -86,6 +63,9 @@ class NewAttribute(Difference):
     def revert(self, obj: typing.Any):
         self.attribute.delete(obj)
 
+    def __str__(self):
+        return f'New attribute={self.attribute} value={self.value}'
+
 
 @dataclass
 class DeletedAttribute(Difference):
@@ -98,9 +78,12 @@ class DeletedAttribute(Difference):
     def revert(self, obj: typing.Any):
         self.attribute.set(obj, self.value)
 
+    def __str__(self):
+        return f'Delete attribute={self.attribute} value={self.value}'
+
 
 @dataclass
-class NewValue(Difference):
+class ChangedValue(Difference):
     new_value: typing.Any
     old_value: typing.Any
 
@@ -109,6 +92,12 @@ class NewValue(Difference):
 
     def revert(self, obj: typing.Any):
         self.attribute.set(obj, self.old_value)
+
+    def __str__(self):
+        return (
+            f'Change attribute={self.attribute} '
+            f'old={self.old_value} new={self.new_value}'
+        )
 
 
 @dataclass
@@ -121,10 +110,21 @@ class Attribute:
         setattr(obj, self.name, value)
 
     def get(self, obj):
-        getattr(obj, self.name)
+        return getattr(obj, self.name)
 
     def delete(self, obj):
         delattr(obj, self.name)
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Attribute):
+            return False
+        return self.name == other.name
+
+    def __str__(self):
+        return f'.{self.name}'
 
 
 @dataclass
@@ -141,6 +141,17 @@ class Item:
 
     def delete(self, obj):
         del obj[self.name]
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Item):
+            return False
+        return self.name == other.name
+
+    def __str__(self):
+        return f'["{self.name}"]'
 
 
 @dataclass
@@ -168,29 +179,46 @@ class AttributeSequence:
     def __add__(self, other):
         return AttributeSequence(self.attrs + other.attrs)
 
+    def __hash__(self):
+        return hash(tuple(hash(attr) for attr in self.attrs))
+
+    def __eq__(self, other):
+        return self.attrs == other.attrs
+
+    def __str__(self):
+        return ''.join(str(attr) for attr in self.attrs)
+
 
 def make_modification(old_record: Record, new_record: Record):
     """Search for differences between objects and make resulting modification."""
     differences = get_differences(old_record, new_record)
-    return DiffModification(differences)
+    return Modification(differences)
 
 
 def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = None):
     if prepend is None:
-        prepend = AttributeSequence()
+        prepend = AttributeSequence([])
+    if type(obj1) != type(obj2):
+        return [
+            ChangedValue(
+                attribute=prepend,
+                old_value=obj1,
+                new_value=obj2,
+            )
+        ]
     differences = []
     attrs_and_values1 = get_attributes_and_values(obj1)
     attrs_and_values2 = get_attributes_and_values(obj2)
     attrs1 = set(attrs_and_values1)
     attrs2 = set(attrs_and_values2)
     deleted_attrs = attrs1 - attrs2
-    new_attrs = attrs2 - attrs2
+    new_attrs = attrs2 - attrs1
 
     for attr in deleted_attrs:
         differences.append(
             DeletedAttribute(
                 attribute=prepend + attr,
-                old=attrs_and_values1[attr],
+                value=attrs_and_values1[attr],
             )
         )
 
@@ -198,23 +226,14 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
         differences.append(
             NewAttribute(
                 attribute=prepend + attr,
-                new=attrs_and_values2[attr]
+                value=attrs_and_values2[attr]
             )
         )
     common_attrs = attrs1.intersection(attrs2)
     for attr in common_attrs:
         value1 = attrs_and_values1[attr]
         value2 = attrs_and_values2[attr]
-        if type(value1) != type(value2):
-            differences.append(
-                NewValue(
-                    attributes=prepend + attr,
-                    old=value1,
-                    new=value2,
-                )
-            )
-            continue
-        diffs_inside_values = get_differences(value1, value2, prepend=attr)
+        diffs_inside_values = get_differences(value1, value2, prepend=prepend + attr)
         differences.extend(diffs_inside_values)
 
     return differences
@@ -222,16 +241,17 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
 
 def get_attributes_and_values(obj):
     attributes_and_values = {}
-    if isinstance(obj, collections.abc.Iterable):
-        for name in obj:
-            attributes_and_values[AttributeSequence([Item(name)])] = obj[name]
-    elif hasattr(obj, '__dict__'):
+    if hasattr(obj, '__dict__'):
         for key, value in obj.__dict__.items():
             attributes_and_values[AttributeSequence([Attribute(key)])] = value
     elif hasattr(obj, '__slots__'):
         for key in obj.__slots__:
             value = getattr(obj, key)
             attributes_and_values[AttributeSequence([Attribute(key)])] = value
+    elif isinstance(obj, dict):
+        for key, value in obj.items():
+            attr = AttributeSequence([Item(key)])
+            attributes_and_values[attr] = value
 
     return attributes_and_values
 
@@ -245,8 +265,15 @@ class Revision:
     description: str
     modification: Modification
 
-    def apply(self, record):
+    def apply(self, record: Record):
+        if record.history is None:
+            record.history = RevisionHistory()
+        self.modification.apply(record)
         record.history.add(self)
+        return record
+
+    def __str__(self):
+        return f'"{self.description}"\n{self.modification}'
 
 
 @dataclass
@@ -276,11 +303,13 @@ class Migration:
     uid: typing.Optional[None] = None
     eagerness: int = 0
 
-    def apply(self, record: Record) -> Record:
-        """Apply migration to record and return mutated record."""
+    def apply(self, record: Record) -> Revision:
+        """Apply migration to record and return record Revision."""
         migrated_record = self.function(record.copy())
         modification = make_modification(
-            old_record=record, new_record=migrated_record)
+            record,
+            migrated_record,
+        )
         revision = Revision(
             description=self.description,
             modification=modification,
@@ -381,19 +410,24 @@ class RecordMigration:
     def __str__(self):
         nrev = len(self.revisions)
         nerr = len(self.errors)
-        revisions_string = ' -> '.join([
-            str(migration) for migration in self.revisions])
-        problem_string = (
-            ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
-        )
-        return (
-            f'UID=#{self.initial_record.uid[:8]} '
-            + (f'name={self.initial_record.name}. ')
-            + (f'{nrev} revision(s). ' if nrev > 0 else '')
-            + (f'{nerr} migration error(s)! ' if self.errors else '')
-            + (f'{revisions_string}. ' if nrev > 0 else '')
-            + (f'{problem_string}.' if self.errors else '')
-        )
+        items = [
+            f'UID=#{self.initial_record.uid} '
+            f'name={self.initial_record.name}',
+            f'Number of revisions={nrev}. ',
+            f'Number of erroneous migrations={nerr}.',
+        ]
+
+        if nrev:
+            revisions_string = '\n'.join([
+                f'Revision #{i} {revision}'
+                for i, revision in enumerate(self.revisions)])
+            items.append(revisions_string)
+        if nerr:
+            problem_string = (
+                ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
+            )
+            items.append(problem_string)
+        return '\n'.join(items)
 
 
 def make_record_migration(
@@ -427,6 +461,7 @@ def make_record_migration(
             errors.append((migration, err))
             continue
         applied_migrations.append(migration)
+        revisions.append(revision)
     return RecordMigration(
         initial_record=record,
         revisions=revisions,

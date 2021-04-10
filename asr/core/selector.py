@@ -95,7 +95,7 @@ def get_attribute(obj, attrs):
         else:
             try:
                 obj = obj[attr]
-            except (TypeError, KeyError):
+            except (TypeError, KeyError, AttributeError):
                 raise NoSuchAttribute
 
     return obj
