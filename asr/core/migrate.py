@@ -98,6 +98,19 @@ class DeletedAttribute(Difference):
     def revert(self, obj: typing.Any):
         self.attribute.set(obj, self.value)
 
+
+@dataclass
+class NewValue(Difference):
+    new_value: typing.Any
+    old_value: typing.Any
+
+    def apply(self, obj: typing.Any):
+        self.attribute.set(obj, self.new_value)
+
+    def revert(self, obj: typing.Any):
+        self.attribute.set(obj, self.old_value)
+
+
 @dataclass
 class Attribute:
     """Class that represents an object attribute."""
@@ -166,10 +179,10 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
     if prepend is None:
         prepend = AttributeSequence()
     differences = []
-    attrs1, values1 = get_attributes_and_values(obj1)
-    attrs2, values2 = get_attributes_and_values(obj2)
-    attrs_and_values1 = {attr: value for attr, value in zip(attrs1, values1)}
-    attrs_and_values2 = {attr: value for attr, value in zip(attrs2, values2)}
+    attrs_and_values1 = get_attributes_and_values(obj1)
+    attrs_and_values2 = get_attributes_and_values(obj2)
+    attrs1 = set(attrs_and_values1)
+    attrs2 = set(attrs_and_values2)
     deleted_attrs = attrs1 - attrs2
     new_attrs = attrs2 - attrs2
 
@@ -194,7 +207,7 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
         value2 = attrs_and_values2[attr]
         if type(value1) != type(value2):
             differences.append(
-                Difference(
+                NewValue(
                     attributes=prepend + attr,
                     old=value1,
                     new=value2,
@@ -208,21 +221,20 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
 
 
 def get_attributes_and_values(obj):
-    attributes = []
-    values = []
+    attributes_and_values = {}
     if isinstance(obj, collections.abc.Iterable):
         for name in obj:
-            attributes.append(AttributeSequence([Item(name)]))
-            values.append(obj[name])
+            attributes_and_values[AttributeSequence([Item(name)])] = obj[name]
     elif hasattr(obj, '__dict__'):
         for key, value in obj.__dict__.items():
-            attributes.append(AttributeSequence([Attribute(key)]))
-            values.append(value)
+            attributes_and_values[AttributeSequence([Attribute(key)])] = value
     elif hasattr(obj, '__slots__'):
         for key in obj.__slots__:
             value = getattr(obj, key)
-            attributes.append(AttributeSequence([Attribute(key)]))
-            values.append(value)
+            attributes_and_values[AttributeSequence([Attribute(key)])] = value
+
+    return attributes_and_values
+
 
 @dataclass
 class Revision:
@@ -348,12 +360,12 @@ class RecordMigration:
 
     initial_record: Record
     migrated_record: Record
-    applied_migrations: typing.List[Migration]
+    revisions: typing.List[Revision]
     errors: typing.List[typing.Tuple[Migration, Exception]]
 
-    def has_migrations(self):
+    def has_revisions(self):
         """Has migrations to apply."""
-        return bool(self.applied_migrations)
+        return bool(self.revisions)
 
     def has_errors(self):
         """Has failed migrations."""
@@ -363,20 +375,23 @@ class RecordMigration:
         """Apply record migration to a cache."""
         cache.update(self.migrated_record)
 
+    def __bool__(self):
+        return self.has_revisions()
+
     def __str__(self):
-        nmig = len(self.applied_migrations)
+        nrev = len(self.revisions)
         nerr = len(self.errors)
-        migrations_string = ' -> '.join([
-            str(migration) for migration in self.applied_migrations])
+        revisions_string = ' -> '.join([
+            str(migration) for migration in self.revisions])
         problem_string = (
             ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
         )
         return (
             f'UID=#{self.initial_record.uid[:8]} '
             + (f'name={self.initial_record.name}. ')
-            + (f'{nmig} migration(s). ' if nmig > 0 else '')
+            + (f'{nrev} revision(s). ' if nrev > 0 else '')
             + (f'{nerr} migration error(s)! ' if self.errors else '')
-            + (f'{migrations_string}. ' if nmig > 0 else '')
+            + (f'{revisions_string}. ' if nrev > 0 else '')
             + (f'{problem_string}.' if self.errors else '')
         )
 

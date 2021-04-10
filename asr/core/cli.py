@@ -471,7 +471,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
 
     for record in cache.select():
         record_migration = make_record_migration(record, make_migrations)
-        if record_migration.has_migrations():
+        if record_migration:
             nmigrations += 1
             record_migrations.append(record_migration)
 
@@ -479,7 +479,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
             nerrors += 1
             erroneous_migrations.append(record_migration)
 
-        if not (record_migration.has_migrations()
+        if not (record_migration
                 or record_migration.has_errors()):
             nup_to_date += 1
 
