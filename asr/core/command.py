@@ -79,7 +79,7 @@ def option(*args, **kwargs):
         param = {'argtype': 'option',
                  'alias': args,
                  'name': name,
-                 'make_selector': None}
+                 'matcher': None}
         param.update(kwargs)
         _add_param(func, param)
         return func
@@ -95,7 +95,7 @@ def argument(name, **kwargs):
         param = {'argtype': 'argument',
                  'alias': (name, ),
                  'name': name,
-                 'make_selector': None}
+                 'matcher': None}
         param.update(kwargs)
         _add_param(func, param)
         return func
@@ -403,19 +403,8 @@ class ASRCommand:
 
         myparams = self.get_parameters()
 
-        def make_selector(run_specification):
-            selector = Selector()
-
-            selector.run_specification.name = selector.EQ(run_specification.name)
-            selector.run_specification.version = selector.EQ(run_specification.version)
-            for param in myparams:
-                name = param['name']
-                setattr(selector, f'parameters.{name}',
-                        myparams[name]['make_selector'](parameters[name]))
-            return selector
-
         @register_dependencies.register
-        @cache(make_selector=None)
+        @cache(make_selector=functools.partial(make_selector, myparams=myparams))
         @register_metadata()
         @register_dependencies()
         @isolated_work_dir()
@@ -517,7 +506,7 @@ def setup_cli(wrapped, wrapper, defparams, parameters):
         alias = param.pop('alias')
         argtype = param.pop('argtype')
         name2 = param.pop('name')
-        param.pop('make_selector')
+        param.pop('matcher')
         assert name == name2
         assert name in parameters
         if 'default' in param:
@@ -552,3 +541,22 @@ def apply_defaults(signature, *args, **kwargs):
     bound_arguments.apply_defaults()
     params = copy.deepcopy(dict(bound_arguments.arguments))
     return params
+
+
+def make_selector(run_specification, myparams):
+    """Make selector for matching previous records."""
+    selector = Selector()
+
+    selector.run_specification.name = selector.EQ(run_specification.name)
+    selector.run_specification.version = selector.EQ(run_specification.version)
+    selector.run_specification.parameters = \
+        lambda value: set(value.keys()) == set(
+            run_specification.parameters.keys())
+
+    for name, param in myparams.items():
+        matcher = param['matcher']
+        if matcher is None:
+            matcher = selector.EQ
+        setattr(selector, f'parameters.{name}',
+                matcher(run_specification.parameters[name]))
+    return selector
