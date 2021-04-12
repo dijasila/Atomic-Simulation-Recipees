@@ -1,7 +1,7 @@
 """Electronic ground state properties."""
 from ase import Atoms
 from asr.core import (
-    command, option, DictStr, ASRResult, prepare_result, AtomsFile,
+    command, option, DictStr, ASRResult, prepare_result, AtomsFile, calcopt,
 )
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
@@ -38,7 +38,7 @@ class GroundStateCalculationResult(ASRResult):
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@calcopt
 def calculate(
         atoms: Atoms,
         calculator: dict = {

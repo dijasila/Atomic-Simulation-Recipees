@@ -1,3 +1,4 @@
+from .comparators import comparators
 from .command import option
 from .types import AtomsFile, DictStr
 
@@ -17,4 +18,5 @@ def atomsopt(function=None, *,
 
 
 calcopt = option('-c', '--calculator',
-                 help='Calculator params.', type=DictStr())
+                 help='Calculator params.', type=DictStr(),
+                 matcher=comparators.CALCULATORSPEC)

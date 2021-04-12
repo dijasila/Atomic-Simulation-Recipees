@@ -559,4 +559,5 @@ def make_selector(run_specification, myparams):
             matcher = selector.EQ
         setattr(selector, f'parameters.{name}',
                 matcher(run_specification.parameters[name]))
+    print(selector)
     return selector
