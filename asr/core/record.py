@@ -42,6 +42,8 @@ class Record:
 
     @property
     def revision(self):
+        if not self.history:
+            return None
         return self.history.latest_revision.uid
 
     @property

@@ -34,7 +34,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     dependencies = record.dependencies
     cache = get_cache()
     dep_records = [
-        cache.get(uid=uid) for uid in dependencies
+        cache.get(uid=dependency.uid, revision=dependency.revision)
+        for dependency in dependencies
     ]
     dep_names = [dep_record.run_specification.name
                  for dep_record in dep_records]

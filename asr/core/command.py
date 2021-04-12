@@ -78,7 +78,8 @@ def option(*args, **kwargs):
                                'with -- and matches a function argument.'))
         param = {'argtype': 'option',
                  'alias': args,
-                 'name': name}
+                 'name': name,
+                 'make_selector': None}
         param.update(kwargs)
         _add_param(func, param)
         return func
@@ -93,7 +94,8 @@ def argument(name, **kwargs):
         assert 'default' not in kwargs, 'Arguments do not support defaults!'
         param = {'argtype': 'argument',
                  'alias': (name, ),
-                 'name': name}
+                 'name': name,
+                 'make_selector': None}
         param.update(kwargs)
         _add_param(func, param)
         return func
@@ -399,8 +401,21 @@ class ASRCommand:
 
         cache = self.cache
 
+        myparams = self.get_parameters()
+
+        def make_selector(run_specification):
+            selector = Selector()
+
+            selector.run_specification.name = selector.EQ(run_specification.name)
+            selector.run_specification.version = selector.EQ(run_specification.version)
+            for param in myparams:
+                name = param['name']
+                setattr(selector, f'parameters.{name}',
+                        myparams[name]['make_selector'](parameters[name]))
+            return selector
+
         @register_dependencies.register
-        @cache()
+        @cache(make_selector=None)
         @register_metadata()
         @register_dependencies()
         @isolated_work_dir()
@@ -502,6 +517,7 @@ def setup_cli(wrapped, wrapper, defparams, parameters):
         alias = param.pop('alias')
         argtype = param.pop('argtype')
         name2 = param.pop('name')
+        param.pop('make_selector')
         assert name == name2
         assert name in parameters
         if 'default' in param:

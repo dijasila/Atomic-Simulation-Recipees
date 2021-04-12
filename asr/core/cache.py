@@ -239,32 +239,37 @@ class Cache:
         selector = self.make_selector(selector=selector, equals=equals)
         return self.backend.remove(selector)
 
-    def wrapper(self, func):
-        def wrapped(run_specification):
+    def __call__(self, make_selector=None):
+        if make_selector is None:
+            make_selector = default_make_selector
 
-            equals = {
-                'run_specification.name': run_specification.name,
-                'run_specification.parameters': run_specification.parameters,
-                'run_specification.version': run_specification.version,
-            }
-            sel = self.make_selector(equals=equals)
+        def wrapper(func):
+            def wrapped(run_specification):
+                sel = make_selector(run_specification)
+                if self.has(selector=sel):
+                    run_record = self.get(selector=sel)
+                    print(f'{run_specification.name}: '
+                          f'Found cached record.uid={run_record.uid}')
+                else:
+                    run_record = func(run_specification)
+                    self.add(run_record)
 
-            if self.has(selector=sel):
-                run_record = self.get(selector=sel)
-                print(f'{run_specification.name}: '
-                      f'Found cached record.uid={run_record.uid}')
-            else:
-                run_record = func(run_specification)
-                self.add(run_record)
+                return run_record
+            return wrapped
 
-            return run_record
-        return wrapped
-
-    def __call__(self):
-        return self.wrapper
+        return wrapper
 
     def __contains__(self, record: Record):
         return self.has(uid=record.uid)
+
+
+def default_make_selector(run_specification):
+    selector = Selector()
+    selector.run_specification.name = selector.EQ(run_specification.name)
+    selector.run_specification.parameters = \
+        selector.EQ(run_specification.parameters)
+    selector.run_specification.version = selector.EQ(run_specification.version)
+    return selector
 
 
 class MemoryBackend:
