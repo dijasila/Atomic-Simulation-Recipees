@@ -83,8 +83,8 @@ def hse(atoms, calculator, kptdensity, emptybands):
     from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)
-    gsrecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = gsrecord.result.calculation.load(parallel={'band': 1, 'kpt': 1})
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = gsresult.calculation.load(parallel={'band': 1, 'kpt': 1})
     atoms = calc.get_atoms()
     pbc = atoms.pbc.tolist()
     ND = np.sum(pbc)
@@ -165,7 +165,7 @@ def MP_interpolate(
         bscalculator=bscalculator,
         kptpath=kptpath,
         npoints=npoints,
-    ).result
+    )
     path = results_bandstructure['bs_nosoc']['path']
     e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
 
@@ -185,7 +185,7 @@ def MP_interpolate(
         bscalculator=bscalculator,
         kptpath=kptpath,
         npoints=npoints,
-    ).result
+    )
     calc = bscalculateres.calculation.load()
     theta, phi = get_spin_axis(
         atoms=atoms,
@@ -395,7 +395,7 @@ def main(
         calculator=calculator,
         kptdensity=kptdensity,
         emptybands=emptybands,
-    ).result
+    )
 
     calc = results_hse.calculation.load()
     data = results_hse['hse_eigenvalues']

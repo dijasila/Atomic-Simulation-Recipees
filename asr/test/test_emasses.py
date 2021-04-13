@@ -51,7 +51,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    results = main(atoms=test_material, calculator=fast_calc).result
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
 
@@ -79,7 +79,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    results = main(atoms=test_material, calculator=fast_calc).result
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
     # check location of minmax

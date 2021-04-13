@@ -161,11 +161,11 @@ def main(
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        rec = gscalculate(atoms=atoms, calculator=calculator)
-        calc_old = rec.result.calculation.load()
+        res = gscalculate(atoms=atoms, calculator=calculator)
+        calc_old = res.calculation.load()
         nval = calc_old.wfs.nvalence
 
-        calc = rec.result.calculation.load(
+        calc = res.calculation.load(
             txt='es.txt',
             fixdensity=True,
             nbands=(bandfactor + 1) * nval,

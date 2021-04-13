@@ -17,7 +17,7 @@ def test_fermisurface(
     result = main(
         atoms=BN,
         calculator=fast_calc,
-    ).result
+    )
 
     fermi_wave_vector = (2 * fermi_level / Hartree)**0.5 / Bohr
 

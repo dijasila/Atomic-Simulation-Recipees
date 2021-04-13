@@ -132,7 +132,7 @@ def main(
 
     ndim = sum(atoms.pbc)
     assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
-    rec = gscalculate(
+    res = gscalculate(
         atoms=atoms,
         calculator=calculator,
     )
@@ -140,7 +140,7 @@ def main(
         atoms=atoms,
         calculator=calculator,
     )
-    calc = rec.result.calculation.load(parallel=False)
+    calc = res.calculation.load(parallel=False)
     eigs_km, ef, s_kvm = calc2eigs(
         calc,
         return_spin=True,
@@ -149,7 +149,7 @@ def main(
     )
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
-    calc = rec.result.calculation.load()
+    calc = res.calculation.load()
     s_mk = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator)].T
 
     A_cv = calc.atoms.get_cell()

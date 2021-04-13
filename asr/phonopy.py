@@ -109,9 +109,9 @@ def calculate(
 
     calc = construct_calculator(calculator)
 
-    magstaterec = magstate(atoms=atoms, calculator=magstatecalculator)
-    if magstaterec.result.is_magnetic:
-        magmoms_m = magstate.result.magmoms
+    magstateres = magstate(atoms=atoms, calculator=magstatecalculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
@@ -277,7 +277,7 @@ def main(
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    calculaterec = calculate(
+    calculateres = calculate(
         atoms=atoms,
         d=d,
         fsname=fsname,
@@ -285,7 +285,7 @@ def main(
         calculator=calculator,
         magstatecalculator=magstatecalculator,
     )
-    params = calculaterec.parameters
+    params = calculateres.parameters
     sc = params["sc"]
     d = params["d"]
     dist_max = params["dist_max"]
@@ -328,7 +328,7 @@ def main(
 
         filename = fsname + ".{0}{1}.json".format(a, sign)
 
-        forces = calculaterec.result[filename]
+        forces = calculateres[filename]
         # Number of forces equals to the number of atoms in the supercell
         assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 

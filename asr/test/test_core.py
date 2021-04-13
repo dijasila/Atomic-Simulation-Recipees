@@ -39,7 +39,7 @@ def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
 @pytest.mark.ci
 def test_recipe_setting_overriding_defaults(asr_tmpdir, recipe):
     """Test that defaults are correctly overridden when setting parameter."""
-    record = recipe(3, 3)
+    record = recipe.get(3, 3)
     assert record.parameters == Parameters({'nx': 3, 'ny': 3})
     assert record.result['x'] == [3] * 3
     assert record.result['y'] == [4] * 3

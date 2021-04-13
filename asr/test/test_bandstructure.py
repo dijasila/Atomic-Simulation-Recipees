@@ -14,7 +14,7 @@ def test_bandstructure_main(asr_tmpdir_w_params, mockgpaw, test_material,
     structinfo(atoms=test_material)
 
     npoints = 20
-    rec = main(
+    res = main(
         atoms=test_material,
         npoints=npoints,
         calculator=fast_calc,
@@ -25,8 +25,8 @@ def test_bandstructure_main(asr_tmpdir_w_params, mockgpaw, test_material,
         },
     )
 
-    assert len(rec.result.bs_soc['path'].kpts) == npoints
-    assert len(rec.result.bs_nosoc['path'].kpts) == npoints
+    assert len(res.bs_soc['path'].kpts) == npoints
+    assert len(res.bs_nosoc['path'].kpts) == npoints
 
     write('structure.json', test_material)
     get_webcontent()

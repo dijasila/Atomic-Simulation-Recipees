@@ -31,13 +31,13 @@ def calculate(
     from ase.parallel import world
     from pathlib import Path
 
-    rec = gscalculate(atoms=atoms, calculator=calculator)
-    calc_old = rec.result.calculation.load()
+    res = gscalculate(atoms=atoms, calculator=calculator)
+    calc_old = res.calculation.load()
     kpts = get_kpts_size(atoms=calc_old.atoms, density=kptdensity)
     nval = calc_old.wfs.nvalence
     filename = "es_plasma.gpw"
     try:
-        calc = rec.result.calculation.load(
+        calc = res.calculation.load(
             fixdensity=True,
             kpts=kpts,
             nbands=2 * nval,

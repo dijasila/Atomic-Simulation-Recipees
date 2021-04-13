@@ -199,26 +199,25 @@ def main(
                 strained_atoms = make_strained_atoms(
                     atoms,
                     strain_percent=sign * strain_percent,
-                    i=i, j=j).result
+                    i=i, j=j)
 
                 if clamped:
                     atoms_for_pol = strained_atoms
                 else:
-                    rec = relax(
+                    relaxres = relax(
                         atoms=strained_atoms,
                         calculator=relaxcalculator,
                         fixcell=True,
                         d3=False,
                         allow_symmetry_breaking=True,
                     )
-                    atoms_for_pol = rec.result.atoms
+                    atoms_for_pol = relaxres.atoms
 
-                polrec = formalpolarization(
+                polresults = formalpolarization(
                     atoms=atoms_for_pol,
                     calculator=calculator,
                 )
 
-                polresults = polrec.result
                 phase_sc[s] = polresults['phase_c']
 
             dphase_c = phase_sc[1] - phase_sc[0]

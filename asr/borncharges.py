@@ -104,11 +104,11 @@ def main(
     phase_ascv = np.zeros((len(atoms), 2, 3, 3), float)
 
     for ia, iv, sign, displaced_atoms in generate_displacements(
-            atoms, displacement=displacement).result:
+            atoms, displacement=displacement):
         polresults = formalpolarization(
             atoms=displaced_atoms,
             calculator=calculator
-        ).result
+        )
         phase_c = polresults['phase_c']
         isign = [None, 1, 0][sign]
         phase_ascv[ia, isign, :, iv] = phase_c

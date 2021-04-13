@@ -30,7 +30,7 @@ def test_gw(asr_tmpdir_w_params, test_material,
             calculator=fast_calc,
             npoints=10,
             kptdensity=2,
-        ).result
+        )
         assert results['gap_gw'] == pytest.approx(1)
         structinfo(atoms=test_material)
         test_material.write("structure.json")

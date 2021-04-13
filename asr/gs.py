@@ -176,13 +176,13 @@ def bz_with_band_extremums(row, fname):
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = row.cache.select(name='asr.gs:main')[0].result
+    gsresults = row.cache.select(name='asr.gs:main')[0]
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
 
     structrecords = row.cache.select(name='asr.structureinfo:main')
     if structrecords:
-        structresult = structrecords[0].result
+        structresult = structrecords[0]
         op_scc = structresult['spglib_dataset']['rotations']
     else:
         op_scc = np.array([np.eye(3, dtype=float)])
@@ -539,8 +539,8 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    calculaterecord = calculate(atoms=atoms, calculator=calculator)
-    calc = calculaterecord.result.calculation.load(parallel=False)
+    calculateresult = calculate(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load(parallel=False)
     calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information

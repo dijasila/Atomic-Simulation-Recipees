@@ -144,8 +144,8 @@ def gs(
     import numpy as np
 
     # check that the system is a semiconductor
-    rec = calculategs(atoms=atoms, calculator=calculator)
-    calc = rec.result.calculation.load()
+    res = calculategs(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = "
@@ -173,7 +173,7 @@ def gs(
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-    calc = rec.result.calculation.load()
+    calc = res.calculation.load()
     calc = calc.fixed_density(
         txt='gs_gw.txt',
         kpts=kpts,
@@ -208,8 +208,8 @@ def gw(atoms: Atoms,
     import numpy as np
 
     # check that the system is a semiconductor
-    rec = calculategs(atoms=atoms, calculator=calculator)
-    calc = rec.result.calculation.load()
+    res = calculategs(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
 
     if len(atoms) > 4:
@@ -220,7 +220,7 @@ def gw(atoms: Atoms,
         raise Exception("GW: Only for semiconductors, PBE gap = "
                         + str(pbe_gap) + " eV is too small!")
 
-    rec = gs(
+    res = gs(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -249,7 +249,7 @@ def gw(atoms: Atoms,
 
     lb, ub = max(calc.wfs.nvalence // 2 - 8, 0), calc.wfs.nvalence // 2 + 4
 
-    calc = G0W0(calc=rec.result['gs_gw.gpw'],
+    calc = G0W0(calc=res['gs_gw.gpw'],
                 bands=(lb, ub),
                 ecut=ecut,
                 ecut_extrapolation=True,
@@ -308,14 +308,13 @@ def empirical_mean_z(
     """
     import numpy as np
 
-    rec = gw(
+    gwresults = gw(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
         mode=mode,
     )
-    gwresults = rec.result
     if not correctgw:
         return gwresults
 
@@ -490,13 +489,13 @@ def main(
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
 
-    gsrec = gs(
+    gsres = gs(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
     )
-    calc = GPAW(gsrec.result['gs_gw_nowfs.gpw'], txt=None)
+    calc = GPAW(gsres['gs_gw_nowfs.gpw'], txt=None)
 
     gwresults = empirical_mean_z(
         atoms=atoms,
@@ -506,7 +505,7 @@ def main(
         mode=mode,
         correctgw=correctgw,
         empz=empz,
-    ).result
+    )
     gwresults = SimpleNamespace(**gwresults)
     lb = gwresults.minband
     ub = gwresults.maxband

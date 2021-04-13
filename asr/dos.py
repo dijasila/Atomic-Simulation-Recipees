@@ -17,10 +17,10 @@ def main(
     from pathlib import Path
     from gpaw import GPAW
 
-    record = gscalculate(atoms=atoms, calculator=calculator)
+    result = gscalculate(atoms=atoms, calculator=calculator)
     name = 'dos.gpw'
     if not Path(name).is_file():
-        calc = record.result.calculation.load(
+        calc = result.calculation.load(
             kpts=dict(density=kptdensity),
             nbands='300%',
             convergence={'bands': -10},

@@ -306,7 +306,7 @@ def main(
         calculator=phononcalculator,
         n=n,
         mingo=mingo,
-    ).result
+    )
 
     u_ql = phresults["modes_kl"]
     q_qc = phresults["q_qc"]
@@ -365,7 +365,7 @@ def main(
         ecut=ecut,
         xc=xc,
         bandfactor=bandfactor,
-    ).result
+    )
     alphax_el = elecdict["alphax_el"]
     alphay_el = elecdict["alphay_el"]
     alphaz_el = elecdict["alphaz_el"]

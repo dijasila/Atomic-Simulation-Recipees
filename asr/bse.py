@@ -107,8 +107,8 @@ def calculate(
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
 
-    gsrec = gscalculate(atoms=atoms, calculator=calculator)
-    calc_gs = gsrec.result.calculation.load()
+    gsres = gscalculate(atoms=atoms, calculator=calculator)
+    calc_gs = gsres.calculation.load()
     spin = calc_gs.get_spin_polarized()
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
@@ -150,7 +150,7 @@ def calculate(
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
 
     if not Path('gs_bse.gpw').is_file():
-        calc = gsrec.result.calculation.load(
+        calc = gsres.calculation.load(
             txt='gs_bse.txt',
             fixdensity=True,
             nbands=int(nbands * 1.5),
@@ -361,7 +361,7 @@ def main(
     import numpy as np
     from pathlib import Path
 
-    rec = calculate(
+    res = calculate(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -372,30 +372,30 @@ def main(
         nc_s=nc_s,
     )
 
-    alphax_w = np.loadtxt(rec.result.bse_polx, delimiter=',')
+    alphax_w = np.loadtxt(res.bse_polx, delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
 
-    if Path(rec.result.bse_poly).is_file():
-        alphay_w = np.loadtxt(rec.result.bse_poly, delimiter=',')
+    if Path(res.bse_poly).is_file():
+        alphay_w = np.loadtxt(res.bse_poly, delimiter=',')
         data['bse_alphay_w'] = alphay_w.astype(np.float32)
     else:
         data['bse_alphay_w'] = None
 
-    if Path(rec.result.bse_polz).is_file():
-        alphaz_w = np.loadtxt(rec.result.bse_polz, delimiter=',')
+    if Path(res.bse_polz).is_file():
+        alphaz_w = np.loadtxt(res.bse_polz, delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
     else:
         data['bse_alphaz_w'] = None
 
-    if Path(rec.result.bse_eigx).is_file():
-        E = np.loadtxt(rec.result.bse_eigx)[0, 1]
+    if Path(res.bse_eigx).is_file():
+        E = np.loadtxt(res.bse_eigx)[0, 1]
 
         magstateresults = calcmagstate(
-            atoms=atoms, calculator=calculator).result
+            atoms=atoms, calculator=calculator)
         magstate = magstateresults['magstate']
 
         gsresults = gsmain(
-            atoms=atoms, calculator=calculator).result
+            atoms=atoms, calculator=calculator)
 
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E

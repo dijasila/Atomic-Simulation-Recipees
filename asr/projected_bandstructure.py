@@ -129,7 +129,7 @@ def main(
         npoints: int = bscalculate.defaults.npoints,
 ) -> Result:
     # Get bandstructure calculation
-    rec = bscalculate(
+    res = bscalculate(
         atoms=atoms,
         calculator=calculator,
         bscalculator=bscalculator,
@@ -137,7 +137,7 @@ def main(
         npoints=npoints,
     )
 
-    calc = rec.result.calculation.load()
+    calc = res.calculation.load()
     # calc = GPAW('bs.gpw', txt=None)
 
     results = {}

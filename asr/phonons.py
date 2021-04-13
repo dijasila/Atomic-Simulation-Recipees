@@ -75,9 +75,9 @@ def calculate(
     world.barrier()
 
     # Set initial magnetic moments
-    magstaterec = magstate(atoms=atoms, calculator=calculator)
-    if magstaterec.result.is_magnetic:
-        magmoms_m = magstate.result.magmoms
+    magstateres = magstate(atoms=atoms, calculator=calculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
@@ -243,7 +243,7 @@ def main(
         n: int = 2,
         mingo: bool = True,
 ) -> Result:
-    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n).result
+    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
     for extfile in calculateresult.forcefiles:
         extfile.restore()
     nd = sum(atoms.get_pbc())

@@ -75,10 +75,10 @@ def calculate(
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
-    rec = gscalculate(atoms=atoms, calculator=calculator)
+    gsres = gscalculate(atoms=atoms, calculator=calculator)
 
     if nd == 2:
-        calc = rec.result.calculation.load(
+        calc = gsres.calculation.load(
             kpts=(kperp, kpar, 1),
             fixdensity=True,
             symmetry='off',
@@ -98,7 +98,7 @@ def calculate(
 
     elif nd == 3:
         """kx = 0"""
-        calc = rec.result.calculation.load(
+        calc = gsres.calculation.load(
             kpts=(1, kperp, kpar),
             fixdensity=True,
             symmetry='off',

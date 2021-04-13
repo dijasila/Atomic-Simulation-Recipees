@@ -188,9 +188,9 @@ def main(
     """
     # XXX Add possibility of D3 correction again
     # TODO: Make separate recipe for calculating vdW correction to total energy
-    record = groundstate(atoms=atoms, calculator=calculator)
+    result = groundstate(atoms=atoms, calculator=calculator)
     usingd3 = False
-    energy = record.result.etot
+    energy = result.etot
 
     if usingd3:
         mymethod = 'DFT+D3'

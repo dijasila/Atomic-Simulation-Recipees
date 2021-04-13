@@ -246,14 +246,14 @@ def main(atoms: Atoms,
             strained_atoms = make_strained_atoms(
                 atoms,
                 strain_percent=sign * strain_percent,
-                i=i, j=j).result
-            relaxrecord = relax(
+                i=i, j=j)
+            relaxresult = relax(
                 strained_atoms,
                 calculator=calculator,
                 fixcell=True,
                 allow_symmetry_breaking=True,
             )
-            stress = relaxrecord.result.stress
+            stress = relaxresult.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 

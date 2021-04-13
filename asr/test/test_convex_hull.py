@@ -56,7 +56,7 @@ def test_convex_hull(refdb, mockgpaw, get_webcontent,
         atoms=atoms,
         databases=[connect('references.db')],
         calculator=fast_calc,
-    ).result
+    )
     assert results['hform'] == -sum(energies[element]
                                     for element in metal_atoms) / nmetalatoms
 

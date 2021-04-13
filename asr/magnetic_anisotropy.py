@@ -24,12 +24,12 @@ correlations, 2D Mater. 6 045018 (2019)""",
 
 
 def get_spin_axis(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator).result
+    anis = main(atoms=atoms, calculator=calculator)
     return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
 def get_spin_index(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator).result
+    anis = main(atoms=atoms, calculator=calculator)
     axis = anis['spin_axis']
     if axis == 'z':
         index = 2
@@ -134,7 +134,7 @@ def main(atoms: Atoms,
 
     magstateresults = magstate(
         atoms=atoms,
-        calculator=calculator).result
+        calculator=calculator)
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
@@ -151,8 +151,8 @@ def main(atoms: Atoms,
         results['spin_axis'] = 'z'
         return Result(data=results)
 
-    calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = calculaterecord.result.calculation.load()
+    calculateresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load()
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,

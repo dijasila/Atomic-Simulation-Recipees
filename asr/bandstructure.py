@@ -93,8 +93,8 @@ def calculate(
         path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                    pbc=atoms.pbc)
 
-    record = calculategs(atoms=atoms, calculator=calculator)
-    calculation = record.result.calculation
+    result = calculategs(atoms=atoms, calculator=calculator)
+    calculation = result.calculation
     bscalculator['kpts'] = path
     calc = calculation.load(**bscalculator)
     calc.get_potential_energy()
@@ -553,16 +553,16 @@ def main(
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
-    bsrecord = calculate(
+    bsresult = calculate(
         atoms=atoms,
         calculator=calculator,
         bscalculator=bscalculator,
         npoints=npoints,
         kptpath=kptpath,
     )
-    gsrecord = calculategs(atoms=atoms, calculator=calculator)
-    ref = gsrecord.result.calculation.load().get_fermi_level()
-    calc = bsrecord.result.calculation.load()
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    ref = gsresult.calculation.load().get_fermi_level()
+    calc = bsresult.calculation.load()
     atoms = calc.atoms
     path = calc.parameters.kpts
     if not isinstance(path, BandPath):
@@ -581,8 +581,7 @@ def main(
     bsresults = bs.todict()
 
     # Save Fermi levels
-    maingsrecord = maings(atoms=atoms, calculator=calculator)
-    gsresults = maingsrecord.result
+    gsresults = maings(atoms=atoms, calculator=calculator)
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
@@ -598,7 +597,7 @@ def main(
     # color spins which doesn't always happen due to slightly broken
     # symmetries, hence tolerance=1e-2.
     # XXX This is only compatible with GPAW
-    bsfile = bsrecord.result.calculation.paths[0]
+    bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
         bsfile, soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)

@@ -26,8 +26,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
                   'kpts': {'density': 2, 'gamma': True},
                   'xc': 'PBE',
                   'mode': {'name': 'pw', 'ecut': 800}}
-    calculaterecord = calculate(test_material, calculator)
-    record = main(
+    calculateresult = calculate(test_material, calculator)
+    record = main.get(
         atoms=test_material,
         calculator=calculator)
     results = record.result
@@ -41,7 +41,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
                  for dep_record in dep_records]
     assert (set(dep_names)
             == set(['asr.gs:calculate', 'asr.magnetic_anisotropy:main']))
-    gsfile = calculaterecord.result.calculation.paths[0]
+    gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
     gs['atoms'].has('initial_magmoms')
@@ -85,7 +85,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     atoms = std_test_materials[0]
     atoms.write('structure.json')
 
-    record = main(atoms=atoms)
+    record = main.get(atoms=atoms)
     result = record.result
     row = get_row_from_folder('.')
     panels = result.format_as('ase_webpanel', row, {})
@@ -119,9 +119,9 @@ def test_gs_integration_gpaw(asr_tmpdir, atoms, calculator, results):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.gs import main as groundstate
     from asr.magstate import main as magstate
-    gsresults = groundstate(atoms=atoms, calculator=calculator).result
+    gsresults = groundstate(atoms=atoms, calculator=calculator)
 
     assert gsresults['gap'] == results['gap']
 
-    magstateresults = magstate(atoms=atoms, calculator=calculator).result
+    magstateresults = magstate(atoms=atoms, calculator=calculator)
     assert magstateresults["magstate"] == results['magstate']
