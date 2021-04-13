@@ -457,12 +457,15 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
-    # The getattr trick above kills pickle.
-    # We need to override getstate/setstate to prevent recursion error.
     def __getstate__(self):
+        """Help pickle overcome the troubles due to __getattr__.
+
+        We need to provide getstate/setstate to prevent recursion error
+        when unpickling."""
         return vars(self)
 
     def __setstate__(self, dct):
+        """See __getstate__."""
         self.__dict__.update(dct)
 
     def __contains__(self, key):
@@ -488,17 +491,17 @@ def parse_row_data(data: dict):
     return newdata
 
 
-import multiprocessing
-def generate_plots(row, prefix, plot_descriptions):
-    with multiprocessing.Pool(1) as pool:
-        return _generate_plots(row, prefix, plot_descriptions, pool)
-
-
 def runplot_clean(plotfunction, *args):
     plt.close('all')
     value = plotfunction(*args)
     plt.close('all')
     return value
+
+
+def generate_plots(row, prefix, plot_descriptions):
+    import multiprocessing
+    with multiprocessing.Pool(1) as pool:
+        return _generate_plots(row, prefix, plot_descriptions, pool)
 
 
 def _generate_plots(row, prefix, plot_descriptions, pool):
