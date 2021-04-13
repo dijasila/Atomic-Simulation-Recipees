@@ -457,6 +457,14 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
+    # The getattr trick above kills pickle.
+    # We need to override getstate/setstate to prevent recursion error.
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+
     def __contains__(self, key):
         """Wrap contains of atomsrow."""
         return self._row.__contains__(key)
@@ -480,7 +488,20 @@ def parse_row_data(data: dict):
     return newdata
 
 
+import multiprocessing
 def generate_plots(row, prefix, plot_descriptions):
+    with multiprocessing.Pool(1) as pool:
+        return _generate_plots(row, prefix, plot_descriptions, pool)
+
+
+def runplot_clean(plotfunction, *args):
+    plt.close('all')
+    value = plotfunction(*args)
+    plt.close('all')
+    return value
+
+
+def _generate_plots(row, prefix, plot_descriptions, pool):
     missing = set()
     for desc in plot_descriptions:
         function = desc['function']
@@ -489,14 +510,16 @@ def generate_plots(row, prefix, plot_descriptions):
         for path in paths:
             if not path.is_file():
                 # Create figure(s) only once:
+                strpaths = [str(path) for path in paths]
                 try:
-                    function(row, *(str(path) for path in paths))
+                    args = [function, row] + strpaths
+                    pool.apply(runplot_clean, args)
                 except Exception:
                     if os.environ.get('ASRTESTENV', False):
                         raise
                     else:
                         traceback.print_exc()
-                plt.close('all')
+
                 for path in paths:
                     if not path.is_file():
                         path.write_text('')  # mark as missing
