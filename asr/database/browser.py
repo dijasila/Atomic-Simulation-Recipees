@@ -461,7 +461,8 @@ class RowWrapper:
         """Help pickle overcome the troubles due to __getattr__.
 
         We need to provide getstate/setstate to prevent recursion error
-        when unpickling."""
+        when unpickling.
+        """
         return vars(self)
 
     def __setstate__(self, dct):
