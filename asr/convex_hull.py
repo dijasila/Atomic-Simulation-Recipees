@@ -187,21 +187,11 @@ def main(
         List of filenames of databases.
 
     """
-    from asr.core import read_json
-
     # XXX Add possibility of D3 correction again
-    if not groundstate.select():
-        record = groundstate(atoms=atoms, calculator=calculator)
-        usingd3 = False
-        energy = record.result.etot
-
     # TODO: Make separate recipe for calculating vdW correction to total energy
-    for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
-        if Path(filename).is_file():
-            results = read_json(filename)
-            energy = results.get('etot')
-            usingd3 = results.metadata.params.get('d3', False)
-            break
+    record = groundstate(atoms=atoms, calculator=calculator)
+    usingd3 = False
+    energy = record.result.etot
 
     if usingd3:
         mymethod = 'DFT+D3'

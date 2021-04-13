@@ -72,7 +72,7 @@ def test_core(asr_tmpdir_w_params):
     assert '-h, --help    Show this message and exit.' in result.output
 
     a_recipe(nx=3)
-    record = a_recipe.get(**{'parameters.nx': 3})
+    record = a_recipe.get(nx=3)
 
     assert record
 

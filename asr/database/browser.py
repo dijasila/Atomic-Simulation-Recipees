@@ -748,9 +748,8 @@ def cache_webpanel(recipename, *selectors):
 
     def decorator(func):
         def wrapper(result, row, key_descriptions):
-            recipe = get_recipe_from_name(recipename)
             cache = row.cache
-            records = recipe.select(cache=cache)
+            records = cache.select(name=recipename)
 
             sortattrs = []
             signs = []

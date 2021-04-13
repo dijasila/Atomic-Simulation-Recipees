@@ -88,7 +88,7 @@ def calculate(
 
 
 @cache_webpanel(
-    'asr.gs@main',
+    'asr.gs:main',
     '+,calculator.mode.ecut',
     '+,calculator.kpts.density',
 )
@@ -170,18 +170,17 @@ def webpanel(result, row, key_descriptions):
 def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
-    from asr.structureinfo import main as structinfo
     import numpy as np
     ndim = sum(row.pbc)
     cell = Cell(row.cell)
     lat = cell.get_bravais_lattice(pbc=row.pbc)
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = main.select(cache=row.cache)[0].result
+    gsresults = row.cache.select(name='asr.gs:main')[0].result
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
 
-    structrecords = structinfo.select(cache=row.cache)
+    structrecords = row.cache.select(name='asr.structureinfo:main')
     if structrecords:
         structresult = structrecords[0].result
         op_scc = structresult['spglib_dataset']['rotations']

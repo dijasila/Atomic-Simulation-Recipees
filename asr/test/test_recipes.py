@@ -38,7 +38,7 @@ map_click_types = {AtomsFile: lambda x: Atoms,
 @pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_cli_types(asr_tmpdir, capsys, recipe):
     """Test that all parameters have been given types."""
-    params = recipe.get_parameters()
+    params = recipe.get_argument_descriptors()
 
     notypes = set()
     for param in params.values():
@@ -51,7 +51,7 @@ def test_recipe_cli_types(asr_tmpdir, capsys, recipe):
 @pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
     """Test that all parameters have been given types."""
-    params = recipe.get_parameters()
+    params = recipe.get_argument_descriptors()
 
     notypes = set()
     for param in params.values():

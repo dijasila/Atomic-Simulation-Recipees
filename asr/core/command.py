@@ -223,7 +223,7 @@ class ASRCommand:
                 defparams[key] = value.default
         return Parameters(parameters=defparams)
 
-    def get_parameters(self):
+    def get_argument_descriptors(self):
         """Get the parameters of this function."""
         return self.myparams
 
@@ -245,65 +245,29 @@ class ASRCommand:
         return self._wrapped_function
 
     def __call__(self, *args, **kwargs):
-        """Delegate to self.main."""
-        return self.main(*args, **kwargs)
+        """Delegate to self.get."""
+        return self.get(*args, **kwargs)
 
-    def make_selector(
-            self,
-            cache: Cache = None,
-            selector: Selector = None,
-            equals={},
-    ) -> Selector:
+    def prepare_parameters(self, *args, **kwargs):
+        parameters = apply_defaults(
+            self.get_signature(), *args, **kwargs)
+        parameters = Parameters(parameters=parameters)
+        for hook in self.argument_hooks:
+            parameters = hook(parameters)
 
-        if cache is None:
-            cache = self.cache
+        return parameters
 
-        selector = cache.make_selector(
-            selector=selector,
-            equals=equals,
+    def make_run_specification(self, parameters: Parameters):
+        run_specification = construct_run_spec(
+            name=obj_to_id(self.get_wrapped_function()),
+            parameters=parameters,
+            version=self.version,
+            codes=self.package_dependencies,
         )
+        return run_specification
 
-        selector.run_specification.name = selector.EQ(
-            obj_to_id(self.get_wrapped_function())
-        )
-        return selector
-
-    def get(self,
-            cache: typing.Optional[Cache] = None,
-            selector: typing.Optional[Selector] = None,
-            **equals):
-
-        if cache is None:
-            cache = self.cache
-
-        selector = self.make_selector(
-            cache=cache,
-            selector=selector,
-            equals=equals,
-        )
-
-        return cache.get(selector=selector)
-
-    def select(
-            self,
-            selector: typing.Optional[Selector] = None,
-            cache: typing.Optional[Cache] = None,
-            **equals,
-
-    ):
-        if cache is None:
-            cache = self.cache
-
-        selector = self.make_selector(
-            cache=cache,
-            selector=selector,
-            equals=equals,
-        )
-
-        return cache.select(selector=selector)
-
-    def main(self, *args, **kwargs):
-        """Return results from wrapped function.
+    def get(self, *args, **kwargs):
+        """Return record.
 
         This is the main function of an ASRCommand. It takes care of
         reading parameters, creating metadata, checksums etc. If you
@@ -386,25 +350,12 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        parameters = apply_defaults(
-            self.get_signature(), *args, **kwargs)
-        parameters = Parameters(parameters=parameters)
-        for hook in self.argument_hooks:
-            parameters = hook(parameters)
-
-        run_specification = construct_run_spec(
-            name=obj_to_id(self.get_wrapped_function()),
-            parameters=parameters,
-            version=self.version,
-            codes=self.package_dependencies,
-        )
-
+        parameters = self.prepare_parameters(*args, **kwargs)
+        run_specification = self.make_run_specification(parameters)
         cache = self.cache
 
-        myparams = self.get_parameters()
-
         @register_dependencies.register
-        @cache(make_selector=functools.partial(make_selector, myparams=myparams))
+        @cache(make_selector=self.make_selector)
         @register_metadata()
         @register_dependencies()
         @isolated_work_dir()
@@ -424,6 +375,30 @@ class ASRCommand:
 
         run_record = execute_run_spec(run_specification)
         return run_record
+
+    def has(self, *args, **kwargs):
+        parameters = self.prepare_parameters(*args, **kwargs)
+        run_spec = self.make_run_spec(parameters)
+        sel = self.make_selector(run_spec)
+        self.cache.has(selector=sel)
+
+    def make_selector(self, run_specification):
+        """Make selector for matching previous records."""
+        selector = Selector()
+
+        selector.run_specification.name = selector.EQ(run_specification.name)
+        selector.run_specification.version = selector.EQ(run_specification.version)
+        selector.run_specification.parameters = \
+            lambda value: set(value.keys()) == set(
+                run_specification.parameters.keys())
+
+        for name, param in self.get_argument_descriptors().items():
+            matcher = param['matcher']
+            if matcher is None:
+                matcher = selector.EQ
+            setattr(selector, f'parameters.{name}',
+                    matcher(run_specification.parameters[name]))
+        return selector
 
 
 def command(*decoargs, **decokwargs):
@@ -481,9 +456,9 @@ def get_recipes():
 def make_cli_command(asr_command: ASRCommand):
     command = setup_cli(
         asr_command.get_wrapped_function(),
-        asr_command.main,
+        asr_command.get,
         asr_command.defaults,
-        asr_command.get_parameters(),
+        asr_command.get_argument_descriptors(),
     )
     return command
 
@@ -543,21 +518,3 @@ def apply_defaults(signature, *args, **kwargs):
     return params
 
 
-def make_selector(run_specification, myparams):
-    """Make selector for matching previous records."""
-    selector = Selector()
-
-    selector.run_specification.name = selector.EQ(run_specification.name)
-    selector.run_specification.version = selector.EQ(run_specification.version)
-    selector.run_specification.parameters = \
-        lambda value: set(value.keys()) == set(
-            run_specification.parameters.keys())
-
-    for name, param in myparams.items():
-        matcher = param['matcher']
-        if matcher is None:
-            matcher = selector.EQ
-        setattr(selector, f'parameters.{name}',
-                matcher(run_specification.parameters[name]))
-    print(selector)
-    return selector
