@@ -480,6 +480,33 @@ def parse_row_data(data: dict):
     return newdata
 
 
+def generate_plots(row, prefix, plot_descriptions):
+    missing = set()
+    for desc in plot_descriptions:
+        function = desc['function']
+        filenames = desc['filenames']
+        paths = [Path(prefix + filename) for filename in filenames]
+        for path in paths:
+            if not path.is_file():
+                # Create figure(s) only once:
+                try:
+                    function(row, *(str(path) for path in paths))
+                except Exception:
+                    if os.environ.get('ASRTESTENV', False):
+                        raise
+                    else:
+                        traceback.print_exc()
+                plt.close('all')
+                for path in paths:
+                    if not path.is_file():
+                        path.write_text('')  # mark as missing
+                break
+        for path in paths:
+            if path.stat().st_size == 0:
+                missing.add(path)
+    return missing
+
+
 def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
@@ -567,29 +594,7 @@ def layout(row: AtomsRow,
         plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
-    missing = set()  # missing figures
-    for desc in plot_descriptions:
-        function = desc['function']
-        filenames = desc['filenames']
-        paths = [Path(prefix + filename) for filename in filenames]
-        for path in paths:
-            if not path.is_file():
-                # Create figure(s) only once:
-                try:
-                    function(row, *(str(path) for path in paths))
-                except Exception:
-                    if os.environ.get('ASRTESTENV', False):
-                        raise
-                    else:
-                        traceback.print_exc()
-                plt.close('all')
-                for path in paths:
-                    if not path.is_file():
-                        path.write_text('')  # mark as missing
-                break
-        for path in paths:
-            if path.stat().st_size == 0:
-                missing.add(path)
+    missing_figures = generate_plots(row, prefix, plot_descriptions)
 
     # We convert the page into ASE format
     asepage = []
@@ -603,7 +608,7 @@ def layout(row: AtomsRow,
             return block['rows']
         if block['type'] != 'figure':
             return True
-        if Path(prefix + block['filename']) in missing:
+        if Path(prefix + block['filename']) in missing_figures:
             return False
         return True
 
