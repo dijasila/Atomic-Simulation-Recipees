@@ -277,7 +277,7 @@ def main(
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    calculateres = calculate(
+    calculaterec = calculate.get(
         atoms=atoms,
         d=d,
         fsname=fsname,
@@ -285,7 +285,8 @@ def main(
         calculator=calculator,
         magstatecalculator=magstatecalculator,
     )
-    params = calculateres.parameters
+    calculateres = calculaterec.result
+    params = calculaterec.parameters
     sc = params["sc"]
     d = params["d"]
     dist_max = params["dist_max"]

@@ -33,13 +33,13 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
             [initial_magmoms] * len(test_material))
 
     test_material.write('unrelaxed.json')
-    result = main.cli([])
-    relaxed = result.atoms
+    record = main.cli([])
+    relaxed = record.result.atoms
 
     assert relaxed.has('initial_magmoms')
 
     if final_magmoms > 0.1:
-        assert all(result.magmoms == 1)
+        assert all(record.result.magmoms == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
 

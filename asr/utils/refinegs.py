@@ -6,8 +6,8 @@ from asr.utils.kpts import get_kpts_size
 def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw."""
     from asr.gs import calculate
-    rec = calculate(atoms=atoms, calculator=calculator)
-    calc = rec.result.calculation.load()
+    res = calculate(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
 
     kpts = get_kpts_size(atoms=calc.atoms, density=kptdensity)
     convbands = int(emptybands / 2)

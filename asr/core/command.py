@@ -245,7 +245,7 @@ class ASRCommand:
 
     def __call__(self, *args, **kwargs):
         """Delegate to self.get."""
-        return self.get(*args, **kwargs)
+        return self.get(*args, **kwargs).result
 
     def prepare_parameters(self, *args, **kwargs):
         parameters = apply_defaults(
