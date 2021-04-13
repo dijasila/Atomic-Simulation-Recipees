@@ -69,7 +69,7 @@ def main(database: str,
 
     # if not rmsd.done:
     rmsd_results = rmsd(database, comparison_keys=comparison_keys,
-                        skip_distance_calc=skip_distance_calc).result
+                        skip_distance_calc=skip_distance_calc)
     # rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']

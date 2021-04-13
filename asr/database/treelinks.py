@@ -112,12 +112,12 @@ def create_tree_links(folders):
     """
     print('INFO: Create links for the following folders:')
 
-    parent_uid = material_fingerprint(atoms=read(ATOMFILE)).result['uid']
+    parent_uid = material_fingerprint(atoms=read(ATOMFILE))['uid']
     uids = [parent_uid]
 
     for folder in folders:
         fingerprint_res = material_fingerprint(
-            atoms=read(folder / ATOMFILE)).result
+            atoms=read(folder / ATOMFILE))
         uid = fingerprint_res['uid']
         if uid not in uids:
             uids.append(uid)
