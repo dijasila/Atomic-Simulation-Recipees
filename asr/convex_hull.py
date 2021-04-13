@@ -1,7 +1,6 @@
 """Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 import functools
 
 from asr.core import (

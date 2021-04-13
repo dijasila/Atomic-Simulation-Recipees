@@ -13,7 +13,6 @@ from .specification import construct_run_spec, obj_to_id
 from .workdir import isolated_work_dir
 from .dependencies import register_dependencies
 from .resources import register_resources
-from .cache import Cache
 from .selector import Selector
 from .metadata import register_metadata
 
@@ -516,5 +515,3 @@ def apply_defaults(signature, *args, **kwargs):
     bound_arguments.apply_defaults()
     params = copy.deepcopy(dict(bound_arguments.arguments))
     return params
-
-
