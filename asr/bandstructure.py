@@ -13,7 +13,7 @@ from asr.gs import main as maings
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 panel_description = make_panel_description(
-    """The band structure with spin-orbit interactions is shown with the
+    """The band structure with spin–orbit interactions is shown with the
 expectation value of S_i (where i=z for non-magnetic materials and otherwise is
 the magnetic easy axis) indicated by the color code.""",
     articles=['C2DB'],
@@ -90,11 +90,8 @@ def calculate(
         npoints: int = 400,
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-    if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
-    else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc)
+    path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                               pbc=atoms.pbc)
 
     result = calculategs(atoms=atoms, calculator=calculator)
     calculation = result.calculation
@@ -105,11 +102,14 @@ def calculate(
     return BandstructureCalculationResult.fromdata(calculation=calculation)
 
 
-def bs_pbe_html(row,
-                filename='pbe-bs.html',
-                figsize=(6.4, 6.4),
-                show_legend=True,
-                s=2):
+bs_png = 'bs.png'
+bs_html = 'bs.html'
+
+
+def plot_bs_html(row,
+                 filename=bs_html,
+                 figsize=(6.4, 6.4),
+                 s=2):
     import plotly
     import plotly.graph_objs as go
     import numpy as np
@@ -148,7 +148,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
         mode='markers',
-        name='PBE no SOC',
+        name='KS no SOC',
         showlegend=True,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
@@ -176,7 +176,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
         mode='markers',
-        name='PBE',
+        name='KS',
         showlegend=True,
         marker=dict(
             size=4,
@@ -285,8 +285,8 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """Plot pbe with soc on ax."""
+def add_bs_ks(row, ax, reference=0, color='C1'):
+    """Plot with soc on ax."""
     from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
@@ -294,7 +294,7 @@ def add_bs_pbe(row, ax, reference=0, color='C1'):
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label('PBE')
+    ax.lines[-1].set_label('KS')
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -354,11 +354,15 @@ def plot_with_colors(bs,
     return ax, cbar
 
 
-def bs_pbe(row,
-           filename='pbe-bs.png',
-           figsize=(5.5, 5),
-           show_legend=True,
-           s=0.5):
+def legend_on_top(ax, **kwargs):
+    ax.legend(loc='lower left', bbox_to_anchor=(0, 1, 1, 0),
+              mode='expand', **kwargs)
+
+
+def plot_bs_png(row,
+                filename=bs_png,
+                figsize=(5.5, 5),
+                s=0.5):
 
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
@@ -391,10 +395,10 @@ def bs_pbe(row,
     else:
         emax = ef_nosoc + 3
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
-    # pbe without soc
+    # without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='PBE no SOC',
+        label='KS no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -408,7 +412,7 @@ def bs_pbe(row,
         emax=emax - ref_nosoc,
         ylabel=label,
         **nosoc_style)
-    # pbe with soc
+    # with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
@@ -432,8 +436,8 @@ def bs_pbe(row,
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label='PBE', color=csz0)
-    plt.legend(loc='upper right')
+    ax.plot([], [], label='KS', color=csz0)
+
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
     text = ax.annotate(
@@ -447,8 +451,7 @@ def bs_pbe(row,
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 
@@ -464,17 +467,17 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    panel = {'title': describe_entry('Electronic band structure (PBE)',
+    panel = {'title': describe_entry('Electronic band structure',
                                      panel_description),
              'columns': [
                  [
-                     fig('pbe-bs.png', link='pbe-bs.html'),
+                     fig(bs_png, link=bs_html),
                  ],
                  [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': bs_pbe,
-                                    'filenames': ['pbe-bs.png']},
-                                   {'function': bs_pbe_html,
-                                    'filenames': ['pbe-bs.html']}],
+             'plot_descriptions': [{'function': plot_bs_png,
+                                    'filenames': [bs_png]},
+                                   {'function': plot_bs_html,
+                                    'filenames': [bs_html]}],
              'sort': 12}
 
     return [panel]
@@ -490,8 +493,8 @@ class Result(ASRResult):
 
     key_descriptions = \
         {
-            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
-            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+            'bs_soc': 'Bandstructure data with spin–orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
     formats = {"ase_webpanel": webpanel}

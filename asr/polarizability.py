@@ -16,10 +16,10 @@ from asr.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
-calculated in the random phase approximation (RPA) without spin-orbit
+calculated in the random phase approximation (RPA) without spin–orbit
 interactions. For metals a Drude term accounts for intraband transitions. The
-contribution from polar lattice vibrations is added (see IR polarisability) and
-may be visible at low frequencies.""",
+contribution from polar lattice vibrations is added (see infrared
+polarisability) and may be visible at low frequencies.""",
     articles=['C2DB'],
 )
 

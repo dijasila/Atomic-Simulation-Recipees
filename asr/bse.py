@@ -16,12 +16,12 @@ from asr.gs import main as gsmain
 from asr.magstate import main as calcmagstate
 
 panel_description = make_panel_description(
-    """The optical absorption calculated from the Bethe-Salpeter Equation
-(BSE). The BSE 2-particle Hamiltonian is constructed using the wave functions
+    """The optical absorption calculated from the Bethe–Salpeter Equation
+(BSE). The BSE two-particle Hamiltonian is constructed using the wave functions
 from a DFT calculation with the direct band gap adjusted to match the direct
-band gap from a G0W0 calculation. Spin orbit interactions are included.  The
+band gap from a G0W0 calculation. Spin–orbit interactions are included.  The
 result of the random phase approximation (RPA) with the same direct band gap
-adjustment as used for BSE but without spin-orbit interactions, is also shown.
+adjustment as used for BSE but without spin–orbit interactions, is also shown.
 """,
     articles=['C2DB'],
 )
@@ -329,8 +329,10 @@ class Result(ASRResult):
     bse_alphay_w: typing.List[float]
     bse_alphaz_w: typing.List[float]
 
-    key_descriptions = {"E_B": "Exciton binding energy from BSE [eV].",
-                        'bse_alphax_w': 'BSE polarizability x-direction.',
+    key_descriptions = {
+        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
+                'equation (BSE) [eV].'),
+        'bse_alphax_w': 'BSE polarizability x-direction.',
                         'bse_alphay_w': 'BSE polarizability y-direction.',
                         'bse_alphaz_w': 'BSE polarizability z-direction.'}
 

@@ -60,7 +60,7 @@ setup(
     name='asr',
     packages=find_packages(include=['asr', 'asr.*']),
     setup_requires=setup_requirements,
-    url='https://gitlab.com/mortengjerding/asr',
+    url='https://gitlab.com/asr-dev/asr',
     version=version,
     zip_safe=False,
 )
