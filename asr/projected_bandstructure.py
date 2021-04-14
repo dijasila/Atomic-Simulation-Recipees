@@ -13,7 +13,7 @@ from asr.bandstructure import calculate as bscalculate
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
-atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
 plots.""",
     articles=[
         'C2DB',
@@ -45,7 +45,7 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
