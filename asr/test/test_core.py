@@ -30,7 +30,7 @@ def test_recipe_defaults(asr_tmpdir, recipe):
 def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
     """Test that defaults set in params.json are correctly applied."""
     from asr.core import write_json
-    params = {'asr.test.test_core:tmp_recipe': {'ny': 5}}
+    params = {'test_recipe:tmp_recipe': {'ny': 5}}
     write_json('params.json', params)
     defaults = recipe.defaults
     assert defaults == Parameters({'ny': 5})
@@ -39,7 +39,7 @@ def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
 @pytest.mark.ci
 def test_recipe_setting_overriding_defaults(asr_tmpdir, recipe):
     """Test that defaults are correctly overridden when setting parameter."""
-    record = recipe(3, 3)
+    record = recipe.get(3, 3)
     assert record.parameters == Parameters({'nx': 3, 'ny': 3})
     assert record.result['x'] == [3] * 3
     assert record.result['y'] == [4] * 3
@@ -72,7 +72,7 @@ def test_core(asr_tmpdir_w_params):
     assert '-h, --help    Show this message and exit.' in result.output
 
     a_recipe(nx=3)
-    record = a_recipe.get(**{'parameters.nx': 3})
+    record = a_recipe.get(nx=3)
 
     assert record
 

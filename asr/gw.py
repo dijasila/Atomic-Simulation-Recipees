@@ -3,7 +3,7 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile, DictStr,
+    atomsopt, calcopt, ExternalFile,
 )
 from asr.gs import calculate as calculategs
 from asr.bandstructure import main as bsmain
@@ -16,12 +16,12 @@ from asr.database.browser import (
 
 panel_description = make_panel_description(
     """The quasiparticle (QP) band structure calculated within the G0W0
-approximation from a GGA starting point. Spin-orbit interactions are included
-in postprocess. The frequency dependence is treated numerically exact. For
+approximation from a GGA starting point.
+The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
-wave basis set limit. Spin-orbit interactions are included
-non-self-consistently.""",
+wave basis set limit. Spin–orbit interactions are included
+in post-process.""",
     articles=[
         'C2DB',
         href(
@@ -40,80 +40,14 @@ arXiv:2009.00314""",
 )
 
 
-# This function is basically doing the exact same as HSE and could
-# probably be refactored
-def bs_gw(row,
-          filename='gw-bs.png',
-          figsize=(5.5, 5),
-          fontsize=10,
-          show_legend=True,
-          s=0.5):
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import matplotlib.patheffects as path_effects
-
-    data = row.data.get('results-asr.gw.json')
-    path = data['bandstructure']['path']
-    mpl.rcParams['font.size'] = fontsize
-    ef = data['efermi_gw_soc']
-
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
-
-    emin = row.get('vbm_gw', ef) - 3 - reference
-    emax = row.get('cbm_gw', ef) + 3 - reference
-
-    e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = path.get_linear_kpoint_axis()
-
-    # hse with soc
-    style = dict(
-        color='C1',
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    for e_m in e_mk:
-        ax.plot(x, e_m, **style)
-    ax.set_ylim([emin, emax])
-    ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
-    ax.set_xticks(X)
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
-
-    xlim = ax.get_xlim()
-    x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='C1', ls=':')
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
-        ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-
-    # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
-                        color=[0.8, 0.8, 0.8])
-
-    for Xi in X:
-        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
-
-    ax.plot([], [], **style, label='G0W0')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
-    plt.savefig(filename, bbox_inches='tight')
+def plot_bs_gw(row, filename):
+    from asr.hse import plot_bs
+    data = row.data['results-asr.gw.json']
+    return plot_bs(row, filename=filename, bs_label='G0W0',
+                   data=data,
+                   efermi=data['efermi_gw_soc'],
+                   cbm=row.get('cbm_gw'),
+                   vbm=row.get('vbm_gw'))
 
 
 def get_kpts_size(atoms, kptdensity):
@@ -144,8 +78,8 @@ def gs(
     import numpy as np
 
     # check that the system is a semiconductor
-    rec = calculategs(atoms=atoms, calculator=calculator)
-    calc = rec.result.calculation.load()
+    res = calculategs(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
     if pbe_gap < 0.05:
         raise Exception("GW: Only for semiconductors, PBE gap = "
@@ -173,14 +107,11 @@ def gs(
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-
-    calc = rec.result.calculation.load(
+    calc = res.calculation.load()
+    calc = calc.fixed_density(
         txt='gs_gw.txt',
-        fixdensity=True,
         kpts=kpts,
-        parallel={'domain': 1},
-    )
-    calc.get_potential_energy()
+        parallel={'domain': 1})
     calc.diagonalize_full_hamiltonian(ecut=ecut)
     gs_gw_nowfs = 'gs_gw_nowfs.gpw'
     gs_gw = 'gs_gw.gpw'
@@ -211,8 +142,8 @@ def gw(atoms: Atoms,
     import numpy as np
 
     # check that the system is a semiconductor
-    rec = calculategs(atoms=atoms, calculator=calculator)
-    calc = rec.result.calculation.load()
+    res = calculategs(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
     pbe_gap, _, _ = bandgap(calc, output=None)
 
     if len(atoms) > 4:
@@ -223,7 +154,7 @@ def gw(atoms: Atoms,
         raise Exception("GW: Only for semiconductors, PBE gap = "
                         + str(pbe_gap) + " eV is too small!")
 
-    rec = gs(
+    res = gs(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -252,7 +183,7 @@ def gw(atoms: Atoms,
 
     lb, ub = max(calc.wfs.nvalence // 2 - 8, 0), calc.wfs.nvalence // 2 + 4
 
-    calc = G0W0(calc=rec.result['gs_gw.gpw'],
+    calc = G0W0(calc=res['gs_gw.gpw'],
                 bands=(lb, ub),
                 ecut=ecut,
                 ecut_extrapolation=True,
@@ -311,14 +242,13 @@ def empirical_mean_z(
     """
     import numpy as np
 
-    rec = gw(
+    gwresults = gw(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
         mode=mode,
     )
-    gwresults = rec.result
     if not correctgw:
         return gwresults
 
@@ -361,14 +291,14 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': describe_entry('Electronic band structure (G0W0)',
                                      panel_description),
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
-             'plot_descriptions': [{'function': bs_gw,
+             'plot_descriptions': [{'function': plot_bs_gw,
                                     'filenames': ['gw-bs.png']}],
              'sort': 16}
 
     if row.get('gap_gw'):
         description = (
-            'The electronic band gap calculated with '
-            'G0W0 including spin-orbit effects. \n\n'
+            'The quasi-particle band gap calculated with '
+            'G0W0 including spin–orbit effects. \n\n'
         )
         rows = [
             [
@@ -459,9 +389,10 @@ def migrate_1(record):
 )
 @atomsopt
 @calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.',
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -492,13 +423,13 @@ def main(
     from asr.hse import MP_interpolate
     from types import SimpleNamespace
 
-    gsrec = gs(
+    gsres = gs(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
     )
-    calc = GPAW(gsrec.result['gs_gw_nowfs.gpw'], txt=None)
+    calc = GPAW(gsres['gs_gw_nowfs.gpw'], txt=None)
 
     gwresults = empirical_mean_z(
         atoms=atoms,
@@ -508,7 +439,7 @@ def main(
         mode=mode,
         correctgw=correctgw,
         empz=empz,
-    ).result
+    )
     gwresults = SimpleNamespace(**gwresults)
     lb = gwresults.minband
     ub = gwresults.maxband

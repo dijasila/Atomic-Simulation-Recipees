@@ -204,6 +204,38 @@ def CONTAINS(obj1):
     )
 
 
+def CALCULATORSPEC(obj):
+    return Comparator(
+        name='calculator_spec',
+        function=compare_calculator,
+        value=obj,
+    )
+
+
+def compare_calculator(calc1, calc2):
+    name1 = calc1.get('name')
+    name2 = calc2.get('name')
+    if name1 != name2:
+        return False
+
+    if name1 == 'gpaw':
+        return compare_gpaw_calculator(calc1, calc2)
+    elif name1 == 'emt':
+        return True
+    else:
+        raise NotImplementedError
+
+
+def compare_gpaw_calculator(calc1, calc2):
+    compare_keys = {'mode', 'xc', 'basis', 'kpts',
+                    'occupations', 'charge', 'setups'}
+
+    for key in compare_keys:
+        if not compare_equal(calc1.get(key), calc2.get(key)):
+            return False
+    return True
+
+
 comparators = types.SimpleNamespace(
     EQUAL=EQUAL,
     IS=IS,
@@ -219,4 +251,5 @@ comparators = types.SimpleNamespace(
     OR=OR,
     AND=AND,
     NOT=NOT,
+    CALCULATORSPEC=CALCULATORSPEC,
 )

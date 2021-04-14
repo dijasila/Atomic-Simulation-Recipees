@@ -3,8 +3,9 @@ import typing
 
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
+    command, option, ASRResult, prepare_result, AtomsFile,
     make_migration_generator)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
@@ -16,7 +17,7 @@ The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
 material to the applied strain. In Voigt notation, C is expressed as a NxN
 matrix relating the N independent components of the stress and strain
 tensors. C is calculated as a finite difference of the stress under an applied
-stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+strain with full relaxation of atomic coordinates. A negative eigenvalue of C
 indicates a dynamical instability.
 """,
     articles=['C2DB'],
@@ -75,8 +76,8 @@ def webpanel(result, row, key_descriptions):
         'sort': 2}
 
     dynstab = row.dynamic_stability_stiffness
-    high = 'Min. Stiffness eig. > 0'
-    low = 'Min. Stiffness eig. < 0'
+    high = 'Minimum stiffness tensor eigenvalue > 0'
+    low = 'Minimum stiffness tensor eigenvalue < 0'
 
     row = [
         describe_entry(
@@ -219,8 +220,7 @@ make_migrations = make_migration_generator(
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
-@option('-c', '--calculator', help='Calculator and its parameters.',
-        type=DictStr())
+@asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 def main(atoms: Atoms,
@@ -246,14 +246,14 @@ def main(atoms: Atoms,
             strained_atoms = make_strained_atoms(
                 atoms,
                 strain_percent=sign * strain_percent,
-                i=i, j=j).result
-            relaxrecord = relax(
+                i=i, j=j)
+            relaxresult = relax(
                 strained_atoms,
                 calculator=calculator,
                 fixcell=True,
                 allow_symmetry_breaking=True,
             )
-            stress = relaxrecord.result.stress
+            stress = relaxresult.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 

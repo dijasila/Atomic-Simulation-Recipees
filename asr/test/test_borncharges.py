@@ -35,7 +35,7 @@ def test_borncharges(
     results = main(
         atoms=test_material,
         calculator=fast_calc,
-    ).result
+    )
 
     Z_analytical_avv = np.array([
         (Z + positive_charge) * np.eye(3) for Z in Z_a])

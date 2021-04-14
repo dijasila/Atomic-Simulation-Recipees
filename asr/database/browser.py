@@ -76,6 +76,31 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
+def link_section(row, key_descriptions, exclude):
+    """Make help function for adding a "links" section.
+
+    Create table with all keys except those in exclude.
+    """
+    try:
+        links = row.data['links']
+    except KeyError:
+        return ('Links', [[]])
+
+    link_table = create_link_table(row, links, key_descriptions)
+    return ('Links', [[link_table]])
+
+
+def create_link_table(row, links, key_descriptions):
+    """Create links table in the links panel."""
+    link_table = table(row, 'Links', [])
+    for link in links:
+        linkname = f'<a href="{link[1]}">{link[0]}</a>'
+        linktype = link[2]
+        link_table['rows'].extend([[linkname, linktype]])
+
+    return link_table
+
+
 class ExplainedStr(str):
     """A mutable string class that support explanations."""
 
@@ -91,7 +116,7 @@ class ExplainedFloat(float):
 value_type_to_explained_type = {}
 
 
-def describe_entry(value, description, title='Help'):
+def describe_entry(value, description, title='Information'):
     """Describe website entry.
 
     This function sets an __explanation__ attribute on the given object
@@ -265,7 +290,7 @@ def make_panel_description(text, articles=None):
 
     if articles:
         articles = (
-            bold('Relevant article(s):')
+            bold('Relevant articles:')
             + ul([
                 static_article_links.get(article, article) for article in articles]
             )
@@ -430,12 +455,17 @@ def is_results_file(filename):
     return filename.startswith('results-') and filename.endswith('.json')
 
 
-class DataCache:
+class DataFilenameTranslator:
 
-    def __init__(self, cache):
+    def __init__(self, cache, data=None):
+        if data is None:
+            data = {}
+        self.data = data
         self.cache = cache
 
     def __getitem__(self, item):
+        if item in ['links']:
+            return self.data[item]
         selector = self.filename_to_selector(item)
         records = self.cache.select(selector=selector)
         assert len(records) == 1
@@ -482,11 +512,11 @@ class RowWrapper:
             cache.add(record)
         self._row = row
         self.cache = cache
-        self.datacache = DataCache(cache)
+        self._data = DataFilenameTranslator(cache, data=row.data)
 
     @property
     def data(self):
-        return self.datacache
+        return self._data
 
     def __getattr__(self, key):
         """Wrap attribute lookup of AtomsRow."""
@@ -522,10 +552,15 @@ def layout(row: AtomsRow,
     page = {}
     exclude = set()
 
-    row = RowWrapper(
-        row,
-    )
-
+    row = RowWrapper(row)
+#
+#     newdata = parse_row_data(row.data)
+#     row.data = newdata
+#     result_objects = []
+#
+#     for key, value in row.data.items():
+#         if isinstance(value, ASRResult):
+#             result_objects.append(value)
     panel_data_sources = {}
     recipes_treated = set()
     # Locate all webpanels
@@ -586,11 +621,19 @@ def layout(row: AtomsRow,
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
+    # add miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
     misc_panel = {'title': misc_title,
                   'columns': misc_columns}
     page.append(misc_panel)
+
+    # add links section
+    link_title, link_columns = link_section(row, key_descriptions,
+                                            exclude)
+    link_panel = {'title': link_title,
+                  'columns': link_columns}
+    page.append(link_panel)
 
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
@@ -705,9 +748,8 @@ def cache_webpanel(recipename, *selectors):
 
     def decorator(func):
         def wrapper(result, row, key_descriptions):
-            recipe = get_recipe_from_name(recipename)
             cache = row.cache
-            records = recipe.select(cache=cache)
+            records = cache.select(name=recipename)
 
             sortattrs = []
             signs = []

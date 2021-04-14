@@ -33,7 +33,7 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected density of states without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected density of states without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
@@ -134,14 +134,14 @@ def main(
     from asr.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
-    rec = calculate(
+    res = calculate(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         emptybands=emptybands,
     )
 
-    calc = GPAW(rec.result)
+    calc = GPAW(res)
 
     dos1 = calc.dos(shift_fermi_level=False)
     theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
@@ -214,7 +214,7 @@ def calculate_pdos(atoms, calculator, dos, calc):
     l_a = get_l_a(zs)
 
     ns = calc.get_number_of_spins()
-    gaps = gsmain(atoms=atoms, calculator=calculator).result.gaps_nosoc
+    gaps = gsmain(atoms=atoms, calculator=calculator).gaps_nosoc
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = np.linspace(e1 - 3, e2 + 3, 500)
@@ -453,7 +453,7 @@ def plot_pdos(row, filename, soc=True,
         path_effects.Normal()
     ])
 
-    ax.set_xlabel('projected dos [states / eV]')
+    ax.set_xlabel('Projected DOS [states / eV]')
     if row.get('evac') is not None:
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:

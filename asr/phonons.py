@@ -9,8 +9,9 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
+    command, option, ASRResult, prepare_result, AtomsFile,
     make_migration_generator, Selector,
 )
 from asr.database.browser import (
@@ -45,7 +46,7 @@ class CalculateResult(ASRResult):
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int, nargs=3)
 def calculate(
         atoms: Atoms,
@@ -74,9 +75,9 @@ def calculate(
     world.barrier()
 
     # Set initial magnetic moments
-    magstaterec = magstate(atoms=atoms, calculator=calculator)
-    if magstaterec.result.is_magnetic:
-        magmoms_m = magstate.result.magmoms
+    magstateres = magstate(atoms=atoms, calculator=calculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
@@ -112,8 +113,8 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get('dynamic_stability_phonons')
 
-    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
 
     row = [
         describe_entry(
@@ -218,7 +219,7 @@ make_migrations = make_migration_generator(
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int)
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
@@ -240,7 +241,7 @@ def main(
         n: int = 2,
         mingo: bool = True,
 ) -> Result:
-    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n).result
+    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
     for extfile in calculateresult.forcefiles:
         extfile.restore()
     nd = sum(atoms.get_pbc())

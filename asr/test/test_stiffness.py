@@ -14,7 +14,7 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
         atoms=test_material,
         strain_percent=strain_percent,
         calculator=fast_calc,
-    ).result
+    )
     nd = np.sum(test_material.pbc)
 
     # check that all keys are in results-asr.stiffness.json:
@@ -55,9 +55,7 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, mockgpaw, get_webcontent):
     atoms = bulk(name)
     atoms.write('structure.json')
 
-    record = stiffness(atoms=atoms, calculator=dict(name='emt'))
-
-    result = record.result
+    result = stiffness(atoms=atoms, calculator=dict(name='emt'))
     stiffness_tensor = result['stiffness_tensor']
     assert stiffness_tensor == approx(stiffness_tensor.T, abs=1)
 

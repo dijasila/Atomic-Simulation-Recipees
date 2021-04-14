@@ -16,12 +16,12 @@ from asr.gs import main as gsmain
 from asr.magstate import main as calcmagstate
 
 panel_description = make_panel_description(
-    """The optical absorption calculated from the Bethe-Salpeter Equation
-(BSE). The BSE 2-particle Hamiltonian is constructed using the wave functions
+    """The optical absorption calculated from the Bethe–Salpeter Equation
+(BSE). The BSE two-particle Hamiltonian is constructed using the wave functions
 from a DFT calculation with the direct band gap adjusted to match the direct
-band gap from a G0W0 calculation. Spin orbit interactions are included.  The
+band gap from a G0W0 calculation. Spin–orbit interactions are included.  The
 result of the random phase approximation (RPA) with the same direct band gap
-adjustment as used for BSE but without spin-orbit interactions, is also shown.
+adjustment as used for BSE but without spin–orbit interactions, is also shown.
 """,
     articles=['C2DB'],
 )
@@ -76,7 +76,7 @@ class BSECalculateResult(ASRResult):
 def calculate(
         atoms: Atoms,
         calculator: dict = gscalculate.defaults.calculator,
-        kptdensity: float = 6.0,
+        kptdensity: float = 20.0,
         ecut: float = 50.0,
         mode: str = 'BSE',
         bandfactor: int = 6,
@@ -100,18 +100,15 @@ def calculate(
         truncation = None
     elif ND == 2:
         eta = 0.05
-        kpts = get_kpts_size(
-            atoms=atoms,
-            kptdensity=kptdensity,
-        )
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
         truncation = '2D'
 
     else:
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
 
-    gsrec = gscalculate(atoms=atoms, calculator=calculator)
-    calc_gs = gsrec.result.calculation.load()
+    gsres = gscalculate(atoms=atoms, calculator=calculator)
+    calc_gs = gsres.calculation.load()
     spin = calc_gs.get_spin_polarized()
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
@@ -153,7 +150,7 @@ def calculate(
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
 
     if not Path('gs_bse.gpw').is_file():
-        calc = gsrec.result.calculation.load(
+        calc = gsres.calculation.load(
             txt='gs_bse.txt',
             fixdensity=True,
             nbands=int(nbands * 1.5),
@@ -245,9 +242,12 @@ def absorption(row, filename, direction='x'):
 
     data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
-    absbse_w = 4 * np.pi * data[:, 2]
     if dim == 2:
-        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
+        sigma_w *= wbse_w * alpha / Ha / Bohr
+        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    else:
+        absbse_w = 4 * np.pi * data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
@@ -255,9 +255,10 @@ def absorption(row, filename, direction='x'):
     data = row.data.get('results-asr.polarizability.json')
     if data:
         wrpa_w = data['frequencies'] + delta_rpa
-        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+        sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
         if dim == 2:
-            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+            sigma_w *= wrpa_w * alpha / Ha / Bohr
+        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
         ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
         ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                    absrpa_w[wrpa_w < xmax]])) * 1.05
@@ -328,8 +329,10 @@ class Result(ASRResult):
     bse_alphay_w: typing.List[float]
     bse_alphaz_w: typing.List[float]
 
-    key_descriptions = {"E_B": "Exciton binding energy from BSE [eV].",
-                        'bse_alphax_w': 'BSE polarizability x-direction.',
+    key_descriptions = {
+        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
+                'equation (BSE) [eV].'),
+        'bse_alphax_w': 'BSE polarizability x-direction.',
                         'bse_alphay_w': 'BSE polarizability y-direction.',
                         'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
@@ -360,7 +363,7 @@ def main(
     import numpy as np
     from pathlib import Path
 
-    rec = calculate(
+    res = calculate(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -371,30 +374,30 @@ def main(
         nc_s=nc_s,
     )
 
-    alphax_w = np.loadtxt(rec.result.bse_polx, delimiter=',')
+    alphax_w = np.loadtxt(res.bse_polx, delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
 
-    if Path(rec.result.bse_poly).is_file():
-        alphay_w = np.loadtxt(rec.result.bse_poly, delimiter=',')
+    if Path(res.bse_poly).is_file():
+        alphay_w = np.loadtxt(res.bse_poly, delimiter=',')
         data['bse_alphay_w'] = alphay_w.astype(np.float32)
     else:
         data['bse_alphay_w'] = None
 
-    if Path(rec.result.bse_polz).is_file():
-        alphaz_w = np.loadtxt(rec.result.bse_polz, delimiter=',')
+    if Path(res.bse_polz).is_file():
+        alphaz_w = np.loadtxt(res.bse_polz, delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
     else:
         data['bse_alphaz_w'] = None
 
-    if Path(rec.result.bse_eigx).is_file():
-        E = np.loadtxt(rec.result.bse_eigx)[0, 1]
+    if Path(res.bse_eigx).is_file():
+        E = np.loadtxt(res.bse_eigx)[0, 1]
 
         magstateresults = calcmagstate(
-            atoms=atoms, calculator=calculator).result
+            atoms=atoms, calculator=calculator)
         magstate = magstateresults['magstate']
 
         gsresults = gsmain(
-            atoms=atoms, calculator=calculator).result
+            atoms=atoms, calculator=calculator)
 
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E

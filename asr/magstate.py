@@ -1,6 +1,7 @@
 """Module for determining magnetic state."""
+import asr
 from asr.core import (command, ASRResult, prepare_result, option,
-                      AtomsFile, DictStr)
+                      AtomsFile)
 from asr.calculators import set_calculator_hook
 from ase import Atoms
 import typing
@@ -30,7 +31,7 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import describe_entry, dl, code
+    from asr.database.browser import describe_entry, dl, code, WebPanel
 
     is_magnetic = describe_entry(
         'Magnetic',
@@ -56,7 +57,23 @@ def webpanel(result, row, key_descriptions):
                              'header': ['Electronic properties', ''],
                              'rows': rows}]],
                'sort': 0}
-    return [summary]
+
+    if result.magstate == 'NM':
+        return [summary]
+    else:
+        magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
+                        for a, (symbol, magmom)
+                        in enumerate(zip(row.get('symbols'), result.magmoms))]
+        magmoms_table = {'type': 'table',
+                         'header': ['Atom index', 'Atom type',
+                                    'Local magnetic moment (au)'],
+                         'rows': magmoms_rows}
+
+        panel = WebPanel(title='Basic magnetic properties (PBE)',
+                         columns=[[], [magmoms_table]],
+                         sort=11)
+
+        return [summary, panel]
 
 
 @prepare_result
@@ -80,7 +97,7 @@ class Result(ASRResult):
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = {
              'name': 'gpaw',
@@ -97,8 +114,8 @@ def main(atoms: Atoms,
     """Determine magnetic state."""
     from asr.gs import calculate as calculategs
 
-    calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = calculaterecord.result.calculation.load()
+    calculateresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load()
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)

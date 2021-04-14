@@ -1,7 +1,8 @@
 """Infrared polarizability."""
 import typing
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, DictStr,
+    command, option, ASRResult, prepare_result, atomsopt,
     Selector, make_migration_generator,
 )
 from asr.database.browser import (
@@ -263,12 +264,10 @@ make_migrations = make_migration_generator(
     migrations=[make_migrations],
 )
 @atomsopt
-@option('-b', '--borncalculator', help='Born calculator.',
-        type=DictStr())
-@option('-p', '--phononcalculator', help='Phonon calculator.',
-        type=DictStr())
-@option('-a', '--polarizabilitycalculator', help='Polarizability calculator.',
-        type=DictStr())
+@asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
+@asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
+@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
+             help='Polarizability calculator.')
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
 @option('-n', help='Supercell size', type=int)
@@ -304,7 +303,7 @@ def main(
         calculator=phononcalculator,
         n=n,
         mingo=mingo,
-    ).result
+    )
 
     u_ql = phresults["modes_kl"]
     q_qc = phresults["q_qc"]
@@ -363,7 +362,7 @@ def main(
         ecut=ecut,
         xc=xc,
         bandfactor=bandfactor,
-    ).result
+    )
     alphax_el = elecdict["alphax_el"]
     alphay_el = elecdict["alphay_el"]
     alphaz_el = elecdict["alphaz_el"]

@@ -6,7 +6,7 @@ from ast import literal_eval
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache)
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr)
 import click
 from pathlib import Path
 import subprocess
@@ -86,6 +86,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option(version=asr.__version__)
 def cli():
     ...
+
+
+@cli.command()
+def init():
+    """Initialize ASR Repository."""
+    from .root import initialize_root
+    initialize_root()
 
 
 @cli.command()
@@ -441,11 +448,12 @@ def add_resultfile_records():
 
 
 @cache.command()
+@click.argument('selection', required=False, nargs=-1)
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
               help='Show tracebacks for migration errors.')
-def migrate(apply=False, verbose=False, show_errors=False):
+def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
         get_instruction_migration_generator,
@@ -454,6 +462,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
     from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
+    sel = make_selector_from_selection(cache, selection)
     make_migrations = get_instruction_migration_generator()
     make_migrations.extend([get_resultfile_migration_generator()])
     record_migrations = []
@@ -462,9 +471,9 @@ def migrate(apply=False, verbose=False, show_errors=False):
     nmigrations = 0
     nerrors = 0
 
-    for record in cache.select():
+    for record in cache.select(selector=sel):
         record_migration = make_record_migration(record, make_migrations)
-        if record_migration.has_migrations():
+        if record_migration:
             nmigrations += 1
             record_migrations.append(record_migration)
 
@@ -472,7 +481,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
             nerrors += 1
             erroneous_migrations.append(record_migration)
 
-        if not (record_migration.has_migrations()
+        if not (record_migration
                 or record_migration.has_errors()):
             nup_to_date += 1
 
@@ -482,8 +491,10 @@ def migrate(apply=False, verbose=False, show_errors=False):
 
     if verbose:
         nmigrations = len(record_migrations)
+        strs = []
         for i, migration in enumerate(record_migrations):
-            print(f'#{i} {migration}')
+            strs.append(f'#{i} {migration}')
+        print('\n\n'.join(strs))
         print()
 
     if show_errors:
@@ -899,9 +910,33 @@ def main(database: str, run: bool, selection: str,
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
 @click.option("--test", is_flag=True, help="Test the app.")
-def app(databases, host, test):
+@click.option("--extra_kvp_descriptions", type=str,
+              help='File containing extra kvp descriptions for info.json')
+def app(databases, host, test, extra_kvp_descriptions):
     from asr.database.app import main
-    main(databases=databases, host=host, test=test)
+    main(databases=databases, host=host, test=test,
+         extra_kvp_descriptions=extra_kvp_descriptions)
+
+
+@database.command()
+@click.option('--target', type=str,
+              help='Target DB you want to create the links in.')
+@click.argument('dbs', nargs=-1, type=str)
+def crosslinks(target: str,
+               dbs: Union[str, None] = None):
+    from asr.database.crosslinks import main
+    main(target=target, dbs=dbs)
+
+
+@database.command()
+@click.option('--include', help='Comma-separated string of folders to include.',
+              type=CommaStr())
+@click.option('--exclude', help='Comma-separated string of folders to exclude.',
+              type=CommaStr())
+def treelinks(include: str = '',
+              exclude: str = ''):
+    from asr.database.treelinks import main
+    main(include=include, exclude=exclude)
 
 
 class KeyValuePair(click.ParamType):
@@ -1032,7 +1067,7 @@ def get_git_rev_list(hashes, home=None):
     """Get Git rev list from HASH1 to HASH2."""
     cfgdir = get_config_dir(home=home)
 
-    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    git_repo = 'https://gitlab.com/asr-dev/asr.git'
     if not (cfgdir / 'asr').is_dir():
         subprocess.check_output(['git', 'clone', git_repo],
                                 cwd=cfgdir)

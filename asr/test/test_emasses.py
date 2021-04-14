@@ -51,7 +51,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    results = main(atoms=test_material, calculator=fast_calc).result
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
 
@@ -79,7 +79,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    results = main(atoms=test_material, calculator=fast_calc).result
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
     # check location of minmax
@@ -87,7 +87,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
 
 def _get_all_eigenvalues(self):
     from ase.units import Bohr, Ha
-    icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+    icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
     n = self.parameters.gridsize
 
     offsets = np.indices((n, n, n)).T.reshape((n ** 3, 1, 3)) - n // 2
@@ -159,7 +159,7 @@ def _get_all_eigenvalues(self):
 
 # def _get_all_eigenvalues_rashba(self):
 #     from ase.units import Bohr, Ha
-#     icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+#     icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
 #     n = self.parameters.gridsize
 
 

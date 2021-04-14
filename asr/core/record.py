@@ -41,6 +41,12 @@ class Record:
         self.run_specification.version = value
 
     @property
+    def revision(self):
+        if not self.history:
+            return None
+        return self.history.latest_revision.uid
+
+    @property
     def name(self):
         return self.run_specification.name
 

@@ -17,77 +17,281 @@ RecordUID = str
 UID = str
 
 
-class Modification(abc.ABC):
+@dataclass
+class Modification:
     """Class that represents a record modification."""
 
-    @abc.abstractmethod
+    differences: typing.List['Difference'] = field(default_factory=list)
+
     def apply(self, record: Record) -> Record:
-        pass
+        for difference in self.differences:
+            difference.apply(record)
+        return record
+
+    def revert(self, record: Record) -> Record:
+        for difference in self.differences:
+            difference.revert(record)
+        return record
+
+    def __str__(self):
+        return '\n'.join(str(diff) for diff in self.differences)
+
+
+@dataclass
+class Difference(abc.ABC):
+    """Class that represent a single attribute difference between records."""
+
+    attribute: 'AttributeSequence'
 
     @abc.abstractmethod
-    def revert(self, record: Record) -> Record:
-        pass
+    def apply(self, obj: typing.Any):
+        ...
 
-    def __call__(self, record: Record) -> Record:
-        return self.apply(record)
-
-
-@dataclass
-class DumbModification(Modification):
-    """A very simple implementation of a record modification."""
-
-    previous_record: Record
-    new_record: Record
-
-    def apply(self, record):
-        return self.new_record
-
-    def revert(self, record):
-        return self.previous_record
+    @abc.abstractmethod
+    def revert(self, obj: typing.Any):
+        ...
 
 
 @dataclass
-class MigrationLog:
-    """Container for logging migration information."""
+class NewAttribute(Difference):
 
-    migration_uid: typing.Optional[UID]
-    to_version: UID
-    description: str
-    modification: Modification
+    value: typing.Any
 
-    @classmethod
-    def from_migration(
-            cls,
-            migration: 'Migration',
-            modification: Modification,
-            to_version: UID,
-    ) -> 'MigrationLog':
-        return cls(
-            migration_uid=migration.uid,
-            description=migration.description,
-            modification=modification,
-            to_version=to_version,
+    def apply(self, obj: typing.Any):
+        self.attribute.set(obj, self.value)
+
+    def revert(self, obj: typing.Any):
+        self.attribute.delete(obj)
+
+    def __str__(self):
+        return f'New attribute={self.attribute} value={self.value}'
+
+
+@dataclass
+class DeletedAttribute(Difference):
+
+    value: typing.Any
+
+    def apply(self, obj: typing.Any):
+        self.attribute.delete(obj)
+
+    def revert(self, obj: typing.Any):
+        self.attribute.set(obj, self.value)
+
+    def __str__(self):
+        return f'Delete attribute={self.attribute} value={self.value}'
+
+
+@dataclass
+class ChangedValue(Difference):
+    new_value: typing.Any
+    old_value: typing.Any
+
+    def apply(self, obj: typing.Any):
+        self.attribute.set(obj, self.new_value)
+
+    def revert(self, obj: typing.Any):
+        self.attribute.set(obj, self.old_value)
+
+    def __str__(self):
+        return (
+            f'Change attribute={self.attribute} '
+            f'old={self.old_value} new={self.new_value}'
         )
 
 
 @dataclass
-class MigrationHistory(History):
-    """A class the represents the migration history."""
+class Attribute:
+    """Class that represents an object attribute."""
 
-    history: typing.List[MigrationLog]
+    name: str
 
-    def append(self, migration_log: MigrationLog):
-        self.history.append(migration_log)
+    def set(self, obj, value):
+        setattr(obj, self.name, value)
+
+    def get(self, obj):
+        return getattr(obj, self.name)
+
+    def delete(self, obj):
+        delattr(obj, self.name)
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Attribute):
+            return False
+        return self.name == other.name
+
+    def __str__(self):
+        return f'.{self.name}'
+
+
+@dataclass
+class Item:
+    """Class that represents an object item."""
+
+    name: str
+
+    def set(self, obj, value):
+        obj[self.name] = value
+
+    def get(self, obj):
+        return obj[self.name]
+
+    def delete(self, obj):
+        del obj[self.name]
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Item):
+            return False
+        return self.name == other.name
+
+    def __str__(self):
+        return f'["{self.name}"]'
+
+
+@dataclass
+class AttributeSequence:
+    attrs: typing.List[typing.Union['Attribute', 'Item']]
+
+    def set(self, obj, value):
+        for attr in self.attrs[:-1]:
+            obj = attr.get(obj)
+        self.attrs[-1].set(obj, value)
+
+    def get(self, obj):
+        for attr in self.attrs:
+            obj = attr.get(obj)
+        return obj
+
+    def delete(self, obj):
+        for attr in self.attrs[:-1]:
+            obj = attr.get(obj)
+        self.attrs[-1].delete(obj)
+
+    def __getitem__(self, item):
+        return AttributeSequence(self.attrs[item])
+
+    def __add__(self, other):
+        return AttributeSequence(self.attrs + other.attrs)
+
+    def __hash__(self):
+        return hash(tuple(hash(attr) for attr in self.attrs))
+
+    def __eq__(self, other):
+        return self.attrs == other.attrs
+
+    def __str__(self):
+        return ''.join(str(attr) for attr in self.attrs)
+
+
+def make_modification(old_record: Record, new_record: Record):
+    """Search for differences between objects and make resulting modification."""
+    differences = get_differences(old_record, new_record)
+    return Modification(differences)
+
+
+def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = None):
+    if prepend is None:
+        prepend = AttributeSequence([])
+    if type(obj1) != type(obj2):
+        return [
+            ChangedValue(
+                attribute=prepend,
+                old_value=obj1,
+                new_value=obj2,
+            )
+        ]
+    differences = []
+    attrs_and_values1 = get_attributes_and_values(obj1)
+    attrs_and_values2 = get_attributes_and_values(obj2)
+    attrs1 = set(attrs_and_values1)
+    attrs2 = set(attrs_and_values2)
+    deleted_attrs = attrs1 - attrs2
+    new_attrs = attrs2 - attrs1
+
+    for attr in deleted_attrs:
+        differences.append(
+            DeletedAttribute(
+                attribute=prepend + attr,
+                value=attrs_and_values1[attr],
+            )
+        )
+
+    for attr in new_attrs:
+        differences.append(
+            NewAttribute(
+                attribute=prepend + attr,
+                value=attrs_and_values2[attr]
+            )
+        )
+    common_attrs = attrs1.intersection(attrs2)
+    for attr in common_attrs:
+        value1 = attrs_and_values1[attr]
+        value2 = attrs_and_values2[attr]
+        diffs_inside_values = get_differences(value1, value2, prepend=prepend + attr)
+        differences.extend(diffs_inside_values)
+
+    return differences
+
+
+def get_attributes_and_values(obj):
+    attributes_and_values = {}
+    if hasattr(obj, '__dict__'):
+        for key, value in obj.__dict__.items():
+            attributes_and_values[AttributeSequence([Attribute(key)])] = value
+    elif hasattr(obj, '__slots__'):
+        for key in obj.__slots__:
+            value = getattr(obj, key)
+            attributes_and_values[AttributeSequence([Attribute(key)])] = value
+    elif isinstance(obj, dict):
+        for key, value in obj.items():
+            attr = AttributeSequence([Item(key)])
+            attributes_and_values[attr] = value
+
+    return attributes_and_values
+
+
+@dataclass
+class Revision:
+    """Container for logging migration information."""
+
+    migration_uid: typing.Optional[UID]
+    uid: UID
+    description: str
+    modification: Modification
+
+    def apply(self, record: Record):
+        if record.history is None:
+            record.history = RevisionHistory()
+        self.modification.apply(record)
+        record.history.add(self)
+        return record
+
+    def __str__(self):
+        return f'"{self.description}"\n{self.modification}'
+
+
+@dataclass
+class RevisionHistory(History):
+    """A class the represents the revision history."""
+
+    history: typing.List[Revision] = field(default_factory=list)
+
+    def add(self, revision: Revision):
+        self.history.append(revision)
 
     @property
-    def current_version(self) -> typing.Union[None, UID]:
-        """Get the current migration version, 'None' if no migrations."""
+    def latest_revision(self) -> typing.Union[None, UID]:
+        """Get the latest revision, 'None' if no revisions."""
         if not self.history:
             return None
-        return self.history[-1].to_version
-
-    def __contains__(self, migration: 'Migration'):
-        return any(migration.uid == log.migration_uid for log in self.history)
+        latest_revision = self.history[-1]
+        return latest_revision
 
 
 @dataclass
@@ -99,26 +303,21 @@ class Migration:
     uid: typing.Optional[None] = None
     eagerness: int = 0
 
-    def apply(self, record: Record) -> Record:
-        """Apply migration to record and return mutated record."""
+    def apply(self, record: Record) -> Revision:
+        """Apply migration to record and return record Revision."""
         migrated_record = self.function(record.copy())
-        to_version = get_new_uuid()
-        mod_cls = DumbModification
-        migration_log = MigrationLog.from_migration(
-            migration=self,
-            modification=mod_cls(
-                previous_record=record.copy(),
-                new_record=migrated_record.copy(),
-            ),
-            to_version=to_version,
+        modification = make_modification(
+            record,
+            migrated_record,
+        )
+        revision = Revision(
+            description=self.description,
+            modification=modification,
+            migration_uid=self.uid,
+            uid=get_new_uuid(),
         )
 
-        if migrated_record.history:
-            migrated_record.history.append(migration_log)
-        else:
-            migration_history = MigrationHistory(history=[migration_log])
-            migrated_record.history = migration_history
-        return migrated_record
+        return revision
 
     def __call__(self, record: Record) -> Record:
         return self.apply(record)
@@ -190,12 +389,12 @@ class RecordMigration:
 
     initial_record: Record
     migrated_record: Record
-    applied_migrations: typing.List[Migration]
+    revisions: typing.List[Revision]
     errors: typing.List[typing.Tuple[Migration, Exception]]
 
-    def has_migrations(self):
+    def has_revisions(self):
         """Has migrations to apply."""
-        return bool(self.applied_migrations)
+        return bool(self.revisions)
 
     def has_errors(self):
         """Has failed migrations."""
@@ -205,22 +404,30 @@ class RecordMigration:
         """Apply record migration to a cache."""
         cache.update(self.migrated_record)
 
+    def __bool__(self):
+        return self.has_revisions()
+
     def __str__(self):
-        nmig = len(self.applied_migrations)
+        nrev = len(self.revisions)
         nerr = len(self.errors)
-        migrations_string = ' -> '.join([
-            str(migration) for migration in self.applied_migrations])
-        problem_string = (
-            ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
-        )
-        return (
-            f'UID=#{self.initial_record.uid[:8]} '
-            + (f'name={self.initial_record.name}. ')
-            + (f'{nmig} migration(s). ' if nmig > 0 else '')
-            + (f'{nerr} migration error(s)! ' if self.errors else '')
-            + (f'{migrations_string}. ' if nmig > 0 else '')
-            + (f'{problem_string}.' if self.errors else '')
-        )
+        items = [
+            f'UID=#{self.initial_record.uid} '
+            f'name={self.initial_record.name}',
+            f'Number of revisions={nrev}. ',
+            f'Number of erroneous migrations={nerr}.',
+        ]
+
+        if nrev:
+            revisions_string = '\n'.join([
+                f'Revision #{i} {revision}'
+                for i, revision in enumerate(self.revisions)])
+            items.append(revisions_string)
+        if nerr:
+            problem_string = (
+                ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
+            )
+            items.append(problem_string)
+        return '\n'.join(items)
 
 
 def make_record_migration(
@@ -232,6 +439,7 @@ def make_record_migration(
     applied_migrations = []
     problematic_migrations = []
     errors = []
+    revisions = []
     while True:
         applicable_migrations = migration_generator(migrated_record)
         candidate_migrations = [
@@ -246,16 +454,18 @@ def make_record_migration(
 
         migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
         try:
-            migrated_record = migration(migrated_record)
+            revision = migration(migrated_record)
+            migrated_record = revision.apply(migrated_record)
         except Exception as err:
             problematic_migrations.append(migration)
             errors.append((migration, err))
             continue
         applied_migrations.append(migration)
+        revisions.append(revision)
     return RecordMigration(
         initial_record=record,
+        revisions=revisions,
         migrated_record=migrated_record,
-        applied_migrations=applied_migrations,
         errors=errors,
     )
 
@@ -311,7 +521,7 @@ def migration(
     eagerness=0,
     description=None,
 ):
-    """Make migration."""
+    """Make migration decorator."""
     if selector is None:
         selector = Selector()
 

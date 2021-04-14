@@ -33,13 +33,13 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
             [initial_magmoms] * len(test_material))
 
     test_material.write('unrelaxed.json')
-    result = main.cli([]).result
-    relaxed = result.atoms
+    record = main.cli([])
+    relaxed = record.result.atoms
 
     assert relaxed.has('initial_magmoms')
 
     if final_magmoms > 0.1:
-        assert all(result.magmoms == 1)
+        assert all(record.result.magmoms == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
 
@@ -132,7 +132,7 @@ def test_relax_si_gpaw(asr_tmpdir):
     results = relax(
         atoms=Si.copy(),
         calculator=calculator,
-    ).result
+    )
     assert abs(results["c"] - 3.978) < 0.1
 
 
@@ -150,6 +150,6 @@ def test_relax_bn_gpaw(asr_tmpdir):
         'name': 'pw',
     }
     calculator['kpts'] = {'density': 2, 'gamma': True}
-    results = relax(atoms=BN.copy(), calculator=calculator).result
+    results = relax(atoms=BN.copy(), calculator=calculator)
 
     assert results["c"] > 5

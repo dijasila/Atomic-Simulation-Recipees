@@ -17,7 +17,7 @@ def calculate(
 ) -> ASRResult:
     """Calculate two spin configurations."""
     from asr.utils import magnetic_atoms
-    result = gscalculate(atoms=atoms, calculator=calculator).result
+    result = gscalculate(atoms=atoms, calculator=calculator)
     calc = result.calculation.load(fixdensity=False)
     atoms = calc.atoms
     pbc = atoms.pbc.tolist()

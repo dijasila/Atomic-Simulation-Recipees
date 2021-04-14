@@ -1,15 +1,12 @@
 import os
 import pytest
 from asr.core.lock import Lock
-from asr.core.config import initialize_root
 from asr.core.filetype import ASRPath
 
 
 @pytest.fixture(params=['lockfile', ASRPath('lockfile')])
 def lockfile(request, asr_tmpdir):
     pth = request.param
-    if isinstance(pth, ASRPath):
-        initialize_root()
     return pth
 
 

@@ -1,4 +1,5 @@
-from .command import option
+from .comparators import comparators
+from .decorators import option
 from .types import AtomsFile, DictStr
 
 
@@ -16,5 +17,18 @@ def atomsopt(function=None, *,
     return opt(function)
 
 
-calcopt = option('-c', '--calculator',
-                 help='Calculator params.', type=DictStr())
+def calcopt(function=None, *,
+            aliases=None,
+            help='Calculator params.'):
+    """Make calculator CLI option.
+
+    Default aliases is '-c', '--calculator'.
+    """
+    if aliases is None:
+        aliases = ['-c', '--calculator']
+    opt = option(*aliases,
+                 help=help, type=DictStr(),
+                 matcher=comparators.CALCULATORSPEC)
+    if function is None:
+        return opt
+    return opt(function)

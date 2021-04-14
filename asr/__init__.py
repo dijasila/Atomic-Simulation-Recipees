@@ -6,6 +6,11 @@ from asr.core import (  # noqa
     migration,
     Selector,
     comparators,
+    initialize_root,
+    find_root,
+    atomsopt,
+    calcopt,
+    instruction,
 )
 
 cmp = comparators

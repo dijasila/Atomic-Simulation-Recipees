@@ -15,8 +15,9 @@ The effective mass tensor represents the second derivative of the band energy
 w.r.t. wave vector at a band extremum. The effective masses of the valence
 bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
 mass tensor. The latter is determined by fitting a 2nd order polynomium to the
-band energies on a fine k-point mesh around the band extrema. Spin-orbit
-interactions are included. The “parabolicity” of the band is quantified by the
+band energies on a fine k-point mesh around the band extrema. Spin–orbit
+interactions are included. The fit curve is shown for the highest VB and
+lowest CB. The “parabolicity” of the band is quantified by the
 mean absolute relative error (MARE) of the fit to the band energy in an energy
 range of 25 meV.
 """,
@@ -93,11 +94,11 @@ def refine(
     import os.path
     set_default(settings)
     socs = [True]
-    rec = gscalculate(atoms=atoms, calculator=calculator)
+    res = gscalculate(atoms=atoms, calculator=calculator)
     for soc in socs:
         theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
         eigenvalues, efermi = calc2eigs(
-            rec.result.calculation.load(parallel=False),
+            res.calculation.load(parallel=False),
             soc=soc,
             theta=theta,
             phi=phi,
@@ -117,7 +118,7 @@ def refine(
             refined_calculation = preliminary_refine(
                 atoms,
                 calculator,
-                calc=rec.result.calculation.load(),
+                calc=res.calculation.load(),
                 soc=soc,
                 bandtype=bt,
                 settings=settings,
@@ -127,7 +128,7 @@ def refine(
                     atoms,
                     calculator,
                     calculation=refined_calculation,
-                    fallback_calculation=rec.result.calculation,
+                    fallback_calculation=res.calculation,
                     soc=soc,
                     bandtype=bt,
                     settings=settings,
@@ -840,17 +841,16 @@ def main(
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
-    rec = gscalculate(atoms=atoms, calculator=calculator)
+    res = gscalculate(atoms=atoms, calculator=calculator)
 
-    refinerec = refine(atoms=atoms, calculator=calculator, settings=settings)
-    calculations = refinerec.result
+    calculations = refine(atoms=atoms, calculator=calculator, settings=settings)
     socs = [True]
 
     good_results = {}
     for soc in socs:
         theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
         eigenvalues, efermi = calc2eigs(
-            rec.result.calculation.load(),
+            res.calculation.load(),
             soc=soc,
             theta=theta,
             phi=phi,
@@ -1595,7 +1595,7 @@ def validate(
         atoms=atoms,
         calculator=calculator,
         settings=settings,
-    ).result
+    )
     myresults = results.copy()
 
     for (sindex, kindex), data in iterateresults(results):

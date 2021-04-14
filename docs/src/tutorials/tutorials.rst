@@ -7,6 +7,7 @@ Tutorials
    :maxdepth: 1
 
    getting-started
+   writing-recipes
    intro-to-testing
    asr-run-command
    setup-params

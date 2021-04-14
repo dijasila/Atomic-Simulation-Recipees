@@ -47,11 +47,22 @@ class AtomsFile(click.ParamType):
             attr = get_attribute(obj, attrs)
             return attr
         try:
-            return read(value, parallel=False, format='json')
+            return read(value, parallel=False, format='json').copy()
         except (IOError, UnknownFileTypeError, StopIteration):
             if self.must_exist:
                 raise
             return None
+
+
+class CommaStr(click.ParamType):
+    """Read in a comma-separated strings and return a list of strings."""
+
+    name = "comma_string"
+
+    def convert(self, value, param, ctx):
+        """Convert string with commas to list of strings."""
+        if isinstance(value, str):
+            return value.split(',')
 
 
 class DictStr(click.ParamType):

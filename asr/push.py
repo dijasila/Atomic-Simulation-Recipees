@@ -38,7 +38,7 @@ def main(
         calculator=calculator,
         n=n,
         mingo=mingo,
-    ).result
+    )
 
     omega_kl = phresults.omega_kl
     u_klav = phresults.u_kl
