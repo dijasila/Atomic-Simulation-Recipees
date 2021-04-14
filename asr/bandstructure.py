@@ -1,6 +1,7 @@
 """Electronic band structures."""
 from typing import Union
 from ase import Atoms
+import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
@@ -63,7 +64,7 @@ make_migrations = make_migration_generator(
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-b', '--bscalculator',
         help='Bandstructure Calculator params.',
         type=DictStr())
@@ -532,7 +533,7 @@ make_migrations = make_migration_generator(
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-b', '--bscalculator',
         help='Bandstructure Calculator params.',
         type=DictStr())

@@ -1,7 +1,8 @@
 """Magnetic anisotropy."""
 from ase import Atoms
+import asr
 from asr.core import (command, ASRResult, prepare_result,
-                      option, AtomsFile, DictStr)
+                      option, AtomsFile)
 from asr.calculators import set_calculator_hook
 
 from asr.database.browser import (
@@ -102,7 +103,7 @@ class Result(ASRResult):
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = {
              'name': 'gpaw',

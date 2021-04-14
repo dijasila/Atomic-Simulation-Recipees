@@ -9,6 +9,7 @@ import numpy as np
 from ase.parallel import world
 from ase.dft.kpoints import BandPath
 
+import asr
 from asr.core import (command, option, DictStr, ASRResult, prepare_result,
                       atomsopt)
 from asr.calculators import construct_calculator
@@ -77,7 +78,7 @@ def distance_to_sc(nd, atoms, dist_max):
 @option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('--magstatecalculator',
         help='Magstate calculator params.', type=DictStr())
 def calculate(
@@ -260,7 +261,7 @@ class Result(ASRResult):
 @option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('--magstatecalculator',
         help='Magstate calculator params.', type=DictStr())
 def main(

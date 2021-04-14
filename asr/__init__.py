@@ -8,6 +8,8 @@ from asr.core import (  # noqa
     comparators,
     initialize_root,
     find_root,
+    atomsopt,
+    calcopt,
 )
 
 cmp = comparators

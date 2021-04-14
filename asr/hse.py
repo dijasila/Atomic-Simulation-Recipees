@@ -1,6 +1,7 @@
 """HSE band structure."""
 from ase import Atoms
 from asr.calculators import Calculation
+import asr
 from asr.core import (
     command, option, ASRResult,
     prepare_result, AtomsFile, DictStr,
@@ -38,9 +39,8 @@ class HSECalculationResult(ASRResult):
 
 
 @command(module='asr.hse')
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.atomsopt
+@asr.calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
@@ -363,14 +363,14 @@ class Result(ASRResult):
 
 
 @command(module='asr.hse')
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.atomsopt
+@asr.calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.',
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,

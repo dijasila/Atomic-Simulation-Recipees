@@ -96,7 +96,7 @@ class Result(ASRResult):
          argument_hooks=[set_calculator_hook])
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = {
              'name': 'gpaw',

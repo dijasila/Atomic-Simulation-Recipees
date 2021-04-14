@@ -9,8 +9,9 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
+    command, option, ASRResult, prepare_result, AtomsFile,
     make_migration_generator, Selector,
 )
 from asr.database.browser import (
@@ -45,7 +46,7 @@ class CalculateResult(ASRResult):
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int, nargs=3)
 def calculate(
         atoms: Atoms,
@@ -220,7 +221,7 @@ make_migrations = make_migration_generator(
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int)
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')

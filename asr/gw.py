@@ -3,7 +3,7 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile, DictStr,
+    atomsopt, calcopt, ExternalFile,
 )
 from asr.gs import calculate as calculategs
 from asr.bandstructure import main as bsmain
@@ -456,9 +456,10 @@ def migrate_1(record):
 )
 @atomsopt
 @calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.',
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
