@@ -31,7 +31,6 @@ class BandstructureCalculationResult(ASRResult):
 def remove_emptybands_and_make_bs_calculator(record):
     record.parameters.bscalculator = {
         'name': 'gpaw',
-        'basis': 'dzp',
         'nbands': -record.parameters.emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -78,7 +77,6 @@ def calculate(
         calculator: dict = calculategs.defaults.calculator,
         bscalculator: dict = {
             'name': 'gpaw',
-            'basis': 'dzp',
             'nbands': -20,
             'txt': 'bs.txt',
             'fixdensity': True,
