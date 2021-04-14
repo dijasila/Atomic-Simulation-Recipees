@@ -2,11 +2,10 @@
 import numpy as np
 from ase import Atoms
 
+import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
-    DictStr,
 )
-import asr
 import typing
 
 from asr.database.browser import make_panel_description
@@ -114,9 +113,10 @@ def add_bscalculator(record):
 )
 @atomsopt
 @calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.',
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,

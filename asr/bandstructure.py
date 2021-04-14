@@ -5,7 +5,7 @@ import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    DictStr, AtomsFile, Selector, make_migration_generator,
+    AtomsFile, Selector, make_migration_generator,
 )
 from asr.gs import calculate as calculategs
 from asr.gs import main as maings
@@ -65,9 +65,9 @@ make_migrations = make_migration_generator(
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.')
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -534,9 +534,9 @@ make_migrations = make_migration_generator(
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.')
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,

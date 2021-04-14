@@ -1,6 +1,7 @@
 """Module for determining magnetic state."""
+import asr
 from asr.core import (command, ASRResult, prepare_result, option,
-                      AtomsFile, DictStr)
+                      AtomsFile)
 from asr.calculators import set_calculator_hook
 from ase import Atoms
 import typing

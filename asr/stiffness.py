@@ -3,8 +3,9 @@ import typing
 
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
+    command, option, ASRResult, prepare_result, AtomsFile,
     make_migration_generator)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
@@ -219,8 +220,7 @@ make_migrations = make_migration_generator(
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
-@option('-c', '--calculator', help='Calculator and its parameters.',
-        type=DictStr())
+@asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 def main(atoms: Atoms,

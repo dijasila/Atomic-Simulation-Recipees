@@ -1,7 +1,8 @@
 """Infrared polarizability."""
 import typing
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, DictStr,
+    command, option, ASRResult, prepare_result, atomsopt,
     Selector, make_migration_generator,
 )
 from asr.database.browser import (
@@ -265,12 +266,9 @@ make_migrations = make_migration_generator(
     migrations=[make_migrations],
 )
 @atomsopt
-@option('-b', '--borncalculator', help='Born calculator.',
-        type=DictStr())
-@option('-p', '--phononcalculator', help='Phonon calculator.',
-        type=DictStr())
-@option('-a', '--polarizabilitycalculator', help='Polarizability calculator.',
-        type=DictStr())
+@asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
+@asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
+@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'], help='Polarizability calculator.')
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
 @option('-n', help='Supercell size', type=int)

@@ -50,8 +50,9 @@ from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
+import asr
 from asr.core import (
-    command, option, AtomsFile, DictStr, prepare_result, ASRResult,
+    command, option, AtomsFile, prepare_result, ASRResult,
 )
 from asr.calculators import set_calculator_hook
 from math import sqrt
@@ -309,7 +310,6 @@ class Result(ASRResult):
 @command(
     'asr.relax',
     argument_hooks=[set_calculator_hook],
-    migrations=[],
 )
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
@@ -317,8 +317,7 @@ class Result(ASRResult):
         type=AtomsFile(must_exist=False), default='relax.traj')
 @option('--tmp-atoms-file', help='File to store snapshots of relaxation.',
         default='relax.traj', type=str)
-@option('-c', '--calculator', help='Calculator and its parameters.',
-        type=DictStr())
+@asr.calcopt
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 @option('--fixcell/--dont-fixcell',
         help="Don't relax stresses.",

@@ -18,7 +18,7 @@ from asr.relax import main as relax
 import asr
 
 from asr.core import (
-    command, option, DictStr, ASRResult, prepare_result,
+    command, option, ASRResult, prepare_result,
     calcopt, atomsopt
 )
 from asr.database.browser import matrixtable, make_panel_description, describe_entry
@@ -153,7 +153,7 @@ def add_relaxcalculator_parameter(record):
 @atomsopt
 @option('--strain-percent', help='Strain fraction.', type=float)
 @calcopt
-@option('--relaxcalculator', help='Calculator parameters.', type=DictStr())
+@asr.calcopt(aliases=['--relaxcalculator'], help='Calculator parameters.')
 def main(
         atoms: Atoms,
         strain_percent: float = 1,

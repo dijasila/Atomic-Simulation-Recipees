@@ -79,8 +79,7 @@ def distance_to_sc(nd, atoms, dist_max):
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @asr.calcopt
-@option('--magstatecalculator',
-        help='Magstate calculator params.', type=DictStr())
+@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
 def calculate(
         atoms: Atoms,
         d: float = 0.05, fsname: str = 'phonons',
