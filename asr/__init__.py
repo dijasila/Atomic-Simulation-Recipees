@@ -10,6 +10,7 @@ from asr.core import (  # noqa
     find_root,
     atomsopt,
     calcopt,
+    instruction,
 )
 
 cmp = comparators

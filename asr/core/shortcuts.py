@@ -1,5 +1,5 @@
 from .comparators import comparators
-from .command import option
+from .decorators import option
 from .types import AtomsFile, DictStr
 
 

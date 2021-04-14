@@ -2,7 +2,7 @@
 from ase import Atoms
 import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile,
+    ASRResult, prepare_result,
 )
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
@@ -35,8 +35,10 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
-@command(module='asr.gs',
-         argument_hooks=[set_calculator_hook])
+@asr.instruction(
+    module='asr.gs',
+    argument_hooks=[set_calculator_hook],
+)
 @asr.atomsopt
 @asr.calcopt
 def calculate(
@@ -516,13 +518,12 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(
+@asr.instruction(
     module='asr.gs',
     argument_hooks=[set_calculator_hook],
     version=0,
 )
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
+@asr.atomsopt
 @asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = {

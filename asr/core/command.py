@@ -23,99 +23,8 @@ def format_param_string(params: dict):
                       params.items()])
 
 
-def _paramerrormsg(func, msg):
-    return f'Problem in {func.__module__}@{func.__name__}. {msg}'
-
-
-def _add_param(func, param):
-    if not hasattr(func, '__asr_params__'):
-        func.__asr_params__ = {}
-
-    name = param['name']
-    assert name not in func.__asr_params__, \
-        _paramerrormsg(func, f'Double assignment of {name}')
-
-    import inspect
-    sig = inspect.signature(func)
-    assert name in sig.parameters, \
-        _paramerrormsg(func, f'Unkown parameter {name}')
-
-    assert 'argtype' in param, \
-        _paramerrormsg(func, 'You have to specify the parameter '
-                       'type: option or argument')
-
-    if param['argtype'] == 'option':
-        if 'nargs' in param:
-            assert param['nargs'] > 0, \
-                _paramerrormsg(func, 'Options only allow one argument')
-    elif param['argtype'] == 'argument':
-        assert 'default' not in param, \
-            _paramerrormsg(func, 'Argument don\'t allow defaults')
-    else:
-        raise AssertionError(
-            _paramerrormsg(func,
-                           f'Unknown argument type {param["argtype"]}'))
-
-    func.__asr_params__[name] = param
-
-
-def option(*args, **kwargs):
-    """Tag a function to have an option."""
-
-    def decorator(func):
-        assert args, 'You have to give a name to this parameter'
-
-        for arg in args:
-            params = inspect.signature(func).parameters
-            name = arg.lstrip('-').split('/')[0].replace('-', '_')
-            if name in params:
-                break
-        else:
-            raise AssertionError(
-                _paramerrormsg(func,
-                               'You must give exactly one alias that starts '
-                               'with -- and matches a function argument.'))
-        param = {'argtype': 'option',
-                 'alias': args,
-                 'name': name,
-                 'matcher': None}
-        param.update(kwargs)
-        _add_param(func, param)
-        return func
-
-    return decorator
-
-
-def argument(name, **kwargs):
-    """Mark a function to have an argument."""
-
-    def decorator(func):
-        assert 'default' not in kwargs, 'Arguments do not support defaults!'
-        param = {'argtype': 'argument',
-                 'alias': (name, ),
-                 'name': name,
-                 'matcher': None}
-        param.update(kwargs)
-        _add_param(func, param)
-        return func
-
-    return decorator
-
-
 class ASRCommand:
-    """Wrapper class for constructing recipes.
-
-    This class implements the behaviour of an ASR recipe.
-
-    This class wrappes a callable `func` and automatically endows the function
-    with a command-line interface (CLI) through `cli` method. The CLI is
-    defined using the :func:`asr.core.__init__.argument` and
-    :func:`asr.core.__init__.option` functions in the core sub-package.
-
-    The ASRCommand... XXX
-    """
-
-    package_dependencies = ('asr', 'ase', 'gpaw')
+    """Class that represents an instruction."""
 
     def __init__(
             self,
@@ -125,6 +34,7 @@ class ASRCommand:
             cache=None,
             argument_hooks=None,
             migrations=None,
+            package_dependencies=('asr', 'ase', 'gpaw'),
     ):
         """Construct an instance of an ASRCommand.
 
@@ -137,6 +47,7 @@ class ASRCommand:
         assert callable(wrapped_function), \
             'The wrapped object should be callable'
 
+        self.package_dependencies = package_dependencies
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
@@ -146,9 +57,6 @@ class ASRCommand:
             self.argument_hooks = []
         else:
             self.argument_hooks = argument_hooks
-        import inspect
-        mod = inspect.getmodule(wrapped_function)
-        module = mod.__name__
 
         # Function to be executed
         self._wrapped_function = wrapped_function
@@ -168,7 +76,6 @@ class ASRCommand:
         import copy
         self.myparams = copy.deepcopy(self._wrapped_function.__asr_params__)
 
-        import inspect
         sig = inspect.signature(self._wrapped_function)
         self.__signature__ = sig
 
@@ -398,14 +305,6 @@ class ASRCommand:
             setattr(selector, f'parameters.{name}',
                     matcher(run_specification.parameters[name]))
         return selector
-
-
-def command(*decoargs, **decokwargs):
-
-    def decorator(func):
-        return ASRCommand(func, *decoargs, **decokwargs)
-
-    return decorator
 
 
 def get_recipe_module_names():

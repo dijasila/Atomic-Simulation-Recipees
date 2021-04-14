@@ -12,8 +12,9 @@ from .types import (  # noqa
 from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,  # noqa
                       UnknownDataFormat, obj_to_id, decode_object,  # noqa
                       encode_object, decode_result)  # noqa
-from .command import (command, option, argument, get_recipes, ASRCommand,  # noqa
+from .command import (get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa
+from .decorators import instruction, command, option, argument  # noqa 
 from .parameters import set_defaults, Parameters  # noqa
 from .cache import get_cache  # noqa
 from .shortcuts import atomsopt, calcopt  # noqa
