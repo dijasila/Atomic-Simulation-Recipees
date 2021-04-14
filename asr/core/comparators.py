@@ -220,6 +220,8 @@ def compare_calculator(calc1, calc2):
 
     if name1 == 'gpaw':
         return compare_gpaw_calculator(calc1, calc2)
+    elif name1 == 'emt':
+        return True
     else:
         raise NotImplementedError
 

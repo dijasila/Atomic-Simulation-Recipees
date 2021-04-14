@@ -268,7 +268,8 @@ make_migrations = make_migration_generator(
 @atomsopt
 @asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
 @asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
-@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'], help='Polarizability calculator.')
+@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
+             help='Polarizability calculator.')
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
 @option('-n', help='Supercell size', type=int)

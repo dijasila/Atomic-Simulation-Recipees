@@ -3,8 +3,7 @@ from ase import Atoms
 from asr.calculators import Calculation
 import asr
 from asr.core import (
-    command, option, ASRResult,
-    prepare_result, AtomsFile, DictStr,
+    command, option, ASRResult, prepare_result,
 )
 import typing
 from ase.spectrum.band_structure import BandStructure
