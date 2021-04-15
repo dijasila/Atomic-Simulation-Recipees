@@ -13,7 +13,6 @@ def test_piezo_BN(asr_tmpdir_w_params):
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 300},
         'xc': 'PBE',
-        'basis': 'dzp',
         'kpts': {'density': 2.0},
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},

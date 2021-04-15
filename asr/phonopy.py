@@ -87,7 +87,6 @@ def calculate(
         calculator: dict = {'name': 'gpaw',
                             'mode': {'name': 'pw', 'ecut': 800},
                             'xc': 'PBE',
-                            'basis': 'dzp',
                             'kpts': {'density': 6.0, 'gamma': True},
                             'occupations': {'name': 'fermi-dirac',
                                             'width': 0.05},

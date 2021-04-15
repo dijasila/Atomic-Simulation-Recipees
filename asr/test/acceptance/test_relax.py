@@ -19,7 +19,6 @@ def test_relax_fe_gpaw(asr_tmpdir):
         name='gpaw',
         mode={'name': 'pw', 'ecut': 200.0},
         kpts=[2, 2, 2],
-        basis='sz(dzp)'
     )
 
     record = main(Fe,
