@@ -120,7 +120,6 @@ def main(
             'name': 'gpaw',
             'mode': {'name': 'pw', 'ecut': 800},
             'xc': 'PBE',
-            'basis': 'dzp',
             'kpts': {'density': 12.0},
             'occupations': {'name': 'fermi-dirac',
                             'width': 0.05},
