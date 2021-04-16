@@ -231,7 +231,8 @@ def compare_gpaw_calculator(calc1, calc2):
                     'occupations', 'charge', 'setups'}
 
     for key in compare_keys:
-        if not compare_equal(calc1.get(key), calc2.get(key)):
+        if key in calc1 and key in calc2 and not \
+           compare_equal(calc1.get(key), calc2.get(key)):
             return False
     return True
 

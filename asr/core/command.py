@@ -284,9 +284,9 @@ class ASRCommand:
 
     def has(self, *args, **kwargs):
         parameters = self.prepare_parameters(*args, **kwargs)
-        run_spec = self.make_run_spec(parameters)
+        run_spec = self.make_run_specification(parameters)
         sel = self.make_selector(run_spec)
-        self.cache.has(selector=sel)
+        return self.cache.has(selector=sel)
 
     def make_selector(self, run_specification):
         """Make selector for matching previous records."""

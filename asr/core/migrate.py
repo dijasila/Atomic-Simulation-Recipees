@@ -7,6 +7,7 @@ from .selector import Selector
 from .record import Record
 from .specification import get_new_uuid
 from .history import History
+from .utils import compare_equal
 
 
 class UnapplicableMigration(Exception):
@@ -198,7 +199,9 @@ def make_modification(old_record: Record, new_record: Record):
 def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = None):
     if prepend is None:
         prepend = AttributeSequence([])
-    if type(obj1) != type(obj2):
+    tp1 = type(obj1)
+    tp2 = type(obj2)
+    if tp1 != tp2:
         return [
             ChangedValue(
                 attribute=prepend,
@@ -206,9 +209,19 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
                 new_value=obj2,
             )
         ]
-    differences = []
     attrs_and_values1 = get_attributes_and_values(obj1)
     attrs_and_values2 = get_attributes_and_values(obj2)
+    if not (attrs_and_values1 or attrs_and_values2):
+        # Then we cannot introspect
+        if not compare_equal(obj1, obj2):
+            return [
+                ChangedValue(
+                    attribute=prepend,
+                    old_value=obj1,
+                    new_value=obj2,
+                )
+            ]
+    differences = []
     attrs1 = set(attrs_and_values1)
     attrs2 = set(attrs_and_values2)
     deleted_attrs = attrs1 - attrs2
@@ -345,7 +358,7 @@ class SelectorMigrationGenerator(MakeMigrations):
 
     def make_migrations(self, record: Record) -> typing.List[Migration]:
         """Check if migration applies to record."""
-        is_match = self.selector.matches(record)
+        is_match = self.selector(record)
         if is_match:
             return [self.migration]
         else:
@@ -479,6 +492,23 @@ def get_instruction_migration_generator() -> CollectionMigrationGenerator:
             migrations.extend(recipe.migrations)
 
     return migrations
+
+
+def get_custom_migrations_generator() -> CollectionMigrationGenerator:
+    from .migrations import custom_migrations
+    make_migrations = CollectionMigrationGenerator(
+        migration_generators=custom_migrations,
+    )
+    return make_migrations
+
+
+def get_migration_generator() -> CollectionMigrationGenerator:
+    """Return a migration generator that yields all migrations."""
+    from asr.core.resultfile import get_resultfile_migration_generator
+    make_migrations = get_instruction_migration_generator()
+    make_migrations.extend([get_resultfile_migration_generator()])
+    make_migrations.extend([get_custom_migrations_generator()])
+    return make_migrations
 
 
 def make_migration_generator(

@@ -474,15 +474,13 @@ def add_resultfile_records(directories):
 def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
-        get_instruction_migration_generator,
         make_record_migration,
+        get_migration_generator,
     )
-    from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
     sel = make_selector_from_selection(cache, selection)
-    make_migrations = get_instruction_migration_generator()
-    make_migrations.extend([get_resultfile_migration_generator()])
+    make_migrations = get_migration_generator()
     record_migrations = []
     erroneous_migrations = []
     nup_to_date = 0
@@ -578,7 +576,9 @@ def make_selector_from_selection(cache, selection):
 @click.argument('selection', required=False, nargs=-1)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
-                       'run_specification.parameters '), type=str)
+                       'run_specification.parameters '
+                       'result '
+                       ), type=str)
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 @click.option('-w', '--width', default=40, type=int,

@@ -94,6 +94,7 @@ def construct_record_from_resultsfile(
             data = result.data
             calc = calculation.load()
             calculator = calc.parameters
+            calculator['name'] = 'gpaw'
             params = {'calculator': calculator}
         else:
             data = result
