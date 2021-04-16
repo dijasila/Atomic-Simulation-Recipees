@@ -3,6 +3,8 @@
 import typing
 import fnmatch
 import pathlib
+from .dependencies import Dependency
+from .metadata import construct_metadata
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
 from .serialize import JSONSerializer
@@ -11,12 +13,17 @@ from .migrate import Migration, SelectorMigrationGenerator
 from .selector import Selector
 from .command import get_recipes
 from .utils import write_file, read_file, get_recipe_from_name
+from .root import find_root
 
 
 def find_directories() -> typing.List[pathlib.Path]:
-    directories = []
+    skip_patterns = [
+        '*strains*',
+        '*displacements*',
+    ]
+    directories = [pathlib.Path('.')]
     for path in pathlib.Path().rglob('*'):
-        if path.is_dir():
+        if path.is_dir() and path.name not in skip_patterns:
             directories.append(path)
 
     return directories
@@ -26,7 +33,7 @@ def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
     return {path: get_new_uuid() for path in resultfiles}
 
 
-def find_results_files() -> typing.List[pathlib.Path]:
+def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
     skip_patterns = [
         '*results-asr.database.fromtree.json',
         '*results-asr.database.app.json',
@@ -41,7 +48,7 @@ def find_results_files() -> typing.List[pathlib.Path]:
     ]
 
     paths = []
-    for path in pathlib.Path().rglob('results-asr.*.json'):
+    for path in pathlib.Path(directory).rglob('results-asr.*.json'):
         filepath = str(path)
         if any(fnmatch.fnmatch(filepath, skip_pattern)
                for skip_pattern in skip_patterns):
@@ -119,7 +126,7 @@ def construct_record_from_resultsfile(
         if pathlib.Path(folder / atomsfilename).is_file()
     }
 
-    params = recipe.get_parameters()
+    params = recipe.get_argument_descriptors()
     atomsparam = [param for name, param in params.items()
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']
@@ -165,6 +172,9 @@ def construct_record_from_resultsfile(
             version=-1,
             codes=codes,
             uid=uid,
+        ),
+        metadata=construct_metadata(
+            directory=str(folder.absolute().relative_to(find_root()))
         ),
         resources=resources,
         result=result,
@@ -254,20 +264,19 @@ def get_dependencies(path, uids):
         dep_list = []
         for dependency in dependencies:
             if dependency in uids:
-                dep_list.append(uids[dependency])
+                dep_list.append(Dependency(uid=uids[dependency], revision=None))
         return dep_list
 
     return None
 
 
 def get_resultsfile_records() -> typing.List[Record]:
-    resultsfiles = find_results_files()
     records = []
+    resultsfiles = find_results_files(directory=pathlib.Path('.'))
     uids = generate_uids(resultsfiles)
     for path in resultsfiles:
         record = construct_record_from_resultsfile(path, uids)
         records.append(record)
-
     records = inherit_dependency_parameters(records)
     return records
 
@@ -275,8 +284,8 @@ def get_resultsfile_records() -> typing.List[Record]:
 def inherit_dependency_parameters(records):
 
     for record in records:
-        dep_uids = record.dependencies or []  # [record.uid for record in records]
-        dep_params = get_dependency_parameters(dep_uids, records)
+        deps = record.dependencies or []  # [record.uid for record in records]
+        dep_params = get_dependency_parameters(deps, records)
         dep_params = Parameters({
             'dependency_parameters': Parameters(dep_params)})
         record.parameters.update(dep_params)
@@ -284,13 +293,13 @@ def inherit_dependency_parameters(records):
     return records
 
 
-def get_dependency_parameters(dependency_uids, records):
+def get_dependency_parameters(dependencies, records):
     params = Parameters({})
-    if dependency_uids is None:
+    if dependencies is None:
         return params
 
-    for dependency in dependency_uids:
-        dep = [other for other in records if other.uid == dependency][0]
+    for dependency in dependencies:
+        dep = [other for other in records if other.uid == dependency.uid][0]
         depparams = Parameters(
             {
                 dep.name: {
@@ -344,7 +353,7 @@ def update_resultfile_record_to_version_0(record):
     unused_dependency_params = {name: set(values)
                                 for name, values in dep_params.items()}
 
-    params = recipe.get_parameters()
+    params = recipe.get_argument_descriptors()
     atomsparam = [param for name, param in params.items()
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']

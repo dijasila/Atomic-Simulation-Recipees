@@ -89,10 +89,21 @@ def cli():
 
 
 @cli.command()
-def init():
-    """Initialize ASR Repository."""
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def init(directories):
+    """Initialize ASR Repository.
+
+    Initialize asr repository in directory. Defaults to '.' if no
+    directory is supplied.
+
+    """
     from .root import initialize_root
-    initialize_root()
+    if not directories:
+        directories = [Path('.')]
+    for directory in directories:
+        initialize_root(directory)
 
 
 @cli.command()
@@ -429,22 +440,29 @@ def get_item(attrs: List[str], obj):
 
 
 @cache.command()
-def add_resultfile_records():
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def add_resultfile_records(directories):
     from asr.core.resultfile import get_resultsfile_records
-    cache = get_cache()
+    from .utils import chdir
+    if not directories:
+        directories = [Path('.').resolve()]
+    for directory in directories:
+        with chdir(directory):
+            cache = get_cache()
+            resultfile_records = get_resultsfile_records()
 
-    resultfile_records = get_resultsfile_records()
+            records_to_add = []
+            for record in resultfile_records:
+                if not cache.has(name=record.name,
+                                 version=record.version,
+                                 parameters=record.parameters):
+                    records_to_add.append(record)
 
-    records_to_add = []
-    for record in resultfile_records:
-        if not cache.has(name=record.name,
-                         version=record.version,
-                         parameters=record.parameters):
-            records_to_add.append(record)
-
-    for record in records_to_add:
-        print(f'Adding resultfile {record.name} to cache.')
-        cache.add(record)
+            for record in records_to_add:
+                print(f'Adding resultfile {record.name} to cache.')
+                cache.add(record)
 
 
 @cache.command()

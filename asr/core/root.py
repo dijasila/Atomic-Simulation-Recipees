@@ -13,9 +13,10 @@ def root_is_initialized():
         return False
 
 
-def initialize_root():
-    assert not ASR_DIR.exists()
-    ASR_DIR.mkdir()
+def initialize_root(directory: pathlib.Path = pathlib.Path('.')):
+    asr_dir = directory / ASR_DIR
+    assert not asr_dir.exists()
+    asr_dir.mkdir()
 
 
 def find_root(path: str = '.'):
