@@ -38,7 +38,7 @@ def instruction(
             module=mod,
             version=version,
             argument_hooks=argument_hooks,
-            migrations=None,
+            migrations=migrations,
         )
 
     return decorator

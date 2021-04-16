@@ -94,12 +94,15 @@ def construct_record_from_resultsfile(
             data = result.data
             calc = calculation.load()
             calculator = calc.parameters
-            metadata = {
-                'asr_name': recipename,
-                'params': {'calculator': calculator},
-            }
+            params = {'calculator': calculator}
         else:
-            raise AssertionError(f'Unparsable old results file: path={path}')
+            data = result
+            params = {}
+
+        metadata = {
+            'asr_name': recipename,
+            'params': params,
+        }
 
     recipe = get_recipe_from_name(recipename)
     if not issubclass(recipe.returns, ASRResult):
@@ -275,7 +278,11 @@ def get_resultsfile_records() -> typing.List[Record]:
     resultsfiles = find_results_files(directory=pathlib.Path('.'))
     uids = generate_uids(resultsfiles)
     for path in resultsfiles:
-        record = construct_record_from_resultsfile(path, uids)
+        try:
+            record = construct_record_from_resultsfile(path, uids)
+        except AssertionError as e:
+            print(e)
+            continue
         records.append(record)
     records = inherit_dependency_parameters(records)
     return records
