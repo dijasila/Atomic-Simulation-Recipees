@@ -443,7 +443,7 @@ class RecordMigration:
         return '\n'.join(items)
 
 
-def make_record_migration(
+def migrate_record(
     record: Record,
     migration_generator: MakeMigrations,
 ) -> RecordMigration:

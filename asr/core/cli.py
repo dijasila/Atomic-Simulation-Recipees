@@ -474,7 +474,7 @@ def add_resultfile_records(directories):
 def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
-        make_record_migration,
+        migrate_record,
         get_migration_generator,
     )
 
@@ -488,7 +488,7 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
     nerrors = 0
 
     for record in cache.select(selector=sel):
-        record_migration = make_record_migration(record, make_migrations)
+        record_migration = migrate_record(record, make_migrations)
         if record_migration:
             nmigrations += 1
             record_migrations.append(record_migration)
