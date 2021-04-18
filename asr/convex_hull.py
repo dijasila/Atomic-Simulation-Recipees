@@ -5,8 +5,10 @@ import functools
 
 from asr.core import (
     command, argument, ASRResult, prepare_result,
-    atomsopt, calcopt, ASEDatabase,
+    atomsopt, calcopt,
+    File, FileStr,
 )
+from asr.calculators import set_calculator_hook
 
 import numpy as np
 from asr.database.browser import (
@@ -15,6 +17,7 @@ from asr.database.browser import (
 
 from ase import Atoms
 from ase.phasediagram import PhaseDiagram
+from ase.db import connect
 from ase.db.row import AtomsRow
 from ase.formula import Formula
 
@@ -130,14 +133,26 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.convex_hull')
+def convert_database_strings_to_files(parameters):
+    databases = []
+    for database in parameters.databases:
+        if isinstance(database, str):
+            database = File.fromstr(database)
+        databases.append(database)
+    parameters.databases = databases
+    return parameters
+
+
+@command('asr.convex_hull',
+         argument_hooks=[set_calculator_hook,
+                         convert_database_strings_to_files])
 @atomsopt
 @calcopt
-@argument('databases', nargs=-1, type=ASEDatabase())
+@argument('databases', nargs=-1, type=FileStr())
 def main(
         atoms: Atoms,
         calculator: dict = groundstate.defaults.calculator,
-        databases: List[str] = [],
+        databases: List[File] = [],
 ) -> Result:
     """Calculate convex hull energies.
 
@@ -188,6 +203,7 @@ def main(
     """
     # XXX Add possibility of D3 correction again
     # TODO: Make separate recipe for calculating vdW correction to total energy
+    databases = [connect(database.path) for database in databases]
     result = groundstate(atoms=atoms, calculator=calculator)
     usingd3 = False
     energy = result.etot

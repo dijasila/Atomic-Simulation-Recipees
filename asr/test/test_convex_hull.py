@@ -54,7 +54,7 @@ def test_convex_hull(refdb, mockgpaw, get_webcontent,
 
     results = main(
         atoms=atoms,
-        databases=[connect('references.db')],
+        databases=['references.db'],
         calculator=fast_calc,
     )
     assert results['hform'] == -sum(energies[element]
@@ -119,7 +119,7 @@ def test_convex_hull_with_two_reference_databases(
     atoms.write('structure.json')
     main(
         atoms=atoms,
-        databases=[connect(dbname), connect(alloydbname)],
+        databases=[dbname, alloydbname],
         calculator=fast_calc,
     )
     get_webcontent()

@@ -121,6 +121,39 @@ class ExternalFile:
         return self.sha256 == other.sha256
 
 
+class File:
+
+    def __init__(
+            self,
+            path: pathlib.Path,
+    ):
+        self.path = path
+        self.hashes = {'sha256': sha256sum(path)}
+
+    @classmethod
+    def fromstr(cls, string):
+        path = pathlib.Path(string).absolute()
+        return cls(path)
+
+    @property
+    def sha256(self):
+        return self.hashes['sha256']
+
+    def __str__(self):
+        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
+
+    def __repr__(self):
+        return str(self)
+
+    def __fspath__(self):
+        return str(self.path)
+
+    def __eq__(self, other):
+        if not isinstance(other, File):
+            return NotImplemented
+        return self.sha256 == other.sha256
+
+
 def is_external_file(obj):
     return isinstance(obj, ExternalFile)
 

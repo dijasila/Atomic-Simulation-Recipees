@@ -90,6 +90,16 @@ class ASEDatabase(click.ParamType):
         return con
 
 
+class FileStr(click.ParamType):
+
+    name = "file"
+
+    def convert(self, value, param, ctx):
+        """Convert string to File object."""
+        from .filetype import File
+        return File.fromstr(value)
+
+
 def clickify_docstring(doc):
     """Take a standard docstring a make it Click compatible."""
     if doc is None:

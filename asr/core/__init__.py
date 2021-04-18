@@ -4,10 +4,10 @@ from .utils import (read_json, write_json, parse_dict_string,  # noqa
                     chdir, encode_json, recursive_update, write_file,  # noqa
                     get_recipe_from_name,  # noqa
                     dct_to_object, read_file, decode_json)  # noqa
-from .filetype import ExternalFile  # noqa
+from .filetype import ExternalFile, File  # noqa
 from .types import (  # noqa
     AtomsFile, DictStr, clickify_docstring, ASEDatabase,
-    CommaStr,
+    CommaStr, FileStr,
 )
 from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,  # noqa
                       UnknownDataFormat, obj_to_id, decode_object,  # noqa
