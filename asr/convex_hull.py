@@ -3,6 +3,7 @@ from collections import Counter
 from typing import List, Dict, Any, Optional
 import functools
 
+import asr
 from asr.core import (
     command, argument, ASRResult, prepare_result,
     atomsopt, calcopt,
@@ -143,9 +144,28 @@ def convert_database_strings_to_files(parameters):
     return parameters
 
 
+def select_records_with_databases_as_string(record):
+    if record.name != 'asr.convex_hull:main':
+        return False
+    for database in record.parameters.databases:
+        if isinstance(database, str):
+            return True
+    return False
+
+
+@asr.migration(selector=select_records_with_databases_as_string)
+def convert_database_parameter_to_file(record):
+    """Convert databases represented as strings to File objects."""
+    parameters = convert_database_strings_to_files(record.parameters)
+    record.parameters = parameters
+    return record
+
+
 @command('asr.convex_hull',
          argument_hooks=[set_calculator_hook,
-                         convert_database_strings_to_files])
+                         convert_database_strings_to_files],
+         migrations=[convert_database_parameter_to_file],
+         )
 @atomsopt
 @calcopt
 @argument('databases', nargs=-1, type=FileStr())
