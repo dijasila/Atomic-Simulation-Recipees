@@ -3,7 +3,6 @@ from ase import Atoms
 import asr
 from asr.core import (command, ASRResult, prepare_result,
                       option, AtomsFile)
-from asr.calculators import set_calculator_hook
 
 from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
@@ -99,8 +98,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.magnetic_anisotropy',
-         argument_hooks=[set_calculator_hook])
+@command('asr.magnetic_anisotropy')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt

@@ -48,18 +48,18 @@ class ASRCommand:
             'The wrapped object should be callable'
 
         self.package_dependencies = package_dependencies
+        self.module = module
+        self.version = version
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
-        self._migrations = migrations
+        self.migrations = migrations or []
         self.version = version
-        if argument_hooks is None:
-            self.argument_hooks = []
-        else:
-            self.argument_hooks = argument_hooks
+        self.argument_hooks = argument_hooks or []
+        self._wrapped_function = wrapped_function
+        self.package_dependencies = self.package_dependencies
 
         # Function to be executed
-        self._wrapped_function = wrapped_function
         self.name = f'{module}:{wrapped_function.__name__}'
 
         hints = typing.get_type_hints(wrapped_function)
@@ -82,12 +82,20 @@ class ASRCommand:
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
 
-    @property
-    def migrations(self):
-        if self._migrations:
-            return self._migrations
-        else:
-            return []
+    def new(self, **newkwargs):
+        """Make new instance of instruction with new settings."""
+        cls = type(self)
+        kwargs = dict(
+            wrapped_function=self._wrapped_function,
+            module=self.module,
+            version=self.version,
+            cache=self.cache,
+            argument_hooks=self.argument_hooks,
+            migrations=self.migrations,
+            package_dependencies=self.package_dependencies,
+        )
+        kwargs.update(newkwargs)
+        return cls(**kwargs)
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""

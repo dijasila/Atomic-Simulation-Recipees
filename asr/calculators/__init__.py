@@ -86,8 +86,10 @@ def set_calculator_hook(parameters):
     """Set parameters according to dimensionality."""
     from asr.calculators import get_calculator_spec
     atoms = parameters.atoms
-    calc_spec = get_calculator_spec(atoms, parameters.calculator)
-    parameters.calculator = calc_spec
+    for name, value in parameters.items():
+        if 'calculator' in name:
+            calc_spec = get_calculator_spec(atoms, parameters[name])
+            parameters[name] = calc_spec
     return parameters
 
 

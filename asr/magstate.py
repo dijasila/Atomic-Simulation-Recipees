@@ -2,7 +2,6 @@
 import asr
 from asr.core import (command, ASRResult, prepare_result, option,
                       AtomsFile)
-from asr.calculators import set_calculator_hook
 from ase import Atoms
 import typing
 
@@ -93,8 +92,7 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.magstate',
-         argument_hooks=[set_calculator_hook])
+@command('asr.magstate')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt

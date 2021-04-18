@@ -37,7 +37,6 @@ class GroundStateCalculationResult(ASRResult):
 
 @asr.instruction(
     module='asr.gs',
-    argument_hooks=[set_calculator_hook],
 )
 @asr.atomsopt
 @asr.calcopt

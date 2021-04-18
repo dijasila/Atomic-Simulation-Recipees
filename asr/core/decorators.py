@@ -2,12 +2,13 @@ import typing
 import inspect
 from .comparators import comparators
 from .command import ASRCommand
+from asr.calculators import set_calculator_hook
 
 
 def instruction(
         module: typing.Optional[str] = None,
         version: int = 0,
-        argument_hooks: typing.List[typing.Callable] = None,
+        argument_hooks: typing.List[typing.Callable] = [set_calculator_hook],
         migrations=None,
         package_dependencies=('asr', 'ase', 'gpaw'),
 ):

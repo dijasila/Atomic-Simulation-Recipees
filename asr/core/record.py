@@ -28,6 +28,10 @@ class Record:
     def parameters(self):
         return self.run_specification.parameters
 
+    @parameters.setter
+    def parameters(self, value):
+        self.run_specification.parameters = value
+
     @property
     def uid(self):
         return self.run_specification.uid

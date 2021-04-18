@@ -54,7 +54,6 @@ import asr
 from asr.core import (
     command, option, AtomsFile, prepare_result, ASRResult,
 )
-from asr.calculators import set_calculator_hook
 from math import sqrt
 import time
 
@@ -309,7 +308,6 @@ class Result(ASRResult):
 
 @command(
     'asr.relax',
-    argument_hooks=[set_calculator_hook],
 )
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
