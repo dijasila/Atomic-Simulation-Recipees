@@ -52,7 +52,7 @@ def asr_gpaw_parameter_factory(atoms, dct):
         kpts = dct['kpts']
         if 'density' in kpts:
             density = kpts.pop('density')
-            even = kpts.pop('even', True)
+            even = kpts.pop('even', False)
             size = kptdensity2monkhorstpack(
                 atoms=atoms,
                 kptdensity=density,
@@ -85,6 +85,8 @@ def get_calculator_spec(atoms: Atoms, dct: typing.Dict[str, typing.Any]):
 def set_calculator_hook(parameters):
     """Set parameters according to dimensionality."""
     from asr.calculators import get_calculator_spec
+    if 'atoms' not in parameters:
+        return parameters
     atoms = parameters.atoms
     for name, value in parameters.items():
         if 'calculator' in name:

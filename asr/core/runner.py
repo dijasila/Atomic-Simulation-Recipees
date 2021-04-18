@@ -43,7 +43,7 @@ def get_workdir_name(
     return workdir
 
 
-class IsolatedWorkDir():
+class Runner():
 
     def make_decorator(
             self,
@@ -67,4 +67,4 @@ class IsolatedWorkDir():
         return self.make_decorator()
 
 
-isolated_work_dir = IsolatedWorkDir()
+runner = Runner()

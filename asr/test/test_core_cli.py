@@ -160,7 +160,7 @@ def test_asr_cache_ls(asr_tmpdir_w_params):
         ['cache', 'ls'])
 
     assert result.exit_code == 0
-    assert result.output == 'name parameters\n'
+    assert result.output == 'name parameters result\n'
 
 
 @pytest.fixture()

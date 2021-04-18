@@ -10,7 +10,7 @@ from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
 from .specification import construct_run_spec, obj_to_id
-from .workdir import isolated_work_dir
+from .runner import runner
 from .dependencies import register_dependencies
 from .resources import register_resources
 from .selector import Selector
@@ -272,7 +272,7 @@ class ASRCommand:
         @cache(make_selector=self.make_selector)
         @register_metadata()
         @register_dependencies()
-        @isolated_work_dir()
+        @runner()
         @register_resources()
         def execute_run_spec(run_spec):
             name = run_spec.name
