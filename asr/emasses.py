@@ -906,7 +906,6 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import file_barrier
     from gpaw import GPAW
-    from gpaw.mpi import serial_comm
     import numpy as np
     cell_cv = calc.get_atoms().get_cell()
 
@@ -942,10 +941,10 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                 atoms.get_potential_energy()
                 calc.write(name)
 
-        calc_serial = GPAW(name, txt=None, communicator=serial_comm)
-        k_kc = calc_serial.get_bz_k_points()
+        calc_eigs = GPAW(name, txt=None)
+        k_kc = calc_eigs.get_bz_k_points()
         theta, phi = get_spin_axis()
-        e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
+        e_km, _, s_kvm = calc2eigs(calc_eigs, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
         sz_km = s_kvm[:, get_spin_index(), :]
