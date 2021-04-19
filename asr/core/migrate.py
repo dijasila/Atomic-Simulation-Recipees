@@ -1,5 +1,6 @@
 """Implements record migration functionality."""
 import abc
+import copy
 import typing
 from dataclasses import dataclass, field
 from .command import get_recipes
@@ -59,7 +60,7 @@ class NewAttribute(Difference):
     value: typing.Any
 
     def apply(self, obj: typing.Any):
-        self.attribute.set(obj, self.value)
+        self.attribute.set(obj, copy.deepcopy(self.value))
 
     def revert(self, obj: typing.Any):
         self.attribute.delete(obj)
@@ -77,7 +78,7 @@ class DeletedAttribute(Difference):
         self.attribute.delete(obj)
 
     def revert(self, obj: typing.Any):
-        self.attribute.set(obj, self.value)
+        self.attribute.set(obj, copy.deepcopy(self.value))
 
     def __str__(self):
         return f'Delete attribute={self.attribute} value={self.value}'
@@ -89,10 +90,10 @@ class ChangedValue(Difference):
     old_value: typing.Any
 
     def apply(self, obj: typing.Any):
-        self.attribute.set(obj, self.new_value)
+        self.attribute.set(obj, copy.deepcopy(self.new_value))
 
     def revert(self, obj: typing.Any):
-        self.attribute.set(obj, self.old_value)
+        self.attribute.set(obj, copy.deepcopy(self.old_value))
 
     def __str__(self):
         return (
@@ -205,8 +206,8 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
         return [
             ChangedValue(
                 attribute=prepend,
-                old_value=obj1,
-                new_value=obj2,
+                old_value=copy.deepcopy(obj1),
+                new_value=copy.deepcopy(obj2),
             )
         ]
     attrs_and_values1 = get_attributes_and_values(obj1)
@@ -214,11 +215,12 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
     if not (attrs_and_values1 or attrs_and_values2):
         # Then we cannot introspect
         if not compare_equal(obj1, obj2):
+            assert prepend.attrs[0].name != 'history'
             return [
                 ChangedValue(
                     attribute=prepend,
-                    old_value=obj1,
-                    new_value=obj2,
+                    old_value=copy.deepcopy(obj1),
+                    new_value=copy.deepcopy(obj2),
                 )
             ]
     differences = []
@@ -231,7 +233,7 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
         differences.append(
             DeletedAttribute(
                 attribute=prepend + attr,
-                value=attrs_and_values1[attr],
+                value=copy.deepcopy(attrs_and_values1[attr]),
             )
         )
 
@@ -239,7 +241,7 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
         differences.append(
             NewAttribute(
                 attribute=prepend + attr,
-                value=attrs_and_values2[attr]
+                value=copy.deepcopy(attrs_and_values2[attr]),
             )
         )
     common_attrs = attrs1.intersection(attrs2)
@@ -281,7 +283,7 @@ class Revision:
     def apply(self, record: Record):
         if record.history is None:
             record.history = RevisionHistory()
-        self.modification.apply(record)
+        record = self.modification.apply(record.copy())
         record.history.add(self)
         return record
 
