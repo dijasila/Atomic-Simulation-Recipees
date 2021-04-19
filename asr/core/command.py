@@ -59,8 +59,11 @@ class ASRCommand:
         self._wrapped_function = wrapped_function
         self.package_dependencies = self.package_dependencies
 
-        # Function to be executed
-        self.name = f'{module}:{wrapped_function.__name__}'
+        funcname = wrapped_function.__name__
+        if funcname == 'main':
+            self.name = module
+        else:
+            self.name = f'{module}:{funcname}'
 
         hints = typing.get_type_hints(wrapped_function)
 
