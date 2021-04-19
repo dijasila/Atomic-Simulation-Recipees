@@ -179,6 +179,16 @@ def collect_file(filename: Path):
     return kvp, data
 
 
+def collect_info(filename: Path):
+    from asr.core import read_json
+    kvp = read_json(filename)
+    if isinstance(kvp, ASRResult):
+        raise ValueError("Didnt expect this")
+    data = {str(filename): kvp}
+
+    return kvp, data
+
+
 def collect_links_to_child_folders(folder: Path, atomsname):
     """Collect links to all subfolders.
 
@@ -261,6 +271,10 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
+            elif name.is_file() and fnmatch(name, "info.json"):
+                tmpkvp, tmpdata = collect_info(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
             elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
                 tmpkvp, tmpdata = collect_file(name)
                 kvp.update(tmpkvp)
@@ -482,10 +496,10 @@ def main(folders: Union[str, None] = None,
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
 
-    if missing_child_uids:
-        raise MissingUIDS(
-            'Missing child uids in collected database. '
-            'Did you collect all subfolders?')
+    # if missing_child_uids:
+    #     raise MissingUIDS(
+    #         'Missing child uids in collected database. '
+    #         'Did you collect all subfolders?')
 
     if duplicate_uids:
         raise MissingUIDS(
