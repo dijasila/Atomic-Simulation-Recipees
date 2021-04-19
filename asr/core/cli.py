@@ -851,9 +851,9 @@ def database():
 @click.argument('folders', nargs=-1, type=str)
 @click.option('-r', '--recursive', is_flag=True,
               help='Recurse and collect subdirectories.')
-@click.option('--children-patterns', type=str, default='*')
+@click.option('--children-patterns', type=str, default='')
 @click.option('--patterns', help='Only select files matching pattern.', type=str,
-              default='info.json,params.json,results-asr.*.json')
+              default='info.json,params.json')
 @click.option('--dbname', help='Database name.', type=str, default='database.db')
 @click.option('--njobs', type=int, default=1,
               help='Delegate collection of database to NJOBS subprocesses. '

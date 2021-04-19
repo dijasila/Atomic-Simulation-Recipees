@@ -204,7 +204,7 @@ def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
         row.data,
-        'asr.exchange@calculate')
+        'asr.exchange@main')
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)
     explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'

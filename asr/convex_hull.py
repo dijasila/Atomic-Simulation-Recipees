@@ -431,6 +431,7 @@ def plot(row, fname, thisrow):
         colors.append(color)
         sizes.append(size)
 
+    sizes = np.array(sizes)
     pd = PhaseDiagram(pdrefs,
                       verbose=False)
 
@@ -465,6 +466,7 @@ def plot(row, fname, thisrow):
             x = x[mask]
             edgecolors = edgecolors[mask]
             hull = hull[mask]
+            sizes = sizes[mask]
             names = [name for name, m in zip(names, mask) if m]
 
         ax.scatter(

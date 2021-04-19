@@ -1,6 +1,8 @@
 """Convert a folder tree to an ASE database."""
 
 from typing import Union, List
+import numbers
+import numpy as np
 from ase import Atoms
 from ase.io import read
 from ase.db import connect
@@ -16,6 +18,7 @@ import glob
 import sys
 import traceback
 from asr.core.serialize import JSONSerializer
+from ase.db.core import reserved_keys
 
 serializer = JSONSerializer()
 
@@ -96,6 +99,20 @@ tmpkd = parse_key_descriptions(
      for key, value in dct.items()})
 
 
+def remove_bad_keys(kvp):
+    delete = []
+    for key, value in kvp.items():
+        if key in reserved_keys:
+            delete.append(key)
+        elif not isinstance(value, (numbers.Real, str, np.bool_)):
+            delete.append(key)
+
+    for key in delete:
+        del kvp[key]
+
+    return kvp
+
+
 def get_key_value_pairs(resultsdct: dict):
     """Extract key-value-pairs from results dictionary.
 
@@ -124,6 +141,7 @@ def get_key_value_pairs(resultsdct: dict):
             # Not iterable
             pass
 
+    kvp = remove_bad_keys(kvp)
     return kvp
 
 
@@ -191,6 +209,7 @@ def collect_info(filename: Path):
     """Collect info.json."""
     from asr.core import read_json
     kvp = read_json(filename)
+    kvp = remove_bad_keys(kvp)
     data = {str(filename): kvp}
 
     return kvp, data
@@ -453,7 +472,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json',
          dbname: str = 'database.db',
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
