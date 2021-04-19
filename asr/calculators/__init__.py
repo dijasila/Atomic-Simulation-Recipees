@@ -10,7 +10,7 @@ import typing
 from ase import Atoms
 from ase.calculators.calculator import get_calculator_class \
     as ase_get_calculator_class
-from ase.calculators.calculator import Calculator
+from ase.calculators.calculator import Calculator, kptdensity2monkhorstpack
 from abc import ABC, abstractmethod
 
 
@@ -47,6 +47,18 @@ def asr_gpaw_parameter_factory(atoms, dct):
                     'symmetry': {'symmorphic': False},
                     'convergence': {'forces': 1e-4},
                     'charge': 0})
+
+    if 'kpts' in dct:
+        kpts = dct['kpts']
+        if 'density' in kpts:
+            density = kpts.pop('density')
+            even = kpts.pop('even', False)
+            size = kptdensity2monkhorstpack(
+                atoms=atoms,
+                kptdensity=density,
+                even=even,
+            )
+            kpts['size'] = size
     return dct
 
 
@@ -73,9 +85,13 @@ def get_calculator_spec(atoms: Atoms, dct: typing.Dict[str, typing.Any]):
 def set_calculator_hook(parameters):
     """Set parameters according to dimensionality."""
     from asr.calculators import get_calculator_spec
+    if 'atoms' not in parameters:
+        return parameters
     atoms = parameters.atoms
-    calc_spec = get_calculator_spec(atoms, parameters.calculator)
-    parameters.calculator = calc_spec
+    for name, value in parameters.items():
+        if 'calculator' in name:
+            calc_spec = get_calculator_spec(atoms, parameters[name])
+            parameters[name] = calc_spec
     return parameters
 
 

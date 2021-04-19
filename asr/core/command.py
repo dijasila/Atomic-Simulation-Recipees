@@ -5,16 +5,16 @@ import click
 import copy
 import inspect
 import typing
+from .parallel import parprint
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
 from .specification import construct_run_spec, obj_to_id
-from .workdir import isolated_work_dir
+from .runner import runner
 from .dependencies import register_dependencies
 from .resources import register_resources
-from .cache import Cache
 from .selector import Selector
-from .metadata import construct_metadata
+from .metadata import register_metadata
 
 
 def format_param_string(params: dict):
@@ -23,97 +23,8 @@ def format_param_string(params: dict):
                       params.items()])
 
 
-def _paramerrormsg(func, msg):
-    return f'Problem in {func.__module__}@{func.__name__}. {msg}'
-
-
-def _add_param(func, param):
-    if not hasattr(func, '__asr_params__'):
-        func.__asr_params__ = {}
-
-    name = param['name']
-    assert name not in func.__asr_params__, \
-        _paramerrormsg(func, f'Double assignment of {name}')
-
-    import inspect
-    sig = inspect.signature(func)
-    assert name in sig.parameters, \
-        _paramerrormsg(func, f'Unkown parameter {name}')
-
-    assert 'argtype' in param, \
-        _paramerrormsg(func, 'You have to specify the parameter '
-                       'type: option or argument')
-
-    if param['argtype'] == 'option':
-        if 'nargs' in param:
-            assert param['nargs'] > 0, \
-                _paramerrormsg(func, 'Options only allow one argument')
-    elif param['argtype'] == 'argument':
-        assert 'default' not in param, \
-            _paramerrormsg(func, 'Argument don\'t allow defaults')
-    else:
-        raise AssertionError(
-            _paramerrormsg(func,
-                           f'Unknown argument type {param["argtype"]}'))
-
-    func.__asr_params__[name] = param
-
-
-def option(*args, **kwargs):
-    """Tag a function to have an option."""
-
-    def decorator(func):
-        assert args, 'You have to give a name to this parameter'
-
-        for arg in args:
-            params = inspect.signature(func).parameters
-            name = arg.lstrip('-').split('/')[0].replace('-', '_')
-            if name in params:
-                break
-        else:
-            raise AssertionError(
-                _paramerrormsg(func,
-                               'You must give exactly one alias that starts '
-                               'with -- and matches a function argument.'))
-        param = {'argtype': 'option',
-                 'alias': args,
-                 'name': name}
-        param.update(kwargs)
-        _add_param(func, param)
-        return func
-
-    return decorator
-
-
-def argument(name, **kwargs):
-    """Mark a function to have an argument."""
-
-    def decorator(func):
-        assert 'default' not in kwargs, 'Arguments do not support defaults!'
-        param = {'argtype': 'argument',
-                 'alias': (name, ),
-                 'name': name}
-        param.update(kwargs)
-        _add_param(func, param)
-        return func
-
-    return decorator
-
-
 class ASRCommand:
-    """Wrapper class for constructing recipes.
-
-    This class implements the behaviour of an ASR recipe.
-
-    This class wrappes a callable `func` and automatically endows the function
-    with a command-line interface (CLI) through `cli` method. The CLI is
-    defined using the :func:`asr.core.__init__.argument` and
-    :func:`asr.core.__init__.option` functions in the core sub-package.
-
-    The ASRCommand... XXX
-    """
-
-    package_dependencies = ('asr', 'ase', 'gpaw')
+    """Class that represents an instruction."""
 
     def __init__(
             self,
@@ -123,6 +34,7 @@ class ASRCommand:
             cache=None,
             argument_hooks=None,
             migrations=None,
+            package_dependencies=('asr', 'ase', 'gpaw'),
     ):
         """Construct an instance of an ASRCommand.
 
@@ -135,23 +47,19 @@ class ASRCommand:
         assert callable(wrapped_function), \
             'The wrapped object should be callable'
 
+        self.package_dependencies = package_dependencies
+        self.module = module
+        self.version = version
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
-        self._migrations = migrations
+        self.migrations = migrations or []
         self.version = version
-        if argument_hooks is None:
-            self.argument_hooks = []
-        else:
-            self.argument_hooks = argument_hooks
-        import inspect
-        mod = inspect.getmodule(wrapped_function)
-        module = mod.__name__
-
-        # Function to be executed
+        self.argument_hooks = argument_hooks or []
         self._wrapped_function = wrapped_function
-        funcname = wrapped_function.__name__
+        self.package_dependencies = self.package_dependencies
 
+        funcname = wrapped_function.__name__
         if funcname == 'main':
             self.name = module
         else:
@@ -171,19 +79,26 @@ class ASRCommand:
         import copy
         self.myparams = copy.deepcopy(self._wrapped_function.__asr_params__)
 
-        import inspect
         sig = inspect.signature(self._wrapped_function)
         self.__signature__ = sig
 
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
 
-    @property
-    def migrations(self):
-        if self._migrations:
-            return self._migrations
-        else:
-            return []
+    def new(self, **newkwargs):
+        """Make new instance of instruction with new settings."""
+        cls = type(self)
+        kwargs = dict(
+            wrapped_function=self._wrapped_function,
+            module=self.module,
+            version=self.version,
+            cache=self.cache,
+            argument_hooks=self.argument_hooks,
+            migrations=self.migrations,
+            package_dependencies=self.package_dependencies,
+        )
+        kwargs.update(newkwargs)
+        return cls(**kwargs)
 
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
@@ -225,7 +140,7 @@ class ASRCommand:
                 defparams[key] = value.default
         return Parameters(parameters=defparams)
 
-    def get_parameters(self):
+    def get_argument_descriptors(self):
         """Get the parameters of this function."""
         return self.myparams
 
@@ -247,65 +162,29 @@ class ASRCommand:
         return self._wrapped_function
 
     def __call__(self, *args, **kwargs):
-        """Delegate to self.main."""
-        return self.main(*args, **kwargs)
+        """Delegate to self.get."""
+        return self.get(*args, **kwargs).result
 
-    def make_selector(
-            self,
-            cache: Cache = None,
-            selector: Selector = None,
-            equals={},
-    ) -> Selector:
+    def prepare_parameters(self, *args, **kwargs):
+        parameters = apply_defaults(
+            self.get_signature(), *args, **kwargs)
+        parameters = Parameters(parameters=parameters)
+        for hook in self.argument_hooks:
+            parameters = hook(parameters)
 
-        if cache is None:
-            cache = self.cache
+        return parameters
 
-        selector = cache.make_selector(
-            selector=selector,
-            equals=equals,
+    def make_run_specification(self, parameters: Parameters):
+        run_specification = construct_run_spec(
+            name=obj_to_id(self.get_wrapped_function()),
+            parameters=parameters,
+            version=self.version,
+            codes=self.package_dependencies,
         )
+        return run_specification
 
-        selector.run_specification.name = selector.EQ(
-            obj_to_id(self.get_wrapped_function())
-        )
-        return selector
-
-    def get(self,
-            cache: typing.Optional[Cache] = None,
-            selector: typing.Optional[Selector] = None,
-            **equals):
-
-        if cache is None:
-            cache = self.cache
-
-        selector = self.make_selector(
-            cache=cache,
-            selector=selector,
-            equals=equals,
-        )
-
-        return cache.get(selector=selector)
-
-    def select(
-            self,
-            selector: typing.Optional[Selector] = None,
-            cache: typing.Optional[Cache] = None,
-            **equals,
-
-    ):
-        if cache is None:
-            cache = self.cache
-
-        selector = self.make_selector(
-            cache=cache,
-            selector=selector,
-            equals=equals,
-        )
-
-        return cache.select(selector=selector)
-
-    def main(self, *args, **kwargs):
-        """Return results from wrapped function.
+    def get(self, *args, **kwargs):
+        """Return record.
 
         This is the main function of an ASRCommand. It takes care of
         reading parameters, creating metadata, checksums etc. If you
@@ -388,51 +267,55 @@ class ASRCommand:
         # REQ: Must be able to call without scripting, eg. through a CLI.
         # REQ: Must support all ASE calculators.
 
-        parameters = apply_defaults(
-            self.get_signature(), *args, **kwargs)
-        parameters = Parameters(parameters=parameters)
-        for hook in self.argument_hooks:
-            parameters = hook(parameters)
-
-        run_specification = construct_run_spec(
-            name=obj_to_id(self.get_wrapped_function()),
-            parameters=parameters,
-            version=self.version,
-            codes=self.package_dependencies,
-        )
-
+        parameters = self.prepare_parameters(*args, **kwargs)
+        run_specification = self.make_run_specification(parameters)
         cache = self.cache
 
         @register_dependencies.register
-        @cache()
+        @cache(make_selector=self.make_selector)
+        @register_metadata()
         @register_dependencies()
-        @isolated_work_dir()
+        @runner()
         @register_resources()
         def execute_run_spec(run_spec):
             name = run_spec.name
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
-            print(f'Running {name}({paramstring})')
+            parprint(f'Running {name}({paramstring})')
             result = run_spec()
-            metadata = construct_metadata()
             record = Record(
                 result=result,
                 run_specification=run_spec,
-                metadata=metadata,
             )
             return record
 
         run_record = execute_run_spec(run_specification)
         return run_record
 
+    def has(self, *args, **kwargs):
+        parameters = self.prepare_parameters(*args, **kwargs)
+        run_spec = self.make_run_specification(parameters)
+        sel = self.make_selector(run_spec)
+        return self.cache.has(selector=sel)
 
-def command(*decoargs, **decokwargs):
+    def make_selector(self, run_specification):
+        """Make selector for matching previous records."""
+        selector = Selector()
 
-    def decorator(func):
-        return ASRCommand(func, *decoargs, **decokwargs)
+        selector.run_specification.name = selector.EQ(run_specification.name)
+        selector.run_specification.version = selector.EQ(run_specification.version)
+        selector.run_specification.parameters = \
+            lambda value: set(value.keys()) == set(
+                run_specification.parameters.keys())
 
-    return decorator
+        for name, param in self.get_argument_descriptors().items():
+            matcher = param['matcher']
+            if matcher is None:
+                matcher = selector.EQ
+            setattr(selector, f'parameters.{name}',
+                    matcher(run_specification.parameters[name]))
+        return selector
 
 
 def get_recipe_module_names():
@@ -482,9 +365,9 @@ def get_recipes():
 def make_cli_command(asr_command: ASRCommand):
     command = setup_cli(
         asr_command.get_wrapped_function(),
-        asr_command.main,
+        asr_command.get,
         asr_command.defaults,
-        asr_command.get_parameters(),
+        asr_command.get_argument_descriptors(),
     )
     return command
 
@@ -507,6 +390,7 @@ def setup_cli(wrapped, wrapper, defparams, parameters):
         alias = param.pop('alias')
         argtype = param.pop('argtype')
         name2 = param.pop('name')
+        param.pop('matcher')
         assert name == name2
         assert name in parameters
         if 'default' in param:

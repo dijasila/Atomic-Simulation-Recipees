@@ -1,8 +1,8 @@
 """Magnetic anisotropy."""
 from ase import Atoms
+import asr
 from asr.core import (command, ASRResult, prepare_result,
-                      option, AtomsFile, DictStr)
-from asr.calculators import set_calculator_hook
+                      option, AtomsFile)
 
 from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
@@ -24,12 +24,12 @@ correlations, 2D Mater. 6 045018 (2019)""",
 
 
 def get_spin_axis(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator).result
+    anis = main(atoms=atoms, calculator=calculator)
     return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
 
 
 def get_spin_index(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator).result
+    anis = main(atoms=atoms, calculator=calculator)
     axis = anis['spin_axis']
     if axis == 'z':
         index = 2
@@ -57,6 +57,7 @@ def webpanel(result, row, key_descriptions):
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
+
     panel = {'title':
              describe_entry(
                  'Basic magnetic properties (PBE)',
@@ -97,17 +98,15 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.magnetic_anisotropy',
-         argument_hooks=[set_calculator_hook])
+@command('asr.magnetic_anisotropy')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = {
              'name': 'gpaw',
              'mode': {'name': 'pw', 'ecut': 800},
              'xc': 'PBE',
-             'basis': 'dzp',
              'kpts': {'density': 12.0, 'gamma': True},
              'occupations': {'name': 'fermi-dirac',
                              'width': 0.05},
@@ -133,7 +132,7 @@ def main(atoms: Atoms,
 
     magstateresults = magstate(
         atoms=atoms,
-        calculator=calculator).result
+        calculator=calculator)
     magstate = magstateresults['magstate']
 
     # Figure out if material is magnetic
@@ -150,8 +149,8 @@ def main(atoms: Atoms,
         results['spin_axis'] = 'z'
         return Result(data=results)
 
-    calculaterecord = calculategs(atoms=atoms, calculator=calculator)
-    calc = calculaterecord.result.calculation.load()
+    calculateresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load()
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,

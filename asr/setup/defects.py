@@ -289,7 +289,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
         'kpts': {
             'density': 6.0,
             'gamma': True},
-        'basis': 'dzp',
         'symmetry': {
             'symmorphic': False},
         'convergence': {
@@ -302,7 +301,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
     calculator_gs = {'name': 'gpaw',
                      'mode': {'name': 'pw', 'ecut': 800},
                      'xc': 'PBE',
-                     'basis': 'dzp',
                      'kpts': {'density': 12.0, 'gamma': True},
                      'occupations': {'name': 'fermi-dirac',
                                      'width': 0.02},
@@ -343,7 +341,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                         'kpts': {
                             'density': 6.0,
                             'gamma': True},
-                        'basis': 'dzp',
                         'symmetry': {
                             'symmorphic': False},
                         'convergence': {
@@ -356,7 +353,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                     calculator_gs = {'name': 'gpaw',
                                      'mode': {'name': 'pw', 'ecut': 800},
                                      'xc': 'PBE',
-                                     'basis': 'dzp',
                                      'kpts': {'density': 12.0, 'gamma': True},
                                      'occupations': {'name': 'fermi-dirac',
                                                      'width': 0.02},
@@ -409,7 +405,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'kpts': {
                                     'density': 6.0,
                                     'gamma': True},
-                                'basis': 'dzp',
                                 'symmetry': {
                                     'symmorphic': False},
                                 'convergence': {
@@ -425,7 +420,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                     'name': 'pw',
                                     'ecut': 800},
                                 'xc': 'PBE',
-                                'basis': 'dzp',
                                 'kpts': {
                                     'density': 12.0,
                                     'gamma': True},

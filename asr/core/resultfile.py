@@ -3,6 +3,8 @@
 import typing
 import fnmatch
 import pathlib
+from .dependencies import Dependency
+from .metadata import construct_metadata
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
 from .serialize import JSONSerializer
@@ -11,12 +13,17 @@ from .migrate import Migration, SelectorMigrationGenerator
 from .selector import Selector
 from .command import get_recipes
 from .utils import write_file, read_file, get_recipe_from_name
+from .root import find_root
 
 
 def find_directories() -> typing.List[pathlib.Path]:
-    directories = []
+    skip_patterns = [
+        '*strains*',
+        '*displacements*',
+    ]
+    directories = [pathlib.Path('.')]
     for path in pathlib.Path().rglob('*'):
-        if path.is_dir():
+        if path.is_dir() and path.name not in skip_patterns:
             directories.append(path)
 
     return directories
@@ -26,7 +33,7 @@ def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
     return {path: get_new_uuid() for path in resultfiles}
 
 
-def find_results_files() -> typing.List[pathlib.Path]:
+def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
     skip_patterns = [
         '*results-asr.database.fromtree.json',
         '*results-asr.database.app.json',
@@ -37,10 +44,11 @@ def find_results_files() -> typing.List[pathlib.Path]:
         '*asr.setinfo*',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
+        '*asr.exchange@calculate.json',
     ]
 
     paths = []
-    for path in pathlib.Path().rglob('results-asr.*.json'):
+    for path in pathlib.Path(directory).rglob('results-asr.*.json'):
         filepath = str(path)
         if any(fnmatch.fnmatch(filepath, skip_pattern)
                for skip_pattern in skip_patterns):
@@ -48,6 +56,10 @@ def find_results_files() -> typing.List[pathlib.Path]:
         paths.append(path)
 
     return paths
+
+
+ATOMSFILES = [
+    'structure.json', 'original.json', 'start.json', 'unrelaxed.json']
 
 
 def construct_record_from_resultsfile(
@@ -60,7 +72,6 @@ def construct_record_from_resultsfile(
     from ase.io import read
     from asr.core.codes import Codes, Code
     folder = path.parent
-    atoms = read(folder / 'structure.json')
 
     result = read_json(path)
     recipename = path.with_suffix('').name.split('-')[1]
@@ -83,12 +94,16 @@ def construct_record_from_resultsfile(
             data = result.data
             calc = calculation.load()
             calculator = calc.parameters
-            metadata = {
-                'asr_name': recipename,
-                'params': {'calculator': calculator},
-            }
+            calculator['name'] = 'gpaw'
+            params = {'calculator': calculator}
         else:
-            raise AssertionError(f'Unparsable old results file: path={path}')
+            data = result
+            params = {}
+
+        metadata = {
+            'asr_name': recipename,
+            'params': params,
+        }
 
     recipe = get_recipe_from_name(recipename)
     if not issubclass(recipe.returns, ASRResult):
@@ -102,12 +117,26 @@ def construct_record_from_resultsfile(
 
     try:
         parameters = result.metadata.params
+        if recipename == 'asr.gs@calculate' and 'name' in parameters:
+            del parameters['name']
     except MetaDataNotSetError:
         parameters = {}
 
     parameters = Parameters(parameters)
-    if 'atoms' not in parameters:
-        parameters.atoms = atoms.copy()
+
+    atomic_structures = {
+        atomsfilename: read(folder / atomsfilename).copy()
+        for atomsfilename in ATOMSFILES
+        if pathlib.Path(folder / atomsfilename).is_file()
+    }
+
+    params = recipe.get_argument_descriptors()
+    atomsparam = [param for name, param in params.items()
+                  if name == 'atoms'][0]
+    atomsfilename = atomsparam['default']
+    assert atomsfilename in atomic_structures
+
+    parameters.atomic_structures = atomic_structures
 
     try:
         code_versions = result.metadata.code_versions
@@ -148,6 +177,9 @@ def construct_record_from_resultsfile(
             codes=codes,
             uid=uid,
         ),
+        metadata=construct_metadata(
+            directory=str(folder.absolute().relative_to(find_root()))
+        ),
         resources=resources,
         result=result,
         tags=['resultfile'],
@@ -177,7 +209,7 @@ def get_dependencies(path, uids):
         'asr.gw': ['asr.bandstructure', 'asr.gw@empirical_mean_z'],
         'asr.pdos@calculate': ['asr.gs'],
         'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
-        'asr.phonons@calculate': ['asr.gs@calculate'],
+        'asr.phonons@calculate': [],
         'asr.phonons': ['asr.phonons@calculate'],
         'asr.push': ['asr.structureinfo', 'asr.phonons'],
         'asr.phonopy@calculate': ['asr.gs@calculate'],
@@ -236,20 +268,23 @@ def get_dependencies(path, uids):
         dep_list = []
         for dependency in dependencies:
             if dependency in uids:
-                dep_list.append(uids[dependency])
+                dep_list.append(Dependency(uid=uids[dependency], revision=None))
         return dep_list
 
     return None
 
 
 def get_resultsfile_records() -> typing.List[Record]:
-    resultsfiles = find_results_files()
     records = []
+    resultsfiles = find_results_files(directory=pathlib.Path('.'))
     uids = generate_uids(resultsfiles)
     for path in resultsfiles:
-        record = construct_record_from_resultsfile(path, uids)
+        try:
+            record = construct_record_from_resultsfile(path, uids)
+        except AssertionError as e:
+            print(e)
+            continue
         records.append(record)
-
     records = inherit_dependency_parameters(records)
     return records
 
@@ -257,21 +292,22 @@ def get_resultsfile_records() -> typing.List[Record]:
 def inherit_dependency_parameters(records):
 
     for record in records:
-        dep_uids = record.dependencies or []  # [record.uid for record in records]
-        dep_params = get_dependency_parameters(dep_uids, records)
-        dep_params = Parameters({'dependency_parameters': dep_params})
+        deps = record.dependencies or []  # [record.uid for record in records]
+        dep_params = get_dependency_parameters(deps, records)
+        dep_params = Parameters({
+            'dependency_parameters': Parameters(dep_params)})
         record.parameters.update(dep_params)
 
     return records
 
 
-def get_dependency_parameters(dependency_uids, records):
+def get_dependency_parameters(dependencies, records):
     params = Parameters({})
-    if dependency_uids is None:
+    if dependencies is None:
         return params
 
-    for dependency in dependency_uids:
-        dep = [other for other in records if other.uid == dependency][0]
+    for dependency in dependencies:
+        dep = [other for other in records if other.uid == dependency.uid][0]
         depparams = Parameters(
             {
                 dep.name: {
@@ -281,6 +317,7 @@ def get_dependency_parameters(dependency_uids, records):
             }
         )
         params.update(depparams)
+        params.update(get_dependency_parameters(dep.dependencies, records))
 
     return params
 
@@ -309,7 +346,7 @@ DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 
 
 def update_resultfile_record_to_version_0(record):
-    # default_params = DEFAULTS[record.name]
+    default_params = DEFAULTS[record.name]
     name = record.name
     new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
@@ -323,10 +360,19 @@ def update_resultfile_record_to_version_0(record):
     dep_params = record.parameters.get('dependency_parameters', {})
     unused_dependency_params = {name: set(values)
                                 for name, values in dep_params.items()}
+
+    params = recipe.get_argument_descriptors()
+    atomsparam = [param for name, param in params.items()
+                  if name == 'atoms'][0]
+    atomsfilename = atomsparam['default']
+
     for key in sig_parameters:
         if key in parameters:
             new_parameters[key] = parameters[key]
             unused_old_params.remove(key)
+        elif key == 'atoms':
+            # Atoms are treated differently
+            new_parameters[key] = parameters.atomic_structures[atomsfilename]
         else:
             candidate_dependencies = []
             for depname, recipedepparams in dep_params.items():
@@ -339,6 +385,7 @@ def update_resultfile_record_to_version_0(record):
                 unused_dependency_params[dependency].remove(key)
             else:
                 missing_params.add(key)  # new_parameters[key] = default_params[key]
+    unused_old_params.remove('atomic_structures')
 
     # remove_keys = set(['dependency_parameters'])
     # if name == 'asr.formalpolarization:main':
@@ -354,26 +401,32 @@ def update_resultfile_record_to_version_0(record):
         value
         for values in unused_dependency_params.values()
         for value in values
-        if value != 'atoms'
+        if value != 'atomic_structures'
     }
 
-    missing_params_msg = \
-        f'Could not extract following parameters from dependencies={missing_params}. '
-    unused_old_params_msg = \
-        f'Parameters from resultfile record not used={unused_old_params}. '
-    unused_dependency_params_msg = \
-        f'Dependency parameters unused={unused_dependency_params}. '
-    assert not (unused_old_params or missing_params or unused_dependency_params), (
-        ''.join(
-            [
-                missing_params_msg if missing_params else '',
-                unused_old_params_msg if unused_old_params else '',
-                unused_dependency_params_msg if unused_dependency_params else '',
-                f'Please add a migration for {name} that fixes these issues '
-                'and run migration tool again.',
-            ]
+    if missing_params and not unused_old_params and not unused_dependency_params:
+        for key in missing_params:
+            new_parameters[key] = default_params[key]
+    else:
+        missing_params_msg = (
+            'Could not extract following parameters from '
+            f'dependencies={missing_params}. '
         )
-    )
+        unused_old_params_msg = \
+            f'Parameters from resultfile record not used={unused_old_params}. '
+        unused_dependency_params_msg = \
+            f'Dependency parameters unused={unused_dependency_params}. '
+        assert not (unused_old_params or missing_params or unused_dependency_params), (
+            ''.join(
+                [
+                    missing_params_msg if missing_params else '',
+                    unused_old_params_msg if unused_old_params else '',
+                    unused_dependency_params_msg if unused_dependency_params else '',
+                    f'Please add a migration for {name} that fixes these issues '
+                    'and run migration tool again.',
+                ]
+            )
+        )
 
     record.run_specification.parameters = new_parameters
     record.version = 0

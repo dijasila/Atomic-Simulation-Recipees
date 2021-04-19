@@ -33,8 +33,6 @@ def test_external_file_type_hash(afile):
 
 @pytest.fixture
 def asr_file_path(asr_tmpdir):
-    directory = pathlib.Path('.asr')
-    directory.mkdir()
     filename = 'filename.txt'
     path = pathlib.Path(filename)
     return path, filename

@@ -81,7 +81,7 @@ def symmetrize_atoms(atoms, tolerance=None,
 
 # XXX Originally read atoms from original.json.
 @command('asr.setup.symmetrize')
-@atomsopt
+@atomsopt(default='original.json')
 @option('--tolerance', type=float,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float,

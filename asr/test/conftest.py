@@ -18,6 +18,8 @@ from .fixtures import (  # noqa
     various_object_types,
     record,
     fscache,
+    crosslinks_test_dbs,
+    duplicates_test_db,
 )
 
 

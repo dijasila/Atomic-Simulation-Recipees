@@ -5,7 +5,7 @@ from .selector import Selector
 from .serialize import JSONSerializer
 from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
-from .config import find_root, initialize_root
+from .root import root_is_initialized
 from .filetype import ASRPath
 
 
@@ -19,7 +19,7 @@ def get_workdir_name(
         run_specification: RunSpecification) -> pathlib.Path:
     name = run_specification.name
     uid = run_specification.uid
-    initialize_root()
+    assert root_is_initialized()
     data_file = ASRPath('work_dirs.json')
     if not data_file.is_file():
         work_dirs = {}
@@ -39,11 +39,11 @@ def get_workdir_name(
         work_dirs[foldername] = run_specification
         write_file(data_file, serializer.serialize(work_dirs))
 
-    workdir = find_root() / foldername
+    workdir = ASRPath(foldername)
     return workdir
 
 
-class IsolatedWorkDir():
+class Runner():
 
     def make_decorator(
             self,
@@ -67,4 +67,4 @@ class IsolatedWorkDir():
         return self.make_decorator()
 
 
-isolated_work_dir = IsolatedWorkDir()
+runner = Runner()

@@ -235,11 +235,11 @@ def main(
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                rec = gscalculate(atoms=atoms, calculator=calculator)
-                calc_old = rec.result.calculation.load()
+                res = gscalculate(atoms=atoms, calculator=calculator)
+                calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
-                calc = rec.result.calculation.load(
+                calc = res.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,

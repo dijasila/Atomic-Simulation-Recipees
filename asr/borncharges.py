@@ -14,7 +14,7 @@ from asr.database.browser import make_panel_description, href, describe_entry
 
 panel_description = make_panel_description(
     """The Born charge of an atom is defined as the derivative of the static
-macroscopic polarization w.r.t. its displacements along x,y,z directions. The
+macroscopic polarization w.r.t. its displacements u_i (i=x,y,z). The
 polarization in a periodic direction is calculated as an integral over Berry
 phases. The polarization in a non-periodic direction is obtained by direct
 evaluation of the first moment of the electron density. The Born charge is
@@ -104,11 +104,11 @@ def main(
     phase_ascv = np.zeros((len(atoms), 2, 3, 3), float)
 
     for ia, iv, sign, displaced_atoms in generate_displacements(
-            atoms, displacement=displacement).result:
+            atoms, displacement=displacement):
         polresults = formalpolarization(
             atoms=displaced_atoms,
             calculator=calculator
-        ).result
+        )
         phase_c = polresults['phase_c']
         isign = [None, 1, 0][sign]
         phase_ascv[ia, isign, :, iv] = phase_c

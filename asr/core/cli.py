@@ -10,15 +10,13 @@ import subprocess
 import sys
 import traceback
 from typing import Union, Dict, Any, List, Tuple
-
-import click
-from ase.parallel import parprint
-
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache,
-    get_recipes)
-
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
+    get_recipes,
+)
+import click
+from ase.parallel import parprint
 
 prt = partial(parprint, flush=True)
 
@@ -89,6 +87,24 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option(version=asr.__version__)
 def cli():
     ...
+
+
+@cli.command()
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def init(directories):
+    """Initialize ASR Repository.
+
+    Initialize asr repository in directory. Defaults to '.' if no
+    directory is supplied.
+
+    """
+    from .root import initialize_root
+    if not directories:
+        directories = [Path('.')]
+    for directory in directories:
+        initialize_root(directory)
 
 
 @cli.command()
@@ -406,49 +422,56 @@ def get_item(attrs: List[str], obj):
 
 
 @cache.command()
-def add_resultfile_records():
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def add_resultfile_records(directories):
     from asr.core.resultfile import get_resultsfile_records
-    cache = get_cache()
+    from .utils import chdir
+    if not directories:
+        directories = [Path('.').resolve()]
+    for directory in directories:
+        with chdir(directory):
+            cache = get_cache()
+            resultfile_records = get_resultsfile_records()
 
-    resultfile_records = get_resultsfile_records()
+            records_to_add = []
+            for record in resultfile_records:
+                if not cache.has(name=record.name,
+                                 version=record.version,
+                                 parameters=record.parameters):
+                    records_to_add.append(record)
 
-    records_to_add = []
-    for record in resultfile_records:
-        if not cache.has(name=record.name,
-                         version=record.version,
-                         parameters=record.parameters):
-            records_to_add.append(record)
-
-    for record in records_to_add:
-        print(f'Adding resultfile {record.name} to cache.')
-        cache.add(record)
+            for record in records_to_add:
+                print(f'Adding resultfile {record.name} to cache.')
+                cache.add(record)
 
 
 @cache.command()
+@click.argument('selection', required=False, nargs=-1)
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
               help='Show tracebacks for migration errors.')
-def migrate(apply=False, verbose=False, show_errors=False):
+def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
-        get_instruction_migration_generator,
-        make_record_migration,
+        migrate_record,
+        get_migration_generator,
     )
-    from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
-    make_migrations = get_instruction_migration_generator()
-    make_migrations.extend([get_resultfile_migration_generator()])
+    sel = make_selector_from_selection(cache, selection)
+    make_migrations = get_migration_generator()
     record_migrations = []
     erroneous_migrations = []
     nup_to_date = 0
     nmigrations = 0
     nerrors = 0
 
-    for record in cache.select():
-        record_migration = make_record_migration(record, make_migrations)
-        if record_migration.has_migrations():
+    for record in cache.select(selector=sel):
+        record_migration = migrate_record(record, make_migrations)
+        if record_migration:
             nmigrations += 1
             record_migrations.append(record_migration)
 
@@ -456,7 +479,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
             nerrors += 1
             erroneous_migrations.append(record_migration)
 
-        if not (record_migration.has_migrations()
+        if not (record_migration
                 or record_migration.has_errors()):
             nup_to_date += 1
 
@@ -466,8 +489,10 @@ def migrate(apply=False, verbose=False, show_errors=False):
 
     if verbose:
         nmigrations = len(record_migrations)
+        strs = []
         for i, migration in enumerate(record_migrations):
-            print(f'#{i} {migration}')
+            strs.append(f'#{i} {migration}')
+        print('\n\n'.join(strs))
         print()
 
     if show_errors:
@@ -533,7 +558,9 @@ def make_selector_from_selection(cache, selection):
 @click.argument('selection', required=False, nargs=-1)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
-                       'run_specification.parameters '), type=str)
+                       'run_specification.parameters '
+                       'result '
+                       ), type=str)
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 @click.option('-w', '--width', default=40, type=int,
@@ -806,9 +833,9 @@ def database():
 @click.argument('folders', nargs=-1, type=str)
 @click.option('-r', '--recursive', is_flag=True,
               help='Recurse and collect subdirectories.')
-@click.option('--children-patterns', type=str, default='*')
+@click.option('--children-patterns', type=str, default='')
 @click.option('--patterns', help='Only select files matching pattern.', type=str,
-              default='info.json,params.json,results-asr.*.json')
+              default='info.json,params.json')
 @click.option('--dbname', help='Database name.', type=str, default='database.db')
 @click.option('--njobs', type=int, default=1,
               help='Delegate collection of database to NJOBS subprocesses. '
@@ -883,9 +910,33 @@ def main(database: str, run: bool, selection: str,
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
 @click.option("--test", is_flag=True, help="Test the app.")
-def app(databases, host, test):
+@click.option("--extra_kvp_descriptions", type=str,
+              help='File containing extra kvp descriptions for info.json')
+def app(databases, host, test, extra_kvp_descriptions):
     from asr.database.app import main
-    main(databases=databases, host=host, test=test)
+    main(databases=databases, host=host, test=test,
+         extra_kvp_descriptions=extra_kvp_descriptions)
+
+
+@database.command()
+@click.option('--target', type=str,
+              help='Target DB you want to create the links in.')
+@click.argument('dbs', nargs=-1, type=str)
+def crosslinks(target: str,
+               dbs: Union[str, None] = None):
+    from asr.database.crosslinks import main
+    main(target=target, dbs=dbs)
+
+
+@database.command()
+@click.option('--include', help='Comma-separated string of folders to include.',
+              type=CommaStr())
+@click.option('--exclude', help='Comma-separated string of folders to exclude.',
+              type=CommaStr())
+def treelinks(include: str = '',
+              exclude: str = ''):
+    from asr.database.treelinks import main
+    main(include=include, exclude=exclude)
 
 
 class KeyValuePair(click.ParamType):
@@ -1016,7 +1067,7 @@ def get_git_rev_list(hashes, home=None):
     """Get Git rev list from HASH1 to HASH2."""
     cfgdir = get_config_dir(home=home)
 
-    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    git_repo = 'https://gitlab.com/asr-dev/asr.git'
     if not (cfgdir / 'asr').is_dir():
         subprocess.check_output(['git', 'clone', git_repo],
                                 cwd=cfgdir)

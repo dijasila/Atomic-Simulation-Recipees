@@ -11,8 +11,6 @@ def test_phonopy(asr_tmpdir_w_params, mockgpaw, get_webcontent):
 
     atoms = bulk('Al', 'fcc', a=4.05)
 
-    record = main(atoms=atoms, sc=[N, N, N], calculator={'name': 'emt'})
-
-    data = record.result
+    data = main(atoms=atoms, sc=[N, N, N], calculator={'name': 'emt'})
     assert data['minhessianeig'] == pytest.approx(0)
     assert data['dynamic_stability_level'] == 3

@@ -39,5 +39,5 @@ def test_setup_displacements(asr_tmpdir_w_params, test_material):
     results = displacements(
         atoms=test_material,
         displacement=0.01,
-    ).result
+    )
     assert len(results) == len(test_material) * 3 * 2

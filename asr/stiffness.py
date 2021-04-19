@@ -3,9 +3,10 @@ import typing
 
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr,
-    Migration, Selector, SelectorMigrationGenerator)
+    command, option, ASRResult, prepare_result, AtomsFile,
+    make_migration_generator)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 from asr.relax import main as relax
@@ -16,7 +17,7 @@ The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
 material to the applied strain. In Voigt notation, C is expressed as a NxN
 matrix relating the N independent components of the stress and strain
 tensors. C is calculated as a finite difference of the stress under an applied
-stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+strain with full relaxation of atomic coordinates. A negative eigenvalue of C
 indicates a dynamical instability.
 """,
     articles=['C2DB'],
@@ -75,8 +76,8 @@ def webpanel(result, row, key_descriptions):
         'sort': 2}
 
     dynstab = row.dynamic_stability_stiffness
-    high = 'Min. Stiffness eig. > 0'
-    low = 'Min. Stiffness eig. < 0'
+    high = 'Minimum stiffness tensor eigenvalue > 0'
+    low = 'Minimum stiffness tensor eigenvalue < 0'
 
     row = [
         describe_entry(
@@ -198,26 +199,19 @@ class Result(ASRResult):
 
 def transform_stiffness_resultfile_record(record):
     dep_params = record.parameters['dependency_parameters']
-    d3 = dep_params['asr.relax:main']['d3']
-    calculator = dep_params['asr.relax:main']['calculator']
-    record.parameters.calculator = calculator
-    record.parameters.d3 = d3
-    record.version = 0
-    del record.parameters.dependency_parameters
+    relax_dep_params = dep_params['asr.relax:main']
+    delparams = {'fixcell', 'allow_symmetry_breaking'}
+    for param in delparams:
+        del relax_dep_params[param]
     return record
 
 
-sel = Selector()
-sel.name = sel.EQ('asr.stiffness')
-sel.version = sel.EQ(-1)
-
-mig = Migration(
+make_migrations = make_migration_generator(
+    selector=dict(version=-1, name='asr.stiffness:main'),
     function=transform_stiffness_resultfile_record,
     uid='e6d207028b3843faa533955477e3392a',
-    description='Set calculator and d3 parameter.',
+    description='Remove fixcell and allow_symmetry_breaking from dependency_parameters',
 )
-
-make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
 
 
 @command(
@@ -226,8 +220,7 @@ make_migrations = SelectorMigrationGenerator(selector=sel, migration=mig)
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
-@option('-c', '--calculator', help='Calculator and its parameters.',
-        type=DictStr())
+@asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 def main(atoms: Atoms,
@@ -253,11 +246,14 @@ def main(atoms: Atoms,
             strained_atoms = make_strained_atoms(
                 atoms,
                 strain_percent=sign * strain_percent,
-                i=i, j=j).result
-            relaxrecord = relax(strained_atoms,
-                                calculator=calculator,
-                                fixcell=True)
-            stress = relaxrecord.result.stress
+                i=i, j=j)
+            relaxresult = relax(
+                strained_atoms,
+                calculator=calculator,
+                fixcell=True,
+                allow_symmetry_breaking=True,
+            )
+            stress = relaxresult.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 

@@ -5,8 +5,7 @@ from asr.dimensionality import get_dimtypes
 def test_dimensionality(asr_tmpdir, test_material):
     nd = sum(test_material.pbc)
 
-    record = dimensionality(test_material)
-    results = record.result
+    results = dimensionality(test_material)
 
     interval = results['k_intervals'][0]
     assert interval['dimtype'] == f'{nd}D'
@@ -26,6 +25,6 @@ def test_dimensionality(asr_tmpdir, test_material):
 def test_dimensionality_cli(asr_tmpdir, test_material):
     nd = sum(test_material.pbc)
     test_material.write('structure.json')
-    record = dimensionality.cli(args=[])
-    interval = record.result['k_intervals'][0]
+    result = dimensionality.cli(args=[])
+    interval = result['k_intervals'][0]
     assert interval['dimtype'] == f'{nd}D'

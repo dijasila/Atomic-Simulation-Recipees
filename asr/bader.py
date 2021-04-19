@@ -87,8 +87,8 @@ def main(
 
     assert world.size == 1, 'Do not run in parallel!'
 
-    rec = gscalculate(atoms=atoms, calculator=calculator)
-    gs = rec.result.calculation.load()
+    result = gscalculate(atoms=atoms, calculator=calculator)
+    gs = result.calculation.load()
     converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
     density = converter.get_pseudo_density()
     write('density.cube', gs.atoms, data=density * Bohr**3)

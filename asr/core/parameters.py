@@ -87,6 +87,9 @@ class Parameters:  # noqa
     def items(self):  # noqa
         return self.__dict__.items()
 
+    def values(self):
+        return self.__dict__.values()
+
     def __str__(self):  # noqa
         return str(self.__dict__)
 
@@ -106,3 +109,6 @@ class Parameters:  # noqa
 
     def __contains__(self, key):
         return key in self.__dict__
+
+    def __delitem__(self, item):
+        del self.__dict__[item]

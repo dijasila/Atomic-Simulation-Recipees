@@ -9,6 +9,7 @@ import numpy as np
 from ase.parallel import world
 from ase.dft.kpoints import BandPath
 
+import asr
 from asr.core import (command, option, DictStr, ASRResult, prepare_result,
                       atomsopt)
 from asr.calculators import construct_calculator
@@ -77,9 +78,8 @@ def distance_to_sc(nd, atoms, dist_max):
 @option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
-@option('--magstatecalculator',
-        help='Magstate calculator params.', type=DictStr())
+@asr.calcopt
+@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
 def calculate(
         atoms: Atoms,
         d: float = 0.05, fsname: str = 'phonons',
@@ -87,7 +87,6 @@ def calculate(
         calculator: dict = {'name': 'gpaw',
                             'mode': {'name': 'pw', 'ecut': 800},
                             'xc': 'PBE',
-                            'basis': 'dzp',
                             'kpts': {'density': 6.0, 'gamma': True},
                             'occupations': {'name': 'fermi-dirac',
                                             'width': 0.05},
@@ -109,9 +108,9 @@ def calculate(
 
     calc = construct_calculator(calculator)
 
-    magstaterec = magstate(atoms=atoms, calculator=magstatecalculator)
-    if magstaterec.result.is_magnetic:
-        magmoms_m = magstate.result.magmoms
+    magstateres = magstate(atoms=atoms, calculator=magstatecalculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
@@ -196,9 +195,9 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get("dynamic_stability_level")
     stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Min. Hessian eig. > -0.01 meV/Ang^2 AND elastic const. > 0"
-    medium = "Min. Hessian eig. > -2 eV/Ang^2 AND elastic const. > 0"
-    low = "Min. Hessian eig.  < -2 eV/Ang^2 OR elastic const. < 0"
+    high = "Minimum eigenvalue of Hessian > -0.01 meV/Ang^2 AND elastic const. > 0"
+    medium = "Minimum eigenvalue of Hessian > -2 eV/Ang^2 AND elastic const. > 0"
+    low = "Minimum eigenvalue of Hessian < -2 eV/Ang^2 OR elastic const. < 0"
     row = [
         "Phonons",
         '<a href="#" data-toggle="tooltip" data-html="true" '
@@ -260,7 +259,7 @@ class Result(ASRResult):
 @option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('--magstatecalculator',
         help='Magstate calculator params.', type=DictStr())
 def main(
@@ -277,7 +276,7 @@ def main(
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    calculaterec = calculate(
+    calculaterec = calculate.get(
         atoms=atoms,
         d=d,
         fsname=fsname,
@@ -285,6 +284,7 @@ def main(
         calculator=calculator,
         magstatecalculator=magstatecalculator,
     )
+    calculateres = calculaterec.result
     params = calculaterec.parameters
     sc = params["sc"]
     d = params["d"]
@@ -328,7 +328,7 @@ def main(
 
         filename = fsname + ".{0}{1}.json".format(a, sign)
 
-        forces = calculaterec.result[filename]
+        forces = calculateres[filename]
         # Number of forces equals to the number of atoms in the supercell
         assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 

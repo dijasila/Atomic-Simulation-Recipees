@@ -2,9 +2,9 @@
 import numpy as np
 from ase import Atoms
 
+import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
-    DictStr,
 )
 import typing
 
@@ -13,7 +13,7 @@ from asr.bandstructure import calculate as bscalculate
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
-atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
 plots.""",
     articles=[
         'C2DB',
@@ -45,7 +45,7 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
@@ -81,13 +81,41 @@ class Result(ASRResult):
 
 # ---------- Main functionality ---------- #
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.projected_bandstructure:main')
 
-@command(module='asr.projected_bandstructure')
+
+@asr.migration(selector=sel)
+def add_bscalculator(record):
+    """Add bscalculator parameters."""
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bscalculator = {
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+@command(
+    module='asr.projected_bandstructure',
+    migrations=[add_bscalculator],
+)
 @atomsopt
 @calcopt
-@option('-b', '--bscalculator',
-        help='Bandstructure Calculator params.',
-        type=DictStr())
+@asr.calcopt(
+    aliases=['-b', '--bscalculator'],
+    help='Bandstructure Calculator params.',
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -100,7 +128,7 @@ def main(
         npoints: int = bscalculate.defaults.npoints,
 ) -> Result:
     # Get bandstructure calculation
-    rec = bscalculate(
+    res = bscalculate(
         atoms=atoms,
         calculator=calculator,
         bscalculator=bscalculator,
@@ -108,7 +136,7 @@ def main(
         npoints=npoints,
     )
 
-    calc = rec.result.calculation.load()
+    calc = res.calculation.load()
     # calc = GPAW('bs.gpw', txt=None)
 
     results = {}

@@ -1,6 +1,8 @@
 """Convert a folder tree to an ASE database."""
 
 from typing import Union, List
+import numbers
+import numpy as np
 from ase import Atoms
 from ase.io import read
 from ase.db import connect
@@ -16,6 +18,7 @@ import glob
 import sys
 import traceback
 from asr.core.serialize import JSONSerializer
+from ase.db.core import reserved_keys
 
 serializer = JSONSerializer()
 
@@ -96,6 +99,20 @@ tmpkd = parse_key_descriptions(
      for key, value in dct.items()})
 
 
+def remove_bad_keys(kvp):
+    delete = []
+    for key, value in kvp.items():
+        if key in reserved_keys:
+            delete.append(key)
+        elif not isinstance(value, (numbers.Real, str, np.bool_)):
+            delete.append(key)
+
+    for key in delete:
+        del kvp[key]
+
+    return kvp
+
+
 def get_key_value_pairs(resultsdct: dict):
     """Extract key-value-pairs from results dictionary.
 
@@ -124,6 +141,7 @@ def get_key_value_pairs(resultsdct: dict):
             # Not iterable
             pass
 
+    kvp = remove_bad_keys(kvp)
     return kvp
 
 
@@ -184,6 +202,16 @@ def collect_file(filename: Path):
         data[extrafile] = dct
 
     kvp = get_key_value_pairs(results)
+    return kvp, data
+
+
+def collect_info(filename: Path):
+    """Collect info.json."""
+    from asr.core import read_json
+    kvp = read_json(filename)
+    kvp = remove_bad_keys(kvp)
+    data = {str(filename): kvp}
+
     return kvp, data
 
 
@@ -267,7 +295,9 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
         from asr.core.cache import get_cache
         cache = get_cache()
         if cache:
-            records = cache.select()
+            sel = cache.make_selector()
+            sel.parameters.atoms = sel.EQ(atoms)
+            records = cache.select(selector=sel)
             for record in records:
                 kvp.update(get_key_value_pairs(record.result))
             if records:
@@ -278,6 +308,14 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
+            elif name.is_file() and fnmatch(name, "info.json"):
+                tmpkvp, tmpdata = collect_info(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
+            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
+                tmpkvp, tmpdata = collect_file(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
 
         if not data['__children__']:
             del data['__children__']
@@ -434,7 +472,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json',
          dbname: str = 'database.db',
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""

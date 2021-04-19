@@ -15,7 +15,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://gitlab.com/mortengjerding/asr/issues.
+Report bugs at https://gitlab.com/asr-dev/asr/issues.
 
 If you are reporting a bug, please include:
 
@@ -45,7 +45,7 @@ articles, and such.
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://gitlab.com/mortengjerding/asr/issues.
+The best way to send feedback is to file an issue at https://gitlab.com/asr-dev/asr/issues.
 
 If you are proposing a feature:
 

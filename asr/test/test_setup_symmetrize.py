@@ -16,7 +16,7 @@ def test_setup_symmetrize(asr_tmpdir_w_params, inputatoms):
     cell_cv += (np.random.rand(3, 3) - 0.5) * 1e-5
     atoms.set_cell(cell_cv)
 
-    symmetrizedatoms = main(atoms=atoms).result
+    symmetrizedatoms = main(atoms=atoms)
 
     assert symmetrizedatoms.cell.cellpar() == approx(inputatoms.cell.cellpar())
     assert (symmetrizedatoms.get_scaled_positions()

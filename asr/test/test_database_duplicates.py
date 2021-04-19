@@ -49,7 +49,7 @@ def test_database_duplicates(duplicates_test_db):
     results = main(
         connect('duplicates.db'),
         connect('duplicates_removed.db'),
-        filterstring='<=natoms,<id').result
+        filterstring='<=natoms,<id')
 
     assert Path('duplicates_removed.db').is_file()
     nduplicates = len(duplicates_test_db[1])
@@ -67,7 +67,7 @@ def test_database_duplicates_filter_magstate(duplicates_test_db):
         connect('duplicates_removed.db'),
         comparison_keys='magstate',
         filterstring='<=natoms,<id',
-    ).result
+    )
 
     duplicate_groups = results['duplicate_groups']
     assert duplicate_groups[0]['include'] == [1]
@@ -84,7 +84,7 @@ def test_database_duplicates_no_duplicates(duplicates_test_db):
         connect('duplicates_removed.db'),
         comparison_keys='id',
         filterstring='<=natoms,<id',
-    ).result
+    )
 
     duplicate_groups = results['duplicate_groups']
     assert not duplicate_groups
