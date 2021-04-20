@@ -1,4 +1,5 @@
 """Electronic band structures."""
+import pathlib
 from typing import Union
 from ase import Atoms
 import asr
@@ -601,7 +602,7 @@ def main(
     # XXX This is only compatible with GPAW
     bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        str(bsfile.path), soc=True, return_spin=True, theta=theta, phi=phi,
+        pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
