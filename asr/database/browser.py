@@ -501,8 +501,15 @@ def runplot_clean(plotfunction, *args):
 
 def generate_plots(row, prefix, plot_descriptions):
     import multiprocessing
-    with multiprocessing.Pool(1) as pool:
-        return _generate_plots(row, prefix, plot_descriptions, pool)
+    pool = multiprocessing.Pool(1)
+    try:
+        missing = _generate_plots(row, prefix, plot_descriptions, pool)
+    finally:
+        # We need close() + join() rather than using context manager,
+        # else pytest-cov loses track of subprocess coverage.
+        pool.close()
+        pool.join()
+    return missing
 
 
 def _generate_plots(row, prefix, plot_descriptions, pool):
