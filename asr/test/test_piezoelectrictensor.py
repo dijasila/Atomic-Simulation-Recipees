@@ -76,7 +76,7 @@ def test_piezoelectrictensor(
         atoms=test_material,
         calculator=fast_calc,
         relaxcalculator=fast_calc,
-    ).result
+    )
 
     N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     vol = test_material.get_volume() / Bohr**3

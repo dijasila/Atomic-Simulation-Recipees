@@ -6,7 +6,7 @@ from asr.database.browser import fig, make_panel_description, describe_entry
 
 
 panel_description = make_panel_description(
-    """The Fermi surface calculated with spin-orbit interactions. The expectation
+    """The Fermi surface calculated with spin–orbit interactions. The expectation
 value of S_i (where i=z for non-magnetic materials and otherwise is the
 magnetic easy axis) indicated by the color code.""",
     articles=[
@@ -132,7 +132,7 @@ def main(
 
     ndim = sum(atoms.pbc)
     assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
-    rec = gscalculate(
+    res = gscalculate(
         atoms=atoms,
         calculator=calculator,
     )
@@ -140,7 +140,7 @@ def main(
         atoms=atoms,
         calculator=calculator,
     )
-    calc = rec.result.calculation.load(parallel=False)
+    calc = res.calculation.load(parallel=False)
     eigs_km, ef, s_kvm = calc2eigs(
         calc,
         return_spin=True,
@@ -149,7 +149,7 @@ def main(
     )
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
-    calc = rec.result.calculation.load()
+    calc = res.calculation.load()
     s_mk = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator)].T
 
     A_cv = calc.atoms.get_cell()

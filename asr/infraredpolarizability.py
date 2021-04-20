@@ -1,7 +1,9 @@
 """Infrared polarizability."""
 import typing
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    command, option, ASRResult, prepare_result, atomsopt,
+    Selector, make_migration_generator,
 )
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
@@ -199,11 +201,73 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def prepare_for_resultfile_migration(record):
+    """Prepare record for resultfile migration."""
+    phononpar = record.parameters.dependency_parameters['asr.phonons:calculate']
+    fconverge = phononpar['fconverge']
+    del phononpar['fconverge']
+    record.parameters.bandfactor = 5
+    record.parameters.xc = 'RPA'
+    record.parameters.phononcalculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': fconverge},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0,
+    }
+    record.parameters.borncalculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 12.0},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'symmetry': 'off',
+        'convergence': {'eigenstates': 1e-11,
+                        'density': 1e-7},
+        'txt': 'formalpol.txt',
+        'charge': 0,
+    }
+    record.parameters.polarizabilitycalculator = \
+        record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
+    del record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
+    return record
+
+
+sel = Selector()
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(
+    sel.ANY(
+        sel.CONTAINS('bandfactor'),
+        sel.CONTAINS('xc'),
+        sel.CONTAINS('phononcalculator'),
+    )
+)
+sel.name = sel.EQ('asr.infraredpolarizability:main')
+
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=prepare_for_resultfile_migration,
+    uid='048c99cc09c641c187929ed67d9ffc39',
+)
+
+
 @command(
     "asr.infraredpolarizability",
+    migrations=[make_migrations],
 )
 @atomsopt
-@calcopt
+@asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
+@asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
+@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
+             help='Polarizability calculator.')
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
 @option('-n', help='Supercell size', type=int)
@@ -221,8 +285,10 @@ def main(
         atoms: Atoms,
         nfreq: int = 300,
         eta: float = 1e-2,
-        calculator: dict = phonons.defaults.calculator,
-        n: int = phonons.defaults.calculator,
+        polarizabilitycalculator: dict = polarizability.defaults.calculator,
+        phononcalculator: dict = phonons.defaults.calculator,
+        borncalculator: dict = borncharges.defaults.calculator,
+        n: int = phonons.defaults.n,
         mingo: bool = phonons.defaults.mingo,
         displacement: float = borncharges.defaults.displacement,
         kptdensity: float = polarizability.defaults.kptdensity,
@@ -234,10 +300,10 @@ def main(
     # Get phonons
     phresults = phonons(
         atoms=atoms,
-        calculator=calculator,
+        calculator=phononcalculator,
         n=n,
         mingo=mingo,
-    ).result
+    )
 
     u_ql = phresults["modes_kl"]
     q_qc = phresults["q_qc"]
@@ -262,7 +328,7 @@ def main(
 
     borndct = borncharges(
         atoms=atoms,
-        calculator=calculator,
+        calculator=borncalculator,
         displacement=displacement,
     )
 
@@ -291,12 +357,12 @@ def main(
 
     elecdict = polarizability(
         atoms=atoms,
-        calculator=calculator,
+        calculator=polarizabilitycalculator,
         kptdensity=kptdensity,
         ecut=ecut,
         xc=xc,
         bandfactor=bandfactor,
-    ).result
+    )
     alphax_el = elecdict["alphax_el"]
     alphay_el = elecdict["alphay_el"]
     alphaz_el = elecdict["alphaz_el"]

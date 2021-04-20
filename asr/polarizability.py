@@ -16,10 +16,10 @@ from asr.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
-calculated in the random phase approximation (RPA) without spin-orbit
+calculated in the random phase approximation (RPA) without spin–orbit
 interactions. For metals a Drude term accounts for intraband transitions. The
-contribution from polar lattice vibrations is added (see IR polarisability) and
-may be visible at low frequencies.""",
+contribution from polar lattice vibrations is added (see infrared
+polarisability) and may be visible at low frequencies.""",
     articles=['C2DB'],
 )
 
@@ -161,11 +161,11 @@ def main(
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        rec = gscalculate(atoms=atoms, calculator=calculator)
-        calc_old = rec.result.calculation.load()
+        res = gscalculate(atoms=atoms, calculator=calculator)
+        calc_old = res.calculation.load()
         nval = calc_old.wfs.nvalence
 
-        calc = rec.result.calculation.load(
+        calc = res.calculation.load(
             txt='es.txt',
             fixdensity=True,
             nbands=(bandfactor + 1) * nval,

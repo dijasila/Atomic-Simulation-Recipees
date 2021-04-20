@@ -49,8 +49,6 @@ def get_uid_of_atoms(atoms, hash):
 @command(module='asr.database.material_fingerprint')
 @atomsopt
 def main(atoms: Atoms) -> ASRResult:
-    from ase.io import read
-    atoms = read('structure.json')
     hash = get_hash_of_atoms(atoms)
     uid = get_uid_of_atoms(atoms, hash)
     results = {'asr_id': hash,

@@ -17,7 +17,7 @@ def calculate(
 ) -> ASRResult:
     """Calculate two spin configurations."""
     from asr.utils import magnetic_atoms
-    result = gscalculate(atoms=atoms, calculator=calculator).result
+    result = gscalculate(atoms=atoms, calculator=calculator)
     calc = result.calculation.load(fixdensity=False)
     atoms = calc.atoms
     pbc = atoms.pbc.tolist()
@@ -204,7 +204,7 @@ def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
         row.data,
-        'asr.exchange@calculate')
+        'asr.exchange@main')
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)
     explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'

@@ -9,8 +9,11 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms
 
+import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile, DictStr)
+    command, option, ASRResult, prepare_result, AtomsFile,
+    make_migration_generator, Selector,
+)
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
@@ -38,12 +41,12 @@ class CalculateResult(ASRResult):
     key_descriptions = {'forcefiles': 'Pickle files containing forces.'}
 
 
-@command('asr.phonons')
+@command(
+    'asr.phonons',
+)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
-@option('--magstatecalculator',
-        help='Magstate calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int, nargs=3)
 def calculate(
         atoms: Atoms,
@@ -51,7 +54,6 @@ def calculate(
             'name': 'gpaw',
             'mode': {'name': 'pw', 'ecut': 800},
             'xc': 'PBE',
-            'basis': 'dzp',
             'kpts': {'density': 6.0, 'gamma': True},
             'occupations': {'name': 'fermi-dirac',
                             'width': 0.05},
@@ -61,7 +63,6 @@ def calculate(
             'txt': 'phonons.txt',
             'charge': 0
         },
-        magstatecalculator: dict = magstate.defaults.calculator,
         n: int = 2,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
@@ -74,9 +75,9 @@ def calculate(
     world.barrier()
 
     # Set initial magnetic moments
-    magstaterec = magstate(atoms=atoms, calculator=magstatecalculator)
-    if magstaterec.result.is_magnetic:
-        magmoms_m = magstate.result.magmoms
+    magstateres = magstate(atoms=atoms, calculator=calculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
@@ -112,8 +113,8 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get('dynamic_stability_phonons')
 
-    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
 
     row = [
         describe_entry(
@@ -161,10 +162,64 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.phonons')
+def construct_calculator_from_old_parameters(record):
+
+    params = record.parameters
+    if 'calculator' in params:
+        return record
+
+    calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1e-4},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0
+    }
+
+    par_value = [
+        ('fconverge', calculator['convergence'], 'forces'),
+        ('kptdensity', calculator['kpts'], 'density'),
+        ('ecut', calculator['mode'], 'ecut'),
+    ]
+    for par, calc_dct, name in par_value:
+        if par in params:
+            calc_dct[name] = params[par]
+            del params[par]
+
+        for dep_params in params['dependency_parameters'].values():
+            if par in dep_params:
+                del dep_params[par]
+    if record.name == 'asr.phonons:calculate':
+        params.dependency_parameters = {}
+    params.calculator = calculator
+    return record
+
+
+sel = Selector()
+sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
+sel.version = sel.EQ(-1)
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=construct_calculator_from_old_parameters,
+    description='Construct calculator from old parameters.',
+    uid='1dd9655e96114de4abd81d223575080d',
+)
+
+
+@command(
+    'asr.phonons',
+    migrations=[make_migrations],
+)
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@asr.calcopt
 @option('-n', help='Supercell size', type=int)
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
@@ -174,7 +229,6 @@ def main(
             'name': 'gpaw',
             'mode': {'name': 'pw', 'ecut': 800},
             'xc': 'PBE',
-            'basis': 'dzp',
             'kpts': {'density': 6.0, 'gamma': True},
             'occupations': {'name': 'fermi-dirac',
                             'width': 0.05},
@@ -187,7 +241,7 @@ def main(
         n: int = 2,
         mingo: bool = True,
 ) -> Result:
-    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n).result
+    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
     for extfile in calculateresult.forcefiles:
         extfile.restore()
     nd = sum(atoms.get_pbc())

@@ -109,3 +109,6 @@ class Parameters:  # noqa
 
     def __contains__(self, key):
         return key in self.__dict__
+
+    def __delitem__(self, item):
+        del self.__dict__[item]

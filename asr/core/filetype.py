@@ -2,10 +2,10 @@ import typing
 import pathlib
 from asr.core.utils import sha256sum
 from .utils import only_master, link_file
-from .config import find_root
+from .root import find_root, ASR_DIR
 
 
-class ASRPath:
+class RootPath:
     """Pathlike object that measure paths relative to ASR root."""
 
     def __init__(self, path: typing.Union[str, pathlib.Path]):
@@ -18,35 +18,42 @@ class ASRPath:
         return str(find_root() / self.path)
 
     def unlink(self):
+        """Delete path."""
         return pathlib.Path(self).unlink()
 
     def is_dir(self):
+        """Is path directory."""
         return pathlib.Path(self).is_dir()
 
     def is_file(self):
+        """Is file."""
         return pathlib.Path(self).is_file()
 
     def __str__(self):
         return self.__fspath__()
 
     def __eq__(self, other):
-        if not isinstance(other, ASRPath):
+        if not isinstance(other, RootPath):
             return False
         return self.path == other.path
 
     def __truediv__(self, other):
+        """Compose paths."""
+        cls = type(self)
         if isinstance(other, (str, pathlib.Path)):
-            return ASRPath(self.path / other)
-        elif isinstance(other, ASRPath):
-            return ASRPath(self.path / other.path)
+            return cls(self.path / other)
+        elif isinstance(other, cls):
+            return cls(self.path / other.path)
         else:
             return NotImplemented
 
     def __rtruediv__(self, other):
+        """Compose paths."""
+        cls = type(self)
         if isinstance(other, (str, pathlib.Path)):
-            return ASRPath(other / self.path)
-        elif isinstance(other, ASRPath):
-            return ASRPath(other.path / self.path)
+            return (other / self.path)
+        elif isinstance(other, cls):
+            return cls(other.path / self.path)
         else:
             return NotImplemented
 
@@ -56,7 +63,13 @@ class ASRPath:
         return str(self)
 
 
-PathLike = typing.Union[pathlib.Path, ASRPath]
+class ASRPath(RootPath):
+
+    def __fspath__(self):
+        return str(find_root() / ASR_DIR / self.path)
+
+
+PathLike = typing.Union[pathlib.Path, ASRPath, RootPath]
 
 
 class ExternalFile:
@@ -104,6 +117,39 @@ class ExternalFile:
 
     def __eq__(self, other):
         if not isinstance(other, ExternalFile):
+            return NotImplemented
+        return self.sha256 == other.sha256
+
+
+class File:
+
+    def __init__(
+            self,
+            path: pathlib.Path,
+    ):
+        self.path = path
+        self.hashes = {'sha256': sha256sum(path)}
+
+    @classmethod
+    def fromstr(cls, string):
+        path = pathlib.Path(string).absolute()
+        return cls(path)
+
+    @property
+    def sha256(self):
+        return self.hashes['sha256']
+
+    def __str__(self):
+        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
+
+    def __repr__(self):
+        return str(self)
+
+    def __fspath__(self):
+        return str(self.path)
+
+    def __eq__(self, other):
+        if not isinstance(other, File):
             return NotImplemented
         return self.sha256 == other.sha256
 

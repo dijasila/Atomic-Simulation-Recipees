@@ -349,6 +349,12 @@ def only_master(func, broadcast=True):
 
 def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
     """Test equality with support for nested np.ndarrays."""
+    # Numpy arrays are annoyingly special, comparing two empty array yields False.
+    if isinstance(value1, (np.ndarray, list, tuple)) and \
+       isinstance(value2, (np.ndarray, list, tuple)):
+        if len(value1) == len(value2) == 0:
+            return True
+
     try:
         return bool(value1 == value2)
     except ValueError:

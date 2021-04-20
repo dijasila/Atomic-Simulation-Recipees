@@ -1,5 +1,6 @@
 """Effective masses."""
 from ase import Atoms
+import asr
 
 from asr.core import (
     command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
@@ -14,8 +15,9 @@ The effective mass tensor represents the second derivative of the band energy
 w.r.t. wave vector at a band extremum. The effective masses of the valence
 bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
 mass tensor. The latter is determined by fitting a 2nd order polynomium to the
-band energies on a fine k-point mesh around the band extrema. Spin-orbit
-interactions are included. The “parabolicity” of the band is quantified by the
+band energies on a fine k-point mesh around the band extrema. Spin–orbit
+interactions are included. The fit curve is shown for the highest VB and
+lowest CB. The “parabolicity” of the band is quantified by the
 mean absolute relative error (MARE) of the fit to the band energy in an energy
 range of 25 meV.
 """,
@@ -45,7 +47,32 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-@command(module='asr.emasses')
+sel = asr.Selector()
+sel.name = sel.EQ('asr.emasses:refine')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.NOT(sel.CONTAINS('settings')),
+    sel.CONTAINS('gpwfilename')
+)
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter_remove_gpwfilename(record):
+    """Add settings parameter and remove gpwfilename."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    del record.parameters.gpwfilename
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter_remove_gpwfilename],
+)
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
@@ -67,11 +94,11 @@ def refine(
     import os.path
     set_default(settings)
     socs = [True]
-    rec = gscalculate(atoms=atoms, calculator=calculator)
+    res = gscalculate(atoms=atoms, calculator=calculator)
     for soc in socs:
         theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
         eigenvalues, efermi = calc2eigs(
-            rec.result.calculation.load(parallel=False),
+            res.calculation.load(parallel=False),
             soc=soc,
             theta=theta,
             phi=phi,
@@ -91,7 +118,7 @@ def refine(
             refined_calculation = preliminary_refine(
                 atoms,
                 calculator,
-                calc=rec.result.calculation.load(),
+                calc=res.calculation.load(),
                 soc=soc,
                 bandtype=bt,
                 settings=settings,
@@ -101,7 +128,7 @@ def refine(
                     atoms,
                     calculator,
                     calculation=refined_calculation,
-                    fallback_calculation=rec.result.calculation,
+                    fallback_calculation=res.calculation,
                     soc=soc,
                     bandtype=bt,
                     settings=settings,
@@ -788,7 +815,7 @@ def prepare_parameters_for_version_0_migration(record):
 
 
 make_migrations = make_migration_generator(
-    selection=dict(version=-1, name='asr.emasses:main'),
+    selector=dict(version=-1, name='asr.emasses:main'),
     uid='e1b731cd00c041ad99260b58b95a3df8',
     function=prepare_parameters_for_version_0_migration,
     description='Prepare record for version 0 migration.',
@@ -814,17 +841,16 @@ def main(
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
-    rec = gscalculate(atoms=atoms, calculator=calculator)
+    res = gscalculate(atoms=atoms, calculator=calculator)
 
-    refinerec = refine(atoms=atoms, calculator=calculator, settings=settings)
-    calculations = refinerec.result
+    calculations = refine(atoms=atoms, calculator=calculator, settings=settings)
     socs = [True]
 
     good_results = {}
     for soc in socs:
         theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
         eigenvalues, efermi = calc2eigs(
-            rec.result.calculation.load(),
+            res.calculation.load(),
             soc=soc,
             theta=theta,
             phi=phi,
@@ -1502,7 +1528,47 @@ class ValidateResult(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.emasses')
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters = sel.NOT(sel.CONTAINS('settings'))
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter(record):
+    """Add settings parameter."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters.dependency_parameters = \
+    lambda value: bool(val for val in value.values()
+                       if 'gpwname' in val)
+
+
+@asr.migration(selector=sel)
+def remove_gpwname_from_dependency_parameters(record):
+    """Remove gpwfilename from dependency parameters."""
+    dep_params = record.parameters.dependency_parameters
+    for name, params in dep_params.items():
+        if 'gpwfilename' in params:
+            del params['gpwfilename']
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter,
+                remove_gpwname_from_dependency_parameters],
+)
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
@@ -1529,7 +1595,7 @@ def validate(
         atoms=atoms,
         calculator=calculator,
         settings=settings,
-    ).result
+    )
     myresults = results.copy()
 
     for (sindex, kindex), data in iterateresults(results):

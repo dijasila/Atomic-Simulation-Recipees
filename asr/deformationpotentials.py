@@ -68,7 +68,7 @@ def main(
     gsresults = groundstate(
         atoms=atoms,
         calculator=calculator,
-    ).result
+    )
 
     k0_vbm_c = gsresults['k_vbm_c']
     k0_cbm_c = gsresults['k_cbm_c']
@@ -78,7 +78,7 @@ def main(
             strained_atoms = make_strained_atoms(
                 atoms,
                 strain_percent=strain,
-                i=i, j=j).result
+                i=i, j=j)
 
             gsresults = groundstate(
                 atoms=strained_atoms,

@@ -45,7 +45,7 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         calculator=fast_calc,
         npoints=10,
         kptdensity=2,
-    ).result
+    )
     assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
 

@@ -1,21 +1,22 @@
 """ASR command line interface."""
-import sys
-import os
-import traceback
 from ast import literal_eval
+from contextlib import contextmanager
+from functools import partial
+import importlib
+import os
+from pathlib import Path
+import pickle
+import subprocess
+import sys
+import traceback
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache)
+    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
+    get_recipes,
+)
 import click
-from pathlib import Path
-import subprocess
 from ase.parallel import parprint
-from functools import partial
-import importlib
-from contextlib import contextmanager
-import pickle
-
 
 prt = partial(parprint, flush=True)
 
@@ -86,6 +87,24 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option(version=asr.__version__)
 def cli():
     ...
+
+
+@cli.command()
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def init(directories):
+    """Initialize ASR Repository.
+
+    Initialize asr repository in directory. Defaults to '.' if no
+    directory is supplied.
+
+    """
+    from .root import initialize_root
+    if not directories:
+        directories = [Path('.')]
+    for directory in directories:
+        initialize_root(directory)
 
 
 @cli.command()
@@ -275,7 +294,6 @@ def asrlist(search):
     If SEARCH is specified: list only recipes containing SEARCH in their
     description.
     """
-    from asr.core import get_recipes
     recipes = get_recipes()
     recipes.sort(key=lambda x: x.name)
     panel = [['Name', 'Description'],
@@ -291,85 +309,70 @@ def asrlist(search):
         if search and (search not in longhelp
                        and search not in recipe.name):
             continue
+
+        assert recipe.name.startswith('asr.')
         name = recipe.name[4:]
-        if name.endswith('@main'):
-            name = name[:-5]
         status = [name, shorthelp]
         panel += [status]
 
     print(format_list(panel))
 
 
+def recipes_as_dict():
+    return {recipe.name: recipe for recipe in get_recipes()}
+
+
 @cli.command()
+@click.argument('recipe', nargs=1)
 @click.argument(
-    'params', nargs=-1, type=str,
-    metavar='recipe:option arg recipe:option arg'
+    'params', nargs=-1, type=str, required=True,
+    metavar='OPTION=VALUE...',
 )
-def params(params: Union[str, None] = None):
+def params(recipe, params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
 
     This recipe compiles a list of all options and their default
     values for all recipes to be used for manually changing values
     for specific options.
     """
-    from pathlib import Path
-    from asr.core import get_recipes, read_json, write_json
-    from ast import literal_eval
-    from fnmatch import fnmatch
+    return _params(recipe, params)
+
+
+def _params(name: str, params: str):
+    from collections.abc import Sequence
+    from asr.core import read_json, write_json
     import copy
     from asr.core import recursive_update
 
-    defparamdict = {}
-    recipes = get_recipes()
-    for recipe in recipes:
-        defparams = recipe.defaults
-        defparamdict[recipe.name] = defparams
+    all_recipes = recipes_as_dict()
+    defparamdict = {recipe.name: recipe.defaults
+                    for recipe in all_recipes.values()}
 
-    p = Path('params.json')
-    if p.is_file():
-        paramdict = read_json('params.json')
-        # The existing valus in paramdict set the new defaults
+    recipe = all_recipes[name]
+
+    params_path = Path('params.json')
+    if params_path.is_file():
+        paramdict = read_json(params_path)
         recursive_update(defparamdict, paramdict)
     else:
         paramdict = {}
 
-    if isinstance(params, (list, tuple)):
-        # Find recipe:option
-        tmpoptions = params[::2]
-        tmpargs = params[1::2]
-        assert len(tmpoptions) == len(tmpargs), \
-            'You must provide a value for each option'
-        options = []
-        args = []
-        for tmpoption, tmparg in zip(tmpoptions, tmpargs):
-            assert '::' in tmpoption, 'You have to use the recipe:option syntax'
-            recipe, option = tmpoption.split('::')
-            if '*' in recipe:
-                for tmprecipe in defparamdict:
-                    if not fnmatch(tmprecipe, recipe):
-                        continue
-                    if option in defparamdict[tmprecipe]:
-                        options.append(f'{tmprecipe}:{option}')
-                        args.append(tmparg)
-            else:
-                options.append(tmpoption)
-                args.append(tmparg)
+    if isinstance(params, Sequence):
+        # XXX if '*' in recipe:
+        # XXX     for tmprecipe in defparamdict:
+        # XXX         if not fnmatch(tmprecipe, recipe):
+        # XXX             continue
+        # XXX         if option in defparamdict[tmprecipe]:
+        # XXX             options.append(f'{tmprecipe}:{option}')
+        # XXX             args.append(tmparg)
 
-        for option, value in zip(options, args):
-            recipe, option = option.split('::')
+        paramdict.setdefault(name, {})
 
-            # XXX We have change such that names now contain @main
-            # This will invalidate old params files.
-            if ':' not in recipe:
-                recipe += ':main'
+        for directive in params:
+            keyword, value = directive.split('=', 1)
 
-            assert option, 'You have to provide an option'
-            assert recipe, 'You have to provide a recipe'
-
-            if recipe not in paramdict:
-                paramdict[recipe] = {}
-
-            paramtype = type(defparamdict[recipe][option])
+            mydefaults = defparamdict[recipe.name]
+            paramtype = type(mydefaults[keyword])
             if paramtype == dict:
                 value = value.replace('...', 'None:None')
                 val = literal_eval(value)
@@ -377,7 +380,7 @@ def params(params: Union[str, None] = None):
                 val = literal_eval(value)
             else:
                 val = paramtype(value)
-            paramdict[recipe][option] = val
+            paramdict[name][keyword] = val
     elif isinstance(params, dict):
         paramdict.update(copy.deepcopy(params))
     else:
@@ -386,19 +389,16 @@ def params(params: Union[str, None] = None):
             f'input lists and dict. Input params: {params}'
         )
 
-    for recipe, options in paramdict.items():
-        assert recipe in defparamdict, \
-            f'This is an unknown recipe: {recipe}'
-
+    for name, options in paramdict.items():
         for option, value in options.items():
-            assert option in defparamdict[recipe], \
-                f'This is an unknown option: {recipe}:{option}'
+            assert option in defparamdict[name], \
+                f'This is an unknown option: {name}:{option}'
             if isinstance(value, dict):
-                recursive_update(value, defparamdict[recipe][option])
-                paramdict[recipe][option] = value
+                recursive_update(value, defparamdict[name][option])
+                paramdict[name][option] = value
 
     if paramdict:
-        write_json(p, paramdict)
+        write_json(params_path, paramdict)
 
 
 @cli.group()
@@ -422,49 +422,56 @@ def get_item(attrs: List[str], obj):
 
 
 @cache.command()
-def add_resultfile_records():
+@click.argument("directories", nargs=-1,
+                type=click.Path(resolve_path=True),
+                metavar='[directory]')
+def add_resultfile_records(directories):
     from asr.core.resultfile import get_resultsfile_records
-    cache = get_cache()
+    from .utils import chdir
+    if not directories:
+        directories = [Path('.').resolve()]
+    for directory in directories:
+        with chdir(directory):
+            cache = get_cache()
+            resultfile_records = get_resultsfile_records()
 
-    resultfile_records = get_resultsfile_records()
+            records_to_add = []
+            for record in resultfile_records:
+                if not cache.has(name=record.name,
+                                 version=record.version,
+                                 parameters=record.parameters):
+                    records_to_add.append(record)
 
-    records_to_add = []
-    for record in resultfile_records:
-        if not cache.has(name=record.name,
-                         version=record.version,
-                         parameters=record.parameters):
-            records_to_add.append(record)
-
-    for record in records_to_add:
-        print(f'Adding resultfile {record.name} to cache.')
-        cache.add(record)
+            for record in records_to_add:
+                print(f'Adding resultfile {record.name} to cache.')
+                cache.add(record)
 
 
 @cache.command()
+@click.argument('selection', required=False, nargs=-1)
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
               help='Show tracebacks for migration errors.')
-def migrate(apply=False, verbose=False, show_errors=False):
+def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import (
-        get_instruction_migration_generator,
-        make_record_migration,
+        migrate_record,
+        get_migration_generator,
     )
-    from asr.core.resultfile import get_resultfile_migration_generator
 
     cache = get_cache()
-    make_migrations = get_instruction_migration_generator()
-    make_migrations.extend([get_resultfile_migration_generator()])
+    sel = make_selector_from_selection(cache, selection)
+    make_migrations = get_migration_generator()
     record_migrations = []
     erroneous_migrations = []
     nup_to_date = 0
     nmigrations = 0
     nerrors = 0
 
-    for record in cache.select():
-        record_migration = make_record_migration(record, make_migrations)
-        if record_migration.has_migrations():
+    for record in cache.select(selector=sel):
+        record_migration = migrate_record(record, make_migrations)
+        if record_migration:
             nmigrations += 1
             record_migrations.append(record_migration)
 
@@ -472,7 +479,7 @@ def migrate(apply=False, verbose=False, show_errors=False):
             nerrors += 1
             erroneous_migrations.append(record_migration)
 
-        if not (record_migration.has_migrations()
+        if not (record_migration
                 or record_migration.has_errors()):
             nup_to_date += 1
 
@@ -482,8 +489,10 @@ def migrate(apply=False, verbose=False, show_errors=False):
 
     if verbose:
         nmigrations = len(record_migrations)
+        strs = []
         for i, migration in enumerate(record_migrations):
-            print(f'#{i} {migration}')
+            strs.append(f'#{i} {migration}')
+        print('\n\n'.join(strs))
         print()
 
     if show_errors:
@@ -549,7 +558,9 @@ def make_selector_from_selection(cache, selection):
 @click.argument('selection', required=False, nargs=-1)
 @click.option('-f', '--formatting',
               default=('run_specification.name '
-                       'run_specification.parameters '), type=str)
+                       'run_specification.parameters '
+                       'result '
+                       ), type=str)
 @click.option('-s', '--sort',
               default='run_specification.name', type=str)
 @click.option('-w', '--width', default=40, type=int,
@@ -822,9 +833,9 @@ def database():
 @click.argument('folders', nargs=-1, type=str)
 @click.option('-r', '--recursive', is_flag=True,
               help='Recurse and collect subdirectories.')
-@click.option('--children-patterns', type=str, default='*')
+@click.option('--children-patterns', type=str, default='')
 @click.option('--patterns', help='Only select files matching pattern.', type=str,
-              default='info.json,params.json,results-asr.*.json')
+              default='info.json,params.json')
 @click.option('--dbname', help='Database name.', type=str, default='database.db')
 @click.option('--njobs', type=int, default=1,
               help='Delegate collection of database to NJOBS subprocesses. '
@@ -899,9 +910,33 @@ def main(database: str, run: bool, selection: str,
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
 @click.option("--test", is_flag=True, help="Test the app.")
-def app(databases, host, test):
+@click.option("--extra_kvp_descriptions", type=str,
+              help='File containing extra kvp descriptions for info.json')
+def app(databases, host, test, extra_kvp_descriptions):
     from asr.database.app import main
-    main(databases=databases, host=host, test=test)
+    main(databases=databases, host=host, test=test,
+         extra_kvp_descriptions=extra_kvp_descriptions)
+
+
+@database.command()
+@click.option('--target', type=str,
+              help='Target DB you want to create the links in.')
+@click.argument('dbs', nargs=-1, type=str)
+def crosslinks(target: str,
+               dbs: Union[str, None] = None):
+    from asr.database.crosslinks import main
+    main(target=target, dbs=dbs)
+
+
+@database.command()
+@click.option('--include', help='Comma-separated string of folders to include.',
+              type=CommaStr())
+@click.option('--exclude', help='Comma-separated string of folders to exclude.',
+              type=CommaStr())
+def treelinks(include: str = '',
+              exclude: str = ''):
+    from asr.database.treelinks import main
+    main(include=include, exclude=exclude)
 
 
 class KeyValuePair(click.ParamType):
@@ -1032,7 +1067,7 @@ def get_git_rev_list(hashes, home=None):
     """Get Git rev list from HASH1 to HASH2."""
     cfgdir = get_config_dir(home=home)
 
-    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    git_repo = 'https://gitlab.com/asr-dev/asr.git'
     if not (cfgdir / 'asr').is_dir():
         subprocess.check_output(['git', 'clone', git_repo],
                                 cwd=cfgdir)

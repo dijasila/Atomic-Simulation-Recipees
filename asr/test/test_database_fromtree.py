@@ -21,7 +21,7 @@ def folder_tree(asr_tmpdir):
 
     with chdir(Path('materials/Si2/displaced/'), create=True):
         displacement_results = displacements(
-            atoms=Si, displacement=0.01).result
+            atoms=Si, displacement=0.01)
         displaced_atoms = displacement_results[0][-1]
         displaced_atoms.write('structure.json')
         displacement_folders = [('materials/Si2/displaced', displaced_atoms)]

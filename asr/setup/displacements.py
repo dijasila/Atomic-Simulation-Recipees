@@ -3,6 +3,7 @@
 from ase import Atoms
 
 from pathlib import Path
+import asr
 from asr.core import command, option, ASRResult, atomsopt
 
 
@@ -39,7 +40,22 @@ def displace_atom(atoms, ia, iv, sign, delta):
     return new_atoms
 
 
-@command('asr.setup.displacements')
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.setup.displacements:main')
+
+
+@asr.migration(selector=sel)
+def remove_copy_params_parameter(record):
+    """Remove copy_params parameter."""
+    del record.parameters.copy_params
+    return record
+
+
+@command(
+    'asr.setup.displacements',
+    migrations=[remove_copy_params_parameter],
+)
 @atomsopt
 @option('--displacement', help='How much to displace atoms.', type=float)
 def main(

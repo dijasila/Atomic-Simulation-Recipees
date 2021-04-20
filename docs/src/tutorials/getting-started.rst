@@ -21,6 +21,7 @@ ASR comes with a simple command-line interface which can be invoked using
      cache     Inspect results.
      database  ASR material project database.
      find      Find result files.
+     init      Initialize ASR Repository.
      list      List and search for recipes.
      params    Compile a params.json file with all options and defaults.
      results   Show results from records.
@@ -87,7 +88,7 @@ So we can see a list of all recipes using
    >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
    Name ... Description...
    ...
-   relax:main ... Relax atomic positions and unit cell...
+   relax ... Relax atomic positions and unit cell...
    ...
 
 
