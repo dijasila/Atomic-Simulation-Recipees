@@ -124,3 +124,11 @@ class CalculatorSpecification(click.ParamType):
         default = getattr(self, 'default', None)
         value = parse_dict_string(value, default)
         return value
+
+
+class JSONObject(click.ParamType):
+    name = 'json_file'
+
+    def convert(self, value, param, ctx):
+        from ase.io.jsonio import read_json
+        return read_json(value)
