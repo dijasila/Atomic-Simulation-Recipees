@@ -1,14 +1,16 @@
+import pytest
 from asr.bandstructure import main
 from ase.build import bulk
 
 
+@pytest.mark.acceptance_test
 def test_bandstructure_gpaw(asr_tmpdir):
     atoms = bulk('Si')
 
     pathspec = 'GX'
     npoints = 4
 
-    record = main(
+    result = main(
         atoms,
         calculator={
             'name': 'gpaw',
@@ -19,7 +21,6 @@ def test_bandstructure_gpaw(asr_tmpdir):
         kptpath=pathspec,
     )
 
-    result = record.result
     bs_soc = result['bs_nosoc']
     path = bs_soc['path']
     assert path.path == pathspec
