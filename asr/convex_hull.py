@@ -127,6 +127,16 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+_global_connection_cache = {}
+def get_cached_connections(databases):
+    connections = {}
+    for name in databases:
+        if name not in _global_connection_cache:
+            _global_connection_cache[name] = CachedDB(name)
+        connections[name] = _global_connection_cache[name]
+    return connections
+
+
 @command('asr.convex_hull',
          requires=['results-asr.structureinfo.json',
                    'results-asr.database.material_fingerprint.json'],
@@ -183,21 +193,19 @@ def main(databases: List[str]) -> Result:
 
     """
 
-    connections = cached_connect(databases)
+    connections = get_cached_connections(databases)
     return _convex_hull(connections)
 
 
-def cached_connect(databases):
-    connections = {}
-    for database in databases:
-        connections[database] = CachedDB(connect(database))
-    return connections
-
-
 class CachedDB:
-    def __init__(self, conn):
-        self.conn = conn
+    def __init__(self, database):
+        from ase.db import connect
+        self.conn = connect(database)
         self._cache = {}
+        self._filename = database
+
+    def todict(self):
+        return {'type': 'CachedDB', 'filename': self._filename}
 
     def select(self, symbol):
         if symbol not in self._cache:
