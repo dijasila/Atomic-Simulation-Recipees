@@ -137,7 +137,7 @@ def hse_spinorbit(atoms, calculator, dct, calc):
 def MP_interpolate(
         atoms,
         calculator,
-        bscalculator,
+        bsrestart,
         kptpath,
         npoints,
         calc,
@@ -162,7 +162,7 @@ def MP_interpolate(
     results_bandstructure = bsmain(
         atoms=atoms,
         calculator=calculator,
-        bscalculator=bscalculator,
+        bsrestart=bsrestart,
         kptpath=kptpath,
         npoints=npoints,
     )
@@ -182,7 +182,7 @@ def MP_interpolate(
     bscalculateres = bscalculate(
         atoms=atoms,
         calculator=calculator,
-        bscalculator=bscalculator,
+        bsrestart=bsrestart,
         kptpath=kptpath,
         npoints=npoints,
     )
@@ -382,8 +382,9 @@ class Result(ASRResult):
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
 @asr.calcopt(
-    aliases=['-b', '--bscalculator'],
+    aliases=['-b', '--bsrestart'],
     help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
 )
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
@@ -392,7 +393,7 @@ class Result(ASRResult):
 def main(
         atoms: Atoms,
         calculator: dict = calculategs.defaults.calculator,
-        bscalculator: dict = bscalculate.defaults.bscalculator,
+        bsrestart: dict = bscalculate.defaults.bsrestart,
         kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
         npoints: int = bscalculate.defaults.npoints,
         kptdensity: float = 8.0,
@@ -418,7 +419,7 @@ def main(
     results = MP_interpolate(
         atoms,
         calculator,
-        bscalculator,
+        bsrestart,
         kptpath,
         npoints,
         calc,

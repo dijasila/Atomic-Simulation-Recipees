@@ -1,4 +1,5 @@
 """Electronic band structures."""
+import pathlib
 from typing import Union
 from ase import Atoms
 import asr
@@ -28,9 +29,8 @@ class BandstructureCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
-def remove_emptybands_and_make_bs_calculator(record):
-    record.parameters.bscalculator = {
-        'name': 'gpaw',
+def remove_emptybands_and_make_bsrestart(record):
+    record.parameters.bsrestart = {
         'nbands': -record.parameters.emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -47,13 +47,13 @@ sel.name = sel.EQ('asr.bandstructure:calculate')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.AND(
     sel.CONTAINS('emptybands'),
-    sel.NOT(sel.CONTAINS('bscalculator')),
+    sel.NOT(sel.CONTAINS('bsrestart')),
 )
 
 make_migrations = make_migration_generator(
     selector=sel,
-    function=remove_emptybands_and_make_bs_calculator,
-    description='Remove param="emptybands" and make param="bscalculator"',
+    function=remove_emptybands_and_make_bsrestart,
+    description='Remove param="emptybands" and make param="bsrestart"',
     uid='a0887cebb5224e1097010f1545ce766f',
 )
 
@@ -66,8 +66,10 @@ make_migrations = make_migration_generator(
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
 @asr.calcopt(
-    aliases=['-b', '--bscalculator'],
-    help='Bandstructure Calculator params.')
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -75,8 +77,7 @@ make_migrations = make_migration_generator(
 def calculate(
         atoms: Atoms,
         calculator: dict = calculategs.defaults.calculator,
-        bscalculator: dict = {
-            'name': 'gpaw',
+        bsrestart: dict = {
             'nbands': -20,
             'txt': 'bs.txt',
             'fixdensity': True,
@@ -93,8 +94,8 @@ def calculate(
 
     result = calculategs(atoms=atoms, calculator=calculator)
     calculation = result.calculation
-    bscalculator['kpts'] = path
-    calc = calculation.load(**bscalculator)
+    bsrestart['kpts'] = path
+    calc = calculation.load(**bsrestart)
     calc.get_potential_energy()
     calculation = calc.save(id='bs')
     return BandstructureCalculationResult.fromdata(calculation=calculation)
@@ -414,7 +415,8 @@ def plot_bs_png(row,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
+    colorbar = not (row.magstate == 'NM'
+                    and getattr(row, 'has_inversion_symmetry', False))
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
@@ -498,12 +500,12 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def set_bscalculator_from_dependencies(record):
+def set_bsrestart_from_dependencies(record):
     emptybands = (
         record.parameters.dependency_parameters[
             'asr.bandstructure:calculate']['emptybands']
     )
-    record.parameters.bscalculator = {
+    record.parameters.bsrestart = {
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -519,12 +521,12 @@ def set_bscalculator_from_dependencies(record):
 sel = Selector()
 sel.name = sel.EQ('asr.bandstructure:main')
 sel.version = sel.EQ(-1)
-sel.parameters = sel.NOT(sel.CONTAINS('bscalculator'))
+sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
 
 make_migrations = make_migration_generator(
     uid='0eda638a2c624a45a3bafd7dca11c9ca',
-    function=set_bscalculator_from_dependencies,
-    description='Construct "bscalculator" parameters from "emptybands" parameter.',
+    function=set_bsrestart_from_dependencies,
+    description='Construct "bsrestart" parameters from "emptybands" parameter.',
     selector=sel,
 )
 
@@ -537,8 +539,10 @@ make_migrations = make_migration_generator(
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
 @asr.calcopt(
-    aliases=['-b', '--bscalculator'],
-    help='Bandstructure Calculator params.')
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -546,7 +550,7 @@ make_migrations = make_migration_generator(
 def main(
         atoms: Atoms,
         calculator: dict = calculate.defaults.calculator,
-        bscalculator: dict = calculate.defaults.bscalculator,
+        bsrestart: dict = calculate.defaults.bsrestart,
         kptpath: Union[str, None] = None,
         npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
@@ -559,7 +563,7 @@ def main(
     bsresult = calculate(
         atoms=atoms,
         calculator=calculator,
-        bscalculator=bscalculator,
+        bsrestart=bsrestart,
         npoints=npoints,
         kptpath=kptpath,
     )
@@ -602,7 +606,7 @@ def main(
     # XXX This is only compatible with GPAW
     bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        bsfile, soc=True, return_spin=True, theta=theta, phi=phi,
+        pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
