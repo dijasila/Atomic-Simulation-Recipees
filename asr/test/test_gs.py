@@ -73,7 +73,6 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 
 
 @pytest.mark.integration_test
-@pytest.mark.integration_test_gpaw
 @pytest.mark.parametrize('atoms,parameters,results', [
     (Si,
      {
