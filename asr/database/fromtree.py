@@ -179,6 +179,15 @@ def collect_file(filename: Path):
     return kvp, data
 
 
+def collect_info(filename: Path):
+    """Collect info.json."""
+    from asr.core import read_json
+    kvp = read_json(filename)
+    data = {str(filename): kvp}
+
+    return kvp, data
+
+
 def collect_links_to_child_folders(folder: Path, atomsname):
     """Collect links to all subfolders.
 
@@ -261,6 +270,10 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
+            elif name.is_file() and fnmatch(name, "info.json"):
+                tmpkvp, tmpdata = collect_info(name)
+                kvp.update(tmpkvp)
+                data.update(tmpdata)
             elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
                 tmpkvp, tmpdata = collect_file(name)
                 kvp.update(tmpkvp)
@@ -431,7 +444,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""

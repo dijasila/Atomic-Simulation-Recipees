@@ -38,7 +38,7 @@ key_descriptions = {
         "efermi": "KVP: Fermi level !Fermi level! [eV]",
         "gap": "KVP: Band gap !Band gap! [eV]",
         "vbm": "KVP: Valence band maximum !Val. band maximum! [eV]",
-        "cbm": "KVP: Conduction band minimum !Cond. band maximum! [eV]",
+        "cbm": "KVP: Conduction band minimum !Cond. band minimum! [eV]",
         "gap_dir": "KVP: Direct band gap !Dir. band gap! [eV]",
         "gap_dir_nosoc":
         "KVP: Direct gap w/o soc. !Dir. gap wo. soc.! [eV]",
