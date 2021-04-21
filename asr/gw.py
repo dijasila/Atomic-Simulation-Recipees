@@ -392,6 +392,7 @@ def migrate_1(record):
 @asr.calcopt(
     aliases=['-b', '--bsrestart'],
     help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
 )
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',

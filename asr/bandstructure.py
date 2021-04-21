@@ -67,7 +67,9 @@ make_migrations = make_migration_generator(
 @asr.calcopt
 @asr.calcopt(
     aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.')
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
@@ -538,7 +540,9 @@ make_migrations = make_migration_generator(
 @asr.calcopt
 @asr.calcopt(
     aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.')
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
         type=int,
