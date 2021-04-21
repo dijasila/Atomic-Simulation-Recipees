@@ -564,13 +564,14 @@ def obj_to_id(cls):
     path = module.__file__
     package = module.__package__
     assert package is not None, \
-        ('Something went wrong in package identification.'
-         'Please contact developer.')
+        ('Something went wrong in package identification. '
+         f'Package was {None}. Please contact developer.')
     modulename = inspect.getmodulename(path)
     objname = cls.__name__
 
     assert modulename != '__main__', \
         ('Something went wrong in module name identification. '
+         'Module was __main__ .'
          'Please contact developer.')
 
     return f'{package}.{modulename}::{objname}'
