@@ -182,10 +182,40 @@ def main(databases: List[str]) -> Result:
         List of filenames of databases.
 
     """
+
+    connections = cached_connect(databases)
+    return _convex_hull(connections)
+
+
+def cached_connect(databases):
+    connections = {}
+    for database in databases:
+        connections[database] = CachedDB(connect(database))
+    return connections
+
+
+class CachedDB:
+    def __init__(self, conn):
+        self.conn = conn
+        self._cache = {}
+
+    def select(self, symbol):
+        if symbol not in self._cache:
+            self._cache[symbol] = list(self.conn.select(symbol))
+        return iter(self._cache[symbol])
+
+    @property
+    def metadata(self):
+        return self.conn.metadata
+
+
+def _convex_hull(connections):
     from asr.relax import main as relax
     from asr.gs import main as groundstate
     from asr.core import read_json
     atoms = read('structure.json')
+
+    databases = list(connections)
 
     if not relax.done:
         if not groundstate.done:
@@ -209,9 +239,9 @@ def main(databases: List[str]) -> Result:
 
     dbdata = {}
     reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
-    for database in databases:
+
+    for database, refdb in connections.items():  #database in databases:
         # Connect to databases and save relevant rows
-        refdb = connect(database)
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
@@ -229,14 +259,17 @@ def main(databases: List[str]) -> Result:
         dbdata[database] = {'rows': rows,
                             'metadata': metadata}
 
-    ref_database = databases[0]
+    ref_database = databases[0]  # XXXX number 0 why???
     ref_metadata = dbdata[ref_database]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(atoms, ref_database,
-                                          energy_key=ref_energy_key)
+
+    conn = connections[ref_database]
+    ref_energies = _get_reference_energies(atoms, conn,
+                                           energy_key=ref_energy_key)
     hform = hof(energy,
                 count,
                 ref_energies)
+
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
@@ -293,11 +326,16 @@ def main(databases: List[str]) -> Result:
 
 
 def get_reference_energies(atoms, references, energy_key='energy'):
+    refdb = connect(references)
+    return _get_reference_energies(atoms, refdb, energy_key)
+
+
+def _get_reference_energies(atoms, refdb, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
     ref_energies = {}
-    refdb = connect(references)
+    # refdb = connect(references)
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
