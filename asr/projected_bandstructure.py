@@ -87,13 +87,13 @@ sel.name = sel.EQ('asr.projected_bandstructure:main')
 
 
 @asr.migration(selector=sel)
-def add_bscalculator(record):
-    """Add bscalculator parameters."""
+def add_bsrestart(record):
+    """Add bsrestart parameters."""
     emptybands = (
         record.parameters.dependency_parameters[
             'asr.bandstructure:calculate']['emptybands']
     )
-    record.parameters.bscalculator = {
+    record.parameters.bsrestart = {
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -108,13 +108,14 @@ def add_bscalculator(record):
 
 @command(
     module='asr.projected_bandstructure',
-    migrations=[add_bscalculator],
+    migrations=[add_bsrestart],
 )
 @atomsopt
 @calcopt
 @asr.calcopt(
-    aliases=['-b', '--bscalculator'],
+    aliases=['-b', '--bsrestart'],
     help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
 )
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
@@ -123,7 +124,7 @@ def add_bscalculator(record):
 def main(
         atoms: Atoms,
         calculator: dict = bscalculate.defaults.calculator,
-        bscalculator: dict = bscalculate.defaults.bscalculator,
+        bsrestart: dict = bscalculate.defaults.bsrestart,
         kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
         npoints: int = bscalculate.defaults.npoints,
 ) -> Result:
@@ -131,7 +132,7 @@ def main(
     res = bscalculate(
         atoms=atoms,
         calculator=calculator,
-        bscalculator=bscalculator,
+        bsrestart=bsrestart,
         kptpath=kptpath,
         npoints=npoints,
     )
