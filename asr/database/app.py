@@ -223,7 +223,7 @@ def initialize_project(database):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
-        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+        "default_columns": metadata.get("default_columns", ["host_name", "defect_name"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",

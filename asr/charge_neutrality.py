@@ -490,3 +490,7 @@ def plot_formation_scf(row, fname):
     plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
     plt.legend(ncol=2, loc=9)
     plt.savefig(fname)
+
+
+if __name__ == '__main__':
+    main.cli()
