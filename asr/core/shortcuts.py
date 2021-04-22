@@ -19,7 +19,8 @@ def atomsopt(function=None, *,
 
 def calcopt(function=None, *,
             aliases=None,
-            help='Calculator params.'):
+            help='Calculator params.',
+            matcher=comparators.CALCULATORSPEC):
     """Make calculator CLI option.
 
     Default aliases is '-c', '--calculator'.
@@ -28,7 +29,7 @@ def calcopt(function=None, *,
         aliases = ['-c', '--calculator']
     opt = option(*aliases,
                  help=help, type=DictStr(),
-                 matcher=comparators.CALCULATORSPEC)
+                 matcher=matcher)
     if function is None:
         return opt
     return opt(function)

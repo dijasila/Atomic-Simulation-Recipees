@@ -13,7 +13,7 @@ from asr.core import (  # noqa
     instruction,
 )
 
-cmp = comparators
+matchers = comparators
 __author__ = """Morten Niklas Gjerding"""
 __email__ = 'mortengjerding@gmail.com'
 __version__ = '0.4.1'

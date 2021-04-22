@@ -371,7 +371,7 @@ def migrate_1(record):
     record.parameters.ecut = 200.0
     record.parameters.kptdensity = 5.0
     record.parameters.mode = 'G0W0'
-    record.parameters.bscalculator = {
+    record.parameters.bsrestart = {
         'nbands': -emptybands,
         'txt': 'bs.txt',
         'fixdensity': True,
@@ -390,8 +390,9 @@ def migrate_1(record):
 @atomsopt
 @calcopt
 @asr.calcopt(
-    aliases=['-b', '--bscalculator'],
+    aliases=['-b', '--bsrestart'],
     help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
 )
 @option('--kptpath', type=str, help='Custom kpoint path.')
 @option('--npoints',
@@ -407,7 +408,7 @@ def migrate_1(record):
 def main(
         atoms: Atoms,
         calculator: dict = gw.defaults.calculator,
-        bscalculator: dict = bsmain.defaults.calculator,
+        bsrestart: dict = bsmain.defaults.calculator,
         kptpath: dict = bsmain.defaults.kptpath,
         npoints: dict = bsmain.defaults.npoints,
         kptdensity: float = gw.defaults.kptdensity,
@@ -450,7 +451,7 @@ def main(
     results = MP_interpolate(
         atoms,
         calculator,
-        bscalculator,
+        bsrestart,
         kptpath,
         npoints,
         calc,

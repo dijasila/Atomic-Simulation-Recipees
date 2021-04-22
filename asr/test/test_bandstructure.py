@@ -18,8 +18,7 @@ def test_bandstructure_main(asr_tmpdir_w_params, mockgpaw, test_material,
         atoms=test_material,
         npoints=npoints,
         calculator=fast_calc,
-        bscalculator={
-            'name': 'gpaw',
+        bsrestart={
             'nbands': -2,
             'txt': 'bs.txt',
             'fixdensity': True,
