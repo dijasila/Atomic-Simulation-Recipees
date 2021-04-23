@@ -140,29 +140,29 @@ def create_plot(row, *fnames):
         plt.tight_layout()
         plt.savefig(fnames[0])
 
-        plt.figure()
-        plt.plot(omega_w, ay_w.imag, label='imag')
-        plt.plot(omega_w, ay_w.real, label='real')
-        ax = plt.gca()
-        ax.set_title("y-polarization")
-        ax.set_xlabel("Energy [meV]")
-        ax.set_ylabel(rf"Polarizability [{unit}]")
-        ax.set_xlim(0, maxomega)
-        ax.legend()
-        plt.tight_layout()
-        plt.savefig(fnames[1])
+        plotter = Plotter(maxomega, unit, omega_w)
+        plotter.mkplot(ay_w, 'y', fnames[1])
+        plotter.mkplot(az_w, 'z', fname=fnames[2])
 
-        plt.figure()
-        plt.plot(omega_w, az_w.imag, label='imag')
-        plt.plot(omega_w, az_w.real, label='real')
-        ax = plt.gca()
-        ax.set_title("z-polarization")
-        ax.set_xlabel("Energy [meV]")
-        ax.set_ylabel(rf"Polarizability [{unit}]")
-        ax.set_xlim(0, maxomega)
+class Plotter:
+    def __init__(self, maxomega, unit, omega_w):
+        self.maxomega = maxomega
+        self.unit = unit
+        self.omega_w = omega_w
+
+    def mkplot(self, a_w, direction, fname):
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.gca()
+        ax.plot(self.omega_w, a_w.imag, label='imag')
+        ax.plot(self.omega_w, a_w.real, label='real')
+        ax.set_title('Polarization: {direction}')
+        ax.set_xlabel('Energy [meV]')
+        ax.set_ylabel(rf'Polarizability [{self.unit}]')
+        ax.set_xlim(0, self.maxomega)
         ax.legend()
         plt.tight_layout()
-        plt.savefig(fnames[2])
+        plt.savefig(fname)
 
 
 @prepare_result
