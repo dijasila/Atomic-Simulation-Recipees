@@ -312,27 +312,21 @@ def polarizability(row, fx, fy, fz):
             ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
+
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-    ax.set_title('y-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fy)
+    plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')
 
     ax3 = plt.figure().add_subplot(111)
-    plot_polarizability(ax3, frequencies, alphaz_w, fz)
+    ax3.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
+    ax3.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
+    plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
 
     return ax1, ax2, ax3
 
 
-def plot_polarizability(ax, frequencies, alpha_w, filename):
+def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     import matplotlib.pyplot as plt
-    ax.plot(frequencies, np.real(alpha_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alpha_w), c='C0', label='imag')
-    ax.set_title('z-polarization')
+    ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
