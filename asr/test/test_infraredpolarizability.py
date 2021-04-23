@@ -11,7 +11,7 @@ def test_plot(asr_tmpdir):
         ndim=3,
         omega_w=omega_w,
         fname='thefile.png',
-        maxomega=30,
+        maxomega=omega_w[-1] * 1.2,
         alpha_w=np.exp(1j * omega_w),
         alphavv_w=0.1 * np.cos(omega_w),
         axisname='x',

@@ -46,10 +46,10 @@ def webpanel(result, row, key_descriptions):
 
 
 def create_plot(row, *fnames):
-    infrareddct = row.data.get("results-asr.infraredpolarizability.json")
-    electrondct = row.data.get("results-asr.polarizability.json")
-    phonondata = row.data.get("results-asr.phonons.json")
-    maxphononfreq = phonondata.get("omega_kl")[0].max() * 1e3
+    infrareddct = row.data['results-asr.infraredpolarizability.json']
+    electrondct = row.data['results-asr.polarizability.json']
+    phonondata = row.data['results-asr.phonons.json']
+    maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
 
     assert len(fnames) == 3
     for v, (axisname, fname) in enumerate(zip('xyz', fnames)):
@@ -101,6 +101,7 @@ def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
     plt.tight_layout()
     plt.savefig(fname)
     return fname
+
 
 @prepare_result
 class Result(ASRResult):
