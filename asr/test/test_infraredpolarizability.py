@@ -1,14 +1,17 @@
 from pathlib import Path
+
+import pytest
 import numpy as np
 
+from asr.infraredpolarizability import create_plot_simple
 
-def test_plot(asr_tmpdir):
-    from asr.infraredpolarizability import create_plot_simple
 
+@pytest.mark.parametrize('ndim', range(0, 4))
+def test_plot(asr_tmpdir, ndim):
     nw = 40
     omega_w = np.linspace(0, 10, nw)
     fname = create_plot_simple(
-        ndim=3,
+        ndim=ndim,
         omega_w=omega_w,
         fname='thefile.png',
         maxomega=omega_w[-1] * 1.2,

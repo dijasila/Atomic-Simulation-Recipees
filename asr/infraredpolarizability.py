@@ -82,18 +82,18 @@ def create_plot_simple(*, ndim, omega_w, fname, maxomega, alpha_w,
         power_txt = {2: '', 1: '^2', 0: '^3'}[ndim]
         unit = rf"$\mathrm{{\AA}}{power_txt}$"
         ylabel = rf'Polarizability [{unit}]'
-        yvalues = ax_w
+        yvalues = a_w
 
-    return mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel)
+    return mkplot(yvalues, axisname, fname, maxomega, omega_w, ylabel)
 
 
 def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
     import matplotlib.pyplot as plt
     fig = plt.figure()
     ax = fig.gca()
-    ax.plot(omega_w, a_w.imag, label='imag')
     ax.plot(omega_w, a_w.real, label='real')
-    ax.set_title('Polarization: {axisname}')
+    ax.plot(omega_w, a_w.imag, label='imag')
+    ax.set_title(f'Polarization: {axisname}')
     ax.set_xlabel('Energy [meV]')
     ax.set_ylabel(ylabel)
     ax.set_xlim(0, maxomega)
