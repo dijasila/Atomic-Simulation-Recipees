@@ -186,7 +186,6 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 def absorption(row, filename, direction='x'):
     delta_bse, delta_rpa = gaps_from_row(row)
     return _absorption(
-        row, filename, direction,
         dim=sum(row.toatoms().pbc),
         magstate=row.magstate,
         gap_dir=row.gap_dir,
@@ -196,7 +195,8 @@ def absorption(row, filename, direction='x'):
         pol_data=row.data.get('results-asr.polarizability.json'),
         delta_bse=delta_bse,
         delta_rpa=delta_rpa,
-    )
+        direction=direction,
+        filename=filename)
 
 
 def gaps_from_row(row):
@@ -209,10 +209,9 @@ def gaps_from_row(row):
             return delta_bse, delta_rpa
 
 
-def _absorption(row, filename, direction, *,
-                dim, magstate, gap_dir, gap_dir_nosoc,
+def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
                 bse_data, pol_data,
-                delta_bse, delta_rpa):
+                delta_bse, delta_rpa, filename, direction):
     import matplotlib.pyplot as plt
 
     qp_gap = gap_dir + delta_bse
