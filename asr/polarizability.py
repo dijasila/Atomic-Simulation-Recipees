@@ -281,14 +281,7 @@ def polarizability(row, fx, fy, fz):
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
 
-    ax.set_title('x-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fx)
+    plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
 
     ax = plt.figure().add_subplot(111)
     ax2 = ax
