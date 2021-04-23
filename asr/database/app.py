@@ -215,7 +215,8 @@ def initialize_project(database):
     metadata = db.metadata
     projects[name] = {
         "name": name,
-        "title": metadata.get("title", name),
+        "title": "Defect Test DB",
+        # "title": metadata.get("title", name),
         "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
