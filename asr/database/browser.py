@@ -457,6 +457,9 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
+    def __getitem__(self, key):
+        return self._row[key]
+
     def __contains__(self, key):
         """Wrap contains of atomsrow."""
         return self._row.__contains__(key)
