@@ -1,6 +1,9 @@
 """Optical polarizability."""
 import typing
 from click import Choice
+
+import numpy as np
+
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
     table,
@@ -210,20 +213,23 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
     return data
 
 
+def xlim():
+    return (0, 10)
+
+
+def ylims(ws, data, wstart=0.0):
+    i = abs(ws - wstart).argmin()
+    x = data[i:]
+    x1, x2 = x.real, x.imag
+    y1 = min(x1.min(), x2.min()) * 1.02
+    y2 = max(x1.max(), x2.max()) * 1.02
+    return y1, y2
+
+
 def polarizability(row, fx, fy, fz):
     import numpy as np
     import matplotlib.pyplot as plt
 
-    def xlim():
-        return (0, 10)
-
-    def ylims(ws, data, wstart=0.0):
-        i = abs(ws - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y1 = min(x1.min(), x2.min()) * 1.02
-        y2 = max(x1.max(), x2.max()) * 1.02
-        return y1, y2
 
     data = row.data.get('results-asr.polarizability.json')
 
@@ -274,6 +280,7 @@ def polarizability(row, fx, fy, fz):
     except AttributeError:
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
+
     ax.set_title('x-polarization')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
@@ -315,20 +322,25 @@ def polarizability(row, fx, fy, fz):
     plt.tight_layout()
     plt.savefig(fy)
 
-    ax = plt.figure().add_subplot(111)
-    ax3 = ax
-    ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
+    ax3 = plt.figure().add_subplot(111)
+    plot_polarizability(ax3, frequencies, alphaz_w, fz)
+
+    return ax1, ax2, ax3
+
+
+def plot_polarizability(ax, frequencies, alpha_w, filename):
+    import matplotlib.pyplot as plt
+    ax.plot(frequencies, np.real(alpha_w), c='C1', label='real')
+    ax.plot(frequencies, np.imag(alpha_w), c='C0', label='imag')
     ax.set_title('z-polarization')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
+    ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
     ax.legend()
     ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fz)
-
-    return ax1, ax2, ax3
+    fig = ax.get_figure()
+    fig.tight_layout()
+    fig.savefig(filename)
 
 
 if __name__ == '__main__':
