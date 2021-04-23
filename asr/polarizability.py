@@ -213,19 +213,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
     return data
 
 
-def xlim():
-    return (0, 10)
-
-
-def ylims(ws, data, wstart=0.0):
-    i = abs(ws - wstart).argmin()
-    x = data[i:]
-    x1, x2 = x.real, x.imag
-    y1 = min(x1.min(), x2.min()) * 1.02
-    y2 = max(x1.max(), x2.max()) * 1.02
-    return y1, y2
-
-
 def polarizability(row, fx, fy, fz):
     import numpy as np
     import matplotlib.pyplot as plt
@@ -317,6 +304,15 @@ def polarizability(row, fx, fy, fz):
     return ax1, ax2, ax3
 
 
+def ylims(ws, data, wstart=0.0):
+    i = abs(ws - wstart).argmin()
+    x = data[i:]
+    x1, x2 = x.real, x.imag
+    y1 = min(x1.min(), x2.min()) * 1.02
+    y2 = max(x1.max(), x2.max()) * 1.02
+    return y1, y2
+
+
 def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     import matplotlib.pyplot as plt
     ax.set_title(f'Polarization: {direction}')
@@ -324,7 +320,7 @@ def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
     ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
     ax.legend()
-    ax.set_xlim(xlim())
+    ax.set_xlim((0, 10))
     fig = ax.get_figure()
     fig.tight_layout()
     fig.savefig(filename)
