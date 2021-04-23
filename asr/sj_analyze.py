@@ -29,7 +29,7 @@ def webpanel(result, row, key_descriptions):
     formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
         formation_table['rows'].extend(
-            [[describe_entry(f'Formation energy (q={element[1]:1d}, E_F=0)',
+            [[describe_entry(f'Formation energy (q={element[1]:1d} @ VBM)',
                              description=result.key_descriptions['eform']),
               f'{element[0]:.2f} eV']])
     pristine_table_sum = table(result, 'Pristine summary', [])
@@ -70,7 +70,8 @@ def webpanel(result, row, key_descriptions):
                                  'Slater-Janak calculated charge transition levels.'),
                   transitions_table],
                  [describe_entry(fig('formation.png'),
-                                 'Reconstructed formation energy curve.')]],
+                                 'Reconstructed formation energy curve.'),
+                  formation_table]],
         plot_descriptions=[{'function': plot_charge_transitions,
                             'filenames': ['sj_transitions.png']},
                            {'function': plot_formation_energies,
@@ -523,17 +524,18 @@ def plot_formation_energies(row, fname):
 
     fig, ax1 = plt.subplots()
 
-    ax1.axvspan(-5, 0, color='C0', alpha=0.5)
-    ax1.axvspan(gap, 5, color='C1', alpha=0.5)
+    ax1.axvspan(-20, 0, color='grey', alpha=0.5)
+    ax1.axvspan(gap, 20, color='grey', alpha=0.5)
     ax1.axhline(0, color='black', linestyle='dotted')
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
-                 color='grey',
-                 linestyle='dotted')
+                 #color='C0', 
+                 label=element[1])
+                 #linestyle='dotted')
 
     ax1.set_xlim(-0.2 * gap, gap + 0.2 * gap)
-    ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
+    # ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
     yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
     ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
              va='center', rotation=90, weight='bold', color='white')
@@ -554,7 +556,7 @@ def plot_formation_energies(row, fname):
         # elif name == '0/1':
         # positive = energy
         energies.append(energy)
-        if energy > -0.2 * gap and energy < (gap + 0.2 * gap):
+        if energy > 0 and energy < (gap):
             tickslist.append(energy)
             labellist.append(name)
             ax1.axvline(energy, color='grey', linestyle='dotted')
@@ -581,10 +583,12 @@ def plot_formation_energies(row, fname):
 
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
-    ax2.set_xticks(tickslist)
-    ax2.set_xticklabels(labellist)
-    ax1.set_xlabel(r'$E_{\mathrm{F}} - E_\mathrm{VBM}}$ [eV]')
+    ax2.set_xticks([])
+    # ax2.set_xticks(tickslist)
+    # ax2.set_xticklabels(labellist)
+    ax1.set_xlabel(r'$E - E_\mathrm{VBM}}$ [eV]')
     ax1.set_ylabel(r'$E^f$ (wrt. standard states) [eV]')
+    ax1.legend()
 
     plt.tight_layout()
 
@@ -605,17 +609,17 @@ def plot_charge_transitions(row, fname):
 
     transitions = data['transitions']
 
-    plt.plot([-2, 2], [vbm, vbm])
-    plt.plot([-2, 2], [cbm, cbm])
+    # plt.plot([-2, 2], [vbm, vbm])
+    # plt.plot([-2, 2], [cbm, cbm])
 
     plt.xlim(-1, 1)
     plt.ylim(-0.2 * gap, gap + 0.2 * gap)
     plt.xticks([], [])
 
-    plt.axhline(vbm, color='C0')
-    plt.axhline(cbm, color='C1')
-    plt.axhspan(-5, 0, color='C0', alpha=0.5)
-    plt.axhspan(gap, gap + 5, color='C1', alpha=0.5)
+    # plt.axhline(vbm, color='C0')
+    # plt.axhline(cbm, color='C1')
+    plt.axhspan(-5, 0, color='grey', alpha=0.5)
+    plt.axhspan(gap, gap + 5, color='grey', alpha=0.5)
     plt.text(0, -0.1 * gap, 'VBM', color='white',
              ha='center', va='center', weight='bold')
     plt.text(0, gap + 0.1 * gap, 'CBM', color='white',
@@ -627,14 +631,15 @@ def plot_charge_transitions(row, fname):
              - trans['transition_values']['erelax']
              - trans['transition_values']['evac'])
         if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
-            plt.plot([-0.5, 0.5], [y - vbm, y - vbm], color='black')
-            if i % 2 == 0:
-                plt.text(0.6, y - vbm, trans['transition_name'], ha='left', va='center')
-            else:
-                plt.text(-0.6, y - vbm,
-                         trans['transition_name'], ha='right', va='center')
+            plt.plot([-0.9, 0.5], [y - vbm, y - vbm], label=trans['transition_name'])
+            # if i % 2 == 0:
+            #     plt.text(0.6, y - vbm, trans['transition_name'], ha='left', va='center')
+            # else:
+            #     plt.text(-0.6, y - vbm,
+            #              trans['transition_name'], ha='right', va='center')
             i += 1
 
+    plt.legend(loc='center right')
     plt.ylabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
     plt.yticks()
     plt.tight_layout()

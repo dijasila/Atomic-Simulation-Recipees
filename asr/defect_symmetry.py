@@ -596,7 +596,7 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
 
     ax.plot([0, 1], [energy] * 2, color=color, lw=2, zorder=1)
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.5)
-    ax.text(0.5, elabel, edge.upper(), color='w', fontsize=18, ha='center', va='center')
+    ax.text(0.5, elabel, edge.upper(), color='w', ha='center', va='center')
 
 
 class Level:
@@ -752,7 +752,7 @@ def plot_gapstates(row, fname):
     ax.set_xlim(0, 1)
     ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
     ax.set_xticks([])
-    ax.set_ylabel('Energy [eV]', size=15)
+    ax.set_ylabel('Energy [eV]')
 
     plt.tight_layout()
     plt.savefig(fname)
