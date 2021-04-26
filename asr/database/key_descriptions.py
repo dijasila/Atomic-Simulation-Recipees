@@ -26,6 +26,9 @@ key_descriptions = {
         "defect_name": "KVP: Defect name !Defect name {type}_{position}!",
         "host_name": "KVP: Host formula"
     },
+    "defect_symmetry": {
+        "pointgroup": "KVP: Point group"
+    },
     "magstate": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",

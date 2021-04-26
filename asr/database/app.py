@@ -75,8 +75,9 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = Formula(
-            Formula(row.formula).format('metal')).format('html')
+        self.formula = (row.defect_name + ' in ' + row.host_name).format('html')
+        # self.formula = Formula(
+        #     Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -224,7 +225,7 @@ def initialize_project(database):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
-        "default_columns": metadata.get("default_columns", ["host_name", "defect_name"]),
+        "default_columns": metadata.get("default_columns", ["host_name", "defect_name", "pointgroup"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",
