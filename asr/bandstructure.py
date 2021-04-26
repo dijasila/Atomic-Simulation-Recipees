@@ -46,6 +46,12 @@ bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
+def get_xcname_from_row(row):
+    # XXX Huge trainwreck
+    params = row.data['results-asr.gs@calculate.json'].metadata.params
+    return params.get('xc', 'LDA')
+
+
 def plot_bs_html(row,
                  filename=bs_html,
                  figsize=(6.4, 6.4),
@@ -56,6 +62,7 @@ def plot_bs_html(row,
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = get_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
@@ -88,7 +95,7 @@ def plot_bs_html(row,
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
         mode='markers',
-        name='KS no SOC',
+        name=f'{xcname} no SOC',
         showlegend=True,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
@@ -116,7 +123,7 @@ def plot_bs_html(row,
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
         mode='markers',
-        name='KS',
+        name=xcname,
         showlegend=True,
         marker=dict(
             size=4,
@@ -231,10 +238,11 @@ def add_bs_ks(row, ax, reference=0, color='C1'):
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
+    xcname = get_xcname_from_row(row)
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label('KS')
+    ax.lines[-1].set_label(xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -310,6 +318,7 @@ def plot_bs_png(row,
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = get_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
@@ -338,7 +347,7 @@ def plot_bs_png(row,
     # without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='KS no SOC',
+        label=f'{xcname} no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -376,7 +385,7 @@ def plot_bs_png(row,
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label='KS', color=csz0)
+    ax.plot([], [], label=xcname, color=csz0)
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
