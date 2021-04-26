@@ -49,7 +49,7 @@ bs_html = 'bs.html'
 def get_xcname_from_row(row):
     # XXX Huge trainwreck
     params = row.data['results-asr.gs@calculate.json'].metadata.params
-    return params.get('xc', 'LDA')
+    return params['calculator'].get('xc', 'LDA')
 
 
 def plot_bs_html(row,
