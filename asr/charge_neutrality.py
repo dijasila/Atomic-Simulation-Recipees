@@ -16,6 +16,7 @@ def webpanel(result, row, key_descriptions):
                                       dl, code)
 
     table_list = []
+    unit = result.conc_unit
     for element in result.defect_concentrations:
         name = element['defect_name']
         scf_table = table(result, name, [])
@@ -24,7 +25,7 @@ def webpanel(result, row, key_descriptions):
                 [[describe_entry(f'Concentration (q={altel[1]:1d})',
                                  description='Equilibrium concentration '
                                              'in charge state q.'),
-                  f'{altel[0]:.3e}']])
+                  f'{altel[0]:.3e} {unit:5}']])
         table_list.append(scf_table)
 
     ef = result.efermi_sc
@@ -63,19 +64,19 @@ def webpanel(result, row, key_descriptions):
 
     scf_summary = table(result, 'Charge neutrality', [])
     scf_summary['rows'].extend([[is_dopable, dopability]])
-    scf_summary['rows'].extend([[scf_fermi, f'{ef:.3f} eV']])
+    scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
 
     scf_overview = table(result, 'Equilibrium properties', [])
     scf_overview['rows'].extend([[is_dopable, dopability]])
-    scf_overview['rows'].extend([[scf_fermi, f'{ef:.3f} eV']])
+    scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_overview['rows'].extend(
         [[describe_entry('Electron carrier concentration',
                          result.key_descriptions['n0']),
-          f'{result.n0:.3e}']])
+          f'{result.n0:.2e} {unit:5}']])
     scf_overview['rows'].extend(
         [[describe_entry('Hole carrier concentration',
                          result.key_descriptions['p0']),
-          f'{result.p0:.3e}']])
+          f'{result.p0:.2e} {unit:5}']])
 
     panel = WebPanel(
         'Equilibrium defect concentrations',
@@ -114,6 +115,7 @@ class Result(ASRResult):
     n0: float
     p0: float
     defect_concentrations: typing.List[ConcentrationResult]
+    conc_unit: str
 
     key_descriptions: typing.Dict[str, str] = dict(
         temperature='Temperature [K].',
@@ -122,7 +124,8 @@ class Result(ASRResult):
         gap='Electronic band gap [eV].',
         n0='Electron carrier concentration at SC Fermi level.',
         p0='Hole carrier concentration at SC Fermi level.',
-        defect_concentrations='List of ConcentrationResult containers.')
+        defect_concentrations='List of ConcentrationResult containers.',
+        conc_unit='Unit of calculated concentrations.')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -155,7 +158,7 @@ def main(temp: float = 300,
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
-    _, calc = restart('gs.gpw', txt=None)
+    atoms, calc = restart('gs.gpw', txt=None)
     dos, EF, gap = get_dos(calc)
     dos = renormalize_dos(calc, dos, EF)
 
@@ -218,21 +221,30 @@ def main(temp: float = 300,
             delta_old = delta_new
         i += 1
 
+    # evaluate units based on the dimensionality of the system
+    dim = np.sum(atoms.get_pbc())
+    if dim == 2:
+        unit = 'cm^-2'
+    elif dim == 3:
+        unit = 'cm^-3'
+
     # if calculation is converged, show final results
     if converged:
         n0, p0 = integrate_electron_hole_concentration(dos,
                                                        E,
                                                        gap,
                                                        temp)
+        n0 = convert_concentration_units(n0, atoms)
+        p0 = convert_concentration_units(p0, atoms)
         print(f'INFO: Calculation converged after {i} steps! Final results:')
-        print(f'      Self-consistent Fermi-energy: {E:.4f} eV.')
-        print(f'      Equilibrium electron concentration: {n0:.4e}.')
-        print(f'      Equilibrium hole concentration: {p0:.4e}.')
+        print(f'      Self-consistent Fermi-energy: {E:.2f} eV.')
+        print(f'      Equilibrium electron concentration: {n0:.2e} {unit:5}.')
+        print(f'      Equilibrium hole concentration: {p0:.2e} {unit:5}.')
         print(f'      Concentrations:')
         concentration_results = []
         for defecttype in defectdict:
             print(f'      - defecttype: {defecttype}')
-            print(f'      --------------------------------')
+            print(f'      ----------------------------------------------')
             concentration_tuples = []
             for defect in defectdict[defecttype]:
                 eform = get_formation_energy(defect, E)
@@ -241,8 +253,9 @@ def main(temp: float = 300,
                                                           1,
                                                           1,
                                                           temp)
+                conc_def = convert_concentration_units(conc_def, atoms)
                 concentration_tuples.append((conc_def, int(defect[1]), eform))
-                print(f'      defect concentration for ({defect[1]:2}): {conc_def:.4e}')
+                print(f'      defect concentration for ({defect[1]:2}): {conc_def:.2e} {unit:5}')
             concentration_result = ConcentrationResult.fromdata(
                 defect_name=defecttype,
                 concentrations=concentration_tuples)
@@ -254,7 +267,34 @@ def main(temp: float = 300,
         gap=gap,
         n0=n0,
         p0=p0,
-        defect_concentrations=concentration_results)
+        defect_concentrations=concentration_results,
+        conc_unit=unit)
+
+
+def convert_concentration_units(conc, atoms):
+    """
+    Convert concentration to units on cm^-n.
+
+    Note, that n is the dimensionality of the system.
+    """
+    cell = atoms.get_cell()
+    volume = atoms.get_volume()
+    dim = np.sum(atoms.get_pbc())
+
+    # conversion factor from \AA to cm
+    ang_to_cm = 1. * 10 ** (-8)
+
+    if dim == 1:
+        raise NotImplementedError('Not implemented for 1D structures!')
+    elif dim == 2:
+        z = atoms.get_cell_lengths_and_angles()[2]
+        volume = volume / z
+        conc = conc / (volume * (ang_to_cm ** 2))
+    elif dim == 3:
+        volume = volume
+        conc = conc / (volume * (ang_to_cm ** 3))
+
+    return conc
 
 
 def fermi_dirac_electrons(E, EF, T):
