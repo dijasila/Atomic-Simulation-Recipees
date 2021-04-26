@@ -19,7 +19,9 @@ def get_workdir_name(
         run_specification: RunSpecification) -> pathlib.Path:
     name = run_specification.name
     uid = run_specification.uid
-    assert root_is_initialized()
+    if not root_is_initialized():
+        raise RuntimeError('Root directory not initialized.')
+
     data_file = ASRPath('work_dirs.json')
     if not data_file.is_file():
         work_dirs = {}
