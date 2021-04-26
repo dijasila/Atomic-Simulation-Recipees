@@ -44,12 +44,14 @@ def webpanel(result, row, key_descriptions):
           f"{gap:.2f} eV"]])
 
     trans_results = result.transitions
+    vbm = result.pristine.vbm
     transition_labels = []
     transition_array = np.zeros((len(trans_results), 2))
     for i, element in enumerate(trans_results):
         transition_labels.append(element['transition_name'])
         transition_array[i, 0] = (element['transition_values']['transition']
-                                  - element['transition_values']['evac'])
+                                  - element['transition_values']['evac']
+                                  - vbm)
         transition_array[i, 1] = element['transition_values']['erelax']
 
     transitions_table = matrixtable(
