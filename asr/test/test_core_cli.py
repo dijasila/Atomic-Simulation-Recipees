@@ -95,31 +95,6 @@ def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
 
 
 @pytest.mark.ci
-def test_asr_find_help():
-    runner = CliRunner()
-    result = runner.invoke(cli, ['find', '-h'])
-    assert result.exit_code == 0
-    assert 'Usage: cli find [OPTIONS] RECIPE [HASH]...' in result.output
-
-
-@pytest.mark.ci
-def test_asr_find_no_versions(asr_tmpdir_w_params):
-    from asr.core import write_json
-    data = {'dummydata': ['somecontent']}
-    recipe = "asr.recipename"
-    filename = f'results-{recipe}.json'
-    write_json(filename, data)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ['find', recipe, 'c8980f6f3..32241753'])
-
-    assert result.exit_code == 0
-    assert result.output == ''
-
-
-@pytest.mark.ci
 def test_asr_cache_ls(asr_tmpdir_w_params):
     runner = CliRunner()
     result = runner.invoke(
