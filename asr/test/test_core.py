@@ -84,3 +84,13 @@ def test_core(asr_tmpdir_w_params):
 
     assert record.resources.execution_duration == approx(0.1, abs=0.1)
     assert record.resources.ncores == 1
+
+
+def test_not_initialized(recipe, tmp_path):
+    """Test fail behaviour when running in uninitialized directory."""
+    from ase.utils import workdir
+
+    with workdir(tmp_path):
+        with pytest.raises(RuntimeError,
+                           match='Root directory not initialized'):
+            recipe(3.0)
