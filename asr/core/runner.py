@@ -1,6 +1,6 @@
 """Implement side effect handling."""
 
-import pathlib
+from pathlib import Path
 from .selector import Selector
 from .serialize import JSONSerializer
 from .specification import RunSpecification
@@ -14,12 +14,19 @@ serializer = JSONSerializer()
 # XXX: This module should probably be called something like work_dir
 # or IsolatedDir or WorkingEnv.
 
+error_not_initialized = """\
+Root directory not initialized in working directory \
+"{cwd}" or any of its parents.  Please run "asr init" \
+in a suitable directory to initialize the root directory"""
+
 
 def get_workdir_name(
-        run_specification: RunSpecification) -> pathlib.Path:
+        run_specification: RunSpecification) -> Path:
     name = run_specification.name
     uid = run_specification.uid
-    assert root_is_initialized()
+    if not root_is_initialized():
+        raise RuntimeError(error_not_initialized.format(cwd=Path.cwd()))
+
     data_file = ASRPath('work_dirs.json')
     if not data_file.is_file():
         work_dirs = {}
