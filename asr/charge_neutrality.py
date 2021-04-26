@@ -19,13 +19,13 @@ def webpanel(result, row, key_descriptions):
     unit = result.conc_unit
     for element in result.defect_concentrations:
         name = element['defect_name']
-        scf_table = table(result, name, [])
+        scf_table = table(result, f'Concentrations for {name}', [])
         for altel in element['concentrations']:
             scf_table['rows'].extend(
-                [[describe_entry(f'Concentration (q={altel[1]:1d})',
+                [[describe_entry(f'Charge {altel[1]:1d}',
                                  description='Equilibrium concentration '
                                              'in charge state q.'),
-                  f'{altel[0]:.3e} {unit:5}']])
+                  f'{altel[0]:.1e} {unit:5}']])
         table_list.append(scf_table)
 
     ef = result.efermi_sc
@@ -35,7 +35,40 @@ def webpanel(result, row, key_descriptions):
     elif ef > (3 * gap / 4.):
         dopability = 'n-type'
     else:
-        dopability = 'undopable'
+        dopability = 'intrinsic'
+
+    # get strength of p-/n-type dopability
+    if ef < 0:
+        ptype_val = '1+'
+        ntype_val = '0'
+    elif ef > gap:
+        ptype_val = '0'
+        ntype_val = '1+'
+    else:
+        ptype_val = int((1 - ef / gap) * 100)
+        ntype_val = int((100 - ptype_val))
+    pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
+    pn = describe_entry(
+        'p-type / n-type',
+        'Strength of p-/n-type dopability in percent '
+        '(normalized wrt. band gap).'
+        + dl(
+            [
+                [
+                    '100/0',
+                    code('if E_F at VBM')
+                ],
+                [
+                    '0/100',
+                    code('if E_F at CBM')
+                ],
+                [
+                    '50/50',
+                    code('if E_F at E_gap * 0.5')
+                ]
+            ],
+        )
+    )
 
     is_dopable = describe_entry(
         'Intrinsically n-type/p-type',
@@ -65,18 +98,20 @@ def webpanel(result, row, key_descriptions):
     scf_summary = table(result, 'Charge neutrality', [])
     scf_summary['rows'].extend([[is_dopable, dopability]])
     scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
+    scf_summary['rows'].extend([[pn, pn_strength]])
 
     scf_overview = table(result, 'Equilibrium properties', [])
     scf_overview['rows'].extend([[is_dopable, dopability]])
     scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
+    scf_overview['rows'].extend([[pn, pn_strength]])
     scf_overview['rows'].extend(
         [[describe_entry('Electron carrier concentration',
                          result.key_descriptions['n0']),
-          f'{result.n0:.2e} {unit:5}']])
+          f'{result.n0:.1e} {unit:5}']])
     scf_overview['rows'].extend(
         [[describe_entry('Hole carrier concentration',
                          result.key_descriptions['p0']),
-          f'{result.p0:.2e} {unit:5}']])
+          f'{result.p0:.1e} {unit:5}']])
 
     panel = WebPanel(
         'Equilibrium defect concentrations',
