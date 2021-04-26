@@ -20,7 +20,6 @@ ASR comes with a simple command-line interface which can be invoked using
    Commands:
      cache     Inspect results.
      database  ASR material project database.
-     find      Find result files.
      init      Initialize ASR Repository.
      list      List and search for recipes.
      params    Compile a params.json file with all options and defaults.
@@ -39,7 +38,6 @@ ASR comes with a simple command-line interface which can be invoked using
    Commands:
      cache     Inspect results.
      database  ASR material project database.
-     find      Find result files.
      list      List and search for recipes.
      params    Compile a params.json file with all options and defaults.
      results   Show results from records.

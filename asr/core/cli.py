@@ -6,13 +6,12 @@ import importlib
 import os
 from pathlib import Path
 import pickle
-import subprocess
 import sys
 import traceback
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    read_json, chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
+    chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
     get_recipes,
 )
 import click
@@ -981,119 +980,3 @@ def setinfo(key_value_pairs: List[Tuple[str, str]]):
     from asr.setinfo import main
 
     main(key_value_pairs)
-
-
-@cli.command()
-@click.argument('recipe')
-@click.argument('hashes', required=False, nargs=-1, metavar='[HASH]...')
-def find(recipe, hashes):
-    """Find result files.
-
-    Find all results files belonging to RECIPE. Optionally, filter
-    these according to a certain ranges of Git hashes (requires having
-    Git installed). Valid recipe names are asr.bandstructure etc.
-
-    Find all results files calculated with a checkout of ASR that is
-    an ancestor of HASH (including HASH): "asr find asr.bandstructure
-    HASH".
-
-    Find all results files calculated with a checkout of ASR that is
-    an ancestor of HASH2 but not HASH1: "asr find asr.bandstructure
-    HASH1..HASH2" (not including HASH1).
-
-    Find all results files that are calculated with a checkout of ASR
-    that is an ancestor of HASH1 or HASH2: "asr find asr.bandstructure
-    HASH1 HASH2".
-
-    This is basically a wrapper around Git's rev-list command and all
-    hashes are forwarded to this command. For example, we can use the
-    special HASH^ to refer to the parent of HASH.
-
-    """
-    from os import walk
-
-    if not is_asr_initialized():
-        initialize_asr_configuration_dir()
-
-    recipe_results_file = f"results-{recipe}.json"
-
-    if hashes:
-        hashes = list(hashes)
-        check_git()
-
-    matching_files = []
-    for root, dirs, files in walk(".", followlinks=False):
-
-        if recipe_results_file in set(files):
-            matching_files.append(str(Path(root) / recipe_results_file))
-
-    if hashes:
-        rev_list = get_git_rev_list(hashes)
-        matching_files = list(
-            filter(lambda x: extract_hash_from_file(x) in rev_list,
-                   matching_files)
-        )
-
-    if matching_files:
-        print("\n".join(matching_files))
-
-
-def extract_hash_from_file(filename):
-    """Extract the ASR hash from an ASR results file."""
-    results = read_json(filename)
-    try:
-        version = results['__versions__']['asr']
-    except KeyError:
-        version = None
-    except Exception:
-        print(f"Problem when extration asr git hash from {filename}")
-        raise
-
-    if version and '-' in version:
-        return version.split('-')[1]
-
-
-def check_git():
-    """Check that Git is installed."""
-    proc = subprocess.Popen(['git'],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    out, err = proc.communicate()
-
-    assert not err, f"{err}\nProblem with your Git installation."
-
-
-def get_git_rev_list(hashes, home=None):
-    """Get Git rev list from HASH1 to HASH2."""
-    cfgdir = get_config_dir(home=home)
-
-    git_repo = 'https://gitlab.com/asr-dev/asr.git'
-    if not (cfgdir / 'asr').is_dir():
-        subprocess.check_output(['git', 'clone', git_repo],
-                                cwd=cfgdir)
-
-    asrdir = cfgdir / "asr"
-    subprocess.check_output(['git', 'pull'],
-                            cwd=asrdir)
-    out = subprocess.check_output(['git', 'rev-list'] + hashes,
-                                  cwd=asrdir)
-    return set(out.decode("utf-8").strip("\n").split("\n"))
-
-
-def is_asr_initialized(home=None):
-    """Determine if ASR is initialized."""
-    cfgdir = get_config_dir(home=home)
-    return (cfgdir).is_dir()
-
-
-def initialize_asr_configuration_dir(home=None):
-    """Construct ASR configuration dir."""
-    cfgdir = get_config_dir(home=home)
-    cfgdir.mkdir()
-
-
-def get_config_dir(home=None):
-    """Get path to ASR configuration dir."""
-    if home is None:
-        home = Path.home()
-    return home / '.asr'
