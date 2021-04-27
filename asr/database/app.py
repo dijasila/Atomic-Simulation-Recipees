@@ -256,12 +256,16 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
 @option("--test", is_flag=True, help="Test the app.")
 @option("--extra_kvp_descriptions", type=str,
         help='File containing extra kvp descriptions for info.json')
-@option("-j", "--jobs", type=int, help='Number of worker processes')
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False,
          extra_kvp_descriptions: str = 'key_descriptions.json',
-         jobs: Optional[int] = None) -> ASRResult:
-    pool = multiprocessing.Pool(jobs)
+) -> ASRResult:
+
+    # The app uses threads, and we cannot call matplotlib multithreadedly.
+    # Therefore we use a multiprocessing pool for the plotting.
+    # We could use more cores, but they tend to fail to close
+    # correctly on KeyboardInterrupt.
+    pool = multiprocessing.Pool(1)
     try:
         _main(databases, host, test, extra_kvp_descriptions, pool)
     finally:
