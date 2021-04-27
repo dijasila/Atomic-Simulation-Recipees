@@ -4,10 +4,11 @@ import copy
 import sys
 import re
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 import traceback
 import os
 from .webpanel import WebPanel
+import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -449,6 +450,18 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
+    def __getstate__(self):
+        """Help pickle overcome the troubles due to __getattr__.
+
+        We need to provide getstate/setstate to prevent recursion error
+        when unpickling.
+        """
+        return vars(self)
+
+    def __setstate__(self, dct):
+        """See __getstate__."""
+        self.__dict__.update(dct)
+
     def __contains__(self, key):
         """Wrap contains of atomsrow."""
         return self._row.__contains__(key)
@@ -472,9 +485,51 @@ def parse_row_data(data: dict):
     return newdata
 
 
-def layout(row: AtomsRow,
-           key_descriptions: Dict[str, Tuple[str, str, str]],
-           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
+def runplot_clean(plotfunction, *args):
+    plt.close('all')
+    value = plotfunction(*args)
+    plt.close('all')
+    return value
+
+
+def generate_plots(row, prefix, plot_descriptions, pool):
+    missing = set()
+    for desc in plot_descriptions:
+        function = desc['function']
+        filenames = desc['filenames']
+        paths = [Path(prefix + filename) for filename in filenames]
+        for path in paths:
+            if not path.is_file():
+                # Create figure(s) only once:
+                strpaths = [str(path) for path in paths]
+                try:
+                    args = [function, row] + strpaths
+                    if pool is None:
+                        runplot_clean(*args)
+                    else:
+                        pool.apply(runplot_clean, args)
+                except Exception:
+                    if os.environ.get('ASRTESTENV', False):
+                        raise
+                    else:
+                        traceback.print_exc()
+
+                for path in paths:
+                    if not path.is_file():
+                        path.write_text('')  # mark as missing
+                break
+        for path in paths:
+            if path.stat().st_size == 0:
+                missing.add(path)
+    return missing
+
+
+def layout(
+        row: AtomsRow,
+        key_descriptions: Dict[str, Tuple[str, str, str]],
+        prefix: Path,
+        pool: Optional[multiprocessing.Pool] = None
+) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
     params = {'legend.fontsize': 'large',
               'axes.labelsize': 'large',
@@ -570,29 +625,7 @@ def _layout(row, key_descriptions, prefix):
         plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
-    missing = set()  # missing figures
-    for desc in plot_descriptions:
-        function = desc['function']
-        filenames = desc['filenames']
-        paths = [Path(prefix + filename) for filename in filenames]
-        for path in paths:
-            if not path.is_file():
-                # Create figure(s) only once:
-                try:
-                    function(row, *(str(path) for path in paths))
-                except Exception:
-                    if os.environ.get('ASRTESTENV', False):
-                        raise
-                    else:
-                        traceback.print_exc()
-                plt.close('all')
-                for path in paths:
-                    if not path.is_file():
-                        path.write_text('')  # mark as missing
-                break
-        for path in paths:
-            if path.stat().st_size == 0:
-                missing.add(path)
+    missing_figures = generate_plots(row, prefix, plot_descriptions, pool)
 
     # We convert the page into ASE format
     asepage = []
@@ -606,7 +639,7 @@ def _layout(row, key_descriptions, prefix):
             return block['rows']
         if block['type'] != 'figure':
             return True
-        if Path(prefix + block['filename']) in missing:
+        if Path(prefix + block['filename']) in missing_figures:
             return False
         return True
 
