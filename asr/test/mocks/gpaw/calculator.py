@@ -288,7 +288,7 @@ class ASRCalculator(Calculator):
         :py:meth:`ASRCalculator._get_band_gap`.
 
         """
-        icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+        icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
         n = self.parameters.gridsize
         offsets = np.indices((n, n, n)).T.reshape((n ** 3, 1, 3)) - n // 2
         eps_kn = 0.5 * (np.dot(self.kpts + offsets, icell) ** 2).sum(2).T

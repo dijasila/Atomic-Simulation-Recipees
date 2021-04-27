@@ -167,13 +167,13 @@ def main(databases: List[str]) -> Result:
     .. code-block:: javascript
 
         {
-            'title': 'Bulk reference phases',
-            'legend': 'Bulk',
-            'name': '{row.formula}',
-            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
-            'label': '{row.formula}',
-            'method': 'DFT',
-            'energy_key': 'total_energy',
+            "title": "Bulk reference phases",
+            "legend": "Bulk",
+            "name": "{row.formula}",
+            "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
+            "label": "{row.formula}",
+            "method": "DFT",
+            "energy_key": "total_energy"
         }
 
     Parameters
@@ -399,8 +399,7 @@ def plot(row, fname, thisrow):
         colors.append(color)
         sizes.append(size)
 
-    pd = PhaseDiagram(pdrefs,
-                      verbose=False)
+    pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
@@ -427,6 +426,7 @@ def plot(row, fname, thisrow):
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
+        s = np.array(sizes)
         if row.hform < 0:
             mask = e < 0.05
             e = e[mask]
@@ -434,20 +434,19 @@ def plot(row, fname, thisrow):
             edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
+            s = s[mask]
 
         ax.scatter(
             x[~hull], e[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
-            zorder=9,
-        )
+            edgecolor=np.array(edgecolors)[~hull], s=s[~hull],
+            zorder=9)
 
         ax.scatter(
             x[hull], e[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
-            zorder=10,
-        )
+            edgecolor=np.array(edgecolors)[hull], s=s[hull],
+            zorder=10)
 
         # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 

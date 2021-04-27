@@ -8,7 +8,7 @@ from asr.database.browser import make_panel_description
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
-atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
 plots.""",
     articles=[
         'C2DB',
@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
@@ -358,7 +358,6 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data
     data = row.data.get('results-asr.projected_bandstructure.json')
