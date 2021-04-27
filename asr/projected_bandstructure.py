@@ -16,13 +16,18 @@ plots.""",
 )
 
 
-# ---------- Webpanel ---------- #
+from asr.hacks import gs_xcname_from_row
+
+
+scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
+
+    xcname = gs_xcname_from_row(row)
 
     # Projected band structure figure
     parameter_description = entry_parameter_description(
@@ -46,13 +51,13 @@ def webpanel(result, row, key_descriptions):
 
     panel = WebPanel(
         title=describe_entry(
-            'Projected band structure and DOS (PBE)',
+            f'Projected band structure and DOS ({xcname})',
             panel_description),
-        columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
+        columns=[[describe_entry(fig(scf_projected_bs_filename, link='empty'),
                                  description=explanation)],
                  [fig('bz-with-gaps.png')]],
-        plot_descriptions=[{'function': projected_bs_pbe,
-                            'filenames': ['pbe-projected-bs.png']}],
+        plot_descriptions=[{'function': projected_bs_scf,
+                            'filenames': [scf_projected_bs_filename]}],
         sort=13.5)
 
     return [panel]
@@ -336,7 +341,7 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     return pie_xi
 
 
-def projected_bs_pbe(row, filename='pbe-projected-bs.png',
+def projected_bs_scf(row, filename,
                      npoints=40, markersize=36., res=64,
                      figsize=(5.5, 5), fontsize=10):
     """Produce the projected band structure.

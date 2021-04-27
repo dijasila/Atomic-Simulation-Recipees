@@ -46,11 +46,7 @@ bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
-def get_xcname_from_row(row):
-    # XXX Huge trainwreck
-    params = row.data['results-asr.gs@calculate.json'].metadata.params
-    return params['calculator'].get('xc', 'LDA')
-
+from asr.hacks import gs_xcname_from_row
 
 def plot_bs_html(row,
                  filename=bs_html,
@@ -62,7 +58,7 @@ def plot_bs_html(row,
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
-    xcname = get_xcname_from_row(row)
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
@@ -238,7 +234,7 @@ def add_bs_ks(row, ax, reference=0, color='C1'):
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
-    xcname = get_xcname_from_row(row)
+    xcname = gs_xcname_from_row(row)
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
@@ -318,7 +314,7 @@ def plot_bs_png(row,
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
-    xcname = get_xcname_from_row(row)
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
