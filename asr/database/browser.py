@@ -4,10 +4,11 @@ import copy
 import sys
 import re
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 import traceback
 import os
 from .webpanel import WebPanel
+import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -499,20 +500,7 @@ def runplot_clean(plotfunction, *args):
     return value
 
 
-def generate_plots(row, prefix, plot_descriptions):
-    import multiprocessing
-    pool = multiprocessing.Pool(1)
-    try:
-        missing = _generate_plots(row, prefix, plot_descriptions, pool)
-    finally:
-        # We need close() + join() rather than using context manager,
-        # else pytest-cov loses track of subprocess coverage.
-        pool.close()
-        pool.join()
-    return missing
-
-
-def _generate_plots(row, prefix, plot_descriptions, pool):
+def generate_plots(row, prefix, plot_descriptions, pool):
     missing = set()
     for desc in plot_descriptions:
         function = desc['function']
@@ -524,7 +512,10 @@ def _generate_plots(row, prefix, plot_descriptions, pool):
                 strpaths = [str(path) for path in paths]
                 try:
                     args = [function, row] + strpaths
-                    pool.apply(runplot_clean, args)
+                    if pool is None:
+                        runplot_clean(*args)
+                    else:
+                        pool.apply(runplot_clean, args)
                 except Exception:
                     if os.environ.get('ASRTESTENV', False):
                         raise
@@ -541,9 +532,12 @@ def _generate_plots(row, prefix, plot_descriptions, pool):
     return missing
 
 
-def layout(row: AtomsRow,
-           key_descriptions: Dict[str, Tuple[str, str, str]],
-           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
+def layout(
+        row: AtomsRow,
+        key_descriptions: Dict[str, Tuple[str, str, str]],
+        prefix: Path,
+        pool: Optional[multiprocessing.Pool] = None
+) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
     page = {}
     exclude = set()
@@ -628,7 +622,7 @@ def layout(row: AtomsRow,
         plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
-    missing_figures = generate_plots(row, prefix, plot_descriptions)
+    missing_figures = generate_plots(row, prefix, plot_descriptions, pool)
 
     # We convert the page into ASE format
     asepage = []
