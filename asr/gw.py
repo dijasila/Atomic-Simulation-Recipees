@@ -64,7 +64,6 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
@@ -114,7 +113,6 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)

@@ -5,6 +5,7 @@ from asr.core import command, ASRResult, prepare_result
 import typing
 
 from asr.database.browser import make_panel_description
+from asr.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
@@ -14,9 +15,6 @@ plots.""",
         'C2DB',
     ],
 )
-
-
-from asr.hacks import gs_xcname_from_row
 
 
 scf_projected_bs_filename = 'scf-projected-bs.png'
