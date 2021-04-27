@@ -165,9 +165,6 @@ def plot_bs(row,
     fontsize = 10
 
     path = data['bandstructure']['path']
-    # WTF, we are hacking globals??
-    # While plotting from multiple threads which is not recommended in the first place?
-    # mpl.rcParams['font.size'] = fontsize
 
     reference = row.get('evac')
     if reference is None:
