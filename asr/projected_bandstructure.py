@@ -358,7 +358,6 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data
     data = row.data.get('results-asr.projected_bandstructure.json')

@@ -22,14 +22,6 @@ external_libraries = [plotlyjs]
 
 unique_key = 'uid'
 
-params = {'legend.fontsize': 'large',
-          'axes.labelsize': 'large',
-          'axes.titlesize': 'large',
-          'xtick.labelsize': 'large',
-          'ytick.labelsize': 'large',
-          'savefig.dpi': 200}
-plt.rcParams.update(**params)
-
 
 def create_table(row,  # AtomsRow
                  header,  # List[str]
@@ -484,6 +476,17 @@ def layout(row: AtomsRow,
            key_descriptions: Dict[str, Tuple[str, str, str]],
            prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
+    params = {'legend.fontsize': 'large',
+              'axes.labelsize': 'large',
+              'axes.titlesize': 'large',
+              'xtick.labelsize': 'large',
+              'ytick.labelsize': 'large',
+              'savefig.dpi': 200}
+    with plt.rc_context(params):
+        return _layout(row, key_descriptions, prefix)
+
+
+def _layout(row, key_descriptions, prefix):
     page = {}
     exclude = set()
 
