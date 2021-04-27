@@ -538,10 +538,10 @@ def layout(
               'ytick.labelsize': 'large',
               'savefig.dpi': 200}
     with plt.rc_context(params):
-        return _layout(row, key_descriptions, prefix)
+        return _layout(row, key_descriptions, prefix, pool)
 
 
-def _layout(row, key_descriptions, prefix):
+def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
 
