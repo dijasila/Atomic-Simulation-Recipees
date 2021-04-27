@@ -1,5 +1,5 @@
 """Database web application."""
-from typing import List, Optional
+from typing import List
 import multiprocessing
 import tempfile
 from pathlib import Path
@@ -258,8 +258,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False,
-         extra_kvp_descriptions: str = 'key_descriptions.json',
-) -> ASRResult:
+         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
