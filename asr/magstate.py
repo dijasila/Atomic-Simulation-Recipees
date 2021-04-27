@@ -65,7 +65,7 @@ def webpanel(result, row, key_descriptions):
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        from asr.hacks import gs_xcname_from_row
+        from asr.utils.hacks import gs_xcname_from_row
         xcname = gs_xcname_from_row(row)
         panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
                          columns=[[], [magmoms_table]],

@@ -226,7 +226,7 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
-    from asr.hacks import gs_xcname_from_row
+    from asr.utils.hacks import gs_xcname_from_row
 
     xcname = gs_xcname_from_row(row)
     parameter_description = entry_parameter_description(

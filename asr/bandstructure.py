@@ -2,7 +2,7 @@
 from typing import Union
 from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.hacks import gs_xcname_from_row
+from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
