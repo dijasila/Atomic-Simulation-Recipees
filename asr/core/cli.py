@@ -403,7 +403,6 @@ def _params(name: str, params: str):
 @cli.group()
 def cache():
     """Inspect results."""
-    ...
 
 
 def get_item(attrs: List[str], obj):
@@ -425,6 +424,11 @@ def get_item(attrs: List[str], obj):
                 type=click.Path(resolve_path=True),
                 metavar='[directory]')
 def add_resultfile_records(directories):
+    """Find legacy "results" files and store them as Records.
+
+    Search directories (or working directory if not given) for legacy results
+    file, adding a Record to the cache for each file.
+    """
     from asr.core.resultfile import get_resultsfile_records
     from .utils import chdir
     if not directories:
