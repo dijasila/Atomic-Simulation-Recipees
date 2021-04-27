@@ -226,7 +226,9 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
+    from asr.utils.hacks import gs_xcname_from_row
 
+    xcname = gs_xcname_from_row(row)
     parameter_description = entry_parameter_description(
         row.data,
         'asr.gs@calculate')
@@ -239,7 +241,7 @@ def webpanel(result, row, key_descriptions):
                                   'header': ['Electronic properties', ''],
                                   'rows': [datarow]}]])
 
-    basicelec = WebPanel(title='Basic electronic properties (PBE)',
+    basicelec = WebPanel(title=f'Basic electronic properties ({xcname})',
                          columns=[[{'type': 'table',
                                     'header': ['Property', ''],
                                     'rows': [datarow]}]],

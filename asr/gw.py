@@ -64,14 +64,13 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
@@ -80,7 +79,7 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
                         + str(len(atoms)) + " > 4 atoms!")
 
     # setup k points/parameters
-    dim = np.sum(atoms.pbc.tolist())
+    dim = sum(atoms.pbc)
     if dim == 3:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
     elif dim == 2:
@@ -114,14 +113,13 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
@@ -130,21 +128,15 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
                         + str(len(atoms)) + " > 4 atoms!")
 
     # Setup parameters
-    dim = np.sum(atoms.pbc.tolist())
+    dim = sum(atoms.pbc)
     if dim == 3:
         truncation = 'wigner-seitz'
         q0_correction = False
     elif dim == 2:
         truncation = '2D'
         q0_correction = True
-    elif dim == 1:
-        raise NotImplementedError('asr for dim=1 not implemented!')
-        truncation = '1D'
-        q0_correction = False
-    elif dim == 0:
-        raise NotImplementedError('asr for dim=0 not implemented!')
-        truncation = '0D'
-        q0_correction = False
+    else:
+        raise NotImplementedError(f'dim={dim} not implemented!')
 
     if mode == 'GWG':
         raise NotImplementedError('GW: asr for GWG not implemented!')

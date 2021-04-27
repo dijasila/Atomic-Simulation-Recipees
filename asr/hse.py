@@ -72,12 +72,12 @@ def hse(kptdensity, emptybands):
                                              n1=0,
                                              n2=nb - convbands,
                                              snapshot='hse-snapshot.json')
-    e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
-    e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
+    e_scf_skn, vxc_scf_skn, vxc_hse_skn = result
+    e_hse_skn = e_scf_skn - vxc_scf_skn + vxc_hse_skn
 
     dct = dict(vxc_hse_skn=vxc_hse_skn,
-               e_pbe_skn=e_pbe_skn,
-               vxc_pbe_skn=vxc_pbe_skn,
+               e_scf_skn=e_scf_skn,
+               vxc_scf_skn=vxc_scf_skn,
                e_hse_skn=e_hse_skn)
     return dct, calc
 
@@ -101,8 +101,8 @@ def hse_spinorbit(dct, calc):
 def MP_interpolate(calc, delta_skn, lb, ub):
     """Interpolate corrections to band patch.
 
-    Calculates band stucture along the same band path used for PBE
-    by interpolating a correction onto the PBE band structure.
+    Calculates band stucture along the same band path used for SCF
+    by interpolating a correction onto the SCF band structure.
     """
     import numpy as np
     from gpaw import GPAW
@@ -113,10 +113,10 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     from asr.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
-    # read PBE (without SOC)
+    # read SCF (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')
     path = results_bandstructure['bs_nosoc']['path']
-    e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
+    e_scf_skn = results_bandstructure['bs_nosoc']['energies']
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
@@ -124,7 +124,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset)
     delta_interp_skn = eps.transpose(1, 0, 2)
-    e_int_skn = e_pbe_skn[:, :, bandrange] + delta_interp_skn
+    e_int_skn = e_scf_skn[:, :, bandrange] + delta_interp_skn
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
@@ -332,7 +332,7 @@ def main() -> Result:
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
+    delta_skn = data['vxc_hse_skn'] - data['vxc_scf_skn']
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...
