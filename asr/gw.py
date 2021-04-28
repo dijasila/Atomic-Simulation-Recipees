@@ -229,8 +229,10 @@ def webpanel(result, row, key_descriptions):
              ['Conduction band minimum wrt. Fermi level (G0W0)',
               f'{row.cbm_gw - row.efermi:.2f} eV']])
 
-    panel = {'title': describe_entry('Electronic band structure (G0W0)',
-                                     panel_description),
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Electronic band structure (G0W0@{xcname})'
+    panel = {'title': describe_entry(title, panel_description),
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
              'plot_descriptions': [{'function': plot_bs_gw,
                                     'filenames': ['gw-bs.png']}],
