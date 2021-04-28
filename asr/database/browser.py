@@ -94,18 +94,6 @@ def create_link_table(row, links, key_descriptions):
     return link_table
 
 
-class ExplainedStr(str):
-    """A mutable string class that support explanations."""
-
-    __explanation__: str
-
-
-class ExplainedFloat(float):
-    """A mutable string class that support explanations."""
-
-    __explanation__: str
-
-
 value_type_to_explained_type = {}
 
 
