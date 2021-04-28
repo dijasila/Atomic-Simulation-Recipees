@@ -81,12 +81,14 @@ def test_asr_results_help():
 def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
     from asr.gs import main as calculate_gs
     from .materials import BN
+    import matplotlib.pyplot as plt
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     gpaw.GPAW._get_fermi_level.return_value = 0.5
     gpaw.GPAW._get_band_gap.return_value = 1
 
+    mocker.patch.object(plt, 'show')
     BN.write('structure.json')
     calculate_gs()
     runner = CliRunner()
