@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 
+@pytest.mark.xfail
 @pytest.mark.acceptance_test
 def test_piezo_BN(asr_tmpdir_w_params):
     from .materials import BN
