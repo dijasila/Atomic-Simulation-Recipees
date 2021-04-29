@@ -270,20 +270,23 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            elif name.is_file() and fnmatch(name, "info.json"):
-                tmpkvp, tmpdata = collect_info(name)
+            else:
+                if name.is_file() and fnmatch(name, "info.json"):
+                    tmpkvp, tmpdata = collect_info(name)
+                elif name.is_file() and any(fnmatch(name, pattern)
+                                            for pattern in patterns):
+                    tmpkvp, tmpdata = collect_file(name)
+                else:
+                    continue
                 for key, value in tmpkvp.items():
+                    # Skip values not suitable for database column:
                     if isinstance(value, (int, float, str)):
-                        assert key not in kvp, key
+                        if key in kvp:
+                            raise ValueError(
+                                f'Found {key}={value} in {name}: '
+                                f'{key} already read once: '
+                                f'{key}={value}')
                         kvp[key] = value
-                data.update(tmpdata)
-            elif name.is_file() and any(fnmatch(name, pattern)
-                                        for pattern in patterns):
-                tmpkvp, tmpdata = collect_file(name)
-                for key, value in tmpkvp.items():
-                    assert key not in kvp, key
-                    kvp[key] = value
-                kvp.update(tmpkvp)
                 data.update(tmpdata)
 
         if not data['__children__']:
