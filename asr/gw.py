@@ -1,4 +1,5 @@
 """DFT GW."""
+import numpy as np
 from ase import Atoms
 import asr
 from asr.core import (
@@ -75,7 +76,6 @@ def gs(
 ) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
-    import numpy as np
     # check that the system is a semiconductor
     res = calculategs(atoms=atoms, calculator=calculator)
     calc = res.calculation.load()
@@ -232,7 +232,6 @@ def empirical_mean_z(
 
     new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
     """
-    import numpy as np
 
     gwresults = gw(
         atoms=atoms,
@@ -411,7 +410,6 @@ def main(
         correctgw: bool = True,
         empz: float = 0.75,
 ) -> Result:
-    import numpy as np
     from gpaw import GPAW
     from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
