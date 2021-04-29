@@ -232,7 +232,6 @@ def empirical_mean_z(
 
     new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
     """
-
     gwresults = gw(
         atoms=atoms,
         calculator=calculator,
