@@ -270,13 +270,19 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            # elif name.is_file() and fnmatch(name, "info.json"):
-            elif False:  # See #59 (skip info.json)
+            elif name.is_file() and fnmatch(name, "info.json"):
                 tmpkvp, tmpdata = collect_info(name)
-                kvp.update(tmpkvp)
+                for key, value in tmpkvp.items():
+                    if isinstance(value, (int, float, str)):
+                        assert key not in kvp, key
+                        kvp[key] = value
                 data.update(tmpdata)
-            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
+            elif name.is_file() and any(fnmatch(name, pattern)
+                                        for pattern in patterns):
                 tmpkvp, tmpdata = collect_file(name)
+                for key, value in tmpkvp.items():
+                    assert key not in kvp, key
+                    kvp[key] = value
                 kvp.update(tmpkvp)
                 data.update(tmpdata)
 
