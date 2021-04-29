@@ -1,21 +1,23 @@
 """Database web application."""
 from typing import List
-from asr.core import (ASRResult, decode_object, UnknownDataFormat)
-
+import multiprocessing
 import tempfile
 from pathlib import Path
+import warnings
 
-from ase.db import connect
-from ase.db.app import app, projects
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
-import asr
+from jinja2 import UndefinedError
+from ase.db import connect
+from ase.db.app import app, projects
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
-import warnings
-from jinja2 import UndefinedError
+
+import asr
+from asr.core import ASRResult, decode_object, UnknownDataFormat
+
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
@@ -205,7 +207,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
     return s
 
 
-def initialize_project(database, extra_kvp_descriptions=None):
+def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     from asr.database import browser
     from functools import partial
 
@@ -215,6 +217,9 @@ def initialize_project(database, extra_kvp_descriptions=None):
 
     # Make temporary directory
     (tmpdir / name).mkdir()
+
+    def layout(*args, **kwargs):
+        return browser.layout(*args, pool=pool, **kwargs)
 
     metadata = db.metadata
     projects[name] = {
@@ -226,7 +231,7 @@ def initialize_project(database, extra_kvp_descriptions=None):
         "database": db,
         "handle_query_function": handle_query,
         "row_to_dict_function": partial(
-            row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
+            row_to_dict, layout_function=layout, tmpdir=tmpdir,
         ),
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
@@ -248,8 +253,22 @@ def initialize_project(database, extra_kvp_descriptions=None):
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False,
          extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
+
+    # The app uses threads, and we cannot call matplotlib multithreadedly.
+    # Therefore we use a multiprocessing pool for the plotting.
+    # We could use more cores, but they tend to fail to close
+    # correctly on KeyboardInterrupt.
+    pool = multiprocessing.Pool(1)
+    try:
+        _main(databases, host, test, extra_kvp_descriptions, pool)
+    finally:
+        pool.close()
+        pool.join()
+
+
+def _main(databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
-        initialize_project(database, extra_kvp_descriptions)
+        initialize_project(database, extra_kvp_descriptions, pool)
 
     setup_app()
 

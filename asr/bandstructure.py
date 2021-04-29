@@ -11,7 +11,10 @@ from asr.core import (
 from asr.gs import calculate as calculategs
 from asr.gs import main as maings
 
+import numpy as np
+from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -111,10 +114,10 @@ def plot_bs_html(row,
                  s=2):
     import plotly
     import plotly.graph_objs as go
-    import numpy as np
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
@@ -138,7 +141,6 @@ def plot_bs_html(row,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
@@ -147,7 +149,7 @@ def plot_bs_html(row,
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
         mode='markers',
-        name='KS no SOC',
+        name=f'{xcname} no SOC',
         showlegend=True,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
@@ -158,7 +160,6 @@ def plot_bs_html(row,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
@@ -175,7 +176,7 @@ def plot_bs_html(row,
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
         mode='markers',
-        name='KS',
+        name=xcname,
         showlegend=True,
         marker=dict(
             size=4,
@@ -286,14 +287,14 @@ def plot_bs_html(row,
 
 def add_bs_ks(row, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-    from ase.dft.kpoints import labels_from_kpts
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
+    xcname = gs_xcname_from_row(row)
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label('KS')
+    ax.lines[-1].set_label(xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -316,7 +317,6 @@ def plot_with_colors(bs,
                      loc=None,
                      s=2):
     """Plot band-structure with colors."""
-    import numpy as np
     import matplotlib.pyplot as plt
 
     # if bs.ax is None:
@@ -366,9 +366,9 @@ def plot_bs_png(row,
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
-    import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
@@ -397,7 +397,7 @@ def plot_bs_png(row,
     # without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='KS no SOC',
+        label=f'{xcname} no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -436,7 +436,7 @@ def plot_bs_png(row,
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label='KS', color=csz0)
+    ax.plot([], [], label=xcname, color=csz0)
 
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
@@ -457,6 +457,7 @@ def plot_bs_png(row,
 
 def webpanel(result, row, key_descriptions):
     from typing import Tuple, List
+    from asr.utils.hacks import gs_xcname_from_row
 
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
@@ -467,7 +468,9 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    panel = {'title': describe_entry('Electronic band structure',
+    xcname = gs_xcname_from_row(row)
+
+    panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
                                      panel_description),
              'columns': [
                  [
@@ -556,7 +559,6 @@ def main(
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     import copy
-    import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
