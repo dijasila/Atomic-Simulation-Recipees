@@ -8,7 +8,7 @@ from asr.database.browser import (
 
 
 panel_description = make_panel_description(
-    """The quasiparticle (QP) band structure calculated within the G0W0
+    """The quasiparticle (QP) band structure calculated within the G₀W₀
 approximation from a GGA starting point.
 The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
@@ -36,7 +36,7 @@ arXiv:2009.00314""",
 def plot_bs_gw(row, filename):
     from asr.hse import plot_bs
     data = row.data['results-asr.gw.json']
-    return plot_bs(row, filename=filename, bs_label='G0W0',
+    return plot_bs(row, filename=filename, bs_label='G₀W₀',
                    data=data,
                    efermi=data['efermi_gw_soc'],
                    cbm=row.get('cbm_gw'),
@@ -218,19 +218,21 @@ def webpanel(result, row, key_descriptions):
 
     if row.get('evac'):
         prop['rows'].extend(
-            [['Valence band maximum wrt. vacuum level (G0W0)',
+            [['Valence band maximum wrt. vacuum level (G₀W₀)',
               f'{row.vbm_gw - row.evac:.2f} eV'],
-             ['Conduction band minimum wrt. vacuum level (G0W0)',
+             ['Conduction band minimum wrt. vacuum level (G₀W₀)',
               f'{row.cbm_gw - row.evac:.2f} eV']])
     else:
         prop['rows'].extend(
-            [['Valence band maximum wrt. Fermi level (G0W0)',
+            [['Valence band maximum wrt. Fermi level (G₀W₀)',
               f'{row.vbm_gw - row.efermi:.2f} eV'],
-             ['Conduction band minimum wrt. Fermi level (G0W0)',
+             ['Conduction band minimum wrt. Fermi level (G₀W₀)',
               f'{row.cbm_gw - row.efermi:.2f} eV']])
 
-    panel = {'title': describe_entry('Electronic band structure (G0W0)',
-                                     panel_description),
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Electronic band structure (G₀W₀@{xcname})'
+    panel = {'title': describe_entry(title, panel_description),
              'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
              'plot_descriptions': [{'function': plot_bs_gw,
                                     'filenames': ['gw-bs.png']}],
@@ -239,11 +241,11 @@ def webpanel(result, row, key_descriptions):
     if row.get('gap_gw'):
         description = (
             'The quasi-particle band gap calculated with '
-            'G0W0 including spin–orbit effects. \n\n'
+            'G₀W₀ including spin–orbit effects. \n\n'
         )
         rows = [
             [
-                describe_entry('Band gap (G0W0)', description),
+                describe_entry('Band gap (G₀W₀)', description),
                 f'{row.gap_gw:0.2f} eV'
             ]
         ]
@@ -278,20 +280,20 @@ class Result(ASRResult):
     efermi_gw_soc: float
     bandstructure: BandStructure
     key_descriptions = {
-        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G0W0) [eV]",
-        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G0W0) [eV]",
-        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G0W0) [eV]",
-        "gap_gw_nosoc": "Gap w/o soc. (G0W0) [eV]",
-        "kvbm_nosoc": "k-point of G0W0 valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of G0W0 conduction band minimum w/o soc",
-        "vbm_gw": "Valence band maximum (G0W0) [eV]",
-        "cbm_gw": "Conduction band minimum (G0W0) [eV]",
-        "gap_dir_gw": "Direct band gap (G0W0) [eV]",
-        "gap_gw": "Band gap (G0W0) [eV]",
-        "kvbm": "k-point of G0W0 valence band maximum",
-        "kcbm": "k-point of G0W0 conduction band minimum",
-        "efermi_gw_nosoc": "Fermi level w/o soc. (G0W0) [eV]",
-        "efermi_gw_soc": "Fermi level (G0W0) [eV]",
+        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G₀W₀) [eV]",
+        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G₀W₀) [eV]",
+        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G₀W₀) [eV]",
+        "gap_gw_nosoc": "Gap w/o soc. (G₀W₀) [eV]",
+        "kvbm_nosoc": "k-point of G₀W₀ valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of G₀W₀ conduction band minimum w/o soc",
+        "vbm_gw": "Valence band maximum (G₀W₀) [eV]",
+        "cbm_gw": "Conduction band minimum (G₀W₀) [eV]",
+        "gap_dir_gw": "Direct band gap (G₀W₀) [eV]",
+        "gap_gw": "Band gap (G₀W₀) [eV]",
+        "kvbm": "k-point of G₀W₀ valence band maximum",
+        "kcbm": "k-point of G₀W₀ conduction band minimum",
+        "efermi_gw_nosoc": "Fermi level w/o soc. (G₀W₀) [eV]",
+        "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
         "bandstructure": "GW bandstructure."
     }
     formats = {"ase_webpanel": webpanel}
