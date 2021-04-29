@@ -278,15 +278,19 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                     tmpkvp, tmpdata = collect_file(name)
                 else:
                     continue
+
                 for key, value in tmpkvp.items():
-                    # Skip values not suitable for database column:
+                    if name.name == 'info.json' and key in ['hform', 'natoms']:
+                        continue  # We need to fix our info.json files in C2DB
+                    # Skip values not suitable for a database column:
                     if isinstance(value, (int, float, str)):
-                        if key in kvp:
+                        if key in kvp and kvp[key] != value:
                             raise ValueError(
                                 f'Found {key}={value} in {name}: '
                                 f'{key} already read once: '
-                                f'{key}={value}')
+                                f'{key}={kvp[key]}')
                         kvp[key] = value
+
                 data.update(tmpdata)
 
         if not data['__children__']:
