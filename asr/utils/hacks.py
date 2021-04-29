@@ -1,4 +1,4 @@
 def gs_xcname_from_row(row):
     # XXX Huge trainwreck
-    params = row.data['results-asr.gs@calculate.json'].metadata.params
-    return params['calculator'].get('xc', 'LDA')
+    record = row.data.get_record('results-asr.gs@calculate.json')
+    return record.parameters['calculator'].get('xc', 'LDA')
