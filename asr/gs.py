@@ -146,10 +146,12 @@ def webpanel(result, row, key_descriptions):
                 [cbm_title, f'{cbm_displayvalue:.3f} eV']]
         t['rows'].extend(info)
 
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Basic electronic properties ({xcname})'
+
     panel = WebPanel(
-        title=describe_entry(
-            'Basic electronic properties',
-            panel_description),
+        title=describe_entry(title, panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 

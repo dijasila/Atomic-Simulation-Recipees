@@ -143,7 +143,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
 
 def plot_bs_hse(row, filename):
     data = row.data['results-asr.hse.json']
-    return plot_bs(row, filename=filename, bs_label='HSE',
+    return plot_bs(row, filename=filename, bs_label='HSE06',
                    data=data,
                    efermi=data['efermi_hse_soc'],
                    vbm=row.get('vbm_hse'),
@@ -233,23 +233,26 @@ def webpanel(result, row, key_descriptions):
 
         if row.get('evac'):
             hse['rows'].extend(
-                [['Valence band maximum wrt. vacuum level (HSE)',
+                [['Valence band maximum wrt. vacuum level (HSE06)',
                   f'{row.vbm_hse - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level (HSE)',
+                 ['Conduction band minimum wrt. vacuum level (HSE06)',
                   f'{row.cbm_hse - row.evac:.2f} eV']])
         else:
             hse['rows'].extend(
-                [['Valence band maximum wrt. Fermi level (HSE)',
+                [['Valence band maximum wrt. Fermi level (HSE06)',
                   f'{row.vbm_hse - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level (HSE)',
+                 ['Conduction band minimum wrt. Fermi level (HSE06)',
                   f'{row.cbm_hse - row.efermi:.2f} eV']])
     else:
         hse = table(row, 'Property',
                     [],
                     kd=key_descriptions)
 
-    panel = {'title': describe_entry('Electronic band structure (HSE)',
-                                     panel_description),
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+
+    title = f'Electronic band structure (HSE06@{xcname})'
+    panel = {'title': describe_entry(title, panel_description),
              'columns': [[fig('hse-bs.png')],
                          [fig('bz-with-gaps.png'), hse]],
              'plot_descriptions': [{'function': plot_bs_hse,
