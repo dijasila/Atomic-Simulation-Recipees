@@ -16,8 +16,8 @@ from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 
 import asr
-from asr.core import (command, option, argument, ASRResult,
-                      decode_object, UnknownDataFormat)
+from asr.core import ASRResult, decode_object, UnknownDataFormat
+
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
