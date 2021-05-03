@@ -151,6 +151,7 @@ class Result(ASRResult):
     p0: float
     defect_concentrations: typing.List[ConcentrationResult]
     conc_unit: str
+    dopability: str
 
     key_descriptions: typing.Dict[str, str] = dict(
         temperature='Temperature [K].',
@@ -160,7 +161,8 @@ class Result(ASRResult):
         n0='Electron carrier concentration at SC Fermi level.',
         p0='Hole carrier concentration at SC Fermi level.',
         defect_concentrations='List of ConcentrationResult containers.',
-        conc_unit='Unit of calculated concentrations.')
+        conc_unit='Unit of calculated concentrations.',
+        dopability='p-/n-type or intrinsic nature of material.')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -296,6 +298,13 @@ def main(temp: float = 300,
                 concentrations=concentration_tuples)
             concentration_results.append(concentration_result)
 
+    if E < 0.25 * gap:
+        dop = 'p-type'
+    elif E > 0.75 * gap:
+        dop = 'n-type'
+    else:
+        dop = 'intrinsic'
+
     return Result.fromdata(
         temperature=temp,
         efermi_sc=E,
@@ -303,7 +312,8 @@ def main(temp: float = 300,
         n0=n0,
         p0=p0,
         defect_concentrations=concentration_results,
-        conc_unit=unit)
+        conc_unit=unit,
+        dopability=dop)
 
 
 def convert_concentration_units(conc, atoms):

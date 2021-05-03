@@ -213,3 +213,6 @@ def calculate_hyperfine(atoms, calc):
         gyro_results.append(gyro_result)
 
     return hyperfine_results, gyro_results
+
+if __name__ == '__main__':
+    main.cli()

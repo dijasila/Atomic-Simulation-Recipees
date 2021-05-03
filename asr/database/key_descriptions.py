@@ -17,13 +17,17 @@ key_descriptions = {
     },
     "bse": {"E_B": "KVP: Exciton binding energy from BSE "
             "!Exc. bind. energy! [eV]"},
+    "charge_neutrality": {
+        "efermi_sc": "KVP: Equilibrium defect Fermi level !SCF E_F! [eV]",
+        "dopability": "KVP: Dopability (n-/p-type or intrisic) !Dopability!"
+    },
     "convex_hull": {
         "ehull": "KVP: Energy above convex hull [eV/atom]",
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
     "defectinfo": {
-        "defect_name": "KVP: Defect name !Defect name {type}_{position}!",
+        "defect_name": "KVP: Defect name {type}_{position} !Defect name!",
         "host_name": "KVP: Host formula"
     },
     "defect_symmetry": {
