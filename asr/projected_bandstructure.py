@@ -291,7 +291,8 @@ def get_pie_slice(theta0, theta, s=36., res=64):
     assert -np.pi / res <= theta and theta <= 2. * np.pi + np.pi / res
 
     angles = np.linspace(theta0, theta0 + theta,
-                         int(np.ceil(res * theta / (2 * np.pi))))
+                         max(int(np.ceil(res * theta / (2 * np.pi))),
+                             1))  # We need the starting angle to obtain a finite size
     x = [0] + np.cos(angles).tolist()
     y = [0] + np.sin(angles).tolist()
     xy = np.column_stack([x, y])
