@@ -316,6 +316,11 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     pie_xi : list of lists of mpl option dictionaries
     """
     assert np.all(weight_xi >= 0.)
+    if any([not np.any(weight_xi[:, i]) for i in range(weight_xi.shape[1])]):
+        import warnings
+        warnings.warn(('One or multiple orbitals are without weight in one or multiple'
+                       ' bands. Please check that the requested orbital projections'
+                       ' are physical.'))
 
     pie_xi = []
     for weight_i in weight_xi:
