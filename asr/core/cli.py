@@ -435,6 +435,7 @@ def add_resultfile_records(directories):
         directories = [Path('.').resolve()]
     for directory in directories:
         with chdir(directory):
+            print(directory)
             cache = get_cache()
             resultfile_records = get_resultsfile_records()
 
