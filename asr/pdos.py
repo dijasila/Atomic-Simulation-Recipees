@@ -291,18 +291,26 @@ def get_l_a(zs):
         given atom
 
     """
-    lantha = range(58, 72)
-    acti = range(90, 104)
+    period1 = range(1, 3)
+    trans_metals = list(range(21, 31))
+    trans_metals += list(range(39, 49))
+    trans_metals += list(range(71, 81))
+    trans_metals += list(range(103, 113))
+    lantha = range(57, 71)
+    acti = range(89, 103)
 
     zs = np.asarray(zs)
     l_a = {}
-    atoms = Atoms(numbers=zs)
-    mag_elements = magnetic_atoms(atoms)
-    for a, (z, mag) in enumerate(zip(zs, mag_elements)):
-        if z in lantha or z in acti:
+    for a, z in enumerate(zs):
+        if z in period1:
+            l_a[a] = 's'
+        elif z in trans_metals:
+            l_a[a] = 'spd'
+        elif z in lantha or z in acti:
             l_a[a] = 'spdf'
         else:
-            l_a[a] = 'spd' if mag else 'sp'
+            l_a[a] = 'sp'
+
     return l_a
 
 
