@@ -4,9 +4,6 @@ from collections import defaultdict
 import typing
 
 import numpy as np
-from ase import Atoms
-
-from asr.utils import magnetic_atoms
 
 
 # Recipe tests:
