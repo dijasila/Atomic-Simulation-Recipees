@@ -58,7 +58,7 @@ def webpanel(result, row, key_descriptions):
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
 
-    from ase.hacks import gs_xcname_from_row
+    from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
 
     panel = {'title':

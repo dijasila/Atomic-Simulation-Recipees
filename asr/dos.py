@@ -84,7 +84,7 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    from ase.hacks import gs_xcname_from_row
+    from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
 
     panel = (f'Density of states ({xcname})',
