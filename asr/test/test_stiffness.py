@@ -5,15 +5,16 @@ import numpy as np
 
 @pytest.mark.ci
 def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+                        fast_calc,
                         get_webcontent):
-    from asr.setup.strains import main as setup_strains
     from asr.stiffness import main as stiffness
 
-    test_material.write('structure.json')
     strain_percent = 1
-    setup_strains(strain_percent=strain_percent)
-
-    results = stiffness()
+    results = stiffness(
+        atoms=test_material,
+        strain_percent=strain_percent,
+        calculator=fast_calc,
+    )
     nd = np.sum(test_material.pbc)
 
     # check that all keys are in results-asr.stiffness.json:
@@ -37,6 +38,7 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     assert results['stiffness_tensor'] == approx(stiffness_tensor)
     assert results['eigenvalues'] == approx(eigenvalues)
 
+    test_material.write('structure.json')
     content = get_webcontent()
     assert 'Dynamical(stiffness)' in content, content
 
@@ -45,45 +47,16 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
 # @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
 #                                   'Pd', 'Pt', 'C'])
 @pytest.mark.parametrize('name', ['Al'])
-def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
-    from pathlib import Path
+def test_stiffness_emt(asr_tmpdir_w_params, name, mockgpaw, get_webcontent):
+    # from pathlib import Path
     from ase.build import bulk
-    from asr.relax import main as relax
-    from asr.setup.strains import main as setup_strains
-    from asr.setup.params import main as setup_params
     from asr.stiffness import main as stiffness
-    from asr.setup.strains import (get_strained_folder_name,
-                                   get_relevant_strains)
 
-    structure = bulk(name)
-    structure.write('structure.json')
-    strain_percent = 1
-    setup_strains(strain_percent=1)
+    atoms = bulk(name)
+    atoms.write('structure.json')
 
-    ij = get_relevant_strains(structure.pbc)
-    for i, j in ij:
-        for sign in [+1, -1]:
-            name = get_strained_folder_name(strain_percent * sign, i, j)
-            folder = Path(name)
-            assert folder.is_dir()
-            # run relaxation in each subfloder with EMT calculator
-            from asr.core import chdir
-            with chdir(folder):
-                import os
-                assert os.path.isfile('unrelaxed.json')
-                assert os.path.isfile('results-asr.setup.params.json')
-                params = {
-                    'asr.relax': {'calculator': {'name': 'emt'}}
-                }
-                setup_params(params=params)
-                relax.cli([])
-                assert os.path.isfile('results-asr.relax.json')
-                assert os.path.isfile('structure.json')
-
-    results = stiffness()
-
-    # check that stiffness_tensor is symmetric
-    stiffness_tensor = results['stiffness_tensor']
+    result = stiffness(atoms=atoms, calculator=dict(name='emt'))
+    stiffness_tensor = result['stiffness_tensor']
     assert stiffness_tensor == approx(stiffness_tensor.T, abs=1)
 
     content = get_webcontent()

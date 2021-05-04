@@ -5,7 +5,7 @@ import numpy as np
 @pytest.mark.xfail
 @pytest.mark.acceptance_test
 def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
-    from .materials import BN
+    from ..materials import BN
     from asr.borncharges import main
     from asr.setup.params import main as setupparams
 
@@ -13,7 +13,6 @@ def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 300},
         'xc': 'PBE',
-        'basis': 'dzp',
         'kpts': {'density': 2.0, 'gamma': True},
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},
@@ -27,7 +26,6 @@ def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 300},
         'xc': 'PBE',
-        'basis': 'dzp',
         'kpts': {'density': 2.0},
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},

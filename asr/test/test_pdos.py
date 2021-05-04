@@ -3,11 +3,11 @@ import pytest
 
 @pytest.mark.ci
 def test_pdos(asr_tmpdir_w_params, mockgpaw,
-              test_material, get_webcontent):
+              test_material, get_webcontent, fast_calc):
     from asr.pdos import main
 
+    main(atoms=test_material, calculator=fast_calc)
     test_material.write('structure.json')
-    main()
     get_webcontent()
 
 

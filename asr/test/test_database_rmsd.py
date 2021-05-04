@@ -1,5 +1,6 @@
 import pytest
 from ase import Atoms
+from ase.db import connect
 
 
 @pytest.mark.ci
@@ -8,7 +9,8 @@ def test_database_rmsd_duplicates(duplicates_test_db):
     from asr.database.rmsd import main
 
     nmat = len(duplicates_test_db)
-    results = main('duplicates.db', 'duplicates-rmsd.db')
+    results = main(
+        connect('duplicates.db'), connect('duplicates-rmsd.db'))
     rmsd_by_id = results['rmsd_by_id']
     assert set(range(1, nmat + 1)).issubset(set(rmsd_by_id.keys()))
     for i in range(1, nmat + 1):
@@ -24,7 +26,7 @@ def test_database_rmsd_duplicates_comparison_keys(duplicates_test_db):
     """Test that the duplicates (with rmsd=0)are correctly identified."""
     from asr.database.rmsd import main
 
-    results = main('duplicates.db', 'duplicates-rmsd.db',
+    results = main(connect('duplicates.db'), connect('duplicates-rmsd.db'),
                    comparison_keys='magstate')
     rmsd_by_id = results['rmsd_by_id']
     assert set(rmsd_by_id.keys()) == set([1, 3, 4, 5, 6])
@@ -56,7 +58,9 @@ def test_database_rmsd_none_handling(asr_tmpdir):
     rattled = Si.copy()
     rattled.rattle(1.0)
     db.write(rattled)
-    main('duplicates_rattled.db', 'duplicates_rattled_rmsd.db', max_rmsd=0.001)
+    main(
+        connect('duplicates_rattled.db'),
+        connect('duplicates_rattled_rmsd.db'), max_rmsd=0.001)
 
 
 def rattle_atoms(atoms, scale=0.01, seed=42):

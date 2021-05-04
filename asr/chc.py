@@ -1,4 +1,6 @@
-from asr.core import command, option, argument, AtomsFile, ASRResult, prepare_result
+from asr.core import (
+    command, option, argument, ASRResult, prepare_result, atomsopt
+)
 from ase.formula import Formula
 import numpy as np
 from typing import List, Tuple
@@ -562,13 +564,9 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command('asr.chc',
-         requires=['structure.json',
-                   'results-asr.convex_hull.json'],
-         returns=Result)
+@command('asr.chc')
 @argument('dbs', nargs=-1, type=str)
-@option('-a', '--atoms', help='Atoms to be relaxed.',
-        type=AtomsFile(), default='structure.json')
+@atomsopt
 @option('-r', '--reactant', type=str,
         help='Reactant to add to convex hull')
 def main(dbs: List[str],

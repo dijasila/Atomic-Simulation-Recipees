@@ -17,9 +17,9 @@ def test_database_treelinks(asr_tmpdir):
         folderpath.mkdir()
         write(folderpath / 'structure.json', material)
         with chdir(folderpath):
-            material_fingerprint()
+            material_fingerprint(atoms=material)
     write('structure.json', std_test_materials[0])
-    material_fingerprint()
+    material_fingerprint(atoms=std_test_materials[0])
 
     # run asr.database.treelinks to create results and links.json files
     treelinks(include=['folder_*'], exclude=[''])

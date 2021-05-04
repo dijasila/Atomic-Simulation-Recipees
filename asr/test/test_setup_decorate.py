@@ -7,11 +7,7 @@ Si = bulk('Si')
 @pytest.mark.ci
 def test_setup_decorate_si(asr_tmpdir_w_params, mockgpaw):
     from asr.setup.decorate import main
-    from ase.io import write
-    from ase.db import connect
-    from pathlib import Path
-    write('structure.json', Si)
-    main(atoms='structure.json')
-    assert Path('decorated.db').is_file()
-    db = connect('decorated.db')
-    db.get('Ge')
+    decorated = main(atoms=Si)
+
+    assert len(decorated) == 2
+    assert all(decorated[1]['atoms'].symbols == 'Ge')

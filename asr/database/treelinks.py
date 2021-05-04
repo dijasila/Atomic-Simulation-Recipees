@@ -2,8 +2,12 @@ import os
 import typing
 from pathlib import Path
 from fnmatch import fnmatch
-from asr.core import (command, option, ASRResult, prepare_result,
-                      read_json, CommaStr)
+from asr.core import (ASRResult, prepare_result)
+from ase.io import read
+from asr.database.material_fingerprint import main as material_fingerprint
+
+
+ATOMFILE = 'structure.json'
 
 
 @prepare_result
@@ -17,12 +21,6 @@ class Result(ASRResult):
     )
 
 
-@command('asr.database.treelinks',
-         returns=Result)
-@option('--include', help='Comma-separated string of folders to include.',
-        type=CommaStr())
-@option('--exclude', help='Comma-separated string of folders to exclude.',
-        type=CommaStr())
 def main(include: str = '',
          exclude: str = '') -> Result:
     """Create links.json based on the tree-structure.
@@ -76,7 +74,6 @@ def recursive_through_folders(path, include, exclude):
 
     Find folders with 'include' specifically and exclude folders with 'exclude'.
     """
-    atomfile = 'structure.json'
     folders = []
 
     if exclude == ['']:
@@ -88,7 +85,7 @@ def recursive_through_folders(path, include, exclude):
                        or any(fnmatch(rootstring, add)
                               for rootstring in rootlist)):
                         folder = Path(root + '/' + dir)
-                        if Path(folder / atomfile).is_file():
+                        if Path(folder / ATOMFILE).is_file():
                             folders.append(folder)
     elif include == [''] and exclude != ['']:
         for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
@@ -99,7 +96,7 @@ def recursive_through_folders(path, include, exclude):
                        and not any(fnmatch(rootstring, rm)
                                    for rootstring in rootlist)):
                         folder = Path(root + '/' + dir)
-                        if Path(folder / atomfile).is_file():
+                        if Path(folder / ATOMFILE).is_file():
                             folders.append(folder)
     elif include != '' and exclude != '':
         raise AssertionError('It is not possible to give both an include and exclude '
@@ -115,12 +112,12 @@ def create_tree_links(folders):
     """
     print('INFO: Create links for the following folders:')
 
-    parent_uid = read_json('results-asr.database.material_fingerprint.json')['uid']
+    parent_uid = material_fingerprint(atoms=read(ATOMFILE))['uid']
     uids = [parent_uid]
 
     for folder in folders:
-        fingerprint_res = read_json(folder
-                                    / 'results-asr.database.material_fingerprint.json')
+        fingerprint_res = material_fingerprint(
+            atoms=read(folder / ATOMFILE))
         uid = fingerprint_res['uid']
         if uid not in uids:
             uids.append(uid)

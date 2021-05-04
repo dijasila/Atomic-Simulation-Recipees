@@ -1,19 +1,24 @@
 """Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 import functools
 
-import numpy as np
+import asr
+from asr.core import (
+    command, argument, ASRResult, prepare_result,
+    atomsopt, calcopt,
+    File, FileStr,
+)
+from asr.calculators import set_calculator_hook
 
-from asr.core import command, argument, ASRResult, prepare_result
+import numpy as np
 from asr.database.browser import (
     fig, table, describe_entry, dl, br, make_panel_description
 )
 
-from ase.db import connect
-from ase.io import read
+from ase import Atoms
 from ase.phasediagram import PhaseDiagram
+from ase.db import connect
 from ase.db.row import AtomsRow
 from ase.formula import Formula
 
@@ -21,6 +26,8 @@ from ase.formula import Formula
 from matplotlib import patches
 # from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
 
+
+from asr.gs import main as groundstate
 
 known_methods = ['DFT', 'DFT+D3']
 
@@ -127,14 +134,46 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def convert_database_strings_to_files(parameters):
+    databases = []
+    for database in parameters.databases:
+        if isinstance(database, str):
+            database = File.fromstr(database)
+        databases.append(database)
+    parameters.databases = databases
+    return parameters
+
+
+def select_records_with_databases_as_string(record):
+    if record.name != 'asr.convex_hull:main':
+        return False
+    for database in record.parameters.databases:
+        if isinstance(database, str):
+            return True
+    return False
+
+
+@asr.migration(selector=select_records_with_databases_as_string)
+def convert_database_parameter_to_file(record):
+    """Convert databases represented as strings to File objects."""
+    parameters = convert_database_strings_to_files(record.parameters)
+    record.parameters = parameters
+    return record
+
+
 @command('asr.convex_hull',
-         requires=['results-asr.structureinfo.json',
-                   'results-asr.database.material_fingerprint.json'],
-         dependencies=['asr.structureinfo',
-                       'asr.database.material_fingerprint'],
-         returns=Result)
-@argument('databases', nargs=-1, type=str)
-def main(databases: List[str]) -> Result:
+         argument_hooks=[set_calculator_hook,
+                         convert_database_strings_to_files],
+         migrations=[convert_database_parameter_to_file],
+         )
+@atomsopt
+@calcopt
+@argument('databases', nargs=-1, type=FileStr())
+def main(
+        atoms: Atoms,
+        calculator: dict = groundstate.defaults.calculator,
+        databases: List[File] = [],
+) -> Result:
     """Calculate convex hull energies.
 
     It is assumed that the first database supplied is the one containing the
@@ -182,22 +221,12 @@ def main(databases: List[str]) -> Result:
         List of filenames of databases.
 
     """
-    from asr.relax import main as relax
-    from asr.gs import main as groundstate
-    from asr.core import read_json
-    atoms = read('structure.json')
-
-    if not relax.done:
-        if not groundstate.done:
-            groundstate()
-
+    # XXX Add possibility of D3 correction again
     # TODO: Make separate recipe for calculating vdW correction to total energy
-    for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
-        if Path(filename).is_file():
-            results = read_json(filename)
-            energy = results.get('etot')
-            usingd3 = results.metadata.params.get('d3', False)
-            break
+    databases = [connect(database.path) for database in databases]
+    result = groundstate(atoms=atoms, calculator=calculator)
+    usingd3 = False
+    energy = result.etot
 
     if usingd3:
         mymethod = 'DFT+D3'
@@ -209,9 +238,8 @@ def main(databases: List[str]) -> Result:
 
     dbdata = {}
     reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
-    for database in databases:
+    for refdb in databases:
         # Connect to databases and save relevant rows
-        refdb = connect(database)
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
@@ -221,19 +249,24 @@ def main(databases: List[str]) -> Result:
         assert dbmethod == mymethod, \
             ('You are using a reference database with '
              f'inconsistent methods: {mymethod} (this material) != '
-             f'{dbmethod} ({database})')
+             f'{dbmethod} ({refdb.database})')
 
         rows = []
         # Select only references which contain relevant elements
         rows.extend(select_references(refdb, set(count)))
-        dbdata[database] = {'rows': rows,
-                            'metadata': metadata}
+        dbdata[refdb.filename] = {
+            'rows': rows,
+            'metadata': metadata,
+        }
 
     ref_database = databases[0]
-    ref_metadata = dbdata[ref_database]['metadata']
+    ref_metadata = dbdata[ref_database.filename]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(atoms, ref_database,
-                                          energy_key=ref_energy_key)
+    ref_energies = get_reference_energies(
+        atoms,
+        ref_database,
+        energy_key=ref_energy_key,
+    )
     hform = hof(energy,
                 count,
                 ref_energies)
@@ -292,12 +325,11 @@ def main(databases: List[str]) -> Result:
     return Result(data=results)
 
 
-def get_reference_energies(atoms, references, energy_key='energy'):
+def get_reference_energies(atoms, refdb, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
     ref_energies = {}
-    refdb = connect(references)
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
@@ -399,7 +431,9 @@ def plot(row, fname, thisrow):
         colors.append(color)
         sizes.append(size)
 
-    pd = PhaseDiagram(pdrefs, verbose=False)
+    sizes = np.array(sizes)
+    pd = PhaseDiagram(pdrefs,
+                      verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
@@ -433,6 +467,7 @@ def plot(row, fname, thisrow):
             x = x[mask]
             edgecolors = edgecolors[mask]
             hull = hull[mask]
+            sizes = sizes[mask]
             names = [name for name, m in zip(names, mask) if m]
             s = s[mask]
 

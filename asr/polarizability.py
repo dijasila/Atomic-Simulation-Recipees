@@ -1,12 +1,18 @@
 """Optical polarizability."""
 import typing
 from click import Choice
-from asr.core import command, option, ASRResult, prepare_result
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt,
+    calcopt)
 from asr.database.browser import (
     table,
     fig,
     describe_entry,
     make_panel_description)
+
+from asr.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
@@ -97,13 +103,11 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.polarizability',
-         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
-         requires=['gs.gpw'],
-         returns=Result)
-@option(
-    '--gs', help='Ground state on which response is based',
-    type=str)
+@command(
+    'asr.polarizability',
+)
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density',
         type=float)
 @option('--ecut', help='Plane wave cutoff',
@@ -111,17 +115,20 @@ class Result(ASRResult):
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
-         xc: str = 'RPA', bandfactor: int = 5) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        ecut: float = 50.0,
+        xc: str = 'RPA',
+        bandfactor: int = 5,
+) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
-    from ase.io import read
-    from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
     from pathlib import Path
     import numpy as np
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
 
     dfkwargs = {
@@ -154,21 +161,21 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        if not Path('es.gpw').is_file():
-            calc_old = GPAW(gs, txt=None)
-            nval = calc_old.wfs.nvalence
+        res = gscalculate(atoms=atoms, calculator=calculator)
+        calc_old = res.calculation.load()
+        nval = calc_old.wfs.nvalence
 
-            calc = GPAW(
-                gs,
-                txt='es.txt',
-                fixdensity=True,
-                nbands=(bandfactor + 1) * nval,
-                convergence={'bands': bandfactor * nval},
-                occupations={'name': 'fermi-dirac',
-                             'width': 1e-4},
-                kpts=kpts)
-            calc.get_potential_energy()
-            calc.write('es.gpw', mode='all')
+        calc = res.calculation.load(
+            txt='es.txt',
+            fixdensity=True,
+            nbands=(bandfactor + 1) * nval,
+            convergence={'bands': bandfactor * nval},
+            occupations={'name': 'fermi-dirac',
+                         'width': 1e-4},
+            kpts=kpts,
+        )
+        calc.get_potential_energy()
+        calc.write('es.gpw', mode='all')
 
         df = DielectricFunction('es.gpw', **dfkwargs)
         alpha0x, alphax = df.get_polarizability(
@@ -207,7 +214,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
                 if es_file.is_file():
                     es_file.unlink()
 
-    return data
+    return Result(data)
 
 
 def polarizability(row, fx, fy, fz):

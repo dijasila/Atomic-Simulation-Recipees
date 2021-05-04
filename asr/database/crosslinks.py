@@ -1,4 +1,4 @@
-from asr.core import (command, option, argument, ASRResult, prepare_result)
+from asr.core import ASRResult, prepare_result
 from ase.db import connect
 import typing
 
@@ -16,11 +16,6 @@ class Result(ASRResult):
     )
 
 
-@command('asr.database.crosslinks',
-         returns=Result)
-@option('--target', type=str,
-        help='Target DB you want to create the links in.')
-@argument('dbs', nargs=-1, type=str)
 def main(target: str,
          dbs: typing.Union[str, None] = None) -> Result:
     """Create links between entries in given ASE databases."""

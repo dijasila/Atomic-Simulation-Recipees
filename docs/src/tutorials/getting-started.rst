@@ -18,10 +18,13 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
    <BLANKLINE>
    Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
+     cache     Inspect results.
+     database  ASR material project database.
+     init      Initialize ASR Repository.
+     list      List and search for recipes.
+     params    Compile a params.json file with all options and defaults.
+     results   Show results from records.
+     run       Run recipe or python function in multiple folders.
    ...
 
 .. code-block:: console
@@ -33,10 +36,12 @@ ASR comes with a simple command-line interface which can be invoked using
      -h, --help  Show this message and exit.
 
    Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
+     cache     Inspect results.
+     database  ASR material project database.
+     list      List and search for recipes.
+     params    Compile a params.json file with all options and defaults.
+     results   Show results from records.
+     run       Run recipe or python function in multiple folders.
 
 From this output it is clear that the ``asr`` command has multiple
 sub-commands, but let's highlight a couple: ``list`` and ``run``. The
@@ -79,7 +84,7 @@ So we can see a list of all recipes using
 
    >>> from asr.core.cli import cli
    >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
-   Name ... Description ...
+   Name ... Description...
    ...
    relax ... Relax atomic positions and unit cell...
    ...
@@ -91,7 +96,7 @@ So we can see a list of all recipes using
    Name                           Description
    ----                           -----------
    ...
-   relax                          Relax atomic positions and unit cell.
+   relax:main                     Relax atomic positions and unit cell.
    ...
 
 

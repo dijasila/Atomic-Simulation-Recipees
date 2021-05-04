@@ -21,30 +21,9 @@ def test_setup_strains_get_relevant_strains(asr_tmpdir_w_params, pbc):
 
 @pytest.mark.ci
 def test_setup_strains(asr_tmpdir_w_params, mockgpaw, test_material):
-    from asr.setup.strains import (main,
-                                   get_strained_folder_name,
-                                   get_relevant_strains)
-    from asr.core import read_json
-    from ase.io import write
-    from pathlib import Path
-    from asr.setup.params import main as setupparams
-    write('structure.json', test_material)
-    setupparams(params={'asr.gs@calculate': {
-        'calculator': {'mode': 'fd', None: None}}})
-
-    main(strain_percent=1)
-    ij = get_relevant_strains(test_material.pbc)
-    for i, j in ij:
-        name = get_strained_folder_name(1, i, j)
-        folder = Path(name)
-        assert folder.is_dir()
-
-        paramfile = folder / 'params.json'
-        assert paramfile.is_file()
-
-        params = read_json(paramfile)
-
-        assert 'size' in params['asr.relax']['calculator']['kpts']
-        assert params['asr.relax']['fixcell']
-        assert params['asr.relax']['allow_symmetry_breaking']
-        assert params['asr.gs@calculate']['calculator']['mode'] == 'fd'
+    from asr.setup.strains import main
+    main(
+        atoms=test_material,
+        strain_percent=1,
+        i=0,
+        j=1)

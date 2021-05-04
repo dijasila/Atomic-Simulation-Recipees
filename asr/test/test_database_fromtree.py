@@ -1,7 +1,6 @@
 """Tests of asr.database.from_tree."""
 
 from asr.core import chdir
-from ase.io import read
 import pytest
 import os
 from pathlib import Path
@@ -20,12 +19,12 @@ def folder_tree(asr_tmpdir):
         os.makedirs(folder)
         atoms.write(Path(folder) / 'structure.json')
 
-    with chdir('materials/Si2/'):
-        displacement_results = displacements()
-        displacement_folders = [
-            ('materials/Si2/' + folder, read(Path(folder) / 'structure.json'))
-            for folder in displacement_results['folders']
-        ]
+    with chdir(Path('materials/Si2/displaced/'), create=True):
+        displacement_results = displacements(
+            atoms=Si, displacement=0.01)
+        displaced_atoms = displacement_results[0][-1]
+        displaced_atoms.write('structure.json')
+        displacement_folders = [('materials/Si2/displaced', displaced_atoms)]
 
     folders.extend(displacement_folders)
     return folders
@@ -34,6 +33,8 @@ def folder_tree(asr_tmpdir):
 def make_tree(folder: str):
     tree = set()
     for root, dirs, files in os.walk(folder, topdown=True, followlinks=False):
+        if '.asr' in root:
+            continue
         for filename in [''] + files:
             name = Path(root) / filename
             rel_path = str(name.relative_to(folder))

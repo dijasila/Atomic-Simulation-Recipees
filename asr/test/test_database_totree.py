@@ -46,6 +46,7 @@ def make_test_db(asr_tmpdir):
     return db
 
 
+@pytest.mark.xfail
 @pytest.mark.ci
 def test_database_totree_files_and_hard_links(make_test_db):
     """Test that hard links are correctly reproduced."""

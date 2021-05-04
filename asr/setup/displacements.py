@@ -1,7 +1,10 @@
 """Module for generating atomic structures with displaced atoms."""
 
+from ase import Atoms
+
 from pathlib import Path
-from asr.core import command, option, ASRResult
+import asr
+from asr.core import command, option, ASRResult, atomsopt
 
 
 def get_displacement_folder(atomic_index,
@@ -37,43 +40,35 @@ def displace_atom(atoms, ia, iv, sign, delta):
     return new_atoms
 
 
-@command('asr.setup.displacements')
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.setup.displacements:main')
+
+
+@asr.migration(selector=sel)
+def remove_copy_params_parameter(record):
+    """Remove copy_params parameter."""
+    del record.parameters.copy_params
+    return record
+
+
+@command(
+    'asr.setup.displacements',
+    migrations=[remove_copy_params_parameter],
+)
+@atomsopt
 @option('--displacement', help='How much to displace atoms.', type=float)
-@option('--copy-params', help='Copy params.json to displacement folders.',
-        type=bool)
-def main(displacement: float = 0.01, copy_params: bool = True) -> ASRResult:
+def main(
+        atoms: Atoms,
+        displacement: float
+) -> ASRResult:
     """Generate atomic displacements.
 
-    Generate atomic structures with displaced atoms. The generated
-    atomic structures are written to 'structure.json' and put into a
-    directory with the structure
-
-        displacements/{displacement}-{atomic_index}-{displacement_symbol}{cartesian_symbol}
-
-    Notice that all generated directories are a sub-directory of displacements/.
-
+    Generate atomic structures with displaced atoms.
     """
-    from ase.io import read
-    from ase.parallel import world
-    structure = read('structure.json')
-    folders = []
-    params = Path('params.json')
-    if not params.is_file():
-        copy_params = False
-    else:
-        params_text = params.read_text()
+    displaced_atoms = []
+    for ia, iv, sign in get_all_displacements(atoms):
+        new_structure = displace_atom(atoms, ia, iv, sign, displacement)
+        displaced_atoms.append((ia, iv, sign, new_structure))
 
-    for ia, iv, sign in get_all_displacements(structure):
-        folder = get_displacement_folder(ia, iv,
-                                         sign, displacement)
-        if world.rank == 0:
-            create_displacements_folder(folder)
-        new_structure = displace_atom(structure, ia, iv, sign, displacement)
-        new_structure.write(folder / 'structure.json')
-        folders.append(str(folder))
-
-        if copy_params and params.is_file() and world.rank == 0:
-            (folder / 'params.json').write_text(params_text)
-
-    world.barrier()
-    return {'folders': folders}
+    return displaced_atoms
