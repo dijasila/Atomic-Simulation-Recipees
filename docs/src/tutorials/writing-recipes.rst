@@ -11,13 +11,17 @@ a chocolate cake" and the recipe itself would contain a list of
 instructions that you could follow to produce said chocolate cake.
 
 To see how this looks in practice, let's write a recipe that
-calculates the total energy of an atomic structure. We would then
-first have to write a function in python that does this
+calculates the lowest energy crystal-structure of some well known
+metals using the EMT calculator.
 
 .. code-block:: python
 
+   import asr
    from ase.calculator.calculator import get_calculator_class
-   def main(atoms):
+
+   @asr.instruction()
+   @asr.atomsopt
+   def energy(atoms):
        """Calculate the total energy of atomic structure."""
        calculator = EMT()
        atoms.calc = calculator
