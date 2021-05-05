@@ -310,7 +310,7 @@ def asrlist(search):
             continue
 
         assert recipe.name.startswith('asr.')
-        name = recipe.name[4:]
+        name = recipe.name
         status = [name, shorthelp]
         panel += [status]
 

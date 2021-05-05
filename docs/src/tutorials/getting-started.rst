@@ -3,6 +3,26 @@
 Getting started
 ===============
 
+The atomic simulation recipes (ASR) is a Python package that
+implements functionality for storing results calculated by
+"instructions". Instructions are simply python functions decorated
+with the :func:`asr.instruction` decorator. These instructions are
+grouped into "recipes" which are python modules with one or more
+instructions and a single "main" instruction he main instruction is
+the main entrypoint for the user.
+
+To see how this works in practice let's look at an example of 
+
+
+.. contents:: Contents
+   :local:
+
+
+Command-line interface
+----------------------
+
+The primary user interface of ASR is the command-line interface. Here 
+
 ASR comes with a simple command-line interface which can be invoked using
 
 .. doctest::
@@ -86,7 +106,7 @@ So we can see a list of all recipes using
    >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
    Name ... Description...
    ...
-   relax ... Relax atomic positions and unit cell...
+   asr.relax ... Relax atomic positions and unit cell...
    ...
 
 
@@ -96,7 +116,7 @@ So we can see a list of all recipes using
    Name                           Description
    ----                           -----------
    ...
-   relax:main                     Relax atomic positions and unit cell.
+   asr.relax                      Relax atomic positions and unit cell.
    ...
 
 
@@ -115,4 +135,4 @@ above ``relax`` recipe we would do
 
 .. code-block:: console
 
-   $ asr run relax
+   $ asr run asr.relax
