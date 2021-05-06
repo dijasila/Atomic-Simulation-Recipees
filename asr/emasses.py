@@ -403,7 +403,7 @@ def get_emass_dict_from_row(row, has_mae=False):
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
             direction = 0
-            marekey = name.lower() + '_soc_wideareaMARE'
+            marekey = name.lower() + '_soc_wideareaPARAMARE'
             mares = data[marekey] if has_mae else None
 
             for k in data.keys():
@@ -1525,6 +1525,29 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+def evalparamare(mass, bt, cell, k_kc, e_k):
+    from ase.dft.kpoints import kpoint_convert, labels_from_kpts
+    from ase.units import Bohr, Ha
+    
+    xk, _, _ = labels_from_kpts(kpts=k_kc, cell=cell)
+    xk -= xk[-1] / 2.0
+    
+    emodel_k = (xk * Bohr)**2 / (2 * mass) * Ha
+    if bt == "vb":
+        emodel_k += np.max(e_k) - np.max(emodel_k)
+    else:
+        assert bt == "cb"
+        emodel_k += np.min(e_k) - np.min(emodel_k)
+
+    indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+
+    mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
+
+    paramare = np.mean(np.abs((emodel_k[indices] - e_k[indices]) / mean_e) * 100)
+
+    return paramare
+
+
 @prepare_result
 class ValidateResult(ASRResult):
 
@@ -1607,7 +1630,8 @@ def validate(
         bt = data['info'].split('_')[0]
         maes = []
         mares = []
-        for cutdata in data['bzcuts']:
+        paramares = []
+        for i, cutdata in enumerate(data['bzcuts']):
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
             mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
@@ -1615,9 +1639,14 @@ def validate(
             mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             mares.append(mare)
 
+            mass = data[f"effmass_dir{i}"]
+            paramare = evalparamare(mass, bt, atoms.get_cell(), k_kc, e_k)
+            paramares.append(paramare)
+
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaPARAMARE'] = paramares
 
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
