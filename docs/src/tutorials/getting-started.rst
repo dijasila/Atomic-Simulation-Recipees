@@ -3,15 +3,38 @@
 Getting started
 ===============
 
-The atomic simulation recipes (ASR) is a Python package that
-implements functionality for storing results calculated by
-"instructions". Instructions are simply python functions decorated
-with the :func:`asr.instruction` decorator. These instructions are
-grouped into "recipes" which are python modules with one or more
-instructions and a single "main" instruction he main instruction is
-the main entrypoint for the user.
+The atomic simulation recipes (ASR) is a Python package that assists
+the computational scientist by implementing tools for storing results
+and related contextual data. As an example to see how this works in
+practice, we will in the following be implementing functionality for
+calculating most stable crystal structure of common metals.
+
+Instructions
+------------
+
+The most basic element of ASR is an Instruction. Instructions are
+simply python functions decorated with the :func:`asr.instruction`
+decorator. When calling the decoratored instruction the decorator
+takes care of storing the input parameters as well as the other
+contextual data (see :py:class:`asr.Record` for information on exactly
+what contextual data is stored).
+
+These instructions are grouped into "recipes" which are
+python modules with one or more instructions and a single "main"
+instruction he main instruction is the main entrypoint for the user.
 
 To see how this works in practice let's look at an example of 
+
+.. literalinclude:: example_metal_crystals.py
+
+In this example we have made an instruction for calculating the total
+energy of some input atomic structure using the effective medium
+theory (EMT) calculator. Furthermore, the `asr.atomsopt` option
+decorator has been applied to inform ASR that the function takes one
+input argument which is the `atoms`. We will get back to this concept
+later in the tutorial.
+
+In order to run the 
 
 
 .. contents:: Contents
