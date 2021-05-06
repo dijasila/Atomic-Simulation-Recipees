@@ -284,8 +284,10 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
     """
     recipe = get_recipe_from_name(name)
     link_name = get_recipe_href(name)
+
     if (f'results-{name}.json' in data
-       and 'params' in data[f'results-{name}.json'].metadata):
+            and 'params' in getattr(data[f'results-{name}.json'],
+                                    'metadata', {})):
         metadata = data[f'results-{name}.json'].metadata
         params = metadata.params
         # header = ''
