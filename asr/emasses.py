@@ -166,7 +166,7 @@ def preliminary_refine(
     # Make a sphere of kpts of high density
     min_nkpts = settings['nkpts1']
     erange = settings['erange1']
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
+    nkpts = min(max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts), 2 * min_nkpts)
     nkpts = nkpts + (1 - (nkpts % 2))
     # Ensure that we include the found VBM/CBM
     assert nkpts % 2 != 0
