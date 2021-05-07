@@ -1,54 +1,86 @@
 from asr.database.browser import (
     fig, table, describe_entry, make_panel_description)
+from asr.utils.hacks import gs_xcname_from_row
 
 
-def gw_hse_webpanel(result, row, key_descriptions, info):
-    if row.get('gap_hse', 0) > 0.0:
-        hse = table(row, 'Property',
-                    ['gap_hse', 'gap_dir_hse'],
-                    kd=key_descriptions)
+class GWHSEInfo:
+    bz_gaps_filename = 'bz-with-gaps.png'
 
-        if row.get('evac'):
-            hse['rows'].extend(
-                [['Valence band maximum wrt. vacuum level (HSE06)',
-                  f'{row.vbm_hse - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level (HSE06)',
-                  f'{row.cbm_hse - row.evac:.2f} eV']])
-        else:
-            hse['rows'].extend(
-                [['Valence band maximum wrt. Fermi level (HSE06)',
-                  f'{row.vbm_hse - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level (HSE06)',
-                  f'{row.cbm_hse - row.efermi:.2f} eV']])
+    def __init__(self, row):
+        self.row = row
+
+        def _key(key):
+            return f'{key}_{self.name}'
+        self.gap_key = _key('gap')
+        self.gap_dir_key = _key('gap_dir')
+
+    def get(self, name, default=None):
+        key = f'{name}_{self.name}'
+        return self.row.get(key, default)
+
+    @property
+    def gap(self):
+        return self.row.get(self.gap_key)
+
+    @property
+    def vbm(self):
+        return self.get('vbm')
+
+    @property
+    def cbm(self):
+        return self.get('cbm')
+
+
+def gw_hse_webpanel(result, row, key_descriptions, info, sort):
+    if row.get('evac'):
+        ref_name = 'vacuum level'
+        ref_value = row.evac
     else:
-        hse = table(row, 'Property',
+        ref_name = 'Fermi level'
+        ref_value = row.efermi
+
+    if info.get('gap', 0) > 0.0:
+        vbm = info.vbm - ref_value
+        cbm = info.cbm - ref_value
+
+        tab = table(row, 'Property',
+                    [info.gap_key, info.gap_dir_key],
+                    kd=key_descriptions)
+        tab['rows'].extend([
+            [f'Valence band maximum wrt. {ref_name} ({info.method_name})',
+             f'{vbm:.2f} eV'],
+            [f'Conduction band minimum wrt. {ref_name} ({info.method_name})',
+             f'{cbm:.2f} eV']
+        ])
+
+    else:
+        tab = table(row, 'Property',
                     [],
                     kd=key_descriptions)
 
-    from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
 
-    title = f'Electronic band structure (HSE06@{xcname})'
+    title = f'Electronic band structure ({info.method_name}@{xcname})'
     panel = {'title': describe_entry(title, info.panel_description),
-             'columns': [[fig('hse-bs.png')],
-                         [fig('bz-with-gaps.png'), hse]],
+             'columns': [[fig(info.bs_filename)],
+                         [fig(info.bz_gaps_filename),
+                          tab]],
              'plot_descriptions': [{'function': info.plot_bs,
-                                    'filenames': ['hse-bs.png']}],
-             'sort': 15}
+                                    'filenames': [info.bs_filename]}],
+             'sort': sort}
 
-    if row.get('gap_hse'):
-
-        bandgaphse = describe_entry(
-            'Band gap (HSE)',
-            'The electronic single-particle band gap calculated with '
-            'HSE including spin–orbit effects.\n\n',
+    if info.get('gap'):
+        bandgap_entry = describe_entry(
+            f'Band gap ({info.method_name})',
+            f'The {info.band_gap_adjectives} band gap calculated with '
+            f'{info.method_name} including spin–orbit effects.\n\n',
         )
-        rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
+        rows = [[bandgap_entry, f'{info.gap:0.2f} eV']]
         summary = {'title': 'Summary',
                    'columns': [[{'type': 'table',
                                  'header': ['Electronic properties', ''],
                                  'rows': rows}]],
-                   'sort': 11}
+                   'sort': info.summary_sort}
         return [panel, summary]
 
     return [panel]

@@ -5,9 +5,15 @@ from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
 from asr.database.browser import (
     fig, table, describe_entry, make_panel_description)
+from asr.utils.gw_hse import GWHSEInfo
 
 
-class HSEInfo:
+class HSEInfo(GWHSEInfo):
+    method_name = 'HSE06'
+    name = 'hse'
+    bs_filename = 'hse-bs.png'
+
+
     panel_description = make_panel_description(
     """The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
@@ -15,6 +21,9 @@ wave functions from a GGA calculation. Spin–orbit interactions are included
 in post-process.""",
         articles=['C2DB'],
     )
+
+    band_gap_adjectives = 'electronic single-particle'
+    summary_sort = 11
 
     @staticmethod
     def plot_bs(row, filename):
@@ -24,6 +33,7 @@ in post-process.""",
                        efermi=data['efermi_hse_soc'],
                        vbm=row.get('vbm_hse'),
                        cbm=row.get('cbm_hse'))
+
 
 @command(module='asr.hse',
          dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
@@ -227,7 +237,8 @@ def plot_bs(row,
 
 def webpanel(result, row, key_descriptions):
     from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo())
+    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
+                           sort=15)
 
 
 @prepare_result
