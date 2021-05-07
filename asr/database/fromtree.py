@@ -271,7 +271,7 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
             else:
-                if name.is_file() and fnmatch(name, "info.json"):
+                if name.is_file() and name.name == 'info.json':
                     tmpkvp, tmpdata = collect_info(name)
                 elif name.is_file() and any(fnmatch(name, pattern)
                                             for pattern in patterns):
@@ -280,10 +280,8 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                     continue
 
                 for key, value in tmpkvp.items():
-                    if name.name == 'info.json' and key in ['hform', 'natoms']:
-                        continue  # We need to fix our info.json files in C2DB
                     # Skip values not suitable for a database column:
-                    if isinstance(value, (int, float, str)):
+                    if isinstance(value, (bool, int, float, str)):
                         if key in kvp and kvp[key] != value:
                             raise ValueError(
                                 f'Found {key}={value} in {name}: '
