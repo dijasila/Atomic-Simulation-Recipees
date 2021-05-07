@@ -31,7 +31,7 @@ def webpanel(result, row, key_descriptions):
 
     is_magnetic = describe_entry(
         'Magnetic',
-        'Is material magnetic?'
+        'Is defect magnetic?'
         + dl(
             [
                 [
@@ -47,10 +47,11 @@ def webpanel(result, row, key_descriptions):
         )
     )
 
-    rows = [[is_magnetic, row.is_magnetic]]
+    # rows = [[is_magnetic, row.is_magnetic]]
+    rows = [[is_magnetic, False]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
+                             'header': ['Pristine crystal', ''],
                              'rows': rows}]],
                'sort': 0}
 
@@ -65,11 +66,12 @@ def webpanel(result, row, key_descriptions):
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        panel = WebPanel(title='Basic magnetic properties (PBE)',
-                         columns=[[], [magmoms_table]],
-                         sort=11)
+        # panel = WebPanel(title='Basic magnetic properties (PBE)',
+        #                  columns=[[], [magmoms_table]],
+        #                  sort=11)
 
-        return [summary, panel]
+        # return [summary, panel]
+        return [summary]
 
 
 @prepare_result

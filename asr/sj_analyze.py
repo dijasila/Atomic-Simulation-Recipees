@@ -32,7 +32,7 @@ def webpanel(result, row, key_descriptions):
             [[describe_entry(f'Formation energy (q={element[1]:1d} @ VBM)',
                              description=result.key_descriptions['eform']),
               f'{element[0]:.2f} eV']])
-    pristine_table_sum = table(result, 'Pristine summary', [])
+    pristine_table_sum = table(result, 'Pristine crystal', [])
     pristine_table_sum['rows'].extend(
         [[describe_entry(f"Heat of formation",
                          description=result.key_descriptions['hof']),
