@@ -6,13 +6,13 @@ from asr.bandstructure import legend_on_top
 from asr.database.browser import (
     fig, table, describe_entry, make_panel_description)
 from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
 
 
 class HSEInfo(GWHSEInfo):
     method_name = 'HSE06'
     name = 'hse'
     bs_filename = 'hse-bs.png'
-
 
     panel_description = make_panel_description(
     """The single-particle band structure calculated with the HSE06
@@ -49,19 +49,6 @@ def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
     results = {'hse_eigenvalues': eigs,
                'hse_eigenvalues_soc': eigs_soc}
     return results
-
-
-# XXX move to utils? [also in asr.polarizability]
-def get_kpts_size(atoms, kptdensity):
-    """Find reasonable monkhorst-pack size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 def hse(kptdensity, emptybands):

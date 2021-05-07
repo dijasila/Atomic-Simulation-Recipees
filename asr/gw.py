@@ -6,6 +6,8 @@ import typing
 from asr.database.browser import (
     href, fig, table, describe_entry, make_panel_description)
 from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
+
 
 class GWInfo(GWHSEInfo):
     method_name = 'G₀W₀'
@@ -49,18 +51,6 @@ arXiv:2009.00314""",
                        efermi=data['efermi_gw_soc'],
                        cbm=row.get('cbm_gw'),
                        vbm=row.get('vbm_gw'))
-
-
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 @command(requires=['gs.gpw'],
