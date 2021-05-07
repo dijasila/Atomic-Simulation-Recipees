@@ -50,10 +50,11 @@ def webpanel(result, row, key_descriptions):
                                       matrixtable,
                                       fig)
 
-    basictable = table(row, 'Defect properties', [
-        describe_entry('Point group',
-                       description=result.key_descriptions['defect_pointgroup'])],
-                       key_descriptions, 2)
+    basictable = table(row, 'Defect properties', [])
+    basictable['rows'].extend(
+        [[describe_entry('Defect point group',
+                         description=result.key_descriptions['defect_pointgroup']),
+          result.defect_pointgroup]])
 
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
@@ -90,7 +91,7 @@ def webpanel(result, row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
-               'sort': 1}
+               'sort': 2}
 
     return [panel, summary]
 
@@ -309,7 +310,7 @@ def main(mapping: bool = False,
         symmetry_results.append(symmetry_result)
 
     return Result.fromdata(
-        pointgroup=point_group,
+        defect_pointgroup=point_group,
         defect_center=center,
         defect_name=defectname,
         symmetries=symmetry_results,

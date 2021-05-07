@@ -75,7 +75,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = (row.defect_name + ' in ' + row.host_name).format('html')
+        self.formula = (row.defect_name + ' in ' + row.host_name + ' '
+                        + row.charge_state).format('html')
         # self.formula = Formula(
         #     Formula(row.formula).format('metal')).format('html')
 

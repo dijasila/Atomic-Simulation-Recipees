@@ -28,7 +28,8 @@ key_descriptions = {
     },
     "defectinfo": {
         "defect_name": "KVP: Defect name {type}_{position} !Defect name!",
-        "host_name": "KVP: Host formula"
+        "host_name": "KVP: Host formula",
+        "charge_state": "KVP: Charge state"
     },
     "defect_symmetry": {
         "pointgroup": "KVP: Point group"
