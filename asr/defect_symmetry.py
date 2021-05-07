@@ -51,8 +51,8 @@ def webpanel(result, row, key_descriptions):
                                       fig)
 
     basictable = table(row, 'Defect properties', [
-        describe_entry('pointgroup',
-                       description=result.key_descriptions['pointgroup'])],
+        describe_entry('Point group',
+                       description=result.key_descriptions['defect_pointgroup'])],
                        key_descriptions, 2)
 
     if result.symmetries[0]['best'] is None:
@@ -148,14 +148,14 @@ class PristineResult(ASRResult):
 class Result(ASRResult):
     """Container for main results for asr.analyze_state."""
 
-    pointgroup: str
+    defect_pointgroup: str
     defect_center: typing.Tuple[float, float, float]
     defect_name: str
     symmetries: typing.List[SymmetryResult]
     pristine: PristineResult
 
     key_descriptions: typing.Dict[str, str] = dict(
-        pointgroup='Point group in Schoenflies notation.',
+        defect_pointgroup='Point group in Schoenflies notation.',
         defect_center='Position of the defect [Å, Å, Å].',
         defect_name='Name of the defect ({type}_{position})',
         symmetries='List of SymmetryResult objects for all states.',
@@ -253,7 +253,7 @@ def main(mapping: bool = False,
                                                       energy=energy)
             symmetry_results.append(symmetry_result)
         return Result.fromdata(
-            pointgroup=point_group,
+            defect_pointgroup=point_group,
             defect_center=center,
             defect_name=defectname,
             symmetries=symmetry_results,

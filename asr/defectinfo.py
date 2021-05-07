@@ -31,16 +31,16 @@ def webpanel(result, row, key_descriptions):
         'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
     spacegroup = describe_entry(
-        'Host spacegroup',
+        'Host space group',
         f"The {spg_list_link} is determined with {spglib}."
     )
 
     pointgroup = describe_entry(
-        'Host pointgroup',
+        'Host point group',
         f"The point group is determined with {spglib}."
     )
 
-    uid = row.get('host_uid')
+    uid = result.host_uid
     uidstring = describe_entry(
         'C2DB link',
         'Link to C2DB entry of the host material.'
@@ -59,11 +59,11 @@ def webpanel(result, row, key_descriptions):
             [[uidstring,
               '<a href="https://cmrdb.fysik.dtu.dk/c2db/row/{uid}" target="_blank"'
               '>{uid}</a>'.format(uid=uid)]])
-    basictable['columnwidth'] = 4
 
     panel = {'title': 'Summary',
              'columns': [[basictable], []],
              'sort': -1}
+
     return [panel]
 
 
