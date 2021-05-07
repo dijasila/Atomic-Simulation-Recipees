@@ -3,6 +3,70 @@ import typing
 from pathlib import Path
 
 
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (table, describe_entry, code, bold,
+                                      br, href, dl, div)
+
+    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    crystal_type = describe_entry(
+        'Host crystal type',
+        "The crystal type is defined as "
+        + br
+        + div(bold('-'.join([code('stoi'),
+                             code('spg no.'),
+                             code('occ. wyck. pos.')])), 'well well-sm text-center')
+        + 'where'
+        + dl(
+            [
+                [code('stoi'), 'Stoichiometry.'],
+                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
+                [code('occ. wyck. pos.'),
+                 'Alphabetically sorted list of occupied '
+                 f'wyckoff positions determined with {spglib}.'],
+            ]
+        )
+    )
+
+    spg_list_link = href(
+        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+    )
+    spacegroup = describe_entry(
+        'Host spacegroup',
+        f"The {spg_list_link} is determined with {spglib}."
+    )
+
+    pointgroup = describe_entry(
+        'Host pointgroup',
+        f"The point group is determined with {spglib}."
+    )
+
+    uid = row.get('host_uid')
+    uidstring = describe_entry(
+        'C2DB link',
+        'Link to C2DB entry of the host material.'
+    )
+
+    basictable = table(result, 'Pristine crystal', [])
+    basictable['rows'].extend(
+        [[crystal_type, result.host_crystal]])
+    basictable['rows'].extend(
+        [[spacegroup, result.host_spacegroup]])
+    basictable['rows'].extend(
+        [[pointgroup, result.host_pointgroup]])
+
+    if uid:
+        basictable['rows'].extend(
+            [[uidstring,
+              '<a href="https://cmrdb.fysik.dtu.dk/c2db/row/{uid}" target="_blank"'
+              '>{uid}</a>'.format(uid=uid)]])
+    basictable['columnwidth'] = 4
+
+    panel = {'title': 'Summary',
+             'columns': [[basictable], []],
+             'sort': -1}
+    return [panel]
+
+
 @prepare_result
 class Result(ASRResult):
     """Container for asr.defectinfo results."""
@@ -14,7 +78,6 @@ class Result(ASRResult):
     host_crystal: str
     host_uid: str
 
-
     key_descriptions: typing.Dict[str, str] = dict(
         defect_name='Name of the defect({type}_{position}).',
         host_name='Name of the host system.',
@@ -23,6 +86,8 @@ class Result(ASRResult):
         host_spacegroup='Space group of the host crystal.',
         host_crystal='Crystal type of the host crystal.',
         host_uid='UID of the primitive host crystal.')
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.defectinfo',
@@ -72,10 +137,9 @@ def main() -> Result:
         res = read_json(primres)
         host_uid = res['uid']
     else:
-        print('WARNING: no asr.database.material_fingerprint ran for primitive structure!')
-        host_uis = None
-
-
+        print('WARNING: no asr.database.material_fingerprint ran for primitive '
+              'structure!')
+        host_uid = None
 
     return Result.fromdata(
         defect_name=defect_name,
