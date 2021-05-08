@@ -395,17 +395,20 @@ def plot_pdos(row, filename, soc=True,
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
+    from asr.utils.hacks import RowInfo
+    rowinfo = RowInfo(row)
+    eref = rowinfo.get_evac(default=0.0)
 
     # Extract raw data
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy() - row.get('evac', 0)
+    e_e = data['energies'].copy() - eref
     ef = data['efermi']
 
     # Find energy range to plot in
     if soc:
-        emin = row.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
+        emin = row.get('vbm', ef) - 3 - eref
+        emax = row.get('cbm', ef) + 3 - eref
     else:
         nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
         vbmnosoc = nosoc_data.get('vbm', ef)
@@ -417,8 +420,8 @@ def plot_pdos(row, filename, soc=True,
         if cbmnosoc is None:
             cbmnosoc = ef
 
-        emin = vbmnosoc - 3 - row.get('evac', 0)
-        emax = cbmnosoc + 3 - row.get('evac', 0)
+        emin = vbmnosoc - 3 - eref
+        emax = cbmnosoc + 3 - eref
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
@@ -457,7 +460,7 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
+    ax.axhline(ef - eref, color='k', ls=':')
 
     # Set up axis limits
     ax.set_ylim(emin, emax)
@@ -470,7 +473,7 @@ def plot_pdos(row, filename, soc=True,
     # Annotate E_F
     xlim = ax.get_xlim()
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
-    text = plt.text(x0, ef - row.get('evac', 0),
+    text = plt.text(x0, ef - eref,
                     r'$E_\mathrm{F}$',
                     fontsize=rcParams['font.size'] * 1.25,
                     ha='right',
@@ -482,7 +485,7 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('Projected DOS [states / eV]')
-    if row.get('evac') is not None:
+    if rowinfo.have_evac():
         ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
     else:
         ax.set_ylabel(r'$E$ [eV]')

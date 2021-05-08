@@ -24,6 +24,12 @@ class RowInfo:
         # GPAW's default which is LDA.
         return params['calculator'].get('xc', 'LDA')
 
+    def have_evac(self):
+        return self.get_evac() is not None
+
+    def get_evac(self, default=None):
+        return self.row.get('evac', default)
+
     def evac_or_efermi(self):
         # We should probably be getting this data from GS results, not row
         evac = self.row.get('evac')
