@@ -3,8 +3,7 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
-from asr.database.browser import (
-    href, fig, table, describe_entry, make_panel_description)
+from asr.database.browser import href, make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
 

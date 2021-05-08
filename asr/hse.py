@@ -3,8 +3,7 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
-from asr.database.browser import (
-    fig, table, describe_entry, make_panel_description)
+from asr.database.browser import make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
 
@@ -15,7 +14,8 @@ class HSEInfo(GWHSEInfo):
     bs_filename = 'hse-bs.png'
 
     panel_description = make_panel_description(
-    """The single-particle band structure calculated with the HSE06
+        """\
+The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
 wave functions from a GGA calculation. Spin–orbit interactions are included
 in post-process.""",

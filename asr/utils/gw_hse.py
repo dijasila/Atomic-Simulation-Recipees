@@ -1,5 +1,4 @@
-from asr.database.browser import (
-    fig, table, describe_entry, make_panel_description)
+from asr.database.browser import fig, table, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
 
 
