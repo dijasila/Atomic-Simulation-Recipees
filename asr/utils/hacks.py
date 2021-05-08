@@ -25,13 +25,12 @@ class RowInfo:
         return params['calculator'].get('xc', 'LDA')
 
     def evac_or_efermi(self):
-        gsdata = self.gsdata
-        evac = gsdata.evac
+        # We should probably be getting this data from GS results, not row
+        evac = self.row.get('evac')
         if evac is not None:
             return EnergyReference('evac', evac, 'vacuum level')
 
-        efermi = gsdata.efermi
-        assert efermi is not None
+        efermi = self.row.get('efermi')
         return EnergyReference('efermi', efermi, 'Fermi level')
 
 
