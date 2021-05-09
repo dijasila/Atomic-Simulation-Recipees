@@ -4,7 +4,7 @@ import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.utils.hacks import gs_xcname_from_row
+from asr.utils.hacks import gs_xcname_from_row, RowInfo
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -64,12 +64,14 @@ def plot_bs_html(row,
     kpts = path.kpts
     ef = d['bs_nosoc']['efermi']
 
-    if row.get('evac') is not None:
+    rowinfo = RowInfo(row)
+
+    ref = rowinfo.evac_or_efermi()
+
+    if rowinfo.have_evac:
         label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
-        reference = row.get('evac')
     else:
         label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
-        reference = ef
 
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
@@ -88,7 +90,7 @@ def plot_bs_html(row,
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_kn.T.ravel() - reference,
+        y=e_kn.T.ravel() - ref.value,
         mode='markers',
         name=f'{xcname} no SOC',
         showlegend=True,
@@ -115,7 +117,7 @@ def plot_bs_html(row,
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_mk.ravel() - reference,
+        y=e_mk.ravel() - ref.value,
         mode='markers',
         name=xcname,
         showlegend=True,
@@ -134,7 +136,7 @@ def plot_bs_html(row,
 
     linetrace = go.Scatter(
         x=[np.min(xcoords), np.max(xcoords)],
-        y=[ef - reference, ef - reference],
+        y=[ef - ref.value, ef - ref.value],
         mode='lines',
         line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
         name='Fermi level')
@@ -170,7 +172,7 @@ def plot_bs_html(row,
 
     bandyaxis = go.layout.YAxis(
         title=label,
-        range=[emin - reference, emax - reference],
+        range=[emin - ref.value, emax - ref.value],
         showgrid=True,
         showline=True,
         zeroline=False,
