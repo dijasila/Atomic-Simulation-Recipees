@@ -486,9 +486,10 @@ def plot_pdos(row, filename, soc=True,
 
     ax.set_xlabel('Projected DOS [states / eV]')
     if rowinfo.have_evac():
-        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+        label = rowinfo.evac_or_efermi().mpl_plotlabel()
     else:
-        ax.set_ylabel(r'$E$ [eV]')
+        label = r'$E$ [eV]'  # XXX should probably use efermi for reference
+    ax.set_ylabel(label)
 
     # Set up legend
     plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',

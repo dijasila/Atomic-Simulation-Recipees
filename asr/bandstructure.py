@@ -311,17 +311,17 @@ def plot_bs_png(row,
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+
+    rowinfo = RowInfo(row)
+    eref = rowinfo.evac_or_efermi()
+    xcname = rowinfo.gs_xcname()
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
     ef_soc = d['bs_soc']['efermi']
     ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
     ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
+    label = 'hello' #eref.mpl_plotlabel()
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]

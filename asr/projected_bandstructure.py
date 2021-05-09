@@ -5,7 +5,7 @@ from asr.core import command, ASRResult, prepare_result
 import typing
 
 from asr.database.browser import make_panel_description
-from asr.utils.hacks import gs_xcname_from_row
+from asr.utils.hacks import gs_xcname_from_row, RowInfo
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
@@ -377,10 +377,8 @@ def projected_bs_scf(row, filename,
 
     # If a vacuum energy is available, use it as a reference
     ref = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
+    rowinfo = RowInfo(row)
+    eref = rowinfo.evac_or_efermi()  # XXX bs_nosoc versus the other one??
 
     # Determine plotting window based on band gap
     gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
@@ -415,7 +413,7 @@ def projected_bs_scf(row, filename,
     ax = plt.figure(figsize=figsize).add_subplot(111)
     bsp = BandStructurePlot(bs)
     bsp.plot(ax=ax, show=False, emin=emin - ref, emax=emax - ref,
-             ylabel=label, **style)
+             ylabel=eref.mpl_plotlabel(), **style)
 
     xcoords, k_x = get_bs_sampling(bsp, npoints=npoints)
 

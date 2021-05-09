@@ -32,16 +32,20 @@ class RowInfo:
 
     def evac_or_efermi(self):
         # We should probably be getting this data from GS results, not row
-        evac = self.row.get('evac')
+        evac = self.get_evac()
         if evac is not None:
-            return EnergyReference('evac', evac, 'vacuum level')
+            return EnergyReference('evac', evac, 'vacuum level', 'vac')
 
         efermi = self.row.get('efermi')
-        return EnergyReference('efermi', efermi, 'Fermi level')
+        return EnergyReference('efermi', efermi, 'Fermi level', 'F')
 
 
 class EnergyReference:
-    def __init__(self, key, value, prose_name):
+    def __init__(self, key, value, prose_name, abbreviation):
         self.key = key
         self.value = value
         self.prose_name = prose_name
+        self.abbreviation = abbreviation
+
+    def mpl_plotlabel(self):
+        return rf'$E - E_\mathrm{{{self.abbreviation}}}$ [eV]'
