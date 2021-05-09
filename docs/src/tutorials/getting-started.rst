@@ -29,7 +29,7 @@ To see how this works in practice let's look at an example of
 
 In this example we have made an instruction for calculating the total
 energy of some input atomic structure using the effective medium
-theory (EMT) calculator. The `asr.atomsopt` option decorator informs
+theory (EMT) calculator. The :func:`asr.atomsopt` option decorator informs
 ASR that the instruction takes an atomic structure as an input named
 "atoms" and sets up a command line interface for this argument (this
 decorator is a special case of the :func:`asr.option` decorator). We
@@ -38,15 +38,16 @@ will get back to this concept later in the tutorial.
 To run the instruction we require an atomic structure which can be
 generated with ASE's command-line interface
 
-.. code-block:: console
+..
+   RUN asr init
 
-   $ ase build Fe structure.json -x bcc
+..
+   RUN ase build Ag structure.json -x fcc
 
 The instruction is then easily run through the command-line interface
 
-.. code-block:: console
-
-   $ asr run "crystal:energy --atoms structure.json"
+..
+   RUN asr run "asr.tutorial:energy --atoms structure.json"
 
 
 The cache

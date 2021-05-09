@@ -210,8 +210,8 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
     nfolders = len(folders)
     module, *args = command.split()
     function = None
-    if '@' in module:
-        module, function = module.split('@')
+    if ':' in module:
+        module, function = module.split(':')
 
     if update:
         assert not skip_if_done, \
@@ -231,7 +231,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
 
     mod = importlib.import_module(module)
     assert hasattr(mod, function), \
-        append_job(f'{module}@{function} doesn\'t exist.', job_num=job_num)
+        append_job(f'{module}:{function} doesn\'t exist.', job_num=job_num)
     func = getattr(mod, function)
 
     if isinstance(func, ASRCommand):
@@ -240,7 +240,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
         is_asr_command = False
 
     if dry_run:
-        prt(append_job(f'Would run {module}@{function} '
+        prt(append_job(f'Would run {module}:{function} '
                        f'in {nfolders} folders.', job_num=job_num))
         return
 
@@ -255,7 +255,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     continue
                 pipe = not sys.stdout.isatty()
                 if pipe:
-                    to = os.devnull
+                    to = sys.stderr
                 else:
                     to = sys.stdout
                 with stdout_redirected(to):
