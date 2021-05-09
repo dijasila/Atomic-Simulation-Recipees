@@ -1,5 +1,5 @@
 from asr.database.browser import fig, table, describe_entry
-from asr.utils.hacks import gs_xcname_from_row
+from asr.utils.hacks import RowInfo
 
 
 class GWHSEInfo:
@@ -31,24 +31,21 @@ class GWHSEInfo:
 
 
 def gw_hse_webpanel(result, row, key_descriptions, info, sort):
-    if row.get('evac'):
-        ref_name = 'vacuum level'
-        ref_value = row.evac
-    else:
-        ref_name = 'Fermi level'
-        ref_value = row.efermi
+    rowinfo = RowInfo(row)
+
+    ref = rowinfo.evac_or_efermi()
 
     if info.get('gap', 0) > 0.0:
-        vbm = info.vbm - ref_value
-        cbm = info.cbm - ref_value
+        vbm = info.vbm - ref.value
+        cbm = info.cbm - ref.value
 
         tab = table(row, 'Property',
                     [info.gap_key, info.gap_dir_key],
                     kd=key_descriptions)
         tab['rows'].extend([
-            [f'Valence band maximum wrt. {ref_name} ({info.method_name})',
+            [f'Valence band maximum wrt. {ref.prose_name} ({info.method_name})',
              f'{vbm:.2f} eV'],
-            [f'Conduction band minimum wrt. {ref_name} ({info.method_name})',
+            [f'Conduction band minimum wrt. {ref.prose_name} ({info.method_name})',
              f'{cbm:.2f} eV']
         ])
 
@@ -57,7 +54,7 @@ def gw_hse_webpanel(result, row, key_descriptions, info, sort):
                     [],
                     kd=key_descriptions)
 
-    xcname = gs_xcname_from_row(row)
+    xcname = rowinfo.gs_xcname()
 
     title = f'Electronic band structure ({info.method_name}@{xcname})'
     panel = {'title': describe_entry(title, info.panel_description),

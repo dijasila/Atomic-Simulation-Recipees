@@ -1,4 +1,5 @@
 def gs_xcname_from_row(row):
+    # Remove this and use RowInfo
     return RowInfo(row).gs_xcname()
 
 
