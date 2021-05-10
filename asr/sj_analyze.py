@@ -78,13 +78,13 @@ def webpanel(result, row, key_descriptions):
                             'filenames': ['sj_transitions.png']},
                            {'function': plot_formation_energies,
                             'filenames': ['formation.png']}],
-        sort=11)
+        sort=50)
 
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum,
                             pristine_table_sum],
                            []],
-               'sort': 1}
+               'sort': 50}
 
     return [panel, summary]
 

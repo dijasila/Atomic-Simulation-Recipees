@@ -11,17 +11,16 @@ def get_symmetry_array(sym_results):
     import numpy as np
 
     Nrows = len(sym_results)
-    symmetry_array = np.empty((Nrows, 5), dtype='<U21')
-    symmetry_array = np.zeros((Nrows, 5))
+    symmetry_array = np.empty((Nrows, 5), dtype='object')
     sym_rowlabels = []
     for i, row in enumerate(symmetry_array):
         rowname = sym_results[i]['best']
         sym_rowlabels.append(rowname)
-        symmetry_array[i, 0] = sym_results[i]['state']
-        symmetry_array[i, 1] = sym_results[i]['spin']
-        symmetry_array[i, 2] = sym_results[i]['energy']
-        symmetry_array[i, 3] = sym_results[i]['error']
-        symmetry_array[i, 4] = sym_results[i]['loc_ratio']
+        symmetry_array[i, 0] = f"{int(sym_results[i]['state'])}"
+        symmetry_array[i, 1] = f"{int(sym_results[i]['spin'])}"
+        symmetry_array[i, 2] = f"{sym_results[i]['energy']:.2f}"
+        symmetry_array[i, 3] = f"{sym_results[i]['error']:.2f}"
+        symmetry_array[i, 4] = f"{sym_results[i]['loc_ratio']:.2f}"
 
     return symmetry_array, sym_rowlabels
 
@@ -30,15 +29,16 @@ def get_state_array(state_results):
     import numpy as np
 
     Nrows = len(state_results)
-    state_array = np.empty((Nrows, 3), dtype='<U21')
-    state_array = np.zeros((Nrows, 3))
+    state_array = np.empty((Nrows, 4), dtype='object')
     state_rowlabels = []
     for i, row in enumerate(state_array):
-        rowname = state_results[i]['state']
+        rowname = 'A'
         state_rowlabels.append(rowname)
-        state_array[i, 0] = state_results[i]['spin']
-        state_array[i, 1] = state_results[i]['energy']
-        state_array[i, 2] = state_results[i]['loc_ratio']
+        state_array[i, 0] = f"{int(state_results[i]['state']):.0f}"
+        state_array[i, 1] = f"{int(state_results[i]['spin'])}"
+        state_array[i, 2] = f"{state_results[i]['energy']:.2f}"
+        state_array[i, 3] = f"{state_results[i]['loc_ratio']:.2f}"
+        state_array[i, 0] = f"{int(state_results[i]['state']):.0f}"
 
     return state_array, state_rowlabels
 
@@ -48,12 +48,15 @@ def webpanel(result, row, key_descriptions):
                                       describe_entry,
                                       table,
                                       matrixtable,
-                                      fig)
+                                      fig,
+                                      href)
+
+    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
 
     basictable = table(row, 'Defect properties', [])
     basictable['rows'].extend(
         [[describe_entry('Defect point group',
-                         description=result.key_descriptions['defect_pointgroup']),
+                         f'The defect point group is calculated with {spglib}.'),
           result.defect_pointgroup]])
 
     if result.symmetries[0]['best'] is None:
@@ -61,8 +64,10 @@ def webpanel(result, row, key_descriptions):
               'gapstates!')
         state_array, state_rownames = get_state_array(result.symmetries)
         state_table = matrixtable(state_array,
-                                  title='State',
-                                  columnlabels=['Spin',
+                                  digits=None,
+                                  title='Symmetry label',
+                                  columnlabels=['State',
+                                                'Spin',
                                                 'Energy [eV]',
                                                 'Localization ratio'],
                                   rowlabels=state_rownames)
@@ -75,6 +80,7 @@ def webpanel(result, row, key_descriptions):
     else:
         symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
         symmetry_table = matrixtable(symmetry_array,
+                                     digits=None,
                                      title='Symmetry label',
                                      columnlabels=['State',
                                                    'Spin',
@@ -643,31 +649,35 @@ class Level:
                       head_width=0.01,
                       head_length=length / 5, fc='k', ec='k')
 
-    def add_label(self, label):
+    def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
         shift = self.size / 5
+        if static is None:
+            labelstr = label.upper()
+        else:
+            labelstr = 'A'
         if (self.off == 0 and self.spin == 0):
             self.ax.text(self.relpos - self.size - shift,
                          self.energy,
-                         label.lower(),
+                         labelstr,
                          va='center',
                          ha='right')
         if (self.off == 0 and self.spin == 1):
             self.ax.text(self.relpos + self.size + shift,
                          self.energy,
-                         label.lower(),
+                         labelstr,
                          va='center',
                          ha='left')
         if (self.off == 1 and self.spin == 0):
             self.ax.text(self.relpos - self.size - shift,
                          self.energy,
-                         label.lower(),
+                         labelstr,
                          va='center',
                          ha='right')
         if (self.off == 1 and self.spin == 1):
             self.ax.text(self.relpos + self.size + shift,
                          self.energy,
-                         label.lower(),
+                         labelstr,
                          va='center',
                          ha='left')
 
@@ -724,6 +734,8 @@ def plot_gapstates(row, fname):
                 lev.add_occupation(length=gap / 15.)
             if levelflag:
                 lev.add_label(irrep)
+            elif not levelflag:
+                lev.add_label(irrep, 'A')
     # start with first spin channel
     i = 0
     for sym in data.data['symmetries']:
@@ -748,6 +760,8 @@ def plot_gapstates(row, fname):
                 lev.add_occupation(length=gap / 15)
             if levelflag:
                 lev.add_label(irrep)
+            elif not levelflag:
+                lev.add_label(irrep, 'A')
 
     ax.plot([0, 1], [ef] * 2, '--k')
     ax.set_xlim(0, 1)

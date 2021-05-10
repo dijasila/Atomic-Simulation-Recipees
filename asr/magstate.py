@@ -29,7 +29,7 @@ def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
     from asr.database.browser import describe_entry, dl, code, WebPanel
 
-    is_magnetic = describe_entry(
+    is_def_magnetic = describe_entry(
         'Magnetic',
         'Is defect magnetic?'
         + dl(
@@ -47,16 +47,41 @@ def webpanel(result, row, key_descriptions):
         )
     )
 
+    is_host_magnetic = describe_entry(
+        'Magnetic',
+        'Is host material magnetic?'
+        + dl(
+            [
+                [
+                    'Magnetic',
+                    code('if max(abs(atomic_magnetic_moments)) > '
+                         f'{atomic_mom_threshold}')
+                ],
+                [
+                    'Not magnetic',
+                    code('otherwise'),
+                ],
+            ]
+        )
+    )
+
     # rows = [[is_magnetic, row.is_magnetic]]
-    rows = [[is_magnetic, False]]
+    rows_host = [[is_host_magnetic, False]]
+    rows_def = [[is_def_magnetic, row.is_magnetic]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Pristine crystal', ''],
-                             'rows': rows}]],
+                             'rows': rows_host}]],
                'sort': 0}
 
+    summary_def = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                              'header': ['Defect properties', ''],
+                              'rows': rows_def}]],
+               'sort': 50}
+
     if result.magstate == 'NM':
-        return [summary]
+        return [summary_def]
     else:
         magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
                         for a, (symbol, magmom)
@@ -66,12 +91,12 @@ def webpanel(result, row, key_descriptions):
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        # panel = WebPanel(title='Basic magnetic properties (PBE)',
-        #                  columns=[[], [magmoms_table]],
-        #                  sort=11)
+        panel = WebPanel(title='Basic magnetic properties (PBE)',
+                         columns=[[], [magmoms_table]],
+                         sort=11)
 
-        # return [summary, panel]
-        return [summary]
+        return [summary_def, panel]
+        # return [summary]
 
 
 @prepare_result

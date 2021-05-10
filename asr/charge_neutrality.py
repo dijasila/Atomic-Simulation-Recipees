@@ -84,7 +84,7 @@ def webpanel(result, row, key_descriptions):
                     code('if E_F > 0.75 * E_gap')
                 ],
                 [
-                    'undopable',
+                    'intrinsic',
                     code('if 0.25 * E_gap < E_F < 0.75 * E_gap')
                 ],
             ],
@@ -113,9 +113,15 @@ def webpanel(result, row, key_descriptions):
                          result.key_descriptions['p0']),
           f'{result.p0:.1e} {unit:5}']])
 
+    figure = describe_entry(fig('charge_neutrality.png'),
+                            description='Formation energies of all point defects '
+                                        'intrinsic to the material and self-consistent '
+                                        'Fermi level at a temperature '
+                                        'of 300 K.')
+
     panel = WebPanel(
         'Equilibrium defect concentrations',
-        columns=[[fig('charge_neutrality.png'), scf_overview], table_list],
+        columns=[[figure, scf_overview], table_list],
         plot_descriptions=[{'function': plot_formation_scf,
                             'filenames': ['charge_neutrality.png']}],
         sort=10)
