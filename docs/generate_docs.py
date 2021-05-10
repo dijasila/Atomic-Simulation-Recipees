@@ -266,40 +266,45 @@ def empty_generated_files():
 def generate_code_examples():
     import subprocess
     import tempfile
-    import shutil
     import shlex
     from asr.core import chdir
+    import textwrap
     directory = DOCSDIR / Path('src')
 
-    for path in directory.rglob('*.rst'):
+    for path in directory.rglob('tutorials/getting-started.rst'):
         txt = path.read_text()
         lines = txt.split('\n')
-        if '   START COMPUTER GENERATED CODE' in lines:
-            lines = remove_computer_generated_code(lines)
         command_lines = []
         for il, line in enumerate(lines):
-            if line.startswith('   RUN '):
-                command_lines.append((il, line[7:]))
-        if command_lines:
-            print(command_lines)
-            tmpdir = tempfile.mkdtemp(prefix='asr-docs-')
-            print(f'Running in {tmpdir}')
-            outputs = []
-            with chdir(tmpdir, create=False):
-                for line, command in command_lines:
-                    print(command)
-                    completed_process = subprocess.run(
-                        shlex.split(command), capture_output=True)
-                    try:
-                        output = completed_process.stdout.decode()
-                    except UnicodeDecodeError:
-                        output = completed_process.stderr.decode()
-                    outputs.append((line, command, output))
-            for line, command, output in outputs[::-1]:
-                lines.insert(line + 1, make_code_block(command, output))
+            if line.startswith('   $ '):
+                command_lines.append(il)
 
-            txt = '\n'.join(lines)
-            path.write_text(txt)
+        commands_outputs = []
+        for il in command_lines:
+            output = []
+            for line in lines[il + 1:]:
+                if line.startswith('   ') and not line.startswith('   $ '):
+                    output.append(line)
+                else:
+                    break
+            if not output:
+                output = ['']
+            output = textwrap.dedent('\n'.join(output)).split('\n')
+            commands_outputs.append((lines[il][5:], output))
+
+        tmpdir = tempfile.mkdtemp(prefix='asr-docs-')
+        print(f'Running in {tmpdir}')
+        with chdir(tmpdir, create=False):
+            for command, output in commands_outputs:
+                print(command)
+                completed_process = subprocess.run(
+                    shlex.split(command), capture_output=True)
+                try:
+                    actual_output = completed_process.stdout.decode()
+                except UnicodeDecodeError:
+                    actual_output = completed_process.stderr.decode()
+                actual_output = actual_output.split('\n')
+                assert output == actual_output, (output, actual_output)
 
 
 def make_code_block(command, txt):

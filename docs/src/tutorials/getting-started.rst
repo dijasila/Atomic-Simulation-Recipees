@@ -38,16 +38,23 @@ will get back to this concept later in the tutorial.
 To run the instruction we require an atomic structure which can be
 generated with ASE's command-line interface
 
-..
-   RUN asr init
 
-..
-   RUN ase build Ag structure.json -x fcc
+.. code-block::
+
+   $ asr init .
+
+.. code-block::
+
+   $ ase build Ag structure.json -x fcc
 
 The instruction is then easily run through the command-line interface
 
-..
-   RUN asr run "asr.tutorial:energy --atoms structure.json"
+.. code-block::
+
+   $ asr run "asr.tutorial:energy --atoms structure.json"
+   In folder: . (1/1)
+   Running asr.tutorial:energy(atoms=Atoms(symbols='Ag', pbc=True, cell=[[0.0, 2.045, 2.045], [2.045, 0.0, 2.045], [2.045, 2.045, 0.0]]))
+   
 
 
 The cache
