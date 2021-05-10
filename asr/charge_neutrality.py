@@ -19,13 +19,13 @@ def webpanel(result, row, key_descriptions):
     unit = result.conc_unit
     for element in result.defect_concentrations:
         name = element['defect_name']
-        scf_table = table(result, f'Concentrations for {name}', [])
+        scf_table = table(result, f'Concentrations for {name} [{unit:5}]', [])
         for altel in element['concentrations']:
             scf_table['rows'].extend(
                 [[describe_entry(f'Charge {altel[1]:1d}',
                                  description='Equilibrium concentration '
                                              'in charge state q.'),
-                  f'{altel[0]:.1e} {unit:5}']])
+                  f'{altel[0]:.1e}']])
         table_list.append(scf_table)
 
     ef = result.efermi_sc
@@ -100,7 +100,8 @@ def webpanel(result, row, key_descriptions):
     scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_summary['rows'].extend([[pn, pn_strength]])
 
-    scf_overview = table(result, 'Equilibrium properties', [])
+    scf_overview = table(result,
+                         f'Equilibrium properties @ {result.temperature} K', [])
     scf_overview['rows'].extend([[is_dopable, dopability]])
     scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_overview['rows'].extend([[pn, pn_strength]])
@@ -117,7 +118,7 @@ def webpanel(result, row, key_descriptions):
                             description='Formation energies of all point defects '
                                         'intrinsic to the material and self-consistent '
                                         'Fermi level at a temperature '
-                                        'of 300 K.')
+                                        f'of {result.temperature} K.')
 
     panel = WebPanel(
         'Equilibrium defect concentrations',
@@ -577,9 +578,13 @@ def plot_formation_scf(row, fname):
     plt.axvspan(gap, 100, alpha=0.5, color='grey')
     plt.axvline(ef, color='red', linestyle='dotted', label=r'$E_F^{\mathrm{sc}}$')
     plt.xlim(0 - gap / 10., gap + gap / 10.)
+    yminold = plt.gca().get_ylim()[0]
+    plt.ylim(yminold, yminold + 4)
     plt.xlabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
     plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
-    plt.legend(ncol=2, loc=9)
+    # plt.legend(ncol=2, loc=9)
+    plt.legend(bbox_to_anchor=(0.5, 1), ncol=5, loc='lower center')
+    plt.tight_layout()
     plt.savefig(fname)
 
 

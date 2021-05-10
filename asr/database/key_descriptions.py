@@ -32,7 +32,7 @@ key_descriptions = {
         "charge_state": "KVP: Charge state"
     },
     "defect_symmetry": {
-        "pointgroup": "KVP: Point group"
+        "defect_pointgroup": "KVP: Defect point group !Point group!"
     },
     "magstate": {
         "magstate": "KVP: Magnetic state",
