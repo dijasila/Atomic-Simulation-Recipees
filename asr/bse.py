@@ -10,6 +10,7 @@ from asr.core import (
 )
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
+from asr.utils.kpts import get_kpts_size
 
 from asr.gs import calculate as gscalculate
 from asr.gs import main as gsmain
@@ -25,18 +26,6 @@ adjustment as used for BSE but without spin–orbit interactions, is also shown.
 """,
     articles=['C2DB'],
 )
-
-
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 @prepare_result
@@ -65,6 +54,13 @@ class BSECalculateResult(ASRResult):
 @command()
 @atomsopt
 @calcopt
+@command(creates=['bse_polx.csv', 'bse_eigx.dat',
+                  'bse_poly.csv', 'bse_eigy.dat',
+                  'bse_polz.csv', 'bse_eigz.dat'],
+         requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'],
+         resources='480:20h')
+@option('--gs', help='Ground state on which BSE is based', type=str)
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--nv_s', help='Valence bands included', type=float)
