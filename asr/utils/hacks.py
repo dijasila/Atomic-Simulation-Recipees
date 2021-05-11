@@ -4,6 +4,12 @@ def gs_xcname_from_row(row):
 
 
 class RowInfo:
+    """Utilities for retrieving data from database rows.
+
+    This object provides methods that are used in many recipes.
+    It exists to replace duplication across those recipes.  There are
+    probably better designs."""
+
     def __init__(self, row):
         self.row = row
 
