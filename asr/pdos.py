@@ -397,12 +397,14 @@ def plot_pdos(row, filename, soc=True,
     import matplotlib.patheffects as path_effects
     from asr.utils.hacks import RowInfo
     rowinfo = RowInfo(row)
-    eref = rowinfo.get_evac(default=0.0)
+
+    ref = rowinfo.evac_or_efermi()
+    eref = ref.value
 
     # Extract raw data
     symbols = data['symbols']
     pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy() - eref
+    e_e = data['energies'] - eref
     ef = data['efermi']
 
     # Find energy range to plot in
@@ -431,7 +433,7 @@ def plot_pdos(row, filename, soc=True,
 
     # Figure out if pdos has been calculated for more than one spin channel
     spinpol = False
-    for k in pdos_syl.keys():
+    for k in pdos_syl:
         if int(k[0]) == 1:
             spinpol = True
             break
@@ -485,11 +487,7 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('Projected DOS [states / eV]')
-    if rowinfo.have_evac():
-        label = rowinfo.evac_or_efermi().mpl_plotlabel()
-    else:
-        label = r'$E$ [eV]'  # XXX should probably use efermi for reference
-    ax.set_ylabel(label)
+    ax.set_ylabel(rowinfo.mpl_plotlabel())
 
     # Set up legend
     plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
