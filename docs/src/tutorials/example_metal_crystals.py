@@ -1,5 +1,5 @@
 import asr
-from ase.calculator.calculator import get_calculator_class
+from ase.calculators.calculator import get_calculator_class
 
 
 @asr.instruction('crystal')

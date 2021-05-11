@@ -263,85 +263,6 @@ def empty_generated_files():
         directory.mkdir()
 
 
-def generate_code_examples():
-    import subprocess
-    import tempfile
-    import shlex
-    from asr.core import chdir
-    import textwrap
-    directory = DOCSDIR / Path('src')
-
-    for path in directory.rglob('tutorials/getting-started.rst'):
-        txt = path.read_text()
-        lines = txt.split('\n')
-        command_lines = []
-        for il, line in enumerate(lines):
-            if line.startswith('   $ '):
-                command_lines.append(il)
-
-        commands_outputs = []
-        for il in command_lines:
-            output = []
-            for line in lines[il + 1:]:
-                if line.startswith('   ') and not line.startswith('   $ '):
-                    output.append(line)
-                else:
-                    break
-            if not output:
-                output = ['']
-            output = textwrap.dedent('\n'.join(output)).split('\n')
-            commands_outputs.append((lines[il][5:], output))
-
-        tmpdir = tempfile.mkdtemp(prefix='asr-docs-')
-        print(f'Running in {tmpdir}')
-        with chdir(tmpdir, create=False):
-            for command, output in commands_outputs:
-                print(command)
-                completed_process = subprocess.run(
-                    shlex.split(command), capture_output=True)
-                try:
-                    actual_output = completed_process.stdout.decode()
-                except UnicodeDecodeError:
-                    actual_output = completed_process.stderr.decode()
-                actual_output = actual_output.split('\n')
-                assert output == actual_output, (output, actual_output)
-
-
-def make_code_block(command, txt):
-    import textwrap
-    txt = textwrap.indent(txt, '   ')
-    
-    cb = [
-        '',
-        '..',
-        '   START COMPUTER GENERATED CODE',
-        '',
-        '.. code-block:: console',
-        '',
-        f'   $ {command}',
-        txt.strip('\n'),
-        '',
-        '..',
-        '   END COMPUTER GENERATED CODE',
-    ]
-    return '\n'.join(cb)
-
-
-def remove_computer_generated_code(lines):
-    filtered_lines = []
-    skip = False
-    for line in lines:
-        if line == '   START COMPUTER GENERATED CODE':
-            skip = True
-            filtered_lines.pop()
-            filtered_lines.pop()
-        if not skip:
-            filtered_lines.append(line)
-        if line == '   END COMPUTER GENERATED CODE':
-            skip = False
-    return filtered_lines
-
-
 def generate_docs():
     """Generate documentation."""
     print('Generating ASR documentation.')
@@ -349,7 +270,6 @@ def generate_docs():
     # generate_api_summary()
     generate_recipe_summary()
     generate_stub_pages()
-    generate_code_examples()
 
 
 if __name__ == '__main__':

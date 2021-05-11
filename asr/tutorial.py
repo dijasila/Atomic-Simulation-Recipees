@@ -2,7 +2,7 @@ import asr
 from ase.calculators.calculator import get_calculator_class
 
 
-@asr.instruction('tutorial')
+@asr.instruction('asr.tutorial')
 @asr.atomsopt
 def energy(atoms):
     """Calculate the total energy per atom of atomic structure."""
