@@ -54,13 +54,6 @@ class BSECalculateResult(ASRResult):
 @command()
 @atomsopt
 @calcopt
-@command(creates=['bse_polx.csv', 'bse_eigx.dat',
-                  'bse_poly.csv', 'bse_eigy.dat',
-                  'bse_polz.csv', 'bse_eigz.dat'],
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         resources='480:20h')
-@option('--gs', help='Ground state on which BSE is based', type=str)
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--nv_s', help='Valence bands included', type=float)
