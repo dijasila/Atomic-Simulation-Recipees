@@ -6,9 +6,79 @@ from asr.core import (command, ASRResult, prepare_result,
 from gpaw import restart
 
 
+# From http://triton.iqfr.csic.es/guide/eNMR/chem/NMRnuclei.html
+# Units: MHz/T
+gyromagnetic_ratios = {'H': (1, 42.577478),
+                       'He': (3, -32.434),
+                       'Li': (7, 16.546),
+                       'Be': (9, -6.298211),
+                       'B':  (11, 13.6611),
+                       'C': (13, 10.7084),
+                       'N': (14, 3.077),
+                       'O': (17, -5.772),
+                       'F': (19, 40.052),
+                       'Ne':(21, -3.36275),
+                       'Na': (23, 11.262),
+                       'Mg': (25, -2.6084),
+                       'Al': (27, 11.103),
+                       'Si': (29, -8.465),
+                       'P': (31, 17.235),
+                       'S': (33, 3.27045),
+                       'Cl':(35, 4.17631),
+                       'K': (39, 1.98900),
+                       'Ca':(43, -2.86861),
+                       'Sc':(45, 10.35739),
+                       'Ti': (47, -2.40390),
+                       'V' : (51, 11.21232),
+                       'Cr': (53, -2.406290),
+                       'Mn': (55, 10.5163),
+                       'Fe': (57, 1.382),
+                       'Co':(59, 10.0532),
+                       'Ni' : (61, -3.809960),
+                       'Cu': (63, 11.2952439),
+                       'Zn' : (67, 2.668563),
+                       'Ga': (69, 10.23676),
+                       'Ge': (73, -1.48913),
+                       'As' : (75, 7.312768),
+                       'Se' : (77, 8.14828655),
+                       'Br' : (79, 10.69908),
+                       'Kr' : (83, -1.64398047),
+                       'Rb' : (85, 4.1233194),
+                       'Sr' : (89, -1.850870),
+                       'Y' : (89, -2.0935685),
+                       'Zr' : (91, -3.97213054),
+                       'Nb' : (93, 10.44635),
+                       'Mo' : (95, 2.7850588),
+                       'Ru' : (101, -2.20099224),
+                       'Rh' : (103, -1.34637703),
+                       'Ag' : (107, -1.7299194),
+                       'Cd' : (111, -9.0595),
+                       'In' : (115, 9.3749856),
+                       'Sn' : (119, -15.9365),
+                       'Sb' : (121, 10.2418),
+                       'Te' : (125, -13.5242),
+                       'I' : (127, 8.56477221),
+                       'Xe': (129, -11.8420),
+                       'Cs' : (133, 5.614201),
+                       'Ba' : (137, 4.755289),
+                       'Hf' : (179, -1.08060),
+                       'Ta' : (181, 5.1245083),
+                       'W' : (183, 1.78243),
+                       'Re' : (187,   9.76839),
+                       'Os': (189, 1.348764),
+                       'Ir' : (193, 0.804325),
+                       'Pt' : (195, 9.17955),
+                       'Au' : (197, 0.73605), 
+                       'Hg' : (199,7.66352), 
+                       'Tl' : (205, 24.8093),
+                       'Pb' : (207, 8.8167), 
+                       'Bi' : (209, 6.91012),
+                       'La' : (139, 6.049147)}
+
+
 def get_atoms_close_to_center(center):
     """
-    Return list of the ten atoms closest to the defect.
+    Return ordered list of the atoms closest to the defect.
 
     Note, that this is the case only if a previous defect calculation is present.
     Return list of atoms closest to the origin otherwise.
@@ -161,8 +231,7 @@ def calculate_hyperfine(atoms, calc):
     """Calculate hyperfine splitting from the calculator."""
     from math import pi
     import ase.units as units
-    from gpaw.hyperfine import (hyperfine_parameters,
-                                gyromagnetic_ratios)
+    from gpaw.hyperfine import hyperfine_parameters
 
     symbols = atoms.symbols
     magmoms = atoms.get_magnetic_moments()
