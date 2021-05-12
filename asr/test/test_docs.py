@@ -25,10 +25,10 @@ def command_outputs(request):
                 output.append(line)
             else:
                 break
-        if not output:
-            output = ['']
-        output = textwrap.dedent('\n'.join(output)).split('\n')
-        commands_outputs.append((lines[il][5:], output))
+        command = lines[il][5:]
+        if output:
+            output = textwrap.dedent('\n'.join(output)).split('\n')
+        commands_outputs.append((command, output))
     return commands_outputs
 
 
@@ -50,4 +50,6 @@ def test_tutorial(command_outputs, tmpdir):
             except UnicodeDecodeError:
                 actual_output = completed_process.stderr.decode()
             actual_output = actual_output.split('\n')
+            if actual_output[-1] == '':
+                actual_output.pop()
             assert output == actual_output, (output, actual_output)
