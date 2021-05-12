@@ -176,7 +176,7 @@ class Result(ASRResult):
 
 @command(module='asr.charge_neutrality',
          requires=['gs.gpw'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          resources='1:10m',
          returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
