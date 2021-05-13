@@ -5,17 +5,16 @@
 =================
 
 The atomic simulation recipes (ASR) is a Python package that assists
-computational scientists by implementing tools for storing calculation
-results and related contextual data. To see how this works in
-practice, we will in the following be implementing functionality for
-calculating most stable crystal structure of common metals.
-
+computational scientists with tools for storing calculation results
+and related contextual data. To see how this works in practice, we
+will in the following be implementing functionality for calculating
+the most stable crystal structure of common metals.
 
 Before we begin we have initialize a data repository. This is where
 ASR stores all its data. In practice it is nothing more than a ".asr"
 directory, which can be initialized with
 
-.. code-block::
+.. code-block:: console
 
    $ asr init .
    $ ls -a
@@ -23,6 +22,9 @@ directory, which can be initialized with
    ..
    .asr
 
+When running, ASR will search for the data repository in the current
+folder or (stepwise) in any of the parent folders and use the first
+one found for storage.
 
 Instructions
 ============
@@ -47,13 +49,13 @@ in the tutorial.
 To run the instruction we require an atomic structure which can be
 generated with ASE's command-line interface
 
-.. code-block::
+.. code-block:: console
 
    $ ase build Ag structure.json -x fcc
 
 The instruction is then easily run through the command-line interface
 
-.. code-block::
+.. code-block:: console
 
    $ asr run "asr.tutorial:energy --atoms structure.json"
    In folder: . (1/1)
