@@ -33,9 +33,10 @@ The most basic element of ASR is an Instruction. Instructions are
 simply python functions decorated with the :func:`asr.instruction`
 decorator.
 
-To see how this works in practice let's look at an example of 
+To see how this works in practice let's look at an example: 
 
 .. literalinclude:: getting-started.py
+   :pyobject: energy
 
 In this example we have made an instruction for calculating the total
 energy of some input atomic structure using the effective medium
@@ -49,37 +50,59 @@ in the tutorial.
 To run the instruction we require an atomic structure which can be
 generated with ASE's command-line interface
 
-.. code-block:: console
-
-   $ ase build Ag structure.json -x fcc
-
 The instruction is then easily run through the command-line interface
 
 .. code-block:: console
 
-   $ asr run "asr.tutorial:energy --atoms structure.json"
+   $ asr run "asr.tutorial:energy Ag fcc"
    In folder: . (1/1)
-   Running asr.tutorial:energy(atoms=Atoms(symbols='Ag', pbc=True, cell=[[0.0, 2.045, 2.045], [2.045, 0.0, 2.045], [2.045, 2.045, 0.0]]))
+   Running asr.tutorial:energy(element='Ag', crystal_structure='fcc')
 
 
 The cache
 =========
 
-Whenever an instruction has been run, the result will be stored in the
-"Cache" which is a kind of database for storing calculations. The
-result can be viewed on the command-line using
+Whenever an instruction has been run ASR generates a
+:py:class:`asr.Record` containing contextual information about the
+run, such as the name of the instruction, the parameters and the
+result. The Record is stored in the "Cache" which is a kind of
+database for storing calculations. The record can be viewed on the
+command-line using
 
 .. code-block:: console
 
    $ asr cache ls
-                  name                                  parameters                result
-   asr.tutorial:energy {'atoms': Atoms(symbols='Ag', pbc=True, ... 0.0015843277481568663
+                  name                                  parameters                 result
+   asr.tutorial:energy {'element': 'Ag', 'crystal_structure': '... -0.0003668625292689853
 
-When calling an instruction the decorator
-takes care of storing the input parameters as well as the other
-contextual data (see :py:class:`asr.Record` for information on exactly
-what contextual data is stored).
+An important feature of ASR is that of "caching" results. If we run
+the instruction again with the same input parameters ASR will skip the
+actual evaluation of the instruction and simply reuse the old
+result. This is useful in workflows when it can be beneficial to not
+redo expensive calculation steps when it has already been performed
+once.
 
-These instructions are grouped into "recipes" which are
-python modules with one or more instructions and a single "main"
-instruction he main instruction is the main entrypoint for the user.
+Continuing the task of calculating the lowest energy crystal structure
+we will implement an additional instruction that loops over crystal
+structures and finds the most stable one
+
+
+.. literalinclude:: getting-started.py
+   :pyobject: main
+
+
+We say that the python the python modules which contains our two
+instructions is a "recipe", ie. a collection of collection of
+instructions that achieve our goal. The "main"-instruction is the
+primary user interface to our recipe and as such it is not necesarry
+to state so explicitly when running the main-instruction.
+
+.. code-block:: console
+
+   $ asr run "asr.tutorial Ag"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Ag')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='sc')
+   asr.tutorial:energy: Found cached record.uid=343d7f48aad3434493b5bc7e6cbdf94c
+   Running asr.tutorial:energy(element='Ag', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='diamond')
