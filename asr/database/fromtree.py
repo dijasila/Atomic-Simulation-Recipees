@@ -496,10 +496,10 @@ def main(folders: Union[str, None] = None,
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']
 
-    # if missing_child_uids:
-    #     raise MissingUIDS(
-    #         'Missing child uids in collected database. '
-    #         'Did you collect all subfolders?')
+    if missing_child_uids:
+        raise MissingUIDS(
+            'Missing child uids in collected database. '
+            'Did you collect all subfolders?')
 
     if duplicate_uids:
         raise MissingUIDS(
