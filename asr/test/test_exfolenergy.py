@@ -8,8 +8,7 @@ from ase import Atoms
 import numpy as np
 
 
-@pytest.mark.ci
-def test_get_bilayers_energies(asr_tmpdir):
+def dont_test_get_bilayers_energies(asr_tmpdir):
     expected = [("f1", 1.0),
                 ("f2", 2.5),
                 ("f3", 3.3)]
