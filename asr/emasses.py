@@ -57,17 +57,19 @@ def refine(gpwfilename: str = 'gs.gpw',
                'erange2': 1e-3,
                'nkpts2': 9}) -> ASRResult:
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
+    from gpaw import GPAW
     import os.path
     set_default(settings)
     socs = [True]
 
     for soc in socs:
         theta, phi = get_spin_axis()
-        eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
-                                       theta=theta, phi=phi)
+        calc = GPAW(gpwfilename, txt=None)
+        eigenvalues, efermi = calc2eigs(calc=calc, soc=soc,
+                                        theta=theta, phi=phi)
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
         if not gap > 0:
@@ -92,7 +94,7 @@ def get_name(soc, bt):
 def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     from gpaw import GPAW
     import numpy as np
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     # Get calc and current kpts
@@ -104,15 +106,14 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
 
     # Find energies and VBM/CBM
     theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
     # Make a sphere of kpts of high density
-    min_nkpts = settings['nkpts1']
     erange = settings['erange1']
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
+    nkpts = settings['nkpts1']
     nkpts = nkpts + (1 - (nkpts % 2))
     # Ensure that we include the found VBM/CBM
     assert nkpts % 2 != 0
@@ -141,15 +142,15 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     return fname + '.gpw'
 
 
-def get_gapskn(gpw, fallback=None, soc=True):
+def get_gapskn(calc, fallback=None, soc=True):
     import numpy as np
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.parallel import parprint
 
     theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis, :, :]
 
@@ -159,7 +160,7 @@ def get_gapskn(gpw, fallback=None, soc=True):
     if np.allclose(gap, 0) and fallback is not None:
         parprint("Something went wrong. Using fallback gpw.")
         theta, phi = get_spin_axis()
-        e_skn, efermi = gpw2eigs(fallback, soc=soc, theta=theta, phi=phi)
+        e_skn, efermi = calc2eigs(fallback, soc=soc, theta=theta, phi=phi)
         if e_skn.ndim == 2:
             e_skn = e_skn[np.newaxis, :, :]
 
@@ -212,7 +213,7 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
     kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
                             erange=erange, npoints=nkpts)
 
-    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
+    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(calc, fallback=None, soc=soc)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
@@ -335,7 +336,7 @@ def get_emass_dict_from_row(row, has_mae=False):
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
             direction = 0
-            marekey = name.lower() + '_soc_wideareaMARE'
+            marekey = name.lower() + '_soc_wideareaPARAMARE'
             mares = data[marekey] if has_mae else None
 
             for k in data.keys():
@@ -483,7 +484,10 @@ def make_the_plots(row, *args):
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
+            if mass > 0.0:
+                emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
+            else:
+                emodel_k += np.max(e_km[:, 0]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -546,7 +550,10 @@ def make_the_plots(row, *args):
             kpts_kv *= Bohr
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
+            if mass > 0.0:
+                emodel_k += np.min(e_km[:, -1]) - np.min(emodel_k)
+            else:
+                emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -1412,6 +1419,30 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+def evalparamare(mass, bt, cell, k_kc, e_k):
+    from ase.dft.kpoints import labels_from_kpts
+    from ase.units import Bohr, Ha
+    import numpy as np
+
+    xk, _, _ = labels_from_kpts(kpts=k_kc, cell=cell)
+    xk -= xk[-1] / 2.0
+
+    emodel_k = (xk * Bohr)**2 / (2 * mass) * Ha
+    if bt == "vb":
+        emodel_k += np.max(e_k) - np.max(emodel_k)
+    else:
+        assert bt == "cb"
+        emodel_k += np.min(e_k) - np.min(emodel_k)
+
+    indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+
+    mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
+
+    paramare = np.mean(np.abs((emodel_k[indices] - e_k[indices]) / mean_e) * 100)
+
+    return paramare
+
+
 @prepare_result
 class ValidateResult(ASRResult):
 
@@ -1443,7 +1474,9 @@ def validate() -> ValidateResult:
         bt = data['info'].split('_')[0]
         maes = []
         mares = []
-        for cutdata in data['bzcuts']:
+        paramares = []
+
+        for i, cutdata in enumerate(data['bzcuts']):
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
             mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
@@ -1451,9 +1484,14 @@ def validate() -> ValidateResult:
             mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             mares.append(mare)
 
+            mass = data[f"effmass_dir{i}"]
+            paramare = evalparamare(mass, bt, atoms.get_cell(), k_kc, e_k)
+            paramares.append(paramare)
+
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaPARAMARE'] = paramares
 
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
