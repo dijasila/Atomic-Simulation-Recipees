@@ -6,6 +6,7 @@ from ase import Atoms
 class AnyVector:
     pass
 
+
 class ElementSet:
     # positions: List[Tuple[bool, np.array]]
 
@@ -181,7 +182,6 @@ def slide_equivalent(slide_indices: List[int],
                 v = None
 
         return i + 1, v
-            
 
     vec = None
     i = 0
@@ -249,6 +249,7 @@ def align_vector(bottom1, bottom2):
                 break
     return deltavec
 
+
 def distance(a1, a2):
     from asr.database.rmsd import get_rmsd
     _v = get_rmsd(a1, a2)
@@ -257,14 +258,14 @@ def distance(a1, a2):
     else:
         return _v
 
+
 def get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c):
     from itertools import product
     from asr.stack_bilayer import atomseq
-    tolerance = 0.001
-    
+
     if not atomseq(bottom1, bottom2):
         return None
-    
+
     for atom1, atom2 in product(top1, top2):
         if atom1.symbol != atom2.symbol:
             continue
@@ -287,7 +288,9 @@ def slide_vector_for_bilayers(folder1, folder2):
     top1 = read(f"{folder1}/toplayer.json")
     bottom2 = read(f"{folder2}/../structure.json")
     top2 = read(f"{folder2}/toplayer.json")
-    t1_c = np.array(read_json(f"{folder1}/translation.json")['translation_vector']).astype(float)
-    t2_c = np.array(read_json(f"{folder2}/translation.json")['translation_vector']).astype(float)
+    data1 = read_json(f"{folder1}/translation.json")
+    data2 = read_json(f"{folder2}/translation.json")
+    t1_c = np.array(data1['translation_vector']).astype(float)
+    t2_c = np.array(data2['translation_vector']).astype(float)
 
     return get_slide_vector(bottom1, top1, bottom2, top2, t1_c, t2_c)
