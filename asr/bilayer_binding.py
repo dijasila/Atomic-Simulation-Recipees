@@ -1,10 +1,10 @@
-import typing
-from asr.core import command, ASRResult, prepare_result, option, read_json
+from asr.core import command, ASRResult, prepare_result, read_json
 from ase.calculators.calculator import get_calculator_class
 from asr.bilayerdescriptor import get_descriptor
 import numpy as np
 from ase.io import read
 from pathlib import Path
+
 
 def calc_vdw(folder):
     Calculator = get_calculator_class("dftd3")
@@ -14,7 +14,7 @@ def calc_vdw(folder):
     atoms.set_calculator(calc)
 
     e = atoms.get_potential_energy()
-    
+
     return e
 
 
@@ -25,10 +25,10 @@ def cell_area(atoms):
     Assumes the non-periodic direction is in the z-direciton.
     """
     cell = atoms.cell
-    
+
     a1 = cell[0]
     a2 = cell[1]
-    
+
     return np.linalg.norm(np.cross(a1, a2))
 
 # def get_descriptor():
@@ -39,7 +39,7 @@ def cell_area(atoms):
 @prepare_result
 class Result(ASRResult):
     """Container for bilayer binding energy."""
-    
+
     binding_energy: float
     interlayer_distance: float
     bilayer_id: str
@@ -47,7 +47,6 @@ class Result(ASRResult):
     key_descriptions = dict(binding_energy='Binding energy [eV/Ang^2]',
                             interlayer_distance='IL distance [Ang]',
                             bilayer_id='Str describing the stacking configuration')
-
 
 
 def get_IL_distance(atoms, h):
@@ -71,7 +70,6 @@ def main() -> Result:
                                interlayer_distance=None,
                                bilayer_id=desc)
 
-
     d = read_json('results-asr.relax_bilayer.json')
     bilayer_energy = d['energy']
     height = d['optimal_height']
@@ -86,6 +84,3 @@ def main() -> Result:
     return Result.fromdata(binding_energy=binding,
                            interlayer_distance=get_IL_distance(monolayer, height),
                            bilayer_id=desc)
-                           
-
-

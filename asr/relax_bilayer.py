@@ -20,7 +20,6 @@ def calc_setup(settings):
         #                  'weight': 75}
         mixersettings = {'type': 'mixerdif'}
 
-
     if type(mixersettings) != dict:
         mixersettings = {'type': 'default',
                          'beta': None, 'nmaxold': None,
@@ -97,7 +96,7 @@ def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
                            'PWE': 800,
-                           'maxiter': 5000, 
+                           'maxiter': 5000,
                            'kpts': {'density': 6.0, 'gamma': True},
                            'mixer': {'type': 'default',
                                      'beta': None,

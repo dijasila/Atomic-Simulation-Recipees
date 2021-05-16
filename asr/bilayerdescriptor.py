@@ -1,4 +1,3 @@
-import typing
 from asr.core import command, ASRResult, prepare_result, read_json
 from pathlib import Path
 from ase.io import read
@@ -6,6 +5,7 @@ from ase import Atoms
 import numpy as np
 import spglib
 import os
+
 
 @prepare_result
 class Result(ASRResult):
@@ -20,8 +20,14 @@ class Result(ASRResult):
     key_descriptions = dict(descriptor='A short descriptor of a stacking',
                             full_descriptor='A full descriptor of a stacking',
                             # monolayer_uid='UID of source monolayer',
-                            translation='Translation of top layer relative to bottom layer in scaled coordinates',
-                            pointgroup_op='Point group operator of top layer relative to bottom layer. The matrix operators on the lattice vectors')
+                            translation=''.join(['Translation of top layer',
+                                                 ' relative to bottom layer',
+                                                 ' in scaled coordinates']),
+                            pointgroup_op=''.join(['Point group operator',
+                                                   ' of top layer relative',
+                                                   ' to bottom layer.',
+                                                   ' The matrix operators',
+                                                   ' on the lattice vectors']))
 
 
 def convert_to_cartesian(matrix, cell):
@@ -39,31 +45,31 @@ def convert_to_cartesian(matrix, cell):
     B = np.array([b1, b2])
     assert np.allclose(B.dot(N), np.eye(2))
     assert np.allclose(N.dot(B), np.eye(2)), N.dot(B)
-    
+
     return N.dot(matrix.dot(B))
 
 
 def get_matrix_descriptor(atoms, matrix):
     cmatrix = convert_to_cartesian(matrix, atoms.cell)
-    ## Decompose transformation matrix into form b^mc^n
-    ## where b is a rotation matrix and c is a reflection
-    
-    ## Extract symmetries of cell
+    # Decompose transformation matrix into form b^mc^n
+    # where b is a rotation matrix and c is a reflection
+
+    # Extract symmetries of cell
     cell = Atoms('C', positions=[[0, 0, 0]])
     cell.set_cell(atoms.get_cell())
     symmetries = spglib.get_symmetry(cell)
-    ## Find a basis operation that is not the identity and not a reflection
-    ## Find an inversion
+    # Find a basis operation that is not the identity and not a reflection
+    # Find an inversion
     c2c = convert_to_cartesian
     isreflected = np.allclose(np.linalg.det(cmatrix), -1.0)
     if isreflected:
-        inversion_basis, invb = next((c2c(y, atoms.cell), y)
-                                     for y in (x[:2, :2] for x in symmetries['rotations'])
-                                     if np.allclose(np.linalg.det(c2c(y, atoms.cell)), -1))
-        
+        ts = next((c2c(y, atoms.cell), y)
+                  for y in (x[:2, :2] for x in symmetries['rotations'])
+                  if np.allclose(np.linalg.det(c2c(y, atoms.cell)), -1))
+        inversion_basis, invb = ts
 
     bm = cmatrix.dot(np.linalg.inv(inversion_basis)) if isreflected else cmatrix
-        
+
     # bm is a pure rotation.
     # It should have entries [[cos(theta), -sin(theta)], [sin(theta), cos(theta)]]
     # where theta = 2pi / n for some n.
@@ -73,10 +79,10 @@ def get_matrix_descriptor(atoms, matrix):
     else:
         a1 = np.arctan2(-bm[0, 1], bm[0, 0])
         a2 = np.arctan2(bm[1, 0], bm[1, 1])
-    
-    
-    assert np.allclose(abs(a1), abs(a2)), f"a1: {a1}, a2: {a2}\n\nbm:{bm}, isrefl:{isreflected}"
-    
+
+    msg = f"a1: {a1}, a2: {a2}\n\nbm:{bm}, isrefl:{isreflected}"
+    assert np.allclose(abs(a1), abs(a2)), msg
+
     if np.allclose(a1, 0.0):
         descriptor = 'Id'
     else:
@@ -84,7 +90,7 @@ def get_matrix_descriptor(atoms, matrix):
         n = abs(round(n))
         descriptor = f'R<sup>z</sup><sub>{n}</sub>'
     if isreflected:
-        descriptor += '_v' 
+        descriptor += '_v'
 
     return descriptor
 
@@ -104,7 +110,7 @@ def get_descriptor(folder=None, atoms=None):
     folder = [x for x in folder.split("/") if x != ""][-1]
     folder = folder.replace("--", "-M").replace("_-", "_M")
     desc = "-".join(folder.split("-")[2:])
-    
+
     # Extract matrix
     def tofloat(x):
         if x.startswith("M"):
@@ -121,7 +127,7 @@ def get_descriptor(folder=None, atoms=None):
     iz = "Iz" in desc
 
     descriptor = get_matrix_descriptor(atoms, matrix)
-    
+
     if iz:
         descriptor = f'({descriptor}, Iz)'
     else:
@@ -136,7 +142,7 @@ def get_descriptor(folder=None, atoms=None):
 def set_first_class_info():
     """Determine if the material is first class and write to info.json"""
     from asr.setinfo import main as setinfo
-    
+
     monolayerfolder = "../"
     p = Path(monolayerfolder).absolute()
     binding_data = []
@@ -166,7 +172,7 @@ def set_first_class_info():
                 if e <= cutoff][:nmats]
 
     is_fst_class = my_desc in selected
-    setinfo([('first_class_material', is_fst_class)])        
+    setinfo([('first_class_material', is_fst_class)])
     return is_fst_class
 
 
@@ -190,14 +196,13 @@ def main() -> Result:
     transform = read_json('transformdata.json')
 
     rotation = transform['rotation']
-    
+
     t_c = transform['translation'][:2] + translation
 
     p = "'" if not np.allclose(rotation, np.eye(3)) else ""
     B = 'B' if not np.allclose(t_c, 0.0) else 'A'
 
     descriptor = 'A' + B + p
-
 
     full_descriptor = get_descriptor()
 
@@ -209,6 +214,3 @@ def main() -> Result:
                            full_descriptor=full_descriptor,
                            translation=t_c,
                            pointgroup_op=rotation)
-    
-
-    

@@ -1,4 +1,3 @@
-import typing
 from asr.core import command, ASRResult, prepare_result, option, read_json
 from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.database import material_fingerprint as mfp
@@ -16,6 +15,7 @@ panel_description = make_panel_description(
 Shows a binding energy vs. binding length scatter plot
 and the estimated monolayer exfoliation energy.""")
 
+
 def webpanel(result, row, key_descriptions):
     title = describe_entry('Stacking configurations: Overview',
                            panel_description)
@@ -24,8 +24,8 @@ def webpanel(result, row, key_descriptions):
     table = make_summary_table(result)
     column2 = [{'type': 'table',
                 'header': ['Bilayer', 'Binding energy'],
-                'rows': table}]        
-    
+                'rows': table}]
+
     panel = {'title': title,
              'columns': [column1, column2],
              'plot_descriptions': [{'function': scatter_energies,
@@ -46,53 +46,61 @@ def make_row_title(desc, result):
         return rowtitle
     else:
         return f'<a href="{link}">{rowtitle}</a>'
-    
+
 
 def make_exfoliation_row(result):
-    desc = 'The exfoliation energy is estimated by taking binding energy of the most tightly bound bilayer stacking.'
+    desc = ''.join(['The exfoliation energy',
+                    ' is estimated by taking binding energy',
+                    ' of the most tightly bound bilayer stacking.'])
     energy = result.exfoliation_energy
-    exfoliation_val = f'{energy:0.4f} eV/Å<sup>2</sup>' if type(energy) != str else energy
-    exfoliation_row = [describe_entry('Exfoliation energy', description=desc), exfoliation_val]
-        
+    if type(energy) != str:
+        exfoliation_val = f'{energy:0.4f} eV/Å<sup>2</sup>'
+    else:
+        exfoliation_val = energy
+    exfoliation_row = [describe_entry('Exfoliation energy', description=desc),
+                       exfoliation_val]
+
     return [exfoliation_row]
 
 
 def make_summary_table(result):
-    
-    items = sorted([(desc, val[0]) for desc, val in result.binding_data.items()], key=lambda t:-t[1])
-    binding_rows = [[make_row_title(desc, result), f'{val:0.5f} eV/Å<sup>2</sup>'] for desc, val in items]
+    items = sorted([(desc, val[0])
+                    for desc, val in result.binding_data.items()],
+                   key=lambda t: -t[1])
+    binding_rows = [[make_row_title(desc, result),
+                     f'{val:0.5f} eV/Å<sup>2</sup>'] for desc, val in items]
 
     return binding_rows
+
 
 def scatter_energies(row, fname):
     d = row.data.get('results-asr.bilayersummary.json')['binding_data']
     ns = row.data.get('results-asr.bilayersummary.json')['numberings']
     import matplotlib.pyplot as plt
     data = np.array(list(d.values()))
-    fig, ax = plt.subplots(figsize=(6,4))
+    fig, ax = plt.subplots(figsize=(6, 4))
 
     fs = 12
     ax.scatter(data[:, 1], data[:, 0])
     for desc, dat in d.items():
         ax.annotate(ns[desc], (dat[1], dat[0] + 0.75e-4), va="bottom", ha="center",
-                           fontsize=fs)
+                    fontsize=fs)
     (y1, y2) = ax.get_ylim()
     ax.set_ylim((y1, y2 + 3e-4))
 
     maxe = np.max(data[:, 0])
     cutoff = maxe - 2e-3
     ax.axhline(cutoff, color="black",
-                      linestyle="dashed", linewidth=2)
+               linestyle="dashed", linewidth=2)
     xmin, xmax = plt.xlim()
     deltax = xmax - xmin
     ax.annotate('Stability threshold', (xmax - 0.2 * deltax, cutoff),
-                       va='bottom', ha='center', fontsize=fs)
+                va='bottom', ha='center', fontsize=fs)
     if y2 > 0.15:
         cutoff2 = 0.15
         ax.axhline(cutoff2)
         ax.annotate('Exfoliability threshold', (xmax - 0.4 * deltax, cutoff2),
-                           va='bottom', ha='center', fontsize=fs)
-    
+                    va='bottom', ha='center', fontsize=fs)
 
     ax.set_xlabel(r'Interlayer distance [Å]', fontsize=fs)
     ax.set_ylabel(r'Binding energy [eV/Å$^2$]', fontsize=fs)
@@ -103,11 +111,11 @@ def scatter_energies(row, fname):
 
 def make_rectangle(ax, i, g):
     from matplotlib.patches import Rectangle
-    x = i
     w = 0.2
     h = g * 2
-    
-    rect = Rectangle((i - w/2, -h/2), width=w, height=h, color="lightgray", fill=True)
+
+    rect = Rectangle((i - w / 2, -h / 2), width=w, height=h,
+                     color="lightgray", fill=True)
     return rect
 
 
@@ -119,13 +127,13 @@ def plot_bargaps(row, fname):
     n = 0
     for i, (desc, g) in enumerate(d.items()):
         n += 1
-        ax.add_patch(make_rectangle(ax, i+1, g))
-        
-    ax.set_xlim((0, n+1))
-    
+        ax.add_patch(make_rectangle(ax, i + 1, g))
+
+    ax.set_xlim((0, n + 1))
+
     Y = max(d.values()) * 1.2
     ax.set_ylim((-Y, Y))
-    ax.set_xticks(list(range(1, n+1)))
+    ax.set_xticks(list(range(1, n + 1)))
     ax.set_xlabel("BL stackings")
     ax.set_ylabel("Gap [eV]")
     plt.tight_layout()
@@ -137,8 +145,7 @@ def plot_gaps(row, fname):
     d = row.data.get('results-asr.bilayersummary.json')
 
     fs = 12
-    fig, ax = plt.subplots(figsize=(6,4))
-    numbers = d['numberings']
+    fig, ax = plt.subplots(figsize=(6, 4))
     data = []
     for desc, numb in d['numberings'].items():
         if desc in d['gaps']:
@@ -154,7 +161,7 @@ def plot_gaps(row, fname):
     deltax = xmax - xmin
     ax.annotate('Monolayer gap', (xmax - 0.2 * deltax, d['monolayer_gap']),
                 va='bottom', ha='center', fontsize=fs)
-    
+
     ymin, ymax = plt.ylim()
     deltay = ymax - ymin
     space_fraction = 0.2
@@ -180,9 +187,9 @@ def make_numbering(binding_data, monolayerpath):
     if len(numbers) == 0:
         return numberings
 
-    maxn = max(numbers, key=lambda t:t[0])[0]
-    numbers = {desc: i+1 for i, (desc, _) in numbers}
-        
+    maxn = max(numbers, key=lambda t: t[0])[0]
+    numbers = {desc: i + 1 for i, (desc, _) in numbers}
+
     notnumbered = []
     for sp in [x for x in p.iterdir() if x.is_dir()]:
         desc = get_descriptor(str(sp))
@@ -196,11 +203,10 @@ def make_numbering(binding_data, monolayerpath):
     return numberings
 
 
-
 @prepare_result
 class Result(ASRResult):
     """Container for summary results."""
-    
+
     binding_data: dict
     gaps: dict
     links: dict
@@ -209,7 +215,9 @@ class Result(ASRResult):
     monolayer_gap: float
 
     key_descriptions = dict(
-        binding_data='Key: Bilayer descriptor, value: binding energy [eV / Ang^2] and binding length [Ang]',
+        binding_data=''.join(['Key: Bilayer descriptor,',
+                              ' value: binding energy [eV / Ang^2]',
+                              ' and binding length [Ang]']),
         gaps='Key: Bilayer descriptor, value: gap [eV]',
         links='Key: Bilayer descriptor, value: info to make link',
         numberings='Key: Bilayer descriptor, value: Numbering based on stability',
@@ -244,7 +252,7 @@ def main(monolayerfolder: str = "./") -> Result:
         if os.path.exists(binding_path):
             data = read_json(binding_path)
             binding_data[desc] = (data["binding_energy"], data['interlayer_distance'])
-                
+
         # Get gap data
         gs_path = f"{sp}/results-asr.gs.json"
         if os.path.exists(gs_path):
@@ -260,7 +268,7 @@ def main(monolayerfolder: str = "./") -> Result:
             links[desc] = uid
 
     numberings = make_numbering(binding_data, monolayerfolder)
-            
+
     # Get monolayer gap
     # Go to C2DB-ASR tree to find data
     ml_atoms = read(f'{p}/structure.json')
@@ -270,10 +278,16 @@ def main(monolayerfolder: str = "./") -> Result:
     stoich = get_reduced_formula(formula, stoichiometry=True)
     reduced = get_reduced_formula(formula, stoichiometry=False)
     full = p.resolve().name
-    c2db_path = f'/home/niflheim2/cmr/C2DB-ASR/tree/{stoich}/{reduced}/{full}/results-asr.gs.json'
+    base1 = '/home/niflheim2/cmr/C2DB-ASR/tree/'
+    base2 = '/home/niflheim2/cmr/C2DB-ASR/icsd_cod_materials/tree/'
+    path = f'{stoich}/{reduced}/{full}/results-asr.gs.json'
 
-    if os.path.exists(c2db_path):
-        ml_data = read_json(c2db_path)
+    if os.path.exists(base2 + path):
+        ml_data = read_json(base2 + path)
+        monolayer_gap = ml_data['gap']
+
+    if os.path.exists(base1 + path):
+        ml_data = read_json(base1 + path)
         monolayer_gap = ml_data['gap']
 
     return Result.fromdata(binding_data=binding_data,
@@ -285,22 +299,3 @@ def main(monolayerfolder: str = "./") -> Result:
                                                    if t[0] is not None],
                                                   default='no data'),
                            monolayer_gap=monolayer_gap)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
