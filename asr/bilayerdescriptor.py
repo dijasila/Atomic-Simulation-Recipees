@@ -140,7 +140,7 @@ def get_descriptor(folder=None, atoms=None):
 
 
 def set_first_class_info():
-    """Determine if the material is first class and write to info.json"""
+    """Determine if the material is first class and write to info.json."""
     from asr.setinfo import main as setinfo
 
     monolayerfolder = "../"
@@ -191,7 +191,6 @@ def set_monolayer_uid():
          returns=Result)
 def main() -> Result:
     """Construct descriptors for the bilayer."""
-
     translation = read_json('translation.json')['translation_vector']
     transform = read_json('transformdata.json')
 

@@ -75,7 +75,6 @@ def main(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0', "energy": 1e-6},
         'nbands': '200%'},
         hubbardu: float = 3, mixer=None):
-
     """Calculate the energy difference between FM and AFM configurations.
 
     Returns the energy difference between the FM and
@@ -89,7 +88,6 @@ def main(calculator: dict = {
 
     If mixer is not None, a custom mixer is used for the GPAW calculation.
     """
-
     if mixer is not None:
         raise NotImplementedError  # "params" is not defined
         # params['mixer'] = convert_mixer(mixer)

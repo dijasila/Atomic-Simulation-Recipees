@@ -237,7 +237,6 @@ def main(monolayerfolder: str = "./") -> Result:
     binding energies for each subfolder that has the required
     files.
     """
-
     binding_data = {}
     gaps = {}
     links = {}

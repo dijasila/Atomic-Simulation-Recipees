@@ -39,7 +39,6 @@ def cell_area(atoms):
 @prepare_result
 class Result(ASRResult):
     """Container for bilayer binding energy."""
-
     binding_energy: float
     interlayer_distance: float
     bilayer_id: str
@@ -51,7 +50,6 @@ class Result(ASRResult):
 
 def get_IL_distance(atoms, h):
     """Calculate IL distance."""
-
     layer_width = np.max(atoms.positions[:, 2]) - np.min(atoms.positions[:, 2])
 
     dist = h - layer_width
@@ -63,7 +61,6 @@ def get_IL_distance(atoms, h):
          returns=Result)
 def main() -> Result:
     """Calculate the bilayer binding energy."""
-
     desc = get_descriptor()
     if not Path('results-asr.relax_bilayer.json').is_file():
         return Result.fromdata(binding_energy=None,
