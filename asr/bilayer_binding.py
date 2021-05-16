@@ -39,6 +39,7 @@ def cell_area(atoms):
 @prepare_result
 class Result(ASRResult):
     """Container for bilayer binding energy."""
+
     binding_energy: float
     interlayer_distance: float
     bilayer_id: str
