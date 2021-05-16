@@ -1484,7 +1484,7 @@ def validate() -> ValidateResult:
             mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             mares.append(mare)
 
-            mass = data[f"effmass_dir{i}"]
+            mass = data[f"effmass_dir{i+1}"]
             paramare = evalparamare(mass, bt, atoms.get_cell(), k_kc, e_k)
             paramares.append(paramare)
 
