@@ -46,7 +46,7 @@ def vdw_energy(atoms):
     vdw_e = atoms.get_potential_energy()
     return vdw_e
 
-def calculate_exfoliation(ml_e, vdw_e, bilayers_energies):
+def calculate_exfoliation(ml_e, vdw_e, bilayers_energies, atoms):
     most_stable, bi_e = min(bilayers_energies, key=lambda t: t[1])
 
     exf_e = 2 * (ml_e + vdw_e) - bi_e
@@ -71,8 +71,8 @@ def main(atoms: Atoms):
     ml_e = monolayer_energy(atoms)
     vdw_e = vdw_energy(atoms)
 
-    exf_energy, most_stable, bilayer_names = calculate_exfoliation(ml_e, vdw_e, bilayers_energies)
+    exf_energy, most_stable, bilayer_names = calculate_exfoliation(ml_e, vdw_e,
+                                                                   bilayers_energies, atoms)
 
     results = ExfoliationResults(exf_energy, most_stable, bilayer_names).to_dict()
-    print(results)
     return results
