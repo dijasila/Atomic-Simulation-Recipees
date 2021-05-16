@@ -2,7 +2,7 @@ import pytest
 from asr.utils.slidingequivalence import mod, equiv_w_vector
 from asr.utils.slidingequivalence import equiv_vector, ElementSet
 from asr.utils.slidingequivalence import Material, slide_equivalent
-from asr.utils.slidingequivalence import align_vector, get_slide_vector
+from asr.utils.slidingequivalence import get_slide_vector
 import numpy as np
 from ase import Atoms
 
@@ -340,6 +340,8 @@ def test_hbn_inverted(asr_tmpdir):
 
     assert slide_equivalent([True, True, False, False], inverted_atoms,
                             atoms) is not None
+
+
 @pytest.mark.ci
 def test_mos2_not_slide_equiv(asr_tmpdir):
     bottom_pos = np.array([[0, 0, 9.06],
@@ -368,8 +370,6 @@ def test_mos2_not_slide_equiv(asr_tmpdir):
     assert not_slided_bilayer != bilayer
     assert len(not_slided_bilayer) == len(bilayer)
 
-    mat1 = Material(indices, not_slided_bilayer)
-    
     assert slide_equivalent(indices, not_slided_bilayer, bilayer) is None
     assert slide_equivalent(indices, bilayer, not_slided_bilayer) is None
 
@@ -385,6 +385,7 @@ def test_one_immovable_set(asr_tmpdir):
 
     assert v is not None
     assert np.allclose(np.array([0, 1 / 5, 0]), v)
+
 
 @pytest.mark.ci
 def test_same_atoms(asr_tmpdir):
@@ -411,7 +412,6 @@ def test_same_misaligned(asr_tmpdir):
     top2 = Atoms("H2O", positions=[[0, 1, 0],
                                    [0, 1, 1],
                                    [0, 2, 0]], cell=(5, 5, 5))
-
 
     v = get_slide_vector(bottom1, top1, bottom2, top2)
     assert v is not None
@@ -457,21 +457,20 @@ def test_hbn(asr_tmpdir):
         f"{prefix}hbnstackings/BN-4a5edc763604/structure.json")
     top1 = read(
         f"{prefix}hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/toplayer.json")
-    
+
     bottom2 = bottom1.copy()
     top2 = top1.copy()
     dvec = (bottom1.cell[0] + bottom1.cell[1]) / 2
     top2.translate(dvec)
-    
+
     v = get_slide_vector(bottom1, top1, bottom2, top2)
     assert v is not None
     assert np.allclose(v, dvec)
 
 
-
-
 def _test_wte2_with_inversion_center(asr_tmpdir):
     pass
+
 
 def _test_wte2_w_o_inversion_center(asr_tmpdir):
     pass

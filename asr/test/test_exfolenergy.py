@@ -1,16 +1,19 @@
 import pytest
-from asr.exfoliationenergy import get_bilayers_energies, vdw_energy, calculate_exfoliation
+from asr.exfoliationenergy import get_bilayers_energies
+from asr.exfoliationenergy import vdw_energy, calculate_exfoliation
 from asr.core import write_json
 from pathlib import Path
 import os
 from ase import Atoms
 import numpy as np
 
+
 @pytest.mark.ci
 def test_get_bilayers_energies(asr_tmpdir):
     expected = [("f1", 1.0),
                 ("f2", 2.5),
                 ("f3", 3.3)]
+
     def make_expected(n, v):
         if not os.path.isdir(f"{asr_tmpdir}/{n}"):
             os.mkdir(f"{asr_tmpdir}/{n}")
@@ -29,12 +32,14 @@ def test_get_bilayers_energies(asr_tmpdir):
         fn = n.split("/")[-1]
         assert (fn, v) in expected
 
+
 @pytest.mark.ci
 def test_vdw_energy(asr_tmpdir):
     atoms = Atoms("H", cell=(5, 5, 5), pbc=True)
 
     e = vdw_energy(atoms)
     assert np.allclose(-0.0012827447371886718, e), e
+
 
 @pytest.mark.ci
 def test_v_energy(asr_tmpdir):
@@ -44,10 +49,9 @@ def test_v_energy(asr_tmpdir):
                          ("S", -1.0)]
     ml_e = np.random.rand() * 3
     vdw_e = np.random.rand()
-    
+
     exf_e, most_stable, bilayers = calculate_exfoliation(ml_e, vdw_e, bilayers_energies)
 
     assert np.allclose(exf_e, 2 * (ml_e + vdw_e) - (-1.0)), exf_e
     assert most_stable == "S"
     assert all(x in bilayers for x in ["A", "B", "C", "S"])
-

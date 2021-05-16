@@ -1,10 +1,8 @@
 from ase.io import read
-from asr.core import read_json, command, option, DictStr, argument
+from asr.core import read_json, command, option, DictStr
 from asr.stack_bilayer import translation
-from gpaw import GPAW, PW, FermiDirac
 import numpy as np
 from ase.calculators.dftd3 import DFTD3
-import os
 
 
 def convert_mixer(mixer):
@@ -62,10 +60,10 @@ def get_bilayer(atoms, top_layer, magmoms, config=None):
          resources='24:10h',
          dependencies=['asr.magstate',
                        'asr.relax_bilayer'])
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())  
+@option('-c', '--calculator', help='Calculator params.', type=DictStr())
 @option('-u', '--hubbardu', type=float, default=3, help="Hubbard U correction")  # U = 3
 @option('-m', '--mixer', help='help', type=DictStr())
-def main(calculator: dict={
+def main(calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
@@ -73,9 +71,10 @@ def main(calculator: dict={
         'kpts': {'density': 12.0, 'gamma': True},
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},
+        'maxiter': 5000,
         'convergence': {'bands': 'CBM+3.0', "energy": 1e-6},
-    
-            'nbands': '200%'} , hubbardu: float = 3, mixer=None): 
+        'nbands': '200%'},
+        hubbardu: float = 3, mixer=None):
 
     """Calculate the energy difference between FM and AFM configurations.
 
@@ -90,10 +89,11 @@ def main(calculator: dict={
 
     If mixer is not None, a custom mixer is used for the GPAW calculation.
     """
-    
+
     if mixer is not None:
-        params['mixer'] = convert_mixer(mixer)
-        
+        raise NotImplementedError  # "params" is not defined
+        # params['mixer'] = convert_mixer(mixer)
+
     u = hubbardu
     atoms = read('../structure.json')
     top_layer = read('toplayer.json')
@@ -117,12 +117,11 @@ def main(calculator: dict={
     U_corrections_dct = {symbol: f':d, {u}' for symbol in atom_ucorr}
 
     calculator.update(setups=U_corrections_dct)
-    
+
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc_fm = get_calculator_class(name)(**calculator, txt=f"fm_U{u}.txt")
     calc_afm = get_calculator_class(name)(**calculator, txt=f"afm_U{u}.txt")
-    
 
     # We use cutoff=60 for the vdW correction to be consistent with
     # asr.relax_bilayer
@@ -131,16 +130,16 @@ def main(calculator: dict={
     # FM Calculation
     bilayer_FM = get_bilayer(atoms, top_layer, magmoms, config="FM")
     initial_magmoms_FM = bilayer_FM.get_initial_magnetic_moments()
-    
+
     bilayer_FM.set_calculator(calc_fm)
     final_magmoms_FM = bilayer_FM.get_magnetic_moments()
 
     bilayer_FM.set_calculator(calc_fm_D3)
     eFM = bilayer_FM.get_potential_energy()
-    
+
     FM_syms = bilayer_FM.get_chemical_symbols()
     for x in [i for i, e in enumerate(FM_syms) if e in TM3d_atoms]:
-            assert np.sign(final_magmoms_FM[x]) == np.sign(initial_magmoms_FM[x])
+        assert np.sign(final_magmoms_FM[x]) == np.sign(initial_magmoms_FM[x])
 
     # AFM Calculation
     calc_afm_D3 = DFTD3(dft=calc_afm, cutoff=60)
@@ -151,14 +150,17 @@ def main(calculator: dict={
     eAFM = bilayer_AFM.get_potential_energy()
 
     eDIFF = eFM - eAFM
-    
+
     M_AFM = calc_afm.get_magnetic_moment()
-    if eDIFF > 0 or not np.allclose(np.linalg.norm(M_AFM),0):
+    if eDIFF > 0 or not np.allclose(np.linalg.norm(M_AFM), 0):
         calc_afm.write(f'gs_U{u}.gpw')
     else:
         calc_fm.write(f'gs_U{u}.gpw')
 
-    return dict(eFM=eFM, eAFM=eAFM, eDIFF=eDIFF, AFMNormIsZero=np.allclose(np.linalg.norm(M_AFM),0))
+    return dict(eFM=eFM, eAFM=eAFM,
+                eDIFF=eDIFF,
+                AFMNormIsZero=np.allclose(np.linalg.norm(M_AFM), 0))
+
 
 if __name__ == '__main__':
     main.cli()
