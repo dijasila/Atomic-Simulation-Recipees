@@ -329,8 +329,7 @@ def invert(atoms):
     return atoms2
 
 
-@pytest.mark.ci
-def test_hbn_inverted(asr_tmpdir):
+def dont_test_hbn_inverted(asr_tmpdir):
     from ase.io import read
     prefix = "/home/niflheim/asbra/stacked/"
     atoms = read(
@@ -449,8 +448,7 @@ def test_not_same_top_atoms(asr_tmpdir):
     assert v is None, v
 
 
-@pytest.mark.ci
-def test_hbn(asr_tmpdir):
+def dont_test_hbn(asr_tmpdir):
     from ase.io import read
     prefix = "/home/niflheim/asbra/stacked/"
     bottom1 = read(
