@@ -865,7 +865,7 @@ def main(
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             calculation = calculations[name]
-            gpw2 = calculation.paths[0]
+            gpw2 = str(calculation.paths[0])
             try:
                 masses = embands(
                     atoms=atoms,
