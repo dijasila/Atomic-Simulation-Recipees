@@ -278,7 +278,7 @@ stability_descriptions = {
 
 def stability_rating(hform, ehull):
     if 0.2 < hform:
-         return LOW
+        return LOW
     if ehull + 0.2 < hform:
         return MEDIUM
     return HIGH
