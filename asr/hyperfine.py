@@ -82,6 +82,15 @@ def webpanel(result, row, key_description):
                              columnlabels=['g-factor'],
                              rowlabels=gyro_rownames)
 
+    sct_table = table(result, 'Global hyperfine properties')
+    sct_table['rows'].extend(
+        [[describe_entry(f"Hyperfine interaction energy",
+                         description=result.key_descriptions['delta_E_hyp']),
+          f'{result.delta_E_hyp:.2e} eV'],
+         [describe_entry(f"Spin coherence time",
+                         description=result.key_descriptions['sc_time']),
+          f'{result.sc_time:.2e} s']])
+
     hyperfine = WebPanel('Hyperfine structure',
                          columns=[[hf_table], [gyro_table]],
                          sort=1)
@@ -126,11 +135,15 @@ class Result(ASRResult):
     hyperfine: typing.List[HyperfineResult]
     gfactors: typing.List[GyromagneticResult]
     center: typing.Tuple[float, float, float]
+    delta_E_hyp: float
+    sc_time: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         hyperfine='List of HyperfineResult objects for all atoms.',
         gfactors='List of GyromagneticResult objects for each atom species.',
-        center='Center to show values on webpanel (only relevant for defects).')
+        center='Center to show values on webpanel (only relevant for defects).',
+        delta_E_hyp='Hyperfine interaction energy [eV].',
+        sc_time='Spin coherence time [s].')
 
     formats = {'ase_webpanel': webpanel}
 
@@ -143,7 +156,7 @@ class Result(ASRResult):
 def main() -> Result:
     """Calculate hyperfine splitting."""
     atoms, calc = restart('gs.gpw', txt=None)
-    hf_results, gfactor_results = calculate_hyperfine(atoms, calc)
+    hf_results, gfactor_results, ht_int_en, sct = calculate_hyperfine(atoms, calc)
 
     if Path('results-asr.defect_symmetry.json').is_file():
         def_res = read_json('results-asr.defect_symmetry.json')
@@ -154,7 +167,9 @@ def main() -> Result:
     return Result.fromdata(
         hyperfine=hf_results,
         gfactors=gfactor_results,
-        center=center)
+        center=center,
+        delta_E_hyp=ht_int_en,
+        sc_time=sct)
 
 
 def calculate_hyperfine(atoms, calc):
@@ -232,11 +247,82 @@ def calculate_hyperfine(atoms, calc):
                            'Bi' : (209, 6.91012),
                            'La' : (139, 6.049147)}
 
+    nuclear_abundance = {'H':  (99.98, 0.5),
+                         'He':  (1.3*10-4, 0.5),
+                         'Li': (92.58, 1.5), 
+                         'Be':  (100, 1.5),
+                         'B':   (80.42, 1.5),
+                         'C': (1.108, 0.5),
+                         'N':  (99.635, 1.0), 
+                         'O':  (3.7*10-2, 2.5),
+                         'F':  (100, 0.5),
+                         'Ne':(0.257, 1.5),
+                         'Na':  (100, 0.5),
+                         'Mg':  (10.13, 2.5),
+                         'Al':  (100, 2.5),
+                         'Si':  (4.7, 0.5),
+                         'P':  (100, 0.5),
+                         'S': (0.76, 1.5),
+                         'Cl': (75.53, 1.5),
+                         'K':  (93.1, 1.5),
+                         'Ca': (0.145, 3.5),
+                         'Sc': (100,3.5),
+                         'Ti':  (7.28, 2.5),
+                         'V' :  (99.76, 3.5),
+                         'Cr': (9.55, 1.5),
+                         'Mn':  (100, 2.5),
+                         'Fe':  (2.19, 0.5),
+                         'Co':(100, 3.5),
+                         'Ni' :  (1.19, 1.5),
+                         'Cu':  (69.09, 1.5),
+                         'Zn' :  (4.11, 2.5),
+                         'Ga':  (60.4, 1.5),
+                         'Ge': (7.76, 4.5),
+                         'As' :  (100, 1.5),
+                         'Se' :  (7.58, 0.5),
+                         'Br' :  (50.54, 1.5),
+                         'Kr' :  (11.55, 4.5),
+                         'Rb' : (72.15, 2.5),
+                         'Sr' :  (7.02, 4.5),
+                         'Y' : (100, 0.5),
+                         'Zr' :  (11.23, 2.5),
+                         'Nb' : (100, 4.5),
+                         'Mo' : (15.72, 2.5),
+                         'Ru' :  (17.07, 2.5),
+                         'Rh' :  (100,0.5),
+                         'Ag' : (51.82, 0.5),
+                         'Cd' : (12.75, 0.5),
+                         'In' : (95.72, 4.5),
+                         'Sn' :  (8.58, 0.5),
+                         'Sb' :  (57.25, 2.5),
+                         'Te' :  (6.99, 0.5),
+                         'I' :   (100, 2.5),
+                         'Xe':  (26.44, 0.5),
+                         'Cs' :  (100, 3.5),
+                         'Ba' :  (11.32, 3.5),
+                         'Lu' :      (97.41, 3.5),
+                         'Hf' : (13.75, 4.5), 
+                         'Ta' : (99.98, 3.5),
+                         'W' : (14.4, 0.5),
+                         'Re' :  (62.93, 2.5),
+                         'Os':  (16.1, 1.5), 
+                         'Ir' : (62.7, 1.5),
+                         'Pt' :  (33.7, 0.5),
+                         'Au' :  (100 , 1.5),
+                         'Hg' : (16.84, 0.5),
+                         'Tl' :  (70.5, 0.5),
+                         'Pb' :  (22.6 , 0.5),
+                         'Bi' :  (100 , 4.5),
+                         'La' :  (99.91, 3.5)}
+
+    _hbar = 6.5822e-16 # in eV * s
+
     symbols = atoms.symbols
     magmoms = atoms.get_magnetic_moments()
     total_magmom = atoms.get_magnetic_moment()
     assert total_magmom != 0.0
 
+    # convert from MHz/T to ?
     g_factors = {symbol: ratio * 1e6 * 4 * pi * units._mp / units._e
                  for symbol, (n, ratio) in gyromagnetic_ratios.items()}
 
@@ -251,6 +337,8 @@ def calculate_hyperfine(atoms, calc):
 
     used = {}
     hyperfine_results = []
+    hf_list = []
+    symbol_list = []
     for a, A_vv in enumerate(A_avv):
         symbol = symbols[a]
         magmom = magmoms[a]
@@ -258,6 +346,8 @@ def calculate_hyperfine(atoms, calc):
         used[symbol] = g_factor
         A_vv *= g_factor / total_magmom * scale
         numbers = np.linalg.eigvalsh(A_vv)
+        hf_list.append(sum(numbers) / 3.)
+        symbol_list.append(str(symbol))
         hyperfine_result = HyperfineResult.fromdata(
             index=a,
             kind=symbol,
@@ -280,7 +370,24 @@ def calculate_hyperfine(atoms, calc):
             g=g)
         gyro_results.append(gyro_result)
 
-    return hyperfine_results, gyro_results
+    A = dict(zip(hf_list, symbol_list))
+    sym = max(A.items())[1]
+    A_max = max(A.items())[0]
+    N_nb = 0
+    for element in A:
+        if element > 0.5 * A_max:
+            N_nb += 1
+
+    abundance = nuclear_abundance[sym][0]
+    nuclear_spin = nuclear_abundance[sym][1]
+
+    hf_int_en = 0.5 * max(A.keys()) / N_nb * 5.7883818012e-11 * (0.01 * abundance) * nuclear_spin
+    print(f'Nuclear spin of {sym} is {nuclear_spin:.2f} with nuclear abbundance {abundance:.3f}.')
+    print(f'Hyperfine interaction energy: {hf_int_en:.2e} eV')
+    sct = 0.5 * _hbar / hf_int_en
+    print(f'Spin coherence time: {sct:.2e} s')
+
+    return hyperfine_results, gyro_results, hf_int_en, sct
 
 if __name__ == '__main__':
     main.cli()
