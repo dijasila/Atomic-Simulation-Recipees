@@ -18,7 +18,6 @@ import asr
 from asr.core import ASRResult, decode_object, UnknownDataFormat
 
 
-
 def import_dbapp_from_ase():
     # Compatibility fix since ASE is moving away from global variables.
     try:
