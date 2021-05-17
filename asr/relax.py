@@ -42,17 +42,19 @@ Relax using the LDA exchange-correlation functional
 
 
 """
-import typing
-from pathlib import Path
-import numpy as np
-from ase.io import write, Trajectory
-from ase import Atoms
-from ase.optimize.bfgs import BFGS
-from ase.calculators.calculator import PropertyNotImplementedError
-
-from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
-from math import sqrt
 import time
+import typing
+from math import sqrt
+from pathlib import Path
+
+import numpy as np
+from ase import Atoms
+from ase.calculators.calculator import PropertyNotImplementedError
+from ase.io import Trajectory, write
+from ase.optimize.bfgs import BFGS
+
+from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
+                      prepare_result)
 
 
 class BrokenSymmetryError(Exception):
@@ -210,11 +212,11 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
-    name = Path(tmp_atoms_file).with_suffix('').name
+    logfile = Path(tmp_atoms_file).with_suffix('.log').name
     try:
         trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
         opt = myBFGS(filter,
-                     logfile=name,
+                     logfile=logfile,
                      trajectory=trajfile)
 
         # fmax=0 here because we have implemented our own convergence criteria
@@ -246,8 +248,9 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
                 number = number2
                 nsym = nsym2
                 if enforce_symmetry:
-                    atoms.set_symmetries(symmetries=newdataset['rotations'],
-                                         translations=newdataset['translations'])
+                    atoms.set_symmetries(
+                        symmetries=newdataset['rotations'],
+                        translations=newdataset['translations'])
 
             if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
                 opt.log()

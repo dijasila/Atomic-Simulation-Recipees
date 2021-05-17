@@ -53,9 +53,13 @@ def webpanel(result, row, key_descriptions):
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
+
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+
     panel = {'title':
              describe_entry(
-                 'Basic magnetic properties (PBE)',
+                 f'Basic magnetic properties ({xcname})',
                  panel_description),
              'columns': [[magtable], []],
              'sort': 11}

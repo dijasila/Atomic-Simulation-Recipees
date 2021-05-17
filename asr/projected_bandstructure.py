@@ -5,10 +5,11 @@ from asr.core import command, ASRResult, prepare_result
 import typing
 
 from asr.database.browser import make_panel_description
+from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
-atomic orbitals (s,p,d). Spin-orbit interactions are not included in these
+atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
 plots.""",
     articles=[
         'C2DB',
@@ -16,13 +17,15 @@ plots.""",
 )
 
 
-# ---------- Webpanel ---------- #
+scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
+
+    xcname = gs_xcname_from_row(row)
 
     # Projected band structure figure
     parameter_description = entry_parameter_description(
@@ -40,19 +43,19 @@ def webpanel(result, row, key_descriptions):
             dependency,
             exclude_keys=exclude_keys)
         dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected band structure without spin-orbit coupling\n\n'
+    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
     panel = WebPanel(
         title=describe_entry(
-            'Projected band structure and DOS (PBE)',
+            f'Projected band structure and DOS ({xcname})',
             panel_description),
-        columns=[[describe_entry(fig('pbe-projected-bs.png', link='empty'),
+        columns=[[describe_entry(fig(scf_projected_bs_filename, link='empty'),
                                  description=explanation)],
                  [fig('bz-with-gaps.png')]],
-        plot_descriptions=[{'function': projected_bs_pbe,
-                            'filenames': ['pbe-projected-bs.png']}],
+        plot_descriptions=[{'function': projected_bs_scf,
+                            'filenames': [scf_projected_bs_filename]}],
         sort=13.5)
 
     return [panel]
@@ -336,7 +339,7 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     return pie_xi
 
 
-def projected_bs_pbe(row, filename='pbe-projected-bs.png',
+def projected_bs_scf(row, filename,
                      npoints=40, markersize=36., res=64,
                      figsize=(5.5, 5), fontsize=10):
     """Produce the projected band structure.
@@ -358,7 +361,6 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data
     data = row.data.get('results-asr.projected_bandstructure.json')

@@ -180,10 +180,9 @@ def collect_file(filename: Path):
 
 
 def collect_info(filename: Path):
+    """Collect info.json."""
     from asr.core import read_json
     kvp = read_json(filename)
-    if isinstance(kvp, ASRResult):
-        raise ValueError("Didnt expect this")
     data = {str(filename): kvp}
 
     return kvp, data
@@ -271,13 +270,25 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            elif name.is_file() and fnmatch(name, "info.json"):
-                tmpkvp, tmpdata = collect_info(name)
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
-            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
-                tmpkvp, tmpdata = collect_file(name)
-                kvp.update(tmpkvp)
+            else:
+                if name.is_file() and name.name == 'info.json':
+                    tmpkvp, tmpdata = collect_info(name)
+                elif name.is_file() and any(fnmatch(name, pattern)
+                                            for pattern in patterns):
+                    tmpkvp, tmpdata = collect_file(name)
+                else:
+                    continue
+
+                for key, value in tmpkvp.items():
+                    # Skip values not suitable for a database column:
+                    if isinstance(value, (bool, int, float, str)):
+                        if key in kvp and kvp[key] != value:
+                            raise ValueError(
+                                f'Found {key}={value} in {name}: '
+                                f'{key} already read once: '
+                                f'{key}={kvp[key]}')
+                        kvp[key] = value
+
                 data.update(tmpdata)
 
         if not data['__children__']:
@@ -445,7 +456,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
          dbname: str = 'database.db',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""

@@ -44,7 +44,7 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
 
 
 def collect_data(atoms):
-    """Band structure PBE and GW +- SOC."""
+    """Band structure SCF and GW +- SOC."""
     from ase.io.jsonio import read_json
     from pathlib import Path
 
@@ -91,8 +91,10 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
 
-    panel = ('Density of states (PBE)',
+    panel = (f'Density of states ({xcname})',
              [[fig('dos.png')], []])
 
     things = [(plot, ['dos.png'])]

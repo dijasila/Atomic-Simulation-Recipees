@@ -7,7 +7,7 @@ from asr.database.browser import make_panel_description, href, describe_entry
 
 panel_description = make_panel_description(
     """The Born charge of an atom is defined as the derivative of the static
-macroscopic polarization w.r.t. its displacements along x,y,z directions. The
+macroscopic polarization w.r.t. its displacements u_i (i=x,y,z). The
 polarization in a periodic direction is calculated as an integral over Berry
 phases. The polarization in a non-periodic direction is obtained by direct
 evaluation of the first moment of the electron density. The Born charge is
