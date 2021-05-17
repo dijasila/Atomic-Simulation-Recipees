@@ -395,9 +395,9 @@ def test_same_atoms(asr_tmpdir):
     bottom2 = bottom1.copy()
     top2 = bottom1.copy()
 
-    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    v = get_slide_vector(bottom1, top1, bottom2, top2, np.zeros(3), np.zeros(3))
     assert v is not None
-    assert np.allclose(v, np.array([0, 0, 0])), v
+    assert np.allclose(v, np.zeros(3)), v
 
 
 @pytest.mark.ci
@@ -412,9 +412,9 @@ def test_same_misaligned(asr_tmpdir):
                                    [0, 1, 1],
                                    [0, 2, 0]], cell=(5, 5, 5))
 
-    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    v = get_slide_vector(bottom1, top1, bottom2, top2, np.zeros(3), np.zeros(3))
     assert v is not None
-    assert np.allclose(v, np.array([0, 1, 0])), v
+    assert np.allclose(v, np.array([0, 1 / bottom1.cell[1, 1], 0])), v
 
 
 @pytest.mark.ci
@@ -429,7 +429,7 @@ def test_not_same_bottom_atoms(asr_tmpdir):
 
     top2 = bottom1.copy()
 
-    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    v = get_slide_vector(bottom1, top1, bottom2, top2, np.zeros(3), np.zeros(3))
     assert v is None, v
 
 
@@ -444,7 +444,7 @@ def test_not_same_top_atoms(asr_tmpdir):
                                    [0, 0, 1],
                                    [0, 1, 0]], cell=(5, 5, 5))
 
-    v = get_slide_vector(bottom1, top1, bottom2, top2)
+    v = get_slide_vector(bottom1, top1, bottom2, top2, np.zeros(2), np.zeros(2))
     assert v is None, v
 
 

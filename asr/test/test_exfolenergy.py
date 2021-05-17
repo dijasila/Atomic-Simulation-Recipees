@@ -49,8 +49,10 @@ def test_v_energy(asr_tmpdir):
     ml_e = np.random.rand() * 3
     vdw_e = np.random.rand()
 
-    exf_e, most_stable, bilayers = calculate_exfoliation(ml_e, vdw_e, bilayers_energies)
+    atoms = Atoms("H", cell=(5, 5, 5))
+    area = 5 * 5
+    exf_e, most_stable, bilayers = calculate_exfoliation(ml_e, vdw_e, bilayers_energies, atoms)
 
-    assert np.allclose(exf_e, 2 * (ml_e + vdw_e) - (-1.0)), exf_e
+    assert np.allclose(exf_e * area, 2 * (ml_e + vdw_e) - (-1.0)), exf_e
     assert most_stable == "S"
     assert all(x in bilayers for x in ["A", "B", "C", "S"])

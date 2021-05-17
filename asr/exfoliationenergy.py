@@ -49,9 +49,12 @@ def vdw_energy(atoms):
 
 
 def calculate_exfoliation(ml_e, vdw_e, bilayers_energies, atoms):
+    import numpy as np
     most_stable, bi_e = min(bilayers_energies, key=lambda t: t[1])
 
-    exf_e = 2 * (ml_e + vdw_e) - bi_e
+    area = np.linalg.norm(np.cross(atoms.cell[0], atoms.cell[1]))
+
+    exf_e = (2 * (ml_e + vdw_e) - bi_e) / area
     return exf_e, most_stable, [f for f, s in bilayers_energies]
 
 
