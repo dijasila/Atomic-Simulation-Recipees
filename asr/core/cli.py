@@ -116,20 +116,15 @@ def init(directories):
 @click.option(
     '-j', '--njobs', type=int, default=1,
     help='Run COMMAND in parallel on JOBS processes distributed over FOLDERS.')
-@click.option('-S', '--skip-if-done', is_flag=True,
-              help='Skip execution of recipe if done.')
 @click.option('--dont-raise', is_flag=True, default=False,
               help='Continue to next folder when encountering error.')
-@click.option('--update', is_flag=True, default=False,
-              help="Update existing results files. "
-              "Only runs a recipe if it is already done.")
 @click.option('--must-exist', type=str,
               help="Skip folder where this file doesn't exist.")
 @click.option('--defaults', type=DictStr(),
               help="Set default parameters. Takes precedence over params.json.")
 @click.pass_context
 def run(ctx, command, folders, not_recipe, dry_run, njobs,
-        skip_if_done, dont_raise, update, must_exist,
+        dont_raise, must_exist,
         defaults):
     r"""Run recipe or python function in multiple folders.
 
@@ -159,12 +154,7 @@ def run(ctx, command, folders, not_recipe, dry_run, njobs,
     else:
         prt(f'Number of folders: {nfolders}')
 
-    if update:
-        assert not skip_if_done
-
     kwargs = {
-        'update': update,
-        'skip_if_done': skip_if_done,
         'dont_raise': dont_raise,
         'dry_run': dry_run,
         'not_recipe': not_recipe,
@@ -201,9 +191,8 @@ def append_job(string: str, job_num: Union[int, None] = None):
 
 
 def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
-                skip_if_done: bool, dont_raise: bool,
+                dont_raise: bool,
                 job_num: Union[int, None] = None,
-                update: bool = False,
                 must_exist: Union[str, None] = None,
                 defaults: Dict[str, Any]):
     """Run command in folders."""
@@ -212,11 +201,6 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
     function = None
     if '@' in module:
         module, function = module.split('@')
-
-    if update:
-        assert not skip_if_done, \
-            append_job('Cannot combine --update with --skip-if-done.',
-                       job_num=job_num)
 
     if not_recipe:
         assert function, \
@@ -247,11 +231,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
     for i, folder in enumerate(folders):
         with chdir(Path(folder)):
             try:
-                if skip_if_done and func.done:
-                    continue
-                elif update and not func.done:
-                    continue
-                elif must_exist and not Path(must_exist).exists():
+                if must_exist and not Path(must_exist).exists():
                     continue
                 pipe = not sys.stdout.isatty()
                 if pipe:
