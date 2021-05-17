@@ -68,7 +68,7 @@ class Runner():
         with chdir(workdir, create=True):
             result = func(run_specification)
         return result
-        
+
     def make_decorator(
             self,
     ):
