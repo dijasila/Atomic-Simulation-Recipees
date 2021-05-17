@@ -60,20 +60,22 @@ class Runner():
     def get_workdir_name(self, run_specification):
         return get_workdir_name(run_specification)
 
+    def run(self, func, run_specification):
+        workdir = self.get_workdir_name(
+            run_specification,
+        )
+
+        with chdir(workdir, create=True):
+            result = func(run_specification)
+        return result
+        
     def make_decorator(
             self,
     ):
 
         def decorator(func):
             def wrapped(run_specification):
-                workdir = self.get_workdir_name(
-                    run_specification,
-                )
-
-                with chdir(workdir, create=True):
-                    run_record = func(run_specification)
-
-                return run_record
+                return self.run(func, run_specification)
             return wrapped
 
         return decorator
