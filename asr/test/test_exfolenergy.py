@@ -51,7 +51,10 @@ def test_v_energy(asr_tmpdir):
 
     atoms = Atoms("H", cell=(5, 5, 5))
     area = 5 * 5
-    exf_e, most_stable, bilayers = calculate_exfoliation(ml_e, vdw_e, bilayers_energies, atoms)
+    exf_e, most_stable, bilayers = calculate_exfoliation(ml_e,
+                                                         vdw_e,
+                                                         bilayers_energies,
+                                                         atoms)
 
     assert np.allclose(exf_e * area, 2 * (ml_e + vdw_e) - (-1.0)), exf_e
     assert most_stable == "S"
