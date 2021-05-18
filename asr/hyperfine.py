@@ -91,7 +91,7 @@ def webpanel(result, row, key_description):
           f'{result.delta_E_hyp:.2e} eV'],
          [describe_entry(f"Spin coherence time",
                          description=result.key_descriptions['sc_time']),
-          f'{result.sc_time:.2e} s']])
+          f'{result.sc_time:.2e} ms']])
 
     hyperfine = WebPanel('Hyperfine structure',
                          columns=[[hf_table], [gyro_table, sct_table]],
