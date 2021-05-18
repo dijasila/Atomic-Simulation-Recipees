@@ -51,7 +51,9 @@ def get_gyro_array(gfactors_results):
 
 def webpanel(result, row, key_description):
     from asr.database.browser import (WebPanel,
-                                      matrixtable)
+                                      matrixtable,
+                                      table,
+                                      describe_entry)
 
     hf_results = result.hyperfine
     center = result.center
@@ -63,7 +65,7 @@ def webpanel(result, row, key_description):
     for i, element in enumerate(orderarray[:10, 0]):
         hf_atoms.append(hf_results[int(element)]['kind']
                         + str(hf_results[int(element)]['index']))
-        hf_array[i, 0] = f"{int(hf_results[int(element)]['magmom']):2d}"
+        hf_array[i, 0] = f"{hf_results[int(element)]['magmom']:.2f}"
         hf_array[i, 1] = f"{hf_results[int(element)]['eigenvalues'][0]:.2f}"
         hf_array[i, 2] = f"{hf_results[int(element)]['eigenvalues'][1]:.2f}"
         hf_array[i, 3] = f"{hf_results[int(element)]['eigenvalues'][2]:.2f}"
@@ -82,7 +84,7 @@ def webpanel(result, row, key_description):
                              columnlabels=['g-factor'],
                              rowlabels=gyro_rownames)
 
-    sct_table = table(result, 'Global hyperfine properties')
+    sct_table = table(result, 'Global hyperfine properties', [])
     sct_table['rows'].extend(
         [[describe_entry(f"Hyperfine interaction energy",
                          description=result.key_descriptions['delta_E_hyp']),
@@ -92,7 +94,7 @@ def webpanel(result, row, key_description):
           f'{result.sc_time:.2e} s']])
 
     hyperfine = WebPanel('Hyperfine structure',
-                         columns=[[hf_table], [gyro_table]],
+                         columns=[[hf_table], [gyro_table, sct_table]],
                          sort=1)
 
     return [hyperfine]
@@ -316,23 +318,24 @@ def calculate_hyperfine(atoms, calc):
                          'La' :  (99.91, 3.5)}
 
     _hbar = 6.5822e-16 # in eV * s
+    _mu_bohr = 5.788381e-5 # in eV / T
 
     symbols = atoms.symbols
     magmoms = atoms.get_magnetic_moments()
     total_magmom = atoms.get_magnetic_moment()
     assert total_magmom != 0.0
 
-    # convert from MHz/T to ?
+    # convert from MHz/T to eV
     g_factors = {symbol: ratio * 1e6 * 4 * pi * units._mp / units._e
                  for symbol, (n, ratio) in gyromagnetic_ratios.items()}
 
     scale = units._e / units._hplanck * 1e-6
-    unit = 'MHz'
+
+    # return hyperfine tensor in eV units
     A_avv = hyperfine_parameters(calc)
     print('Hyperfine coupling paramters '
-          f'in {unit}:\n')
+          f'in MHz:\n')
     columns = ['1.', '2.', '3.']
-
     print('  atom  magmom      ', '       '.join(columns))
 
     used = {}
@@ -381,11 +384,12 @@ def calculate_hyperfine(atoms, calc):
     abundance = nuclear_abundance[sym][0]
     nuclear_spin = nuclear_abundance[sym][1]
 
-    hf_int_en = 0.5 * max(A.keys()) / N_nb * 5.7883818012e-11 * (0.01 * abundance) * nuclear_spin
+    # hyperfine interaction energy in eV
+    hf_int_en = 0.5 * A_max / N_nb * _mu_bohr * (0.01 * abundance) * nuclear_spin
     print(f'Nuclear spin of {sym} is {nuclear_spin:.2f} with nuclear abbundance {abundance:.3f}.')
     print(f'Hyperfine interaction energy: {hf_int_en:.2e} eV')
-    sct = 0.5 * _hbar / hf_int_en
-    print(f'Spin coherence time: {sct:.2e} s')
+    sct = 0.5 * _hbar / hf_int_en * 1e3
+    print(f'Spin coherence time: {sct:.2e} ms')
 
     return hyperfine_results, gyro_results, hf_int_en, sct
 
