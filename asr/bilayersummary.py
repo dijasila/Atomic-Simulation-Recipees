@@ -83,7 +83,8 @@ def scatter_energies(row, fname):
     fs = 12
     ax.scatter(data[:, 1], data[:, 0] * 1000)
     for desc, dat in d.items():
-        ax.annotate(ns[desc], (dat[1], (dat[0] + 0.75e-4)*1000), va="bottom", ha="center",
+        ax.annotate(ns[desc], (dat[1], (dat[0] + 0.75e-4) * 1000),
+                    va="bottom", ha="center",
                     fontsize=fs)
     (y1, y2) = ax.get_ylim()
     ax.set_ylim((y1, y2 + 3e-4 * 1000))

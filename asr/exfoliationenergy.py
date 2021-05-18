@@ -68,7 +68,7 @@ def main(atoms: Atoms) -> ASRResult:
     bilayers_energies = get_bilayers_energies(p)
 
     if len(bilayers_energies) == 0:
-        return ExfoliationResults.default().to_dict()
+        raise ValueError('No bilayers found!')
 
     ml_e = monolayer_energy(atoms)
     vdw_e = vdw_energy(atoms)
