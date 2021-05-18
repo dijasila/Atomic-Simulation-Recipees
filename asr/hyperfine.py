@@ -6,7 +6,7 @@ from asr.core import (command, ASRResult, prepare_result,
 from gpaw import restart
 
 
-def get_atoms_close_to_center(center):
+def get_atoms_close_to_center(center, row):
     """
     Return ordered list of the atoms closest to the defect.
 
@@ -14,8 +14,7 @@ def get_atoms_close_to_center(center):
     Return list of atoms closest to the origin otherwise.
     """
     from ase import Atoms
-    from ase.io import read
-    atoms = read('structure.json')
+    atoms = row.toatoms()
 
     if center[0] is None:
         center = [0., 0., 0.]
@@ -58,7 +57,7 @@ def webpanel(result, row, key_description):
     hf_results = result.hyperfine
     center = result.center
 
-    orderarray = get_atoms_close_to_center(center)
+    orderarray = get_atoms_close_to_center(center, row)
 
     hf_array = np.zeros((10, 4))
     hf_atoms = []
