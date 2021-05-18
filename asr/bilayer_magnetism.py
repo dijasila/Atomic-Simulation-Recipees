@@ -1,5 +1,5 @@
 from ase.io import read
-from asr.core import read_json, command, option, DictStr
+from asr.core import read_json, command, option, DictStr, ASRResult
 from asr.stack_bilayer import translation
 import numpy as np
 from ase.calculators.dftd3 import DFTD3
@@ -74,7 +74,8 @@ def main(calculator: dict = {
         'maxiter': 5000,
         'convergence': {'bands': 'CBM+3.0', "energy": 1e-6},
         'nbands': '200%'},
-        hubbardu: float = 3, mixer=None):
+         hubbardu: float = 3,
+         mixer: dict = None) -> ASRResult:
     """Calculate the energy difference between FM and AFM configurations.
 
     Returns the energy difference between the FM and

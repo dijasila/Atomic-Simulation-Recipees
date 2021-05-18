@@ -33,14 +33,6 @@ def dont_test_get_bilayers_energies(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_vdw_energy(asr_tmpdir):
-    atoms = Atoms("H", cell=(5, 5, 5), pbc=True)
-
-    e = vdw_energy(atoms)
-    assert np.allclose(-0.0012827447371886718, e), e
-
-
-@pytest.mark.ci
 def test_v_energy(asr_tmpdir):
     bilayers_energies = [("A", 1.0),
                          ("B", 2.0),
