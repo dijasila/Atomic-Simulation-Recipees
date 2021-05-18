@@ -1,6 +1,6 @@
 import pytest
 from asr.exfoliationenergy import get_bilayers_energies
-from asr.exfoliationenergy import vdw_energy, calculate_exfoliation
+from asr.exfoliationenergy import calculate_exfoliation
 from asr.core import write_json
 from pathlib import Path
 import os
