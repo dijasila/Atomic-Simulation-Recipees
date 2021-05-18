@@ -68,7 +68,7 @@ def make_summary_table(result):
                     for desc, val in result.binding_data.items()],
                    key=lambda t: -t[1])
     binding_rows = [[make_row_title(desc, result),
-                     f'{val:0.5f} eV/Å<sup>2</sup>'] for desc, val in items]
+                     f'{val*1000:0.0f} meV/Å<sup>2</sup>'] for desc, val in items]
 
     return binding_rows
 
@@ -78,18 +78,18 @@ def scatter_energies(row, fname):
     ns = row.data.get('results-asr.bilayersummary.json')['numberings']
     import matplotlib.pyplot as plt
     data = np.array(list(d.values()))
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(6, 5))
 
     fs = 12
-    ax.scatter(data[:, 1], data[:, 0])
+    ax.scatter(data[:, 1], data[:, 0] * 1000)
     for desc, dat in d.items():
-        ax.annotate(ns[desc], (dat[1], dat[0] + 0.75e-4), va="bottom", ha="center",
+        ax.annotate(ns[desc], (dat[1], (dat[0] + 0.75e-4)*1000), va="bottom", ha="center",
                     fontsize=fs)
     (y1, y2) = ax.get_ylim()
-    ax.set_ylim((y1, y2 + 3e-4))
+    ax.set_ylim((y1, y2 + 3e-4 * 1000))
 
-    maxe = np.max(data[:, 0])
-    cutoff = maxe - 2e-3
+    maxe = np.max(data[:, 0]) * 1000
+    cutoff = maxe - 2e-3 * 1000
     ax.axhline(cutoff, color="black",
                linestyle="dashed", linewidth=2)
     xmin, xmax = plt.xlim()
@@ -97,13 +97,13 @@ def scatter_energies(row, fname):
     ax.annotate('Stability threshold', (xmax - 0.2 * deltax, cutoff),
                 va='bottom', ha='center', fontsize=fs)
     if y2 > 0.15:
-        cutoff2 = 0.15
+        cutoff2 = 0.15 * 1000
         ax.axhline(cutoff2)
         ax.annotate('Exfoliability threshold', (xmax - 0.4 * deltax, cutoff2),
                     va='bottom', ha='center', fontsize=fs)
 
     ax.set_xlabel(r'Interlayer distance [Å]', fontsize=fs)
-    ax.set_ylabel(r'Binding energy [eV/Å$^2$]', fontsize=fs)
+    ax.set_ylabel(r'Binding energy [meV/Å$^2$]', fontsize=fs)
     # plt.legend()
     plt.tight_layout()
     plt.savefig(fname)

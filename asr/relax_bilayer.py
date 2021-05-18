@@ -1,4 +1,4 @@
-from asr.core import command, option, AtomsFile, DictStr
+from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
 import numpy as np
 from ase import Atoms
 import os
@@ -78,6 +78,24 @@ def initial_displacement(atoms, distance):
     return distance + (maxz - minz)
 
 
+@prepare_result
+class RelaxBilayerResult(ASRResult):
+    heights: np.ndarray
+    energies: np.ndarray
+    optimal_height: float
+    energy: float
+    curvature: float
+    FittingParams: np.ndarray
+
+    key_descriptions = dict(
+        heights='Interlayer distance calculated during optimization',
+        energies='Energies calculated during optimization',
+        optimal_height='Minimum energy height',
+        energy='Energy at optimal height',
+        curvature='Curvature at optimal height',
+        FittingParams='Parameters for second order fit')
+
+
 @command('asr.relax_bilayer')
 @option('-a', '--atoms', help='Base layer',
         type=AtomsFile(), default='../structure.json')
@@ -90,8 +108,8 @@ def initial_displacement(atoms, distance):
 @option('-v', '--vacuum', help='Extra vacuum',
         type=float)
 @option('--restart/--norestart', help='Delete memo and start relaxation from scratch',
-        is_flag=True)
-@option('--outputname', help='Name of output file')
+        is_flag=True, type=bool)
+@option('--outputname', help='Name of output file', type=str)
 def main(atoms: Atoms,
          settings: dict = {'d3': True,
                            'xc': 'PBE',
@@ -106,7 +124,7 @@ def main(atoms: Atoms,
          distance: float = 5,
          vacuum: float = 6,
          restart: bool = False,
-         outputname: str = 'structure.json'):
+         outputname: str = 'structure.json') -> ASRResult:
     from asr.core import read_json
     from ase.io import read
     from gpaw import mpi
@@ -183,7 +201,7 @@ def main(atoms: Atoms,
                'curvature': P[2],
                'FittingParams': P}
 
-    return results
+    return RelaxBilayerResult.fromdata(**results)
 
 
 def webpanel():

@@ -1,25 +1,22 @@
-from asr.core import command, option, AtomsFile, read_json
+from asr.core import command, option, AtomsFile, read_json, ASRResult, prepare_result
 from ase.calculators.calculator import get_calculator_class
 from pathlib import Path
 from ase import Atoms
+from typing import List
 
 
-class ExfoliationResults:
-    def __init__(self, exf_energy, most_stable_bilayer,
-                 bilayer_names):
-        self.exfoliationenergy = exf_energy
-        self.most_stable_bilayer = most_stable_bilayer
-        self.number_of_bilayers = len(bilayer_names)
-        self.bilayer_names = bilayer_names
+@prepare_result
+class ExfoliationResult(ASRResult):
+    exfoliationenergy: float
+    most_stable_bilayer: str
+    number_of_bilayers: int
+    bilayer_names: List[str]
 
-    def to_dict(self):
-        attrs = [x for x in dir(self)
-                 if "__" not in x and not callable(getattr(self, x))]
-        return {x: getattr(self, x)
-                for x in attrs}
-
-    def default():
-        return ExfoliationResults("No result", "None", [])
+    key_descriptions = dict(
+        exfoliationenergy='Estimated exfoliation energy',
+        most_stable_bilayer='uid of most stable bilayer',
+        number_of_bilayers='The number',
+        bilayer_names='uids of bilayers')
 
 
 def get_bilayers_energies(p):
@@ -61,7 +58,7 @@ def calculate_exfoliation(ml_e, vdw_e, bilayers_energies, atoms):
 @command('asr.exfoliationenergy')
 @option('-a', '--atoms', help='Monolayer file',
         type=AtomsFile(), default='./structure.json')
-def main(atoms: Atoms):
+def main(atoms: Atoms) -> ASRResult:
     """Calculate monolayer exfoliation energy.
 
     Assumes there are subfolders containing relaxed bilayers,
@@ -80,5 +77,8 @@ def main(atoms: Atoms):
                                    bilayers_energies, atoms)
     exf_energy, most_stable, bilayer_names = things
 
-    results = ExfoliationResults(exf_energy, most_stable, bilayer_names).to_dict()
+    results = ExfoliationResult.fromdata(exfoliationenergy=exf_energy,
+                                         most_stable_bilayer=most_stable,
+                                         number_of_bilayers=len(bilayer_names),
+                                         bilayer_names=bilayer_names)
     return results

@@ -1,4 +1,4 @@
-from asr.core import command, option, AtomsFile
+from asr.core import command, option, AtomsFile, ASRResult
 from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import layername
@@ -50,7 +50,7 @@ def inflate_vacuum(atoms, height, nlayers):
         type=int, default=2)
 def main(atoms: Atoms,
          height: float,
-         nlayers: int):
+         nlayers: int) -> ASRResult:
     from asr.core import read_json
     import os
     transform_data = read_json('transformdata.json')

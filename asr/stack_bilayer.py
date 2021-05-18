@@ -1,7 +1,8 @@
-from asr.core import command, option, AtomsFile
+from asr.core import command, option, AtomsFile, ASRResult, prepare_result
 from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import translation, layername
+from typing import List
 
 
 class StackingError(ValueError):
@@ -225,13 +226,21 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     return bilayers, toplayers, symmetries, final_transforms
 
 
+@prepare_result
+class StackBilayerResult(ASRResult):
+    folders: List[str]
+
+    key_descriptions = dict(
+        folders='Folders containing created bilayers')
+
+
 @command(module='asr.stack_bilayer', requires=['structure.json'])
 @option('-a', '--atoms', help='Monolayer to be stacked',
         type=AtomsFile(), default='structure.json')
 @option('-t', '--rmsd-tol', type=float,
         help='Position comparison tolerance')
 def main(atoms: Atoms,
-         rmsd_tol: float = 0.3):
+         rmsd_tol: float = 0.3) -> ASRResult:
     from gpaw import mpi
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
@@ -279,7 +288,7 @@ def main(atoms: Atoms,
                           'translation': tform[1]}
         write_json(f'{name}/transformdata.json', transform_data)
 
-    return {'folders': names}
+    return StackBilayerResult.fromdata(folders=names)
 
 
 if __name__ == '__main__':
