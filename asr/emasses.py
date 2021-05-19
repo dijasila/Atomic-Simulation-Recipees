@@ -490,7 +490,7 @@ def make_the_plots(row, *args):
             if mass > 0.0:
                 emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
             else:
-                emodel_k += np.max(e_km[:, 0]) - np.max(emodel_k)
+                emodel_k += np.min(e_km[:, 0]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -498,10 +498,11 @@ def make_the_plots(row, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            
+
             if spin_degenerate:
                 things = axes.scatter(flat_xcoords, flat_energies,
-                                      c=0, vmin=-1, vmax=1)
+                                      c=np.zeros_like(flat_energies)
+                                      , vmin=-1, vmax=1)
             else:
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
@@ -509,8 +510,8 @@ def make_the_plots(row, *args):
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
-                y1 = np.min(emodel_k) - erange * 0.25
-                y2 = np.min(emodel_k) + erange * 0.75
+                y1 = np.min(e_km[:, 0]) - erange * 0.25
+                y2 = np.min(e_km[:, 0]) + erange * 0.75
                 axes.set_ylim(y1, y2)
 
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
@@ -560,7 +561,7 @@ def make_the_plots(row, *args):
 
             emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
             if mass > 0.0:
-                emodel_k += np.min(e_km[:, -1]) - np.min(emodel_k)
+                emodel_k += np.max(e_km[:, -1]) - np.min(emodel_k)
             else:
                 emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
@@ -573,7 +574,8 @@ def make_the_plots(row, *args):
 
             if spin_degenerate:
                 things = axes.scatter(flat_xcoords, flat_energies,
-                                      c=0, vmin=-1, vmax=1)
+                                      c=np.zeros_like(flat_energies),
+                                      vmin=-1, vmax=1)
             else:
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
@@ -581,8 +583,8 @@ def make_the_plots(row, *args):
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
-                y1 = np.max(emodel_k) - erange * 0.75
-                y2 = np.max(emodel_k) + erange * 0.25
+                y1 = np.max(e_km[:, -1]) - erange * 0.75
+                y2 = np.max(e_km[:, -1]) + erange * 0.25
                 axes.set_ylim(y1, y2)
 
                 my_range = get_range(min(MAXMASS, abs(mass)), erange)
@@ -1453,7 +1455,6 @@ def evalparamare(mass, bt, cell, k_kc, e_k):
         indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
     else:
         indices = np.where(np.abs(e_k - np.min(e_k)) < 25e-3)[0]
-
 
     mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
 
