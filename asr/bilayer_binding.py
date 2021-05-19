@@ -31,9 +31,14 @@ def cell_area(atoms):
 
     return np.linalg.norm(np.cross(a1, a2))
 
-# def get_descriptor():
-#     p = Path('.')
-#     return [x for x in str(p.absolute()).split("/") if x != ""][-1]
+
+def get_IL_distance(atoms, h):
+    """Calculate IL distance."""
+    layer_width = np.max(atoms.positions[:, 2]) - np.min(atoms.positions[:, 2])
+
+    dist = h - layer_width
+    # assert dist > 0, f'The distance was not postive: {dist}'
+    return dist
 
 
 @prepare_result
@@ -47,15 +52,6 @@ class Result(ASRResult):
     key_descriptions = dict(binding_energy='Binding energy [eV/Ang^2]',
                             interlayer_distance='IL distance [Ang]',
                             bilayer_id='Str describing the stacking configuration')
-
-
-def get_IL_distance(atoms, h):
-    """Calculate IL distance."""
-    layer_width = np.max(atoms.positions[:, 2]) - np.min(atoms.positions[:, 2])
-
-    dist = h - layer_width
-    # assert dist > 0, f'The distance was not postive: {dist}'
-    return dist
 
 
 @command(module='asr.bilayer_binding',

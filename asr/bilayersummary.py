@@ -23,7 +23,7 @@ def webpanel(result, row, key_descriptions):
                fig('bl_gaps.png')]
     table = make_summary_table(result)
     column2 = [{'type': 'table',
-                'header': ['Bilayer', 'Binding energy'],
+                'header': ['Bilayer', 'Binding energy', 'Interlayer distance'],
                 'rows': table}]
 
     panel = {'title': title,
@@ -33,8 +33,39 @@ def webpanel(result, row, key_descriptions):
                                    {'function': plot_gaps,
                                     'filenames': ['bl_gaps.png']}],
              'sort': 12}
+    summary = add_to_summary(row)
+    return [summary, panel]
 
-    return [panel]
+
+def add_to_summary(row):
+    from asr.database.browser import describe_entry
+    result = row.data['results-asr.bilayer_binding.json']
+    binding_energy = result.binding_energy
+    interlayer_distance = result.interlayer_distance
+    descriptor = row.data['results-asr.bilayerdescriptor.json'].full_descriptor
+
+    energy = describe_entry('Binding energy',
+                            'Binding energy of the bilayer')
+    distance = describe_entry('Interlayer distance',
+                              'Distance between bilayers.'
+                              + ' This is defined as the vertical'
+                              + 'distance from the topmost atom in the'
+                              + 'bottom layer to the bottommost atom in the top layer.')
+    transform = describe_entry('Stacking operation',
+                               '(Point group operation) (translation)'
+                               + ' used to construct the bilayer')
+
+    basictable = {'type': 'table', 'header': ['Bilayer info', ''],
+                  'rows': [(energy,
+                            f'{binding_energy * 1000:0.0f} meV/Å<sup>2</sup>'),
+                           (distance, f'{interlayer_distance:0.2f} Å'),
+                           (transform, descriptor)],
+                  'columnwidth': 4}
+
+    panel = {'title': 'Summary',
+             'columns': [[basictable]],
+             'sort': 12}
+    return panel
 
 
 def make_row_title(desc, result):
@@ -64,11 +95,12 @@ def make_exfoliation_row(result):
 
 
 def make_summary_table(result):
-    items = sorted([(desc, val[0])
+    items = sorted([(desc, val[0], val[1])
                     for desc, val in result.binding_data.items()],
                    key=lambda t: -t[1])
     binding_rows = [[make_row_title(desc, result),
-                     f'{val*1000:0.0f} meV/Å<sup>2</sup>'] for desc, val in items]
+                     f'{en*1000:0.0f} meV/Å<sup>2</sup>',
+                     f'{dist:0.2f} Å'] for desc, en, dist in items]
 
     return binding_rows
 
@@ -137,7 +169,6 @@ def plot_bargaps(row, fname):
     ax.set_xticks(list(range(1, n + 1)))
     ax.set_xlabel("BL stackings")
     ax.set_ylabel("Gap [eV]")
-    plt.tight_layout()
     plt.savefig(fname)
 
 
@@ -146,7 +177,7 @@ def plot_gaps(row, fname):
     d = row.data.get('results-asr.bilayersummary.json')
 
     fs = 12
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(6, 5))
     data = []
     for desc, numb in d['numberings'].items():
         if desc in d['gaps']:
@@ -171,8 +202,6 @@ def plot_gaps(row, fname):
     ax.set_xticks(range(1, int(max(data[:, 0])) + 1))
     ax.set_xlabel("Stacking configuration", fontsize=fs)
     ax.set_ylabel("Band gap (PBE) [eV]", fontsize=fs)
-    # ax.legend()
-    plt.tight_layout()
     plt.savefig(fname)
 
 
