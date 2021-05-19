@@ -267,7 +267,6 @@ def main(database: str) -> ASRResult:
             print(ir)
         keys.update(set(row.key_value_pairs.keys()))
 
-    print(keys)
     metadata = db.metadata
     metadata.update({'keys': sorted(list(keys))})
     db.metadata = metadata
