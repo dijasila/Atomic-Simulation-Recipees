@@ -34,11 +34,13 @@ def get_reduced_formula(formula, stoichiometry=False):
     divisor = reduce(gcd, numbers)
     result = ''
     numbers = [x // divisor for x in numbers]
+
+    # We need to sort the numbers before they are
+    # converted to strings
     if stoichiometry:
         numbers = sorted(numbers)
     numbers = [str(x) if x != 1 else '' for x in numbers]
     if stoichiometry:
-        # numbers = sorted(numbers)
         symbols = string.ascii_uppercase
     for symbol, number in zip(symbols, numbers):
         result += symbol + number
