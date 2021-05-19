@@ -1,9 +1,15 @@
 def gs_xcname_from_row(row):
+    from asr.core.results import MetaDataNotSetError
     data = row.data['results-asr.gs@calculate.json']
     if not hasattr(data, 'metadata'):
         # Old (?) compatibility hack
         return 'PBE'
-    params = data.metadata.params
+    metadata = data.metadata
+    try:
+        params = metadata.params
+    except MetaDataNotSetError:
+        return 'PBE'
+
     if 'calculator' not in params:
         # What are the rules for when this piece of data exists?
         # Presumably the calculation used ASR defaults.

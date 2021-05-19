@@ -9,7 +9,6 @@ from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
 from jinja2 import UndefinedError
 from ase.db import connect
-from ase.db.app import app, projects
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
@@ -18,6 +17,23 @@ from ase.formula import Formula
 import asr
 from asr.core import (command, option, argument, ASRResult,
                       decode_object, UnknownDataFormat)
+
+
+def import_dbapp_from_ase():
+    # Compatibility fix since ASE is moving away from global variables.
+    try:
+        from ase.db.app import DBApp
+    except ImportError:
+        from ase.db.app import app, projects
+        return app, projects
+
+    dbapp = DBApp()
+    return dbapp.flask, dbapp.projects
+
+
+# XXX Should not be using global variables!
+app, projects = import_dbapp_from_ase()
+
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 

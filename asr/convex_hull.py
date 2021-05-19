@@ -65,24 +65,19 @@ def webpanel(result, row, key_descriptions):
     }
 
     thermostab = row.get('thermodynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'convex hull + 0.2 eV/atom < Heat of formation < 0 eV/atom'
-    low = '0.0 eV/atom < Heat of formation'
+
+    stability_texts = [
+        [stability_names[stab], stability_descriptions[stab]]
+        for stab in [LOW, MEDIUM, HIGH]
+    ]
+
     thermodynamic = describe_entry(
         'Thermodynamic',
         'Classifier for the thermodynamic stability of a material.'
         + br
-        + dl(
-            [
-                ['LOW', low],
-                ['MEDIUM', medium],
-                ['HIGH', high],
-            ]
-        )
+        + dl(stability_texts)
     )
-    row = [thermodynamic,
-           stabilities[thermostab].upper()]
+    row = [thermodynamic, stability_names[thermostab]]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -91,18 +86,6 @@ def webpanel(result, row, key_descriptions):
                              'columnwidth': 3}]],
                'sort': 1}
     return [panel, summary]
-
-
-# class Reference(TypedDict):
-#     """Container for information on a reference."""
-
-#     hform: float
-#     formula: str
-#     uid: str
-#     natoms: int
-#     name: str
-#     label: str
-#     link: str
 
 
 @prepare_result
@@ -278,18 +261,27 @@ def main(databases: List[str]) -> Result:
         results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-
-    if hform > 0:
-        thermodynamic_stability = 1
-    elif hform is None or ehull is None:
-        thermodynamic_stability = None
-    elif ehull >= 0.2:
-        thermodynamic_stability = 2
-    else:
-        thermodynamic_stability = 3
-
-    results['thermodynamic_stability_level'] = thermodynamic_stability
+    results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
     return Result(data=results)
+
+
+LOW = 1
+MEDIUM = 2
+HIGH = 3
+stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
+stability_descriptions = {
+    LOW: 'Heat of formation < convex hull + 0.2 eV/atom',
+    MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
+    HIGH: 'Heat of formation > 0.2 eV/atom',
+}
+
+
+def stability_rating(hform, ehull):
+    if 0.2 < hform:
+        return LOW
+    if ehull + 0.2 < hform:
+        return MEDIUM
+    return HIGH
 
 
 def get_reference_energies(atoms, references, energy_key='energy'):
