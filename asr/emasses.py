@@ -407,6 +407,9 @@ def make_the_plots(row, *args):
 
     reference = row.get('evac', efermi)
 
+    # Check whether material necessarily has no spin-degeneracy
+    spin_degenerate = row.magstate == 'NM' and row.has_inversion_symmetry
+
     label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
     columns = []
     cb_fnames = []
@@ -495,8 +498,14 @@ def make_the_plots(row, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+            
+            if spin_degenerate:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=0, vmin=-1, vmax=1)
+            else:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
+
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -561,8 +570,14 @@ def make_the_plots(row, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+
+            if spin_degenerate:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=0, vmin=-1, vmax=1)
+            else:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
+
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -1434,7 +1449,11 @@ def evalparamare(mass, bt, cell, k_kc, e_k):
         assert bt == "cb"
         emodel_k += np.min(e_k) - np.min(emodel_k)
 
-    indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+    if bt == 'vb':
+        indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+    else:
+        indices = np.where(np.abs(e_k - np.min(e_k)) < 25e-3)[0]
+
 
     mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
 
