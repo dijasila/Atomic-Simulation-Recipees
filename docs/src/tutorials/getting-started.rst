@@ -72,13 +72,21 @@ command-line using
 .. code-block:: console
 
    $ asr cache ls
-                  name                                  parameters                 result
-   asr.tutorial:energy {'element': 'Ag', 'crystal_structure': '... -0.0003668625292689853
+                  name                       parameters                 result
+   asr.tutorial:energy element=Ag,crystal_structure=fcc -0.0003668625292689853
 
 An important feature of ASR is that of "caching" results. If we run
 the instruction again with the same input parameters ASR will skip the
 actual evaluation of the instruction and simply reuse the old
-result. This is useful in workflows when it can be beneficial to not
+result.
+
+.. code-block:: console
+
+   $ asr run "asr.tutorial:energy Ag fcc"
+   In folder: . (1/1)
+   asr.tutorial:energy: Found cached record.uid=e84186a08eaf4523bb44d804071aed6c
+
+This is useful in workflows when it can be beneficial to not
 redo expensive calculation steps when it has already been performed
 once.
 
@@ -106,3 +114,17 @@ to state so explicitly when running the main-instruction.
    asr.tutorial:energy: Found cached record.uid=343d7f48aad3434493b5bc7e6cbdf94c
    Running asr.tutorial:energy(element='Ag', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Ag', crystal_structure='diamond')
+
+
+We can now check the result using the command-line tool
+
+.. code-block:: console
+
+   $ asr cache ls name=asr.tutorial:main
+                name parameters result
+   asr.tutorial:main element=Ag    fcc
+
+Notice here we applied the "name=asr.tutorial" selection to select
+only the record of relevance. As we can see the EMT calculator
+correctly predicts FCC as the most stable crystal structure for
+silver.

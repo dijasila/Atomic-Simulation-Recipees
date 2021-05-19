@@ -91,10 +91,10 @@ class Parameters:  # noqa
         return self.__dict__.values()
 
     def __str__(self):  # noqa
-        return str(self.__dict__)
+        return ','.join([f'{key}={value}' for key, value in self.__dict__.items()])
 
     def __repr__(self):  # noqa
-        return self.__str__()
+        return 'Parameters(' + str(self.__dict__) + ')'
 
     def get(self, key, default=None):
         return self.__dict__.get(key, default)
