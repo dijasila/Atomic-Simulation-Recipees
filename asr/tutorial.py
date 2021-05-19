@@ -6,9 +6,9 @@ from ase.constraints import ExpCellFilter
 
 
 @asr.instruction('asr.tutorial')
-@asr.argument('crystal_structure')
-@asr.argument('element')
-def energy(element, crystal_structure):
+@asr.argument('crystal_structure', type=str)
+@asr.argument('element', type=str)
+def energy(element: str, crystal_structure: str) -> float:
     """Calculate the total energy per atom of atomic structure."""
     atoms = bulk(element, crystalstructure=crystal_structure, a=3.6)
     cls = get_calculator_class('emt')
@@ -22,8 +22,8 @@ def energy(element, crystal_structure):
 
 
 @asr.instruction('asr.tutorial')
-@asr.argument('element')
-def main(element):
+@asr.argument('element', type=str)
+def main(element: str) -> str:
     """Calculate lowest energy crystal structure for an element."""
     crystal_structures = [
         'sc', 'fcc', 'bcc', 'diamond',
