@@ -511,7 +511,6 @@ def make_the_plots(row, *args):
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
 
-
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(e_km[:, 0]) - erange * 0.25
                 y2 = np.min(e_km[:, 0]) + erange * 0.75
@@ -586,7 +585,6 @@ def make_the_plots(row, *args):
             else:
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
-
 
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(e_km[:, -1]) - erange * 0.75
