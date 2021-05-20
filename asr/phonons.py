@@ -4,12 +4,10 @@ Deprecated: Please use the more efficient and optimized asr.phonopy
 recipe for calculating phonon properties instead.
 
 """
-from pathlib import Path
 import typing
 
 import numpy as np
 
-from ase.parallel import world
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms
@@ -23,7 +21,7 @@ from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
 from asr.magstate import main as magstate
-from asr.core import ExternalFile
+
 
 panel_description = make_panel_description(
     """
