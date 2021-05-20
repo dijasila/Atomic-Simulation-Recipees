@@ -1457,10 +1457,10 @@ def evalparamare(mass, bt, cell, k_kc, e_k):
 
     if bt == 'vb':
         indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+        mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
     else:
         indices = np.where(np.abs(e_k - np.min(e_k)) < 25e-3)[0]
-
-    mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
+        mean_e = np.mean(e_k[indices] - np.min(e_k[indices]))
 
     paramare = np.mean(np.abs((emodel_k[indices] - e_k[indices]) / mean_e) * 100)
 
