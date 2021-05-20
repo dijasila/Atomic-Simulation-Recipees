@@ -99,16 +99,15 @@ def sha256sum(filename):
 
 
 @contextmanager
-def chdir(folder, create=False, empty=False):
+def chdir(folder, create=False):
     dir = os.getcwd()
-    if empty and folder.is_dir():
-        import shutil
-        shutil.rmtree(str(folder))
     if create and not folder.is_dir():
         only_master(os.makedirs)(folder)
-    os.chdir(str(folder))
-    yield
-    os.chdir(dir)
+    try:
+        os.chdir(str(folder))
+        yield
+    finally:
+        os.chdir(dir)
 
 
 def encode_json(data):
