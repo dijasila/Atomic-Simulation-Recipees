@@ -466,7 +466,7 @@ def make_the_plots(row, *args):
                                  gridspec_kw={'width_ratios': [1]})
 
         should_plot = True
-        for cb_key in cb_indices[0:1]:
+        for i, cb_key in enumerate(cb_indices):
             cb_tuple = convert_key_to_tuple(cb_key)
             # Save something
             data = results[cb_key]
@@ -491,6 +491,10 @@ def make_the_plots(row, *args):
                 emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
             else:
                 emodel_k += np.min(e_km[:, 0]) - np.max(emodel_k)
+            axes.plot(xk, emodel_k, c='r', ls='--')
+
+            if i != 0:
+                continue
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -507,7 +511,6 @@ def make_the_plots(row, *args):
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
 
-            axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.min(e_km[:, 0]) - erange * 0.25
@@ -539,7 +542,7 @@ def make_the_plots(row, *args):
                                  sharey=True,
                                  gridspec_kw={'width_ratios': [1]})
 
-        for vb_key in vb_indices[0:1]:
+        for i, vb_key in enumerate(vb_indices):
             # Save something
             vb_tuple = convert_key_to_tuple(vb_key)
             data = results[vb_key]
@@ -564,6 +567,10 @@ def make_the_plots(row, *args):
                 emodel_k += np.max(e_km[:, -1]) - np.min(emodel_k)
             else:
                 emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
+            axes.plot(xk2, emodel_k, c='r', ls='--')
+
+            if i != 0:
+                continue
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -580,7 +587,6 @@ def make_the_plots(row, *args):
                 things = axes.scatter(flat_xcoords, flat_energies,
                                       c=flat_spins, vmin=-1, vmax=1)
 
-            axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
                 y1 = np.max(e_km[:, -1]) - erange * 0.75
