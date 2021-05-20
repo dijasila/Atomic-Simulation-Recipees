@@ -9,5 +9,7 @@ API reference
 
 
 .. autofunction:: asr.instruction
+
 .. autofunction:: asr.option
+
 .. autofunction:: asr.argument
