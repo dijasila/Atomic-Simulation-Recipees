@@ -268,11 +268,12 @@ def main(
             phonons.D_N = D_N
 
     # First calculate the exactly known q-points
-    q_qc = np.indices(phonons.N_c).reshape(3, -1).T / phonons.N_c
+    N_c = phonons.supercell
+    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
     out = phonons.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
 
-    R_cN = phonons.lattice_vectors()
+    R_cN = phonons.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
