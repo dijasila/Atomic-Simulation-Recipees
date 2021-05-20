@@ -96,7 +96,7 @@ key_descriptions = {
         "dE_zx":
         "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
         "dE_zy":
-        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
     },
     "exchange": {
         "J": "KVP: Nearest neighbor exchange coupling [meV]",
