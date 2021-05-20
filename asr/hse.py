@@ -8,20 +8,39 @@ from asr.core import (
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
-from asr.database.browser import (
-    fig, table, describe_entry, make_panel_description)
 from asr.gs import calculate as calculategs
 from asr.bandstructure import main as bsmain
 from asr.bandstructure import calculate as bscalculate
+from asr.database.browser import make_panel_description
+from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
 
 
-panel_description = make_panel_description(
-    """The single-particle band structure calculated with the HSE06
+class HSEInfo(GWHSEInfo):
+    method_name = 'HSE06'
+    name = 'hse'
+    bs_filename = 'hse-bs.png'
+
+    panel_description = make_panel_description(
+        """\
+The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
 wave functions from a GGA calculation. Spin–orbit interactions are included
 in post-process.""",
-    articles=['C2DB'],
-)
+        articles=['C2DB'],
+    )
+
+    band_gap_adjectives = 'electronic single-particle'
+    summary_sort = 11
+
+    @staticmethod
+    def plot_bs(row, filename):
+        data = row.data['results-asr.hse.json']
+        return plot_bs(row, filename=filename, bs_label='HSE06',
+                       data=data,
+                       efermi=data['efermi_hse_soc'],
+                       vbm=row.get('vbm_hse'),
+                       cbm=row.get('cbm_hse'))
 
 
 @prepare_result
@@ -63,19 +82,6 @@ def calculate(
         'calculation': hse_nowfs,
     }
     return HSECalculationResult(data=results)
-
-
-# XXX move to utils? [also in asr.polarizability]
-def get_kpts_size(atoms, kptdensity):
-    """Find reasonable monkhorst-pack size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 def hse(atoms, calculator, kptdensity, emptybands):
@@ -202,15 +208,6 @@ def MP_interpolate(
     return results
 
 
-def plot_bs_hse(row, filename):
-    data = row.data['results-asr.hse.json']
-    return plot_bs(row, filename=filename, bs_label='HSE06',
-                   data=data,
-                   efermi=data['efermi_hse_soc'],
-                   vbm=row.get('vbm_hse'),
-                   cbm=row.get('cbm_hse'))
-
-
 def plot_bs(row,
             filename,
             *,
@@ -286,56 +283,9 @@ def plot_bs(row,
 
 
 def webpanel(result, row, key_descriptions):
-
-    if row.get('gap_hse', 0) > 0.0:
-        hse = table(row, 'Property',
-                    ['gap_hse', 'gap_dir_hse'],
-                    kd=key_descriptions)
-
-        if row.get('evac'):
-            hse['rows'].extend(
-                [['Valence band maximum wrt. vacuum level (HSE06)',
-                  f'{row.vbm_hse - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level (HSE06)',
-                  f'{row.cbm_hse - row.evac:.2f} eV']])
-        else:
-            hse['rows'].extend(
-                [['Valence band maximum wrt. Fermi level (HSE06)',
-                  f'{row.vbm_hse - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level (HSE06)',
-                  f'{row.cbm_hse - row.efermi:.2f} eV']])
-    else:
-        hse = table(row, 'Property',
-                    [],
-                    kd=key_descriptions)
-
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-
-    title = f'Electronic band structure (HSE06@{xcname})'
-    panel = {'title': describe_entry(title, panel_description),
-             'columns': [[fig('hse-bs.png')],
-                         [fig('bz-with-gaps.png'), hse]],
-             'plot_descriptions': [{'function': plot_bs_hse,
-                                    'filenames': ['hse-bs.png']}],
-             'sort': 15}
-
-    if row.get('gap_hse'):
-
-        bandgaphse = describe_entry(
-            'Band gap (HSE)',
-            'The electronic single-particle band gap calculated with '
-            'HSE including spin–orbit effects.\n\n',
-        )
-        rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
-        summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
-                   'sort': 11}
-        return [panel, summary]
-
-    return [panel]
+    from asr.utils.gw_hse import gw_hse_webpanel
+    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
+                           sort=15)
 
 
 @prepare_result

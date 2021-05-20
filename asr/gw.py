@@ -11,56 +11,53 @@ from asr.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
-from asr.database.browser import (
-    href, fig, table, describe_entry, make_panel_description)
+from asr.database.browser import href, make_panel_description
+from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
 
 
-panel_description = make_panel_description(
-    """The quasiparticle (QP) band structure calculated within the G₀W₀
+class GWInfo(GWHSEInfo):
+    method_name = 'G₀W₀'
+    name = 'gw'
+    bs_filename = 'gw-bs.png'
+
+    panel_description = make_panel_description(
+        """The quasiparticle (QP) band structure calculated within the G₀W₀
 approximation from a GGA starting point.
 The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
 wave basis set limit. Spin–orbit interactions are included
 in post-process.""",
-    articles=[
-        'C2DB',
-        href(
-            """F. Rasmussen et al. Efficient many-body calculations for two-dimensional
-            materials using exact limits for the screened potential: Band gaps
-            of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
-            'https://doi.org/10.1103/PhysRevB.94.155406',
-        ),
-        href(
-            """A. Rasmussen et al. Towards fully automatized GW band structure
+        articles=[
+            'C2DB',
+            href(
+                """F. Rasmussen et al. Efficient many-body calculations for
+two-dimensional materials using exact limits for the screened potential: Band gaps
+of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
+                'https://doi.org/10.1103/PhysRevB.94.155406',
+            ),
+            href(
+                """A. Rasmussen et al. Towards fully automatized GW band structure
 calculations: What we can learn from 60.000 self-energy evaluations,
 arXiv:2009.00314""",
-            'https://arxiv.org/abs/2009.00314v1'
-        ),
-    ]
-)
+                'https://arxiv.org/abs/2009.00314v1'
+            ),
+        ]
+    )
 
+    band_gap_adjectives = 'quasi-particle'
+    summary_sort = 12
 
-def plot_bs_gw(row, filename):
-    from asr.hse import plot_bs
-    data = row.data['results-asr.gw.json']
-    return plot_bs(row, filename=filename, bs_label='G₀W₀',
-                   data=data,
-                   efermi=data['efermi_gw_soc'],
-                   cbm=row.get('cbm_gw'),
-                   vbm=row.get('vbm_gw'))
-
-
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
+    @staticmethod
+    def plot_bs(row, filename):
+        from asr.hse import plot_bs
+        data = row.data['results-asr.gw.json']
+        return plot_bs(row, filename=filename, bs_label='G₀W₀',
+                       data=data,
+                       efermi=data['efermi_gw_soc'],
+                       cbm=row.get('cbm_gw'),
+                       vbm=row.get('vbm_gw'))
 
 
 @command()
@@ -260,54 +257,9 @@ def empirical_mean_z(
 
 
 def webpanel(result, row, key_descriptions):
-
-    prop = table(row, 'Property', [
-        'gap_gw', 'gap_dir_gw',
-    ], key_descriptions)
-
-    if row.get('evac'):
-        prop['rows'].extend(
-            [['Valence band maximum wrt. vacuum level (G₀W₀)',
-              f'{row.vbm_gw - row.evac:.2f} eV'],
-             ['Conduction band minimum wrt. vacuum level (G₀W₀)',
-              f'{row.cbm_gw - row.evac:.2f} eV']])
-    else:
-        prop['rows'].extend(
-            [['Valence band maximum wrt. Fermi level (G₀W₀)',
-              f'{row.vbm_gw - row.efermi:.2f} eV'],
-             ['Conduction band minimum wrt. Fermi level (G₀W₀)',
-              f'{row.cbm_gw - row.efermi:.2f} eV']])
-
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-    title = f'Electronic band structure (G₀W₀@{xcname})'
-    panel = {'title': describe_entry(title, panel_description),
-             'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
-             'plot_descriptions': [{'function': plot_bs_gw,
-                                    'filenames': ['gw-bs.png']}],
-             'sort': 16}
-
-    if row.get('gap_gw'):
-        description = (
-            'The quasi-particle band gap calculated with '
-            'G₀W₀ including spin–orbit effects. \n\n'
-        )
-        rows = [
-            [
-                describe_entry('Band gap (G₀W₀)', description),
-                f'{row.gap_gw:0.2f} eV'
-            ]
-        ]
-
-        summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
-                   'sort': 12}
-
-        return [panel, summary]
-
-    return [panel]
+    from asr.utils.gw_hse import gw_hse_webpanel
+    return gw_hse_webpanel(result, row, key_descriptions, GWInfo(row),
+                           sort=16)
 
 
 @prepare_result

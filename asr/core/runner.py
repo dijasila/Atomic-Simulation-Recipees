@@ -7,6 +7,7 @@ from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
 from .root import root_is_initialized
 from .filetype import ASRPath
+from .lock import lock, Lock
 
 
 serializer = JSONSerializer()
@@ -52,20 +53,29 @@ def get_workdir_name(
 
 class Runner():
 
+    def __init__(self):
+        self.lock = Lock(ASRPath('runner.lock'), timeout=10)
+
+    @lock
+    def get_workdir_name(self, run_specification):
+        return get_workdir_name(run_specification)
+
+    def run(self, func, run_specification):
+        workdir = self.get_workdir_name(
+            run_specification,
+        )
+
+        with chdir(workdir, create=True):
+            result = func(run_specification)
+        return result
+
     def make_decorator(
             self,
     ):
 
         def decorator(func):
             def wrapped(run_specification):
-                workdir = get_workdir_name(
-                    run_specification,
-                )
-
-                with chdir(workdir, create=True):
-                    run_record = func(run_specification)
-
-                return run_record
+                return self.run(func, run_specification)
             return wrapped
 
         return decorator
