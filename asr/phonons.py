@@ -8,6 +8,7 @@ import typing
 
 import numpy as np
 
+from ase.parallel import world
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms
@@ -246,7 +247,9 @@ def main(
     elif nd == 1:
         supercell = (n, 1, 1)
     phonons = Phonons(atoms=atoms, supercell=supercell)
-    phonons.cache.update(calculateresult.forces)
+    if world.rank == 0:
+        phonons.cache.update(calculateresult.forces)
+    world.barrier()
     phonons.read(symmetrize=0)
 
     if mingo:
