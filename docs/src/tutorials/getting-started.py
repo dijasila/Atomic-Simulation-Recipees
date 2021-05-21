@@ -6,24 +6,24 @@ from ase.constraints import ExpCellFilter
 
 
 @asr.instruction('asr.tutorial')
-@asr.argument('element')
-@asr.argument('crystal_structure')
-def energy(element, crystal_structure):
+@asr.argument('crystal_structure', type=str)
+@asr.argument('element', type=str)
+def energy(element: str, crystal_structure: str) -> float:
     """Calculate the total energy per atom of atomic structure."""
     atoms = bulk(element, crystalstructure=crystal_structure, a=3.6)
     cls = get_calculator_class('emt')
     atoms.calc = cls()
     filt = ExpCellFilter(atoms, mask=[1, 1, 1, 1, 1, 1])
-    opt = BFGS(filt)
+    opt = BFGS(filt, logfile=None)
     opt.run(fmax=0.001)
     energy = atoms.get_potential_energy()
     natoms = len(atoms)
-    return energy / natoms
+    return round(energy / natoms, 4)
 
 
 @asr.instruction('asr.tutorial')
-@asr.argument('element')
-def main(element):
+@asr.argument('element', type=str)
+def main(element: str) -> str:
     """Calculate lowest energy crystal structure for an element."""
     crystal_structures = [
         'sc', 'fcc', 'bcc', 'diamond',

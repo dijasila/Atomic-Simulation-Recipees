@@ -72,8 +72,8 @@ command-line using
 .. code-block:: console
 
    $ asr cache ls
-                  name                       parameters                 result
-   asr.tutorial:energy element=Ag,crystal_structure=fcc -0.0003668625292689853
+                  name                       parameters    result
+   asr.tutorial:energy element=Ag,crystal_structure=fcc -0.000367
 
 An important feature of ASR is that of "caching" results. If we run
 the instruction again with the same input parameters ASR will skip the
