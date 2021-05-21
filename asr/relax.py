@@ -323,7 +323,7 @@ def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
-                             'kpts': {'density': 6.0, 'gamma': True},
+                             'kpts':  {'density': 6.0, 'gamma': True},
                              'basis': 'dzp',
                              'symmetry': {'symmorphic': False},
                              'convergence': {'forces': 1e-4},
@@ -392,13 +392,13 @@ def main(atoms: Atoms,
                 ('The third unit cell axis should be aperiodic for '
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
-        elif nd == 1:
-            assert not atoms.pbc[0] and not atoms.pbc[1]
-            cell = atoms.cell
-            assert abs(cell[2, :2]).max() < 1e-12, cell
-            assert abs(cell[:2, 2]).max() < 1e-12, cell
-            assert abs(cell[0, 1]) < 1e-12, cell
-            assert abs(cell[1, 0]) < 1e-12, cell
+        #elif nd == 1:
+            #assert not atoms.pbc[0] and not atoms.pbc[1]
+            #cell = atoms.cell
+            #assert abs(cell[2, :2]).max() < 1e-12, cell
+            #assert abs(cell[:2, 2]).max() < 1e-12, cell
+            #assert abs(cell[0, 1]) < 1e-12, cell
+            #assert abs(cell[1, 0]) < 1e-12, cell
 
     calc = Calculator(**calculator)
     # Relax the structure
