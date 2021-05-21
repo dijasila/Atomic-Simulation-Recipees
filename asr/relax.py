@@ -45,12 +45,15 @@ Relax using the LDA exchange-correlation functional
 import typing
 from pathlib import Path
 import numpy as np
-from ase.io import write, Trajectory
+from ase.io import Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.calculators.calculator import PropertyNotImplementedError
 
-from asr.core import command, option, AtomsFile, DictStr, prepare_result, ASRResult
+import asr
+from asr.core import (
+    command, option, AtomsFile, prepare_result, ASRResult,
+)
 from math import sqrt
 import time
 
@@ -275,6 +278,8 @@ class Result(ASRResult):
     images: typing.List[Atoms]
     etot: float
     edft: float
+    forces: np.ndarray
+    stress: np.ndarray
     spos: np.ndarray
     symbols: typing.List[str]
     a: float
@@ -283,11 +288,14 @@ class Result(ASRResult):
     alpha: float
     beta: float
     gamma: float
+    magmoms: typing.List[float]
     key_descriptions = \
         {'atoms': 'Relaxed atomic structure.',
          'images': 'Path taken when relaxing structure.',
          'etot': 'Total energy [eV]',
          'edft': 'DFT total energy [eV]',
+         'forces': 'Forces on atoms after relaxation.',
+         'stress': 'Stress on cell after relaxation.',
          'spos': 'Array: Scaled positions',
          'symbols': 'Array: Chemical symbols',
          'a': 'Cell parameter a [Ang]',
@@ -295,20 +303,20 @@ class Result(ASRResult):
          'c': 'Cell parameter c [Ang]',
          'alpha': 'Cell parameter alpha [deg]',
          'beta': 'Cell parameter beta [deg]',
-         'gamma': 'Cell parameter gamma [deg]'}
+         'gamma': 'Cell parameter gamma [deg]',
+         'magmoms': 'Atomic magnetic moments of relaxed structure [mu_B]'}
 
 
-@command('asr.relax',
-         creates=['structure.json'],
-         returns=Result)
+@command(
+    'asr.relax',
+)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
         type=AtomsFile(must_exist=False), default='relax.traj')
 @option('--tmp-atoms-file', help='File to store snapshots of relaxation.',
         default='relax.traj', type=str)
-@option('-c', '--calculator', help='Calculator and its parameters.',
-        type=DictStr())
+@asr.calcopt
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
 @option('--fixcell/--dont-fixcell',
         help="Don't relax stresses.",
@@ -323,8 +331,12 @@ def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
+<<<<<<< HEAD
                              'kpts':  {'density': 6.0, 'gamma': True},
                              'basis': 'dzp',
+=======
+                             'kpts': {'density': 6.0, 'gamma': True},
+>>>>>>> origin/master
                              'symmetry': {'symmorphic': False},
                              'convergence': {'forces': 1e-4},
                              'txt': 'relax.txt',
@@ -423,26 +435,26 @@ def main(atoms: Atoms,
                       fixcell=fixcell,
                       allow_symmetry_breaking=allow_symmetry_breaking,
                       dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+        magmoms = np.zeros(len(atoms))
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
+    forces = atoms.get_forces()
+    stress = atoms.get_stress()
 
     cellpar = atoms.cell.cellpar()
-
-    # XXX
-    # metadata = calc.get_metadata()
-
-    # Save atomic structure
-    write('structure.json', atoms)
 
     trajectory = Trajectory(tmp_atoms_file, 'r')
     images = []
     for image in trajectory:
+        image.calc = None
         images.append(image)
     return Result.fromdata(
-        atoms=atoms.copy(),
+        atoms=Atoms(atoms.copy()),
         etot=etot,
         edft=edft,
+        forces=forces,
+        stress=stress,
         a=cellpar[0],
         b=cellpar[1],
         c=cellpar[2],
@@ -451,7 +463,8 @@ def main(atoms: Atoms,
         gamma=cellpar[5],
         spos=atoms.get_scaled_positions(),
         symbols=atoms.get_chemical_symbols(),
-        images=images
+        images=images,
+        magmoms=magmoms,
     )
 
 

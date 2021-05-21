@@ -30,7 +30,7 @@ def resultstest(results, vbmass, cbmass):
 @pytest.mark.parametrize('vbmass', vbmasses)
 @pytest.mark.parametrize('cbmass', cbmasses)
 def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
-                             test_material, gap, fermi_level,
+                             test_material, fast_calc, gap, fermi_level,
                              vbmass, cbmass):
     from asr.emasses import main
     import gpaw
@@ -51,9 +51,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    test_material.write('structure.json')
-
-    results = main()
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
 
@@ -63,7 +61,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
 @pytest.mark.parametrize('vbmass', vbmasses)
 @pytest.mark.parametrize('cbmass', cbmasses)
 def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
-                          test_material, gap, fermi_level,
+                          test_material, fast_calc, gap, fermi_level,
                           vbmass, cbmass):
     from asr.emasses import main
     import gpaw
@@ -81,9 +79,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
     gpaw.GPAW._get_band_gap.return_value = gap
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
 
-    test_material.write('structure.json')
-
-    results = main()
+    results = main(atoms=test_material, calculator=fast_calc)
     resultstest(results, vbmass, cbmass)
 
     # check location of minmax
@@ -91,7 +87,7 @@ def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
 
 def _get_all_eigenvalues(self):
     from ase.units import Bohr, Ha
-    icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+    icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
     n = self.parameters.gridsize
 
     offsets = np.indices((n, n, n)).T.reshape((n ** 3, 1, 3)) - n // 2
@@ -163,7 +159,7 @@ def _get_all_eigenvalues(self):
 
 # def _get_all_eigenvalues_rashba(self):
 #     from ase.units import Bohr, Ha
-#     icell = self.atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+#     icell = self.atoms.cell.reciprocal() * 2 * np.pi * Bohr
 #     n = self.parameters.gridsize
 
 

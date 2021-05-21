@@ -9,17 +9,14 @@ from pytest import approx
 def test_setup_symmetrize(asr_tmpdir_w_params, inputatoms):
     import numpy as np
     from asr.setup.symmetrize import main
-    from ase.io import read, write
     np.random.seed(1234)
     atoms = inputatoms.copy()
     atoms.rattle(stdev=0.001)
     cell_cv = atoms.get_cell()
     cell_cv += (np.random.rand(3, 3) - 0.5) * 1e-5
     atoms.set_cell(cell_cv)
-    write('original.json', atoms)
 
-    main()
-    symmetrizedatoms = read('unrelaxed.json')
+    symmetrizedatoms = main(atoms=atoms)
 
     assert symmetrizedatoms.cell.cellpar() == approx(inputatoms.cell.cellpar())
     assert (symmetrizedatoms.get_scaled_positions()

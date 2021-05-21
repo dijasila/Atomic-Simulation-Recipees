@@ -1,5 +1,5 @@
 from ase.units import Bohr
-from asr.database.fromtree import MissingUIDS
+# from asr.database.fromtree import MissingUIDS
 import numpy as np
 import pytest
 
@@ -13,10 +13,11 @@ def get_strain_from_atoms(inv_cell_vc, atoms):
 
 
 @pytest.mark.ci
-@pytest.mark.xfail(raises=MissingUIDS)
 @pytest.mark.parametrize("nspins", [1, 2])
-def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
-                             nspins, get_webcontent):
+def test_piezoelectrictensor(
+        asr_tmpdir_w_params, mockgpaw, mocker, test_material,
+        nspins, get_webcontent, fast_calc,
+):
     import numpy as np
     from gpaw import GPAW
 
@@ -69,11 +70,13 @@ def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_materia
     mocker.patch.object(GPAW, '_get_scaled_positions', new=_get_scaled_positions)
     mocker.patch.object(GPAW, '_get_setup_nvalence', new=_get_setup_nvalence)
     mocker.patch.object(GPAW, 'get_number_of_spins', new=get_number_of_spins)
-    from ase.io import write
     from asr.piezoelectrictensor import main
-    write('structure.json', test_material)
-    results = main()
-    content = get_webcontent()
+
+    results = main(
+        atoms=test_material,
+        calculator=fast_calc,
+        relaxcalculator=fast_calc,
+    )
 
     N = np.abs(np.linalg.det(cell_cv[~pbc_c][:, ~pbc_c]))
     vol = test_material.get_volume() / Bohr**3
@@ -107,4 +110,7 @@ def test_piezoelectrictensor(asr_tmpdir_w_params, mockgpaw, mocker, test_materia
     eps_clamped_vvv = results['eps_clamped_vvv']
     assert eps_vvv == pytest.approx(eps_analytic_vvv)
     assert eps_clamped_vvv == pytest.approx(eps_analytic_vvv)
+
+    test_material.write('structure.json')
+    content = get_webcontent()
     assert "Piezoelectrictensor" in content, content

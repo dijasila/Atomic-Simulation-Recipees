@@ -1,18 +1,19 @@
-from asr.core import (command, option, decode_object,
-                      ASRResult, get_recipe_from_name)
-import copy
+from asr.core import (decode_object, ASRResult, get_recipe_from_name)
 import sys
 import re
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 import traceback
 import os
 from .webpanel import WebPanel
+import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
+
+from asr.core.cache import Cache, MemoryBackend
 
 assert sys.version_info >= (3, 4)
 
@@ -21,14 +22,6 @@ plotlyjs = (
 external_libraries = [plotlyjs]
 
 unique_key = 'uid'
-
-params = {'legend.fontsize': 'large',
-          'axes.labelsize': 'large',
-          'axes.titlesize': 'large',
-          'xtick.labelsize': 'large',
-          'ytick.labelsize': 'large',
-          'savefig.dpi': 200}
-plt.rcParams.update(**params)
 
 
 def create_table(row,  # AtomsRow
@@ -76,22 +69,35 @@ def miscellaneous_section(row, key_descriptions, exclude):
     return ('Miscellaneous', [[misc]])
 
 
-class ExplainedStr(str):
-    """A mutable string class that support explanations."""
+def link_section(row, key_descriptions, exclude):
+    """Make help function for adding a "links" section.
 
-    __explanation__: str
+    Create table with all keys except those in exclude.
+    """
+    try:
+        links = row.data['links']
+    except KeyError:
+        return ('Links', [[]])
+
+    link_table = create_link_table(row, links, key_descriptions)
+    return ('Links', [[link_table]])
 
 
-class ExplainedFloat(float):
-    """A mutable string class that support explanations."""
+def create_link_table(row, links, key_descriptions):
+    """Create links table in the links panel."""
+    link_table = table(row, 'Links', [])
+    for link in links:
+        linkname = f'<a href="{link[1]}">{link[0]}</a>'
+        linktype = link[2]
+        link_table['rows'].extend([[linkname, linktype]])
 
-    __explanation__: str
+    return link_table
 
 
 value_type_to_explained_type = {}
 
 
-def describe_entry(value, description, title='Help'):
+def describe_entry(value, description, title='Information'):
     """Describe website entry.
 
     This function sets an __explanation__ attribute on the given object
@@ -167,7 +173,7 @@ def get_recipe_href(asr_name, name=None):
     if name is None:
         name = asr_name
     # ATM href only works to recipe main
-    asr_name = asr_name.split('@')[0]
+    asr_name = asr_name.split(':')[0]
     link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
                  f'src/generated/recipe_{asr_name}.html">{name}</a>')
 
@@ -183,8 +189,24 @@ def make_html_tag_wrapper(tag):
 
 
 def div(text, cls=''):
-
     return f'<div class="{cls}">{text}</div>'
+
+
+def html_table(rows, header=None):
+    text = '<table class="table">'
+    if header is not None:
+        headtext = ''
+        for value in header:
+            headtext += th(value)
+        text += thead(headtext)
+    for row in rows:
+        rowtext = ''
+        for value in row:
+            rowtext += td(value)
+        rowtext = tr(rowtext)
+        text += rowtext
+    text += '</table>'
+    return text
 
 
 li = make_html_tag_wrapper('li')
@@ -193,6 +215,10 @@ pre = make_html_tag_wrapper('pre')
 code = make_html_tag_wrapper('code')
 dt = make_html_tag_wrapper('dt')
 dd = make_html_tag_wrapper('dd')
+tr = make_html_tag_wrapper('tr')
+td = make_html_tag_wrapper('td')
+th = make_html_tag_wrapper('th')
+thead = make_html_tag_wrapper('thead')
 par = make_html_tag_wrapper('p')
 
 br = '<br>'
@@ -245,7 +271,7 @@ def make_panel_description(text, articles=None):
 
     if articles:
         articles = (
-            bold('Relevant article(s):')
+            bold('Relevant articles:')
             + ul([
                 static_article_links.get(article, article) for article in articles]
             )
@@ -278,21 +304,11 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
     """
     recipe = get_recipe_from_name(name)
     link_name = get_recipe_href(name)
-    if (f'results-{name}.json' in data
-       and 'params' in data[f'results-{name}.json'].metadata):
-        metadata = data[f'results-{name}.json'].metadata
-        params = metadata.params
-        # header = ''
-        # asr_name = (metadata.asr_name if 'asr_name' in metadata
-        #             else name)  # Fall back to name as best guess for asr_name
-        # link_name = get_recipe_href(asr_name, name=name)
+    if f'results-{name}.json' in data:
+        record = data.get_record(f'results-{name}.json')
+        params = record.parameters
     else:
-        params = recipe.get_defaults()
-        # header = ('No parameters can be found, meaning that '
-        #           'the recipe was probably run with the '
-        #           'default parameter shown below\n'
-        #           '<b>Default:</b>')
-        # link_name = get_recipe_href(name)
+        params = recipe.defaults
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     string = pre(code('\n'.join(lst)))
@@ -420,17 +436,84 @@ def is_results_file(filename):
     return filename.startswith('results-') and filename.endswith('.json')
 
 
+class DataFilenameTranslator:
+
+    def __init__(self, cache, data=None):
+        if data is None:
+            data = {}
+        self.data = data
+        self.cache = cache
+
+    def __getitem__(self, item):
+        if item in ['links']:
+            return self.data[item]
+        selector = self.filename_to_selector(item)
+        records = self.cache.select(selector=selector)
+        assert len(records) == 1
+        record = records[0]
+        return record.result
+
+    def filename_to_selector(self, filename):
+        sel = self.cache.make_selector()
+        funcname = filename[8:-5]
+        if '@' not in funcname:
+            funcname += ':main'
+        else:
+            funcname = funcname.replace('@', ':')
+        sel.run_specification.name = sel.EQ(funcname)
+        return sel
+
+    def get(self, item, default=None):
+        if item in self:
+            return self[item]
+        return default
+
+    def get_record(self, filename):
+        selector = self.filename_to_selector(filename)
+        records = self.cache.select(selector=selector)
+        record = records[0]
+        return record
+
+    def __contains__(self, item):
+        selector = self.filename_to_selector(item)
+        return self.cache.has(selector=selector)
+
+
 class RowWrapper:
 
     def __init__(self, row):
+        from asr.database.fromtree import serializer
+        cache = Cache(backend=MemoryBackend())
+        if 'records' in row.data:
+            records = serializer.deserialize(row.data['records'])
+        else:
+            records = []
+        self.records = records
+        for record in records:
+            cache.add(record)
         self._row = row
-        self._data = copy.deepcopy(row.data)
+        self.cache = cache
+        self._data = DataFilenameTranslator(cache, data=row.data)
+
+    @property
+    def data(self):
+        return self._data
 
     def __getattr__(self, key):
         """Wrap attribute lookup of AtomsRow."""
-        if key == 'data':
-            return self._data
         return getattr(self._row, key)
+
+    def __getstate__(self):
+        """Help pickle overcome the troubles due to __getattr__.
+
+        We need to provide getstate/setstate to prevent recursion error
+        when unpickling.
+        """
+        return vars(self)
+
+    def __setstate__(self, dct):
+        """See __getstate__."""
+        self.__dict__.update(dct)
 
     def __contains__(self, key):
         """Wrap contains of atomsrow."""
@@ -455,28 +538,89 @@ def parse_row_data(data: dict):
     return newdata
 
 
-def layout(row: AtomsRow,
-           key_descriptions: Dict[str, Tuple[str, str, str]],
-           prefix: Path) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
+def runplot_clean(plotfunction, *args):
+    plt.close('all')
+    value = plotfunction(*args)
+    plt.close('all')
+    return value
+
+
+def generate_plots(row, prefix, plot_descriptions, pool):
+    missing = set()
+    for desc in plot_descriptions:
+        function = desc['function']
+        filenames = desc['filenames']
+        paths = [Path(prefix + filename) for filename in filenames]
+        for path in paths:
+            if not path.is_file():
+                # Create figure(s) only once:
+                strpaths = [str(path) for path in paths]
+                try:
+                    args = [function, row] + strpaths
+                    if pool is None:
+                        runplot_clean(*args)
+                    else:
+                        pool.apply(runplot_clean, args)
+                except Exception:
+                    if os.environ.get('ASRTESTENV', False):
+                        raise
+                    else:
+                        traceback.print_exc()
+
+                for path in paths:
+                    if not path.is_file():
+                        path.write_text('')  # mark as missing
+                break
+        for path in paths:
+            if path.stat().st_size == 0:
+                missing.add(path)
+    return missing
+
+
+def layout(
+        row: AtomsRow,
+        key_descriptions: Dict[str, Tuple[str, str, str]],
+        prefix: Path,
+        pool: Optional[multiprocessing.Pool] = None
+) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
+    params = {'legend.fontsize': 'large',
+              'axes.labelsize': 'large',
+              'axes.titlesize': 'large',
+              'xtick.labelsize': 'large',
+              'ytick.labelsize': 'large',
+              'savefig.dpi': 200}
+    with plt.rc_context(params):
+        return _layout(row, key_descriptions, prefix, pool)
+
+
+def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
 
     row = RowWrapper(row)
-
-    newdata = parse_row_data(row.data)
-    row.data = newdata
-    result_objects = []
-
-    for key, value in row.data.items():
-        if isinstance(value, ASRResult):
-            result_objects.append(value)
-
+#
+#     newdata = parse_row_data(row.data)
+#     row.data = newdata
+#     result_objects = []
+#
+#     for key, value in row.data.items():
+#         if isinstance(value, ASRResult):
+#             result_objects.append(value)
     panel_data_sources = {}
+    recipes_treated = set()
     # Locate all webpanels
-    for result in result_objects:
+    for record in row.records:
+        result = record.result
+        if not isinstance(result, ASRResult):
+            continue
         if 'ase_webpanel' not in result.get_formats():
             continue
+        if record.run_specification.name in recipes_treated:
+            continue
+
+        recipes_treated.add(record.run_specification.name)
+
         panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
@@ -488,10 +632,10 @@ def layout(row: AtomsRow,
             paneltitle = describe_entry(str(panel['title']), description='')
 
             if paneltitle in page:
-                panel_data_sources[paneltitle].append(result)
+                panel_data_sources[paneltitle].append(record)
                 page[paneltitle].append(panel)
             else:
-                panel_data_sources[paneltitle] = [result]
+                panel_data_sources[paneltitle] = [record]
                 page[paneltitle] = [panel]
 
     for paneltitle, data_sources in panel_data_sources.items():
@@ -503,9 +647,9 @@ def layout(row: AtomsRow,
                 elements += [par(tit.__explanation__)]
 
         recipe_links = []
-        for result in data_sources:
-            asr_name = (result.metadata.asr_name
-                        if 'asr_name' in result.metadata else '(Unknown data source)')
+        for record in data_sources:
+            asr_name = record.run_specification.name
+
             link_name = get_recipe_href(asr_name)
             recipe_links.append(link_name)
 
@@ -523,11 +667,19 @@ def layout(row: AtomsRow,
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
+    # add miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
     misc_panel = {'title': misc_title,
                   'columns': misc_columns}
     page.append(misc_panel)
+
+    # add links section
+    link_title, link_columns = link_section(row, key_descriptions,
+                                            exclude)
+    link_panel = {'title': link_title,
+                  'columns': link_columns}
+    page.append(link_panel)
 
     # Get descriptions of figures that are created by all webpanels
     plot_descriptions = []
@@ -535,29 +687,7 @@ def layout(row: AtomsRow,
         plot_descriptions.extend(panel.get('plot_descriptions', []))
 
     # List of functions and the figures they create:
-    missing = set()  # missing figures
-    for desc in plot_descriptions:
-        function = desc['function']
-        filenames = desc['filenames']
-        paths = [Path(prefix + filename) for filename in filenames]
-        for path in paths:
-            if not path.is_file():
-                # Create figure(s) only once:
-                try:
-                    function(row, *(str(path) for path in paths))
-                except Exception:
-                    if os.environ.get('ASRTESTENV', False):
-                        raise
-                    else:
-                        traceback.print_exc()
-                plt.close('all')
-                for path in paths:
-                    if not path.is_file():
-                        path.write_text('')  # mark as missing
-                break
-        for path in paths:
-            if path.stat().st_size == 0:
-                missing.add(path)
+    missing_figures = generate_plots(row, prefix, plot_descriptions, pool)
 
     # We convert the page into ASE format
     asepage = []
@@ -571,7 +701,7 @@ def layout(row: AtomsRow,
             return block['rows']
         if block['type'] != 'figure':
             return True
-        if Path(prefix + block['filename']) in missing:
+        if Path(prefix + block['filename']) in missing_figures:
             return False
         return True
 
@@ -585,28 +715,114 @@ def layout(row: AtomsRow,
     return final_page
 
 
-@command('asr.database.browser')
-@option('--database', type=str)
-@option('--only-figures', is_flag=True,
-        help='Dont show browser, just save figures')
-def main(database: str = 'database.db',
-         only_figures: bool = False) -> ASRResult:
-    """Open results in web browser."""
-    import subprocess
-    from pathlib import Path
+def get_attribute(obj, attrs):
 
-    custom = Path(__file__)
+    if not attrs:
+        return obj
 
-    cmd = f'python3 -m ase db {database} -w -M {custom}'
-    if only_figures:
-        cmd += ' -l'
-    print(cmd)
-    try:
-        subprocess.check_output(cmd.split())
-    except subprocess.CalledProcessError as e:
-        print(e.output)
-        exit(1)
+    for attr in attrs:
+        if hasattr(obj, attr):
+            obj = getattr(obj, attr)
+        else:
+            try:
+                obj = obj[attr]
+            except (TypeError, KeyError):
+                obj = None
+
+    return obj
 
 
-if __name__ == '__main__':
-    main.cli()
+def parse_selectors(selector: str):
+    op, attr = selector.split(',')
+    attrs = attr.split('.')
+    if op == '-':
+        sign = -1
+    else:
+        sign = 1
+    return sign, attrs
+
+
+def get_panels_values(panels):
+    for ip, panel in enumerate(panels):
+        columns = panel['columns']
+        for ic, column in enumerate(columns):
+            for ie, element in enumerate(column):
+                if element['type'] == 'table':
+                    rows = element['rows']
+                    for ir, row in enumerate(rows):
+                        for iv, value in enumerate(row):
+                            if iv > 0:
+                                yield value, (ip, 'columns', ic, ie, 'rows', ir, iv)
+
+
+def get_value(panels, indices):
+    value = panels
+    for ind in indices:
+        value = value[ind]
+    return value
+
+
+def set_value(panels, indices, value):
+    values = get_value(panels, indices[:-1])
+    values[indices[-1]] = value
+
+
+def cache_webpanel(recipename, *selectors):
+    from asr.database.browser import html_table, par, br, bold
+
+    def decorator(func):
+        def wrapper(result, row, key_descriptions):
+            cache = row.cache
+            records = cache.select(name=recipename)
+
+            sortattrs = []
+            signs = []
+            for selector in selectors:
+                sign, attrs = parse_selectors(selector)
+
+                signs.append(sign)
+                sortattrs.append(
+                    ['run_specification', 'parameters', *attrs]
+                )
+
+            def keysort(x):
+                keys = []
+                for sign, attrs in zip(signs, sortattrs):
+                    value = get_attribute(x, attrs)
+                    if value is not None:
+                        keys.append(sign * value)
+                    else:
+                        keys.append(None)
+                return keys
+
+            records = sorted(
+                records,
+                key=keysort,
+            )
+
+            webpanels_r = []
+            for record in records:
+                webpanels_r.append(func(record.result, row, key_descriptions))
+
+            representative_panels = webpanels_r[-1]
+            for value, indices in get_panels_values(representative_panels):
+                table = []
+                header = ['.'.join(attrs[-2:]) for attrs in sortattrs] + ['value']
+                for record, webpanels in zip(records, webpanels_r):
+                    other_value = get_value(webpanels, indices)
+                    row = (
+                        [get_attribute(record, attrs) for attrs in sortattrs]
+                        + [other_value]
+                    )
+                    table.append(row)
+
+                # Most important entry on top
+                table = table[::-1]
+                html = par(bold('Convergence') + br
+                           + html_table(table, header=header))
+                value = describe_entry(value, description=html)
+                set_value(webpanels, indices, value)
+
+            return representative_panels
+        return wrapper
+    return decorator

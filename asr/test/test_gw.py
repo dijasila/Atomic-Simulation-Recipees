@@ -2,9 +2,11 @@ import pytest
 
 
 @pytest.mark.ci
-def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
+def test_gw(asr_tmpdir_w_params, test_material,
+            mockgpaw, mocker, get_webcontent, fast_calc):
     import numpy as np
     import gpaw
+    from asr.structureinfo import main as structinfo
     from gpaw.response.g0w0 import G0W0
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     gpaw.GPAW._get_band_gap.return_value = 1
@@ -12,7 +14,6 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
     gpaw.GPAW._get_fermi_level.return_value = 0.5
 
     from asr.gw import main
-    test_material.write("structure.json")
     ndim = sum(test_material.pbc)
 
     def calculate(self):
@@ -24,9 +25,22 @@ def test_gw(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent
 
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
-        results = main()
+        results = main(
+            atoms=test_material,
+            calculator=fast_calc,
+            npoints=10,
+            kptdensity=2,
+        )
         assert results['gap_gw'] == pytest.approx(1)
+        structinfo(atoms=test_material)
+        test_material.write("structure.json")
+
         get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main()
+            main(
+                atoms=test_material,
+                calculator=fast_calc,
+                npoints=10,
+                kptdensity=2,
+            )

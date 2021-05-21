@@ -7,3 +7,4 @@ repos:
         name: flake8
         entry: tox -e flake8
         language: system
+        stages: [push]

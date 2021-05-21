@@ -4,19 +4,15 @@ import pytest
 
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Si, BN, GaAs])
-def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
-
+def test_shg(
+        asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent,
+        fast_calc):
     from asr.shg import get_chi_symmetry, main, CentroSymmetric
-    from ase.io import read
     import numpy as np
     import gpaw
     import gpaw.nlopt.shg
 
-    inputatoms.write('structure.json')
-    atoms = read('structure.json')
-    # print(atoms.get_chemical_symbols())
-
-    sym_chi = get_chi_symmetry(atoms, sym_th=1e-3)
+    sym_chi = get_chi_symmetry(inputatoms, sym_th=1e-3)
     comp = ''
     for rel in sym_chi.values():
         comp += '=' + rel
@@ -35,10 +31,21 @@ def test_shg(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
     mocker.patch.object(gpaw.nlopt.shg, 'get_shg', get_shg)
 
     # Check the main function and webpanel
-    if atoms.get_chemical_symbols()[0] == 'Si':
+    if inputatoms.get_chemical_symbols()[0] == 'Si':
         with pytest.raises(CentroSymmetric):
-            assert main(maxomega=3, nromega=4)
+            assert main(
+                atoms=inputatoms,
+                maxomega=3,
+                nromega=4,
+                calculator=fast_calc,
+            )
     else:
-        main(maxomega=3, nromega=4)
+        main(
+            atoms=inputatoms,
+            calculator=fast_calc,
+            maxomega=3,
+            nromega=4,
+        )
+        inputatoms.write('structure.json')
         content = get_webcontent()
         assert 'shg' in content

@@ -5,11 +5,10 @@ from pytest import approx
 @pytest.mark.ci
 @pytest.mark.parametrize('topology', ['Not checked', 'Z2=1,C_M=1'])
 def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
-               get_webcontent, topology):
+               get_webcontent, fast_calc, topology):
     import numpy as np
     from asr.berry import calculate
 
-    test_material.write('structure.json')
     kpar = 10
     nbands = 2
 
@@ -24,7 +23,8 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
 
     mocker.patch('gpaw.berryphase.parallel_transport', create=True,
                  new=parallel_transport)
-    results = calculate()
+    results = calculate(atoms=test_material,
+                        calculator=fast_calc)
 
     # check that all phi_km and s_km are returned by asr.berry@calculate
     # note that asr.berry@calculate does not return any phi_km, s_km for 1D materials
@@ -37,14 +37,12 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-    if topology != 'Not checked':
-        # write topology.dat
-        from ase.parallel import paropen
-        f = paropen('topology.dat', 'w')
-        print(topology, file=f, end='')
-        f.close()
-
     from asr.berry import main
-    results = main()
+    results = main(
+        atoms=test_material,
+        topology=topology,
+        calculator=fast_calc,
+    )
     assert results['Topology'] == topology
+    test_material.write('structure.json')
     get_webcontent()

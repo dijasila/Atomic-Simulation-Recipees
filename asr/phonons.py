@@ -1,17 +1,29 @@
-"""Phonon band structure and dynamical stability."""
+"""Phonon band structure and dynamical stability.
+
+Deprecated: Please use the more efficient and optimized asr.phonopy
+recipe for calculating phonon properties instead.
+
+"""
 from pathlib import Path
 import typing
 
 import numpy as np
 
 from ase.parallel import world
-from ase.io import read
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
+from ase import Atoms
 
-from asr.core import command, option, ASRResult, prepare_result
+import asr
+from asr.core import (
+    command, option, ASRResult, prepare_result, AtomsFile,
+    make_migration_generator, Selector,
+)
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
+
+from asr.magstate import main as magstate
+from asr.core import ExternalFile
 
 panel_description = make_panel_description(
     """
@@ -26,49 +38,40 @@ indicates a dynamical instability.
 )
 
 
-def creates():
-    atoms = read('structure.json')
-    natoms = len(atoms)
-    filenames = ['phonon.eq.pckl']
-    for a in range(natoms):
-        for v in 'xyz':
-            for pm in '+-':
-                # Atomic forces for a displacement of atom a in direction v
-                filenames.append(f'phonon.{a}{v}{pm}.pckl')
-    return filenames
+@prepare_result
+class CalculateResult(ASRResult):
+
+    forcefiles: typing.List[ExternalFile]
+
+    key_descriptions = {'forcefiles': 'Pickle files containing forces.'}
 
 
-def todict(filename):
-    from ase.utils import pickleload
-    with open(filename, 'rb') as fd:
-        content = pickleload(fd)
-    return {'content': content}
-
-
-def topckl(filename, dct):
-    from ase.utils import opencew
-    import pickle
-    if Path(filename).is_file():
-        return
-    contents = dct['content']
-    fd = opencew(filename)
-    if world.rank == 0:
-        pickle.dump(contents, fd, protocol=2)
-        fd.close()
-
-
-@command('asr.phonons',
-         requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=creates)
-@option('-n', help='Supercell size', type=int)
-@option('--ecut', help='Energy cutoff', type=float)
-@option('--kptdensity', help='Kpoint density', type=float)
-@option('--fconverge', help='Force convergence criterium', type=float)
-def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
-              fconverge: float = 1e-4) -> ASRResult:
+@command(
+    'asr.phonons',
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@option('-n', help='Supercell size', type=int, nargs=3)
+def calculate(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'kpts': {'density': 6.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'forces': 1e-4},
+            'symmetry': {'point_group': False},
+            'nbands': '200%',
+            'txt': 'phonons.txt',
+            'charge': 0
+        },
+        n: int = 2,
+) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
-    from asr.calculators import get_calculator
+    from asr.calculators import construct_calculator
     # Remove empty files:
     if world.rank == 0:
         for f in Path().glob('phonon.*.pckl'):
@@ -76,34 +79,17 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
                 f.unlink()
     world.barrier()
 
-    atoms = read('structure.json')
-    gsold = get_calculator()('gs.gpw', txt=None)
-
     # Set initial magnetic moments
-    from asr.utils import is_magnetic
-    if is_magnetic():
-        magmoms_m = gsold.get_magnetic_moments()
+    magstateres = magstate(atoms=atoms, calculator=calculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    params = gsold.parameters.copy()  # TODO: remove fix density from gs params
-    if 'fixdensity' in params:
-        params.pop('fixdensity')
-    params.update({'mode': {'name': 'pw', 'ecut': ecut},
-                   'kpts': {'density': kptdensity, 'gamma': True}})
-
-    # Set essential parameters for phonons
-    params['symmetry'] = {'point_group': False}
-
-    # Make sure to converge forces! Can be important
-    params['convergence'] = {'forces': fconverge}
-
-    fd = open('phonons.txt'.format(n), 'a')
-    params['txt'] = fd
-    calc = get_calculator()(**params)
+    calc = construct_calculator(calculator)
 
     nd = sum(atoms.get_pbc())
     if nd == 3:
@@ -116,19 +102,9 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     p.run()
 
-    # Read creates files
-    files = {}
-    for filename in creates():
-        dct = todict(filename)
-        dct['__tofile__'] = 'asr.phonons@topckl'
-        files[filename] = dct
-    data = {'__files__': files}
-    fd.close()
-    return data
-
-
-def requires():
-    return creates() + ['results-asr.phonons@calculate.json']
+    forcefiles = [ExternalFile.fromstr(str(filename))
+                  for filename in Path().glob('phonon.*.pckl')]
+    return CalculateResult.fromdata(forcefiles=forcefiles)
 
 
 def webpanel(result, row, key_descriptions):
@@ -142,8 +118,8 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get('dynamic_stability_phonons')
 
-    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
 
     row = [
         describe_entry(
@@ -191,17 +167,88 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.phonons',
-         requires=requires,
-         returns=Result,
-         dependencies=['asr.phonons@calculate'])
+def construct_calculator_from_old_parameters(record):
+
+    params = record.parameters
+    if 'calculator' in params:
+        return record
+
+    calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1e-4},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0
+    }
+
+    par_value = [
+        ('fconverge', calculator['convergence'], 'forces'),
+        ('kptdensity', calculator['kpts'], 'density'),
+        ('ecut', calculator['mode'], 'ecut'),
+    ]
+    for par, calc_dct, name in par_value:
+        if par in params:
+            calc_dct[name] = params[par]
+            del params[par]
+
+        for dep_params in params['dependency_parameters'].values():
+            if par in dep_params:
+                del dep_params[par]
+    if record.name == 'asr.phonons:calculate':
+        params.dependency_parameters = {}
+    params.calculator = calculator
+    return record
+
+
+sel = Selector()
+sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
+sel.version = sel.EQ(-1)
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=construct_calculator_from_old_parameters,
+    description='Construct calculator from old parameters.',
+    uid='1dd9655e96114de4abd81d223575080d',
+)
+
+
+@command(
+    'asr.phonons',
+    migrations=[make_migrations],
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@option('-n', help='Supercell size', type=int)
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
-def main(mingo: bool = True) -> Result:
-    from asr.core import read_json
-    calculateresult = read_json('results-asr.phonons@calculate.json')
-    atoms = read('structure.json')
-    n = calculateresult.metadata.params['n']
+def main(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'kpts': {'density': 6.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'forces': 1e-4},
+            'symmetry': {'point_group': False},
+            'nbands': '200%',
+            'txt': 'phonons.txt',
+            'charge': 0
+        },
+        n: int = 2,
+        mingo: bool = True,
+) -> Result:
+    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
+    for extfile in calculateresult.forcefiles:
+        extfile.restore()
     nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
@@ -247,20 +294,20 @@ def main(mingo: bool = True) -> Result:
     else:
         dynamic_stability = 'high'
 
-    results = {'omega_kl': omega_kl,
-               'q_qc': q_qc,
-               'modes_kl': u_kl,
-               'minhessianeig': mineig,
-               'dynamic_stability_phonons': dynamic_stability}
-
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
     freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
                                 verbose=False)
-    results['interp_freqs_kl'] = freqs_kl
-    results['path'] = path
 
-    return results
+    return Result.fromdata(
+        omega_kl=omega_kl,
+        q_qc=q_qc,
+        modes_kl=u_kl,
+        minhessianeig=mineig,
+        dynamic_stability_phonons=dynamic_stability,
+        interp_freqs_kl=freqs_kl,
+        path=path,
+    )
 
 
 def plot_phonons(row, fname):

@@ -1,5 +1,7 @@
 """Structural information."""
-from asr.core import command, ASRResult, prepare_result
+from ase import Atoms
+
+from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -59,7 +61,7 @@ def webpanel(result, row, key_descriptions):
         + dl(
             [
                 [code('stoi'), 'Stoichiometry.'],
-                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
+                [code('spg no.'), f'The space group calculated with {spglib}.'],
                 [code('occ. wyck. pos.'),
                  'Alphabetically sorted list of occupied '
                  f'wyckoff positions determined with {spglib}.'],
@@ -75,21 +77,21 @@ def webpanel(result, row, key_descriptions):
     )
 
     spg_list_link = href(
-        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+        'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
     spacegroup = describe_entry(
         'spacegroup',
-        f"The {spg_list_link} is determined with {spglib}."
+        f"{spg_list_link} determined with {spglib}."
     )
 
     spgnum = describe_entry(
         'spgnum',
-        f"The {spg_list_link} number is determined with {spglib}."
+        f"{spg_list_link} number determined with {spglib}."
     )
 
     pointgroup = describe_entry(
         'pointgroup',
-        f"The point group is determined with {spglib}."
+        f"Point group determined with {spglib}."
     )
 
     icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
@@ -128,7 +130,7 @@ def webpanel(result, row, key_descriptions):
     doi = row.get('doi')
     doistring = describe_entry(
         'Reported DOI',
-        'DOI of article where material has been synthesized.'
+        'DOI of article reporting the synthesis of the material.'
     )
     if doi:
         rows.append([
@@ -145,16 +147,6 @@ def webpanel(result, row, key_descriptions):
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
-
-
-tests = [{'description': 'Test SI.',
-          'cli': ['asr run "setup.materials -s Si2"',
-                  'ase convert materials.json structure.json',
-                  'asr run "setup.params asr.gs@calculate:ecut 300 '
-                  'asr.gs@calculate:kptdensity 2"',
-                  'asr run structureinfo',
-                  'asr run database.fromtree',
-                  'asr run "database.browser --only-figures"']}]
 
 
 @prepare_result
@@ -185,11 +177,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.structureinfo',
-         tests=tests,
-         requires=['structure.json'],
-         returns=Result)
-def main() -> Result:
+@command('asr.structureinfo')
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+def main(atoms: Atoms) -> Result:
     """Get structural information of atomic structure.
 
     This recipe produces information such as the space group and magnetic
@@ -197,9 +188,7 @@ def main() -> Result:
     the atomic structure in `structure.json`.
     """
     import numpy as np
-    from ase.io import read
 
-    atoms = read('structure.json')
     info = {}
 
     formula = atoms.get_chemical_formula(mode='metal')

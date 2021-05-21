@@ -1,8 +1,10 @@
 """Raman spectrum."""
 import typing
 import numpy as np
-from asr.core import command, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, atomsopt
 from asr.database.browser import fig, make_panel_description, href, describe_entry
+
+from ase import Atoms
 
 
 panel_description = make_panel_description(
@@ -69,8 +71,9 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.raman', returns=Result)
-def main() -> Result:
+@command('asr.raman')
+@atomsopt
+def main(atoms: Atoms) -> Result:
     raise NotImplementedError
 
 

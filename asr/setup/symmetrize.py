@@ -1,5 +1,6 @@
 """Generate symmetrized atomic structure."""
-from asr.core import command, option, ASRResult
+from ase import Atoms
+from asr.core import command, option, atomsopt
 
 
 def symmetrize_atoms(atoms, tolerance=None,
@@ -78,13 +79,18 @@ def symmetrize_atoms(atoms, tolerance=None,
     return idealized, origin_c
 
 
+# XXX Originally read atoms from original.json.
 @command('asr.setup.symmetrize')
+@atomsopt(default='original.json')
 @option('--tolerance', type=float,
         help='Tolerance when evaluating symmetries')
 @option('--angle-tolerance', type=float,
         help='Tolerance one angles when evaluating symmetries')
-def main(tolerance: float = 1e-3,
-         angle_tolerance: float = 0.1) -> ASRResult:
+def main(
+        atoms: Atoms,
+        tolerance: float = 1e-3,
+        angle_tolerance: float = 0.1,
+) -> Atoms:
     """Symmetrize atomic structure.
 
     This function changes the atomic positions and the unit cell
@@ -106,8 +112,6 @@ def main(tolerance: float = 1e-3,
 
     """
     import numpy as np
-    from ase.io import read, write
-    atoms = read('original.json')
 
     assert atoms.pbc.all(), \
         ('Symmetrization has only been tested for 3D systems! '
@@ -143,7 +147,6 @@ def main(tolerance: float = 1e-3,
     print(f'Idealizing structure into spacegroup {spg2}.')
     idealized.set_initial_magnetic_moments(
         atoms.get_initial_magnetic_moments())
-    write('unrelaxed.json', idealized)
 
     # Check that the cell was only slightly perturbed
     cp = atoms.cell.cellpar()
@@ -166,7 +169,7 @@ def main(tolerance: float = 1e-3,
     dpos_av = np.dot(idspos_ac - spos_ac, cell)
     dpos_a = np.sqrt(np.sum(dpos_av**2, 1))
     with np.printoptions(precision=2, suppress=False):
-        print(f'Change of positions:')
+        print('Change of positions:')
         msg = '    '
         for symbol, dpos in zip(atoms.symbols, dpos_a):
             msg += f' {symbol}: {dpos:.1e} Å,'
@@ -177,6 +180,7 @@ def main(tolerance: float = 1e-3,
 
     assert (dpos_a < 10 * tolerance).all(), \
         'Some atoms moved too much! See output above.'
+    return idealized
 
 
 if __name__ == '__main__':

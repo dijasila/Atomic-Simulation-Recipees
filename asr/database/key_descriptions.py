@@ -1,4 +1,4 @@
-from asr.core import command, argument, get_recipes, ASRResult
+from asr.core import get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
@@ -38,7 +38,7 @@ key_descriptions = {
         "efermi": "KVP: Fermi level !Fermi level! [eV]",
         "gap": "KVP: Band gap !Band gap! [eV]",
         "vbm": "KVP: Valence band maximum !Val. band maximum! [eV]",
-        "cbm": "KVP: Conduction band minimum !Cond. band maximum! [eV]",
+        "cbm": "KVP: Conduction band minimum !Cond. band minimum! [eV]",
         "gap_dir": "KVP: Direct band gap !Dir. band gap! [eV]",
         "gap_dir_nosoc":
         "KVP: Direct gap w/o soc. !Dir. gap wo. soc.! [eV]",
@@ -237,8 +237,6 @@ for recipe in get_recipes():
 key_descriptions['extra'] = extras
 
 
-@command()
-@argument('database', type=str)
 def main(database: str) -> ASRResult:
     """Analyze database and set metadata.
 
