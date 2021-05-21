@@ -12,7 +12,7 @@
    src/howtoguides/howtoguides
    src/explanations/explanations
    src/generated/recipes
-   src/generated/api
+   src/api
    src/developing
    src/contact
 

@@ -502,8 +502,7 @@ Where to go now?
 Hopefully you will now be capable of writing and running tests for
 your recipe. If you want more examples of tests we suggest looking at
 the existing tests in ``asr/asr/test/test_*.py``. Additionally you can
-take a look at the :ref:`api test` API documentation or you can take a
-look at the documentation of pytest_ itself.
+take a look at the documentation of pytest_ itself.
 
 .. _pytest: https://docs.pytest.org/en/latest/
 .. _tox: https://tox.readthedocs.io/en/latest/

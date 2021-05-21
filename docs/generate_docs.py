@@ -267,6 +267,10 @@ def generate_docs():
     """Generate documentation."""
     print('Generating ASR documentation.')
     empty_generated_files()
-    generate_api_summary()
+    # generate_api_summary()
     generate_recipe_summary()
     generate_stub_pages()
+
+
+if __name__ == '__main__':
+    generate_docs()
