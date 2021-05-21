@@ -3,19 +3,8 @@ from ase import Atoms
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
 import typing
+from asr.utils.kpts import get_kpts_size
 from asr.gs import calculate as gscalculate
-
-
-def get_kpts_size(atoms, density):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=density)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 # XXX The plasmafrequency recipe should not be two steps. We don't
@@ -33,7 +22,7 @@ def calculate(
 
     res = gscalculate(atoms=atoms, calculator=calculator)
     calc_old = res.calculation.load()
-    kpts = get_kpts_size(atoms=calc_old.atoms, density=kptdensity)
+    kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
     nval = calc_old.wfs.nvalence
     filename = "es_plasma.gpw"
     try:
