@@ -486,11 +486,10 @@ def make_the_plots(row, *args):
 
             e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
-            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
-            if mass > 0.0:
-                emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
-            else:
-                emodel_k += np.min(e_km[:, 0]) - np.max(emodel_k)
+
+            emodel_k = evalmodel(kpts_kv,
+                                 data['cb_soc_2ndOrderFit'],
+                                 thirdorder=False) * Ha - reference
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if i != 0:
@@ -561,11 +560,9 @@ def make_the_plots(row, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
-            if mass > 0.0:
-                emodel_k += np.max(e_km[:, -1]) - np.min(emodel_k)
-            else:
-                emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
+            emodel_k = evalmodel(kpts_kv,
+                                 data['vb_soc_2ndOrderFit'],
+                                 thirdorder=False) * Ha - reference
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if i != 0:
@@ -1059,6 +1056,7 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
     import numpy as np
     from ase.parallel import parprint
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
+    assert (r < 1e-3).all()
     dxx = 2 * c[0]
     dyy = 2 * c[1]
     dzz = 2 * c[2]
@@ -1440,27 +1438,23 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
-def evalparamare(mass, bt, cell, k_kc, e_k):
-    from ase.dft.kpoints import labels_from_kpts
+def evalparamare(fitinfo, bt, cell, k_kc, e_k):
+    from ase.dft.kpoints import labels_from_kpts, kpoint_convert
     from ase.units import Bohr, Ha
     import numpy as np
 
     xk, _, _ = labels_from_kpts(kpts=k_kc, cell=cell)
     xk -= xk[-1] / 2.0
-
-    emodel_k = (xk * Bohr)**2 / (2 * mass) * Ha
-    if bt == "vb":
-        emodel_k += np.max(e_k) - np.max(emodel_k)
-    else:
-        assert bt == "cb"
-        emodel_k += np.min(e_k) - np.min(emodel_k)
+    kpts_kv = kpoint_convert(cell_cv=cell, skpts_kc=k_kc)
+    kpts_kv *= Bohr
+    emodel_k = evalmodel(kpts_kv, fitinfo, thirdorder=False) * Ha
 
     if bt == 'vb':
         indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
-        mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
+        mean_e = np.mean(np.abs(e_k[indices] - np.max(e_k[indices])))
     else:
         indices = np.where(np.abs(e_k - np.min(e_k)) < 25e-3)[0]
-        mean_e = np.mean(e_k[indices] - np.min(e_k[indices]))
+        mean_e = np.mean(np.abs(e_k[indices] - np.min(e_k[indices])))
 
     paramare = np.mean(np.abs((emodel_k[indices] - e_k[indices]) / mean_e) * 100)
 
@@ -1495,6 +1489,7 @@ def validate() -> ValidateResult:
     for (sindex, kindex), data in iterateresults(results):
         # Get info on fit at this point in bandstructure
         fitinfo = data['fitcoeff']
+        fitinfo2 = data['2ndOrderFit']
         bt = data['info'].split('_')[0]
         maes = []
         mares = []
@@ -1508,8 +1503,7 @@ def validate() -> ValidateResult:
             mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             mares.append(mare)
 
-            mass = data[f"effmass_dir{i+1}"]
-            paramare = evalparamare(mass, bt, atoms.get_cell(), k_kc, e_k)
+            paramare = evalparamare(fitinfo2, bt, atoms.get_cell(), k_kc, e_k)
             paramares.append(paramare)
 
         prefix = data['info'] + '_'
