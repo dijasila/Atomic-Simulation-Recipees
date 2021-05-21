@@ -47,28 +47,7 @@ def main(
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-<<<<<<< HEAD
-    import json
- 
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
-
-
-def collect_data(atoms):
-    """Band structure PBE and GW +- SOC."""
-    from ase.io.jsonio import read_json
-    from pathlib import Path
-
-    if not Path('dos.json').is_file():
-        return {}, {}, {}
-
-    dos = read_json('dos.json')
-
-    return {}, {}, {'dos': dos}
-=======
     return data
->>>>>>> origin/master
 
 
 def plot(row=None, filename='dos.png', file=None, show=False):

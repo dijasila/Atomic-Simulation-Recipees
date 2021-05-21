@@ -24,14 +24,6 @@ in post-process.""",
 )
 
 
-<<<<<<< HEAD
-
-@command(module='asr.hse',
-         dependencies=['asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-         creates=['hse_nowfs.gpw', 'hse-snapshot.json'],
-         requires=['gs.gpw', 'results-asr.gs.json'],
-         resources='24:10h')
-=======
 @prepare_result
 class HSECalculationResult(ASRResult):
 
@@ -49,7 +41,6 @@ class HSECalculationResult(ASRResult):
 @command(module='asr.hse')
 @asr.atomsopt
 @asr.calcopt
->>>>>>> origin/master
 @option('--kptdensity', help='K-point density', type=float)
 @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(

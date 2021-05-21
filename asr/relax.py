@@ -331,12 +331,7 @@ def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
-<<<<<<< HEAD
-                             'kpts':  {'density': 6.0, 'gamma': True},
-                             'basis': 'dzp',
-=======
                              'kpts': {'density': 6.0, 'gamma': True},
->>>>>>> origin/master
                              'symmetry': {'symmorphic': False},
                              'convergence': {'forces': 1e-4},
                              'txt': 'relax.txt',
