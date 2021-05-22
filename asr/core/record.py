@@ -94,9 +94,10 @@ def compare_dct_with_numpy_arrays(dct1, dct2):
     that would raise an error.
 
     """
+    if set(dct1) != set(dct2):
+        return False
+
     for key in dct1:
-        if key not in dct2:
-            return False
         value1 = dct1[key]
         value2 = dct2[key]
 
