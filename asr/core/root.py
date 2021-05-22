@@ -1,6 +1,12 @@
 import pathlib
 
 
+error_not_initialized = """\
+Root directory not initialized in working directory \
+"{directory}" or any of its parents.  Please run "asr init" \
+in a suitable directory to initialize the root directory"""
+
+
 class ASRRootNotFound(Exception):
     pass
 
@@ -23,7 +29,8 @@ def find_root(path: str = '.'):
     path = pathlib.Path(path).absolute()
     while not (path / ASR_DIR).is_dir():
         if path == pathlib.Path('/'):
-            raise ASRRootNotFound
+            raise ASRRootNotFound(error_not_initialized
+                                  .format(directory=path))
         path = path.parent
     assert (path / ASR_DIR).is_dir()
     return path
