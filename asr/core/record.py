@@ -87,22 +87,21 @@ class Record:
 
 
 def compare_dct_with_numpy_arrays(dct1, dct2):
-    """Compare dictionaries that might containt a numpy array.
+    """Compare dictionaries that might contain a numpy array.
 
-    Numpy array are special since their equality test can return an
+    Numpy arrays are special since their equality test can return an
     array and meaning that we cannot just evaluate dct1 == dct2 since
     that would raise an error.
 
     """
-    dct1keys = dct1.keys()
-    dct2keys = dct2.keys()
-    for key in dct1keys:
-        if key not in dct2keys:
-            return False
+    if set(dct1) != set(dct2):
+        return False
+
+    for key in dct1:
         value1 = dct1[key]
         value2 = dct2[key]
 
-        if isinstance(value1, np.ndarray):
+        if isinstance(value1, np.ndarray) or isinstance(value2, np.ndarray):
             if not np.array_equal(value1, value2):
                 return False
         else:
