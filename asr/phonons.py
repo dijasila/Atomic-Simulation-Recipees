@@ -106,29 +106,28 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
-    fd = open('phonons.txt'.format(n), 'a')
-    params['txt'] = fd
-    calc = get_calculator()(**params)
+    with open('phonons.txt'.format(n), 'a') as fd:
+        params['txt'] = fd
+        calc = get_calculator()(**params)
 
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+        nd = sum(atoms.get_pbc())
+        if nd == 3:
+            supercell = (n, n, n)
+        elif nd == 2:
+            supercell = (n, n, 1)
+        elif nd == 1:
+            supercell = (n, 1, 1)
 
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-    p.run()
+        p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+        p.run()
 
-    # Read creates files
-    files = {}
-    for filename in creates():
-        dct = todict(filename)
-        dct['__tofile__'] = 'asr.phonons@topckl'
-        files[filename] = dct
-    data = {'__files__': files}
-    fd.close()
+        # Read creates files
+        files = {}
+        for filename in creates():
+            dct = todict(filename)
+            dct['__tofile__'] = 'asr.phonons@topckl'
+            files[filename] = dct
+        data = {'__files__': files}
     return data
 
 
