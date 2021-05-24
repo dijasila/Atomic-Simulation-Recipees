@@ -11,7 +11,7 @@ will in the following be implementing functionality for calculating
 the most stable crystal structure of common metals.
 
 Before we begin we have initialize a data repository. This is where
-ASR stores all its data. In practice it is nothing more than a ".asr"
+ASR stores all its data. In practice, it is nothing more than a ".asr"
 directory, which can be initialized with
 
 .. code-block:: console
@@ -39,16 +39,13 @@ To see how this works in practice let's look at an example:
    :pyobject: energy
 
 In this example we have made an instruction for calculating the total
-energy of some input atomic structure using the effective medium
-theory (EMT) calculator. The :func:`asr.atomsopt` option decorator
-informs ASR that the instruction takes an atomic structure as an input
-named "atoms" and sets up a command line interface for this argument
-(this decorator is a special case of the more general
-:func:`asr.option` decorator). We will get back to this concept later
-in the tutorial.
-
-To run the instruction we require an atomic structure which can be
-generated with ASE's command-line interface
+energy of a bulk metal in a given crystal structure using the
+effective medium theory (EMT) calculator. The :func:`asr.argument`
+helps ASR to construct a command-line interface to the
+instruction. Here we have used it to tell ASR that the two arguments
+of our instruction is to be interpreted as arguments on the command
+line (:func:`asr.option` serves the sames purpose but for command line
+options in stead).
 
 The instruction is then easily run through the command-line interface
 
