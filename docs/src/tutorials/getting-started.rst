@@ -83,7 +83,7 @@ result.
    In folder: . (1/1)
    asr.tutorial:energy: Found cached record.uid=e84186a08eaf4523bb44d804071aed6c
 
-This is useful in workflows when it can be beneficial to not
+This is useful in workflows where it is beneficial to not
 redo expensive calculation steps when it has already been performed
 once.
 
@@ -96,7 +96,7 @@ structures and finds the most stable one
    :pyobject: main
 
 
-We say that the python the python modules which contains our two
+We say that the python modules which contains our two
 instructions is a "recipe", ie. a collection of collection of
 instructions that achieve our goal. The "main"-instruction is the
 primary user interface to our recipe and as such it is not necesarry
