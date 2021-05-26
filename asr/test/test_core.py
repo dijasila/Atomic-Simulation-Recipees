@@ -2,6 +2,7 @@ import pytest
 from pytest import approx
 from asr.core import command, argument, option, ASRResult, Parameters
 from time import sleep
+from asr.core.root import ASRRootNotFound
 
 
 @command("test_recipe")
@@ -86,11 +87,12 @@ def test_core(asr_tmpdir_w_params):
     assert record.resources.ncores == 1
 
 
+@pytest.mark.ci
 def test_not_initialized(recipe, tmp_path):
     """Test fail behaviour when running in uninitialized directory."""
     from ase.utils import workdir
 
     with workdir(tmp_path):
-        with pytest.raises(RuntimeError,
+        with pytest.raises(ASRRootNotFound,
                            match='Root directory not initialized'):
             recipe(3.0)
