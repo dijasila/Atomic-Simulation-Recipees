@@ -2,6 +2,9 @@
 from click import Choice
 import typing
 
+import numpy as np
+from ase.units import alpha, Ha, Bohr
+
 from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
@@ -170,26 +173,35 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 
 
 def absorption(row, filename, direction='x'):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from ase.units import alpha, Ha, Bohr
+    delta_bse, delta_rpa = gaps_from_row(row)
+    return _absorption(
+        dim=sum(row.toatoms().pbc),
+        magstate=row.magstate,
+        gap_dir=row.gap_dir,
+        gap_dir_nosoc=row.gap_dir_nosoc,
+        bse_data=np.array(
+            row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']),
+        pol_data=row.data.get('results-asr.polarizability.json'),
+        delta_bse=delta_bse,
+        delta_rpa=delta_rpa,
+        direction=direction,
+        filename=filename)
 
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
 
-    magstate = row.magstate
-
-    gap_dir = row.gap_dir
-    gap_dir_nosoc = row.gap_dir_nosoc
-
+def gaps_from_row(row):
     for method in ['_gw', '_hse', '_gllbsc', '']:
         gapkey = f'gap_dir{method}'
         if gapkey in row:
-            gap_dir_x = row.get(gapkey)
-            delta_bse = gap_dir_x - gap_dir
-            delta_rpa = gap_dir_x - gap_dir_nosoc
-            break
+            gap_dir_x = row[gapkey]
+            delta_bse = gap_dir_x - row.gap_dir
+            delta_rpa = gap_dir_x - row.gap_dir_nosoc
+            return delta_bse, delta_rpa
+
+
+def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
+                bse_data, pol_data,
+                delta_bse, delta_rpa, filename, direction):
+    import matplotlib.pyplot as plt
 
     qp_gap = gap_dir + delta_bse
 
@@ -199,22 +211,20 @@ def absorption(row, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
-    wbse_w = data[:, 0] + delta_bse
+    wbse_w = bse_data[:, 0] + delta_bse
     if dim == 2:
-        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
+        sigma_w = -1j * 4 * np.pi * (bse_data[:, 1] + 1j * bse_data[:, 2])
         sigma_w *= wbse_w * alpha / Ha / Bohr
         absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
     else:
-        absbse_w = 4 * np.pi * data[:, 2]
+        absbse_w = 4 * np.pi * bse_data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
     # TODO: Sometimes RPA pol doesn't exist, what to do?
-    data = row.data.get('results-asr.polarizability.json')
-    if data:
-        wrpa_w = data['frequencies'] + delta_rpa
-        sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
+    if pol_data:
+        wrpa_w = pol_data['frequencies'] + delta_rpa
+        sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
         if dim == 2:
             sigma_w *= wrpa_w * alpha / Ha / Bohr
         absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
@@ -223,12 +233,13 @@ def absorption(row, filename, direction='x'):
                                    absrpa_w[wrpa_w < xmax]])) * 1.05
     else:
         ymax = max(absbse_w[wbse_w < xmax]) * 1.05
+
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
-    ax.set_title(f'{direction}-polarization')
+    ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
