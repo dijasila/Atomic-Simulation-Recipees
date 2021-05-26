@@ -288,9 +288,9 @@ class Result(ASRResult):
          'edft': 'DFT total energy [eV]',
          'spos': 'Array: Scaled positions',
          'symbols': 'Array: Chemical symbols',
-         'a': 'Cell parameter a [Ang]',
-         'b': 'Cell parameter b [Ang]',
-         'c': 'Cell parameter c [Ang]',
+         'a': 'Cell parameter a [Å]',
+         'b': 'Cell parameter b [Å]',
+         'c': 'Cell parameter c [Å]',
          'alpha': 'Cell parameter alpha [deg]',
          'beta': 'Cell parameter beta [deg]',
          'gamma': 'Cell parameter gamma [deg]'}
