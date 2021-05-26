@@ -154,6 +154,7 @@ def make_recipe_documentation(module):
                     rst.extend(
                         [
                             f'.. autoclass:: {mod}.{qualname}',
+                            '   :members:',
                             '   ',
                         ]
                     )
