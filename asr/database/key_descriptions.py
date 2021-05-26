@@ -118,7 +118,7 @@ key_descriptions = {
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å^2`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
         "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {
@@ -152,7 +152,7 @@ key_descriptions = {
         "KVP: Stiffness dynamic stability (low/high)",
     },
     "structureinfo": {
-        "cell_area": "KVP: Area of unit-cell [`Å^2`]",
+        "cell_area": "KVP: Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "KVP: Material has inversion symmetry",
         "stoichiometry": "KVP: Stoichiometry",
         "spacegroup": "KVP: Space group",
