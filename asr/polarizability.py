@@ -1,8 +1,10 @@
 """Optical polarizability."""
 import typing
-from click import Choice
+from pathlib import Path
 
+from click import Choice
 import numpy as np
+from ase.io import read
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
@@ -107,12 +109,9 @@ class Result(ASRResult):
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
          xc: str = 'RPA', bandfactor: int = 5) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
-    from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
-    from pathlib import Path
-    import numpy as np
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -204,9 +203,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 
 
 def polarizability(row, fx, fy, fz):
-    import numpy as np
     import matplotlib.pyplot as plt
-
 
     data = row.data.get('results-asr.polarizability.json')
 
@@ -304,7 +301,6 @@ def ylims(ws, data, wstart=0.0):
 
 
 def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
-    import matplotlib.pyplot as plt
     ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')

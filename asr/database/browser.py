@@ -441,6 +441,7 @@ class RowWrapper:
         return getattr(self._row, key)
 
     def __getitem__(self, key):
+        """Get key directly."""
         return self._row[key]
 
     def __getstate__(self):
