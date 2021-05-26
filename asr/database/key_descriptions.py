@@ -28,13 +28,13 @@ key_descriptions = {
         "nspins": "KVP: Number of spins in calculator !n-spins!",
     },
     "gs": {
-        "forces": "Forces on atoms [eV/Angstrom]",
-        "stresses": "Stress on unit cell [`eV/Angstrom^{dim-1}`]",
+        "forces": "Forces on atoms [eV/Å]",
+        "stresses": "Stress on unit cell [`eV/Å^{dim-1}`]",
         "etot": "KVP: Total energy !Tot. En.! [eV]",
         "evac": "KVP: Vacuum level !Vacuum level! [eV]",
         "evacdiff":
         "KVP: Vacuum level difference !Vacuum level difference! [eV]",
-        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Ang/unit cell]",
+        "dipz": "KVP: Out-of-plane dipole along +z axis [e * Å/unit cell]",
         "efermi": "KVP: Fermi level !Fermi level! [eV]",
         "gap": "KVP: Band gap !Band gap! [eV]",
         "vbm": "KVP: Valence band maximum !Val. band maximum! [eV]",
@@ -79,12 +79,12 @@ key_descriptions = {
         "efermi_hse_soc": "Fermi level (HSE) [eV]",
     },
     "infraredpolarizability": {
-        "alphax_lat": "KVP: Static lattice polarizability (x) [Ang]",
-        "alphay_lat": "KVP: Static lattice polarizability (y) [Ang]",
-        "alphaz_lat": "KVP: Static lattice polarizability (z) [Ang]",
-        "alphax": "KVP: Static total polarizability (x) [Ang]",
-        "alphay": "KVP: Static total polarizability (y) [Ang]",
-        "alphaz": "KVP: Static total polarizability (z) [Ang]",
+        "alphax_lat": "KVP: Static lattice polarizability (x) [Å]",
+        "alphay_lat": "KVP: Static lattice polarizability (y) [Å]",
+        "alphaz_lat": "KVP: Static lattice polarizability (z) [Å]",
+        "alphax": "KVP: Static total polarizability (x) [Å]",
+        "alphay": "KVP: Static total polarizability (y) [Å]",
+        "alphaz": "KVP: Static total polarizability (z) [Å]",
     },
     "magnetic_anisotropy": {
         "spin_axis": "KVP: Magnetic easy axis",
@@ -118,28 +118,28 @@ key_descriptions = {
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å^2`]",
         "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
         "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
     },
     "polarizability": {
-        "alphax_el": "KVP: Static interband polarizability (x) [Ang]",
-        "alphay_el": "KVP: Static interband polarizability (y) [Ang]",
-        "alphaz_el": "KVP: Static interband polarizability (z) [Ang]",
+        "alphax_el": "KVP: Static interband polarizability (x) [Å]",
+        "alphay_el": "KVP: Static interband polarizability (y) [Å]",
+        "alphaz_el": "KVP: Static interband polarizability (z) [Å]",
     },
     "relax": {
         "edft": "DFT total enrgy [eV]",
         "spos": "Array: Scaled positions",
         "symbols": "Array: Chemical symbols",
-        "a": "Cell parameter a [Ang]",
-        "b": "Cell parameter b [Ang]",
-        "c": "Cell parameter c [Ang]",
+        "a": "Cell parameter a [Å]",
+        "b": "Cell parameter b [Å]",
+        "c": "Cell parameter c [Å]",
         "alpha": "Cell parameter alpha [deg]",
         "beta": "Cell parameter beta [deg]",
         "gamma": "Cell parameter gamma [deg]",
@@ -152,7 +152,7 @@ key_descriptions = {
         "KVP: Stiffness dynamic stability (low/high)",
     },
     "structureinfo": {
-        "cell_area": "KVP: Area of unit-cell [`Ang^2`]",
+        "cell_area": "KVP: Area of unit-cell [`Å^2`]",
         "has_inversion_symmetry": "KVP: Material has inversion symmetry",
         "stoichiometry": "KVP: Stoichiometry",
         "spacegroup": "KVP: Space group",
@@ -223,7 +223,7 @@ for i in range(1, 4):
     for j in range(1, 7):
         key = 'e_{}{}'.format(i, j)
         name = 'Piezoelectric tensor'
-        description = f'Piezoelectric tensor {i}{j}-component' + '[`\\text{Ang}^{-1}`]'
+        description = f'Piezoelectric tensor {i}{j}-component' + '[`\\text{Å}^{-1}`]'
         piezokd[key] = description
 
 key_descriptions['piezoelectrictensor'] = piezokd
