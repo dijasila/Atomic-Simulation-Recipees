@@ -61,6 +61,8 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
+    from asr.utils.hacks import gs_xcname_from_row
+
     # PDOS figure
     parameter_description = entry_parameter_description(
         row.data,
@@ -81,18 +83,21 @@ def webpanel(result, row, key_descriptions):
                    + parameter_description
                    + dependencies_parameter_descriptions)
 
+    xcname = gs_xcname_from_row(row)
     # Projected band structure and DOS panel
     panel = WebPanel(
-        title='Projected band structure and DOS (PBE)',
+        title=f'Projected band structure and DOS ({xcname})',
         columns=[[],
-                 [describe_entry(fig('pbe-pdos_nosoc.png', link='empty'),
+                 [describe_entry(fig(pdos_figfile, link='empty'),
                                  description=explanation)]],
         plot_descriptions=[{'function': plot_pdos_nosoc,
-                            'filenames': ['pbe-pdos_nosoc.png']}],
+                            'filenames': [pdos_figfile]}],
         sort=13)
 
     return [panel]
 
+
+pdos_figfile = 'scf-pdos_nosoc.png'
 
 # ---------- Main functionality ---------- #
 

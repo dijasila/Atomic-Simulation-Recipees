@@ -8,7 +8,7 @@ def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
     from gpaw import GPAW
     calc = GPAW('gs.gpw', txt=None)
 
-    kpts = get_kpts_size(atoms=calc.atoms, density=kptdensity)
+    kpts = get_kpts_size(atoms=calc.atoms, kptdensity=kptdensity)
     convbands = int(emptybands / 2)
     calc = calc.fixed_density(nbands=-emptybands,
                               txt=txt,

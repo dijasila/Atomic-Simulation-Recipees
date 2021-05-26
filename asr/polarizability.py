@@ -10,6 +10,8 @@ from asr.database.browser import (
     fig,
     describe_entry,
     make_panel_description)
+from asr.utils.kpts import get_kpts_size
+
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
@@ -55,18 +57,6 @@ def webpanel(result, row, key_descriptions):
              'sort': 20}
 
     return [panel]
-
-
-def get_kpts_size(atoms, density):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=density)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 @prepare_result
@@ -139,7 +129,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
     if ND == 3 or ND == 1:
         kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
-        kpts = get_kpts_size(atoms=atoms, density=kptdensity)
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
         volume = atoms.get_volume()
         if volume < 120:
             nblocks = world.size // 4

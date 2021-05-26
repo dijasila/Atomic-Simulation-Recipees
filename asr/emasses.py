@@ -628,7 +628,10 @@ def webpanel(result, row, key_descriptions):
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
-    panel = {'title': describe_entry('Effective masses (PBE)',
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+
+    panel = {'title': describe_entry(f'Effective masses ({xcname})',
                                      panel_description),
              'columns': columns,
              'plot_descriptions':

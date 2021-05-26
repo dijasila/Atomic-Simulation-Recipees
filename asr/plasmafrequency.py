@@ -1,18 +1,7 @@
 """Plasma frequency."""
 from asr.core import command, option, ASRResult, prepare_result
 import typing
-
-
-def get_kpts_size(atoms, density):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=density)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
+from asr.utils.kpts import get_kpts_size
 
 
 @command('asr.plasmafrequency',
@@ -27,7 +16,7 @@ def calculate(kptdensity: float = 20) -> ASRResult:
     from pathlib import Path
 
     calc_old = GPAW('gs.gpw', txt=None)
-    kpts = get_kpts_size(atoms=calc_old.atoms, density=kptdensity)
+    kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
     nval = calc_old.wfs.nvalence
     try:
         calc = GPAW('gs.gpw', fixdensity=True, kpts=kpts,

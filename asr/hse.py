@@ -3,16 +3,36 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
-from asr.database.browser import (
-    fig, table, describe_entry, make_panel_description)
+from asr.database.browser import make_panel_description
+from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
 
-panel_description = make_panel_description(
-    """The single-particle band structure calculated with the HSE06
+
+class HSEInfo(GWHSEInfo):
+    method_name = 'HSE06'
+    name = 'hse'
+    bs_filename = 'hse-bs.png'
+
+    panel_description = make_panel_description(
+        """\
+The single-particle band structure calculated with the HSE06
 xc-functional. The calculations are performed non-self-consistently with the
 wave functions from a GGA calculation. Spin–orbit interactions are included
 in post-process.""",
-    articles=['C2DB'],
-)
+        articles=['C2DB'],
+    )
+
+    band_gap_adjectives = 'electronic single-particle'
+    summary_sort = 11
+
+    @staticmethod
+    def plot_bs(row, filename):
+        data = row.data['results-asr.hse.json']
+        return plot_bs(row, filename=filename, bs_label='HSE06',
+                       data=data,
+                       efermi=data['efermi_hse_soc'],
+                       vbm=row.get('vbm_hse'),
+                       cbm=row.get('cbm_hse'))
 
 
 @command(module='asr.hse',
@@ -29,19 +49,6 @@ def calculate(kptdensity: float = 8.0, emptybands: int = 20) -> ASRResult:
     results = {'hse_eigenvalues': eigs,
                'hse_eigenvalues_soc': eigs_soc}
     return results
-
-
-# XXX move to utils? [also in asr.polarizability]
-def get_kpts_size(atoms, kptdensity):
-    """Find reasonable monkhorst-pack size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 def hse(kptdensity, emptybands):
@@ -72,12 +79,12 @@ def hse(kptdensity, emptybands):
                                              n1=0,
                                              n2=nb - convbands,
                                              snapshot='hse-snapshot.json')
-    e_pbe_skn, vxc_pbe_skn, vxc_hse_skn = result
-    e_hse_skn = e_pbe_skn - vxc_pbe_skn + vxc_hse_skn
+    e_scf_skn, vxc_scf_skn, vxc_hse_skn = result
+    e_hse_skn = e_scf_skn - vxc_scf_skn + vxc_hse_skn
 
     dct = dict(vxc_hse_skn=vxc_hse_skn,
-               e_pbe_skn=e_pbe_skn,
-               vxc_pbe_skn=vxc_pbe_skn,
+               e_scf_skn=e_scf_skn,
+               vxc_scf_skn=vxc_scf_skn,
                e_hse_skn=e_hse_skn)
     return dct, calc
 
@@ -101,8 +108,8 @@ def hse_spinorbit(dct, calc):
 def MP_interpolate(calc, delta_skn, lb, ub):
     """Interpolate corrections to band patch.
 
-    Calculates band stucture along the same band path used for PBE
-    by interpolating a correction onto the PBE band structure.
+    Calculates band stucture along the same band path used for SCF
+    by interpolating a correction onto the SCF band structure.
     """
     import numpy as np
     from gpaw import GPAW
@@ -113,10 +120,10 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     from asr.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
-    # read PBE (without SOC)
+    # read SCF (without SOC)
     results_bandstructure = read_json('results-asr.bandstructure.json')
     path = results_bandstructure['bs_nosoc']['path']
-    e_pbe_skn = results_bandstructure['bs_nosoc']['energies']
+    e_scf_skn = results_bandstructure['bs_nosoc']['energies']
 
     size, offset = get_monkhorst_pack_size_and_offset(calc.get_bz_k_points())
     bz2ibz = calc.get_bz_to_ibz_map()
@@ -124,7 +131,7 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     eps = monkhorst_pack_interpolate(path.kpts, delta_skn.transpose(1, 0, 2),
                                      icell, bz2ibz, size, offset)
     delta_interp_skn = eps.transpose(1, 0, 2)
-    e_int_skn = e_pbe_skn[:, :, bandrange] + delta_interp_skn
+    e_int_skn = e_scf_skn[:, :, bandrange] + delta_interp_skn
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
@@ -139,15 +146,6 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     results['bandstructure'] = singleprec_dict(dct)
 
     return results
-
-
-def plot_bs_hse(row, filename):
-    data = row.data['results-asr.hse.json']
-    return plot_bs(row, filename=filename, bs_label='HSE',
-                   data=data,
-                   efermi=data['efermi_hse_soc'],
-                   vbm=row.get('vbm_hse'),
-                   cbm=row.get('cbm_hse'))
 
 
 def plot_bs(row,
@@ -165,9 +163,6 @@ def plot_bs(row,
     fontsize = 10
 
     path = data['bandstructure']['path']
-    # WTF, we are hacking globals??
-    # While plotting from multiple threads which is not recommended in the first place?
-    # mpl.rcParams['font.size'] = fontsize
 
     reference = row.get('evac')
     if reference is None:
@@ -228,53 +223,9 @@ def plot_bs(row,
 
 
 def webpanel(result, row, key_descriptions):
-
-    if row.get('gap_hse', 0) > 0.0:
-        hse = table(row, 'Property',
-                    ['gap_hse', 'gap_dir_hse'],
-                    kd=key_descriptions)
-
-        if row.get('evac'):
-            hse['rows'].extend(
-                [['Valence band maximum wrt. vacuum level (HSE)',
-                  f'{row.vbm_hse - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level (HSE)',
-                  f'{row.cbm_hse - row.evac:.2f} eV']])
-        else:
-            hse['rows'].extend(
-                [['Valence band maximum wrt. Fermi level (HSE)',
-                  f'{row.vbm_hse - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level (HSE)',
-                  f'{row.cbm_hse - row.efermi:.2f} eV']])
-    else:
-        hse = table(row, 'Property',
-                    [],
-                    kd=key_descriptions)
-
-    panel = {'title': describe_entry('Electronic band structure (HSE)',
-                                     panel_description),
-             'columns': [[fig('hse-bs.png')],
-                         [fig('bz-with-gaps.png'), hse]],
-             'plot_descriptions': [{'function': plot_bs_hse,
-                                    'filenames': ['hse-bs.png']}],
-             'sort': 15}
-
-    if row.get('gap_hse'):
-
-        bandgaphse = describe_entry(
-            'Band gap (HSE)',
-            'The electronic single-particle band gap calculated with '
-            'HSE including spin–orbit effects.\n\n',
-        )
-        rows = [[bandgaphse, f'{row.gap_hse:0.2f} eV']]
-        summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
-                   'sort': 11}
-        return [panel, summary]
-
-    return [panel]
+    from asr.utils.gw_hse import gw_hse_webpanel
+    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
+                           sort=15)
 
 
 @prepare_result
@@ -335,7 +286,7 @@ def main() -> Result:
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn'] - data['vxc_pbe_skn']
+    delta_skn = data['vxc_hse_skn'] - data['vxc_scf_skn']
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...

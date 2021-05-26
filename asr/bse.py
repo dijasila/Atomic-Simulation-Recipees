@@ -8,6 +8,7 @@ from ase.units import alpha, Ha, Bohr
 from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
+from asr.utils.kpts import get_kpts_size
 
 
 panel_description = make_panel_description(
@@ -20,18 +21,6 @@ adjustment as used for BSE but without spin–orbit interactions, is also shown.
 """,
     articles=['C2DB'],
 )
-
-
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
 
 
 @command(creates=['bse_polx.csv', 'bse_eigx.dat',
