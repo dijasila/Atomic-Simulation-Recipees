@@ -1,6 +1,11 @@
 """Optical polarizability."""
 import typing
+from pathlib import Path
+
 from click import Choice
+import numpy as np
+from ase.io import read
+
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
     table,
@@ -104,12 +109,9 @@ class Result(ASRResult):
 def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
          xc: str = 'RPA', bandfactor: int = 5) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
-    from ase.io import read
     from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
-    from pathlib import Path
-    import numpy as np
 
     atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
@@ -201,19 +203,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 
 
 def polarizability(row, fx, fy, fz):
-    import numpy as np
     import matplotlib.pyplot as plt
-
-    def xlim():
-        return (0, 10)
-
-    def ylims(ws, data, wstart=0.0):
-        i = abs(ws - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y1 = min(x1.min(), x2.min()) * 1.02
-        y2 = max(x1.max(), x2.max()) * 1.02
-        return y1, y2
 
     data = row.data.get('results-asr.polarizability.json')
 
@@ -264,14 +254,8 @@ def polarizability(row, fx, fy, fz):
     except AttributeError:
         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
-    ax.set_title('x-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fx)
+
+    plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
 
     ax = plt.figure().add_subplot(111)
     ax2 = ax
@@ -295,30 +279,37 @@ def polarizability(row, fx, fy, fz):
             ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
     except AttributeError:
         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-    ax.set_title('y-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fy)
 
-    ax = plt.figure().add_subplot(111)
-    ax3 = ax
-    ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
-    ax.set_title('z-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fz)
+    ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
+    plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')
+
+    ax3 = plt.figure().add_subplot(111)
+    ax3.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
+    ax3.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
+    plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
 
     return ax1, ax2, ax3
+
+
+def ylims(ws, data, wstart=0.0):
+    i = abs(ws - wstart).argmin()
+    x = data[i:]
+    x1, x2 = x.real, x.imag
+    y1 = min(x1.min(), x2.min()) * 1.02
+    y2 = max(x1.max(), x2.max()) * 1.02
+    return y1, y2
+
+
+def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+    ax.set_title(f'Polarization: {direction}')
+    ax.set_xlabel('Energy [eV]')
+    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
+    ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
+    ax.legend()
+    ax.set_xlim((0, 10))
+    fig = ax.get_figure()
+    fig.tight_layout()
+    fig.savefig(filename)
 
 
 if __name__ == '__main__':

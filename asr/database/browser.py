@@ -440,6 +440,10 @@ class RowWrapper:
             return self._data
         return getattr(self._row, key)
 
+    def __getitem__(self, key):
+        """Get key directly."""
+        return self._row[key]
+
     def __getstate__(self):
         """Help pickle overcome the troubles due to __getattr__.
 
