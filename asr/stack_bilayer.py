@@ -22,7 +22,6 @@ def flatten(atoms, tol):
 
 
 def get_cell_type(atoms):
-    import numpy as np
     ac = np.allclose
     uc = atoms.get_cell_lengths_and_angles()
 
@@ -44,7 +43,6 @@ def get_cell_type(atoms):
 
 def get_rotated_mats(atoms: Atoms):
     import spglib
-    import numpy as np
 
     pure_cell = Atoms('C', positions=[[0, 0, 0]])
     pure_cell.set_cell(atoms.get_cell())
@@ -111,7 +109,6 @@ def atomseq(atoms1, atoms2, full=False, rmsd_tol=None):
 
 
 def same_positions(atoms1, atoms2):
-    import numpy as np
     poss1 = atoms1.get_positions()
     poss2 = atoms2.get_positions()
 
