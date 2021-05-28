@@ -25,6 +25,8 @@ def test_mod_function(asr_tmpdir):
         r2 = np.array([r[0] + L, r[1] + M, r[2] + N])
         assert np.allclose(mod(r - r2, 1.0), 0.0), f"r: {r}, r2: {r2}"
 
+    # This is from a specific, randomly generated case
+    # where the mod function failed
     r1 = np.array([1.26713637, 1.00347767, 0.0])
     r2 = np.array([32.26713637, 9.00347767, 0.0])
     assert np.allclose(mod(r1 - r2, 1.0), 0.0)
