@@ -5,6 +5,7 @@ import numpy as np
 from asr.utils.bilayerutils import layername
 from pathlib import Path
 
+
 def stack(stacked, base, U_cc, t_c, tvec, h):
     new_layer = base.copy()
     spos_ac = new_layer.get_scaled_positions()
