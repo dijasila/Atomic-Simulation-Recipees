@@ -1,11 +1,12 @@
-from asr.core import command, option, AtomsFile, ASRResult
+from asr.core import command, option, AtomsFile, ASRResult, read_json
+from asr.utils.bilayerutils import translation as stack_trans
 from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import layername
+from pathlib import Path
 
 
 def stack(stacked, base, U_cc, t_c, tvec, h):
-    from asr.utils.bilayerutils import translation as stack_trans
     new_layer = base.copy()
     spos_ac = new_layer.get_scaled_positions()
     spos_ac = np.dot(spos_ac, U_cc.T) + t_c
@@ -51,8 +52,6 @@ def inflate_vacuum(atoms, height, nlayers):
 def main(atoms: Atoms,
          height: float,
          nlayers: int) -> ASRResult:
-    from asr.core import read_json
-    import os
     transform_data = read_json('transformdata.json')
     translation = np.array(read_json('translation.json')['translation_vector'])
 
@@ -72,11 +71,11 @@ def main(atoms: Atoms,
     f = atoms.get_chemical_formula()
     t = atoms.cell.scaled_positions(
         np.array([translation[0], translation[1], 0.0])) + t_c
-    foldername = layername(f, nlayers, U_cc, t)
-    if not os.path.isdir(foldername):
-        os.mkdir(foldername)
+    folderpath = Path(layername(f, nlayers, U_cc, t))
+    if not folderpath.is_dir():
+        folderpath.mkdir()
 
-    stacked.write(f'{foldername}/structure.json')
+    stacked.write(f'{folderpath}/structure.json')
 
 
 if __name__ == '__main__':
