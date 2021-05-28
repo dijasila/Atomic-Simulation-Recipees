@@ -162,7 +162,7 @@ def webpanel(result, row, key_descriptions):
                 ]
             )
         ),
-        dynstab.upper()
+        #dynstab.upper()
     ]
 
     summary = {'title': 'Summary',
