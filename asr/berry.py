@@ -2,17 +2,28 @@
 import numpy as np
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (fig, entry_parameter_description,
-                                  describe_entry, WebPanel)
+                                  describe_entry, WebPanel,
+                                  make_panel_description, href)
 
 
-panel_description = """\
+olsen_title = ('T. Olsen et al. Discovering two-dimensional topological '
+               'insulators from high-throughput computations. '
+               'Phys. Rev. Mater. 3 024005.')
+olsen_doi = 'https://doi.org/10.1103/PhysRevMaterials.3.024005'
+
+panel_description = make_panel_description(
+    """\
 The spectrum was calculated by diagonalizing the Berry phase matrix
 obtained by parallel transporting the occupied Bloch states along the
 k₀-direction for each value of k₁. The eigenvalues can be interpreted
 as the charge centers of hybrid Wannier functions localised in the
 0-direction and the colours show the expectation values of spin for
 the corresponding Wannier functions. A gapless spectrum is a minimal
-requirement for non-trivial topological invariants."""
+requirement for non-trivial topological invariants.
+""",
+    articles=[href(olsen_title, olsen_doi)],
+)
+
 
 @prepare_result
 class CalculateResult(ASRResult):
