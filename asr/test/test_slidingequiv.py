@@ -252,7 +252,7 @@ def test_slide_equiv_double_set(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_slide_top_H(asr_tmpdir):
+def test_slide_top_H():
     x = 0.5
     cell = 5
     ats1 = Atoms("H2", positions=[[0, 0, 0], [0, 0, 1]], cell=(cell, cell, cell))
@@ -440,29 +440,3 @@ def test_not_same_top_atoms(asr_tmpdir):
 
     v = get_slide_vector(bottom1, top1, bottom2, top2, np.zeros(2), np.zeros(2))
     assert v is None, v
-
-
-def dont_test_hbn(asr_tmpdir):
-    from ase.io import read
-    prefix = "/home/niflheim/asbra/stacked/"
-    bottom1 = read(
-        f"{prefix}hbnstackings/BN-4a5edc763604/structure.json")
-    top1 = read(
-        f"{prefix}hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/toplayer.json")
-
-    bottom2 = bottom1.copy()
-    top2 = top1.copy()
-    dvec = (bottom1.cell[0] + bottom1.cell[1]) / 2
-    top2.translate(dvec)
-
-    v = get_slide_vector(bottom1, top1, bottom2, top2)
-    assert v is not None
-    assert np.allclose(v, dvec)
-
-
-def _test_wte2_with_inversion_center(asr_tmpdir):
-    pass
-
-
-def _test_wte2_w_o_inversion_center(asr_tmpdir):
-    pass
