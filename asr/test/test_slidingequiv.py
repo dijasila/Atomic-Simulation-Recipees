@@ -8,7 +8,7 @@ from ase import Atoms
 
 
 @pytest.mark.ci
-def test_mod_function(asr_tmpdir):
+def test_mod_function():
     np.random.seed(42)
     for _ in range(100):
         L = np.random.randint(1, 100)
@@ -40,7 +40,7 @@ def genrandomset():
 
 
 @pytest.mark.ci
-def test_equiv_w_vector_special_cases(asr_tmpdir):
+def test_equiv_w_vector_special_cases():
     special_cases = [(np.array([1.55503299, 1.67613917, 0.0]),
                       ElementSet([True, True],
                                  [np.array([0, 0, 0.0]), np.array([0.5, 0.0, 0.0])]),
@@ -54,7 +54,7 @@ def test_equiv_w_vector_special_cases(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_w_vector_symmetry(asr_tmpdir):
+def test_equiv_w_vector_symmetry():
     np.random.seed(42 * 42)
     for _ in range(100):
         N = np.random.randint(1, 10)
@@ -69,7 +69,7 @@ def test_equiv_w_vector_symmetry(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_w_vector_integer_translation(asr_tmpdir):
+def test_equiv_w_vector_integer_translation():
     ss = [genrandomset() for _ in range(50)]
     np.random.seed(42)
     for s in ss:
@@ -84,7 +84,7 @@ def test_equiv_w_vector_integer_translation(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
+def test_equiv_w_vector_equivalent_translations():
     ss = [genrandomset() for _ in range(50)]
     np.random.seed(42)
     for i1, s1 in enumerate(ss):
@@ -104,7 +104,7 @@ def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_not_equiv_if_not_movable(asr_tmpdir):
+def test_not_equiv_if_not_movable():
     ss = [genrandomset() for _ in range(50)]
     np.random.seed(41)
     for i1, s1 in enumerate(ss):
@@ -130,7 +130,7 @@ def test_not_equiv_if_not_movable(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_vector_diff_lengths(asr_tmpdir):
+def test_equiv_vector_diff_lengths():
     np.random.seed(123)
     set1 = ElementSet([True, True],
                       [np.random.rand(3) for _ in range(2)])
@@ -142,7 +142,7 @@ def test_equiv_vector_diff_lengths(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_vector_not_equiv(asr_tmpdir):
+def test_equiv_vector_not_equiv():
     np.random.seed(321)
     N = 10
     ss = [ElementSet([True, True],
@@ -160,7 +160,7 @@ def test_equiv_vector_not_equiv(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_equiv_vector_given_vector(asr_tmpdir):
+def test_equiv_vector_given_vector():
     ss = [genrandomset() for _ in range(50)]
     np.random.seed(1020)
     def randompos():
@@ -181,7 +181,7 @@ def test_equiv_vector_given_vector(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_material_setup(asr_tmpdir):
+def test_material_setup():
     atoms = Atoms("H2", positions=[[0, 0, 0, ], [0, 0, 1]])
     mat = Material([True, True], atoms)
 
@@ -194,7 +194,7 @@ def test_material_setup(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_slide_equivalent_to_self(asr_tmpdir):
+def test_slide_equivalent_to_self():
     ats = Atoms("H2", positions=[[0, 0, 0, ], [0, 0, 1]], cell=(5, 5, 5))
     ats2 = ats.copy()
 
@@ -203,7 +203,7 @@ def test_slide_equivalent_to_self(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_slide_top_H_remove_sets(asr_tmpdir):
+def test_slide_top_H_remove_sets():
     ats1 = Atoms("H2", positions=[[0, 0, 0], [0, 0, 1]], cell=(5, 5, 5))
     ats2 = Atoms("H2", positions=[[0, 0, 0], [0.5, 0, 1]], cell=(5, 5, 5))
 
@@ -230,7 +230,7 @@ def test_slide_top_H_remove_sets(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_slide_equiv_singleton_set(asr_tmpdir):
+def test_slide_equiv_singleton_set():
     expected = np.array([0, 0.5, 0.0])
     set1 = ElementSet([True], [np.array([0, 0.0, 0.0])])
     set2 = ElementSet([False], [expected])
@@ -240,7 +240,7 @@ def test_slide_equiv_singleton_set(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_slide_equiv_double_set(asr_tmpdir):
+def test_slide_equiv_double_set():
     expected = np.array([0, 0.5, 0.0])
     zero = np.array([0, 0.0, 0.0])
     set1 = ElementSet([False, True], [zero, zero])
@@ -272,7 +272,7 @@ def test_slide_top_H():
 
 
 @pytest.mark.ci
-def test_slide_top_atoms(asr_tmpdir):
+def test_slide_top_atoms():
     ats = Atoms("H2", positions=[[0, 0, 0], [0, 0, 1]], cell=(5, 5, 5))
     ats2 = Atoms("H2", positions=[[0, 0, 0], [0.5, 0, 1]], cell=(5, 5, 5))
 
@@ -283,7 +283,7 @@ def test_slide_top_atoms(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_mos2_slided(asr_tmpdir):
+def test_mos2_slided():
     bottom_pos = np.array([[0, 0, 9.06],
                            [1.59, 0.92, 10.63],
                            [1.59, 0.92, 7.5]])
@@ -336,7 +336,7 @@ def invert(atoms):
 
 
 @pytest.mark.ci
-def test_mos2_not_slide_equiv(asr_tmpdir):
+def test_mos2_not_slide_equiv():
     bottom_pos = np.array([[0, 0, 9.06],
                            [1.59, 0.92, 10.63],
                            [1.59, 0.92, 7.5]])
@@ -368,7 +368,7 @@ def test_mos2_not_slide_equiv(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_one_immovable_set(asr_tmpdir):
+def test_one_immovable_set():
     ats1 = Atoms("CH", positions=[[0, 0, 0],
                                   [0, 0, 1]], cell=(5, 5, 5))
     ats2 = Atoms("CH", positions=[[0, 0, 0],
@@ -381,7 +381,7 @@ def test_one_immovable_set(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_same_atoms(asr_tmpdir):
+def test_same_atoms():
     bottom1 = Atoms("H2O", positions=[[0, 0, 0],
                                       [0, 0, 1],
                                       [0, 1, 0]], cell=(5, 5, 5))
@@ -395,7 +395,7 @@ def test_same_atoms(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_same_misaligned(asr_tmpdir):
+def test_same_misaligned():
     bottom1 = Atoms("H2O", positions=[[0, 0, 0],
                                       [0, 0, 1],
                                       [0, 1, 0]], cell=(5, 5, 5))
@@ -412,7 +412,7 @@ def test_same_misaligned(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_not_same_bottom_atoms(asr_tmpdir):
+def test_not_same_bottom_atoms():
     bottom1 = Atoms("H2O", positions=[[0, 0, 0],
                                       [0, 0, 1],
                                       [0, 1, 0]], cell=(5, 5, 5))
@@ -428,7 +428,7 @@ def test_not_same_bottom_atoms(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_not_same_top_atoms(asr_tmpdir):
+def test_not_same_top_atoms():
     bottom1 = Atoms("H2O", positions=[[0, 0, 0],
                                       [0, 0, 1],
                                       [0, 1, 0]], cell=(5, 5, 5))
