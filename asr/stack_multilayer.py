@@ -53,6 +53,8 @@ def inflate_vacuum(atoms, height, nlayers):
 def main(atoms: Atoms,
          height: float,
          nlayers: int) -> ASRResult:
+    if mpi.world.size != 1:
+        raise ValueError('This recipe cannot be run in parallel')
     transform_data = read_json('transformdata.json')
     translation = np.array(read_json('translation.json')['translation_vector'])
 
@@ -73,11 +75,10 @@ def main(atoms: Atoms,
     t = atoms.cell.scaled_positions(
         np.array([translation[0], translation[1], 0.0])) + t_c
     folderpath = Path(layername(f, nlayers, U_cc, t))
-    if mpi.world.rank == 0:
-        if not folderpath.is_dir():
-            folderpath.mkdir()
+    if not folderpath.is_dir():
+        folderpath.mkdir()
 
-        stacked.write(f'{folderpath}/structure.json')
+    stacked.write(f'{folderpath}/structure.json')
 
 
 if __name__ == '__main__':

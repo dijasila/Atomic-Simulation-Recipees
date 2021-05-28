@@ -242,9 +242,11 @@ class StackBilayerResult(ASRResult):
 def main(atoms: Atoms,
          rmsd_tol: float = 0.3) -> ASRResult:
     from gpaw import mpi
+    import os
     if sum(atoms.pbc) != 2:
         raise StackingError('It is only possible to stack 2D materials')
-    import os
+    if mpi.world.size != 1:
+        raise ValueError('This recipe cannot be run in parallel')
 
     from asr.core import write_json
     # Increase z vacuum
@@ -270,7 +272,7 @@ def main(atoms: Atoms,
         name = layername(atoms.get_chemical_formula(), 2, tform[0], t)
         names.append(name)
 
-        if not os.path.isdir(name) and mpi.world.rank == 0:
+        if not os.path.isdir(name):
             os.mkdir(name)
 
         mat.cell[2, 2] /= 2
