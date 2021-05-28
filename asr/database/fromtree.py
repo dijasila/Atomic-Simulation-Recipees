@@ -281,6 +281,12 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
 
                 for key, value in tmpkvp.items():
                     # Skip values not suitable for a database column:
+                    if key == 'folder':
+                        continue
+                    if key == 'etot':
+                        # Clash between etot from relax and gs!
+                        # What do we do about this?
+                        continue
                     if isinstance(value, (bool, int, float, str)):
                         if key in kvp and kvp[key] != value:
                             raise ValueError(
