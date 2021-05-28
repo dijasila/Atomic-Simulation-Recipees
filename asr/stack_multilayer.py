@@ -4,8 +4,6 @@ from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import layername
 from pathlib import Path
-from gpaw import mpi
-
 
 def stack(stacked, base, U_cc, t_c, tvec, h):
     new_layer = base.copy()
@@ -53,6 +51,7 @@ def inflate_vacuum(atoms, height, nlayers):
 def main(atoms: Atoms,
          height: float,
          nlayers: int) -> ASRResult:
+    from gpaw import mpi
     if mpi.world.size != 1:
         raise ValueError('This recipe cannot be run in parallel')
     transform_data = read_json('transformdata.json')
