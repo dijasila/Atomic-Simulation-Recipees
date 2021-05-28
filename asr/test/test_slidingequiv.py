@@ -335,18 +335,6 @@ def invert(atoms):
     return atoms2
 
 
-def dont_test_hbn_inverted(asr_tmpdir):
-    from ase.io import read
-    prefix = "/home/niflheim/asbra/stacked/"
-    atoms = read(
-        f"{prefix}hbnstackings/BN-4a5edc763604/BN-2-1_0_0_1--0.33_0.33/structure.json")
-
-    inverted_atoms = invert(atoms)
-
-    assert slide_equivalent([True, True, False, False], inverted_atoms,
-                            atoms) is not None
-
-
 @pytest.mark.ci
 def test_mos2_not_slide_equiv(asr_tmpdir):
     bottom_pos = np.array([[0, 0, 9.06],
