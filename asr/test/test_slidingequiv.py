@@ -185,9 +185,8 @@ def test_material_setup(asr_tmpdir):
     atoms = Atoms("H2", positions=[[0, 0, 0, ], [0, 0, 1]])
     mat = Material([True, True], atoms)
 
-    keys = list(mat.sets.keys())
-    assert len(keys) == 1
-    assert "H" in keys
+    assert len(mat.sets) == 1
+    assert "H" in mat.sets
     positions = mat.sets["H"].get_positions()
     expected = np.array([[0, 0, 0],
                          [0, 0, 1]])
