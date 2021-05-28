@@ -9,6 +9,7 @@ from ase import Atoms
 
 @pytest.mark.ci
 def test_mod_function(asr_tmpdir):
+    np.random.seed(42)
     for _ in range(100):
         L = np.random.randint(1, 100)
         M = np.random.randint(1, 100)
@@ -30,6 +31,7 @@ def test_mod_function(asr_tmpdir):
 
 
 def genrandomset():
+    np.random.seed(42 + 42)
     n = np.random.randint(1, 10)
     return ElementSet([True for _ in range(n)],
                       [(np.random.rand(3) - 0.5) * 2 for _ in range(n)])
@@ -51,6 +53,7 @@ def test_equiv_w_vector_special_cases(asr_tmpdir):
 
 @pytest.mark.ci
 def test_equiv_w_vector_symmetry(asr_tmpdir):
+    np.random.seed(42 * 42)
     for _ in range(100):
         N = np.random.randint(1, 10)
         s1 = ElementSet([True for _ in range(N)],
@@ -66,7 +69,7 @@ def test_equiv_w_vector_symmetry(asr_tmpdir):
 @pytest.mark.ci
 def test_equiv_w_vector_integer_translation(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-
+    np.random.seed(42)
     for s in ss:
         I1 = np.random.randint(1, 100)
         I2 = np.random.randint(1, 100)
@@ -81,7 +84,7 @@ def test_equiv_w_vector_integer_translation(asr_tmpdir):
 @pytest.mark.ci
 def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-
+    np.random.seed(42)
     for i1, s1 in enumerate(ss):
         r = np.random.rand(3) + 0.1
         r2 = r + 1.0
@@ -101,7 +104,7 @@ def test_equiv_w_vector_equivalent_translations(asr_tmpdir):
 @pytest.mark.ci
 def test_not_equiv_if_not_movable(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-
+    np.random.seed(41)
     for i1, s1 in enumerate(ss):
         r = np.random.rand(3) + 0.1
         r2 = r + 1.0
@@ -126,6 +129,7 @@ def test_not_equiv_if_not_movable(asr_tmpdir):
 
 @pytest.mark.ci
 def test_equiv_vector_diff_lengths(asr_tmpdir):
+    np.random.seed(123)
     set1 = ElementSet([True, True],
                       [np.random.rand(3) for _ in range(2)])
     set2 = ElementSet([True, True, True, True],
@@ -137,6 +141,7 @@ def test_equiv_vector_diff_lengths(asr_tmpdir):
 
 @pytest.mark.ci
 def test_equiv_vector_not_equiv(asr_tmpdir):
+    np.random.seed(321)
     N = 10
     ss = [ElementSet([True, True],
                      [np.random.rand(3) for _ in range(2)]) for _ in range(N)]
@@ -155,7 +160,7 @@ def test_equiv_vector_not_equiv(asr_tmpdir):
 @pytest.mark.ci
 def test_equiv_vector_given_vector(asr_tmpdir):
     ss = [genrandomset() for _ in range(50)]
-
+    np.random.seed(1020)
     def randompos():
         return np.array([(np.random.rand() - 0.5) * 4,
                          (np.random.rand() - 0.5) * 4,
