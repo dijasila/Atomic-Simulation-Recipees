@@ -219,12 +219,12 @@ def test_slide_top_H_remove_sets():
 
     set1 = mat1.sets["H"]
 
-    s1 = set1.removeAt(0)
+    s1 = set1.remove_at(0)
     assert s1.get_data()[0][0]
     assert np.allclose(s1.get_data()[0][1], np.array(
         [0, 0, 0.2])), f"actual: {s1.get_data()[0][1]}"
 
-    s2 = set1.removeAt(1)
+    s2 = set1.remove_at(1)
     assert not s2.get_data()[0][0]
     assert np.allclose(s2.get_data()[0][1], np.array([0, 0, 0]))
 
@@ -325,9 +325,9 @@ def test_mos2_not_slide_equiv():
     top = Atoms("MoS2", positions=top_pos, cell=cell)
     bilayer = bottom + top
 
-    not_top_pos = np.array([[0, 0, 9.06],
-                            [0.59, 0.92, 10.63],
-                            [1.59, 2.92, 7.5]])
+    not_top_pos = bottom_pos.copy() + np.array([[0, 0, 0],
+                                                [1, 0, 0],
+                                                [0, 2, 0]])
     not_top_pos[:, 2] += 7.5
     bottom = Atoms("MoS2", positions=bottom_pos, cell=cell)
     not_slided_top = Atoms("MoS2", positions=not_top_pos, cell=cell)

@@ -137,8 +137,8 @@ def equiv_vector(set1: ElementSet, set2: ElementSet) -> Tuple[float, float]:
     for i2, (_, p2) in enumerate(set2.get_data()):
         v = mod(p2 - reference_pos, 1)
 
-        _s1 = set1.removeAt(ref_ind)
-        _s2 = set2.removeAt(i2)
+        _s1 = set1.remove_at(ref_ind)
+        _s2 = set2.remove_at(i2)
 
         b = equiv_w_vector(v, _s1, _s2)
         if b:
