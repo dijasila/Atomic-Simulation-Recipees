@@ -2,7 +2,7 @@ import pytest
 from asr.utils.slidingequivalence import mod, equiv_w_vector
 from asr.utils.slidingequivalence import equiv_vector, ElementSet
 from asr.utils.slidingequivalence import Material, slide_equivalent
-from asr.utils.slidingequivalence import get_slide_vector, invert
+from asr.utils.slidingequivalence import get_slide_vector
 import numpy as np
 from ase import Atoms
 
@@ -163,6 +163,7 @@ def test_equiv_vector_not_equiv():
 def test_equiv_vector_given_vector():
     ss = [genrandomset() for _ in range(50)]
     np.random.seed(1020)
+
     def randompos():
         return np.array([(np.random.rand() - 0.5) * 4,
                          (np.random.rand() - 0.5) * 4,
