@@ -270,10 +270,9 @@ MEDIUM = 2
 HIGH = 3
 stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
 stability_descriptions = {
-    LOW: 'Heat of formation < convex hull + 0.2 eV/atom',
+    LOW: 'Heat of formation > 0.2 eV/atom',
     MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
-    HIGH: 'Heat of formation > 0.2 eV/atom',
-}
+    HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
 
 
 def stability_rating(hform, ehull):
