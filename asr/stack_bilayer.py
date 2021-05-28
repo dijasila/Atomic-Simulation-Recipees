@@ -185,8 +185,7 @@ def cell_specific_stacks(atoms, cell_type, rotated_mats, transforms, rmsd_tol):
     final_transforms = []
 
     positions = atoms.get_positions()
-    unit_cell = atoms.get_cell_lengths_and_angles()
-    a, b, c = unit_cell[:3]
+    a, b, c = atoms.cell.lengths()
 
     def append_helper(x, y, top, atoms, symtup):
         U_cc, t_c = symtup
