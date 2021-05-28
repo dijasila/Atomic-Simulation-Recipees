@@ -11,11 +11,11 @@ class ElementSet:
     # positions: List[Tuple[bool, np.array]]
 
     def __init__(self, movable_indices, positions):
-        assert type(positions) == np.array or type(positions) == list
+        assert isinstance(positions, np.ndarray) or isinstance(positions, list)
         positions = np.array(positions, dtype=float)
         assert len(positions[0]) == 3, positions
-        assert type(movable_indices) == list
-        assert all(type(x) == bool for x in movable_indices)
+        assert isinstance(movable_indices, list)
+        assert all(isinstance(x, bool) for x in movable_indices)
         self._positions = list(zip(movable_indices, positions))
 
     def add_vec(self, vector):
