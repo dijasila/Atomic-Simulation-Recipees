@@ -49,7 +49,7 @@ class ElementSet:
         pos = [p for b, p in self._positions]
         return ElementSet(inds.copy(), pos.copy())
 
-    def removeAt(self, index):
+    def remove_at(self, index):
         inds = [b for i, (b, p) in enumerate(self._positions) if i != index]
         pos = [p.copy() for i, (b, p) in enumerate(self._positions) if i != index]
         return ElementSet(inds.copy(), pos.copy())
