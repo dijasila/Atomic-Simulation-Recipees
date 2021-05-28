@@ -2,7 +2,7 @@ import pytest
 from asr.utils.slidingequivalence import mod, equiv_w_vector
 from asr.utils.slidingequivalence import equiv_vector, ElementSet
 from asr.utils.slidingequivalence import Material, slide_equivalent
-from asr.utils.slidingequivalence import get_slide_vector
+from asr.utils.slidingequivalence import get_slide_vector, invert
 import numpy as np
 from ase import Atoms
 
@@ -308,31 +308,6 @@ def test_mos2_slided():
 
     assert slide_equivalent(indices, slided_bilayer, bilayer) is not None
     assert slide_equivalent(indices, bilayer, slided_bilayer) is not None
-
-
-def invert(atoms):
-    pos = atoms.positions
-
-    mean_z = np.mean(pos[:, 2])
-    assert np.allclose(mean_z, 9.2203), mean_z
-
-    relative_z = pos.copy()
-    relative_z[:, 2] = relative_z[:, 2] - mean_z
-
-    inverted_z = relative_z.copy()
-    inverted_z[:, 2] *= -1
-
-    inverted_z[:, 2] += mean_z
-    assert (inverted_z[:, 2] >= 0).all()
-
-    atoms2 = atoms.copy()
-    atoms2.set_positions(inverted_z)
-
-    dvec = atoms.positions[0] - atoms2.positions[2]
-    atoms2.positions[:] += dvec
-    atoms2.wrap()
-
-    return atoms2
 
 
 @pytest.mark.ci
