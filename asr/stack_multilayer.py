@@ -4,6 +4,7 @@ from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import layername
 from pathlib import Path
+from gpaw import mpi
 
 
 def stack(stacked, base, U_cc, t_c, tvec, h):
@@ -72,10 +73,11 @@ def main(atoms: Atoms,
     t = atoms.cell.scaled_positions(
         np.array([translation[0], translation[1], 0.0])) + t_c
     folderpath = Path(layername(f, nlayers, U_cc, t))
-    if not folderpath.is_dir():
-        folderpath.mkdir()
+    if mpi.world.rank == 0:
+        if not folderpath.is_dir():
+            folderpath.mkdir()
 
-    stacked.write(f'{folderpath}/structure.json')
+        stacked.write(f'{folderpath}/structure.json')
 
 
 if __name__ == '__main__':
