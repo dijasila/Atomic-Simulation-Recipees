@@ -34,7 +34,7 @@ def inflate_vacuum(atoms, height, nlayers):
 
     uz = atoms.cell[2, 2]
 
-    uz = uz + (nlayers - 1) * height
+    uz += (nlayers - 1) * height
 
     atoms.cell[2, 2] = uz
 
