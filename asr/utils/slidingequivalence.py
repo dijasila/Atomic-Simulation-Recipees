@@ -22,7 +22,7 @@ class ElementSet:
         res = []
         for b, p in self._positions:
             if b:
-                res.append(p.copy() + vector)
+                res.append(p + vector)
             else:
                 res.append(p.copy())
         return res
