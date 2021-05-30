@@ -189,45 +189,6 @@ def main(
         sort: str = None, atomsfile: str = 'structure.json',
         chunks: int = 1, copy: bool = False,
         patterns: str = '*', update_tree: bool = False) -> ASRResult:
-    """Unpack an ASE database to a tree of folders.
-
-    This command unpacks an ASE database to into folders
-    that have a tree-like structure where directory names can be
-    given by the material parameters such stoichiometry or spacegroup
-    number.  For example: stoichiometry/spacegroup/formula.
-
-    The specific tree structure is given by the --tree-structure
-    option which can be customized according to the following table
-
-    * {stoi}: Material stoichiometry
-    * {spg}: Material spacegroup number
-    * {formula}: Chemical formula. A possible variant is {formula:metal}
-      in which case the formula will be sorted by metal atoms
-    * {reduced_formula}: Reduced chemical formula. Like {formula}
-      except the formula has been reduced, i.e., Mo2S4 -> MoS2.
-    * {wyck}: Unique Wyckoff positions. The unique alphabetically
-      sorted Wyckoff positions.
-
-    Examples
-    --------
-    For all these examples, suppose you have a database named "database.db".
-
-    Unpack database using default parameters:
-    $ asr database totree database.db --run"
-    Don't actually unpack the database but do a dry-run:
-    $ asr database main database.totree database.db"
-    Only select a part of the database to unpack:
-    $ asr database totree database.db --selection "natoms<3" --run
-    Set custom folder tree-structure:
-    $ asr database totree database.db
-    ... --tree-structure "tree/{stoi}/{spg}/{formula:metal}" --run
-
-    Divide the tree into 2 chunks (in case the study of the materials
-    is divided between 2 people). Also sort after number of atoms,
-    so computationally expensive materials are divided evenly:
-    $ asr database totree database.db --sort natoms --chunks 2 --run
-
-    """
     from pathlib import Path
     from ase.db import connect
 
