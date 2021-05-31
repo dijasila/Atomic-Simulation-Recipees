@@ -98,7 +98,7 @@ def make_recipe_documentation(module):
                  if step.__name__ != 'main' else module
                  for step in steps]
     nsteps = len(steps)
-    some_steps = 'a single step' if nsteps == 1 else f'{nsteps} steps'
+    some_steps = 'a single instruction' if nsteps == 1 else f'{nsteps} instructions'
     pyfunclist = [f'  - :py:func:`{module}.{step.__name__}`'
                   for step in steps]
     summary = (['Summary',
@@ -142,9 +142,24 @@ def make_recipe_documentation(module):
              step_title,
              '^' * len(step_title),
              f'.. autofunction:: {module}.{step.__name__}',
-             '   ']
+             '   ',
+             ]
         )
-
+        if step.returns:
+            returns = step.returns
+            try:
+                if issubclass(returns, ASRResult) and not returns == ASRResult:
+                    mod = returns.__module__
+                    qualname = returns.__qualname__
+                    rst.extend(
+                        [
+                            f'.. autoclass:: {mod}.{qualname}',
+                            '   :members:',
+                            '   ',
+                        ]
+                    )
+            except TypeError:
+                continue
     return rst
 
 
