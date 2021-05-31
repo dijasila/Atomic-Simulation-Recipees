@@ -800,7 +800,11 @@ def results(selection, show):
         if 'ase_webpanel' not in result.get_formats():
             print(f'{result} does not have any results to present!')
             continue
-        row = get_row_from_folder('.')
+        try:
+            directory = record.metadata.directory
+        except AttributeError:
+            directory = '.'
+        row = get_row_from_folder(directory)
         panels = result.format_as('ase_webpanel', row, kd)
         make_panel_figures(row, panels, uid=record.uid[:10])
 

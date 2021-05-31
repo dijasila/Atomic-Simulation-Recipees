@@ -26,7 +26,7 @@ def get_row_from_folder(folder='.'):
     from asr.database.fromtree import collect_folder
     from asr.database.browser import RowWrapper
     atoms, kvp, data = collect_folder(
-        Path('.'),
+        Path(folder),
         atomsname='structure.json',
         patterns='',
     )
