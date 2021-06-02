@@ -10,9 +10,10 @@ and related contextual data. To see how this works in practice, we
 will in the following be implementing functionality for calculating
 the most stable crystal structure of common metals.
 
-Before we begin we have initialize a data repository. This is where
+Before we begin we have to initialize a data repository. This is where
 ASR stores all its data. In practice, it is nothing more than a ".asr"
 directory, which can be initialized with
+
 
 .. code-block:: console
 
@@ -34,6 +35,9 @@ simply python functions decorated with the :func:`asr.instruction`
 decorator.
 
 To see how this works in practice let's look at an example: 
+
+..
+   $ cp $ASRHOME/docs/src/tutorials/getting-started.py $ASRLIB/tutorial.py
 
 .. literalinclude:: getting-started.py
    :pyobject: energy
