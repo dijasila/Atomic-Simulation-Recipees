@@ -129,3 +129,77 @@ Notice here we applied the "name=asr.tutorial" selection to select
 only the record of relevance. As we can see the EMT calculator
 correctly predicts FCC as the most stable crystal structure for
 silver.
+
+Let's continue and calculate the most stable crystal structures for
+various other metals
+
+.. code-block:: console
+   $ asr run "asr.tutorial Al"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Al')
+   Running asr.tutorial:energy(element='Al', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Al', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Al', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Al', crystal_structure='diamond')
+   $ asr run "asr.tutorial Ni"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Ni')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='diamond')
+   $ asr run "asr.tutorial Cu"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Cu')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='diamond')
+   $ asr run "asr.tutorial Pd"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Pd')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='diamond')
+   $ asr run "asr.tutorial Pt"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Pt')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='diamond')
+   $ asr run "asr.tutorial Au"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Au')
+   Running asr.tutorial:energy(element='Au', crystal_structure='sc')
+   Running asr.tutorial:energy(element='Au', crystal_structure='fcc')
+   Running asr.tutorial:energy(element='Au', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Au', crystal_structure='diamond')
+
+We can now take a look at the results with
+
+.. code-block:: console
+
+   $ asr cache ls name=asr.tutorial:main
+                name parameters result
+
+
+=====================================
+Getting started - part 2 - migrations
+=====================================
+
+It often happens that you want/have to make changes to an existing instruction.
+For example, you want to add an additional argument, change the return type of
+the result, change the implementation which requires thinking about what should
+happen to existing Records in the cache. This is what "migrations" are for.
+
+ASR implements a revisioning system for Records for handling this
+problem which revolves around defining functions for updating existing
+records to be compatible with the newest implementation of the
+instructions.
+
+
+
+In the following we will continue with the example of calculating the most
+stable crystal structure.
