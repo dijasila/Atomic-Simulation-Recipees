@@ -338,7 +338,12 @@ def get_emass_dict_from_row(row, has_mae=False):
             data = results[key]
             direction = 0
             marekey = name.lower() + '_soc_wideareaPARAMARE'
-            mares = data[marekey] if has_mae else None
+            if marekey not in data:
+                print(f'WARNING: Your data is outdated. Please rerun emasses@validate.')
+                mares = None
+                has_mae = False
+            else:
+                mares = data[marekey] if has_mae else None
 
             for k in data.keys():
                 if 'effmass' in k:
