@@ -173,6 +173,15 @@ def main() -> Result:
         sc_time=sct)
 
 
+def MHz_to_eV(MHz):
+    """Convert MHz to eV."""
+    import ase.units as units
+
+    J = MHz * 1e6 * units._hplanck
+
+    return J / units._e
+
+
 def calculate_hyperfine(atoms, calc):
     """Calculate hyperfine splitting from the calculator."""
     from math import pi
@@ -382,6 +391,9 @@ def calculate_hyperfine(atoms, calc):
 
     abundance = nuclear_abundance[sym][0]
     nuclear_spin = nuclear_abundance[sym][1]
+
+    # convert unit of A_max from MHz to eV
+    A_max = MHz_to_eV(A_max)
 
     # hyperfine interaction energy in eV
     hf_int_en = 0.5 * A_max / N_nb * _mu_bohr * (0.01 * abundance) * nuclear_spin
