@@ -27,7 +27,18 @@ def get_cell_type(atoms):
     cell[2, :] = 0.0
     assert cell.rank == 2, cell
     lat = cell.get_bravais_lattice()
-    return lat.name
+    name = lat.name
+    if name == 'HEX2D':
+        name = 'hexagonal'
+    elif name == 'RECT':
+        name = 'rectangular'
+    elif name == 'SQR':
+        name = 'square'
+    elif name == 'CRECT':
+        name = 'centered'
+    else:
+        name = 'oblique'
+    return name
 
 
 def get_rotated_mats(atoms: Atoms):
