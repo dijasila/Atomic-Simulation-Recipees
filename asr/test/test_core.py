@@ -95,4 +95,4 @@ def test_not_initialized(recipe, tmp_path):
     with workdir(tmp_path):
         with pytest.raises(ASRRootNotFound,
                            match='Root directory not initialized'):
-            recipe(3.0)
+            recipe(3)
