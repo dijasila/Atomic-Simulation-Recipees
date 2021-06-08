@@ -487,12 +487,10 @@ def migrate_record(
 
 def get_instruction_migration_generator() -> CollectionMigrationGenerator:
     """Collect record migrations from all recipes."""
-    recipes = get_recipes()
+    # Import all recipes to make sure that migrations are registered
+    get_recipes()
     migrations = CollectionMigrationGenerator(migration_generators=[])
-    for recipe in recipes:
-        if recipe.migrations:
-            migrations.extend(recipe.migrations)
-
+    migrations.extend(MIGRATIONS)
     return migrations
 
 
@@ -572,5 +570,15 @@ def migration(
         return SelectorMigrationGenerator(migration=migration, selector=selector)
 
     if function is not None:
-        return wrap(function)
+        migration = wrap(function)
+    else:
+        migration = wrap
+    register_migration(migration)
     return wrap
+
+
+MIGRATIONS = set()
+
+
+def register_migration(migration) -> None:
+    MIGRATIONS.add(migration)
