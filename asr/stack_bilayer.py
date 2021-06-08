@@ -41,6 +41,22 @@ def get_cell_type(atoms):
     return name
 
 
+def transform_layer(atoms, U_cc, t_c):
+    rotated_atoms = atoms.copy()
+
+    # Calculate rotated and translated atoms
+    spos_ac = rotated_atoms.get_scaled_positions()
+    spos_ac = np.dot(spos_ac, U_cc.T) + t_c
+    
+    # Move atoms
+    rotated_atoms.set_scaled_positions(spos_ac)
+    
+    # Wrap atoms outside of unit cell back
+    rotated_atoms.wrap(pbc=[1, 1, 1])
+
+    return rotated_atoms
+    
+
 def get_rotated_mats(atoms: Atoms):
     import spglib
 
@@ -56,17 +72,7 @@ def get_rotated_mats(atoms: Atoms):
     transforms = []
 
     for i, (U_cc, t_c) in enumerate(zip(rotations, translations)):
-        rotated_atoms = atoms.copy()
-
-        # Calculate rotated and translated atoms
-        spos_ac = rotated_atoms.get_scaled_positions()
-        spos_ac = np.dot(spos_ac, U_cc.T) + t_c
-
-        # Move atoms
-        rotated_atoms.set_scaled_positions(spos_ac)
-
-        # Wrap atoms outside of unit cell back
-        rotated_atoms.wrap(pbc=[1, 1, 1])
+        rotated_atoms = transform_layer(atoms, U_cc,  t_c)
 
         final_mats.append(rotated_atoms)
         transforms.append((U_cc, t_c))
