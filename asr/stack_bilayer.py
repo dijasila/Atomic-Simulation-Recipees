@@ -24,7 +24,8 @@ def flatten(atoms, tol):
 def get_cell_type(atoms):
     cell = atoms.get_cell()
     cell[:, 2] = 0.0
-    assert cell.rank == 2
+    cell[2, :] = 0.0
+    assert cell.rank == 2, cell
     lat = cell.get_bravais_lattice()
     return lat.name
 
