@@ -134,6 +134,7 @@ Let's continue and calculate the most stable crystal structures for
 various other metals
 
 .. code-block:: console
+
    $ asr run "asr.tutorial Al"
    In folder: . (1/1)
    Running asr.tutorial:main(element='Al')
@@ -183,11 +184,24 @@ We can now take a look at the results with
 
    $ asr cache ls name=asr.tutorial:main
                 name parameters result
+   asr.tutorial:main element=Ag    fcc
+   asr.tutorial:main element=Al    fcc
+   asr.tutorial:main element=Ni    fcc
+   asr.tutorial:main element=Cu    fcc
+   asr.tutorial:main element=Pd    fcc
+   asr.tutorial:main element=Pt    fcc
+   asr.tutorial:main element=Au    fcc
 
+From which we can see that the EMT calculator predicts the FCC crystal
+structure to be the most stable crystal structure for all tested
+metals which is true in reality as well.
 
 =====================================
 Getting started - part 2 - migrations
 =====================================
+
+..
+   $ cp $ASRHOME/docs/src/tutorials/getting-started.py $ASRLIB/tutorial.py
 
 It often happens that you want/have to make changes to an existing instruction.
 For example, you want to add an additional argument, change the return type of
@@ -199,7 +213,31 @@ problem which revolves around defining functions for updating existing
 records to be compatible with the newest implementation of the
 instructions.
 
+In the following we will continue with the example of calculating the
+most stable crystal structure. It would be interesting to compare some
+of ASE's other calculators. However, at the moment, the `energy`
+instruction is hardcoded to use the EMT calculator and we will have to
+update the instruction to supply the calculator as an input argument
 
+.. literalinclude:: getting-started-ver2.py
+   :pyobject: energy
 
-In the following we will continue with the example of calculating the most
-stable crystal structure.
+To update the existing records to be consistent with the new
+implementation we make a migration that adds the `calculator`
+parameter to the existing records and sets it to `emt`
+
+.. literalinclude:: getting-started-ver2.py
+   :pyobject: add_missing_calculator_parameter
+
+As is appararent, a migration is nothing more than a regular python
+function decorated with the :py:func:`asr.migration` decorator. The
+decorator takes a `selector` argument which is used to select records
+to be migrated. The selector will be applied to all existing records
+and should return a boolean. The function will then be applied for all
+record that fulfill the selector criterion.
+
+The migrations are applied with `asr cache migrate`
+
+.. code-block:: console
+
+   $ asr cache migrate
