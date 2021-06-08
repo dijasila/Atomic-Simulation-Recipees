@@ -22,23 +22,11 @@ def flatten(atoms, tol):
 
 
 def get_cell_type(atoms):
-    ac = np.allclose
-    uc = atoms.get_cell_lengths_and_angles()
-
-    if ac(uc[0], uc[1]) and ac(uc[5], 90):
-        uc_type = 'square'
-    elif round(uc[3]) == 90 and ac(uc[5], 90):
-        uc_type = 'rectangular'
-    elif ac(uc[0], uc[1]) and (ac(120, uc[5]) or ac(60, uc[5])):
-        uc_type = 'hexagonal'
-    elif (not ac(uc[0], uc[1])
-          and not ac(uc[5], 90)
-          and ac(uc[0] / 2, abs(uc[1] * np.cos(uc[5] * np.pi / 180)))):
-        uc_type = 'centered'
-    else:
-        uc_type = 'oblique'
-
-    return uc_type
+    cell = atoms.get_cell()
+    cell[:, 2] = 0.0
+    assert cell.rank == 2
+    lat = cell.get_bravais_lattice()
+    return lat.name
 
 
 def get_rotated_mats(atoms: Atoms):
