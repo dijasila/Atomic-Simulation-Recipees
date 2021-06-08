@@ -61,8 +61,12 @@ def get_energy(base, top, h, t_c, calc, callback, memo):
         pass
 
     tx, ty = t_c[0], t_c[1]
+
+    # tx, ty are kept fixed throughout relaxation
+    # h (interlayer distance) is changed to find optimal
+    # separation
     atoms = translation(tx, ty, h[0], top, base)
-    atoms.set_calculator(calc)
+    atoms.calc = calc
 
     e = atoms.get_potential_energy()
 
