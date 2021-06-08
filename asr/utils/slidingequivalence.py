@@ -58,14 +58,14 @@ class ElementSet:
 class Material:
     def __init__(self, movable, atoms):
         assert len(movable) == len(atoms)
-        els = {}
+        symbol_to_positions = {}
         sets = {}
         for b, atom in zip(movable, atoms):
-            if atom.symbol not in els:
-                els[atom.symbol] = []
+            if atom.symbol not in symbol_to_positions:
+                symbol_to_positions[atom.symbol] = []
 
-            els[atom.symbol].append((b, atom.scaled_position))
-        for k, v in els.items():
+            symbol_to_positions[atom.symbol].append((b, atom.scaled_position))
+        for k, v in symbol_to_positions.items():
             bs = [b for b, _ in v]
             ps = [p for _, p in v]
             sets[k] = ElementSet(bs, ps)
