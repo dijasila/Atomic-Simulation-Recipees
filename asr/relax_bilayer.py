@@ -25,10 +25,6 @@ def calc_setup(settings):
                          'beta': None, 'nmaxold': None,
                          'weight': None}
 
-    if "nold" in mixersettings:
-        val = mixersettings.pop("nold")
-        mixersettings["nmaxold"] = val
-
     mixertype = mixersettings.pop('type', 'default')
     if mixertype == 'mixer':
         calcsettings['mixer'] = Mixer(**mixersettings)
