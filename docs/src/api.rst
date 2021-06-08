@@ -13,3 +13,5 @@ API reference
 .. autofunction:: asr.option
 
 .. autofunction:: asr.argument
+
+.. autofunction:: asr.migration
