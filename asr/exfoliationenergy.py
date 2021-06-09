@@ -24,7 +24,7 @@ def get_bilayers_energies(p):
     for sp in p.iterdir():
         if not sp.is_dir():
             continue
-        datap = Path(str(sp) + "/results-asr.relax_bilayer.json")
+        datap = sp / 'results-asr.relax_bilayer.json'
         if datap.exists():
             data = read_json(str(datap))
             bilayers_energies.append((str(sp), data['energy']))
@@ -36,7 +36,12 @@ def monolayer_energy(atoms):
     return atoms.get_potential_energy()
 
 
-def vdw_energy(atoms):
+def vdw_energy(atoms, path):
+    precalculated_file = str(path.resolve()) + "/vdw_e.npy"
+    if Path(precalculated_file).is_file():
+        import numpy as np
+        vdw_e = np.load(precalculated_file).item()
+        return vdw_e
     atoms = atoms.copy()
     Calculator = get_calculator_class('dftd3')
     calc = Calculator()
@@ -68,10 +73,14 @@ def main(atoms: Atoms) -> ASRResult:
     bilayers_energies = get_bilayers_energies(p)
 
     if len(bilayers_energies) == 0:
-        raise ValueError('No bilayers found!')
+        return ExfoliationResult.fromdata(exfoliationenergy=None,
+                                          most_stable_bilayer=None,
+                                          number_of_bilayers=0,
+                                          bilayer_names=[])
+        # raise ValueError('No bilayers found!')
 
     ml_e = monolayer_energy(atoms)
-    vdw_e = vdw_energy(atoms)
+    vdw_e = vdw_energy(atoms, p)
 
     things = calculate_exfoliation(ml_e, vdw_e,
                                    bilayers_energies, atoms)
