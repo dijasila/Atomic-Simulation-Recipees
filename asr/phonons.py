@@ -103,7 +103,7 @@ def calculate(
     p.run()
 
     forcefiles = [ExternalFile.fromstr(str(filename))
-                  for filename in Path().glob('phonon.*.pckl')]
+                  for filename in Path().glob('phonon/cache.*.json')]
     return CalculateResult.fromdata(forcefiles=forcefiles)
 
 
@@ -244,8 +244,7 @@ def main(
             'charge': 0
         },
         n: int = 2,
-        mingo: bool = True,
-) -> Result:
+        mingo: bool = True) -> Result:
     calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
     for extfile in calculateresult.forcefiles:
         extfile.restore()
@@ -256,7 +255,8 @@ def main(
         supercell = (n, n, 1)
     elif nd == 1:
         supercell = (n, 1, 1)
-    p = Phonons(atoms=atoms, supercell=supercell)
+
+    p = Phonons(atoms=atoms, supercell=supercell, name='.')
     p.read(symmetrize=0)
 
     if mingo:
@@ -275,11 +275,11 @@ def main(
             p.D_N = D_N
 
     # First calculate the exactly known q-points
-    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
+    q_qc = np.indices(p.supercell).reshape(3, -1).T / p.supercell
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
 
-    R_cN = p.lattice_vectors()
+    R_cN = p.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
