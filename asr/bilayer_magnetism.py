@@ -1,5 +1,5 @@
 from ase.io import read
-from asr.core import read_json, command, option, DictStr, ASRResult
+from asr.core import read_json, command, option, DictStr, ASRResult, argument
 from asr.utils.bilayerutils import translation
 import numpy as np
 from ase.calculators.dftd3 import DFTD3
@@ -64,11 +64,12 @@ TM3d_atoms = ['Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn']
          resources='24:10h',
          dependencies=['asr.magstate',
                        'asr.relax_bilayer'])
+@argument('uatoms', nargs=-1, type=List[str], help='List of atoms to add Hubbard U to')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 @option('-u', '--hubbardu', type=float, default=3, help="Hubbard U correction")  # U = 3
 @option('-m', '--mixer', help='help', type=DictStr())
-@option('--uatoms', nargs=-1, type=List[str], help='List of atoms to add Hubbard U to')
-def main(calculator: dict = {
+def main(uatoms: List[str] = TM3d_atoms,
+         calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
@@ -80,8 +81,7 @@ def main(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0', "energy": 1e-6},
         'nbands': '200%'},
         hubbardu: float = 3,
-        mixer: dict = None,
-        uatoms: List[str] = TM3d_atoms) -> ASRResult:
+        mixer: dict = None) -> ASRResult:
     """Calculate the energy difference between FM and AFM configurations.
 
     Returns the energy difference between the FM and

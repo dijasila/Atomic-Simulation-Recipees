@@ -1,5 +1,6 @@
 from asr.core import command, option, AtomsFile, ASRResult, read_json
-from asr.utils.bilayerutils import translation as stack_trans, transform_layer
+from asr.utils.bilayerutils import translation as stack_trans
+from asr.stack_bilayer import transform_layer
 from ase import Atoms
 import numpy as np
 from asr.utils.bilayerutils import layername
@@ -57,7 +58,7 @@ def main(atoms: Atoms,
     U_cc = transform_data['rotation']
     t_c = transform_data['translation']
  
-   height = height or read_json('results-asr.relax_bilayer.json')['optimal_height']
+    height = height or read_json('results-asr.relax_bilayer.json')['optimal_height']
 
     stacked = inflate_vacuum(atoms, height, nlayers)
 
