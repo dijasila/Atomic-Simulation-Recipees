@@ -224,16 +224,29 @@ def calculate_formation_energies(eform, transitions, pristine):
     transitions = order_transitions(transitions)
     enlist = []
     for element in transitions:
-        enlist.append(element['transition_values']['transition']
-                      - element['transition_values']['erelax']
-                      - element['transition_values']['evac'])
+        name = element['transition_name']
+        q = name.split('/')[-1]
+        if q < 0:
+            enlist.append(element['transition_values']['transition']
+                          - element['transition_values']['erelax']
+                          - element['transition_values']['evac'])
+        elif q > 0:
+            enlist.append(element['transition_values']['transition']
+                          + element['transition_values']['erelax']
+                          - element['transition_values']['evac'])
 
     eform_list = [(eform, 0)]
     for i, element in enumerate(transitions):
-        enlist.append(element['transition_values']['transition']
-                      - element['transition_values']['erelax']
-                      - element['transition_values']['evac'])
         name = element['transition_name']
+        q = name.split('/')[-1]
+        if q < 0:
+            enlist.append(element['transition_values']['transition']
+                          - element['transition_values']['erelax']
+                          - element['transition_values']['evac'])
+        elif q > 0:
+            enlist.append(element['transition_values']['transition']
+                          + element['transition_values']['erelax']
+                          - element['transition_values']['evac'])
         if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
             y1 = eform
             y2 = eform
@@ -548,15 +561,16 @@ def plot_formation_energies(row, fname):
     labellist = []
     energies = []
     for i, element in enumerate(transitions):
-        energy = (element['transition_values']['transition']
-                  - element['transition_values']['erelax']
-                  - element['transition_values']['evac'] - vbm)
         name = element['transition_name']
-        # if name == '0/-1':
-        # special = energy
-        # negative = energy
-        # elif name == '0/1':
-        # positive = energy
+        q = name.split('/')[-1]
+        if q < 0:
+            energy = (element['transition_values']['transition']
+                      - element['transition_values']['erelax']
+                      - element['transition_values']['evac'] - vbm)
+        elif q > 0:
+            energy = (element['transition_values']['transition']
+                      + element['transition_values']['erelax']
+                      - element['transition_values']['evac'] - vbm)
         energies.append(energy)
         if energy > 0 and energy < (gap):
             tickslist.append(energy)
