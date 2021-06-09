@@ -225,7 +225,7 @@ def calculate_formation_energies(eform, transitions, pristine):
     enlist = []
     for element in transitions:
         name = element['transition_name']
-        q = name.split('/')[-1]
+        q = int(name.split('/')[-1])
         if q < 0:
             enlist.append(element['transition_values']['transition']
                           - element['transition_values']['erelax']
@@ -238,7 +238,7 @@ def calculate_formation_energies(eform, transitions, pristine):
     eform_list = [(eform, 0)]
     for i, element in enumerate(transitions):
         name = element['transition_name']
-        q = name.split('/')[-1]
+        q = int(name.split('/')[-1])
         if q < 0:
             enlist.append(element['transition_values']['transition']
                           - element['transition_values']['erelax']
@@ -562,7 +562,7 @@ def plot_formation_energies(row, fname):
     energies = []
     for i, element in enumerate(transitions):
         name = element['transition_name']
-        q = name.split('/')[-1]
+        q = int(name.split('/')[-1])
         if q < 0:
             energy = (element['transition_values']['transition']
                       - element['transition_values']['erelax']
