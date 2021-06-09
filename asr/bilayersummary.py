@@ -8,6 +8,7 @@ from pathlib import Path
 from asr.bilayerdescriptor import get_descriptor
 import os
 import numpy as np
+from typing import List
 
 
 panel_description = make_panel_description(
@@ -259,8 +260,11 @@ class Result(ASRResult):
 
 @command(module='asr.bilayersummary',
          returns=Result)
-@option('--monolayerfolder', type=str)
-def main(monolayerfolder: str = "./") -> Result:
+@option('--monolayerfolder', type=str, help='Path of monolayer folder')
+@option('--referencepaths', type=List[str],
+        help='Paths to check for monolayer data')
+def main(monolayerfolder: str = "./",
+         referencepaths: List[str] = []) -> Result:
     """Summarize bilayer calculations.
 
     Looks through subfolders of monolayer_folder and extracts
@@ -307,17 +311,16 @@ def main(monolayerfolder: str = "./") -> Result:
     stoich = get_reduced_formula(formula, stoichiometry=True)
     reduced = get_reduced_formula(formula, stoichiometry=False)
     full = p.resolve().name
-    base1 = '/home/niflheim2/cmr/C2DB-ASR/tree/'
-    base2 = '/home/niflheim2/cmr/C2DB-ASR/icsd_cod_materials/tree/'
+
+    # This path relies on a standard set by asr.database
+    # May break if this changes.
     path = f'{stoich}/{reduced}/{full}/results-asr.gs.json'
 
-    if os.path.exists(base2 + path):
-        ml_data = read_json(base2 + path)
-        monolayer_gap = ml_data['gap']
-
-    if os.path.exists(base1 + path):
-        ml_data = read_json(base1 + path)
-        monolayer_gap = ml_data['gap']
+    for base in referencepaths:
+        if Path(base + path).is_file():
+            ml_data = read_json(base + path)
+            monolayer_gap = ml_data['gap']
+            break
 
     return Result.fromdata(binding_data=binding_data,
                            gaps=gaps,
