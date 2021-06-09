@@ -146,7 +146,7 @@ def main(
         emptybands=emptybands,
     )
 
-    calc = GPAW(res)
+    calc = GPAW(res.path.__fspath__())
 
     dos1 = calc.dos(shift_fermi_level=False)
     theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
