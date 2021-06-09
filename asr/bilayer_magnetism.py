@@ -1,8 +1,9 @@
 from ase.io import read
 from asr.core import read_json, command, option, DictStr, ASRResult
-from asr.stack_bilayer import translation
+from asr.utils.bilayerutils import translation
 import numpy as np
 from ase.calculators.dftd3 import DFTD3
+from typing import List
 
 
 def convert_mixer(mixer):
@@ -55,6 +56,9 @@ def get_bilayer(atoms, top_layer, magmoms, config=None):
     return bilayer
 
 
+TM3d_atoms = ['Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn']
+
+
 @command(module='asr.bilayer_magnetism',
          requires=['results-asr.magstate.json'],
          resources='24:10h',
@@ -63,6 +67,7 @@ def get_bilayer(atoms, top_layer, magmoms, config=None):
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 @option('-u', '--hubbardu', type=float, default=3, help="Hubbard U correction")  # U = 3
 @option('-m', '--mixer', help='help', type=DictStr())
+@option('--uatoms', nargs=-1, type=List[str], help='List of atoms to add Hubbard U to')
 def main(calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
@@ -75,7 +80,8 @@ def main(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0', "energy": 1e-6},
         'nbands': '200%'},
         hubbardu: float = 3,
-        mixer: dict = None) -> ASRResult:
+        mixer: dict = None,
+        uatoms: List[str] = TM3d_atoms) -> ASRResult:
     """Calculate the energy difference between FM and AFM configurations.
 
     Returns the energy difference between the FM and
@@ -108,11 +114,7 @@ def main(calculator: dict = {
     # magnetic moments.
     magmoms = read_json("../structure.json")[1]["magmoms"]
 
-    # 3d TM atoms which need a Hubbard U correction
-    TM3d_atoms = ['Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn']
-
-    atom_ucorr = set([atom.symbol for atom in atoms
-                      if atom.symbol in TM3d_atoms])
+    atom_ucorr = set(atoms.symbol) & set(uatoms)
     U_corrections_dct = {symbol: f':d, {u}' for symbol in atom_ucorr}
 
     calculator.update(setups=U_corrections_dct)
@@ -137,7 +139,7 @@ def main(calculator: dict = {
     eFM = bilayer_FM.get_potential_energy()
 
     FM_syms = bilayer_FM.get_chemical_symbols()
-    for x in [i for i, e in enumerate(FM_syms) if e in TM3d_atoms]:
+    for x in [i for i, e in enumerate(FM_syms) if e in uatoms]:
         assert np.sign(final_magmoms_FM[x]) == np.sign(initial_magmoms_FM[x])
 
     # AFM Calculation
