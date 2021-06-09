@@ -36,17 +36,17 @@ def convert_to_cartesian(matrix, cell):
     a2 = a2[:2]
     b1 = np.array([a2[1], -a2[0]])
     b2 = np.array([a1[1], -a1[0]])
-    b1 /= b1.dot(a1)
-    b2 /= b2.dot(a2)
-    assert np.allclose(b1.dot(a2), 0.0)
-    assert np.allclose(b2.dot(a1), 0.0)
+    b1 /= b1 @ a1
+    b2 /= b2 @ a2
+    assert np.allclose(b1 @ a2, 0.0)
+    assert np.allclose(b2 @ a1, 0.0)
 
     N = np.array([a1, a2]).T
     B = np.array([b1, b2])
-    assert np.allclose(B.dot(N), np.eye(2))
-    assert np.allclose(N.dot(B), np.eye(2)), N.dot(B)
+    assert np.allclose(B @ N, np.eye(2))
+    assert np.allclose(N @ B, np.eye(2)), N @ B
 
-    return N.dot(matrix.dot(B))
+    return N @ matrix @ B
 
 
 def get_matrix_descriptor(atoms, matrix):
@@ -68,7 +68,7 @@ def get_matrix_descriptor(atoms, matrix):
                   if np.allclose(np.linalg.det(c2c(y, atoms.cell)), -1))
         inversion_basis, invb = ts
 
-    bm = cmatrix.dot(np.linalg.inv(inversion_basis)) if isreflected else cmatrix
+    bm = cmatrix @ (np.linalg.inv(inversion_basis)) if isreflected else cmatrix
 
     # bm is a pure rotation.
     # It should have entries [[cos(theta), -sin(theta)], [sin(theta), cos(theta)]]
