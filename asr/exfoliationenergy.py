@@ -2,7 +2,7 @@ from asr.core import command, option, AtomsFile, read_json, ASRResult, prepare_r
 from ase.calculators.calculator import get_calculator_class
 from pathlib import Path
 from ase import Atoms
-from typing import List
+from typing import Dict
 
 
 @prepare_result
@@ -10,7 +10,7 @@ class ExfoliationResult(ASRResult):
     exfoliationenergy: float
     most_stable_bilayer: str
     number_of_bilayers: int
-    bilayer_names: List[str]
+    bilayer_names: Dict[str, float]
 
     key_descriptions = dict(
         exfoliationenergy='Estimated exfoliation energy',
@@ -20,14 +20,14 @@ class ExfoliationResult(ASRResult):
 
 
 def get_bilayers_energies(p):
-    bilayers_energies = []
+    bilayers_energies = {}
     for sp in p.iterdir():
         if not sp.is_dir():
             continue
         datap = sp / 'results-asr.relax_bilayer.json'
         if datap.exists():
             data = read_json(str(datap))
-            bilayers_energies.append((str(sp), data['energy']))
+            bilayers_energies[str(sp)] = data['energy']
 
     return bilayers_energies
 
