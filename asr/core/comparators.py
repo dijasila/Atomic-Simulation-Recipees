@@ -219,22 +219,11 @@ def compare_calculator(calc1, calc2):
         return False
 
     if name1 == 'gpaw':
-        return compare_gpaw_calculator(calc1, calc2)
+        return compare_equal(calc1, calc2)
     elif name1 == 'emt':
         return True
     else:
         raise NotImplementedError
-
-
-def compare_gpaw_calculator(calc1, calc2):
-    compare_keys = {'mode', 'xc', 'basis', 'kpts',
-                    'occupations', 'charge', 'setups'}
-
-    for key in compare_keys:
-        if key in calc1 and key in calc2 and not \
-           compare_equal(calc1.get(key), calc2.get(key)):
-            return False
-    return True
 
 
 comparators = types.SimpleNamespace(
