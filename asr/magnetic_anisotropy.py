@@ -4,11 +4,38 @@ from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
 from math import pi
 
+
+# We don't have mathjax I think, so we should probably use either html
+# or unicode.  But z does not exist as unicode superscript, so we mostly
+# use html for sub/superscripts.
+def equation():
+    i = '<sub>i</sub>'
+    j = '<sub>j</sub>'
+    z = '<sup>z</sup>'
+    return (f'E{i} = '
+            f'−1/2 J ∑{j} S{i} S{j} '
+            f'− 1/2 B ∑{j} S{i}{z} S{j}{z} '
+            f'− A S{i}{z} S{i}{z}')
+
+
+# This panel description actually assumes that we also have results for the
+# exchange recipe.
+
 panel_description = make_panel_description(
     """
-Electronic properties derived from a ground state density functional theory
-calculation.
-""",
+Heisenberg parameters, magnetic anisotropy and local magnetic
+moments. The Heisenberg parameters were calculated assuming that the
+magnetic energy of atom i can be represented as
+
+  {equation},
+
+where J is the exchange coupling, B is anisotropic exchange, A is
+single-ion anisotropy and the sums run over nearest neighbours. The
+magnetic anisotropy was obtained from non-selfconsistent spin-orbit
+calculations where the exchange-correlation magnetic field from a
+scalar calculation was aligned with the x, y and z directions.
+
+""".format(equation=equation()),
     articles=[
         'C2DB',
         href("""D. Torelli et al. High throughput computational screening for 2D
