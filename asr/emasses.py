@@ -495,6 +495,8 @@ def make_the_plots(row, *args):
             if 'effmass' in k and 'cb' in k:
                 cb_indices.append(spin_band_str)
                 break
+    vb_indices = sorted(vb_indices)[::-1]
+    cb_indices = sorted(cb_indices)
 
     cb_masses = {}
     vb_masses = {}
@@ -530,14 +532,18 @@ def make_the_plots(row, *args):
                                  gridspec_kw={'width_ratios': [1]})
 
         should_plot = True
-        for cb_key in cb_indices[0:1]:
+        for m, cb_key in enumerate(cb_indices):
             cb_tuple = convert_key_to_tuple(cb_key)
             # Save something
             data = results[cb_key]
+            # data_for_xk = results[cb_indices[0]]
             fit_data_list = data['cb_soc_bzcuts']
             if direction >= len(fit_data_list):
                 should_plot = False
                 continue
+
+            e_km = (results[cb_indices[0]]['cb_soc_bzcuts'][direction]['e_km']
+                    - reference)
 
             mass = cb_masses[cb_tuple][direction]
             fit_data = fit_data_list[direction]
@@ -545,13 +551,19 @@ def make_the_plots(row, *args):
             bt = fit_data['bt']
             xk, _, _ = labels_from_kpts(kpts=ks, cell=cell_cv)
             xk -= xk[-1] / 2
+
+            # e_km = fit_data['e_km'] - reference
+            indices_close_to_0 = np.abs(xk) < 0.1
+            index_offset = np.argmax(indices_close_to_0)
+            min_index = np.argmin(e_km[indices_close_to_0, m]) + index_offset
+
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
-            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
+            emodel_k = ((xk - xk[min_index])
+                        * Bohr) ** 2 / (2 * mass) * Ha - reference
+            emodel_k += np.min(e_km[:, m]) - np.min(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -559,8 +571,9 @@ def make_the_plots(row, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+            if m == 0:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -593,7 +606,7 @@ def make_the_plots(row, *args):
                                  sharey=True,
                                  gridspec_kw={'width_ratios': [1]})
 
-        for vb_key in vb_indices[0:1]:
+        for m, vb_key in enumerate(vb_indices):
             # Save something
             vb_tuple = convert_key_to_tuple(vb_key)
             data = results[vb_key]
@@ -601,29 +614,37 @@ def make_the_plots(row, *args):
             if direction >= len(fit_data_list):
                 continue
 
+            e_km = (results[vb_indices[0]]['vb_soc_bzcuts'][direction]['e_km']
+                    - reference)
             mass = vb_masses[vb_tuple][direction]
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            e_km = fit_data['e_km'] - reference
+            # e_km = fit_data['e_km'] - reference
             sz_km = fit_data['spin_km']
             xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
             xk2 -= xk2[-1] / 2
 
+            indices_close_to_0 = np.abs(xk2) < 0.1
+            index_offset = np.argmax(indices_close_to_0)
+            min_index = np.argmax(e_km[indices_close_to_0, -1 + m]) + index_offset
+
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
-            emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
+            emodel_k = ((xk2 - xk2[min_index])
+                        * Bohr) ** 2 / (2 * mass) * Ha - reference
+            emodel_k += np.max(e_km[:, -1 + m]) - np.max(emodel_k)
 
-            shape = e_km.shape
-            perm = (-sz_km).argsort(axis=None)
-            repeated_xcoords = np.vstack([xk2] * shape[1]).T
-            flat_energies = e_km.ravel()[perm]
-            flat_xcoords = repeated_xcoords.ravel()[perm]
-            flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+            if m == 0:
+                shape = e_km.shape
+                perm = (-sz_km).argsort(axis=None)
+                repeated_xcoords = np.vstack([xk2] * shape[1]).T
+                flat_energies = e_km.ravel()[perm]
+                flat_xcoords = repeated_xcoords.ravel()[perm]
+                flat_spins = sz_km.ravel()[perm]
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
