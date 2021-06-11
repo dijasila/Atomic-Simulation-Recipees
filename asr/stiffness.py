@@ -197,7 +197,13 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
 def transform_stiffness_resultfile_record(record):
+    """Remove fixcell and allow_symmetry_breaking from dependency_parameters"""
     dep_params = record.parameters['dependency_parameters']
     relax_dep_params = dep_params['asr.relax:main']
     delparams = {'fixcell', 'allow_symmetry_breaking'}
@@ -206,17 +212,8 @@ def transform_stiffness_resultfile_record(record):
     return record
 
 
-make_migrations = make_migration_generator(
-    selector=dict(version=-1, name='asr.stiffness:main'),
-    function=transform_stiffness_resultfile_record,
-    uid='e6d207028b3843faa533955477e3392a',
-    description='Remove fixcell and allow_symmetry_breaking from dependency_parameters',
-)
-
-
 @command(
     module='asr.stiffness',
-    migrations=[make_migrations],
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')

@@ -9,7 +9,6 @@ def instruction(
         module: typing.Optional[str] = None,
         version: int = 0,
         argument_hooks: typing.List[typing.Callable] = [set_calculator_hook],
-        migrations=None,
         package_dependencies=('asr', 'ase', 'gpaw'),
 ):
     """Make instruction object.
@@ -39,7 +38,6 @@ def instruction(
             module=mod,
             version=version,
             argument_hooks=argument_hooks,
-            migrations=migrations,
         )
 
     return decorator

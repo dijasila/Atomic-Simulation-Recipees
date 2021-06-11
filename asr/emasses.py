@@ -4,7 +4,6 @@ import asr
 
 from asr.core import (
     command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
-    make_migration_generator,
 )
 from asr.database.browser import make_panel_description, describe_entry
 from asr.gs import calculate as gscalculate
@@ -71,7 +70,6 @@ def add_settings_parameter_remove_gpwfilename(record):
 
 @command(
     module='asr.emasses',
-    migrations=[add_settings_parameter_remove_gpwfilename],
 )
 @atomsopt
 @calcopt
@@ -800,7 +798,14 @@ class Result(ASRResult):
     pass
 
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:main')
+
+
+@asr.migration(selector=sel)
 def prepare_parameters_for_version_0_migration(record):
+    """Prepare record for version 0 migration."""
     record.parameters.settings = {
         'erange1': 250e-3,
         'nkpts1': 19,
@@ -817,15 +822,7 @@ def prepare_parameters_for_version_0_migration(record):
     return record
 
 
-make_migrations = make_migration_generator(
-    selector=dict(version=-1, name='asr.emasses:main'),
-    uid='e1b731cd00c041ad99260b58b95a3df8',
-    function=prepare_parameters_for_version_0_migration,
-    description='Prepare record for version 0 migration.',
-)
-
-
-@command('asr.emasses', migrations=[make_migrations])
+@command('asr.emasses')
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
@@ -1569,8 +1566,6 @@ def remove_gpwname_from_dependency_parameters(record):
 
 @command(
     module='asr.emasses',
-    migrations=[add_settings_parameter,
-                remove_gpwname_from_dependency_parameters],
 )
 @atomsopt
 @calcopt

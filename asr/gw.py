@@ -328,9 +328,7 @@ def migrate_1(record):
     return record
 
 
-@command(
-    migrations=[migrate_1]
-)
+@command()
 @atomsopt
 @calcopt
 @asr.calcopt(

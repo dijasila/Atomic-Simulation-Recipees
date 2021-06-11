@@ -33,7 +33,6 @@ class ASRCommand:
             version=0,
             cache=None,
             argument_hooks=None,
-            migrations=None,
             package_dependencies=('asr', 'ase', 'gpaw'),
     ):
         """Construct an instance of an ASRCommand.
@@ -53,7 +52,6 @@ class ASRCommand:
         if cache is None:
             cache = get_cache(backend='filesystem')
         self.cache = cache
-        self.migrations = migrations or []
         self.version = version
         self.argument_hooks = argument_hooks or []
         self._wrapped_function = wrapped_function
@@ -94,7 +92,6 @@ class ASRCommand:
             version=self.version,
             cache=self.cache,
             argument_hooks=self.argument_hooks,
-            migrations=self.migrations,
             package_dependencies=self.package_dependencies,
         )
         kwargs.update(newkwargs)

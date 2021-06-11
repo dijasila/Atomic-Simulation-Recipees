@@ -148,7 +148,6 @@ def add_relaxcalculator_parameter(record):
 @command(
     module="asr.piezoelectrictensor",
     argument_hooks=[convert_density_to_size],
-    migrations=[add_relaxcalculator_parameter],
 )
 @atomsopt
 @option('--strain-percent', help='Strain fraction.', type=float)
