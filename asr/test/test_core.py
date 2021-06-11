@@ -96,3 +96,10 @@ def test_not_initialized(recipe, tmp_path):
         with pytest.raises(ASRRootNotFound,
                            match='Root directory not initialized'):
             recipe(3.0)
+
+
+@pytest.mark.ci
+def test_recipe_has():
+    from ase import Atoms
+    from asr.convex_hull import main
+    assert not main.has(atoms=Atoms(), databases=['does_not_exist'])
