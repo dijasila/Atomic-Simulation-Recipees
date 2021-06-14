@@ -811,15 +811,10 @@ class ASRResult(object):
         my_formats.update(cls.formats)
         return my_formats
 
-    def format_as(self, format: str = '', results, row,
-                  *args, **kwargs) -> typing.Any:
+    def format_as(self, format: str = '', *args, **kwargs) -> typing.Any:
         """Format result in specific format."""
-        # Try to not depend on 'row' or rowwrapper.
-        from asr.database.browser import RowWrapper
         formats = self.get_formats()
-        if not isinstance(row, RowWrapper):
-            row = RowWrapper(row)
-        return formats[format](self, results, row, *args, **kwargs)
+        return formats[format](self, *args, **kwargs)
 
     def get_object_desc(self) -> ObjectDescription:
         """Make ObjectDescription of this instance."""

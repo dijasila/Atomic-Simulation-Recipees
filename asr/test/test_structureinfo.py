@@ -45,10 +45,11 @@ def test_cod_id():
     result = fill_in_arbitrary_result_data(Result)
 
     row = Row(
-        result,
+        result=result,
         data={'results-asr.structureinfo.json': result},
     )
-    webpanels = result.format_as('ase_webpanel', row, {})
+    # XXX We are trying to decouple from Row objects
+    webpanels = result.format_as('ase_webpanel', vars(row), {})
     webpanel = webpanels[0]
     tablerows = webpanel['columns'][0][0]['rows']
     keys = [row[0] for row in tablerows]
