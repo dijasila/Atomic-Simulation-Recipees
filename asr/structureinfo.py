@@ -23,6 +23,9 @@ def get_reduced_formula(formula, stoichiometry=False):
     -------
         A string containing the reduced formula.
     """
+    # XXX This can probably be replaced by
+    #   reduced_formula, _count = Formula(formula).reduce()
+    #   return reduced_formula
     from functools import reduce
     from math import gcd
     import string
@@ -48,6 +51,7 @@ def get_reduced_formula(formula, stoichiometry=False):
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
+    row = dict(row)
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
