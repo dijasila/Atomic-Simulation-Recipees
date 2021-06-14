@@ -494,7 +494,7 @@ class RowWrapper(Mapping):
             cache.add(record)
         self._row = row
         self.cache = cache
-        self._data = DataFilenameTranslator(cache, data=row.data)
+        self.data = DataFilenameTranslator(cache, data=row.data)
 
     def __getitem__(self, key):
         try:
@@ -508,25 +508,9 @@ class RowWrapper(Mapping):
     def __len__(self):
         return len(self._row)
 
-    @property
-    def data(self):
-        return self._data
-
     def __getattr__(self, key):
         """Wrap attribute lookup of AtomsRow."""
         return getattr(self._row, key)
-
-    def __getstate__(self):
-        """Help pickle overcome the troubles due to __getattr__.
-
-        We need to provide getstate/setstate to prevent recursion error
-        when unpickling.
-        """
-        return vars(self)
-
-    def __setstate__(self, dct):
-        """See __getstate__."""
-        self.__dict__.update(dct)
 
 
 def parse_row_data(data: dict):
