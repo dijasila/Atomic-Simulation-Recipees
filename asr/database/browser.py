@@ -1,19 +1,20 @@
-from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from collections.abc import Mapping
 import sys
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
 import traceback
 import os
-from .webpanel import WebPanel
 import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
+from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from asr.core.cache import Cache, MemoryBackend
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
+from .webpanel import WebPanel
 
-from asr.core.cache import Cache, MemoryBackend
 
 assert sys.version_info >= (3, 4)
 
@@ -479,7 +480,7 @@ class DataFilenameTranslator:
         return self.cache.has(selector=selector)
 
 
-class RowWrapper:
+class RowWrapper(Mapping):
 
     def __init__(self, row):
         from asr.database.fromtree import serializer
@@ -494,6 +495,18 @@ class RowWrapper:
         self._row = row
         self.cache = cache
         self._data = DataFilenameTranslator(cache, data=row.data)
+
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __iter__(self):
+        return iter(self._row)
+
+    def __len__(self):
+        return len(self._row)
 
     @property
     def data(self):
@@ -514,10 +527,6 @@ class RowWrapper:
     def __setstate__(self, dct):
         """See __getstate__."""
         self.__dict__.update(dct)
-
-    def __contains__(self, key):
-        """Wrap contains of atomsrow."""
-        return self._row.__contains__(key)
 
 
 def parse_row_data(data: dict):
