@@ -366,6 +366,9 @@ class SelectorMigrationGenerator(MakeMigrations):
         else:
             return []
 
+    def __hash__(self):
+        return hash(id(self))
+
 
 @dataclass
 class GeneralMigrationGenerator(MakeMigrations):
@@ -386,7 +389,10 @@ class CollectionMigrationGenerator(MakeMigrations):
     migration_generators: typing.List[MakeMigrations]
 
     def extend(self, migration_generators: typing.List[MakeMigrations]):
-        self.migration_generators = self.migration_generators + migration_generators
+        self.migration_generators = (
+            self.migration_generators
+            + list(migration_generators)
+        )
 
     def make_migrations(self, record: Record) -> typing.List[Migration]:
         migrations = [
@@ -490,7 +496,7 @@ def get_instruction_migration_generator() -> CollectionMigrationGenerator:
     # Import all recipes to make sure that migrations are registered
     get_recipes()
     migrations = CollectionMigrationGenerator(migration_generators=[])
-    migrations.extend(MIGRATIONS)
+    migrations.extend(get_migrations())
     return migrations
 
 
@@ -567,14 +573,15 @@ def migration(
             description=desc,
             eagerness=eagerness,
         )
-        return SelectorMigrationGenerator(migration=migration, selector=selector)
+        mig = SelectorMigrationGenerator(migration=migration, selector=selector)
+        register_migration(mig)
+        return mig
 
     if function is not None:
         migration = wrap(function)
     else:
         migration = wrap
-    register_migration(migration)
-    return wrap
+    return migration
 
 
 MIGRATIONS = set()
@@ -582,3 +589,7 @@ MIGRATIONS = set()
 
 def register_migration(migration) -> None:
     MIGRATIONS.add(migration)
+
+
+def get_migrations() -> set:
+    return MIGRATIONS

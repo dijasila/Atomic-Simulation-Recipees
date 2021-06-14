@@ -201,7 +201,7 @@ Getting started - part 2 - migrations
 =====================================
 
 ..
-   $ cp $ASRHOME/docs/src/tutorials/getting-started.py $ASRLIB/tutorial.py
+   $ cp $ASRHOME/docs/src/tutorials/getting-started-ver2.py $ASRLIB/tutorial.py
 
 It often happens that you want/have to make changes to an existing instruction.
 For example, you want to add an additional argument, change the return type of
@@ -241,3 +241,8 @@ The migrations are applied with `asr cache migrate`
 .. code-block:: console
 
    $ asr cache migrate
+   There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
+   
+   Run
+       $ asr cache migrate --apply
+   to apply migrations.
