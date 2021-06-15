@@ -124,7 +124,6 @@ def _explain_bandgap(parameters, gap_name):
 # )
 # def webpanel(result, row, key_descriptions):
 def webpanel(result, context):
-    row = context.row
     key_descriptions = context.descriptions
     parameters = context.parameters
     parameter_description = _get_parameter_description(parameters)
@@ -147,9 +146,9 @@ def webpanel(result, context):
             explained_key = key
         explained_keys.append(explained_key)
 
-    t = table(result, 'Property',
-              explained_keys,
-              key_descriptions)
+    tab = table(result, 'Property',
+                explained_keys,
+                key_descriptions)
 
     gap = result.gap
 
@@ -167,18 +166,17 @@ def webpanel(result, context):
         cbm_displayvalue = result.cbm - eref
         info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
                 [cbm_title, f'{cbm_displayvalue:.3f} eV']]
-        t['rows'].extend(info)
+        tab['rows'].extend(info)
 
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
     title = f'Basic electronic properties ({xcname})'
 
     panel = WebPanel(
         title=describe_entry(title, panel_description),
-        columns=[[t], [fig('bz-with-gaps.png')]],
+        columns=[[tab], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _explain_bandgap(row, 'gap')
+    description = _explain_bandgap(parameters, 'gap')
     datarow = [description, f'{result.gap:0.2f} eV']
 
     summary = WebPanel(

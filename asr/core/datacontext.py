@@ -14,3 +14,8 @@ class DataContext:
     def __init__(self, row, parameters):
         self.row = row
         self.parameters = parameters
+
+    @property
+    def xcname(self):
+        # XXX This is bound to GPAW's default XC functional.
+        return self.parameters.get('xc', 'LDA')
