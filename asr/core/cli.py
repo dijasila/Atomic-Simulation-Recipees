@@ -797,14 +797,16 @@ def results(selection, show):
     for record in records:
         result = record.result
         formats = result.get_formats()
+        parameters = record.parameters
 
         if 'webpanel2' in formats:
             row = get_row_from_folder('.')  # XXX remove
-            context = DataContext(row)
+            context = DataContext(row, parameters)
             panels = result.format_as('webpanel2', context)
         elif 'ase_webpanel' in formats:
             row = get_row_from_folder('.')
-            panels = result.format_as('ase_webpanel', row, kd)
+            panels = result.format_as('ase_webpanel', row,
+                                      DataContext.descriptions)
             make_panel_figures(row, panels, uid=record.uid[:10])
         else:
             print(f'{result} does not have any results to present!')

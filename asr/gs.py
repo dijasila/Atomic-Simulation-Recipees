@@ -87,18 +87,19 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-def _get_parameter_description(row):
-    desc = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate',
+def _get_parameter_description(parameters):
+    from asr.database.browser import format_parameter_description
+    desc = format_parameter_description(
+        'asr.gs',
+        parameters,
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
     return desc
 
 
-def _explain_bandgap(row, gap_name):
-    parameter_description = _get_parameter_description(row)
+def _explain_bandgap(parameters, gap_name):
+    parameter_description = _get_parameter_description(parameters)
 
     if gap_name == 'gap':
         name = 'Band gap'
@@ -125,13 +126,14 @@ def _explain_bandgap(row, gap_name):
 def webpanel(result, context):
     row = context.row
     key_descriptions = context.descriptions
-    parameter_description = _get_parameter_description(row)
+    parameters = context.parameters
+    parameter_description = _get_parameter_description(parameters)
 
     explained_keys = []
 
     explained_keys += [
-        _explain_bandgap(row, 'gap'),
-        _explain_bandgap(row, 'gap_dir'),
+        _explain_bandgap(parameters, 'gap'),
+        _explain_bandgap(parameters, 'gap_dir'),
     ]
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:

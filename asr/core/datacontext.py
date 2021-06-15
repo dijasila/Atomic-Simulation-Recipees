@@ -11,5 +11,6 @@ class DataContext:
     # But not the records themselves -- they're not part of the database
     # and we would like it to be possible to generate the figures
     # from a database without additional info.
-    def __init__(self, row):
+    def __init__(self, row, parameters):
         self.row = row
+        self.parameters = parameters

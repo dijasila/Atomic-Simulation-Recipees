@@ -304,13 +304,17 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
 
     """
     recipe = get_recipe_from_name(name)
-    link_name = get_recipe_href(name)
     if f'results-{name}.json' in data:
         record = data.get_record(f'results-{name}.json')
         params = record.parameters
     else:
         params = recipe.defaults
 
+    return format_parameter_description(name, params, exclude_keys)
+
+
+def format_parameter_description(name, params, exclude_keys):
+    link_name = get_recipe_href(name)
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     string = pre(code('\n'.join(lst)))
     description = (
