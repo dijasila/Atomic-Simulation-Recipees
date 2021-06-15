@@ -116,11 +116,11 @@ def _explain_bandgap(row, gap_name):
     return describe_entry(name, description=description)
 
 
-@cache_webpanel(
-    'asr.gs:main',
-    '+,calculator.mode.ecut',
-    '+,calculator.kpts.density',
-)
+# @cache_webpanel(
+#     'asr.gs:main',
+#     '+,calculator.mode.ecut',
+#     '+,calculator.kpts.density',
+# )
 def webpanel(result, row, key_descriptions):
     parameter_description = _get_parameter_description(row)
 
