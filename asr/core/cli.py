@@ -785,6 +785,7 @@ def results(selection, show):
     """
     from matplotlib import pyplot as plt
     from asr.core.material import (get_row_from_folder,
+                                   new_make_panel_figures,
                                    make_panel_figures)
     from asr.core.datacontext import DataContext
 
@@ -803,6 +804,7 @@ def results(selection, show):
             row = get_row_from_folder('.')  # XXX remove
             context = DataContext(row, parameters)
             panels = result.format_as('webpanel2', context)
+            new_make_panel_figures(context, panels, uid=record.uid[:10])
         elif 'ase_webpanel' in formats:
             row = get_row_from_folder('.')
             panels = result.format_as('ase_webpanel', row,

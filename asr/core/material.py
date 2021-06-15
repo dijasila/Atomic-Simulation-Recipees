@@ -57,6 +57,17 @@ def get_webpanels_from_row(material, recipe):
     return recipe.format_as('ase_webpanel', material, kd)
 
 
+def new_make_panel_figures(context, panels, uid):
+    from ase.utils import workdir
+    for panel in panels:
+        for plot_description in panel.get('plot_descriptions', []):
+            path = Path(f'fig-{uid}')
+            with workdir(path, mkdir=True):
+                func = plot_description['function']
+                filenames = plot_description['filenames']
+                func(context, *filenames)
+
+
 def make_panel_figures(material, panels, uid=None):
     """Make figures in list of panels.
 

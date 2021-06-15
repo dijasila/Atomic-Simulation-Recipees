@@ -190,14 +190,17 @@ def webpanel(result, context):
             'rows': [datarow],
             'columnwidth': 3,
         }]],
-        plot_descriptions=[{'function': bz_with_band_extremums,
+        plot_descriptions=[{'function': bz_with_band_extrema,
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)
 
     return [panel, summary]
 
+def bz_with_band_extrema(context, fname):
+    return _bz_with_band_extremums(context.row, fname)
 
-def bz_with_band_extremums(row, fname):
+
+def _bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
