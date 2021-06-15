@@ -48,10 +48,10 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel2(result, context):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
-    row = dict(row)
+    key_descriptions = context.descriptions
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
@@ -98,50 +98,54 @@ def webpanel(result, row, key_descriptions):
         f"Point group determined with {spglib}."
     )
 
-    icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
-                     'https://icsd.products.fiz-karlsruhe.de/')
+    # XXX We should define a different panel for these external DB IDs
+    # and DOI.  Those are not related to this recipe!
 
-    icsd_id = describe_entry(
-        'icsd_id',
-        f"ID of a closely related material in the {icsd_link}."
-    )
+    # icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
+    #                  'https://icsd.products.fiz-karlsruhe.de/')
 
-    cod_link = href(
-        'Crystallography Open Database (COD)',
-        'http://crystallography.net/cod/browse.html'
-    )
+    # icsd_id = describe_entry(
+    #     'icsd_id',
+    #     f"ID of a closely related material in the {icsd_link}."
+    # )
 
-    cod_id = describe_entry(
-        'cod_id',
-        f"ID of a closely related material in the {cod_link}."
-    )
+    # cod_link = href(
+    #     'Crystallography Open Database (COD)',
+    #     'http://crystallography.net/cod/browse.html'
+    # )
 
-    basictable = table(row, 'Structure info', [
+    # cod_id = describe_entry(
+    #     'cod_id',
+    #     f"ID of a closely related material in the {cod_link}."
+    # )
+
+    basictable = table(result, 'Structure info', [
         crystal_type, cls, spacegroup, spgnum, pointgroup,
-        icsd_id, cod_id
+        # icsd_id, cod_id
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
     rows = basictable['rows']
-    codid = row.get('cod_id')
-    if codid:
-        # Monkey patch to make a link
-        for tmprow in rows:
-            href = ('<a href="http://www.crystallography.net/cod/'
-                    + '{id}.html">{id}</a>'.format(id=codid))
-            if 'cod_id' in tmprow[0]:
-                tmprow[1] = href
 
-    doi = row.get('doi')
-    doistring = describe_entry(
-        'Reported DOI',
-        'DOI of article reporting the synthesis of the material.'
-    )
-    if doi:
-        rows.append([
-            doistring,
-            '<a href="https://doi.org/{doi}" target="_blank">{doi}'
-            '</a>'.format(doi=doi)
-        ])
+    # codid = row.get('cod_id')
+    # if codid:
+    #     # Monkey patch to make a link
+    #     for tmprow in rows:
+    #         href = ('<a href="http://www.crystallography.net/cod/'
+    #                 + '{id}.html">{id}</a>'.format(id=codid))
+    #         if 'cod_id' in tmprow[0]:
+    #             tmprow[1] = href
+
+    # doi = row.get('doi')
+    # doistring = describe_entry(
+    #     'Reported DOI',
+    #     'DOI of article reporting the synthesis of the material.'
+    # )
+    # if doi:
+    #     rows.append([
+    #         doistring,
+    #         '<a href="https://doi.org/{doi}" target="_blank">{doi}'
+    #         '</a>'.format(doi=doi)
+    #    ])
 
     panel = {'title': 'Summary',
              'columns': [[basictable,
@@ -178,7 +182,7 @@ class Result(ASRResult):
         "formula": "Chemical formula."
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel2}
 
 
 @command('asr.structureinfo')

@@ -772,6 +772,21 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
+class DataContext:
+    from asr.database.app import create_key_descriptions
+    descriptions = create_key_descriptions()
+    # Can we find a more fitting name for this?
+    #
+    # Basically the context object provides information which is
+    # relevant for web panels but is not on the result object itself.
+    # So "DataContext" makes sense but sounds a little bit abstract.
+
+    # We need to add whatever info from Records that's needed by web panels.
+    # But not the records themselves -- they're not part of the database
+    # and we would like it to be possible to generate the figures
+    # from a database without additional info.
+
+
 @cli.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
@@ -792,17 +807,20 @@ def results(selection, show):
 
     assert records, 'No matching records!'
 
-    from asr.database.app import create_key_descriptions
-    kd = create_key_descriptions()
-
     for record in records:
         result = record.result
-        if 'ase_webpanel' not in result.get_formats():
+        formats = result.get_formats()
+
+        if 'webpanel2' in formats:
+            context = DataContext()
+            panels = result.format_as('webpanel2', context)
+        elif 'ase_webpanel' in formats:
+            row = get_row_from_folder('.')
+            panels = result.format_as('ase_webpanel', row, kd)
+            make_panel_figures(row, panels, uid=record.uid[:10])
+        else:
             print(f'{result} does not have any results to present!')
             continue
-        row = get_row_from_folder('.')
-        panels = result.format_as('ase_webpanel', row, kd)
-        make_panel_figures(row, panels, uid=record.uid[:10])
 
         print('panels', panels)
 

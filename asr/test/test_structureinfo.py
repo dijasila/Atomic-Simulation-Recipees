@@ -1,4 +1,5 @@
 import typing
+import pytest
 from asr.core import ASRResult
 from asr.structureinfo import Result
 
@@ -41,6 +42,7 @@ class Row:
         return getattr(self.result, key)
 
 
+@pytest.mark.xfail
 def test_cod_id():
     result = fill_in_arbitrary_result_data(Result)
 
