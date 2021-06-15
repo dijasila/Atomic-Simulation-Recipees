@@ -816,7 +816,7 @@ def test_read_old_format():
     }
 
     result = decode_object(dct)
-    assert result.formats['ase_webpanel'] == webpanel
+    assert result.formats['webpanel2'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
     assert result.metadata.asr_name == 'asr.gs'

@@ -121,7 +121,10 @@ def _explain_bandgap(row, gap_name):
 #     '+,calculator.mode.ecut',
 #     '+,calculator.kpts.density',
 # )
-def webpanel(result, row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
+    row = context.row
+    key_descriptions = context.descriptions
     parameter_description = _get_parameter_description(row)
 
     explained_keys = []
@@ -547,7 +550,7 @@ class Result(ASRResult):
         skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
     )
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @asr.instruction(

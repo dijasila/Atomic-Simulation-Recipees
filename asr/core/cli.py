@@ -772,21 +772,6 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
-class DataContext:
-    from asr.database.app import create_key_descriptions
-    descriptions = create_key_descriptions()
-    # Can we find a more fitting name for this?
-    #
-    # Basically the context object provides information which is
-    # relevant for web panels but is not on the result object itself.
-    # So "DataContext" makes sense but sounds a little bit abstract.
-
-    # We need to add whatever info from Records that's needed by web panels.
-    # But not the records themselves -- they're not part of the database
-    # and we would like it to be possible to generate the figures
-    # from a database without additional info.
-
-
 @cli.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
@@ -801,6 +786,8 @@ def results(selection, show):
     from matplotlib import pyplot as plt
     from asr.core.material import (get_row_from_folder,
                                    make_panel_figures)
+    from asr.core.datacontext import DataContext
+
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
     records = cache.select(selector=selector)
@@ -812,7 +799,8 @@ def results(selection, show):
         formats = result.get_formats()
 
         if 'webpanel2' in formats:
-            context = DataContext()
+            row = get_row_from_folder('.')  # XXX remove
+            context = DataContext(row)
             panels = result.format_as('webpanel2', context)
         elif 'ase_webpanel' in formats:
             row = get_row_from_folder('.')

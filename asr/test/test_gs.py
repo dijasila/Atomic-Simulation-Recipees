@@ -69,7 +69,10 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
         content = get_webcontent()
         resultgap = results.get("gap")
 
-        assert f"{resultgap:0.2f}eV" in content, content
+        # XXX When switching to webpanel2 we get three decimals rather
+        # than two.  How in the name of all that is good and holy does
+        # that happen here?
+        assert f"{resultgap:0.3f}eV" in content, content
         assert "<td>Fermilevel</td>" in content, content
         assert "<td>Magneticstate</td><td>NM</td>" in \
             content, content
@@ -82,13 +85,15 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from asr.gs import main
     from asr.core.material import (get_row_from_folder,
                                    make_panel_figures)
+    from asr.core.datacontext import DataContext
     atoms = std_test_materials[0]
     atoms.write('structure.json')
 
     record = main.get(atoms=atoms)
     result = record.result
     row = get_row_from_folder('.')
-    panels = result.format_as('ase_webpanel', row, {})
+    context = DataContext(row)
+    panels = result.format_as('webpanel2', context)
     make_panel_figures(row, panels, uid=record.uid[:10])
 
     assert Path(f'{record.uid[:10]}-bz-with-gaps.png').is_file()
