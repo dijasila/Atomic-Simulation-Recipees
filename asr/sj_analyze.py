@@ -32,16 +32,16 @@ def webpanel(result, row, key_descriptions):
             [[describe_entry(f'Formation energy (q={element[1]:1d} @ VBM)',
                              description=result.key_descriptions['eform']),
               f'{element[0]:.2f} eV']])
-    pristine_table_sum = table(result, 'Pristine crystal', [])
-    pristine_table_sum['rows'].extend(
-        [[describe_entry(f"Heat of formation",
-                         description=result.key_descriptions['hof']),
-          f"{result.hof:.2f} eV/atom"]])
-    gap = result.pristine.cbm - result.pristine.vbm
-    pristine_table_sum['rows'].extend(
-        [[describe_entry("Band gap (PBE)",
-                         description="Pristine band gap [eV]."),
-          f"{gap:.2f} eV"]])
+    # pristine_table_sum = table(result, 'Pristine crystal', [])
+    # # pristine_table_sum['rows'].extend(
+    # #     [[describe_entry(f"Heat of formation",
+    # #                      description=result.key_descriptions['hof']),
+    # #       f"{result.hof:.2f} eV/atom"]])
+    # gap = result.pristine.cbm - result.pristine.vbm
+    # pristine_table_sum['rows'].extend(
+    #     [[describe_entry("Band gap (PBE)",
+    #                      description="Pristine band gap [eV]."),
+    #       f"{gap:.2f} eV"]])
 
     trans_results = result.transitions
     vbm = result.pristine.vbm
@@ -81,8 +81,8 @@ def webpanel(result, row, key_descriptions):
         sort=50)
 
     summary = {'title': 'Summary',
-               'columns': [[formation_table_sum,
-                            pristine_table_sum],
+               'columns': [[formation_table_sum],
+                            # pristine_table_sum],
                            []],
                'sort': 50}
 

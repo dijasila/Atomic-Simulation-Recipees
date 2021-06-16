@@ -688,8 +688,7 @@ def plot_gapstates(row, fname):
     data = row.data.get('results-asr.defect_symmetry.json')
     gsdata = row.data.get('results-asr.gs.json')
 
-    fig = plt.figure()
-    ax = fig.gca()
+    fig, ax = plt.subplots()
 
     # extract pristine data
     evbm = data.pristine.vbm

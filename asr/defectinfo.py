@@ -28,23 +28,27 @@ def webpanel(result, row, key_descriptions):
     )
 
     spg_list_link = href(
-        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
-    )
+        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups')
     spacegroup = describe_entry(
         'Host space group',
-        f"The {spg_list_link} is determined with {spglib}."
-    )
-
+        f"The {spg_list_link} is determined with {spglib}.")
     pointgroup = describe_entry(
         'Host point group',
-        f"The point group is determined with {spglib}."
-    )
+        f"The point group is determined with {spglib}.")
+    host_hof = describe_entry(
+        'Host heat of formation',
+        result.key_descriptions['host_hof'])
+    host_gap_pbe = describe_entry(
+        'Host PBE bandgap',
+        result.key_descriptions['host_gap_pbe'])
+    host_gap_hse = describe_entry(
+        'Host HSE bandgap',
+        result.key_descriptions['host_gap_hse'])
 
     uid = result.host_uid
     uidstring = describe_entry(
         'C2DB link',
-        'Link to C2DB entry of the host material.'
-    )
+        'Link to C2DB entry of the host material.')
 
     basictable = table(result, 'Pristine crystal', [])
     basictable['rows'].extend(
@@ -53,6 +57,12 @@ def webpanel(result, row, key_descriptions):
         [[spacegroup, result.host_spacegroup]])
     basictable['rows'].extend(
         [[pointgroup, result.host_pointgroup]])
+    basictable['rows'].extend(
+        [[host_hof, f'{result.host_hof:.2f} eV/atom']])
+    basictable['rows'].extend(
+        [[host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']])
+    basictable['rows'].extend(
+        [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
 
     if uid:
         basictable['rows'].extend(
@@ -77,6 +87,9 @@ class Result(ASRResult):
     host_spacegroup: str
     host_crystal: str
     host_uid: str
+    host_hof: float
+    host_gap_pbe: float
+    host_gap_hse: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         defect_name='Name of the defect({type}_{position}).',
@@ -85,7 +98,10 @@ class Result(ASRResult):
         host_pointgroup='Point group of the host crystal.',
         host_spacegroup='Space group of the host crystal.',
         host_crystal='Crystal type of the host crystal.',
-        host_uid='UID of the primitive host crystal.')
+        host_uid='UID of the primitive host crystal.',
+        host_hof='Heat of formation for the host crystal [eV/atom].',
+        host_gap_pbe='PBE bandgap of the host crystal [eV].',
+        host_gap_hse='HSE bandgap of the host crystal [eV].')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -137,9 +153,12 @@ def main() -> Result:
         res = read_json(primres)
         host_uid = res['uid']
     else:
-        print('WARNING: no asr.database.material_fingerprint ran for primitive '
-              'structure!')
-        host_uid = None
+        raise ValueError('Error: no asr.database.material_fingerprint ran for '
+                         'primitive structure! Make sure to run it before '
+                         'running asr.defectinfo.')
+
+    # extract host crystal properties from C2DB
+    hof, pbe, hse = get_host_properties_from_C2DB(host_uid)
 
     return Result.fromdata(
         defect_name=defect_name,
@@ -148,7 +167,24 @@ def main() -> Result:
         host_pointgroup=host_pointgroup,
         host_spacegroup=host_spacegroup,
         host_crystal=host_crystal,
-        host_uid=host_uid)
+        host_uid=host_uid,
+        host_hof=hof,
+        host_gap_pbe=pbe,
+        host_gap_hse=hse)
+
+
+def get_host_properties_from_C2DB(uid):
+    """Extract host properties from C2DB."""
+    from ase.db import connect
+
+    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+
+    for row in db.select(uid=uid):
+        hof = row.hform
+        gap_pbe = row.gap
+        gap_hse = row.gap_hse
+
+    return hof, gap_pbe, gap_hse
 
 
 if __name__ == '__main__':
