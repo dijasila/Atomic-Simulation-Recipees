@@ -11,11 +11,35 @@ class DataContext:
     # But not the records themselves -- they're not part of the database
     # and we would like it to be possible to generate the figures
     # from a database without additional info.
-    def __init__(self, row, parameters):
+    def __init__(self, row, parameters, record):
         self.row = row
         self.parameters = parameters
+        self.record = record
+
+    @property
+    def name(self):
+        return self.record.name
+
+    @property
+    def result(self):
+        return self.record.result
 
     @property
     def xcname(self):
         # XXX This is bound to GPAW's default XC functional.
         return self.parameters.get('xc', 'LDA')
+
+    @property
+    def atoms(self):
+        return self.parameters['atoms']
+
+    @property
+    def ndim(self):
+        atoms = self.atoms
+        ndim = sum(atoms.pbc)
+        assert all(atoms.pbc[:ndim])
+        return ndim
+
+    @property
+    def is_magnetic(self):
+        return self.row.is_magnetic

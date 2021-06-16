@@ -802,7 +802,7 @@ def results(selection, show):
 
         if 'webpanel2' in formats:
             row = get_row_from_folder('.')  # XXX remove
-            context = DataContext(row, parameters)
+            context = DataContext(row, parameters, record)
             panels = result.format_as('webpanel2', context)
             new_make_panel_figures(context, panels, uid=record.uid[:10])
         elif 'ase_webpanel' in formats:
