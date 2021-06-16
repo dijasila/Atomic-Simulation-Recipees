@@ -196,12 +196,7 @@ def webpanel(result, context):
 
 
 def bz_with_band_extrema(context, fname):
-    return _bz_with_band_extremums(context.row, fname, context)
-
-
-def _bz_with_band_extremums(row, fname, context):
     from matplotlib import pyplot as plt
-    import numpy as np
 
     assert context.name == 'asr.gs:main', context.name
     gsresults = context.result
