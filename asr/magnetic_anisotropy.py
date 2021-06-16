@@ -1,4 +1,5 @@
 """Magnetic anisotropy."""
+import numpy as np
 from ase import Atoms
 import asr
 from asr.core import (command, ASRResult, prepare_result,
@@ -41,7 +42,6 @@ def get_spin_index(atoms, calculator):
 
 
 def spin_axis(theta, phi):
-    import numpy as np
     if theta == 0:
         return 'z'
     elif np.allclose(phi, 90):
@@ -51,28 +51,21 @@ def spin_axis(theta, phi):
 
 
 def webpanel(result, context):
-    row = context.row
-    key_descriptions = context.descriptions
     magstate = context.magstate().result
     if magstate['magstate'] == 'NM':
         return []
 
     magtable = table(result, 'Property',
                      ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'], kd=key_descriptions)
-
-    xcname = context.xcname
+                      'dE_zx', 'dE_zy'], kd=context.descriptions)
 
     panel = {'title':
              describe_entry(
-                 f'Basic magnetic properties ({xcname})',
+                 f'Basic magnetic properties ({context.xcname})',
                  panel_description),
              'columns': [[magtable], []],
              'sort': 11}
     return [panel]
-
-
-params = '''asr.gs@calculate:calculator +{'mode':'lcao','kpts':(2,2,2)}'''
 
 
 @prepare_result

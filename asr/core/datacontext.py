@@ -31,14 +31,14 @@ class DataContext:
         return self.record.result
 
     @lazymethod
-    def _dependency_records(self):
+    def _dependencies(self):
         from asr.core.cache import get_cache
         cache = get_cache()
-        return [cache.backend.get_record_from_uid(dep.uid)
-                for dep in self.record.dependencies]
+        # XXX Avoid depending directly on backend
+        return list(cache.backend.recurse_dependencies(self.record))
 
     def _find_dependency(self, name):
-        matches = [record for record in self._dependency_records()
+        matches = [record for record in self._dependencies()
                    if record.name == name]
 
         if self.name == name:

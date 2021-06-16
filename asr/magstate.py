@@ -31,7 +31,6 @@ def get_magstate(calc):
 def webpanel(result, context):
     """Webpanel for magnetic state."""
     from asr.database.browser import describe_entry, dl, code, WebPanel
-    key_descriptions = context.descriptions
 
     is_magnetic = describe_entry(
         'Magnetic',
