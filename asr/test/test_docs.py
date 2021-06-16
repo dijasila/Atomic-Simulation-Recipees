@@ -74,6 +74,8 @@ def test_tutorial(command_outputs, tmpdir):
 def remove_anything_after_record_uid_occurs(output):
     for il, line in enumerate(output):
         if 'record.uid' in line:
-            part1, *_ = line.split('record.uid')
-            output[il] = part1
+            line, *_ = line.split('record.uid')
+        elif 'UID=' in line:
+            line, *_ = line.split('UID=')
+        output[il] = line
     return output

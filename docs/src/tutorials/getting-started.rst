@@ -246,3 +246,186 @@ The migrations are applied with `asr cache migrate`
    Run
        $ asr cache migrate --apply
    to apply migrations.
+
+To apply the migrations we do
+
+..  code-block:: console
+
+   $ asr cache migrate --apply
+   There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
+   
+   Apply migration: UID=#8053a12bcc7a44379d899f664507d270 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#96697fc9e403449a89eb1d0efdf097f5 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#292f9e0e2e2344e3857866cc79993c7d name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#2ab34ee5c5cf4c7c9cf6b73960ca77ea name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#fb13990c2bf34ddab6d771c3b5008926 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#cb91ddea466c49319076a20dfaa8435b name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#507d86257217446f98700f5c3d62f748 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#0595e4b42e364c3c916cc2fc3b5fb239 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#96282c3595224015a69ea07514ae691b name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#42e1fc0397b148048c50c8fb6bb69de3 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#6218cb87661a4b15a6f1a57820970ec8 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#83da94ea0d354becb8a6af8882d1884b name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#ae705e7766a2420fb6e934e342749e9a name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#a71055ad8e2a4be2a7ae36f93fa479eb name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#76783b3ddd2d42df872cc4c49964e0a6 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#e45c9536172f42de98fb3dcb83027688 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#35ad421d779342d09f43d2de1233be2a name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#3dee99a393174e2a84928445391773a2 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#a76b8a20cfc942c596ab253447fe9e9a name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#92a0c4e84f334f18a759db6644b442b7 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#e9e9da98d5af4ab6a44be9854aa8617d name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#97630c356e11416ea818c6a1a41bbb68 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#b63d6034ae9d46d3b981f0d0f1af837f name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#5fd9bc7db7cf4aaeb695cc5dcca6eaaa name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#f01dd3b6f00a4e28a3dbd53950156761 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#ecbbae3c03e9434caf3ee7117395e4de name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#9bf15c6b298c4b5babad09480d57a295 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#db2aa32917f049788780d98344c2f56c name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#37a0df83390d40b196d223451342b516 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#1dd8afdf63e84374b4ab10cc5280dc5c name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#2c25c083cea34e7c9f97b1fe9262b1cb name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#aad22289e786423d81c9bc60143a6e08 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#dfae0c2acb4f43fb9a966f885fe9f6b9 name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#fa9d7803bf844ef6a6961484b0ed399c name=asr.tutorial:energy
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
+   Apply migration: UID=#22c69b51262442698d5418a0c1779a94 name=asr.tutorial:main
+   Number of revisions=1. 
+   Number of erroneous migrations=0.
+   Revision #0 "Fix old records that are missing calculator='emt'."
+   New attribute=.run_specification.parameters.calculator value=emt
