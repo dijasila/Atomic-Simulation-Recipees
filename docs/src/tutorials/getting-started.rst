@@ -236,7 +236,7 @@ to be migrated. The selector will be applied to all existing records
 and should return a boolean. The function will then be applied for all
 record that fulfill the selector criterion.
 
-The migrations are applied with `asr cache migrate`
+The migrations can be applied through the CLI
 
 .. code-block:: console
 
@@ -429,3 +429,15 @@ To apply the migrations we do
    Number of erroneous migrations=0.
    Revision #0 "Fix old records that are missing calculator='emt'."
    New attribute=.run_specification.parameters.calculator value=emt
+
+The output informs us of the changes made to the existing records. We
+can now run our updated instructions employing other calculators.
+
+.. code-block:: console
+
+   $ asr run "asr.tutorial:energy Ag fcc --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:energy(element='Ag', crystal_structure='fcc', calculator='lj')
+   $ asr run "asr.tutorial:energy Ag fcc --calculator morse"
+   In folder: . (1/1)
+   Running asr.tutorial:energy(element='Ag', crystal_structure='fcc', calculator='morse')
