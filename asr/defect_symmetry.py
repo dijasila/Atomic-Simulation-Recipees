@@ -53,11 +53,11 @@ def webpanel(result, row, key_descriptions):
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
 
-    # basictable = table(row, 'Defect properties', [])
-    # basictable['rows'].extend(
-    #     [[describe_entry('Defect point group',
-    #                      f'The defect point group is calculated with {spglib}.'),
-    #       result.defect_pointgroup]])
+    basictable = table(row, 'Defect properties', [])
+    basictable['rows'].extend(
+        [[describe_entry('Defect point group',
+                         f'The defect point group is calculated with {spglib}.'),
+          result.defect_pointgroup]])
 
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
@@ -90,16 +90,16 @@ def webpanel(result, row, key_descriptions):
                                      rowlabels=symmetry_rownames)
         panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
                          description='Structural and electronic symmetry analysis'),
-                         columns=[[fig('ks_gap.png'), basictable], [symmetry_table]],
+                         columns=[[fig('ks_gap.png')], [symmetry_table]],
                          plot_descriptions=[{'function': plot_gapstates,
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
 
-    # summary = {'title': 'Summary',
-    #            'columns': [[basictable], []],
-    #            'sort': 2}
+    summary = {'title': 'Summary',
+               'columns': [[basictable], []],
+               'sort': 2}
 
-    return [panel]
+    return [panel, summary]
 
 
 @prepare_result

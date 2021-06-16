@@ -44,6 +44,9 @@ def webpanel(result, row, key_descriptions):
     host_gap_hse = describe_entry(
         'Host HSE bandgap',
         result.key_descriptions['host_gap_hse'])
+    R_nn = describe_entry(
+        'Nearest neighbor distance between defects',
+        result.key_descriptions['R_nn'])
 
     uid = result.host_uid
     uidstring = describe_entry(
@@ -64,6 +67,9 @@ def webpanel(result, row, key_descriptions):
     if result.host_gap_hse is not None:
         basictable['rows'].extend(
             [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
+    if result.R_nn is not None:
+        basictable['rows'].extend(
+            [[R_nn, f'{result.R_nn:.2f} Å']])
 
     if uid:
         basictable['rows'].extend(
@@ -91,6 +97,7 @@ class Result(ASRResult):
     host_hof: float
     host_gap_pbe: float
     host_gap_hse: float
+    R_nn: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         defect_name='Name of the defect({type}_{position}).',
@@ -102,7 +109,8 @@ class Result(ASRResult):
         host_uid='UID of the primitive host crystal.',
         host_hof='Heat of formation for the host crystal [eV/atom].',
         host_gap_pbe='PBE bandgap of the host crystal [eV].',
-        host_gap_hse='HSE bandgap of the host crystal [eV].')
+        host_gap_hse='HSE bandgap of the host crystal [eV].',
+        R_nn='Nearest neighbor distance of repeated defects [Å].')
 
     formats = {"ase_webpanel": webpanel}
 
@@ -118,6 +126,7 @@ def main() -> Result:
     p = Path('.')
     pathstr = str(p.absolute())
 
+    R_nn = None
     if pathstr.split('/')[-1].startswith('defects.pristine_sc'):
         host_name = pathstr.split('/')[-2].split('-')[0]
         defect_name = 'pristine'
@@ -130,6 +139,7 @@ def main() -> Result:
         charge_state = f"(charge {pathstr.split('/')[-1].split('_')[-1]})"
         prispath = list(p.glob('../../defects.pristine_sc*'))[-1]
         primpath = Path(p / '../../')
+        R_nn = get_nearest_neighbor_distance()
     else:
         raise ValueError('ERROR: needs asr.setup.defects to extract'
                          ' information on the defect system. Furthermore, '
@@ -171,7 +181,29 @@ def main() -> Result:
         host_uid=host_uid,
         host_hof=hof,
         host_gap_pbe=pbe,
-        host_gap_hse=hse)
+        host_gap_hse=hse,
+        R_nn=R_nn)
+
+
+def get_nearest_neighbor_distance():
+    from ase.io import read
+    import numpy as np
+
+    atoms = read('structure.json')
+    cell = atoms.get_cell()
+    distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
+    distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
+    distance_xy = np.sqrt((
+        cell[0][0] + cell[1][0])**2 + (
+        cell[0][1] + cell[1][1])**2 + (
+        cell[0][2] + cell[1][2])**2)
+    distance_mxy = np.sqrt((
+        -cell[0][0] + cell[1][0])**2 + (
+        -cell[0][1] + cell[1][1])**2 + (
+        -cell[0][2] + cell[1][2])**2)
+    distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
+
+    return min(distances)
 
 
 def get_host_properties_from_C2DB(uid):
