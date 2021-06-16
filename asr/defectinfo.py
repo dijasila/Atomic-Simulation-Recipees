@@ -45,7 +45,7 @@ def webpanel(result, row, key_descriptions):
         'Host HSE bandgap',
         result.key_descriptions['host_gap_hse'])
     R_nn = describe_entry(
-        'Nearest neighbor distance between defects',
+        'Nearest neighbor distance',
         result.key_descriptions['R_nn'])
 
     uid = result.host_uid
@@ -189,7 +189,10 @@ def get_nearest_neighbor_distance():
     from ase.io import read
     import numpy as np
 
-    atoms = read('structure.json')
+    try:
+        atoms = read('structure.json')
+    except FileNotFoundError:
+        atoms = read('unrelaxed.json')
     cell = atoms.get_cell()
     distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
     distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
