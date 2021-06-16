@@ -124,7 +124,7 @@ def webpanel2(result, context):
         # icsd_id, cod_id
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
-    rows = basictable['rows']
+    # rows = basictable['rows']
 
     # codid = row.get('cod_id')
     # if codid:
