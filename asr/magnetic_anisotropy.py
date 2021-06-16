@@ -50,16 +50,18 @@ def spin_axis(theta, phi):
         return 'x'
 
 
-def webpanel(result, row, key_descriptions):
-    if row.get('magstate', 'NM') == 'NM':
+def webpanel(result, context):
+    row = context.row
+    key_descriptions = context.descriptions
+    magstate = context.magstate().result
+    if magstate['magstate'] == 'NM':
         return []
 
-    magtable = table(row, 'Property',
+    magtable = table(result, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
 
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     panel = {'title':
              describe_entry(
@@ -98,7 +100,7 @@ class Result(ASRResult):
         "Magnetic anisotropy energy between y and z axis [meV/unit cell]"
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command('asr.magnetic_anisotropy')

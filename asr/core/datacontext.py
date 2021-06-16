@@ -31,22 +31,30 @@ class DataContext:
         return self.record.result
 
     @lazymethod
-    def ground_state(self):
+    def _dependency_records(self):
         from asr.core.cache import get_cache
         cache = get_cache()
+        return [cache.backend.get_record_from_uid(dep.uid)
+                for dep in self.record.dependencies]
 
-        gs_records = []
-        for dep in self.record.dependencies:
-            # XXX Avoid backend hack
-            record = cache.backend.get_record_from_uid(dep.uid)
-            if record.name == 'asr.gs:main':
-                gs_records.append(record)
+    def _find_dependency(self, name):
+        matches = [record for record in self._dependency_records()
+                   if record.name == name]
 
-        if len(gs_records) != 1:
-            raise RuntimeError('Expected one GS record, '
-                               f'found many: {gs_records}')
+        if self.name == name:
+            matches.append(self.record)
 
-        return gs_records[0]
+        if len(matches) != 1:
+            raise RuntimeError(f'Expected one {name} record, '
+                               f'found: {matches}')
+
+        return matches[0]
+
+    def ground_state(self):
+        return self._find_dependency('asr.gs:main')
+
+    def magstate(self):
+        return self._find_dependency('asr.magstate:main')
 
     def gs_results(self):
         return self.ground_state().result
@@ -69,4 +77,4 @@ class DataContext:
 
     @property
     def is_magnetic(self):
-        return self.row.is_magnetic
+        return self.magstate().result.is_magnetic
