@@ -131,7 +131,9 @@ def plot_bs_html(context,
         label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
         reference = ef
 
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gsresults = context.gs_results()
+    gaps = gsresults.get('gaps_nosoc')
+    # gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
         emin = gaps.get('vbm', ef) - 3
     else:
@@ -368,9 +370,10 @@ def plot_bs_png(context,
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
+
     row = context.row
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+    d = context.result
+    xcname = context.xcname
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
@@ -386,7 +389,10 @@ def plot_bs_png(context,
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gsresults = context.gs_results()
+    gaps = gsresults.get('gaps_nosoc', {})
+
+    # gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
     else:

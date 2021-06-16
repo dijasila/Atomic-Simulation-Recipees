@@ -1,5 +1,8 @@
+from ase.utils import lazymethod
+from asr.database.app import create_key_descriptions
+
+
 class DataContext:
-    from asr.database.app import create_key_descriptions
     descriptions = create_key_descriptions()
     # Can we find a more fitting name for this?
     #
@@ -26,6 +29,28 @@ class DataContext:
     @property
     def result(self):
         return self.record.result
+
+    @lazymethod
+    def ground_state(self):
+        from asr.core.cache import get_cache
+        cache = get_cache()
+
+        gs_records = []
+        for dep in self.record.dependencies:
+            # XXX Avoid backend hack
+            record = cache.backend.get_record_from_uid(dep.uid)
+            if record.name == 'asr.gs:main':
+                gs_records.append(record)
+
+        if len(gs_records) != 1:
+            raise RuntimeError('Expected one GS record, '
+                               f'found many: {gs_records}')
+
+        return gs_records[0]
+
+    def gs_results(self):
+        return self.ground_state().result
+        return gs.result
 
     @property
     def xcname(self):
