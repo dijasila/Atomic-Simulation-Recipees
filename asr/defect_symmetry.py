@@ -53,11 +53,11 @@ def webpanel(result, row, key_descriptions):
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
 
-    basictable = table(row, 'Defect properties', [])
-    basictable['rows'].extend(
-        [[describe_entry('Defect point group',
-                         f'The defect point group is calculated with {spglib}.'),
-          result.defect_pointgroup]])
+    # basictable = table(row, 'Defect properties', [])
+    # basictable['rows'].extend(
+    #     [[describe_entry('Defect point group',
+    #                      f'The defect point group is calculated with {spglib}.'),
+    #       result.defect_pointgroup]])
 
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
@@ -95,11 +95,11 @@ def webpanel(result, row, key_descriptions):
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
 
-    summary = {'title': 'Summary',
-               'columns': [[basictable], []],
-               'sort': 2}
+    # summary = {'title': 'Summary',
+    #            'columns': [[basictable], []],
+    #            'sort': 2}
 
-    return [panel, summary]
+    return [panel]
 
 
 @prepare_result
@@ -420,9 +420,9 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
         indexlist = indexlist_cut_atoms(ref_struc, threshold)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
-    if not conserved_atoms(ref_struc, primitive, N, defect):
-        raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
-            defect.absolute()))
+    # if not conserved_atoms(ref_struc, primitive, N, defect):
+    #     raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
+    #         defect.absolute()))
 
     return rel_struc
 
@@ -473,7 +473,7 @@ def compare_structures(artificial, unrelaxed_rattled):
     for i in range(len(unrelaxed_rattled)):
         for j in range(len(artificial)):
             if (abs(max((artificial.get_positions()[j]
-                         - unrelaxed_rattled.get_positions()[i]))) < 0.1
+                         - unrelaxed_rattled.get_positions()[i]))) < 0.5
                and i not in indexlist):
                 indexlist.append(i)
     for i in range(len(unrelaxed_rattled)):
