@@ -108,12 +108,13 @@ bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
-def plot_bs_html(row,
+def plot_bs_html(context,
                  filename=bs_html,
                  figsize=(6.4, 6.4),
                  s=2):
     import plotly
     import plotly.graph_objs as go
+    row = context.row
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
@@ -358,7 +359,7 @@ def legend_on_top(ax, **kwargs):
               mode='expand', **kwargs)
 
 
-def plot_bs_png(row,
+def plot_bs_png(context,
                 filename=bs_png,
                 figsize=(5.5, 5),
                 s=0.5):
@@ -367,6 +368,7 @@ def plot_bs_png(row,
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
+    row = context.row
     d = row.data.get('results-asr.bandstructure.json')
     xcname = gs_xcname_from_row(row)
 

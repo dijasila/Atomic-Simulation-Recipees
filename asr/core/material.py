@@ -68,12 +68,15 @@ def new_make_panel_figures(context, panels, uid):
                 filenames = plot_description['filenames']
                 import inspect
                 argspec = inspect.getargspec(func)
+
                 if argspec.args[0] == 'context':
                     func(context, *filenames)
                 else:
                     func(context.row, *filenames)
+
             for filename in filenames:
                 paths.append(path / filename)
+
     return paths
 
 
