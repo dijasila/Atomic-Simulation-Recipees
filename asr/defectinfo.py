@@ -61,8 +61,9 @@ def webpanel(result, row, key_descriptions):
         [[host_hof, f'{result.host_hof:.2f} eV/atom']])
     basictable['rows'].extend(
         [[host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']])
-    basictable['rows'].extend(
-        [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
+    if result.host_gap_hse is not None:
+        basictable['rows'].extend(
+            [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
 
     if uid:
         basictable['rows'].extend(
@@ -182,7 +183,10 @@ def get_host_properties_from_C2DB(uid):
     for row in db.select(uid=uid):
         hof = row.hform
         gap_pbe = row.gap
-        gap_hse = row.gap_hse
+        try:
+            gap_hse = row.gap_hse
+        except AttributeError:
+            gap_hse = None
 
     return hof, gap_pbe, gap_hse
 
