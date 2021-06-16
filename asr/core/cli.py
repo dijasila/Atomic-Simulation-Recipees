@@ -792,10 +792,9 @@ def make_panels(record):
         make_panel_figures(row, panels, uid=record.uid[:10])
     else:
         panels = []
-        #print(f'{result} does not have any results to present!')
-        #continue
 
     return panels
+
 
 class BadResults(Exception):
     pass
@@ -825,7 +824,11 @@ def results(selection, show):
             panels = make_panels(record)
         except Exception as ex:
             raise BadResults(record) from ex
-        print('panels', panels)
+
+        if not panels:
+            print(f'{record.result} does not have any results to present!')
+        else:
+            print('panels', panels)
 
     if show:
         plt.show()
