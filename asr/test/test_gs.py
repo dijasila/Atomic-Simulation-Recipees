@@ -84,7 +84,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from pathlib import Path
     from asr.gs import main
     from asr.core.material import (get_row_from_folder,
-                                   make_panel_figures)
+                                   new_make_panel_figures)
     from asr.core.datacontext import DataContext
     atoms = std_test_materials[0]
     atoms.write('structure.json')
@@ -94,9 +94,13 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     row = get_row_from_folder('.')
     context = DataContext(row, record)
     panels = result.format_as('webpanel2', context)
-    make_panel_figures(row, panels, uid=record.uid[:10])
+    paths = new_make_panel_figures(context, panels, uid=record.uid[:10])
 
-    assert Path(f'{record.uid[:10]}-bz-with-gaps.png').is_file()
+    assert len(paths) > 0
+    for path in paths:
+        assert path.is_file()
+
+    # assert Path(f'{record.uid[:10]}-bz-with-gaps.png').is_file()
 
 
 @pytest.mark.integration_test

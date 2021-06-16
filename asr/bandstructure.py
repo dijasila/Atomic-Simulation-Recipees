@@ -455,6 +455,10 @@ def plot_bs_png(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
+def webpanel2(result, context):
+    return webpanel(result, context.row, context.descriptions)
+
+
 def webpanel(result, row, key_descriptions):
     from typing import Tuple, List
     from asr.utils.hacks import gs_xcname_from_row
@@ -500,7 +504,7 @@ class Result(ASRResult):
             'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel2}
 
 
 def set_bsrestart_from_dependencies(record):
