@@ -28,9 +28,10 @@ def get_magstate(calc):
     return 'fm'
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     """Webpanel for magnetic state."""
     from asr.database.browser import describe_entry, dl, code, WebPanel
+    key_descriptions = context.descriptions
 
     is_magnetic = describe_entry(
         'Magnetic',
@@ -50,26 +51,28 @@ def webpanel(result, row, key_descriptions):
         )
     )
 
-    rows = [[is_magnetic, row.is_magnetic]]
+    rows = [[is_magnetic, context.is_magnetic]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': rows}]],
                'sort': 0}
 
+    atoms = context.atoms
+
     if result.magstate == 'NM':
         return [summary]
     else:
+        assert len(atoms) == len(result.magmoms)
         magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
                         for a, (symbol, magmom)
-                        in enumerate(zip(row.get('symbols'), result.magmoms))]
+                        in enumerate(zip(atoms.symbols, result.magmoms))]
         magmoms_table = {'type': 'table',
                          'header': ['Atom index', 'Atom type',
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        from asr.utils.hacks import gs_xcname_from_row
-        xcname = gs_xcname_from_row(row)
+        xcname = context.xcname
         panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
                          columns=[[], [magmoms_table]],
                          sort=11)
@@ -91,7 +94,7 @@ class Result(ASRResult):
                         'magmoms': 'Atomic magnetic moments.',
                         'magmom': 'Total magnetic moment.',
                         'nspins': 'Number of spins in system.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command('asr.magstate')
