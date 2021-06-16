@@ -420,9 +420,9 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
         indexlist = indexlist_cut_atoms(ref_struc, threshold)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
-    # if not conserved_atoms(ref_struc, primitive, N, defect):
-    #     raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
-    #         defect.absolute()))
+    if not conserved_atoms(ref_struc, primitive, N, defect):
+        raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
+            defect.absolute()))
 
     return rel_struc
 
