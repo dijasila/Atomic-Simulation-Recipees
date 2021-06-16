@@ -772,6 +772,35 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
+def make_panels(record):
+    from asr.core.material import (get_row_from_folder,
+                                   new_make_panel_figures,
+                                   make_panel_figures)
+    from asr.core.datacontext import DataContext
+    result = record.result
+    formats = result.get_formats()
+
+    if 'webpanel2' in formats:
+        row = get_row_from_folder('.')  # XXX remove
+        context = DataContext(row, record)
+        panels = result.format_as('webpanel2', context)
+        new_make_panel_figures(context, panels, uid=record.uid[:10])
+    elif 'ase_webpanel' in formats:
+        row = get_row_from_folder('.')
+        panels = result.format_as('ase_webpanel', row,
+                                  DataContext.descriptions)
+        make_panel_figures(row, panels, uid=record.uid[:10])
+    else:
+        panels = []
+        #print(f'{result} does not have any results to present!')
+        #continue
+
+    return panels
+
+class BadResults(Exception):
+    pass
+
+
 @cli.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
@@ -784,10 +813,6 @@ def results(selection, show):
 
     """
     from matplotlib import pyplot as plt
-    from asr.core.material import (get_row_from_folder,
-                                   new_make_panel_figures,
-                                   make_panel_figures)
-    from asr.core.datacontext import DataContext
 
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
@@ -796,23 +821,10 @@ def results(selection, show):
     assert records, 'No matching records!'
 
     for record in records:
-        result = record.result
-        formats = result.get_formats()
-
-        if 'webpanel2' in formats:
-            row = get_row_from_folder('.')  # XXX remove
-            context = DataContext(row, record)
-            panels = result.format_as('webpanel2', context)
-            new_make_panel_figures(context, panels, uid=record.uid[:10])
-        elif 'ase_webpanel' in formats:
-            row = get_row_from_folder('.')
-            panels = result.format_as('ase_webpanel', row,
-                                      DataContext.descriptions)
-            make_panel_figures(row, panels, uid=record.uid[:10])
-        else:
-            print(f'{result} does not have any results to present!')
-            continue
-
+        try:
+            panels = make_panels(record)
+        except Exception as ex:
+            raise BadResults(record) from ex
         print('panels', panels)
 
     if show:
