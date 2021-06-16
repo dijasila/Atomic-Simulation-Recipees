@@ -393,33 +393,36 @@ def find_wf_result(state, spin):
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
-    threshold = 0.99
-    translation = return_defect_coordinates(structure, unrelaxed, primitive,
-                                            pristine, defect)
-    rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
-                                                                        unrelaxed,
-                                                                        primitive,
-                                                                        pristine,
-                                                                        translation)
-    indexlist = compare_structures(artificial, ref_struc)
-    ref_struc = remove_atoms(ref_struc, indexlist)
-    rel_struc = remove_atoms(rel_struc, indexlist)
-    indexlist = indexlist_cut_atoms(ref_struc, threshold)
-    ref_struc = remove_atoms(ref_struc, indexlist)
-    rel_struc = remove_atoms(rel_struc, indexlist)
-    if not conserved_atoms(ref_struc, primitive, N, defect):
-        threshold = 1.01
+    for cutoff in [0.1, 0.2, 0.3, 0.4, 0.5]:
+        threshold = 0.99
+        translation = return_defect_coordinates(structure, unrelaxed, primitive,
+                                                pristine, defect)
         rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
                                                                             unrelaxed,
                                                                             primitive,
                                                                             pristine,
                                                                             translation)
-        indexlist = compare_structures(artificial, ref_struc)
+        indexlist = compare_structures(artificial, ref_struc, cutoff)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
         indexlist = indexlist_cut_atoms(ref_struc, threshold)
         ref_struc = remove_atoms(ref_struc, indexlist)
         rel_struc = remove_atoms(rel_struc, indexlist)
+        if not conserved_atoms(ref_struc, primitive, N, defect):
+            threshold = 1.01
+            rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
+                                                                                unrelaxed,
+                                                                                primitive,
+                                                                                pristine,
+                                                                                translation)
+            indexlist = compare_structures(artificial, ref_struc, cutoff)
+            ref_struc = remove_atoms(ref_struc, indexlist)
+            rel_struc = remove_atoms(rel_struc, indexlist)
+            indexlist = indexlist_cut_atoms(ref_struc, threshold)
+            ref_struc = remove_atoms(ref_struc, indexlist)
+            rel_struc = remove_atoms(rel_struc, indexlist)
+        if conserved_atoms(ref_struc, primitive, N, defect):
+            break
     if not conserved_atoms(ref_struc, primitive, N, defect):
         raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
             defect.absolute()))
@@ -467,13 +470,13 @@ def indexlist_cut_atoms(structure, threshold):
     return indexlist
 
 
-def compare_structures(artificial, unrelaxed_rattled):
+def compare_structures(artificial, unrelaxed_rattled, cutoff):
     indexlist = []
     rmindexlist = []
     for i in range(len(unrelaxed_rattled)):
         for j in range(len(artificial)):
             if (abs(max((artificial.get_positions()[j]
-                         - unrelaxed_rattled.get_positions()[i]))) < 0.5
+                         - unrelaxed_rattled.get_positions()[i]))) < cutoff
                and i not in indexlist):
                 indexlist.append(i)
     for i in range(len(unrelaxed_rattled)):
