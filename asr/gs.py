@@ -197,33 +197,41 @@ def webpanel(result, context):
     return [panel, summary]
 
 def bz_with_band_extrema(context, fname):
-    return _bz_with_band_extremums(context.row, fname)
+    return _bz_with_band_extremums(context.row, fname, context)
 
 
-def _bz_with_band_extremums(row, fname):
+def _bz_with_band_extremums(row, fname, context):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
-    ndim = sum(row.pbc)
+
+    assert context.name == 'asr.gs:main', context.name
+    gsresults = context.result
+
+    atoms = context.atoms
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    gsresults = row.cache.select(name='asr.gs:main')[0].result
+
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
 
-    structrecords = row.cache.select(name='asr.structureinfo:main')
-    if structrecords:
-        structresult = structrecords[0].result
-        op_scc = structresult['spglib_dataset']['rotations']
-    else:
-        op_scc = np.array([np.eye(3, dtype=float)])
+    # Maybe web panels should not be calling spglib.
+    # But structureinfo is not a dependency of GS so we don't have access
+    # to its results.
+    from asr.utils.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms,
+                              tolerance=1e-3,
+                              angle_tolerance=0.1)
+    op_scc = symmetry.dataset['rotations']
+
+
     if cbm_c is not None:
-        if not row.is_magnetic:
+        if not context.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
         icell_cv = cell.reciprocal()
@@ -236,7 +244,7 @@ def _bz_with_band_extremums(row, fname):
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
 
-        if ndim < 3:
+        if context.ndim < 3:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
 
