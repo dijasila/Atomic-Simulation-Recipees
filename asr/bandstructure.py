@@ -6,7 +6,7 @@ import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    AtomsFile, Selector, make_migration_generator,
+    AtomsFile, Selector,
 )
 from asr.gs import calculate as calculategs
 from asr.gs import main as maings
@@ -43,7 +43,7 @@ sel.parameters = sel.AND(
 
 @asr.migration(selector=sel)
 def remove_emptybands_and_make_bsrestart(record):
-    """Remove param="emptybands" and make param='bsrestart'"""
+    """Remove param="emptybands" and make param='bsrestart'."""
     record.parameters.bsrestart = {
         'nbands': -record.parameters.emptybands,
         'txt': 'bs.txt',

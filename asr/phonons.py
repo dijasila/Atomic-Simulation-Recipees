@@ -17,7 +17,7 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile,
-    make_migration_generator, Selector,
+    Selector,
 )
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)

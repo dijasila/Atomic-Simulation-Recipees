@@ -6,7 +6,7 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile,
-    make_migration_generator)
+)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 from asr.relax import main as relax
@@ -203,7 +203,7 @@ sel.version = sel.EQ(-1)
 
 @asr.migration(selector=sel)
 def transform_stiffness_resultfile_record(record):
-    """Remove fixcell and allow_symmetry_breaking from dependency_parameters"""
+    """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
     relax_dep_params = dep_params['asr.relax:main']
     delparams = {'fixcell', 'allow_symmetry_breaking'}

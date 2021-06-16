@@ -3,7 +3,7 @@ import typing
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt,
-    Selector, make_migration_generator,
+    Selector,
 )
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
