@@ -9,10 +9,8 @@ from asr.calculators import (
 
 from asr.database.browser import (
     table, fig,
-    entry_parameter_description,
     describe_entry, WebPanel,
     make_panel_description,
-    cache_webpanel,
 )
 
 import numpy as np
@@ -196,12 +194,12 @@ def webpanel(result, context):
 
     return [panel, summary]
 
+
 def bz_with_band_extrema(context, fname):
     return _bz_with_band_extremums(context.row, fname, context)
 
 
 def _bz_with_band_extremums(row, fname, context):
-    from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
 
@@ -228,7 +226,6 @@ def _bz_with_band_extremums(row, fname, context):
                               tolerance=1e-3,
                               angle_tolerance=0.1)
     op_scc = symmetry.dataset['rotations']
-
 
     if cbm_c is not None:
         if not context.is_magnetic:

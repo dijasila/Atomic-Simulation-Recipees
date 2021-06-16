@@ -50,7 +50,6 @@ class DataContext:
 
     def gs_results(self):
         return self.ground_state().result
-        return gs.result
 
     @property
     def xcname(self):
