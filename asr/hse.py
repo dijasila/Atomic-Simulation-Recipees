@@ -218,18 +218,16 @@ def plot_bs(row,
             cbm):
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
+    from asr.utils.hacks import RowInfo
 
     figsize = (5.5, 5)
     fontsize = 10
 
     path = data['bandstructure']['path']
 
-    reference = row.get('evac')
-    if reference is None:
-        reference = efermi
-        label = r'$E - E_\mathrm{F}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
+    rowinfo = RowInfo(row)
+    eref = rowinfo.evac_or_efermi()
+    reference = eref.value
 
     emin_offset = efermi if vbm is None else vbm
     emax_offset = efermi if cbm is None else cbm
@@ -250,7 +248,7 @@ def plot_bs(row,
         ax.plot(x, e_m, **style)
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
+    ax.set_ylabel(eref.mpl_plotlabel())
     ax.set_xticks(X)
     ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
 
@@ -271,7 +269,7 @@ def plot_bs(row,
     # add KS band structure with soc
     from asr.bandstructure import add_bs_ks
     if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
+        ax = add_bs_ks(row, ax, reference=eref.value,
                        color=[0.8, 0.8, 0.8])
 
     for Xi in X:

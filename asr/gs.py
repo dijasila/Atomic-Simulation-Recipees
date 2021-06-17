@@ -148,18 +148,15 @@ def webpanel(result, row, key_descriptions):
 
     gap = result.gap
 
-    if gap > 0:
-        if result.get('evac'):
-            eref = result.evac
-            vbm_title = 'Valence band maximum wrt. vacuum level'
-            cbm_title = 'Conduction band minimum wrt. vacuum level'
-        else:
-            eref = result.efermi
-            vbm_title = 'Valence band maximum wrt. Fermi level'
-            cbm_title = 'Conduction band minimum wrt. Fermi level'
+    from asr.utils.hacks import RowInfo
+    info = RowInfo(row)
 
-        vbm_displayvalue = result.vbm - eref
-        cbm_displayvalue = result.cbm - eref
+    if gap > 0:
+        ref = info.evac_or_efermi()
+        vbm_title = f'Valence band maximum wrt. {ref.prose_name}'
+        cbm_title = f'Conduction band minimum wrt. {ref.prose_name}'
+        vbm_displayvalue = result.vbm - ref.value
+        cbm_displayvalue = result.cbm - ref.value
         info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
                 [cbm_title, f'{cbm_displayvalue:.3f} eV']]
         t['rows'].extend(info)
