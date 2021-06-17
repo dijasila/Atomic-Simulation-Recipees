@@ -487,7 +487,7 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('Projected DOS [states / eV]')
-    ax.set_ylabel(rowinfo.mpl_plotlabel())
+    ax.set_ylabel(ref.mpl_plotlabel())
 
     # Set up legend
     plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
