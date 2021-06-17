@@ -85,19 +85,11 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-def _get_parameter_description(parameters):
-    from asr.database.browser import format_parameter_description
-    desc = format_parameter_description(
-        'asr.gs',
-        parameters,
-        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                          'idiotproof', 'maxiter', 'hund', 'random',
-                          'experimental', 'basis', 'setups']))
-    return desc
 
 
 def _explain_bandgap(parameters, gap_name):
-    parameter_description = _get_parameter_description(parameters)
+    from asr.utils.hacks import get_parameter_description
+    parameter_description = get_parameter_description('asr.gs', parameters)
 
     if gap_name == 'gap':
         name = 'Band gap'
@@ -120,11 +112,11 @@ def _explain_bandgap(parameters, gap_name):
 #     '+,calculator.mode.ecut',
 #     '+,calculator.kpts.density',
 # )
-# def webpanel(result, row, key_descriptions):
 def webpanel(result, context):
+    from asr.utils.hacks import get_parameter_description
     key_descriptions = context.descriptions
     parameters = context.parameters
-    parameter_description = _get_parameter_description(parameters)
+    parameter_description = get_parameter_description('asr.gs', parameters)
 
     explained_keys = []
 
@@ -150,11 +142,8 @@ def webpanel(result, context):
 
     gap = result.gap
 
-    from asr.utils.hacks import RowInfo
-    info = RowInfo(context.row)
-
     if gap > 0:
-        ref = info.evac_or_efermi()
+        ref = context.energy_reference()
         vbm_title = f'Valence band maximum wrt. {ref.prose_name}'
         cbm_title = f'Conduction band minimum wrt. {ref.prose_name}'
         vbm_displayvalue = result.vbm - ref.value
