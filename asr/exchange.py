@@ -196,15 +196,12 @@ def get_parameters(gs, exchange, txt=False,
 
 
 def webpanel(result, context):
-    from asr.database.browser import (table,
-                                      describe_entry, WebPanel)
-    from asr.utils.hacks import get_parameter_description
+    from asr.database.browser import table, describe_entry, WebPanel
 
     if not context.is_magnetic:
         return []
 
-    parameter_description = get_parameter_description(
-        'asr.exchange', context.parameters)
+    parameter_description = context.parameter_description('asr.exchange')
 
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)

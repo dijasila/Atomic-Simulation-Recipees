@@ -27,14 +27,9 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
 def webpanel(result, context):
-    from asr.utils.hacks import get_parameter_description
-
-    xcname = context.xcname
-
     # XXX Why is it named bandstructure:calculate, why not projected?
-    desc1 = get_parameter_description('asr.bandstructure:calculate',
-                                      context.parameters)
-    desc2 = get_parameter_description('asr.gs', context.gs_parameters())
+    desc1 = context.parameter_description('asr.bandstructure:calculate')
+    desc2 = context.parameter_description_picky('asr.gs')
 
     explanation = ('Orbital projected band structure without '
                    'spin–orbit coupling\n\n' + desc1 + '\n' + desc2)
@@ -44,7 +39,7 @@ def webpanel(result, context):
 
     panel = WebPanel(
         title=describe_entry(
-            f'Projected band structure and DOS ({xcname})',
+            f'Projected band structure and DOS ({context.xcname})',
             panel_description),
         columns=[[describe_entry(fig(scf_projected_bs_filename, link='empty'),
                                  description=explanation)],

@@ -114,6 +114,21 @@ class DataContext:
         else:
             return EnergyReference._evac(gs['evac'])
 
+    def parameter_description(self, recipename, exclude=tuple()):
+        from asr.database.browser import format_parameter_description
+        parameters = self.get_record(recipename).parameters
+        desc = format_parameter_description(
+            recipename,
+            parameters,
+            exclude_keys=set(exclude))
+        return desc
+
+    def parameter_description_picky(self, recipename):
+        boring = {'txt', 'fixdensity', 'verbose', 'symmetry',
+                  'idiotproof', 'maxiter', 'hund', 'random',
+                  'experimental', 'basis', 'setups'}
+        return self.parameter_description(recipename, exclude=boring)
+
 
 @dataclass
 class EnergyReference:

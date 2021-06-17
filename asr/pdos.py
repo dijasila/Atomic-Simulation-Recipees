@@ -14,25 +14,19 @@ from asr.utils import magnetic_atoms
 
 
 def webpanel(result, context):
-    from asr.database.browser import (fig, describe_entry, WebPanel)
-    from asr.utils.hacks import get_parameter_description
+    from asr.database.browser import fig, describe_entry, WebPanel
 
-    parameter_description = get_parameter_description(
-        'asr.pdos@calculate', context.parameters)
-
-    gsrecord = context.ground_state()
-    dependencies_parameter_descriptions = get_parameter_description(
-        'asr.gs@calculate', gsrecord.parameters)
+    desc = '\n'.join([
+        context.parameter_description('asr.pdos:calculate'),
+        context.parameter_description_picky('asr.gs:calculate')
+    ])
 
     explanation = ('Orbital projected density of states without spin–orbit '
-                   'coupling\n\n'
-                   + parameter_description + '\n'
-                   + dependencies_parameter_descriptions)
+                   'coupling\n\n' + desc)
 
-    xcname = context.xcname
     # Projected band structure and DOS panel
     panel = WebPanel(
-        title=f'Projected band structure and DOS ({xcname})',
+        title=f'Projected band structure and DOS ({context.xcname})',
         columns=[[],
                  [describe_entry(fig(pdos_figfile, link='empty'),
                                  description=explanation)]],

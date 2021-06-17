@@ -99,8 +99,9 @@ def calculate(
     return CalculateResult.fromdata(forces=forces)
 
 
-def webpanel(result, row, key_descriptions):
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
+def webpanel(result, context):
+    phonontable = table(result, 'Property', ['minhessianeig'],
+                        context.descriptions)
 
     panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],
@@ -108,7 +109,7 @@ def webpanel(result, row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_phonons')
+    dynstab = result['dynamic_stability_phonons']
 
     high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
     low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
@@ -156,7 +157,7 @@ class Result(ASRResult):
         "interp_freqs_kl": "Interpolated phonon frequencies.",
         "path": "Interpolated phonon bandstructure path.",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 def construct_calculator_from_old_parameters(record):

@@ -233,12 +233,9 @@ def plot_phases(row, f0, f1, f2, fpi):
 
 def webpanel(result, context):
     from asr.database.browser import fig, describe_entry, WebPanel
-    from asr.utils.hacks import get_parameter_description
 
     xcname = context.xcname
-    parameter_description = get_parameter_description(
-        'asr.gs@calculate',
-        context.gs_parameters())
+    parameter_description = context.parameter_description('asr.gs:calculate')
 
     description = ('Topological invariant characterizing the '
                    'occupied bands\n\n'

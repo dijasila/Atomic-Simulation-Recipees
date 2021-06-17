@@ -85,10 +85,7 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-def _explain_bandgap(parameters, gap_name):
-    from asr.utils.hacks import get_parameter_description
-    parameter_description = get_parameter_description('asr.gs', parameters)
-
+def _explain_bandgap(gap_name, parameter_description):
     if gap_name == 'gap':
         name = 'Band gap'
         adjective = ''
@@ -111,16 +108,14 @@ def _explain_bandgap(parameters, gap_name):
 #     '+,calculator.kpts.density',
 # )
 def webpanel(result, context):
-    from asr.utils.hacks import get_parameter_description
     key_descriptions = context.descriptions
-    parameters = context.parameters
-    parameter_description = get_parameter_description('asr.gs', parameters)
+    parameter_description = context.parameter_description_picky('asr.gs')
 
     explained_keys = []
 
     explained_keys += [
-        _explain_bandgap(parameters, 'gap'),
-        _explain_bandgap(parameters, 'gap_dir'),
+        _explain_bandgap('gap', parameter_description),
+        _explain_bandgap('gap_dir', parameter_description),
     ]
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
@@ -158,7 +153,7 @@ def webpanel(result, context):
         columns=[[tab], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _explain_bandgap(parameters, 'gap')
+    description = _explain_bandgap('gap', parameter_description)
     datarow = [description, f'{result.gap:0.2f} eV']
 
     summary = WebPanel(
