@@ -231,17 +231,19 @@ def plot_phases(row, f0, f1, f2, fpi):
         plt.savefig(f)
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
-    from asr.utils.hacks import gs_xcname_from_row
+    from asr.utils.hacks import get_parameter_description
 
-    xcname = gs_xcname_from_row(row)
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate')
-    description = ('Topological invariant characterizing the occupied bands \n\n'
+    xcname = context.xcname
+    get_parameter_description(
+        'asr.gs@calculate',
+        context.gs_parameters())
+
+    description = ('Topological invariant characterizing the '
+                   'occupied bands\n\n'
                    + parameter_description)
     datarow = [describe_entry('Band topology', description), result.Topology]
 
@@ -262,10 +264,11 @@ def webpanel(result, row, key_descriptions):
                                      [fig('berry-phases1.png'),
                                       fig('berry-phases2.png')]],
                             plot_descriptions=[{'function': plot_phases,
-                                                'filenames': ['berry-phases0.png',
-                                                              'berry-phases1.png',
-                                                              'berry-phases2.png',
-                                                              'berry-phases0_pi.png']}])
+                                                'filenames': [
+                                                    'berry-phases0.png',
+                                                    'berry-phases1.png',
+                                                    'berry-phases2.png',
+                                                    'berry-phases0_pi.png']}])
 
     return [summary, basicelec, berry_phases]
 
@@ -276,7 +279,7 @@ class Result(ASRResult):
     Topology: str
 
     key_descriptions = {'Topology': 'Band topology.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command(module='asr.berry')

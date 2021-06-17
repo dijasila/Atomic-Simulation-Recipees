@@ -14,7 +14,6 @@ from asr.gs import main as maings
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
