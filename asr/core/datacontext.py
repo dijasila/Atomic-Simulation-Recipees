@@ -52,9 +52,6 @@ class DataContext:
             name += ':main'  # XXX fixme
 
         records = self._dependencies()
-        for record in records:
-            print(record.name, record.uid)
-
         matches = [record for record in records if record.name == name]
 
         if self.name == name:
