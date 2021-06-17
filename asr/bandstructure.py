@@ -114,7 +114,6 @@ def plot_bs_html(context,
                  s=2):
     import plotly
     import plotly.graph_objs as go
-    row = context.row
 
     traces = []
     d = context.result
@@ -129,7 +128,7 @@ def plot_bs_html(context,
 
     gsresults = context.gs_results()
     gaps = gsresults.get('gaps_nosoc')
-    # gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+
     if gaps.get('vbm'):
         emin = gaps.get('vbm', ef) - 3
     else:
@@ -170,7 +169,7 @@ def plot_bs_html(context,
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get('spin_axis', 'z')
+    sdir = context.spin_axis
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
@@ -368,27 +367,31 @@ def plot_bs_png(context,
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
 
-    row = context.row
     d = context.result
     xcname = context.xcname
 
     eref = context.energy_reference()
+    gsresults = context.gs_results()
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
     ef_soc = d['bs_soc']['efermi']
-    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
+
+    ref_soc = eref.value
+    if context.ndim == 3:
+        ref_nosoc = d['bs_nosoc']['efermi']
+    else:
+        assert eref.key == 'evac'
+        ref_nosoc = ref_soc
+
     label = eref.mpl_plotlabel()
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gsresults = context.gs_results()
     gaps = gsresults.get('gaps_nosoc', {})
 
-    # gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
     else:

@@ -88,12 +88,6 @@ class DataContext:
         record = self.magnetic_anisotropy()
         return record.result['spin_axis']
 
-    def _gaps_soc(self):
-        return self.gs_results()['gaps_soc']
-
-    def _gaps_nosoc(self):
-        return self.gs_results()['gaps_nosoc']
-
     # This pattern is used by almost all recipes that have spectra (?)
     def energy_reference(self):
         gs = self.gs_results()
@@ -101,12 +95,6 @@ class DataContext:
             return EnergyReference._efermi(gs['efermi'])
         else:
             return EnergyReference._evac(gs['evac'])
-
-    # I think only BandStructure plots care about this quantity (?)
-    def efermi_nosoc(self):
-        gs = self.gs_results()
-        efermi = gs['gaps_nosoc']['efermi']
-        return EnergyReference.efermi(efermi)
 
 
 @dataclass
