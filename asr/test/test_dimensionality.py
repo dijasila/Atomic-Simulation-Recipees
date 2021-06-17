@@ -1,7 +1,9 @@
+import pytest
 from asr.dimensionality import main as dimensionality
 from asr.dimensionality import get_dimtypes
 
 
+@pytest.mark.ci
 def test_dimensionality(asr_tmpdir, test_material):
     nd = sum(test_material.pbc)
 
@@ -22,10 +24,10 @@ def test_dimensionality(asr_tmpdir, test_material):
         assert f'dim_threshold_{i}D' not in results
 
 
+@pytest.mark.ci
 def test_dimensionality_cli(asr_tmpdir, test_material):
     nd = sum(test_material.pbc)
     test_material.write('structure.json')
-    results = dimensionality.cli(args=[])
-
-    interval = results['k_intervals'][0]
+    record = dimensionality.cli(args=[])
+    interval = record.result['k_intervals'][0]
     assert interval['dimtype'] == f'{nd}D'

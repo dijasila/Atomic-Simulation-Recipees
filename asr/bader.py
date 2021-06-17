@@ -3,7 +3,12 @@ import numpy as np
 
 from typing import List
 
-from asr.core import command, option, ASRResult, prepare_result
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, calcopt, atomsopt)
+
+from asr.gs import calculate as gscalculate
 
 from asr.database.browser import (
     describe_entry,
@@ -52,11 +57,14 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.bader',
-         dependencies=['asr.gs'],
-         returns=Result)
+@command('asr.bader')
+@atomsopt
+@calcopt
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.05) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        grid_spacing: float = 0.05) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -73,14 +81,14 @@ def main(grid_spacing: float = 0.05) -> Result:
     import subprocess
     from ase.io import write
     from ase.units import Bohr
-    from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.utilities.ps2ae import PS2AE
     from gpaw.utilities.bader import read_bader_charges
 
     assert world.size == 1, 'Do not run in parallel!'
 
-    gs = GPAW('gs.gpw')
+    result = gscalculate(atoms=atoms, calculator=calculator)
+    gs = result.calculation.load()
     converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
     density = converter.get_pseudo_density()
     write('density.cube', gs.atoms, data=density * Bohr**3)

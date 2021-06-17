@@ -6,55 +6,7 @@ from pathlib import Path
 from ase.db.row import AtomsRow
 
 
-class Material:
-    def __init__(self, atoms, kvp, data):
-        """Construct material object.
-
-        Make make material instance. This objects bind together an
-        atomic structure with its key-value-pairs and its raw data and
-        closely mimics the structure of an ase.db.atomsrow instance.
-
-        Parameters
-        ----------
-        atoms : ase.Atoms object
-        kvp : dict
-            Key value pairs associated with atomic stucture.
-        data : dict
-            Raw data associated with atomic structure-
-
-        """
-        row = AtomsRow(atoms)
-        row.__dict__.update(kvp)
-        row._data = data
-        self.row = row
-        # self.atoms = atoms
-        # self.data = data
-        # self.kvp = kvp
-        # self.cell = atoms.get_cell()
-        # self.pbc = atoms.get_pbc()
-
-    def __getattr__(self, key):
-        """Wrap row get attribute."""
-        return getattr(self.row, key)
-
-    def __contains__(self, key):
-        """Is property in key-value-pairs."""
-        return key in self.row
-
-    def __iter__(self):
-        """Iterate over material attributes."""
-        return self.row.__iter__()
-
-    def __getitem__(self, key):
-        """Get material attribute."""
-        return self.row[key]
-
-    def __setitem__(self, key, value):
-        """Set material attribute."""
-        self.row[key] = value
-
-
-def get_material_from_folder(folder='.'):
+def get_row_from_folder(folder='.'):
     """Contruct a material from ASR structure folder.
 
     Constructs an :class:`asr.core.material.Material` instance from
@@ -71,28 +23,21 @@ def get_material_from_folder(folder='.'):
         Output material instance
 
     """
-    from asr.core import decode_object
-    from asr.database.fromtree import collect_file
-    from ase.io import read
-    kvp = {}
-    data = {}
-    for filename in Path(folder).glob('results-*.json'):
-        tmpkvp, tmpdata = collect_file(filename)
-        if tmpkvp or tmpdata:
-            kvp.update(tmpkvp)
-            data.update(tmpdata)
-
-    for key, value in data.items():
-        obj = decode_object(value)
-        data[key] = obj
-
-    atoms = read('structure.json', parallel=False)
-    material = Material(atoms, kvp, data)
-
-    return material
+    from asr.database.fromtree import collect_folder
+    from asr.database.browser import RowWrapper
+    atoms, kvp, data = collect_folder(
+        Path('.'),
+        atomsname='structure.json',
+        patterns='',
+    )
+    row = AtomsRow(atoms)
+    row.__dict__.update(kvp)
+    row._data = data
+    row = RowWrapper(row)
+    return row
 
 
-def get_webpanels_from_material(material, recipe):
+def get_webpanels_from_row(material, recipe):
     """Return web-panels of recipe.
 
     Parameters
@@ -112,7 +57,7 @@ def get_webpanels_from_material(material, recipe):
     return recipe.format_as('ase_webpanel', material, kd)
 
 
-def make_panel_figures(material, panels):
+def make_panel_figures(material, panels, uid=None):
     """Make figures in list of panels.
 
     Parameters
@@ -133,6 +78,11 @@ def make_panel_figures(material, panels):
             # panel.pop('plot_descriptions')
 
     for pd in pds:
-        pd['function'](material, *pd['filenames'])
-        figures = ','.join(pd['filenames'])
+        if uid is not None:
+            filenames = [uid + '-' + filename for filename in pd['filenames']]
+        else:
+            filenames = pd['filenames']
+
+        pd['function'](material, *filenames)
+        figures = ','.join(filenames)
         print(f'Saved figures: {figures}')

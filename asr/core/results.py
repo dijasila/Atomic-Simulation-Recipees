@@ -39,7 +39,11 @@ def read_hacked_data(dct) -> 'ObjectDescription':
         else:
             data[key] = value
     recipe = get_recipe_from_name(dct['__asr_hacked__'])
-    object_id = obj_to_id(recipe.returns)
+    if issubclass(recipe.returns, ASRResult):
+        returns = recipe.returns
+    else:
+        returns = ASRResult
+    object_id = obj_to_id(returns)
     obj_desc = ObjectDescription(
         object_id=object_id,
         args=(),
@@ -63,8 +67,12 @@ def read_old_data(dct) -> 'ObjectDescription':
             data[key] = value
     asr_name = metadata['asr_name']
     recipe = get_recipe_from_name(asr_name)
+    if issubclass(recipe.returns, ASRResult):
+        returns = recipe.returns
+    else:
+        returns = ASRResult
     object_description = ObjectDescription(
-        object_id=obj_to_id(recipe.returns),
+        object_id=obj_to_id(returns),
         args=(),
         kwargs=dict(
             data=data,
@@ -151,7 +159,11 @@ class ModuleNameIsCorrupt(Exception):
 
 
 def get_object_matching_obj_id(asr_obj_id):
-    module, name = asr_obj_id.split('::')
+    try:
+        module, name = asr_obj_id.split('::')
+    except ValueError:
+        module, name = asr_obj_id.split(':')
+
     if module in {'None.None', '__main__'}:
         raise ModuleNameIsCorrupt(
             """
@@ -164,10 +176,11 @@ def get_object_matching_obj_id(asr_obj_id):
             problematic result files.'"""
         )
 
-    assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
+    assert asr_obj_id.startswith(('asr.', 'ase.')), f'Invalid object id {asr_obj_id}'
     mod = importlib.import_module(module)
     cls = getattr(mod, name)
 
+    assert cls
     return cls
 
 
@@ -204,6 +217,8 @@ def encode_object(obj: typing.Any):
         newobj = tuple(encode_object(value) for value in obj)
     elif hasattr(obj, 'todict'):
         newobj = encode_object(jsonio.MyEncoder().default(obj))
+    elif hasattr(obj, 'to_object_desc'):
+        newobj = encode_object(obj.to_object_desc())
     else:
         newobj = obj
     return newobj
@@ -273,7 +288,7 @@ class JSONEncoder(ResultEncoder):
     def decode(self, cls, json_string: str):
         """Decode json string."""
         dct = jsonio.decode(json_string)
-        return cls.fromdict(dct)
+        return cls.from_object_desc(dct)
 
 
 class HTMLEncoder(ResultEncoder):
@@ -310,11 +325,11 @@ class DictEncoder(ResultEncoder):
 
     def encode(self, result: 'ASRResult'):
         """Encode ASRResult object as dict."""
-        return result.todict()
+        return result.to_object_desc()
 
     def decode(self, cls, dct: dict):
         """Decode dict."""
-        return cls.fromdict(dct)
+        return cls.from_object_desc(dct)
 
 
 def get_key_descriptions(obj):
@@ -402,7 +417,7 @@ def prepare_result(cls: object) -> str:
 
     cls.__init__ = __init__
     cls.__init__.__signature__ = sig
-    cls.strict = True
+    cls.strict = False
     cls._known_data_keys = data_keys
     return cls
 
@@ -426,17 +441,13 @@ class MetaData:
     --------
     >>> metadata = MetaData(asr_name='asr.gs')
     >>> metadata
-    asr_name=asr.gs
+    Metadata(asr_name=asr.gs)
     >>> metadata.code_versions = {'asr': '0.1.2'}
     >>> metadata
-    asr_name=asr.gs
-    code_versions={'asr': '0.1.2'}
+    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'})
     >>> metadata.set(resources={'time': 10}, params={'a': 1})
     >>> metadata
-    asr_name=asr.gs
-    code_versions={'asr': '0.1.2'}
-    resources={'time': 10}
-    params={'a': 1}
+    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
     >>> metadata.todict()
     {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
@@ -542,7 +553,7 @@ class MetaData:
         lst = []
         for key, value in dct.items():
             lst.append(f'{key}={value}')
-        return '\n'.join(lst)
+        return 'Metadata(' + ','.join(lst) + ')'
 
     def __repr__(self):
         """Represent object."""
@@ -557,7 +568,7 @@ def obj_to_id(cls):
     """Get a string representation of path to object.
 
     Ie. if obj is the ASRResult class living in the module, asr.core.results,
-    the correspinding string would be 'asr.core.results::ASRResult'.
+    the correspinding string would be 'asr.core.results:ASRResult'.
 
     """
     module = inspect.getmodule(cls)
@@ -573,7 +584,7 @@ def obj_to_id(cls):
         ('Something went wrong in module name identification. '
          'Please contact developer.')
 
-    return f'{package}.{modulename}::{objname}'
+    return f'{package}.{modulename}:{objname}'
 
 
 class ObjectDescription:
@@ -586,7 +597,7 @@ class ObjectDescription:
         Parameters
         ----------
         object_id: str
-            ID of object, eg. 'asr.core.results::ASRResult' as
+            ID of object, eg. 'asr.core.results:ASRResult' as
             produced by :py:func:`obj_to_id`.
         args
             Arguments for object construction.
@@ -679,9 +690,9 @@ class ASRResult(object):
     >>> result['a']
     1
     >>> result.metadata
-    resources={'time': 'a good time.'}
+    Metadata(resources={'time': 'a good time.'})
     >>> str(result)
-    'a=1'
+    'Result(a=1)'
     >>> 'a' in result
     True
     >>> other_result = Result.fromdata(a=1)
@@ -689,8 +700,8 @@ class ASRResult(object):
     True
     >>> print(format(result, 'json'))
     {
-     "object_id": "asr.core.results::Result",
-     "constructor": "asr.core.results::Result",
+     "object_id": "asr.core.results:Result",
+     "constructor": "asr.core.results:Result",
      "args": [],
      "kwargs": {
       "data": {
@@ -701,7 +712,7 @@ class ASRResult(object):
         "time": "a good time."
        }
       },
-      "strict": true
+      "strict": null
      }
     }
     """ # noqa
@@ -743,7 +754,7 @@ class ASRResult(object):
         unknown_keys = self.get_unknown_keys()
         msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
         msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
-        if strict:
+        if False:
             assert not missing_keys, msg_miss
             assert not unknown_keys, msg_ukwn
 
@@ -809,7 +820,6 @@ class ASRResult(object):
         """Make ObjectDescription of this instance."""
         return ObjectDescription(
             object_id=obj_to_id(type(self)),
-            # constructor='asr.core::result_factory',
             args=(),
             kwargs={
                 'data': self.data,
@@ -820,12 +830,12 @@ class ASRResult(object):
         )
 
     # To and from dict
-    def todict(self):
+    def to_object_desc(self):
         object_description = self.get_object_desc()
         return encode_object(object_description)
 
     @classmethod
-    def fromdict(cls, dct: dict):
+    def from_object_desc(cls, dct: dict):
         obj_desc = ObjectDescription.fromdict(dct)
         return obj_desc.instantiate()
 
@@ -864,6 +874,8 @@ class ASRResult(object):
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
+        if fmt == '':
+            fmt = 'str'
         formats = self.get_formats()
         return formats[fmt](self)
 
@@ -872,7 +884,7 @@ class ASRResult(object):
         string_parts = []
         for key, value in self.items():
             string_parts.append(f'{key}=' + str(value))
-        return "\n".join(string_parts)
+        return 'Result(' + ",".join(string_parts) + ')'
 
     def __eq__(self, other):
         """Compare two result objects."""

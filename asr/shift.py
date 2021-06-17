@@ -1,7 +1,13 @@
 import typing
 
-from asr.core import command, option, ASRResult, prepare_result
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+)
 from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
+from asr.gs import calculate as gscalculate
+
 import numpy as np
 
 
@@ -71,12 +77,9 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.shift',
-         dependencies=['asr.gs@calculate'],
-         requires=['structure.json', 'gs.gpw'],
-         returns=Result)
-@option('--gs', help='Ground state on which response is based',
-        type=str)
+@command('asr.shift')
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
@@ -85,10 +88,17 @@ class Result(ASRResult):
 @option('--nromega', help='Number of pump frequencies', type=int)
 @option('--energytol', help='Energy tolernce [eV]', type=float)
 @option('--removefiles', help='Remove created files', type=bool)
-def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
-         bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
-         maxomega: float = 10.0, nromega: int = 1000,
-         removefiles: bool = False) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 25.0,
+        bandfactor: int = 4,
+        eta: float = 0.05,
+        energytol: float = 1e-6,
+        maxomega: float = 10.0,
+        nromega: int = 1000,
+        removefiles: bool = False,
+) -> Result:
     """Calculate the shift current spectrum, only independent tensor elements.
 
     The recipe computes the shift current. The tensor in general have 18 independent
@@ -115,14 +125,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
     removefiles : bool
         Remove intermediate files that are created.
     """
-    from ase.io import read
-    from gpaw import GPAW
     from gpaw.mpi import world
     from pathlib import Path
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shift import get_shift
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
@@ -139,18 +146,20 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                calc_old = GPAW(gs, txt=None)
+                res = gscalculate(atoms=atoms, calculator=calculator)
+                calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
-                calc = GPAW(
-                    gs,
+                calc = res.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
                     nbands=(bandfactor + 1) * nval,
                     convergence={'bands': bandfactor * nval},
                     occupations={'name': 'fermi-dirac', 'width': 1e-4},
-                    kpts=kpts)
+                    kpts=kpts,
+                )
+
                 calc.get_potential_energy()
                 calc.write('es.gpw', mode='all')
                 fnames.append('es.gpw')
@@ -196,7 +205,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
                 if es_file.is_file():
                     es_file.unlink()
 
-    return results
+    return Result(results)
 
 
 def plot_shift(row, *filename):

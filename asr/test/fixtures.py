@@ -1,12 +1,16 @@
 """Module containing the implementations of all ASR pytest fixtures."""
-
+import numpy as np
 from ase.parallel import world, broadcast
 from asr.core import write_json
-from .materials import std_test_materials
+from .materials import std_test_materials, BN
 import os
 import pytest
+import datetime
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
+from asr.core import get_cache, initialize_root
+from asr.core.specification import construct_run_spec
+from asr.core.record import Record
 
 
 @pytest.fixture()
@@ -31,6 +35,39 @@ def test_material(request):
     return request.param.copy()
 
 
+VARIOUS_OBJECT_TYPES = [
+    1,
+    1.02,
+    1 + 1e-15,
+    1 + 1j,
+    1e20,
+    1e-17,
+    'a',
+    (1, 'a'),
+    [1, 'a'],
+    [1, (1, 'abc', [1.0, ('a', )])],
+    np.array([1.1, 2.0], float),
+    BN,
+    set(['a', 1, '2']),
+    Path('directory1/directory2/file.txt'),
+    datetime.datetime.now(),
+]
+
+
+@pytest.fixture
+def external_file(asr_tmpdir):
+    from asr.core import ExternalFile
+    filename = 'somefile.txt'
+    Path(filename).write_text('sometext')
+    return ExternalFile.fromstr(filename)
+
+
+@pytest.fixture(params=VARIOUS_OBJECT_TYPES)
+def various_object_types(request):
+    """Fixture that yield object of different relevant types."""
+    return request.param
+
+
 @pytest.fixture()
 def asr_tmpdir(request, tmp_path_factory):
     """Create temp folder and change directory to that folder.
@@ -45,6 +82,8 @@ def asr_tmpdir(request, tmp_path_factory):
     path = broadcast(path)
     cwd = os.getcwd()
     os.chdir(path)
+    if world.rank == 0:
+        initialize_root()
     try:
         yield path
     finally:
@@ -53,8 +92,9 @@ def asr_tmpdir(request, tmp_path_factory):
 
 def _get_webcontent(name='database.db'):
     from asr.database.fromtree import main as fromtree
-    from asr.database.material_fingerprint import main as mf
-    mf()
+    # from asr.database.material_fingerprint import main as mf
+
+    # mf()
     fromtree(recursive=True)
     content = ""
     from asr.database import app as appmodule
@@ -99,23 +139,37 @@ def get_webcontent():
 
 
 @pytest.fixture()
+def fast_calc():
+    fast_calc = {
+        "name": "gpaw",
+        "kpts": {"density": 1, "gamma": True},
+        "xc": "PBE",
+    }
+    return fast_calc
+
+
+@pytest.fixture()
 def asr_tmpdir_w_params(asr_tmpdir):
     """Make temp dir and create a params.json with settings for fast evaluation."""
+    fast_calc = {
+        "name": "gpaw",
+        "kpts": {"density": 1, "gamma": True},
+        "xc": "PBE",
+    }
     params = {
         'asr.gs@calculate': {
-            'calculator': {
-                "name": "gpaw",
-                "kpts": {"density": 2, "gamma": True},
-                "xc": "PBE",
-            },
+            'calculator': fast_calc,
         },
-        'asr.bandstructure@calculate': {
+        'asr.gs@main': {
+            'calculator': fast_calc,
+        },
+        'asr.bandstructure@main': {
             'npoints': 10,
-            'emptybands': 5,
+            'calculator': fast_calc,
         },
-        'asr.hse@calculate': {
+        'asr.hse@main': {
+            'calculator': fast_calc,
             'kptdensity': 2,
-            'emptybands': 5,
         },
         'asr.gw@gs': {
             'kptdensity': 2,
@@ -127,13 +181,11 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor': {
-            'calculator': {
-                "name": "gpaw",
-                "kpts": {"density": 2},
-            },
+        'asr.piezoelectrictensor@main': {
+            'calculator': fast_calc,
+            'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization': {
+        'asr.formalpolarization@main': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},
@@ -183,11 +235,31 @@ def duplicates_test_db(request, asr_tmpdir):
     return (atoms, db)
 
 
+@pytest.fixture
+def record(various_object_types):
+    run_spec = construct_run_spec(
+        name='asr.test',
+        parameters={'a': 1},
+        version=0,
+    )
+    run_record = Record(
+        run_specification=run_spec,
+        result=various_object_types,
+    )
+    return run_record
+
+
+@pytest.fixture
+def fscache(asr_tmpdir):
+    cache = get_cache('filesystem')
+    return cache
+
+
 @pytest.fixture()
 def crosslinks_test_dbs(asr_tmpdir):
     """Set up database for testing the crosslinks recipe."""
     from pathlib import Path
-    from ase.io import write
+    from ase.io import write, read
     from ase.db import connect
     from asr.core import chdir
     from asr.database.material_fingerprint import main as material_fingerprint
@@ -205,8 +277,8 @@ def crosslinks_test_dbs(asr_tmpdir):
     pathlist = list(p.glob('folder_*'))
     for path in pathlist:
         with chdir(path):
-            material_fingerprint()
-    material_fingerprint()
+            material_fingerprint(atoms=read('structure.json'))
+    material_fingerprint(atoms=read('structure.json'))
 
     # run asr.database.treelinks to create results and links.json files
     treelinks(include=['folder_*'], exclude=[''])

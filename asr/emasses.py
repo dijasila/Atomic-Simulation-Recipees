@@ -1,6 +1,13 @@
 """Effective masses."""
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+from ase import Atoms
+import asr
+
+from asr.core import (
+    command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
+    make_migration_generator,
+)
 from asr.database.browser import make_panel_description, describe_entry
+from asr.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """
@@ -40,71 +47,118 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-@command(module='asr.emasses',
-         requires=['gs.gpw', 'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.structureinfo',
-                       'asr.magnetic_anisotropy',
-                       'asr.gs'],
-         creates=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw'])
-@option('--gpwfilename', type=str,
-        help='GS Filename')
+sel = asr.Selector()
+sel.name = sel.EQ('asr.emasses:refine')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.NOT(sel.CONTAINS('settings')),
+    sel.CONTAINS('gpwfilename')
+)
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter_remove_gpwfilename(record):
+    """Add settings parameter and remove gpwfilename."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    del record.parameters.gpwfilename
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter_remove_gpwfilename],
+)
+@atomsopt
+@calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
         type=DictStr())
-def refine(gpwfilename: str = 'gs.gpw',
-           settings: dict = {
-               'erange1': 250e-3,
-               'nkpts1': 19,
-               'erange2': 1e-3,
-               'nkpts2': 9}) -> ASRResult:
+def refine(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        settings: dict = {
+            'erange1': 250e-3,
+            'nkpts1': 19,
+            'erange2': 1e-3,
+            'nkpts2': 9,
+        }
+) -> dict:
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import os.path
     set_default(settings)
     socs = [True]
-
+    res = gscalculate(atoms=atoms, calculator=calculator)
     for soc in socs:
-        theta, phi = get_spin_axis()
-        eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
-                                       theta=theta, phi=phi)
+        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        eigenvalues, efermi = calc2eigs(
+            res.calculation.load(parallel=False),
+            soc=soc,
+            theta=theta,
+            phi=phi,
+        )
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
         if not gap > 0:
             raise NoGapError('Gap was zero: {}'.format(gap))
 
+        calculations = {}
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
             gpw2 = name + '.gpw'
 
             if os.path.exists(gpw2):
                 continue
-            gpwrefined = preliminary_refine(gpw=gpwfilename, soc=soc,
-                                            bandtype=bt, settings=settings)
-            nonsc_sphere(gpw=gpwrefined, fallback=gpwfilename, soc=soc,
-                         bandtype=bt, settings=settings)
+            refined_calculation = preliminary_refine(
+                atoms,
+                calculator,
+                calc=res.calculation.load(),
+                soc=soc,
+                bandtype=bt,
+                settings=settings,
+            )
+            calculations.update(
+                nonsc_sphere(
+                    atoms,
+                    calculator,
+                    calculation=refined_calculation,
+                    fallback_calculation=res.calculation,
+                    soc=soc,
+                    bandtype=bt,
+                    settings=settings,
+                )
+            )
+    return calculations
 
 
 def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
 
-def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
-    from gpaw import GPAW
+def preliminary_refine(
+        atoms, calculator, calc, soc=True, bandtype=None, settings=None):
     import numpy as np
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     # Get calc and current kpts
-    calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
     k_kc = calc.get_bz_k_points()
     cell_cv = calc.atoms.get_cell()
 
     # Find energies and VBM/CBM
-    theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    theta, phi = get_spin_axis(
+        atoms=atoms,
+        calculator=calculator,
+    )
+    e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
@@ -137,42 +191,50 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
              fixdensity=True)
     atoms = calc.get_atoms()
     atoms.get_potential_energy()
-    calc.write(fname + '.gpw')
-    return fname + '.gpw'
+    calculation = calc.save(fname)
+    return calculation
 
 
-def get_gapskn(gpw, fallback=None, soc=True):
+def get_gapskn(
+        atoms, calculator, calculation, fallback_calculation=None, soc=True):
     import numpy as np
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.parallel import parprint
 
-    theta, phi = get_spin_axis()
-    e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
+    calc = calculation.load()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis, :, :]
 
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
 
-    if np.allclose(gap, 0) and fallback is not None:
-        parprint("Something went wrong. Using fallback gpw.")
+    if np.allclose(gap, 0) and fallback_calculation is not None:
+        parprint("Something went wrong. Using fallback calc.")
         theta, phi = get_spin_axis()
-        e_skn, efermi = gpw2eigs(fallback, soc=soc, theta=theta, phi=phi)
+        e_skn, efermi = calc2eigs(
+            fallback_calculation.load(), soc=soc, theta=theta, phi=phi)
         if e_skn.ndim == 2:
             e_skn = e_skn[np.newaxis, :, :]
 
-        gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
-                                                  output=None)
+        gap, (s1, k1, n1), (s2, k2, n2) = bandgap(
+            eigenvalues=e_skn,
+            efermi=efermi,
+            output=None)
+
     if np.allclose(gap, 0):
-        raise ValueError(f"Gap is still zero!")
+        raise ValueError("Gap is still zero!")
 
     return gap, (s1, k1, n1), (s2, k2, n2)
 
 
-def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
-                 bandtype=None, settings=None):
+def nonsc_sphere(
+        atoms, calculator,
+        calculation, fallback_calculation, soc=False,
+        bandtype=None, settings=None):
     """Non sc calculation for kpts in a sphere around the VBM/CBM.
 
     Writes the files:
@@ -192,8 +254,7 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
         Which bandtype do we do calculations for, if None is done for
         for both cb and vb
     """
-    from gpaw import GPAW
-    calc = GPAW(gpw, txt=None)
+    calc = calculation.load()
     ndim = calc.atoms.pbc.sum()
 
     # Check that 1D: Only z-axis, 2D: Only x- and y-axis
@@ -212,13 +273,17 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
     kcirc_kc = kptsinsphere(cell_cv, dimensionality=ndim,
                             erange=erange, npoints=nkpts)
 
-    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(gpw, fallback, soc=soc)
+    gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(
+        atoms, calculator,
+        calculation,
+        fallback_calculation, soc=soc)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
 
     bandtypes, ks = get_bt_ks(bandtype, k1_c, k2_c)
 
+    calculations = {}
     for bt, k_c in zip(bandtypes, ks):
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
@@ -227,7 +292,10 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
                  fixdensity=True)
         atoms = calc.get_atoms()
         atoms.get_potential_energy()
-        calc.write(name + '.gpw')
+        calculation = calc.save(name)
+        calculations[name] = calculation
+
+    return calculations
 
 
 def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
@@ -732,41 +800,79 @@ class Result(ASRResult):
     pass
 
 
-@command('asr.emasses',
-         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
-                   'gs.gpw', 'results-asr.structureinfo.json',
-                   'results-asr.gs.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.emasses@refine',
-                       'asr.gs@calculate',
-                       'asr.gs',
-                       'asr.structureinfo',
-                       'asr.magnetic_anisotropy'])
-@option('--gpwfilename', type=str,
-        help='GS Filename')
-def main(gpwfilename: str = 'gs.gpw') -> ASRResult:
-    from asr.utils.gpw2eigs import gpw2eigs
+def prepare_parameters_for_version_0_migration(record):
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+
+    if 'gpwfilename' in record.parameters:
+        del record.parameters.gpwfilename
+
+    for dep_params in record.parameters.dependency_parameters.values():
+        if 'gpwfilename' in dep_params:
+            del dep_params['gpwfilename']
+    return record
+
+
+make_migrations = make_migration_generator(
+    selector=dict(version=-1, name='asr.emasses:main'),
+    uid='e1b731cd00c041ad99260b58b95a3df8',
+    function=prepare_parameters_for_version_0_migration,
+    description='Prepare record for version 0 migration.',
+)
+
+
+@command('asr.emasses', migrations=[make_migrations])
+@atomsopt
+@calcopt
+@option('-s', '--settings', help='Settings for the two refinements',
+        type=DictStr())
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        settings: dict = {
+            'erange1': 250e-3,
+            'nkpts1': 19,
+            'erange2': 1e-3,
+            'nkpts2': 9,
+        }
+) -> ASRResult:
+    from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     import traceback
+    res = gscalculate(atoms=atoms, calculator=calculator)
+
+    calculations = refine(atoms=atoms, calculator=calculator, settings=settings)
     socs = [True]
 
     good_results = {}
     for soc in socs:
-        theta, phi = get_spin_axis()
-        eigenvalues, efermi = gpw2eigs(gpw=gpwfilename, soc=soc,
-                                       theta=theta, phi=phi)
+        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        eigenvalues, efermi = calc2eigs(
+            res.calculation.load(),
+            soc=soc,
+            theta=theta,
+            phi=phi,
+        )
         gap, _, _ = bandgap(eigenvalues=eigenvalues, efermi=efermi,
                             output=None)
         if not gap > 0:
             raise NoGapError('Gap was zero')
         for bt in ['vb', 'cb']:
             name = get_name(soc=soc, bt=bt)
-            gpw2 = name + '.gpw'
+            calculation = calculations[name]
+            gpw2 = calculation.paths[0]
             try:
-                masses = embands(gpw2,
-                                 soc=soc,
-                                 bandtype=bt)
+                masses = embands(
+                    atoms=atoms,
+                    calculator=calculator,
+                    gpw=gpw2,
+                    soc=soc,
+                    bandtype=bt)
 
                 # This function modifies the last argument
                 unpack_masses(masses, soc, bt, good_results)
@@ -834,7 +940,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
-def embands(gpw, soc, bandtype, delta=0.1):
+def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
     Parameters
@@ -861,7 +967,7 @@ def embands(gpw, soc, bandtype, delta=0.1):
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
@@ -885,11 +991,15 @@ def embands(gpw, soc, bandtype, delta=0.1):
             nbands = len(indices)
         else:
             nbands = 1
-        masses[b]['bs_along_emasses'] = calc_bs(masses[b],
-                                                soc, bandtype, calc,
-                                                spin=b[0],
-                                                band=b[1],
-                                                nbands=nbands)
+        masses[b]['bs_along_emasses'] = calc_bs(
+            atoms,
+            calculator,
+            masses[b],
+            soc, bandtype, calc,
+            spin=b[0],
+            band=b[1],
+            nbands=nbands,
+        )
         masses[b]['wideareaMAE'] = wideMAE(masses[b], bandtype,
                                            cell_cv)
         masses[b]['offset'] = offset
@@ -897,11 +1007,14 @@ def embands(gpw, soc, bandtype, delta=0.1):
     return masses
 
 
-def calculate_bs_along_emass_vecs(masses_dict, soc,
-                                  bt, calc,
-                                  spin, band,
-                                  erange=250e-3, npoints=91,
-                                  nbands=1):
+def calculate_bs_along_emass_vecs(
+        atoms, calculator,
+        masses_dict, soc,
+        bt, calc,
+        spin, band,
+        erange=250e-3, npoints=91,
+        nbands=1,
+):
     from pathlib import Path
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
@@ -947,11 +1060,11 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
-        theta, phi = get_spin_axis()
+        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
         e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
-        sz_km = s_kvm[:, get_spin_index(), :]
+        sz_km = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator), :]
 
         dct = dict(bt=bt,
                    kpts_kc=k_kc,
@@ -1418,11 +1531,61 @@ class ValidateResult(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.emasses',
-         requires=['results-asr.emasses.json'],
-         dependencies=['asr.emasses'],
-         returns=ValidateResult)
-def validate() -> ValidateResult:
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters = sel.NOT(sel.CONTAINS('settings'))
+
+
+@asr.migration(selector=sel)
+def add_settings_parameter(record):
+    """Add settings parameter."""
+    record.parameters.settings = {
+        'erange1': 250e-3,
+        'nkpts1': 19,
+        'erange2': 1e-3,
+        'nkpts2': 9,
+    }
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.emasses:validate')
+sel.parameters.dependency_parameters = \
+    lambda value: bool(val for val in value.values()
+                       if 'gpwname' in val)
+
+
+@asr.migration(selector=sel)
+def remove_gpwname_from_dependency_parameters(record):
+    """Remove gpwfilename from dependency parameters."""
+    dep_params = record.parameters.dependency_parameters
+    for name, params in dep_params.items():
+        if 'gpwfilename' in params:
+            del params['gpwfilename']
+    return record
+
+
+@command(
+    module='asr.emasses',
+    migrations=[add_settings_parameter,
+                remove_gpwname_from_dependency_parameters],
+)
+@atomsopt
+@calcopt
+@option('-s', '--settings', help='Settings for the two refinements',
+        type=DictStr())
+def validate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        settings: dict = {
+            'erange1': 250e-3,
+            'nkpts1': 19,
+            'erange2': 1e-3,
+            'nkpts2': 9,
+        }
+) -> ValidateResult:
     """Calculate MARE of fits over 25 meV.
 
     Perform a calculation for each to validate it
@@ -1431,11 +1594,12 @@ def validate() -> ValidateResult:
     We evaluate the MAE only along the emass directions,
     i.e. the directions shown in the plots on the website.
     """
-    from asr.core import read_json
-    from ase.io import read
-    results = read_json('results-asr.emasses.json')
+    results = main(
+        atoms=atoms,
+        calculator=calculator,
+        settings=settings,
+    )
     myresults = results.copy()
-    atoms = read('structure.json')
 
     for (sindex, kindex), data in iterateresults(results):
         # Get info on fit at this point in bandstructure
@@ -1458,7 +1622,7 @@ def validate() -> ValidateResult:
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
-    return ValidateResult(results, strict=False)
+    return ValidateResult(myresults, strict=False)
 
 
 if __name__ == '__main__':

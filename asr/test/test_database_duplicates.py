@@ -1,4 +1,5 @@
 import pytest
+from ase.db import connect
 # from .materials import std_test_materials
 from pathlib import Path
 
@@ -45,8 +46,10 @@ from pathlib import Path
 def test_database_duplicates(duplicates_test_db):
     from asr.database.duplicates import main
 
-    results = main('duplicates.db', 'duplicates_removed.db',
-                   filterstring='<=natoms,<id')
+    results = main(
+        connect('duplicates.db'),
+        connect('duplicates_removed.db'),
+        filterstring='<=natoms,<id')
 
     assert Path('duplicates_removed.db').is_file()
     nduplicates = len(duplicates_test_db[1])
@@ -59,9 +62,12 @@ def test_database_duplicates(duplicates_test_db):
 def test_database_duplicates_filter_magstate(duplicates_test_db):
     from asr.database.duplicates import main
 
-    results = main('duplicates.db', 'duplicates_removed.db',
-                   comparison_keys='magstate',
-                   filterstring='<=natoms,<id')
+    results = main(
+        connect('duplicates.db'),
+        connect('duplicates_removed.db'),
+        comparison_keys='magstate',
+        filterstring='<=natoms,<id',
+    )
 
     duplicate_groups = results['duplicate_groups']
     assert duplicate_groups[0]['include'] == [1]
@@ -73,9 +79,12 @@ def test_database_duplicates_no_duplicates(duplicates_test_db):
     from asr.database.duplicates import main
 
     # Setting comparison_key = id makes removes all duplicates.
-    results = main('duplicates.db', 'duplicates_removed.db',
-                   comparison_keys='id',
-                   filterstring='<=natoms,<id')
+    results = main(
+        connect('duplicates.db'),
+        connect('duplicates_removed.db'),
+        comparison_keys='id',
+        filterstring='<=natoms,<id',
+    )
 
     duplicate_groups = results['duplicate_groups']
     assert not duplicate_groups

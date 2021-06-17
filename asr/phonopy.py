@@ -1,15 +1,19 @@
 """Phonopy phonon band structure."""
+from ase import Atoms
+
 import typing
 from pathlib import Path
 
 import numpy as np
 
 from ase.parallel import world
-from ase.io import read
 from ase.dft.kpoints import BandPath
 
-from asr.core import (command, option, DictStr, ASRResult,
-                      read_json, write_json, prepare_result)
+import asr
+from asr.core import (command, option, DictStr, ASRResult, prepare_result,
+                      atomsopt)
+from asr.calculators import construct_calculator
+from asr.magstate import main as magstate
 
 
 def lattice_vectors(N_c):
@@ -66,32 +70,33 @@ def distance_to_sc(nd, atoms, dist_max):
 
 @command(
     "asr.phonopy",
-    requires=["structure.json", "gs.gpw"],
-    dependencies=["asr.gs@calculate"],
 )
+@atomsopt
 @option("--d", type=float, help="Displacement size")
 @option("--dist_max", type=float,
         help="Maximum distance between atoms in the supercell")
 @option("--fsname", help="Name for forces file", type=str)
 @option('--sc', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
-              calculator: dict = {'name': 'gpaw',
-                                  'mode': {'name': 'pw', 'ecut': 800},
-                                  'xc': 'PBE',
-                                  'basis': 'dzp',
-                                  'kpts': {'density': 6.0, 'gamma': True},
-                                  'occupations': {'name': 'fermi-dirac',
-                                                  'width': 0.05},
-                                  'convergence': {'forces': 1.0e-4},
-                                  'symmetry': {'point_group': False},
-                                  'txt': 'phonons.txt',
-                                  'charge': 0}) -> ASRResult:
+@asr.calcopt
+@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
+def calculate(
+        atoms: Atoms,
+        d: float = 0.05, fsname: str = 'phonons',
+        sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
+        calculator: dict = {'name': 'gpaw',
+                            'mode': {'name': 'pw', 'ecut': 800},
+                            'xc': 'PBE',
+                            'kpts': {'density': 6.0, 'gamma': True},
+                            'occupations': {'name': 'fermi-dirac',
+                                            'width': 0.05},
+                            'convergence': {'forces': 1.0e-4},
+                            'symmetry': {'point_group': False},
+                            'txt': 'phonons.txt',
+                            'charge': 0},
+        magstatecalculator: dict = magstate.defaults.calculator,
+) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
-    from asr.calculators import get_calculator
-
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
@@ -101,18 +106,15 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
                 f.unlink()
     world.barrier()
 
-    atoms = read("structure.json")
+    calc = construct_calculator(calculator)
 
-    from ase.calculators.calculator import get_calculator_class
-    name = calculator.pop('name')
-    calc = get_calculator_class(name)(**calculator)
-
-    # Set initial magnetic moments
-    from asr.utils import is_magnetic
-
-    if is_magnetic():
-        gsold = get_calculator()("gs.gpw", txt=None)
-        magmoms_m = gsold.get_magnetic_moments()
+    magstateres = magstate(atoms=atoms, calculator=magstatecalculator)
+    if magstateres.is_magnetic:
+        magmoms_m = magstate.magmoms
+        # Some calculators return magnetic moments resolved into their
+        # cartesian components
+        if len(magmoms_m.shape) == 2:
+            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.get_pbc())
@@ -144,6 +146,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
                     cell=scell.get_cell(),
                     pbc=atoms.pbc)
 
+    results = {}
     for n, cell in enumerate(displaced_sc):
         # Displacement number
         a = n // 2
@@ -152,12 +155,12 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
 
         filename = fsname + ".{0}{1}.json".format(a, sign)
 
-        if Path(filename).is_file():
-            forces = read_json(filename)["force"]
-            # Number of forces equals to the number of atoms in the supercell
-            assert len(forces) == len(atoms) * np.prod(sc), (
-                "Wrong supercell size!")
-            continue
+        # if Path(filename).is_file():
+        #     forces = read_json(filename)["force"]
+        #     # Number of forces equals to the number of atoms in the supercell
+        #     assert len(forces) == len(atoms) * np.prod(sc), (
+        #         "Wrong supercell size!")
+        #     continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
         atoms_N.calc = calc
@@ -167,7 +170,9 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         for force in forces:
             force -= drift_force / forces.shape[0]
 
-        write_json(filename, {"force": forces})
+        results[filename] = forces
+
+    return results
 
 
 def requires():
@@ -245,19 +250,42 @@ class Result(ASRResult):
 
 @command(
     "asr.phonopy",
-    requires=requires,
-    returns=Result,
-    dependencies=["asr.phonopy@calculate"],
 )
+@atomsopt
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc: float = None) -> Result:
+@option("--d", type=float, help="Displacement size")
+@option("--dist_max", type=float,
+        help="Maximum distance between atoms in the supercell")
+@option("--fsname", help="Name for forces file", type=str)
+@option('--sc', nargs=3, type=int,
+        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+@asr.calcopt
+@option('--magstatecalculator',
+        help='Magstate calculator params.', type=DictStr())
+def main(
+        atoms: Atoms,
+        rc: float = None,
+        d: float = calculate.defaults.d,
+        fsname: str = calculate.defaults.fsname,
+        sc: typing.List[int] = calculate.defaults.sc,
+        dist_max: float = calculate.defaults.dist_max,
+        calculator: dict = calculate.defaults.calculator,
+        magstatecalculator: dict = calculate.defaults.magstatecalculator,
+) -> Result:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    calculateresult = read_json("results-asr.phonopy@calculate.json")
-    atoms = read("structure.json")
-    params = calculateresult.metadata.params
+    calculaterec = calculate.get(
+        atoms=atoms,
+        d=d,
+        fsname=fsname,
+        sc=sc, dist_max=dist_max,
+        calculator=calculator,
+        magstatecalculator=magstatecalculator,
+    )
+    calculateres = calculaterec.result
+    params = calculaterec.parameters
     sc = params["sc"]
     d = params["d"]
     dist_max = params["dist_max"]
@@ -300,7 +328,7 @@ def main(rc: float = None) -> Result:
 
         filename = fsname + ".{0}{1}.json".format(a, sign)
 
-        forces = read_json(filename)["force"]
+        forces = calculateres[filename]
         # Number of forces equals to the number of atoms in the supercell
         assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 
@@ -332,7 +360,10 @@ def main(rc: float = None) -> Result:
     # Calculating hessian and eigenvectors at high symmetry points of the BZ
     eigs_kl = []
     q_qc = list(path.special_points.values())
-    u_klav = np.zeros((len(q_qc), 3 * len(atoms), len(atoms), 3), dtype=complex)
+    u_klav = np.zeros(
+        (len(q_qc), 3 * len(atoms), len(atoms), 3),
+        dtype=complex,
+    )
 
     for q, q_c in enumerate(q_qc):
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
@@ -373,7 +404,7 @@ def main(rc: float = None) -> Result:
                'minhessianeig': mineig,
                'dynamic_stability_level': dynamic_stability}
 
-    return results
+    return Result(results)
 
 
 def plot_phonons(row, fname):

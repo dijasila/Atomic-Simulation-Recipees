@@ -1,5 +1,8 @@
 """Module for determining magnetic state."""
-from asr.core import command, ASRResult, prepare_result
+import asr
+from asr.core import (command, ASRResult, prepare_result, option,
+                      AtomsFile)
+from ase import Atoms
 import typing
 
 atomic_mom_threshold = 0.1
@@ -91,14 +94,28 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.magstate',
-         requires=['gs.gpw'],
-         returns=Result,
-         dependencies=['asr.gs@calculate'])
-def main() -> Result:
+@command('asr.magstate')
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Determine magnetic state."""
-    from gpaw import GPAW
-    calc = GPAW('gs.gpw', txt=None)
+    from asr.gs import calculate as calculategs
+
+    calculateresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load()
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)

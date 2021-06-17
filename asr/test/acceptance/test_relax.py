@@ -5,7 +5,6 @@ import pytest
 @pytest.mark.acceptance_test
 def test_relax_fe_gpaw(asr_tmpdir):
     from asr.relax import main
-    from ase.io import read
     from ase import Atoms
     a = 1.41973054
     magmom = 2.26739285
@@ -16,8 +15,17 @@ def test_relax_fe_gpaw(asr_tmpdir):
                      [a, a, -a]],
                magmoms=[magmom],
                pbc=True)
-    Fe.write('unrelaxed.json')
-    main()
-    relaxed = read('structure.json')
+
+    parameters = dict(
+        name='gpaw',
+        mode={'name': 'pw', 'ecut': 200.0},
+        kpts=[2, 2, 2],
+    )
+
+    record = main(Fe,
+                  calculator=parameters,
+                  fmax=0.05)
+
+    relaxed = record.result['atoms']
     magmoms = relaxed.get_initial_magnetic_moments()
     assert magmoms[0] == pytest.approx(magmom, abs=0.1)

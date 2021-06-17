@@ -1,113 +1,127 @@
 .. _Getting started:
 
-Getting started
-===============
+=================
+ Getting started
+=================
 
-ASR comes with a simple command-line interface which can be invoked using
+The atomic simulation recipes (ASR) is a Python package that assists
+computational scientists with tools for storing calculation results
+and related contextual data. To see how this works in practice, we
+will in the following be implementing functionality for calculating
+the most stable crystal structure of common metals.
 
-.. doctest::
-   :hide:
-
-   >>> import asr
-   >>> from asr.core.cli import cli
-   >>> cli(args=[], prog_name="asr", standalone_mode=False)
-   Usage: asr [OPTIONS] COMMAND [ARGS]...
-   <BLANKLINE>
-   Options:
-     --version   Show the version and exit.
-     -h, --help  Show this message and exit.
-   <BLANKLINE>
-   Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
-   ...
+Before we begin we have initialize a data repository. This is where
+ASR stores all its data. In practice, it is nothing more than a ".asr"
+directory, which can be initialized with
 
 .. code-block:: console
 
-   $ asr
-   Usage: asr [OPTIONS] COMMAND [ARGS]...
+   $ asr init .
+   $ ls -a
+   .
+   ..
+   .asr
 
-   Options:
-     -h, --help  Show this message and exit.
+When running, ASR will search for the data repository in the current
+folder or (stepwise) in any of the parent folders and use the first
+one found for storage.
 
-   Commands:
-     find     Find result files.
-     list     List and search for recipes.
-     results  Show results for a specific recipe.
-     run      Run recipe or python function in multiple folders.
+Instructions
+============
 
-From this output it is clear that the ``asr`` command has multiple
-sub-commands, but let's highlight a couple: ``list`` and ``run``. The
-``list`` subcommand can be used to show a list of all known
-recipes. To show the help for the ``list`` sub-command do
+The most basic element of ASR is an Instruction. Instructions are
+simply python functions decorated with the :func:`asr.instruction`
+decorator.
 
-.. doctest::
-   :hide:
+To see how this works in practice let's look at an example: 
 
-   >>> from asr.core.cli import cli
-   >>> cli(args=['list', '-h'], prog_name="asr", standalone_mode=False)
-   Usage: asr list [OPTIONS] [SEARCH]
-   <BLANKLINE>
-     List and search for recipes.
-   <BLANKLINE>
-     If SEARCH is specified: list only recipes containing SEARCH in their
-     description.
-   <BLANKLINE>
-   Options:
-     -h, --help  Show this message and exit.
-   ...
+.. literalinclude:: getting-started.py
+   :pyobject: energy
 
-.. code-block:: console
+In this example we have made an instruction for calculating the total
+energy of a bulk metal in a given crystal structure using the
+effective medium theory (EMT) calculator. The :func:`asr.argument`
+helps ASR to construct a command-line interface to the
+instruction. Here we have used it to tell ASR that the two arguments
+of our instruction is to be interpreted as arguments on the command
+line (:func:`asr.option` serves the sames purpose but for command line
+options in stead).
 
-   $ asr list -h
-   Usage: asr list [OPTIONS] [SEARCH]
-
-     List and search for recipes.
-
-     If SEARCH is specified: list only recipes containing SEARCH in their
-     description.
-
-   Options:
-     -h, --help  Show this message and exit.
-
-So we can see a list of all recipes using
-
-.. doctest:: console
-   :hide:
-
-   >>> from asr.core.cli import cli
-   >>> cli(args=['list'], prog_name="asr", standalone_mode=False)
-   Name ... Description ...
-   ...
-   relax ... Relax atomic positions and unit cell...
-   ...
-
+The instruction is then easily run through the command-line interface
 
 .. code-block:: console
 
-   $ asr list
-   Name                           Description
-   ----                           -----------
-   ...
-   relax                          Relax atomic positions and unit cell.
-   ...
+   $ asr run "asr.tutorial:energy Ag fcc"
+   In folder: . (1/1)
+   Running asr.tutorial:energy(element='Ag', crystal_structure='fcc')
 
 
-To run a recipe we use the ``run`` sub-command. For example to run the
-above ``relax`` recipe we would do
+The cache
+=========
 
-.. doctest::
-   :hide:
-
-   >>> from asr.core.cli import cli
-   >>> cli(args=['run', '-h'], prog_name="asr", standalone_mode=False)
-   Usage: asr run [OPTIONS] COMMAND [FOLDERS]...
-   <BLANKLINE>
-     Run recipe or python function in multiple folders.
-   ...
+Whenever an instruction has been run ASR generates a
+:py:class:`asr.Record` containing contextual information about the
+run, such as the name of the instruction, the parameters and the
+result. The Record is stored in the "Cache" which is a kind of
+database for storing calculations. The record can be viewed on the
+command-line using
 
 .. code-block:: console
 
-   $ asr run relax
+   $ asr cache ls
+                  name                       parameters    result
+   asr.tutorial:energy element=Ag,crystal_structure=fcc -0.000367
+
+An important feature of ASR is that of "caching" results. If we run
+the instruction again with the same input parameters ASR will skip the
+actual evaluation of the instruction and simply reuse the old
+result.
+
+.. code-block:: console
+
+   $ asr run "asr.tutorial:energy Ag fcc"
+   In folder: . (1/1)
+   asr.tutorial:energy: Found cached record.uid=e84186a08eaf4523bb44d804071aed6c
+
+This is useful in workflows where it is beneficial to not
+redo expensive calculation steps when it has already been performed
+once.
+
+Continuing the task of calculating the lowest energy crystal structure
+we will implement an additional instruction that loops over crystal
+structures and finds the most stable one
+
+
+.. literalinclude:: getting-started.py
+   :pyobject: main
+
+
+We say that the python modules which contains our two
+instructions is a "recipe", ie. a collection of collection of
+instructions that achieve our goal. The "main"-instruction is the
+primary user interface to our recipe and as such it is not necesarry
+to state so explicitly when running the main-instruction.
+
+.. code-block:: console
+
+   $ asr run "asr.tutorial Ag"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Ag')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='sc')
+   asr.tutorial:energy: Found cached record.uid=343d7f48aad3434493b5bc7e6cbdf94c
+   Running asr.tutorial:energy(element='Ag', crystal_structure='bcc')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='diamond')
+
+
+We can now check the result using the command-line tool
+
+.. code-block:: console
+
+   $ asr cache ls name=asr.tutorial:main
+                name parameters result
+   asr.tutorial:main element=Ag    fcc
+
+Notice here we applied the "name=asr.tutorial" selection to select
+only the record of relevance. As we can see the EMT calculator
+correctly predicts FCC as the most stable crystal structure for
+silver.

@@ -1,7 +1,14 @@
 """Effective Born charges."""
-from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 import typing
+
+from ase import Atoms
+
+from asr.formalpolarization import main as formalpolarization
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+)
 from asr.database.browser import make_panel_description, href, describe_entry
 
 
@@ -77,27 +84,18 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.borncharges',
-         dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'],
-         returns=Result)
+@command('asr.borncharges')
+@atomsopt
+@calcopt
 @option('--displacement', help='Atomic displacement (Å)', type=float)
-def main(displacement: float = 0.01) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = formalpolarization.defaults.calculator,
+        displacement: float = 0.01) -> Result:
     """Calculate Born charges."""
-    from gpaw import GPAW
-
     from ase.units import Bohr
+    from asr.setup.displacements import main as generate_displacements
 
-    from asr.core import chdir, read_json
-    from asr.formalpolarization import main as formalpolarization
-    from asr.setup.displacements import main as setupdisplacements
-    from asr.setup.displacements import get_all_displacements, get_displacement_folder
-
-    if not setupdisplacements.done:
-        setupdisplacements(displacement=displacement)
-
-    calc = GPAW('gs.gpw', txt=None)
-    atoms = calc.atoms
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
     sym_a = atoms.get_chemical_symbols()
@@ -105,14 +103,12 @@ def main(displacement: float = 0.01) -> Result:
     Z_avv = []
     phase_ascv = np.zeros((len(atoms), 2, 3, 3), float)
 
-    for ia, iv, sign in get_all_displacements(atoms):
-        folder = get_displacement_folder(ia, iv, sign, displacement)
-
-        with chdir(folder):
-            if not formalpolarization.done:
-                formalpolarization()
-
-        polresults = read_json(folder / 'results-asr.formalpolarization.json')
+    for ia, iv, sign, displaced_atoms in generate_displacements(
+            atoms, displacement=displacement):
+        polresults = formalpolarization(
+            atoms=displaced_atoms,
+            calculator=calculator
+        )
         phase_c = polresults['phase_c']
         isign = [None, 1, 0][sign]
         phase_ascv[ia, isign, :, iv] = phase_c
@@ -130,7 +126,7 @@ def main(displacement: float = 0.01) -> Result:
     Z_avv = np.array(Z_avv)
     data = {'Z_avv': Z_avv, 'sym_a': sym_a}
 
-    return data
+    return Result(data=data)
 
 
 if __name__ == '__main__':

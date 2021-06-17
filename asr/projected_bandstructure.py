@@ -1,11 +1,17 @@
 """Orbital projected band structure."""
 import numpy as np
+from ase import Atoms
 
-from asr.core import command, ASRResult, prepare_result
+import asr
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+)
 import typing
 
 from asr.database.browser import make_panel_description
 from asr.utils.hacks import gs_xcname_from_row, RowInfo
+from asr.bandstructure import calculate as bscalculate
+
 
 panel_description = make_panel_description(
     """The single-particle band structure and density of states projected onto
@@ -79,17 +85,64 @@ class Result(ASRResult):
 
 # ---------- Main functionality ---------- #
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.projected_bandstructure:main')
 
-@command(module='asr.projected_bandstructure',
-         requires=['results-asr.gs.json', 'bs.gpw',
-                   'results-asr.bandstructure.json'],
-         dependencies=['asr.gs', 'asr.bandstructure'],
-         returns=Result)
-def main() -> Result:
-    from gpaw import GPAW
 
+@asr.migration(selector=sel)
+def add_bsrestart(record):
+    """Add bsrestart parameters."""
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bsrestart = {
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+@command(
+    module='asr.projected_bandstructure',
+    migrations=[add_bsrestart],
+)
+@atomsopt
+@calcopt
+@asr.calcopt(
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def main(
+        atoms: Atoms,
+        calculator: dict = bscalculate.defaults.calculator,
+        bsrestart: dict = bscalculate.defaults.bsrestart,
+        kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
+        npoints: int = bscalculate.defaults.npoints,
+) -> Result:
     # Get bandstructure calculation
-    calc = GPAW('bs.gpw', txt=None)
+    res = bscalculate(
+        atoms=atoms,
+        calculator=calculator,
+        bsrestart=bsrestart,
+        kptpath=kptpath,
+        npoints=npoints,
+    )
+
+    calc = res.calculation.load()
+    # calc = GPAW('bs.gpw', txt=None)
 
     results = {}
 

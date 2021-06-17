@@ -1,8 +1,18 @@
 """Electronic band structures."""
+import pathlib
 from typing import Union
+from ase import Atoms
+import asr
+from asr.calculators import Calculation
+from asr.core import (
+    command, option, ASRResult, singleprec_dict, prepare_result,
+    AtomsFile, Selector, make_migration_generator,
+)
+from asr.gs import calculate as calculategs
+from asr.gs import main as maings
+
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
-from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.utils.hacks import gs_xcname_from_row, RowInfo
 
@@ -14,35 +24,84 @@ the magnetic easy axis) indicated by the color code.""",
 )
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw'],
-         creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'])
+@prepare_result
+class BandstructureCalculationResult(ASRResult):
+
+    calculation: Calculation
+
+    key_descriptions = dict(calculation='Calculation object')
+
+
+def remove_emptybands_and_make_bsrestart(record):
+    record.parameters.bsrestart = {
+        'nbands': -record.parameters.emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -record.parameters.emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.emptybands
+    return record
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:calculate')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.CONTAINS('emptybands'),
+    sel.NOT(sel.CONTAINS('bsrestart')),
+)
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=remove_emptybands_and_make_bsrestart,
+    description='Remove param="emptybands" and make param="bsrestart"',
+    uid='a0887cebb5224e1097010f1545ce766f',
+)
+
+
+@command(
+    'asr.bandstructure',
+    migrations=[make_migrations],
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@asr.calcopt(
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints', type=int)
-@option('--emptybands', type=int)
-def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
-              emptybands: int = 20) -> ASRResult:
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def calculate(
+        atoms: Atoms,
+        calculator: dict = calculategs.defaults.calculator,
+        bsrestart: dict = {
+            'nbands': -20,
+            'txt': 'bs.txt',
+            'fixdensity': True,
+            'convergence': {
+                'bands': -10},
+            'symmetry': 'off'
+        },
+        kptpath: Union[str, None] = None,
+        npoints: int = 400,
+) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-    from gpaw import GPAW
-    from ase.io import read
-    atoms = read('structure.json')
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                pbc=atoms.pbc)
 
-    convbands = emptybands // 2
-    parms = {
-        'basis': 'dzp',
-        'nbands': -emptybands,
-        'txt': 'bs.txt',
-        'fixdensity': True,
-        'kpts': path,
-        'convergence': {
-            'bands': -convbands},
-        'symmetry': 'off'}
-    calc = GPAW('gs.gpw', **parms)
+    result = calculategs(atoms=atoms, calculator=calculator)
+    calculation = result.calculation
+    bsrestart['kpts'] = path
+    calc = calculation.load(**bsrestart)
     calc.get_potential_energy()
-    calc.write('bs.gpw')
+    calculation = calc.save(id='bs')
+    return BandstructureCalculationResult.fromdata(calculation=calculation)
 
 
 bs_png = 'bs.png'
@@ -358,7 +417,8 @@ def plot_bs_png(row,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
+    colorbar = not (row.magstate == 'NM'
+                    and getattr(row, 'has_inversion_symmetry', False))
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
@@ -445,24 +505,75 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.bandstructure@calculate', 'asr.gs',
-                       'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         returns=Result)
-def main() -> Result:
-    from gpaw import GPAW
+def set_bsrestart_from_dependencies(record):
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bsrestart = {
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:main')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
+
+make_migrations = make_migration_generator(
+    uid='0eda638a2c624a45a3bafd7dca11c9ca',
+    function=set_bsrestart_from_dependencies,
+    description='Construct "bsrestart" parameters from "emptybands" parameter.',
+    selector=sel,
+)
+
+
+@command(
+    'asr.bandstructure',
+    migrations=[make_migrations],
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@asr.calcopt(
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def main(
+        atoms: Atoms,
+        calculator: dict = calculate.defaults.calculator,
+        bsrestart: dict = calculate.defaults.bsrestart,
+        kptpath: Union[str, None] = None,
+        npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from asr.core import read_json
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
-    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
-    calc = GPAW('bs.gpw', txt=None)
+    bsresult = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        bsrestart=bsrestart,
+        npoints=npoints,
+        kptpath=kptpath,
+    )
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    ref = gsresult.calculation.load().get_fermi_level()
+    calc = bsresult.calculation.load()
     atoms = calc.atoms
     path = calc.parameters.kpts
     if not isinstance(path, BandPath):
@@ -481,7 +592,7 @@ def main() -> Result:
     bsresults = bs.todict()
 
     # Save Fermi levels
-    gsresults = read_json('results-asr.gs.json')
+    gsresults = maings(atoms=atoms, calculator=calculator)
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
@@ -491,13 +602,15 @@ def main() -> Result:
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
 
     # We use a larger symmetry tolerance because we want to correctly
     # color spins which doesn't always happen due to slightly broken
     # symmetries, hence tolerance=1e-2.
+    # XXX This is only compatible with GPAW
+    bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
@@ -509,7 +622,11 @@ def main() -> Result:
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
 
     if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, get_spin_index(), :]  # take x, y or z component
+        sz_mk = s_mvk[
+            :,
+            get_spin_index(atoms=atoms,
+                           calculator=calculator),
+            :]  # take x, y or z component
     else:
         sz_mk = s_mvk
 

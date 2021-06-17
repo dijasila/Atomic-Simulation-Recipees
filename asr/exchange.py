@@ -1,20 +1,24 @@
 import numpy as np
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import (
+    command, ASRResult, prepare_result, atomsopt, calcopt,
+)
+
+from ase import Atoms
+from ase.io import read
+
+from asr.gs import calculate as gscalculate
 
 
-@command(module='asr.exchange',
-         creates=['gs_2mag.gpw', 'exchange.gpw'],
-         dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'],
-         resources='40:10h')
-@option('--gs', help='Ground state on which exchange calculation is based',
-        type=str)
-def calculate(gs: str = 'gs.gpw') -> ASRResult:
+# XXX: Hi Thomas. I removed the calculate step. and simply made it a
+# normal function to not have to save the .gpw files. BR. Morten
+def calculate(
+        atoms,
+        calculator,
+) -> ASRResult:
     """Calculate two spin configurations."""
-    from gpaw import GPAW
     from asr.utils import magnetic_atoms
-
-    calc = GPAW(gs, fixdensity=False, txt=None)
+    result = gscalculate(atoms=atoms, calculator=calculator)
+    calc = result.calculation.load(fixdensity=False)
     atoms = calc.atoms
     pbc = atoms.pbc.tolist()
 
@@ -200,7 +204,7 @@ def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
         row.data,
-        'asr.exchange@calculate')
+        'asr.exchange@main')
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)
     explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'
@@ -248,15 +252,21 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.exchange',
-         dependencies=['asr.exchange@calculate'],
-         requires=['gs_2mag.gpw', 'exchange.gpw'],
-         returns=Result)
-def main() -> Result:
+@command(
+    module='asr.exchange',
+)
+@atomsopt
+@calcopt
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+) -> Result:
     """Extract Heisenberg parameters."""
-    from ase.io import read
-
-    N_gs = len(read('structure.json'))
+    calculate(
+        atoms=atoms,
+        calculator=calculator,
+    )
+    N_gs = len(atoms)
     N_exchange = len(read('gs_2mag.gpw'))
     if N_gs == N_exchange:
         line = False

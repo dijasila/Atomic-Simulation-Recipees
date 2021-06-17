@@ -1,5 +1,7 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult, prepare_result
+from ase import Atoms
+from asr.gs import calculate as gscalculate
+from asr.core import command, ASRResult, prepare_result, atomsopt, calcopt
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 
@@ -116,28 +118,39 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command('asr.fermisurface',
-         returns=Result,
-         requires=['gs.gpw', 'results-asr.structureinfo.json'],
-         dependencies=['asr.gs', 'asr.structureinfo'])
-def main() -> Result:
+@command('asr.fermisurface')
+@atomsopt
+@calcopt
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+) -> Result:
     import numpy as np
-    from gpaw import GPAW
-    from asr.utils.gpw2eigs import gpw2eigs
+    from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    from ase.io import read
-    atoms = read('structure.json')
+
     ndim = sum(atoms.pbc)
     assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
-    theta, phi = get_spin_axis()
-    eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
-                                  theta=theta, phi=phi,
-                                  symmetry_tolerance=1e-2)
+    res = gscalculate(
+        atoms=atoms,
+        calculator=calculator,
+    )
+    theta, phi = get_spin_axis(
+        atoms=atoms,
+        calculator=calculator,
+    )
+    calc = res.calculation.load(parallel=False)
+    eigs_km, ef, s_kvm = calc2eigs(
+        calc,
+        return_spin=True,
+        theta=theta, phi=phi,
+        symmetry_tolerance=1e-2,
+    )
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
-    calc = GPAW('gs.gpw', txt=None)
-    s_mk = s_kvm[:, get_spin_index()].T
+    calc = res.calculation.load()
+    s_mk = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator)].T
 
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
@@ -175,7 +188,7 @@ def main() -> Result:
 
     contours = np.concatenate(contours)
     data = {'contours': contours}
-    return data
+    return Result(data)
 
 
 if __name__ == '__main__':

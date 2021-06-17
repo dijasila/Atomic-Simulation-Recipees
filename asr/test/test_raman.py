@@ -2,6 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
+@pytest.mark.xfail
 def test_raman(asr_tmpdir_w_params, asr_tmpdir, test_material, get_webcontent):
     from asr.core import write_file, ASRResult
     import numpy as np

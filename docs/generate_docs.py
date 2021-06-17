@@ -79,7 +79,7 @@ def make_recipe_documentation(module):
     mod = importlib.import_module(module)
     members = inspect.getmembers(mod)
     steps = [value for (name, value) in members
-             if isinstance(value, ASRCommand)]
+             if (isinstance(value, ASRCommand) and value.__module__ == module)]
 
     title = f'{module}'
     rst = [
@@ -94,11 +94,11 @@ def make_recipe_documentation(module):
         '',
     ]
 
-    stepnames = [f'{module}@{step.__name__}'
+    stepnames = [f'{module}:{step.__name__}'
                  if step.__name__ != 'main' else module
                  for step in steps]
     nsteps = len(steps)
-    some_steps = 'a single step' if nsteps == 1 else f'{nsteps} steps'
+    some_steps = 'a single instruction' if nsteps == 1 else f'{nsteps} instructions'
     pyfunclist = [f'  - :py:func:`{module}.{step.__name__}`'
                   for step in steps]
     summary = (['Summary',
@@ -142,9 +142,24 @@ def make_recipe_documentation(module):
              step_title,
              '^' * len(step_title),
              f'.. autofunction:: {module}.{step.__name__}',
-             '   ']
+             '   ',
+             ]
         )
-
+        if step.returns:
+            returns = step.returns
+            try:
+                if issubclass(returns, ASRResult) and not returns == ASRResult:
+                    mod = returns.__module__
+                    qualname = returns.__qualname__
+                    rst.extend(
+                        [
+                            f'.. autoclass:: {mod}.{qualname}',
+                            '   :members:',
+                            '   ',
+                        ]
+                    )
+            except TypeError:
+                continue
     return rst
 
 
@@ -184,7 +199,9 @@ def get_recipe_modules():
         paths.extend(get_modules_from_path(package))
 
     names = get_names_from_paths(paths)
-    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr'),
+    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr')
+                          and (not x == 'asr.setinfo')
+                          and (not x == 'asr.setup.materials'),
                           names))
     return names
 
@@ -265,6 +282,10 @@ def generate_docs():
     """Generate documentation."""
     print('Generating ASR documentation.')
     empty_generated_files()
-    generate_api_summary()
+    # generate_api_summary()
     generate_recipe_summary()
     generate_stub_pages()
+
+
+if __name__ == '__main__':
+    generate_docs()

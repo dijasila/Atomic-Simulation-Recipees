@@ -1,7 +1,16 @@
 """Deformation potentials."""
 from typing import List
-from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
+
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt
+)
+
+from asr.setup.strains import main as make_strained_atoms
+from asr.setup.strains import get_relevant_strains
+from asr.gs import main as groundstate
 
 
 def webpanel(result, row, key_descriptions):
@@ -28,24 +37,24 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(returns=Result)
+@command('asr.deformationpotentials')
+@atomsopt
+@calcopt
 @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',
         type=float)
-def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = groundstate.defaults.calculator,
+        strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
-    from asr.setup.strains import (get_strained_folder_name,
-                                   get_relevant_strains)
-    from asr.core import read_json
-    from ase.io import read
     strains = sorted(strains)
-    atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
     ij_to_voigt = [[0, 5, 4],
@@ -58,27 +67,37 @@ def main(strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
     edges_pin = np.zeros((3, 6, 2), float)
     edges_nosoc_pin = np.zeros((3, 6, 2), float)
 
-    gsresults = read_json('results-asr.gs.json')
+    gsresults = groundstate(
+        atoms=atoms,
+        calculator=calculator,
+    )
 
     k0_vbm_c = gsresults['k_vbm_c']
     k0_cbm_c = gsresults['k_cbm_c']
 
     for i, j in ij:
         for ip, strain in enumerate(strains):
-            folder = get_strained_folder_name(strain, i, j)
-            gsresults = read_json(folder / 'results-asr.gs.json')
+            strained_atoms = make_strained_atoms(
+                atoms,
+                strain_percent=strain,
+                i=i, j=j)
+
+            gsresults = groundstate(
+                atoms=strained_atoms,
+                calculator=calculator,
+            )
             k_vbm_c = gsresults['k_vbm_c']
             k_cbm_c = gsresults['k_cbm_c']
             difference = k_vbm_c - k0_vbm_c
             difference -= np.round(difference)
             assert (np.abs(difference) < ktol).all(), \
-                (f'{folder}: i={i} j={j} strain={strain}: VBM has '
+                (f'i={i} j={j} strain={strain}: VBM has '
                  f'changed location in reciprocal space upon straining. '
                  f'{k0_vbm_c} -> {k_vbm_c} (Delta_c={difference})')
             difference = k_cbm_c - k0_cbm_c
             difference -= np.round(difference)
             assert (np.abs(difference) < ktol).all(), \
-                (f'{folder}: i={i} j={j} strain={strain}: CBM has '
+                (f'i={i} j={j} strain={strain}: CBM has '
                  f'changed location in reciprocal space upon straining. '
                  f'{k0_cbm_c} -> {k_cbm_c} (Delta_c={difference})')
             evac = gsresults['evac']

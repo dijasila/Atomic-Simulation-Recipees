@@ -1,22 +1,8 @@
 """Manually set key-value-pairs for material."""
 
-from asr.core import command, argument, read_json, write_json, ASRResult
-from ast import literal_eval
-import click
+from asr.core import read_json, write_json
 from pathlib import Path
 from typing import List, Tuple
-
-
-class KeyValuePair(click.ParamType):
-    """Read atoms object from filename and return Atoms object."""
-
-    def convert(self, value, param, ctx):
-        """Convert string to a (key, value) tuple."""
-        assert ':' in value
-        key, value = value.split(':')
-        if not value == '':
-            value = literal_eval(value)
-        return key, value
 
 
 protected_keys = {'first_class_material': {True, False}}
@@ -33,10 +19,7 @@ def check_key_value(key, value):
             )
 
 
-@command('asr.setinfo')
-@argument('key_value_pairs', metavar='key:value', nargs=-1,
-          type=KeyValuePair())
-def main(key_value_pairs: List[Tuple[str, str]]) -> ASRResult:
+def main(key_value_pairs: List[Tuple[str, str]]):
     """Set additional key value pairs.
 
     These extra key value pairs are stored in info.json.  To set a key

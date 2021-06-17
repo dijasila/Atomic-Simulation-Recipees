@@ -1,13 +1,9 @@
 """Run integrity checks of database."""
 
-from asr.core import command, argument, ASRResult
 from ase.db import connect
 
 
-@command('asr.database.check',
-         save_results_file=False)
-@argument('dbname', type=str)
-def main(dbname: str) -> ASRResult:
+def main(dbname: str):
     """Run a check of a database.
 
     Check whether all child uids exists and whether there are any

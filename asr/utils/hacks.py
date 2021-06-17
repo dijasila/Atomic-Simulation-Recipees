@@ -1,6 +1,12 @@
 def gs_xcname_from_row(row):
-    # Remove this and use RowInfo
-    return RowInfo(row).gs_xcname()
+    params = row.data.get_record('results-asr.gs@calculate.json').parameters
+    if 'calculator' not in params:
+        # What are the rules for when this piece of data exists?
+        # Presumably the calculation used ASR defaults.
+        return 'PBE'
+    # If the parameters are present, but were not set, we are using
+    # GPAW's default which is LDA.
+    return params['calculator'].get('xc', 'LDA')
 
 
 class RowInfo:
@@ -18,18 +24,7 @@ class RowInfo:
         return self.row.data['results-asr.gs@calculate.json']
 
     def gs_xcname(self):
-        data = self.gsdata
-        if not hasattr(data, 'metadata'):
-            # Old (?) compatibility hack
-            return 'PBE'
-        params = data.metadata.params
-        if 'calculator' not in params:
-            # What are the rules for when this piece of data exists?
-            # Presumably the calculation used ASR defaults.
-            return 'PBE'
-        # If the parameters are present, but were not set, we are using
-        # GPAW's default which is LDA.
-        return params['calculator'].get('xc', 'LDA')
+        return gs_xcname_from_row(self.row)
 
     def have_evac(self):
         return self.get_evac() is not None

@@ -13,10 +13,24 @@ from pathlib import Path
 from typing import Union, List
 import warnings
 
+import typing
+
 import numpy as np
 from ase.io import jsonio
 import ase.parallel as parallel
 from ast import literal_eval
+
+
+def make_property(name):  # noqa
+
+    def get_data(self):
+        return self.data[name]
+
+    def set_data(self, value):
+        # assert self.data[name] is None, f'{name} was already set.'
+        self.data[name] = value
+
+    return property(get_data, set_data)
 
 
 def parse_dict_string(string, dct=None):
@@ -25,17 +39,32 @@ def parse_dict_string(string, dct=None):
         dct = {}
 
     # Locate ellipsis
-    string = string.replace('...', 'None:None')
-    tmpdct = literal_eval(string)
+    if string.startswith('{'):
+        string = string.replace('...', 'None:None')
+        tmpdct = literal_eval(string)
+    else:
+        parts = string.split(',')
+        tmpdct = {}
+        for part in parts:
+            if part == '...':
+                tmpdct[None] = None
+            else:
+                key, value = part.split('=')
+                value = literal_eval(value)
+                tmpdct[key] = value
+
     recursive_update(tmpdct, dct)
     return tmpdct
 
 
 def recursive_update(dct, defaultdct):
     """Recursively update defualtdct with values from dct."""
-    if None in dct:
+    if None in dct or 'None' in dct:
         # This marks that we take default values from defaultdct
-        del dct[None]
+        if None in dct:
+            del dct[None]
+        else:
+            del dct['None']
         for key in defaultdct:
             if key not in dct:
                 dct[key] = defaultdct[key]
@@ -60,17 +89,25 @@ def md5sum(filename):
     return hash.hexdigest()
 
 
+def sha256sum(filename):
+    from hashlib import sha256
+    hash = sha256()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(128 * hash.block_size), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
 @contextmanager
-def chdir(folder, create=False, empty=False):
+def chdir(folder, create=False):
     dir = os.getcwd()
-    if empty and folder.is_dir():
-        import shutil
-        shutil.rmtree(str(folder))
     if create and not folder.is_dir():
-        os.mkdir(folder)
-    os.chdir(str(folder))
-    yield
-    os.chdir(dir)
+        only_master(os.makedirs)(folder)
+    try:
+        os.chdir(str(folder))
+        yield
+    finally:
+        os.chdir(dir)
 
 
 def encode_json(data):
@@ -184,6 +221,32 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
     world.barrier()
 
 
+@contextmanager
+def cleanup_files(paths: List[Union[str, Path]],
+                  world=None,
+                  delete=True):
+    """Context manager for cleaning up temporary files.
+
+    After the with-block all temporary files will have been deleted.
+
+    Do "with cleanup_files(['something.txt']):"
+
+    This will remove the file upon exiting the context manager.
+
+    """
+    if world is None:
+        world = parallel.world
+
+    try:
+        yield
+    finally:
+        for i, path in enumerate(paths):
+            if isinstance(path, str):
+                path = Path(path)
+            if world.rank == 0 and path.is_file():
+                path.unlink()
+
+
 def singleprec_dict(dct):
     assert isinstance(dct, dict), f'Input {dct} is not dict.'
 
@@ -215,7 +278,11 @@ def get_recipe_from_name(name):
 def parse_mod_func(name):
     # Split a module function reference like
     # asr.relax@main into asr.relax and main.
-    mod, *func = name.split('@')
+    if '@' in name:
+        split_char = '@'
+    else:
+        split_char = ':'
+    mod, *func = name.split(split_char)
     if not func:
         func = ['main']
 
@@ -257,3 +324,51 @@ def get_dep_tree(name, reload=True):
             deplist.append(dep)
 
     return deplist
+
+
+def only_master(func, broadcast=True):
+    from ase.parallel import world, broadcast
+
+    def wrapped(*args, **kwargs):
+        world.barrier()
+
+        if world.rank == 0:
+            result = func(*args, **kwargs)
+        else:
+            result = None
+
+        if broadcast:
+            result = broadcast(result)
+
+        world.barrier()
+        return result
+
+    return wrapped
+
+
+def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
+    """Test equality with support for nested np.ndarrays."""
+    # Numpy arrays are annoyingly special, comparing two empty array yields False.
+    if isinstance(value1, (np.ndarray, list, tuple)) and \
+       isinstance(value2, (np.ndarray, list, tuple)):
+        if len(value1) == len(value2) == 0:
+            return True
+
+    try:
+        return bool(value1 == value2)
+    except ValueError:
+        if isinstance(value1, np.ndarray) or isinstance(value2, np.ndarray):
+            return (value1 == value2).all()
+
+        if isinstance(value1, dict) and isinstance(value2, dict):
+            if set(value1) != set(value2):
+                return False
+
+            for key in value1:
+                if not compare_equal(value1[key], value2[key]):
+                    return False
+        return True
+
+
+def link_file(path1, path2):
+    os.link(path1, path2)

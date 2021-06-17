@@ -1,10 +1,20 @@
 """Infrared polarizability."""
 import typing
-from asr.core import command, option, read_json, ASRResult, prepare_result
+import asr
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt,
+    Selector, make_migration_generator,
+)
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
 
 import numpy as np
+from click import Choice
+
+from ase import Atoms
+from asr.phonons import main as phonons
+from asr.borncharges import main as borncharges
+from asr.polarizability import main as polarizability
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the infrared (IR) frequency regime
@@ -191,27 +201,110 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+def prepare_for_resultfile_migration(record):
+    """Prepare record for resultfile migration."""
+    phononpar = record.parameters.dependency_parameters['asr.phonons:calculate']
+    fconverge = phononpar['fconverge']
+    del phononpar['fconverge']
+    record.parameters.bandfactor = 5
+    record.parameters.xc = 'RPA'
+    record.parameters.phononcalculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': fconverge},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0,
+    }
+    record.parameters.borncalculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 12.0},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'symmetry': 'off',
+        'convergence': {'eigenstates': 1e-11,
+                        'density': 1e-7},
+        'txt': 'formalpol.txt',
+        'charge': 0,
+    }
+    record.parameters.polarizabilitycalculator = \
+        record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
+    del record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
+    return record
+
+
+sel = Selector()
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(
+    sel.ANY(
+        sel.CONTAINS('bandfactor'),
+        sel.CONTAINS('xc'),
+        sel.CONTAINS('phononcalculator'),
+    )
+)
+sel.name = sel.EQ('asr.infraredpolarizability:main')
+
+
+make_migrations = make_migration_generator(
+    selector=sel,
+    function=prepare_for_resultfile_migration,
+    uid='048c99cc09c641c187929ed67d9ffc39',
+)
+
+
 @command(
     "asr.infraredpolarizability",
-    dependencies=["asr.phonons", "asr.borncharges", "asr.polarizability"],
-    requires=[
-        "structure.json",
-        "results-asr.phonons.json",
-        "results-asr.borncharges.json",
-        "results-asr.polarizability.json",
-    ],
-    returns=Result,
+    migrations=[make_migrations],
 )
+@atomsopt
+@asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
+@asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
+@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
+             help='Polarizability calculator.')
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
-def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
-    from ase.io import read
-
-    # Get relevant atomic structure
-    atoms = read("structure.json")
+@option('-n', help='Supercell size', type=int)
+@option('--mingo/--no-mingo', is_flag=True,
+        help='Perform Mingo correction of force constant matrix')
+@option('--displacement', help='Atomic displacement (Å)', type=float)
+@option('--kptdensity', help='K-point density',
+        type=float)
+@option('--ecut', help='Plane wave cutoff',
+        type=float)
+@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+@option('--bandfactor', type=int,
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+def main(
+        atoms: Atoms,
+        nfreq: int = 300,
+        eta: float = 1e-2,
+        polarizabilitycalculator: dict = polarizability.defaults.calculator,
+        phononcalculator: dict = phonons.defaults.calculator,
+        borncalculator: dict = borncharges.defaults.calculator,
+        n: int = phonons.defaults.n,
+        mingo: bool = phonons.defaults.mingo,
+        displacement: float = borncharges.defaults.displacement,
+        kptdensity: float = polarizability.defaults.kptdensity,
+        ecut: float = polarizability.defaults.ecut,
+        xc: float = polarizability.defaults.xc,
+        bandfactor: float = polarizability.defaults.bandfactor,
+) -> Result:
 
     # Get phonons
-    phresults = read_json("results-asr.phonons.json")
+    phresults = phonons(
+        atoms=atoms,
+        calculator=phononcalculator,
+        n=n,
+        mingo=mingo,
+    )
+
     u_ql = phresults["modes_kl"]
     q_qc = phresults["q_qc"]
     omega_ql = phresults["omega_kl"]
@@ -233,8 +326,11 @@ def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     fmax = omega_ql[0].max() * 3  # Factor of 3 should be enough
     omega_w = np.linspace(fmin, fmax, nfreq)
 
-    # Read born charges
-    borndct = read_json("results-asr.borncharges.json")
+    borndct = borncharges(
+        atoms=atoms,
+        calculator=borncalculator,
+        displacement=displacement,
+    )
 
     # Get other relevant quantities
     m_a = atoms.get_masses()
@@ -242,7 +338,10 @@ def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     Z_avv = borndct["Z_avv"]
 
     # Get phonon polarizability
-    alpha_wvv = get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta)
+    alpha_wvv = get_phonon_pol(
+        omega_w, Z_avv, freqs_l,
+        modes_xl, m_a, cell_cv, eta,
+    )
 
     # Normalize according to dimensionality
     pbc_c = atoms.pbc
@@ -256,7 +355,14 @@ def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
     alphay_lat = alpha_wvv[0, 1, 1].real
     alphaz_lat = alpha_wvv[0, 2, 2].real
 
-    elecdict = read_json("results-asr.polarizability.json")
+    elecdict = polarizability(
+        atoms=atoms,
+        calculator=polarizabilitycalculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+        xc=xc,
+        bandfactor=bandfactor,
+    )
     alphax_el = elecdict["alphax_el"]
     alphay_el = elecdict["alphay_el"]
     alphaz_el = elecdict["alphaz_el"]
@@ -272,7 +378,7 @@ def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
         "alphaz": alphaz_lat + alphaz_el,
     }
 
-    return results
+    return Result(data=results)
 
 
 def get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta):

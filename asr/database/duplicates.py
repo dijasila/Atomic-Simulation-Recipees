@@ -1,12 +1,10 @@
-from asr.core import command, argument, option, ASRResult
+from asr.core import command, argument, option, ASRResult, ASEDatabase
 from datetime import datetime
 
 
-@command(module='asr.database.duplicates',
-         resources='1:20m',
-         save_results_file=False)
-@argument('databaseout', type=str, required=False)
-@argument('database', type=str)
+@command(module='asr.database.duplicates')
+@argument('databaseout', type=ASEDatabase(), required=False)
+@argument('database', type=ASEDatabase())
 @option('-f', '--filterstring',
         help='List of keys denoting the priority of picking'
         ' candidates among possible duplicates.',
@@ -28,7 +26,7 @@ def main(database: str,
 
     Parameters
     ----------
-    database : str
+    database : db-connection
         Database to be analyzed for duplicates.
     databaseout : str
         Filename of new database with duplicates removed.
@@ -61,8 +59,7 @@ def main(database: str,
               of the group.
 
     """
-    from ase.db import connect
-    from asr.core import read_json
+    # from ase.db import connect
     from asr.database.rmsd import main as rmsd
     from asr.utils import timed_print
     assert database != databaseout, \
@@ -70,20 +67,20 @@ def main(database: str,
 
     ops_and_keys = parse_filter_string(filterstring)
 
-    if not rmsd.done:
-        rmsd(database, comparison_keys=comparison_keys,
-             skip_distance_calc=skip_distance_calc)
-    rmsd_results = read_json('results-asr.database.rmsd.json')
+    # if not rmsd.done:
+    rmsd_results = rmsd(database, comparison_keys=comparison_keys,
+                        skip_distance_calc=skip_distance_calc)
+    # rmsd_results = read_json('results-asr.database.rmsd.json')
     rmsd_by_id = rmsd_results['rmsd_by_id']
     uid_key = rmsd_results['uid_key']
     duplicate_groups = []
-    db = connect(database)
+    # db = connect(database)
     exclude_uids = set()
     already_checked_uids = set()
     nrmsd = len(rmsd_by_id)
     rows = {}
 
-    for row in db.select(include_data=False):
+    for row in database.select(include_data=False):
         rows[row.get(uid_key)] = row
 
     print('Filtering materials...')
@@ -108,18 +105,18 @@ def main(database: str,
 
     if databaseout is not None:
         nmat = len(rows)
-        with connect(databaseout) as filtereddb:
-            for uid, row in rows.items():
-                now = datetime.now()
-                timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
+        # with connect(databaseout) as filtereddb:
+        for uid, row in rows.items():
+            now = datetime.now()
+            timed_print(f'{now:%H:%M:%S}: {row.id}/{nmat}', wait=30)
 
-                if uid in exclude_uids:
-                    continue
-                filtereddb.write(atoms=row.toatoms(),
-                                 data=row.data,
-                                 **row.key_value_pairs)
+            if uid in exclude_uids:
+                continue
+            databaseout.write(atoms=row.toatoms(),
+                              data=row.data,
+                              **row.key_value_pairs)
 
-        filtereddb.metadata = db.metadata
+        databaseout.metadata = database.metadata
 
     filterkeys = [key for _, key in ops_and_keys]
     for ig, group in enumerate(duplicate_groups):
