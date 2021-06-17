@@ -420,7 +420,6 @@ def vacuumlevels(atoms, calc, n=8):
     n: int
         number of gridpoints away from the edge to evaluate the vac levels
     """
-
     if sum(atoms.pbc) != 2:
         return VacuumLevelResults.fromdata(
             z_z=None,
