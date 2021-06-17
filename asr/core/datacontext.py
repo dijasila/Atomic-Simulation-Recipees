@@ -42,11 +42,20 @@ class DataContext:
         # XXX Avoid depending directly on backend
         return list(cache.backend.recurse_dependencies(self.record))
 
+    def gs_parameters(self):
+        # XXX Some records do not depend on main, only calculate.
+        # E.g. projected_bandstructure
+        return self.get_record('asr.gs:calculate').parameters
+
     def get_record(self, name):
         if ':' not in name:
             name += ':main'  # XXX fixme
-        matches = [record for record in self._dependencies()
-                   if record.name == name]
+
+        records = self._dependencies()
+        for record in records:
+            print(record.name, record.uid)
+
+        matches = [record for record in records if record.name == name]
 
         if self.name == name:
             matches.append(self.record)

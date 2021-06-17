@@ -8,8 +8,9 @@ from asr.core import (
 )
 import typing
 
-from asr.database.browser import make_panel_description
-from asr.bandstructure import calculate as bscalculate
+from asr.database.browser import (make_panel_description,
+                                  fig, describe_entry, WebPanel)
+from asr.bandstructure import calculate as bscalculate, main as bsmain
 
 
 panel_description = make_panel_description(
@@ -27,17 +28,13 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 
 def webpanel(result, context):
     from asr.utils.hacks import get_parameter_description
-    from asr.database.browser import fig, describe_entry, WebPanel
 
     xcname = context.xcname
 
     # XXX Why is it named bandstructure:calculate, why not projected?
-    desc1 = get_parameter_description(
-        'asr.bandstructure:calculate',
-        context.parameters)
-    desc2 = get_parameter_description(
-        'asr.gs',
-        context.ground_state().parameters)
+    desc1 = get_parameter_description('asr.bandstructure:calculate',
+                                      context.parameters)
+    desc2 = get_parameter_description('asr.gs', context.gs_parameters())
 
     explanation = ('Orbital projected band structure without '
                    'spin–orbit coupling\n\n' + desc1 + '\n' + desc2)
@@ -72,7 +69,7 @@ class Result(ASRResult):
         weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
     )
 
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 # ---------- Main functionality ---------- #
@@ -125,13 +122,19 @@ def main(
         npoints: int = bscalculate.defaults.npoints,
 ) -> Result:
     # Get bandstructure calculation
-    res = bscalculate(
+
+    args = dict(
         atoms=atoms,
         calculator=calculator,
         bsrestart=bsrestart,
         kptpath=kptpath,
         npoints=npoints,
     )
+    res = bscalculate(**args)
+
+    # We need to depend on bsmain, otherwise we cannot make the web panels
+    # since we do not have the requisite metadata.
+    bsmain(**args)
 
     calc = res.calculation.load()
     # calc = GPAW('bs.gpw', txt=None)
@@ -142,8 +145,8 @@ def main(
     weight_skni, yl_i = get_orbital_ldos(calc)
     results['weight_skni'] = weight_skni
     results['yl_i'] = yl_i
-    results['symbols'] = calc.atoms.get_chemical_symbols()
-    return results
+    results['symbols'] = list(calc.atoms.symbols)
+    return Result.fromdata(**results)
 
 
 # ---------- Recipe methodology ---------- #
@@ -168,7 +171,7 @@ def get_orbital_ldos(calc):
 
     ns = calc.get_number_of_spins()
     zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
+    atoms = calc.atoms
     l_a = get_l_a(zs)
 
     # We distinguish in (chemical symbol(y), angular momentum (l)),
@@ -181,7 +184,7 @@ def get_orbital_ldos(calc):
     yl_i = []
     i_x = []
     for a, l in zip(a_x, l_x):
-        symbol = chem_symbols[a]
+        symbol = atoms.symbols[a]
         yl = ','.join([str(symbol), str(l)])
         if yl in yl_i:
             i = yl_i.index(yl)
@@ -415,12 +418,13 @@ def projected_bs_scf(context, filename,
     c_i = get_yl_ordering(yl_i, data['symbols'])
 
     # Extract band structure data
-    d = context.bandstructure().result
+    d = context.get_record('asr.bandstructure').result
     path = d['bs_nosoc']['path']
     ef = d['bs_nosoc']['efermi']
 
     # If a vacuum energy is available, use it as a reference
     eref = context.energy_reference()
+    ref = eref.value
 
     # Determine plotting window based on band gap
     gs_results = context.gs_results()
