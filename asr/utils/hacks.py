@@ -14,7 +14,8 @@ class RowInfo:
 
     This object provides methods that are used in many recipes.
     It exists to replace duplication across those recipes.  There are
-    probably better designs."""
+    probably better designs.
+    """
 
     def __init__(self, row):
         self.row = row
