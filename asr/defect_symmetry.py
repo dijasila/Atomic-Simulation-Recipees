@@ -11,16 +11,16 @@ def get_symmetry_array(sym_results):
     import numpy as np
 
     Nrows = len(sym_results)
-    symmetry_array = np.empty((Nrows, 5), dtype='object')
+    symmetry_array = np.empty((Nrows, 4), dtype='object')
     sym_rowlabels = []
     for i, row in enumerate(symmetry_array):
         rowname = sym_results[i]['best']
         sym_rowlabels.append(rowname)
         symmetry_array[i, 0] = f"{int(sym_results[i]['state'])}"
         symmetry_array[i, 1] = f"{int(sym_results[i]['spin'])}"
-        symmetry_array[i, 2] = f"{sym_results[i]['energy']:.2f}"
-        symmetry_array[i, 3] = f"{sym_results[i]['error']:.2f}"
-        symmetry_array[i, 4] = f"{sym_results[i]['loc_ratio']:.2f}"
+        # symmetry_array[i, 2] = f"{sym_results[i]['energy']:.2f}"
+        symmetry_array[i, 2] = f"{sym_results[i]['error']:.2f}"
+        symmetry_array[i, 3] = f"{sym_results[i]['loc_ratio']:.2f}"
 
     return symmetry_array, sym_rowlabels
 
@@ -29,16 +29,13 @@ def get_state_array(state_results):
     import numpy as np
 
     Nrows = len(state_results)
-    state_array = np.empty((Nrows, 4), dtype='object')
+    state_array = np.empty((Nrows, 2), dtype='object')
     state_rowlabels = []
     for i, row in enumerate(state_array):
-        rowname = 'A'
+        rowname = f"{int(state_results[i]['state']):.0f}"
         state_rowlabels.append(rowname)
-        state_array[i, 0] = f"{int(state_results[i]['state']):.0f}"
-        state_array[i, 1] = f"{int(state_results[i]['spin'])}"
-        state_array[i, 2] = f"{state_results[i]['energy']:.2f}"
-        state_array[i, 3] = f"{state_results[i]['loc_ratio']:.2f}"
-        state_array[i, 0] = f"{int(state_results[i]['state']):.0f}"
+        state_array[i, 0] = f"{int(state_results[i]['spin']):.0f}"
+        state_array[i, 1] = f"{state_results[i]['energy']:.2f}"
 
     return state_array, state_rowlabels
 
@@ -65,32 +62,34 @@ def webpanel(result, row, key_descriptions):
         state_array, state_rownames = get_state_array(result.symmetries)
         state_table = matrixtable(state_array,
                                   digits=None,
-                                  title='Symmetry label',
-                                  columnlabels=['State',
-                                                'Spin',
-                                                'Energy [eV]',
-                                                'Localization ratio'],
+                                  title='Orbital no.',
+                                  columnlabels=['Spin',
+                                                'Energy [eV]'],
                                   rowlabels=state_rownames)
-        panel = WebPanel(describe_entry('Defect states (structure and defect states)',
-                         description='Structural symmetry analysis and gap states'),
-                         columns=[[fig('ks_gap.png'), basictable], [state_table]],
+        panel = WebPanel('One-electron states',
+                         columns=[[fig('ks_gap.png')], [state_table]],
                          plot_descriptions=[{'function': plot_gapstates,
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
     else:
+        state_array, state_rownames = get_state_array(result.symmetries)
+        state_table = matrixtable(state_array,
+                                  digits=None,
+                                  title='Orbital no.',
+                                  columnlabels=['Spin',
+                                                'Energy [eV]'],
+                                  rowlabels=state_rownames)
         symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
         symmetry_table = matrixtable(symmetry_array,
                                      digits=None,
-                                     title='Symmetry label',
-                                     columnlabels=['State',
+                                     title='Symmetry (label)',
+                                     columnlabels=['Orbital no.',
                                                    'Spin',
-                                                   'Energy [eV]',
-                                                   'Accuracy',
+                                                   'Symmetry (accuracy)',
                                                    'Localization ratio'],
                                      rowlabels=symmetry_rownames)
-        panel = WebPanel(describe_entry('Defect symmetry (structure and defect states)',
-                         description='Structural and electronic symmetry analysis'),
-                         columns=[[fig('ks_gap.png')], [symmetry_table]],
+        panel = WebPanel('One-electron states',
+                         columns=[[fig('ks_gap.png'), symmetry_table], [state_table]],
                          plot_descriptions=[{'function': plot_gapstates,
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
@@ -771,9 +770,13 @@ def plot_gapstates(row, fname):
             elif not levelflag:
                 lev.add_label(irrep, 'A')
 
-    ax.plot([0, 1], [ef] * 2, '--k')
+    ax1 = ax.twinx()
     ax.set_xlim(0, 1)
     ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
+    ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
+    ax1.plot([0, 1], [ef] * 2, '--k')
+    ax1.set_yticks([ef])
+    ax1.set_yticklabels([r'E$_\mathrm{F}$'])
     ax.set_xticks([])
     ax.set_ylabel('Energy [eV]')
 

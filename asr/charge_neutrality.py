@@ -17,9 +17,14 @@ def webpanel(result, row, key_descriptions):
 
     table_list = []
     unit = result.conc_unit
+    unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
     for element in result.defect_concentrations:
         name = element['defect_name']
-        scf_table = table(result, f'Eq. concentrations of {name} [{unit:5}]', [])
+        def_type = name.split('_')[0]
+        if def_type == 'v':
+            def_type = 'V'
+        def_name = name.split('_')[1]
+        scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
         for altel in element['concentrations']:
             scf_table['rows'].extend(
                 [[describe_entry(f'Charge {altel[1]:1d}',
@@ -112,12 +117,12 @@ def webpanel(result, row, key_descriptions):
         [[describe_entry('Electron carrier concentration',
                          'Equilibrium electron carrier concentration at '
                          f'T = {int(result.temperature):d} K.'),
-          f'{result.n0:.1e} {unit:5}']])
+          f'{result.n0:.1e} {unitstring}']])
     scf_overview['rows'].extend(
         [[describe_entry('Hole carrier concentration',
                          'Equilibrium hole carrier concentration at '
                          f'T = {int(result.temperature):d} K.'),
-          f'{result.p0:.1e} {unit:5}']])
+          f'{result.p0:.1e} {unitstring}']])
 
     figure = describe_entry(fig('charge_neutrality.png'),
                             description='Formation energies of all point defects '
@@ -334,7 +339,7 @@ def convert_concentration_units(conc, atoms):
 
     Note, that n is the dimensionality of the system.
     """
-    cell = atoms.get_cell()
+    # cell = atoms.get_cell()
     volume = atoms.get_volume()
     dim = np.sum(atoms.get_pbc())
 
@@ -568,10 +573,14 @@ def plot_formation_scf(row, fname):
     gap = data['gap']
     for i, defect in enumerate(data['defect_concentrations']):
         name = defect['defect_name']
-        plt.plot([], [], linestyle='solid', color=f'C{i}', label=name)
+        def_type = name.split('_')[0]
+        def_name = name.split('_')[-1]
+        if def_type == 'v':
+            def_type = 'V'
+        namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
+        plt.plot([], [], linestyle='solid', color=f'C{i}', label=namestring)
         for conc_tuple in defect['concentrations']:
             q = conc_tuple[1]
-            print(q, defect)
             eform = conc_tuple[2]
             y0 = q * (-ef) + eform
             y1 = q * (gap - ef) + eform
@@ -581,14 +590,14 @@ def plot_formation_scf(row, fname):
     plt.axvline(gap, color='black')
     plt.axvspan(-100, 0, alpha=0.5, color='grey')
     plt.axvspan(gap, 100, alpha=0.5, color='grey')
-    plt.axvline(ef, color='red', linestyle='dotted', label=r'$E_F^{\mathrm{sc}}$')
+    plt.axvline(ef, color='red', linestyle='dotted', label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
     plt.xlim(0 - gap / 10., gap + gap / 10.)
     yminold = plt.gca().get_ylim()[0]
     plt.ylim(yminold, yminold + 4)
-    plt.xlabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
+    plt.xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
     plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
     # plt.legend(ncol=2, loc=9)
-    plt.legend(bbox_to_anchor=(0.5, 1), ncol=5, loc='lower center')
+    plt.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
     plt.tight_layout()
     plt.savefig(fname)
 

@@ -75,7 +75,15 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = (row.defect_name + ' in ' + row.host_name + ' '
+        defect_type = row.defect_name.split('_')[0]
+        if defect_type == 'v':
+            defect_type = 'V'
+        defect_name = row.defect_name.split('_')[-1]
+        if defect_name == 'pristine':
+            defect_string = 'Pristine'
+        else:
+            defect_string = f"{defect_type}<sub>{defect_name}</sub>"
+        self.formula = (defect_string + ' in ' + row.host_name + ' '
                         + row.charge_state).format('html')
         # self.formula = Formula(
         #     Formula(row.formula).format('metal')).format('html')
