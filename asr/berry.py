@@ -232,13 +232,11 @@ def plot_phases(row, f0, f1, f2, fpi):
 
 
 def webpanel(result, context):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
+    from asr.database.browser import fig, describe_entry, WebPanel
     from asr.utils.hacks import get_parameter_description
 
     xcname = context.xcname
-    get_parameter_description(
+    parameter_description = get_parameter_description(
         'asr.gs@calculate',
         context.gs_parameters())
 

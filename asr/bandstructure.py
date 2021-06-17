@@ -285,7 +285,6 @@ def plot_bs_html(context,
 
 def add_bs_ks(context, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-    row = context.row
     bsrecord = context.bandstructure()
     d = bsrecord.result
     path = d['bs_soc']['path']

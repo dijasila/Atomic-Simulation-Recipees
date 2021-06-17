@@ -85,8 +85,6 @@ def calculate(
     return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-
-
 def _explain_bandgap(parameters, gap_name):
     from asr.utils.hacks import get_parameter_description
     parameter_description = get_parameter_description('asr.gs', parameters)
