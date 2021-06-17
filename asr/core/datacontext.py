@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from ase.utils import lazymethod
 from asr.database.app import create_key_descriptions
 
@@ -86,3 +87,45 @@ class DataContext:
     def spin_axis(self):
         record = self.magnetic_anisotropy()
         return record.result['spin_axis']
+
+    def _gaps_soc(self):
+        return self.gs_results()['gaps_soc']
+
+    def _gaps_nosoc(self):
+        return self.gs_results()['gaps_nosoc']
+
+    # This pattern is used by almost all recipes that have spectra (?)
+    def energy_reference(self):
+        gs = self.gs_results()
+        if self.ndim == 3:
+            return EnergyReference._efermi(gs['efermi'])
+        else:
+            return EnergyReference._evac(gs['evac'])
+
+    # I think only BandStructure plots care about this quantity (?)
+    def efermi_nosoc(self):
+        gs = self.gs_results()
+        efermi = gs['gaps_nosoc']['efermi']
+        return EnergyReference.efermi(efermi)
+
+
+@dataclass
+class EnergyReference:
+    key: str
+    value: float
+    prose_name: str
+    abbreviation: str
+
+    @classmethod
+    def _evac(cls, value):
+        return cls('evac', value, 'vacuum level', 'vac')
+
+    @classmethod
+    def _efermi(cls, value):
+        return cls('efermi', value, 'Fermi level', 'F')
+
+    def mpl_plotlabel(self):
+        return rf'$E - E_\mathrm{{{self.abbreviation}}}$ [eV]'
+
+    def html_plotlabel(self):
+        return rf'<i>E</i> − <i>E</i><sub>{self.abbreviation}</sub> [eV]'

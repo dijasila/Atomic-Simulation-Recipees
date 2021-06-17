@@ -14,7 +14,7 @@ from asr.gs import main as maings
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.utils.hacks import gs_xcname_from_row, RowInfo
+from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -124,14 +124,8 @@ def plot_bs_html(context,
     kpts = path.kpts
     ef = d['bs_nosoc']['efermi']
 
-    rowinfo = RowInfo(row)
-
-    ref = rowinfo.evac_or_efermi()
-
-    if rowinfo.have_evac:
-        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
-    else:
-        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
+    ref = context.energy_reference()
+    label = ref.html_plotlabel()
 
     gsresults = context.gs_results()
     gaps = gsresults.get('gaps_nosoc')
@@ -378,8 +372,7 @@ def plot_bs_png(context,
     d = context.result
     xcname = context.xcname
 
-    rowinfo = RowInfo(row)
-    eref = rowinfo.evac_or_efermi()
+    eref = context.energy_reference()
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
