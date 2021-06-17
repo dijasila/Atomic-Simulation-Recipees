@@ -65,7 +65,7 @@ def calculate(
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
 
-    nd = np.sum(atoms.pbc)
+    nd = sum(atoms.pbc)
     if nd == 2:
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
@@ -436,9 +436,8 @@ def vacuumlevels(atoms, calc, n=8):
     n: int
         number of gridpoints away from the edge to evaluate the vac levels
     """
-    import numpy as np
 
-    if not np.sum(atoms.get_pbc()) == 2:
+    if sum(atoms.pbc) != 2:
         return VacuumLevelResults.fromdata(
             z_z=None,
             v_z=None,
@@ -476,7 +475,6 @@ def evacdiff(atoms):
     out: float
         vacuum level difference in eV
     """
-    import numpy as np
     from ase.units import Bohr, Hartree
 
     A = np.linalg.det(atoms.cell[:2, :2] / Bohr)

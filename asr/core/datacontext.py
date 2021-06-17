@@ -56,6 +56,9 @@ class DataContext:
     def magstate(self):
         return self._find_dependency('asr.magstate:main')
 
+    def magnetic_anisotropy(self):
+        return self._find_dependency('asr.magnetic_anisotropy:main')
+
     def gs_results(self):
         return self.ground_state().result
 
@@ -78,3 +81,8 @@ class DataContext:
     @property
     def is_magnetic(self):
         return self.magstate().result.is_magnetic
+
+    @property
+    def spin_axis(self):
+        record = self.magnetic_anisotropy()
+        return record.result['spin_axis']

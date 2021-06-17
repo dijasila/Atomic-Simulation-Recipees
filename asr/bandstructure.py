@@ -117,8 +117,8 @@ def plot_bs_html(context,
     row = context.row
 
     traces = []
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+    d = context.result
+    xcname = context.xcname
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
@@ -144,7 +144,8 @@ def plot_bs_html(context,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    cell = context.atoms.cell
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
@@ -163,7 +164,7 @@ def plot_bs_html(context,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
 
     shape = e_mk.shape
     perm = (-sz_mk).argsort(axis=None)
@@ -422,9 +423,14 @@ def plot_bs_png(context,
     # with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
-    sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM'
-                    and getattr(row, 'has_inversion_symmetry', False))
+
+    sdir = context.spin_axis
+
+    # XXX We do not depend on structureinfo so we cannot
+    # use has_inversion_symmetry!
+    colorbar = context.is_magnetic
+    # colorbar = not (row.magstate == 'NM'
+    #                 and getattr(row, 'has_inversion_symmetry', False))
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
@@ -464,12 +470,7 @@ def plot_bs_png(context,
 
 
 def webpanel2(result, context):
-    return webpanel(result, context.row, context.descriptions)
-
-
-def webpanel(result, row, key_descriptions):
     from typing import Tuple, List
-    from asr.utils.hacks import gs_xcname_from_row
 
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
@@ -480,7 +481,7 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
                                      panel_description),
