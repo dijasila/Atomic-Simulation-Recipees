@@ -380,7 +380,7 @@ def plot_bs_png(row,
     ef_soc = d['bs_soc']['efermi']
     ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
     ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
-    label = 'hello' #eref.mpl_plotlabel()
+    label = eref.mpl_plotlabel()
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
