@@ -393,34 +393,40 @@ def find_wf_result(state, spin):
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
-    for cutoff in [0.1, 0.2, 0.3, 0.4, 0.5]:
-        threshold = 0.99
-        translation = return_defect_coordinates(structure, unrelaxed, primitive,
-                                                pristine, defect)
-        rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
-                                                                            unrelaxed,
-                                                                            primitive,
-                                                                            pristine,
-                                                                            translation)
-        indexlist = compare_structures(artificial, ref_struc, cutoff)
-        ref_struc = remove_atoms(ref_struc, indexlist)
-        rel_struc = remove_atoms(rel_struc, indexlist)
-        indexlist = indexlist_cut_atoms(ref_struc, threshold)
-        ref_struc = remove_atoms(ref_struc, indexlist)
-        rel_struc = remove_atoms(rel_struc, indexlist)
-        if not conserved_atoms(ref_struc, primitive, N, defect):
-            threshold = 1.01
-            rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(structure,
-                                                                                unrelaxed,
-                                                                                primitive,
-                                                                                pristine,
-                                                                                translation)
+    import numpy as np
+    for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
+        for cutoff in np.arange(0.1, 0.8, 0.04):
+            threshold = 0.99
+            translation = return_defect_coordinates(structure, unrelaxed, primitive,
+                                                    pristine, defect)
+            rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
+                structure,
+                unrelaxed,
+                primitive,
+                pristine,
+                translation,
+                delta)
             indexlist = compare_structures(artificial, ref_struc, cutoff)
             ref_struc = remove_atoms(ref_struc, indexlist)
             rel_struc = remove_atoms(rel_struc, indexlist)
             indexlist = indexlist_cut_atoms(ref_struc, threshold)
             ref_struc = remove_atoms(ref_struc, indexlist)
             rel_struc = remove_atoms(rel_struc, indexlist)
+            if not conserved_atoms(ref_struc, primitive, N, defect):
+                threshold = 1.01
+                rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
+                    structure,
+                    unrelaxed,
+                    primitive,
+                    pristine,
+                    translation,
+                    delta)
+                indexlist = compare_structures(artificial, ref_struc, cutoff)
+                ref_struc = remove_atoms(ref_struc, indexlist)
+                rel_struc = remove_atoms(rel_struc, indexlist)
+                indexlist = indexlist_cut_atoms(ref_struc, threshold)
+                ref_struc = remove_atoms(ref_struc, indexlist)
+                rel_struc = remove_atoms(rel_struc, indexlist)
         if conserved_atoms(ref_struc, primitive, N, defect):
             break
     if not conserved_atoms(ref_struc, primitive, N, defect):
@@ -486,7 +492,7 @@ def compare_structures(artificial, unrelaxed_rattled, cutoff):
 
 
 def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
-                            translation):
+                            translation, delta):
     """
     Recreate a symmetric supercell with atomic positions of the general supercell.
 
@@ -508,7 +514,7 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     positions = bigatoms_rel.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += 0.5 * cell[0] + 0.5 * cell[1]
+    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     kinds = bigatoms_rel.get_chemical_symbols()
     rel_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
 
@@ -517,13 +523,13 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     positions = bigatoms_rel.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += 0.5 * cell[0] + 0.5 * cell[1]
+    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     kinds = bigatoms_rel.get_chemical_symbols()
     ref_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
 
     refpos = reference.get_positions()
     refpos += [-translation[0], -translation[1], 0]
-    refpos += 0.5 * cell[0] + 0.5 * cell[1]
+    refpos += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     reference.set_positions(refpos)
     reference.wrap()
 
