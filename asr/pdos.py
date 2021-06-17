@@ -13,12 +13,14 @@ from ase import Atoms
 from asr.utils import magnetic_atoms
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
     from asr.utils.hacks import gs_xcname_from_row
 
+    row = context.row
+    key_descriptions = context.descriptions
     # PDOS figure
     parameter_description = entry_parameter_description(
         row.data,
@@ -120,7 +122,7 @@ class Result(ASRResult):
         pdos_nosoc="Projected density of states w/o soc.",
         pdos_soc="Projected density of states"
     )
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command(module='asr.pdos')

@@ -60,6 +60,9 @@ class DataContext:
     def magnetic_anisotropy(self):
         return self._find_dependency('asr.magnetic_anisotropy:main')
 
+    def bandstructure(self):
+        return self._find_dependency('asr.bandstructure:main')
+
     def gs_results(self):
         return self.ground_state().result
 

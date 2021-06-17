@@ -284,16 +284,18 @@ def plot_bs_html(context,
         fd.write(html)
 
 
-def add_bs_ks(row, ax, reference=0, color='C1'):
+def add_bs_ks(context, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-    d = row.data.get('results-asr.bandstructure.json')
+    row = context.row
+    bsrecord = context.bandstructure()
+    d = bsrecord.result
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
-    xcname = gs_xcname_from_row(row)
-    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
+    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts,
+                                                      context.atoms.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label(xcname)
+    ax.lines[-1].set_label(context.xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -422,8 +424,6 @@ def plot_bs_png(context,
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
 
-    sdir = context.spin_axis
-
     # XXX We do not depend on structureinfo so we cannot
     # use has_inversion_symmetry!
     colorbar = context.is_magnetic
@@ -441,7 +441,7 @@ def plot_bs_png(context,
         emax=emax - ref_soc,
         sortcolors=True,
         loc='upper right',
-        clabel=r'$\langle S_{} \rangle $'.format(sdir),
+        clabel=r'$\langle S_{} \rangle $'.format(context.spin_axis),
         s=s)
 
     if cbar:

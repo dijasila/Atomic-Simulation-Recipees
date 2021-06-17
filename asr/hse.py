@@ -34,13 +34,13 @@ in post-process.""",
     summary_sort = 11
 
     @staticmethod
-    def plot_bs(row, filename):
-        data = row.data['results-asr.hse.json']
-        return plot_bs(row, filename=filename, bs_label='HSE06',
-                       data=data,
-                       efermi=data['efermi_hse_soc'],
-                       vbm=row.get('vbm_hse'),
-                       cbm=row.get('cbm_hse'))
+    def plot_bs(context, filename):
+        results = context.result
+        return plot_bs(context, filename=filename, bs_label='HSE06',
+                       data=results,
+                       efermi=results['efermi_hse_soc'],
+                       vbm=results['vbm_hse'],
+                       cbm=results['cbm_hse'])
 
 
 @prepare_result
@@ -107,7 +107,8 @@ def hse(atoms, calculator, kptdensity, emptybands):
     calc.get_potential_energy()
     hse_nowfs = calc.save(id='hse_nowfs')
     nb = calc.get_number_of_bands()
-    result = non_self_consistent_eigenvalues(calc,
+    # XXX gpaw does not like the GPAWLikeAdaptor which we have.
+    result = non_self_consistent_eigenvalues(calc.calculator,
                                              'HSE06',
                                              n1=0,
                                              n2=nb - convbands,
@@ -208,7 +209,7 @@ def MP_interpolate(
     return results
 
 
-def plot_bs(row,
+def plot_bs(context,
             filename,
             *,
             bs_label,
@@ -218,15 +219,13 @@ def plot_bs(row,
             cbm):
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
-    from asr.utils.hacks import RowInfo
 
     figsize = (5.5, 5)
     fontsize = 10
 
     path = data['bandstructure']['path']
 
-    rowinfo = RowInfo(row)
-    eref = rowinfo.evac_or_efermi()
+    eref = context.energy_reference()
     reference = eref.value
 
     emin_offset = efermi if vbm is None else vbm
@@ -267,10 +266,13 @@ def plot_bs(row,
     ])
 
     # add KS band structure with soc
-    from asr.bandstructure import add_bs_ks
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_ks(row, ax, reference=eref.value,
-                       color=[0.8, 0.8, 0.8])
+    # XXXXX HSE does not depend on bandstruture, so combining those
+    # in the same plot is not the problem of the HSE recipe!
+    #
+    # from asr.bandstructure import add_bs_ks
+    # if 'results-asr.bandstructure.json' in row.data:
+    #     ax = add_bs_ks(context, ax, reference=eref.value,
+    #                    color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -280,10 +282,9 @@ def plot_bs(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=15)
+    return gw_hse_webpanel(result, context, HSEInfo(result), sort=15)
 
 
 @prepare_result
@@ -321,7 +322,7 @@ class Result(ASRResult):
         "efermi_hse_soc": "Fermi level (HSE) [eV]",
         "bandstructure": "HSE bandstructure."
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command(module='asr.hse')
