@@ -3,6 +3,10 @@ from ase.utils import lazymethod
 from asr.database.app import create_key_descriptions
 
 
+class RecordNotFound(LookupError):
+    pass
+
+
 class DataContext:
     descriptions = create_key_descriptions()
     # Can we find a more fitting name for this?
@@ -38,7 +42,7 @@ class DataContext:
         # XXX Avoid depending directly on backend
         return list(cache.backend.recurse_dependencies(self.record))
 
-    def _find_dependency(self, name):
+    def get_record(self, name):
         if ':' not in name:
             name += ':main'  # XXX fixme
         matches = [record for record in self._dependencies()
@@ -47,23 +51,26 @@ class DataContext:
         if self.name == name:
             matches.append(self.record)
 
-        if len(matches) != 1:
+        if len(matches) == 0:
+            raise RecordNotFound(name)
+
+        if len(matches) > 1:
             raise RuntimeError(f'Expected one {name} record, '
                                f'found: {matches}')
 
         return matches[0]
 
     def ground_state(self):
-        return self._find_dependency('asr.gs')
+        return self.get_record('asr.gs')
 
     def magstate(self):
-        return self._find_dependency('asr.magstate')
+        return self.get_record('asr.magstate')
 
     def magnetic_anisotropy(self):
-        return self._find_dependency('asr.magnetic_anisotropy')
+        return self.get_record('asr.magnetic_anisotropy')
 
     def bandstructure(self):
-        return self._find_dependency('asr.bandstructure')
+        return self.get_record('asr.bandstructure')
 
     def gs_results(self):
         return self.ground_state().result

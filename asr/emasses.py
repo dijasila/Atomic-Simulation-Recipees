@@ -1,4 +1,5 @@
 """Effective masses."""
+import numpy as np
 from ase import Atoms
 import asr
 
@@ -143,7 +144,6 @@ def get_name(soc, bt):
 
 def preliminary_refine(
         atoms, calculator, calc, soc=True, bandtype=None, settings=None):
-    import numpy as np
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -197,7 +197,6 @@ def preliminary_refine(
 
 def get_gapskn(
         atoms, calculator, calculation, fallback_calculation=None, soc=True):
-    import numpy as np
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
     from asr.utils.gpw2eigs import calc2eigs
@@ -299,7 +298,6 @@ def nonsc_sphere(
 
 
 def kptsinsphere(cell_cv, npoints=9, erange=1e-3, m=1.0, dimensionality=3):
-    import numpy as np
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
 
@@ -349,7 +347,6 @@ def mareformat(mare):
 
 
 def maeformat(mae):
-    import numpy as np
     f10 = np.log(mae) / np.log(10)
     f10 = round(f10)
     mae = mae / 10**(f10)
@@ -363,18 +360,19 @@ def maeformat(mae):
     return maestr
 
 
-def get_emass_dict_from_row(row, has_mae=False):
-    import numpy as np
+def get_emass_dict_from_context(context, has_mae=False):
     if has_mae:
-        results = row.data['results-asr.emasses@validate.json']
+        resultname = 'asr.emasses:validate'
     else:
-        results = row.data.get('results-asr.emasses.json')
+        resultname = 'asr.emasses'
+
+    results = context.get_record(resultname).result
 
     cb_indices = []
     vb_indices = []
-    for k in results.keys():
+    for k in results:
         if '(' in k and ')' in k:
-            for k2 in results[k].keys():
+            for k2 in results[k]:
                 if 'nosoc' in k2:
                     break
 
@@ -454,7 +452,7 @@ def get_range(mass, _erange):
     return (2 * mass * _erange / Ha) ** 0.5 / Bohr
 
 
-def make_the_plots(row, *args):
+def make_the_plots(context, *args):
     # Loop through directions, each direction is a column
     # For direction i, loop through cbs and plot on fig
     # -- Plot also quadratic fit from curvature/effective mass value
@@ -464,16 +462,12 @@ def make_the_plots(row, *args):
     from ase.dft.kpoints import kpoint_convert, labels_from_kpts
     from ase.units import Bohr, Ha
     import matplotlib.pyplot as plt
-    import numpy as np
     from asr.database.browser import fig as asrfig
-    from asr.utils.hacks import RowInfo
 
-    rowinfo = RowInfo(row)
-    results = row.data.get('results-asr.emasses.json')
-    sdir = row.get('spin_axis', 'z')
-    cell_cv = row.cell
-
-    ref = row.evac_or_efermi()
+    results = context.get_record('asr.emasses').result
+    ref = context.energy_reference()
+    sdir = context.spin_axis
+    cell_cv = context.atoms.cell
 
     columns = []
     cb_fnames = []
@@ -576,7 +570,7 @@ def make_the_plots(row, *args):
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
             plt.locator_params(axis='x', nbins=3)
-            axes.set_ylabel(rowinfo.mpl_plotlabel())
+            axes.set_ylabel(ref.mpl_plotlabel())
             axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()
@@ -639,7 +633,7 @@ def make_the_plots(row, *args):
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
             plt.locator_params(axis='x', nbins=3)
-            axes.set_ylabel(rowinfo.mpl_plotlabel())
+            axes.set_ylabel(ref.mpl_plotlabel())
             axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()
@@ -668,7 +662,7 @@ def make_the_plots(row, *args):
 
 def custom_table(values_dict, title, has_mae=False):
     rows = []
-    for k in values_dict.keys():
+    for k in values_dict:
         if has_mae:
             rows.append((k, values_dict[k][0], values_dict[k][1]))
         else:
@@ -685,19 +679,26 @@ def custom_table(values_dict, title, has_mae=False):
     return table
 
 
-def webpanel(result, row, key_descriptions):
-    has_mae = 'results-asr.emasses@validate.json' in row.data
-    columns, fnames = create_columns_fnames(row)
+def webpanel(result, context):
+    from asr.core.datacontext import RecordNotFound
+    try:
+        context.get_record('asr.emasses:validate')
+    except RecordNotFound:
+        has_mae = False
+    else:
+        has_mae = True
 
-    electron_dict, hole_dict = get_emass_dict_from_row(row, has_mae)
+    columns, fnames = create_columns_fnames(context)
 
-    electron_table = custom_table(electron_dict, 'Electron effective mass', has_mae)
+    electron_dict, hole_dict = get_emass_dict_from_context(context, has_mae)
+
+    electron_table = custom_table(electron_dict, 'Electron effective mass',
+                                  has_mae)
     hole_table = custom_table(hole_dict, 'Hole effective mass', has_mae)
     columns[0].append(electron_table)
     columns[1].append(hole_table)
 
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     panel = {'title': describe_entry(f'Effective masses ({xcname})',
                                      panel_description),
@@ -710,10 +711,10 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
-def create_columns_fnames(row):
+def create_columns_fnames(context):
     from asr.database.browser import fig as asrfig
 
-    results = row.data.get('results-asr.emasses.json')
+    results = context.get_record('asr.emasses').result
 
     cb_fnames = []
     vb_fnames = []
@@ -894,7 +895,6 @@ def unpack_masses(masses, soc, bt, results_dict):
     #            r=r)
     # We want to flatten this structure so that results_dict contains
     # the masses directly
-    import numpy as np
 
     for ind in masses['indices']:
         out_dict = masses[ind]
@@ -960,7 +960,6 @@ def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
     """
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
-    import numpy as np
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
     from asr.magnetic_anisotropy import get_spin_axis
@@ -1023,7 +1022,6 @@ def calculate_bs_along_emass_vecs(
     from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
-    import numpy as np
     cell_cv = calc.get_atoms().get_cell()
 
     results_dicts = []
@@ -1099,7 +1097,6 @@ def get_vb_cb_indices(e_skn, efermi, delta):
             spin and band indices (aka as SBandex) for VB and CB, respectively
 
     """
-    import numpy as np
     from ase.dft.bandgap import bandgap
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
@@ -1141,7 +1138,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
             - k-pot extremum in cartesian coordinates (units of 1 / Bohr)
 
     """
-    import numpy as np
     from ase.parallel import parprint
     c, r, rank, s, = fit(kpts_kv, eps_k, thirdorder=False)
     dxx = 2 * c[0]
@@ -1226,7 +1222,6 @@ def em(kpts_kv, eps_k, bandtype=None, ndim=3):
 
 def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
     # Input: 2nd order derivatives at the extremum point
-    import numpy as np
     if ndim == 3:
         hessian = np.array([[dxx, dxy, dxz],
                             [dxy, dyy, dyz],
@@ -1271,7 +1266,6 @@ def get_extremum_type(dxx, dyy, dzz, dxy, dxz, dyz, ndim=3):
 
 
 def get_2nd_order_extremum(c, ndim=3):
-    import numpy as np
     # fit is
     # fxx x^2 + fyy y^2 + fzz z^2 +
     # fxy xy + fxz xz + fyz yz + fx x + fy y + fz z + f0
@@ -1307,7 +1301,6 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
     if extremum_type == 'saddlepoint':
         return xm, ym, zm
 
-    import numpy as np
     from scipy import optimize
 
     assert len(c) == 20
@@ -1367,11 +1360,10 @@ def get_3rd_order_extremum(xm, ym, zm, c, extremum_type, ndim=3):
 
 
 def fit(kpts_kv, eps_k, thirdorder=False):
-    import numpy.linalg as la
     A_kp = model(kpts_kv)
     if not thirdorder:
         A_kp = A_kp[:, :10]
-    return la.lstsq(A_kp, eps_k, rcond=-1)
+    return np.linalg.lstsq(A_kp, eps_k, rcond=-1)
 
 
 def model(kpts_kv):
@@ -1383,7 +1375,6 @@ def model(kpts_kv):
             units of (1 / Bohr)
 
     """
-    import numpy as np
     k_kx, k_ky, k_kz = kpts_kv[:, 0], kpts_kv[:, 1], kpts_kv[:, 2]
 
     ones = np.ones(len(k_kx))
@@ -1413,7 +1404,6 @@ def model(kpts_kv):
 
 
 def evalmodel(kpts_kv, c_p, thirdorder=True):
-    import numpy as np
     kpts_kv = np.asarray(kpts_kv)
     if kpts_kv.ndim == 1:
         kpts_kv = kpts_kv[np.newaxis]
