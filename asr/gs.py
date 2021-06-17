@@ -151,7 +151,7 @@ def webpanel(result, context):
     gap = result.gap
 
     from asr.utils.hacks import RowInfo
-    info = RowInfo(row)
+    info = RowInfo(context.row)
 
     if gap > 0:
         ref = info.evac_or_efermi()
