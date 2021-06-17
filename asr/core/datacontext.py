@@ -39,6 +39,8 @@ class DataContext:
         return list(cache.backend.recurse_dependencies(self.record))
 
     def _find_dependency(self, name):
+        if ':' not in name:
+            name += ':main'  # XXX fixme
         matches = [record for record in self._dependencies()
                    if record.name == name]
 
@@ -52,16 +54,16 @@ class DataContext:
         return matches[0]
 
     def ground_state(self):
-        return self._find_dependency('asr.gs:main')
+        return self._find_dependency('asr.gs')
 
     def magstate(self):
-        return self._find_dependency('asr.magstate:main')
+        return self._find_dependency('asr.magstate')
 
     def magnetic_anisotropy(self):
-        return self._find_dependency('asr.magnetic_anisotropy:main')
+        return self._find_dependency('asr.magnetic_anisotropy')
 
     def bandstructure(self):
-        return self._find_dependency('asr.bandstructure:main')
+        return self._find_dependency('asr.bandstructure')
 
     def gs_results(self):
         return self.ground_state().result
