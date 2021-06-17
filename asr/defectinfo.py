@@ -45,7 +45,7 @@ def webpanel(result, row, key_descriptions):
         'Host HSE bandgap',
         result.key_descriptions['host_gap_hse'])
     R_nn = describe_entry(
-        'Nearest neighbor distance',
+        'Defect nearest neighbor distance',
         result.key_descriptions['R_nn'])
 
     uid = result.host_uid

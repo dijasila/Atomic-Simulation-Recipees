@@ -19,12 +19,13 @@ def webpanel(result, row, key_descriptions):
     unit = result.conc_unit
     for element in result.defect_concentrations:
         name = element['defect_name']
-        scf_table = table(result, f'Concentrations for {name} [{unit:5}]', [])
+        scf_table = table(result, f'Eq. concentrations of {name} [{unit:5}]', [])
         for altel in element['concentrations']:
             scf_table['rows'].extend(
                 [[describe_entry(f'Charge {altel[1]:1d}',
                                  description='Equilibrium concentration '
-                                             'in charge state q.'),
+                                             'in charge state q at T = '
+                                             f'{int(result.temperature):d} K.'),
                   f'{altel[0]:.1e}']])
         table_list.append(scf_table)
 
@@ -49,9 +50,9 @@ def webpanel(result, row, key_descriptions):
         ntype_val = int((100 - ptype_val))
     pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
     pn = describe_entry(
-        'p-type / n-type',
+        'p-type / n-type strength',
         'Strength of p-/n-type dopability in percent '
-        '(normalized wrt. band gap).'
+        f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
         + dl(
             [
                 [
@@ -71,8 +72,9 @@ def webpanel(result, row, key_descriptions):
     )
 
     is_dopable = describe_entry(
-        'Intrinsically n-type/p-type',
-        'Is the material intrinsically n-type or p-type?'
+        'Intrinsic doping type',
+        'Is the material intrinsically n-type, p-type or intrinsic at '
+        f'T = {int(result.temperature):d} K?'
         + dl(
             [
                 [
@@ -92,8 +94,9 @@ def webpanel(result, row, key_descriptions):
     )
 
     scf_fermi = describe_entry(
-        'Fermi level pinning',
-        result.key_descriptions['efermi_sc'])
+        'Fermi level position',
+        'Self-consistent Fermi level wrt. VBM at which charge neutrality condition is '
+        f'fulfilled at T = {int(result.temperature):d} K [eV].')
 
     scf_summary = table(result, 'Charge neutrality', [])
     scf_summary['rows'].extend([[is_dopable, dopability]])
@@ -101,27 +104,29 @@ def webpanel(result, row, key_descriptions):
     scf_summary['rows'].extend([[pn, pn_strength]])
 
     scf_overview = table(result,
-                         f'Equilibrium properties @ {result.temperature} K', [])
+                         f'Equilibrium properties @ {int(result.temperature):d} K', [])
     scf_overview['rows'].extend([[is_dopable, dopability]])
     scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_overview['rows'].extend([[pn, pn_strength]])
     scf_overview['rows'].extend(
         [[describe_entry('Electron carrier concentration',
-                         result.key_descriptions['n0']),
+                         'Equilibrium electron carrier concentration at '
+                         f'T = {int(result.temperature):d} K.'),
           f'{result.n0:.1e} {unit:5}']])
     scf_overview['rows'].extend(
         [[describe_entry('Hole carrier concentration',
-                         result.key_descriptions['p0']),
+                         'Equilibrium hole carrier concentration at '
+                         f'T = {int(result.temperature):d} K.'),
           f'{result.p0:.1e} {unit:5}']])
 
     figure = describe_entry(fig('charge_neutrality.png'),
                             description='Formation energies of all point defects '
                                         'intrinsic to the material and self-consistent '
-                                        'Fermi level at a temperature '
-                                        f'of {result.temperature} K.')
+                                        'Fermi level at T = '
+                                        f'{int(result.temperature):d} K.')
 
     panel = WebPanel(
-        'Equilibrium defect concentrations',
+        'Equilibrium defect energetics',
         columns=[[figure, scf_overview], table_list],
         plot_descriptions=[{'function': plot_formation_scf,
                             'filenames': ['charge_neutrality.png']}],
