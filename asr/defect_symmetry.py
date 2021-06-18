@@ -7,35 +7,53 @@ from pathlib import Path
 from ase import Atoms
 
 
-def get_symmetry_array(sym_results):
+def get_symmetry_array(sym_results, vbm, cbm):
     import numpy as np
 
-    Nrows = len(sym_results)
-    symmetry_array = np.empty((Nrows, 4), dtype='object')
     sym_rowlabels = []
-    for i, row in enumerate(symmetry_array):
-        rowname = sym_results[i]['best']
-        sym_rowlabels.append(rowname)
-        symmetry_array[i, 0] = f"{int(sym_results[i]['state'])}"
-        symmetry_array[i, 1] = f"{int(sym_results[i]['spin'])}"
-        # symmetry_array[i, 2] = f"{sym_results[i]['energy']:.2f}"
-        symmetry_array[i, 2] = f"{sym_results[i]['error']:.2f}"
-        symmetry_array[i, 3] = f"{sym_results[i]['loc_ratio']:.2f}"
+    sym_states = []
+    sym_spins = []
+    sym_accuracy = []
+    sym_loc_ratio = []
+    for i, row in enumerate(sym_results):
+        if sym_results[i]['energy'] < cbm and sym_results[i]['energy'] > vbm:
+            rowname = sym_results[i]['best']
+            sym_rowlabels.append(rowname)
+            sym_states.append(f"{int(sym_results[i]['state'])}")
+            sym_spins.append(f"{int(sym_results[i]['spin'])}")
+            sym_accuracy.append(f"{sym_results[i]['error']:.2f}")
+            sym_loc_ratio.append(f"{sym_results[i]['loc_ratio']:.2f}")
+
+    Nrows = len(sym_rowlabels)
+    symmetry_array = np.empty((Nrows, 4), dtype='object')
+    for i in range(Nrows):
+        symmetry_array[i, 0] = sym_states[i]
+        symmetry_array[i, 1] = sym_spins[i]
+        symmetry_array[i, 2] = sym_accuracy[i]
+        symmetry_array[i, 3] = sym_loc_ratio[i]
 
     return symmetry_array, sym_rowlabels
 
 
-def get_state_array(state_results):
+def get_state_array(state_results, vbm, cbm):
     import numpy as np
 
     Nrows = len(state_results)
     state_array = np.empty((Nrows, 2), dtype='object')
     state_rowlabels = []
+    state_spins = []
+    state_energies = []
     for i, row in enumerate(state_array):
         rowname = f"{int(state_results[i]['state']):.0f}"
-        state_rowlabels.append(rowname)
-        state_array[i, 0] = f"{int(state_results[i]['spin']):.0f}"
-        state_array[i, 1] = f"{state_results[i]['energy']:.2f}"
+        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
+            state_rowlabels.append(rowname)
+            state_spins.append(f"{int(state_results[i]['spin']):.0f}")
+            state_energies.append(f"{state_results[i]['energy']:.2f}")
+    Nrows = len(state_rowlabels)
+    state_array = np.empty((Nrows, 2), dtype='object')
+    for i in range(Nrows):
+        state_array[i, 0] = state_spins[i]
+        state_array[i, 1] = state_energies[i]
 
     return state_array, state_rowlabels
 
@@ -56,10 +74,15 @@ def webpanel(result, row, key_descriptions):
                          f'The defect point group is calculated with {spglib}.'),
           result.defect_pointgroup]])
 
+    vbm = result.pristine['vbm']
+    cbm = result.pristine['cbm']
+    adjust = compute_offset(result.symmetries, vbm)
+    vbm = vbm + adjust
+    cbm = cbm + adjust
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
-        state_array, state_rownames = get_state_array(result.symmetries)
+        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm)
         state_table = matrixtable(state_array,
                                   digits=None,
                                   title='Orbital no.',
@@ -72,14 +95,14 @@ def webpanel(result, row, key_descriptions):
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
     else:
-        state_array, state_rownames = get_state_array(result.symmetries)
+        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm)
         state_table = matrixtable(state_array,
                                   digits=None,
                                   title='Orbital no.',
                                   columnlabels=['Spin',
                                                 'Energy [eV]'],
                                   rowlabels=state_rownames)
-        symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries)
+        symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries, vbm, cbm)
         symmetry_table = matrixtable(symmetry_array,
                                      digits=None,
                                      title='Symmetry (label)',
@@ -690,6 +713,32 @@ class Level:
                          ha='left')
 
 
+def compute_offset(symmetrydata, evbm):
+    closelist = []
+    energylist_0 = []
+    energylist_1 = []
+    for sym in symmetrydata:
+        if int(sym.spin) == 0:
+            energylist_0.append(sym.energy)
+        elif int(sym.spin) == 1:
+            energylist_1.append(sym.energy)
+    energylist_0.sort()
+    energylist_1.sort()
+    energy = 0
+    for i, en in enumerate(energylist_0):
+        try:
+            if abs(en - energylist_0[i + 4]) < 0.3:
+                energy = energylist_0[i + 4]
+            else:
+                break
+        except:
+            continue
+    if energy == 0:
+        return 0
+    else:
+        return energy - evbm
+
+
 def plot_gapstates(row, fname):
     from matplotlib import pyplot as plt
 
@@ -702,6 +751,9 @@ def plot_gapstates(row, fname):
     evbm = data.pristine.vbm
     ecbm = data.pristine.cbm
     gap = data.pristine.gap
+    adjust = compute_offset(data.data['symmetries'], evbm)
+    evbm = evbm + adjust
+    ecbm = ecbm + adjust
 
     # Draw band edges
     draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
@@ -722,53 +774,55 @@ def plot_gapstates(row, fname):
     for sym in data.data['symmetries']:
         if int(sym.spin) == 0:
             ene = sym.energy
-            spin = int(sym.spin)
-            irrep = sym.best
-            if levelflag:
-                deg = [1, 2]['E' in irrep]
-            else:
-                deg = 1
-                degoffset = 1
-            if deg == 2 and i == 0:
-                degoffset = 0
-                i = 1
-            elif deg == 2 and i == 1:
-                degoffset = 1
-                i = 0
-            lev = Level(ene, ax=ax)
-            lev.draw(spin=spin, deg=deg, off=degoffset)
-            if ene <= ef:
-                lev.add_occupation(length=gap / 15.)
-            if levelflag:
-                lev.add_label(irrep)
-            elif not levelflag:
-                lev.add_label(irrep, 'A')
+            if ene < ecbm and ene > evbm:
+                spin = int(sym.spin)
+                irrep = sym.best
+                if levelflag:
+                    deg = [1, 2]['E' in irrep]
+                else:
+                    deg = 1
+                    degoffset = 1
+                if deg == 2 and i == 0:
+                    degoffset = 0
+                    i = 1
+                elif deg == 2 and i == 1:
+                    degoffset = 1
+                    i = 0
+                lev = Level(ene, ax=ax)
+                lev.draw(spin=spin, deg=deg, off=degoffset)
+                if ene <= ef:
+                    lev.add_occupation(length=gap / 15.)
+                if levelflag:
+                    lev.add_label(irrep)
+                elif not levelflag:
+                    lev.add_label(irrep, 'A')
     # start with first spin channel
     i = 0
     for sym in data.data['symmetries']:
         if int(sym.spin) == 1:
             ene = sym.energy
-            spin = int(sym.spin)
-            irrep = sym.best
-            if levelflag:
-                deg = [1, 2]['E' in irrep]
-            else:
-                deg = 1
-                degoffset = 1
-            if deg == 2 and i == 0:
-                degoffset = 0
-                i = 1
-            elif deg == 2 and i == 1:
-                degoffset = 1
-                i = 0
-            lev = Level(ene, ax=ax)
-            lev.draw(spin=spin, deg=deg, off=degoffset)
-            if ene <= ef:
-                lev.add_occupation(length=gap / 15)
-            if levelflag:
-                lev.add_label(irrep)
-            elif not levelflag:
-                lev.add_label(irrep, 'A')
+            if ene < ecbm and ene > evbm:
+                spin = int(sym.spin)
+                irrep = sym.best
+                if levelflag:
+                    deg = [1, 2]['E' in irrep]
+                else:
+                    deg = 1
+                    degoffset = 1
+                if deg == 2 and i == 0:
+                    degoffset = 0
+                    i = 1
+                elif deg == 2 and i == 1:
+                    degoffset = 1
+                    i = 0
+                lev = Level(ene, ax=ax)
+                lev.draw(spin=spin, deg=deg, off=degoffset)
+                if ene <= ef:
+                    lev.add_occupation(length=gap / 15)
+                if levelflag:
+                    lev.add_label(irrep)
+                elif not levelflag:
+                    lev.add_label(irrep, 'A')
 
     ax1 = ax.twinx()
     ax.set_xlim(0, 1)
