@@ -48,7 +48,7 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def webpanel2(result, context):
+def webpanel(result, context):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
     key_descriptions = context.descriptions
@@ -182,7 +182,7 @@ class Result(ASRResult):
         "formula": "Chemical formula."
     }
 
-    formats = {"webpanel2": webpanel2}
+    formats = {"webpanel2": webpanel}
 
 
 @command('asr.structureinfo')

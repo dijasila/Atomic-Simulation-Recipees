@@ -465,7 +465,7 @@ def plot_bs_png(context,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel2(result, context):
+def webpanel(result, context):
     from typing import Tuple, List
 
     def rmxclabel(d: 'Tuple[str, str, str]',
@@ -509,7 +509,7 @@ class Result(ASRResult):
             'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
-    formats = {"webpanel2": webpanel2}
+    formats = {"webpanel2": webpanel}
 
 
 def set_bsrestart_from_dependencies(record):
