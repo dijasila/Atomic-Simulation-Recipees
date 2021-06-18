@@ -288,7 +288,7 @@ class Revision:
         return record
 
     def __str__(self):
-        return f'"{self.description}"\n{self.modification}'
+        return f'{self.description} ({self.modification})'
 
 
 @dataclass
@@ -431,13 +431,10 @@ class RecordMigration:
     def __str__(self):
         nrev = len(self.revisions)
         nerr = len(self.errors)
-        items = [
-            f'UID=#{self.initial_record.uid} '
-            f'name={self.initial_record.name}',
-            f'Number of revisions={nrev}. ',
-            f'Number of erroneous migrations={nerr}.',
-        ]
 
+        items = [
+            f'record.uid={self.initial_record.uid}',
+        ]
         if nrev:
             revisions_string = '\n'.join([
                 f'Revision #{i} {revision}'

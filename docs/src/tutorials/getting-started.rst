@@ -254,190 +254,152 @@ To apply the migrations we do
    $ asr cache migrate --apply
    There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
    
-   Apply migration: UID=#8053a12bcc7a44379d899f664507d270 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#96697fc9e403449a89eb1d0efdf097f5 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#292f9e0e2e2344e3857866cc79993c7d name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#2ab34ee5c5cf4c7c9cf6b73960ca77ea name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#fb13990c2bf34ddab6d771c3b5008926 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#cb91ddea466c49319076a20dfaa8435b name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#507d86257217446f98700f5c3d62f748 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#0595e4b42e364c3c916cc2fc3b5fb239 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#96282c3595224015a69ea07514ae691b name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#42e1fc0397b148048c50c8fb6bb69de3 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#6218cb87661a4b15a6f1a57820970ec8 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#83da94ea0d354becb8a6af8882d1884b name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#ae705e7766a2420fb6e934e342749e9a name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#a71055ad8e2a4be2a7ae36f93fa479eb name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#76783b3ddd2d42df872cc4c49964e0a6 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#e45c9536172f42de98fb3dcb83027688 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#35ad421d779342d09f43d2de1233be2a name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#3dee99a393174e2a84928445391773a2 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#a76b8a20cfc942c596ab253447fe9e9a name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#92a0c4e84f334f18a759db6644b442b7 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#e9e9da98d5af4ab6a44be9854aa8617d name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#97630c356e11416ea818c6a1a41bbb68 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#b63d6034ae9d46d3b981f0d0f1af837f name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#5fd9bc7db7cf4aaeb695cc5dcca6eaaa name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#f01dd3b6f00a4e28a3dbd53950156761 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#ecbbae3c03e9434caf3ee7117395e4de name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#9bf15c6b298c4b5babad09480d57a295 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#db2aa32917f049788780d98344c2f56c name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#37a0df83390d40b196d223451342b516 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#1dd8afdf63e84374b4ab10cc5280dc5c name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#2c25c083cea34e7c9f97b1fe9262b1cb name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#aad22289e786423d81c9bc60143a6e08 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#dfae0c2acb4f43fb9a966f885fe9f6b9 name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#fa9d7803bf844ef6a6961484b0ed399c name=asr.tutorial:energy
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
-   Apply migration: UID=#22c69b51262442698d5418a0c1779a94 name=asr.tutorial:main
-   Number of revisions=1. 
-   Number of erroneous migrations=0.
-   Revision #0 "Fix old records that are missing calculator='emt'."
-   New attribute=.run_specification.parameters.calculator value=emt
+   record.uid=3b0d67ba5c054355b8d064bf839e9c3d
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=671c1fbaff1a4d598697c66105bf9754
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=d4f16b0378af43e7853d86df69b3416d
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=f0698d8879514ed6940e2a6c6c1fa881
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=35e7aaebc43b4033b60db13aee408da4
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=949c4a5c984348df88e0e8f33e82f8b1
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=c48a680aaa694afc9a37caf62bcfeb06
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=2c85e8243e9f49a28cc1d22a566e8b7f
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=db7ed56b532a4291b1060fb46d5c289a
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=573a25d64fc64758ae37b251daf7fdb5
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=9418a28e713a4bfca0c2814908c6ca0b
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=d6247127069f4656beec0342c62360ae
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=9573dc6793794cc48f0a7019ebc750b0
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=0f0937c6d5984bbf8d34cb8d080d77e7
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=9766172df9734d27b4cab16723125efb
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=ae579266475741aaaf8427c6abe43e86
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=ea70e777ef0a4f26beb0b422ba28190e
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=c18e2aaf08894c0a82762785291d9984
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=ba56801d4d4c44408de193fd2a26ef55
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=b3a3b948b36c41bcb0229c5e9efc47ac
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=16fe7608a15f410e8daad1b7700425bc
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=a28af577beea40cd896a9b73fb945476
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=133d144d0d5c47e98c03d887e18a394e
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=c7f362e4877d4b9396b3a05fc7e68a42
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=b4c81fa4af684f31896091c6977aee09
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=97859da642d940aebe72308ab70faa99
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=bd9510157c314d7f9a36e577ea32bcf6
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=404a012bdfe746c891276799fb7a48e9
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=5e3094cc679848bfadbb4dae7249f12a
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=15b7b216045145f59c7b94419e06fb0a
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=0bb767138f564125a96b6b1beecd04af
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=d60cbaa29a324c89a3e595a5dd8eb96e
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=909e738761ea47ec91ab45a981ed202e
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=a81807077bd8403cb43b895ab4168039
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
+   record.uid=8392bc08787142849c53af49b9722f25
+   Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
 
 The output informs us of the changes made to the existing records. We
 can now run our updated instructions employing other calculators.
 
 .. code-block:: console
 
-   $ asr run "asr.tutorial:energy Ag fcc --calculator lj"
+   $ asr run "asr.tutorial Ag --calculator lj"
    In folder: . (1/1)
+   Running asr.tutorial:main(element='Ag', calculator='lj')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Ag', crystal_structure='fcc', calculator='lj')
-   $ asr run "asr.tutorial:energy Ag fcc --calculator morse"
+   Running asr.tutorial:energy(element='Ag', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Ag', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Al --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:energy(element='Ag', crystal_structure='fcc', calculator='morse')
+   Running asr.tutorial:main(element='Al', calculator='lj')
+   Running asr.tutorial:energy(element='Al', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Al', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Al', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Al', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Ni --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Ni', calculator='lj')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Ni', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Cu --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Cu', calculator='lj')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Cu', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Pd --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Pd', calculator='lj')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Pd', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Pt --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Pt', calculator='lj')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Pt', crystal_structure='diamond', calculator='lj')
+   $ asr run "asr.tutorial Au --calculator lj"
+   In folder: . (1/1)
+   Running asr.tutorial:main(element='Au', calculator='lj')
+   Running asr.tutorial:energy(element='Au', crystal_structure='sc', calculator='lj')
+   Running asr.tutorial:energy(element='Au', crystal_structure='fcc', calculator='lj')
+   Running asr.tutorial:energy(element='Au', crystal_structure='bcc', calculator='lj')
+   Running asr.tutorial:energy(element='Au', crystal_structure='diamond', calculator='lj')
+
+Let's check the results
+
+.. code-block:: console
+
+   $ asr cache ls name=asr.tutorial:main
+                name                parameters result
+   asr.tutorial:main element=Ag,calculator=emt    fcc
+   asr.tutorial:main element=Al,calculator=emt    fcc
+   asr.tutorial:main element=Ni,calculator=emt    fcc
+   asr.tutorial:main element=Cu,calculator=emt    fcc
+   asr.tutorial:main element=Pd,calculator=emt    fcc
+   asr.tutorial:main element=Pt,calculator=emt    fcc
+   asr.tutorial:main element=Au,calculator=emt    fcc
+   asr.tutorial:main  element=Ag,calculator=lj    fcc
+   asr.tutorial:main  element=Al,calculator=lj    fcc
+   asr.tutorial:main  element=Ni,calculator=lj    fcc
+   asr.tutorial:main  element=Cu,calculator=lj    fcc
+   asr.tutorial:main  element=Pd,calculator=lj    fcc
+   asr.tutorial:main  element=Pt,calculator=lj    fcc
+   asr.tutorial:main  element=Au,calculator=lj    fcc
+
+We can confirm that the Lennard-Jones calculator also predict fcc as
+the most stable crystal structure.

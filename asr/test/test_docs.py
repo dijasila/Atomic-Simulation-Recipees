@@ -66,16 +66,17 @@ def test_tutorial(command_outputs, tmpdir):
                 actual_output.pop()
             # This is a hack for removing printed uids since they change
             # on every run. A better solution can probably be found.
-            remove_anything_after_record_uid_occurs(output)
-            remove_anything_after_record_uid_occurs(actual_output)
-            assert output == actual_output, (output, actual_output)
+            new_output = remove_anything_after_record_uid_occurs(output)
+            new_actual_output = remove_anything_after_record_uid_occurs(actual_output)
+            assert new_output == new_actual_output, (output, actual_output)
 
 
 def remove_anything_after_record_uid_occurs(output):
+    new_output = []
     for il, line in enumerate(output):
         if 'record.uid' in line:
             line, *_ = line.split('record.uid')
         elif 'UID=' in line:
             line, *_ = line.split('UID=')
-        output[il] = line
-    return output
+        new_output.append(line)
+    return new_output
