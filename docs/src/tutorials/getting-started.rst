@@ -76,7 +76,7 @@ command-line using
                   name                       parameters    result
    asr.tutorial:energy element=Ag,crystal_structure=fcc -0.000367
 
-An important feature of ASR is that of "caching" results. If we run
+An important feature of ASR is that of "caching". If we run
 the instruction again with the same input parameters ASR will skip the
 actual evaluation of the instruction and simply reuse the old
 result.
