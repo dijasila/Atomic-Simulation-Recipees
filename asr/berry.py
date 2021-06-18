@@ -59,8 +59,7 @@ def calculate(
     from gpaw.mpi import world
     from asr.magnetic_anisotropy import get_spin_axis
 
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
 
     """Find the easy axis of magnetic materials"""
     theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
@@ -160,7 +159,7 @@ def calculate(
 def plot_phases(context, f0, f1, f2, fpi):
     import pylab as plt
 
-    results = context.result
+    results = context.get_record('asr.berry:calculate').result
 
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
         phit_km = results.get(f'phi{label}_km')
@@ -199,11 +198,7 @@ def plot_phases(context, f0, f1, f2, fpi):
                     s=5,
                     marker='o')
 
-        if 'results-asr.magnetic_anisotropy.json' in row.data:
-            anis = row.data['results-asr.magnetic_anisotropy.json']
-            dir = anis['spin_axis']
-        else:
-            dir = 'z'
+        dir = context.spin_axis
 
         cbar = plt.colorbar()
         cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
