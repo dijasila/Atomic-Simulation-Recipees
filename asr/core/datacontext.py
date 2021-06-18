@@ -97,7 +97,11 @@ class DataContext:
     def ndim(self):
         atoms = self.atoms
         ndim = sum(atoms.pbc)
-        assert all(atoms.pbc[:ndim])
+        if ndim == 2:
+            assert all(atoms.pbc == [True, True, False])
+        elif ndim == 1:
+            assert all(atoms.pbc == [False, False, True])
+
         return ndim
 
     @property
@@ -112,7 +116,11 @@ class DataContext:
     # This pattern is used by almost all recipes that have spectra (?)
     def energy_reference(self):
         gs = self.gs_results()
-        if self.ndim == 3:
+
+        # XXX The GS recipe only sets 'evac' if we have exactly
+        # two dimensions.  We should fix this.  Only in 3D do we
+        # not have a vacuum level.
+        if self.ndim != 2:
             return EnergyReference._efermi(gs['efermi'])
         else:
             return EnergyReference._evac(gs['evac'])
@@ -142,10 +150,12 @@ class EnergyReference:
 
     @classmethod
     def _evac(cls, value):
+        assert value is not None
         return cls('evac', value, 'vacuum level', 'vac')
 
     @classmethod
     def _efermi(cls, value):
+        assert value is not None
         return cls('efermi', value, 'Fermi level', 'F')
 
     def mpl_plotlabel(self):

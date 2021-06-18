@@ -157,10 +157,11 @@ def calculate(
     return CalculateResult(data=results)
 
 
-def plot_phases(row, f0, f1, f2, fpi):
+def plot_phases(context, f0, f1, f2, fpi):
     import pylab as plt
 
-    results = row.data['results-asr.berry@calculate.json']
+    results = context.result
+
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
         phit_km = results.get(f'phi{label}_km')
         if phit_km is None:

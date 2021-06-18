@@ -332,10 +332,11 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def plot_bandstructure(row, fname):
+def plot_bandstructure(context, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
-    data = row.data.get('results-asr.phonons.json')
+    data = context.result
+
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
     exact_indices = []

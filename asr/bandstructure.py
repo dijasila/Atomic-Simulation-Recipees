@@ -369,7 +369,6 @@ def plot_bs_png(context,
 
     d = context.result
     xcname = context.xcname
-
     eref = context.energy_reference()
     gsresults = context.gs_results()
 
@@ -378,7 +377,9 @@ def plot_bs_png(context,
     ef_soc = d['bs_soc']['efermi']
 
     ref_soc = eref.value
-    if context.ndim == 3:
+    if context.ndim != 2:
+        # XXXX this check should be ndim == 3, but we need to update GS
+        # so it sets the vacuum level for ndim != 2.
         ref_nosoc = d['bs_nosoc']['efermi']
     else:
         assert eref.key == 'evac'
@@ -390,7 +391,7 @@ def plot_bs_png(context,
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gaps = gsresults.get('gaps_nosoc', {})
+    gaps = gsresults['gaps_nosoc']
 
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
@@ -400,6 +401,7 @@ def plot_bs_png(context,
         emax = gaps.get('cbm') + 3
     else:
         emax = ef_nosoc + 3
+
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # without soc
     nosoc_style = dict(
