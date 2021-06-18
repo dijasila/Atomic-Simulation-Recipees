@@ -415,7 +415,6 @@ def vacuumlevels(atoms, calc, n=8):
     n: int
         number of gridpoints away from the edge to evaluate the vac levels
     """
-
     # XXX Actually we have a vacuum level also in 1D or 0D systems.
     # Only for 3D systems can we have trouble.
 
