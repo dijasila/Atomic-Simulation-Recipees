@@ -543,8 +543,9 @@ def runplot_clean(plotfunction, *args):
     return value
 
 
-def generate_plots(row, prefix, plot_descriptions, pool):
+def generate_plots(context, prefix, plot_descriptions, pool, paneltype):
     missing = set()
+    row = context.row
     for desc in plot_descriptions:
         function = desc['function']
         filenames = desc['filenames']
@@ -553,8 +554,15 @@ def generate_plots(row, prefix, plot_descriptions, pool):
             if not path.is_file():
                 # Create figure(s) only once:
                 strpaths = [str(path) for path in paths]
+                if paneltype == 'ase_webpanel':
+                    obj = row
+                else:
+                    assert paneltype == 'webpanel2'
+                    obj = context
+
+                args = [function, obj] + strpaths
+
                 try:
-                    args = [function, row] + strpaths
                     if pool is None:
                         runplot_clean(*args)
                     else:
@@ -618,6 +626,8 @@ def _layout(row, key_descriptions, prefix, pool):
     # Locate all webpanels
 
     for record in row.records:
+        context = DataContext(row, record)
+
         result = record.result
         if not isinstance(result, ASRResult):
             continue
@@ -634,7 +644,6 @@ def _layout(row, key_descriptions, prefix, pool):
         if paneltype == 'ase_webpanel':
             panels = result.format_as('ase_webpanel', row, key_descriptions)
         else:
-            context = DataContext(row, record)
             panels = result.format_as('webpanel2', context)
 
         if not panels:
@@ -652,6 +661,15 @@ def _layout(row, key_descriptions, prefix, pool):
             else:
                 panel_data_sources[paneltitle] = [record]
                 page[paneltitle] = [panel]
+
+        # Get descriptions of figures that are created by all webpanels
+        plot_descriptions = []
+        for panel in panels:
+            plot_descriptions.extend(panel.get('plot_descriptions', []))
+
+        # List of functions and the figures they create:
+        missing_figures = generate_plots(context, prefix, plot_descriptions,
+                                         pool, paneltype)
 
     for paneltitle, data_sources in panel_data_sources.items():
 
@@ -695,14 +713,6 @@ def _layout(row, key_descriptions, prefix, pool):
     link_panel = {'title': link_title,
                   'columns': link_columns}
     page.append(link_panel)
-
-    # Get descriptions of figures that are created by all webpanels
-    plot_descriptions = []
-    for panel in page:
-        plot_descriptions.extend(panel.get('plot_descriptions', []))
-
-    # List of functions and the figures they create:
-    missing_figures = generate_plots(row, prefix, plot_descriptions, pool)
 
     # We convert the page into ASE format
     asepage = []
