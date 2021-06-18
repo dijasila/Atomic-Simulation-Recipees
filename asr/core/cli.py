@@ -11,7 +11,7 @@ import traceback
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
+    chdir, ASRCommand, ASRResult, DictStr, set_defaults, get_cache, CommaStr,
     get_recipes,
 )
 import click
@@ -820,6 +820,9 @@ def results(selection, show):
     assert records, 'No matching records!'
 
     for record in records:
+        if not isinstance(record.result, ASRResult):
+            continue
+
         try:
             panels = make_panels(record)
         except Exception as ex:
