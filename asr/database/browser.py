@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from asr.core import (decode_object, ASRResult, get_recipe_from_name)
 from asr.core.cache import Cache, MemoryBackend
+from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 from .webpanel import WebPanel
@@ -591,6 +592,14 @@ def layout(
         return _layout(row, key_descriptions, prefix, pool)
 
 
+def get_paneltype(result):
+    formats = result.get_formats()
+    for paneltype in ['webpanel2', 'ase_webpanel']:
+        if paneltype in formats:
+            return paneltype
+    return None
+
+
 def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
@@ -607,18 +616,27 @@ def _layout(row, key_descriptions, prefix, pool):
     panel_data_sources = {}
     recipes_treated = set()
     # Locate all webpanels
+
     for record in row.records:
         result = record.result
         if not isinstance(result, ASRResult):
             continue
-        if 'ase_webpanel' not in result.get_formats():
+
+        paneltype = get_paneltype(result)
+        if paneltype is None:
             continue
+
         if record.run_specification.name in recipes_treated:
             continue
 
         recipes_treated.add(record.run_specification.name)
 
-        panels = result.format_as('ase_webpanel', row, key_descriptions)
+        if paneltype == 'ase_webpanel':
+            panels = result.format_as('ase_webpanel', row, key_descriptions)
+        else:
+            context = DataContext(row, record)
+            panels = result.format_as('webpanel2', context)
+
         if not panels:
             continue
 

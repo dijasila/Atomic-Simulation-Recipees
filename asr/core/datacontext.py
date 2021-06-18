@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from ase.utils import lazymethod
-from asr.database.app import create_key_descriptions
+from ase.utils import lazymethod, lazyproperty
 
 
 class RecordNotFound(LookupError):
@@ -8,7 +7,6 @@ class RecordNotFound(LookupError):
 
 
 class DataContext:
-    descriptions = create_key_descriptions()
     # Can we find a more fitting name for this?
     #
     # Basically the context object provides information which is
@@ -22,6 +20,11 @@ class DataContext:
     def __init__(self, row, record):
         self.row = row
         self.record = record
+
+    @lazyproperty
+    def descriptions(self):
+        from asr.database.app import create_key_descriptions
+        return create_key_descriptions()
 
     @property
     def parameters(self):
