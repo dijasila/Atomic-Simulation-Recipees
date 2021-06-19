@@ -513,9 +513,13 @@ class RowWrapper(Mapping):
     def __len__(self):
         return len(self._row)
 
-    def __getattr__(self, key):
-        """Wrap attribute lookup of AtomsRow."""
-        return getattr(self._row, key)
+    @property
+    def ctime(self):
+        return self._row.ctime
+
+    @property
+    def key_value_pairs(self):
+        return self._row.key_value_pairs
 
 
 def parse_row_data(data: dict):

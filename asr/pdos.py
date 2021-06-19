@@ -357,7 +357,6 @@ def plot_pdos(context, filename, soc=True,
     eref = ref.value
 
     # Extract raw data
-    print('result', list(result))
     pdos_syl = get_ordered_syl_dict(pdos['pdos_syl'], context.atoms.symbols)
     e_e = pdos['energies'] - eref
     ef = pdos['efermi']

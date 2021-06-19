@@ -53,7 +53,5 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     # This should be fixed in the future.
     structinfo(atoms=test_material)
 
-    # XXXXXXX This fails.  Why?
-    # html = get_webcontent()
-    # print(html)
-    # assert 'hse-bs.png' in html
+    html = get_webcontent()
+    assert 'hse-bs.png' in html
