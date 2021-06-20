@@ -15,3 +15,6 @@ API reference
 .. autofunction:: asr.argument
 
 .. autofunction:: asr.migration
+
+.. autoclass:: asr.Record
+   :members:

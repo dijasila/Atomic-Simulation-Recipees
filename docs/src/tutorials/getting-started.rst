@@ -76,7 +76,7 @@ command-line using
                   name                       parameters    result
    asr.tutorial:energy element=Ag,crystal_structure=fcc -0.000367
 
-We can get detialed information about the record with:
+The full contents of the record can be shown with
 
 .. code-block:: console
 
@@ -108,6 +108,21 @@ We can get detialed information about the record with:
     uid=b5877d11de7a406b9eed5e0f029ea525
     version=0
    tags=None
+
+As is evident, there is a lot of information stored in a
+:py:class:`asr.Record`, however, right now we want to highlight a
+couple of these:
+
+ - The :attr:`asr.Record.run_specification.uid` property is a random
+   unique identifier given to all records. This can be used to
+   uniquely select records.  The Record provides a shortcut to the UID
+   through :attr:`asr.Record.uid`.
+ - The `run_specification.name` property stores the name of the instruction.
+   The Record provides a shortcut to the name through `Record.name`.
+ - The `run_specification.parameters` stores the parameters of the
+   given run. The Record object provides a shortcut the parameters
+   through `Record.parameters`.
+ - The `result` property stores the result of the instruction.
 
 An important feature of ASR is that of "caching". If we run
 the instruction again with the same input parameters ASR will skip the
@@ -158,10 +173,49 @@ We can now check the result using the command-line tool
                 name parameters result
    asr.tutorial:main element=Ag    fcc
 
-Notice here we applied the "name=asr.tutorial" selection to select
-only the record of relevance. As we can see the EMT calculator
+Notice here we applied the "name=asr.tutorial:main" selection to
+select only the record of relevance. As we can see the EMT calculator
 correctly predicts FCC as the most stable crystal structure for
 silver.
+
+Let's also look at the detailed contents of this record
+
+.. code-block:: console
+
+   $ asr cache detail name=asr.tutorial:main
+   dependencies=[Dependency(uid='9c83a1199be4410a9fcf34f195a0df28', revision=None), Dependency(uid='b6aed36f363c43eebf4d8b2b91dbc4b4', revision=None), Dependency(uid='28d5f6b0b3e447778ab62ce3d354f5af', revision=None), Dependency(uid='2abb02db15574c63b66f0c6469b12150', revision=None)]
+   history=None
+   metadata=
+    created=2021-06-20 19:53:53.266710
+    directory=.
+    modified=2021-06-20 19:53:53.266710
+   resources=
+    execution_duration=0.6085515022277832
+    execution_end=1624211633.266687
+    execution_start=1624211632.6581354
+    ncores=1
+   result=fcc
+   run_specification=
+    codes=
+     code=
+      git_hash=None
+      package=ase
+      version=3.22.0b1
+     code=
+      git_hash=None
+      package=asr
+      version=0.4.1
+    name=asr.tutorial:main
+    parameters=element=Ag
+    uid=d852be0ddd844301807d2034ff29149f
+    version=0
+   tags=None
+
+Here we want to highlight `asr.Record.dependencies` which stores any
+dependencies of the selected record on any other records, ie., whether
+data from any other records has been used in the construction of the
+selected record. A dependency stores the UID and something called the
+`revision` which can be used to locate the dependencies.
 
 Let's continue and calculate the most stable crystal structures for
 various other metals
