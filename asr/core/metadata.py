@@ -43,6 +43,12 @@ class Metadata:
     modified: typing.Optional[datetime.datetime] = None
     directory: typing.Optional[str] = None
 
+    def __str__(self):
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
+
 
 def register_metadata():
 

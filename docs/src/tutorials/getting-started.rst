@@ -83,10 +83,30 @@ We can get detialed information about the record with:
    $ asr cache detail name=asr.tutorial:energy
    dependencies=[]
    history=None
-   metadata=Metadata(created=datetime.datetime(2021, 6, 18, 20, 34, 50, 861960), modified=datetime.datetime(2021, 6, 18, 20, 34, 50, 861960), directory='.')
-   resources=Resources(time=0.4s, ncores=1)
+   metadata=
+    created=2021-06-20 11:49:06.411990
+    directory=.
+    modified=2021-06-20 11:49:06.411990
+   resources=
+    execution_duration=0.25704407691955566
+    execution_end=1624182546.4119184
+    execution_start=1624182546.1548743
+    ncores=1
    result=-0.000367
-   run_specification=RunSpec(name=asr.tutorial:energy, params=element=Ag,crystal_structure=fcc, version=0, codes=[version=0.4.1, version=3.22.0b1], uid=53fc6b99de9e4314bb568956daf5f447)
+   run_specification=
+    codes=
+     code=
+      git_hash=None
+      package=ase
+      version=3.22.0b1
+     code=
+      git_hash=None
+      package=asr
+      version=0.4.1
+    name=asr.tutorial:energy
+    parameters=element=Ag,crystal_structure=fcc
+    uid=b5877d11de7a406b9eed5e0f029ea525
+    version=0
    tags=None
 
 An important feature of ASR is that of "caching". If we run

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import numpy as np
 
+import textwrap
 import typing
 import copy
 from dataclasses import dataclass
@@ -61,6 +62,9 @@ class Record:
     def __str__(self):
         lines = []
         for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
             lines.append(f'{key}={value}')
         return '\n'.join(lines)
 
