@@ -41,8 +41,8 @@ def get_chi_symmetry(atoms, sym_th=1e-3):
 
     # Make the symmetry tensor dictionary
     sym_chi = {'zero': ''}
-    ind_list = list(range(27))
-    ind_list[1], ind_list[13] = ind_list[13], ind_list[1]
+    # The ind_list is chosen as one convention
+    ind_list = ind_list = [0, 13, 26, 2, 1, 3] + list(range(4, 13)) + list(range(14, 26))
     nz_pols = []
     for ii, ind in enumerate(ind_list):
         v1, v2, v3 = int(ind / 9), int((ind % 9) / 3), (ind % 9) % 3
